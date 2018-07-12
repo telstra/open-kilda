@@ -13,12 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.command.ping;
+package org.openkilda.floodlight.service.ping;
 
+import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.command.ping.PingResponseCommand;
+import org.openkilda.floodlight.model.OfInput;
+import org.openkilda.floodlight.service.of.IInputTranslator;
 
-import net.floodlightcontroller.core.IOFSwitch;
-
-public interface IPingResponseFactory {
-    PingResponseCommand produce(CommandContext commandContext, IOFSwitch sw, byte[] ethPacket);
+public class PingInputTranslator implements IInputTranslator {
+    @Override
+    public Command makeCommand(CommandContext context, OfInput input) {
+        return new PingResponseCommand(context, input);
+    }
 }

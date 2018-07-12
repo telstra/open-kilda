@@ -15,12 +15,13 @@
 
 package org.openkilda.floodlight.kafka;
 
-import org.openkilda.floodlight.command.ping.PingResponseCommandFactoryImpl;
 import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.ConfigService;
-import org.openkilda.floodlight.service.PingService;
 import org.openkilda.floodlight.service.batch.OfBatchService;
+import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
@@ -49,19 +50,23 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
     private final CommandContextFactory commandContextFactory = new CommandContextFactory();
 
+    private final CommandProcessorService commandProcessor;
+    private final InputService inputService;
     private final ConfigService configService = new ConfigService();
-    private final OfBatchService ofBatchService;
-    private final PingService pingService;
+    private final OfBatchService ofBatchService = new OfBatchService();
+    private final PingService pingService = new PingService();
 
     public KafkaMessageCollector() {
-        ofBatchService = new OfBatchService(commandContextFactory);
-        pingService = new PingService(commandContextFactory);
+        commandProcessor = new CommandProcessorService(commandContextFactory);
+        inputService = new InputService(commandContextFactory);
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableList.of(
                 ConfigService.class,
+                CommandProcessorService.class,
+                InputService.class,
                 OfBatchService.class,
                 PingService.class);
     }
@@ -69,9 +74,11 @@ public class KafkaMessageCollector implements IFloodlightModule {
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         return ImmutableMap.of(
+                ConfigService.class, configService,
+                CommandProcessorService.class, commandProcessor,
+                InputService.class, inputService,
                 OfBatchService.class, ofBatchService,
-                PingService.class, pingService,
-                ConfigService.class, configService);
+                PingService.class, pingService);
     }
 
     @Override
@@ -88,8 +95,11 @@ public class KafkaMessageCollector implements IFloodlightModule {
     }
 
     @Override
-    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        commandContextFactory.init(context);
+    public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
+        commandContextFactory.init(moduleContext);
+
+        commandProcessor.init(moduleContext);
+        inputService.init(moduleContext);
     }
 
     @Override
@@ -98,7 +108,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
         configService.init(new ConfigurationProvider(moduleContext, this));
         ofBatchService.init(moduleContext);
-        pingService.init(moduleContext, new PingResponseCommandFactoryImpl());
+        pingService.init(moduleContext);
 
         ConsumerContext context = initContext(moduleContext);
         initConsumer(moduleContext, context);

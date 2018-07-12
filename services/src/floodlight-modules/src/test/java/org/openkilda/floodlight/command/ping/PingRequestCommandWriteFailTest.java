@@ -32,25 +32,25 @@ public class PingRequestCommandWriteFailTest extends PingRequestCommandAbstractT
     }
 
     @Test
-    public void missingSourceSwitch() {
+    public void missingSourceSwitch() throws Exception {
         expectFail(makePing(switchMissing, switchBeta), Errors.SOURCE_NOT_AVAILABLE);
     }
 
     @Test
-    public void missingDestSwitch() {
+    public void missingDestSwitch() throws Exception {
         expectFail(makePing(switchAlpha, switchMissing), Errors.DEST_NOT_AVAILABLE);
     }
 
     @Test
-    public void destSwitchIsNotCapable() {
+    public void destSwitchIsNotCapable() throws Exception {
         expectFail(makePing(switchAlpha, switchNotCapable), Errors.NOT_CAPABLE);
     }
 
-    private void expectFail(Ping ping, Ping.Errors errorCode) {
+    private void expectFail(Ping ping, Ping.Errors errorCode) throws Exception {
         final CommandContext context = commandContextFactory.produce();
         final PingRequestCommand command = new PingRequestCommand(context, ping);
 
-        command.execute();
+        command.call();
 
         verifySentErrorResponse(ping, errorCode);
     }

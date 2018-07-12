@@ -31,7 +31,6 @@ public class PingData implements ISignPayload {
     private static String JWT_KEY_PREFIX = "openkilda.ping.";
 
     private long sendTime = 0;
-    private long recvTime = 0;
     private long senderLatency = 0;
 
     private final Short sourceVlan;
@@ -43,8 +42,6 @@ public class PingData implements ISignPayload {
      * Build {@link PingData} from {@link DecodedJWT} token.
      */
     public static PingData of(DecodedJWT token) throws CorruptedNetworkDataException {
-        long recvTime = System.currentTimeMillis();
-
         PingData data;
         try {
             Integer sourceVlan = token.getClaim(makeJwtKey("sourceVlan")).asInt();
@@ -59,7 +56,6 @@ public class PingData implements ISignPayload {
             data = new PingData(vlanId, source, dest, packetId);
             data.setSenderLatency(token.getClaim(makeJwtKey("senderLatency")).asLong());
             data.setSendTime(token.getClaim(makeJwtKey("time")).asLong());
-            data.setRecvTime(recvTime);
         } catch (NullPointerException e) {
             throw new CorruptedNetworkDataException(
                     String.format("Corrupted flow verification package (%s)", token));
@@ -72,8 +68,8 @@ public class PingData implements ISignPayload {
      * Build {@link PingData} from {@link Ping} instance.
      */
     public static PingData of(Ping ping) {
-        DatapathId source = DatapathId.of(ping.getSource().getSwitchDpId());
-        DatapathId dest = DatapathId.of(ping.getDest().getSwitchDpId());
+        DatapathId source = DatapathId.of(ping.getSource().getDatapath());
+        DatapathId dest = DatapathId.of(ping.getDest().getDatapath());
         return new PingData(ping.getSourceVlanId(), source, dest, ping.getPingId());
     }
 
@@ -105,8 +101,8 @@ public class PingData implements ISignPayload {
     /**
      * Calculate flow's latency.
      */
-    public PingMeters produceMeasurements(long recipientLatency) {
-        long latency = getRecvTime() - getSendTime() - getSenderLatency() - recipientLatency;
+    public PingMeters produceMeasurements(long receiveTime, long recipientLatency) {
+        long latency = receiveTime - getSendTime() - getSenderLatency() - recipientLatency;
         if (latency < 0) {
             latency = -1;
         }
@@ -119,14 +115,6 @@ public class PingData implements ISignPayload {
 
     private void setSendTime(long sendTime) {
         this.sendTime = sendTime;
-    }
-
-    public long getRecvTime() {
-        return recvTime;
-    }
-
-    private void setRecvTime(long recvTime) {
-        this.recvTime = recvTime;
     }
 
     public long getSenderLatency() {

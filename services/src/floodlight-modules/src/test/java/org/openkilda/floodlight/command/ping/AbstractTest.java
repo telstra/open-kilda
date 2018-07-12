@@ -22,7 +22,7 @@ import static org.easymock.EasyMock.newCapture;
 
 import org.openkilda.floodlight.command.AbstractCommandTest;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.openkilda.floodlight.service.PingService;
+import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.Message;
 
 import org.easymock.Capture;
@@ -31,7 +31,7 @@ import org.easymock.Mock;
 import org.junit.Before;
 
 public abstract class AbstractTest extends AbstractCommandTest {
-    protected Capture<Message> producerPostMessage = newCapture(CaptureType.ALL);
+    protected Capture<Message> kafkaMessageCatcher = newCapture(CaptureType.ALL);
 
     @Mock
     protected KafkaMessageProducer kafkaProducer;
@@ -47,7 +47,7 @@ public abstract class AbstractTest extends AbstractCommandTest {
         moduleContext.addService(KafkaMessageProducer.class, kafkaProducer);
         moduleContext.addService(PingService.class, pingService);
 
-        kafkaProducer.postMessage(anyString(), capture(producerPostMessage));
+        kafkaProducer.postMessage(anyString(), capture(kafkaMessageCatcher));
         expectLastCall().andVoid().anyTimes();
     }
 }

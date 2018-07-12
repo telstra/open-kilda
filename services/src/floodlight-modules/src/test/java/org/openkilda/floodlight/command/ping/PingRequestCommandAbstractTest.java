@@ -92,7 +92,7 @@ abstract class PingRequestCommandAbstractTest extends AbstractTest {
     }
 
     protected void verifySentErrorResponse(Ping ping, Ping.Errors errorCode) {
-        List<Message> replies = producerPostMessage.getValues();
+        List<Message> replies = kafkaMessageCatcher.getValues();
         Assert.assertEquals(1, replies.size());
 
         InfoMessage message = (InfoMessage) replies.get(0);

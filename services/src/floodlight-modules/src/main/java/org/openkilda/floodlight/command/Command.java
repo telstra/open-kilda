@@ -15,14 +15,24 @@
 
 package org.openkilda.floodlight.command;
 
-public abstract class Command {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.Callable;
+
+public abstract class Command implements Callable<Command> {
+    private static final Logger log = LoggerFactory.getLogger(Command.class);
+
     private final CommandContext context;
 
     public Command(CommandContext context) {
         this.context = context;
     }
 
-    public abstract void execute();
+    public Command exceptional(Throwable e) {
+        log.error(String.format("Unhandled exception into %s: %s", getClass().getName(), e.getMessage()), e);
+        return null;
+    }
 
     protected CommandContext getContext() {
         return context;

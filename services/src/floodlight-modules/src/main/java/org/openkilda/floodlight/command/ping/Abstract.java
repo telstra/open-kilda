@@ -19,7 +19,7 @@ import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.service.ConfigService;
-import org.openkilda.floodlight.service.PingService;
+import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.Ping;
@@ -54,6 +54,7 @@ abstract class Abstract extends Command {
     void sendResponse(PingResponse response) {
         String topic = configService.getTopics().getPingTopic();
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), getContext().getCorrelationId());
+        // TODO(surabujin): return future to avoid thread occupation during wait period(use CommandProcessorService)
         kafkaProducer.postMessage(topic, message);
     }
 

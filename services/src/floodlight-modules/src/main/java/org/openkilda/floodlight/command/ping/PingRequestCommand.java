@@ -15,13 +15,14 @@
 
 package org.openkilda.floodlight.command.ping;
 
+import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.error.OfBatchException;
 import org.openkilda.floodlight.error.PingImpossibleException;
 import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.model.PingData;
-import org.openkilda.floodlight.service.PingService;
 import org.openkilda.floodlight.service.batch.OfBatchService;
+import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
 
@@ -71,7 +72,7 @@ public class PingRequestCommand extends Abstract {
     }
 
     @Override
-    public void execute() {
+    public Command call() throws Exception {
         try {
             validate();
             send();
@@ -79,6 +80,7 @@ public class PingRequestCommand extends Abstract {
             log.error(e.getMessage());
             sendErrorResponse(ping.getPingId(), e.getError());
         }
+        return null;
     }
 
     private void validate() throws PingImpossibleException {

@@ -13,23 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.service;
+package org.openkilda.floodlight.service.ping;
 
 import org.openkilda.floodlight.SwitchUtils;
-import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.command.ping.IPingResponseFactory;
-import org.openkilda.floodlight.command.ping.PingResponseCommand;
 import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
+import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
+import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.openkilda.floodlight.utils.CommandContextFactory;
 import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.messaging.model.Ping;
 
-import com.google.common.collect.ImmutableSet;
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -38,8 +32,6 @@ import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
@@ -50,37 +42,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-public class PingService extends AbstractOfHandler implements IFloodlightService {
+public class PingService implements IFloodlightService {
     private static Logger log = LoggerFactory.getLogger(PingService.class);
 
     public static final long SWITCH_PACKET_OUT_TIMEOUT = TimeUnit.SECONDS.toMillis(1);
 
-    static final U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+    public static final U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
     private static final String NET_L3_ADDRESS = "127.0.0.2";
+    private static final int NET_L3_PORT = PathVerificationService.VERIFICATION_PACKET_UDP_PORT + 1;
     private static final byte NET_L3_TTL = 96;
-
-    private static final U64 reservedCookieValue = U64.of(-1);
 
     private DataSignature signature = null;
     private SwitchUtils switchUtils = null;
-
-    private IPingResponseFactory responseFactory;
-
-    public PingService(CommandContextFactory commandContextFactory) {
-        super(commandContextFactory);
-    }
 
     /**
      * Initialize internal data structures. Called by module that own this service. Called after all dependencies have
      * been loaded.
      */
-    public void init(FloodlightModuleContext moduleContext, IPingResponseFactory responseFactory)
-            throws FloodlightModuleException {
-        this.responseFactory = responseFactory;
-
+    public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         // FIXME(surabujin): avoid usage foreign module configuration
         Map<String, String> config = moduleContext.getConfigParams(PathVerificationService.class);
         try {
@@ -90,47 +71,19 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
         }
 
         switchUtils = new SwitchUtils(moduleContext.getServiceImpl(IOFSwitchService.class));
-        activateSubscription(moduleContext, OFType.PACKET_IN);
+
+        InputService inputService = moduleContext.getServiceImpl(InputService.class);
+        inputService.addTranslator(OFType.PACKET_IN, new PingInputTranslator());
     }
 
-    @Override
-    public boolean handle(CommandContext commandContext, IOFSwitch sw, OFMessage message, FloodlightContext context) {
-        OFPacketIn packet = (OFPacketIn) message;
-
-        Ethernet eth = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        if (filterOutByCookie(sw, packet)) {
-            return false;
-        }
-
-        byte[] payload = unwrapData(switchUtils.dpIdToMac(sw.getId()), eth);
-        if (payload == null) {
-            return false;
-        }
-
-        PingResponseCommand command = responseFactory.produce(commandContext, sw, payload);
-        command.execute();
-
-        return true;
-    }
-
-    private boolean filterOutByCookie(IOFSwitch sw, OFPacketIn packet) {
-        final U64 cookie;
-        try {
-            cookie = packet.getCookie();
-        } catch (UnsupportedOperationException e) {
-            return false;
-        }
-
-        if (reservedCookieValue.equals(cookie)) {
-            return false;
-        }
-
-        final boolean isFiltered = !OF_CATCH_RULE_COOKIE.equals(cookie);
+    /**
+     * Check is cookie in PACKET_IN message match this ping catch rules cookie.
+     */
+    public boolean isCookieMismatch(OfInput input) {
+        U64 cookie = input.packetInCookie();
+        final boolean isFiltered = cookie != null && !OF_CATCH_RULE_COOKIE.equals(cookie);
         if (isFiltered) {
-            log.debug(
-                    "Reject packet {}.{}:{} on {} by cookie mismatch {} != {}",
-                    packet.getType(), packet.getVersion(), packet.getXid(),
-                    sw.getId(), OF_CATCH_RULE_COOKIE, cookie);
+            log.debug("{} - cookie mismatch ({} != {})", input, OF_CATCH_RULE_COOKIE, cookie);
         }
         return isFiltered;
     }
@@ -143,8 +96,8 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
 
         UDP l4 = new UDP();
         l4.setPayload(l7);
-        l4.setSourcePort(TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT));
-        l4.setDestinationPort(TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT));
+        l4.setSourcePort(TransportPort.of(NET_L3_PORT));
+        l4.setDestinationPort(TransportPort.of(NET_L3_PORT));
 
         IPv4 l3 = new IPv4();
         l3.setPayload(l4);
@@ -156,8 +109,8 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
         l2.setPayload(l3);
         l2.setEtherType(EthType.IPv4);
 
-        l2.setSourceMACAddress(switchUtils.dpIdToMac(DatapathId.of(ping.getSource().getSwitchDpId())));
-        l2.setDestinationMACAddress(switchUtils.dpIdToMac(DatapathId.of(ping.getDest().getSwitchDpId())));
+        l2.setSourceMACAddress(switchUtils.dpIdToMac(DatapathId.of(ping.getSource().getDatapath())));
+        l2.setDestinationMACAddress(switchUtils.dpIdToMac(DatapathId.of(ping.getDest().getDatapath())));
         if (null != ping.getSourceVlanId()) {
             l2.setVlanID(ping.getSourceVlanId());
         }
@@ -169,7 +122,8 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
      * Unpack network package.
      * Verify all particular qualities used during verification package creation time. Return packet payload.
      */
-    public byte[] unwrapData(MacAddress targetL2Address, Ethernet packet) {
+    public byte[] unwrapData(DatapathId dpId, Ethernet packet) {
+        MacAddress targetL2Address = switchUtils.dpIdToMac(dpId);
         if (!packet.getDestinationMACAddress().equals(targetL2Address)) {
             return null;
         }
@@ -191,10 +145,10 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
         }
         UDP udp = (UDP) ip.getPayload();
 
-        if (udp.getSourcePort().getPort() != PathVerificationService.VERIFICATION_PACKET_UDP_PORT) {
+        if (udp.getSourcePort().getPort() != NET_L3_PORT) {
             return null;
         }
-        if (udp.getDestinationPort().getPort() != PathVerificationService.VERIFICATION_PACKET_UDP_PORT) {
+        if (udp.getDestinationPort().getPort() != NET_L3_PORT) {
             return null;
         }
 
@@ -203,10 +157,5 @@ public class PingService extends AbstractOfHandler implements IFloodlightService
 
     public DataSignature getSignature() {
         return signature;
-    }
-
-    @Override
-    protected Set<String> mustHandleBefore() {
-        return ImmutableSet.of("PathVerificationService");
     }
 }

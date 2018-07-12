@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.ping.PingRequestCommand;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
+import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
@@ -95,11 +96,15 @@ class RecordHandler implements Runnable {
     private final ConsumerRecord<String, String> record;
     private final MeterPool meterPool;
 
+    private final CommandProcessorService commandProcessor;
+
     public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record,
                          MeterPool meterPool) {
         this.context = context;
         this.record = record;
         this.meterPool = meterPool;
+
+        this.commandProcessor = context.getModuleContext().getServiceImpl(CommandProcessorService.class);
     }
 
     protected void doControllerMsg(CommandMessage message) {
@@ -132,6 +137,8 @@ class RecordHandler implements Runnable {
 
         if (data instanceof DiscoverIslCommandData) {
             doDiscoverIslCommand(message);
+        } else if (data instanceof PingRequest) {
+            doPingRequest(context, (PingRequest) data);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
@@ -158,8 +165,6 @@ class RecordHandler implements Runnable {
             doBatchInstall(message);
         } else if (data instanceof PortsCommandData) {
             doPortsCommandDataRequest(message);
-        } else if (data instanceof PingRequest) {
-            doPingRequest(context, (PingRequest) data);
         } else if (data instanceof DeleteMeterRequest) {
             doDeleteMeter(message, replyToTopic, replyDestination);
         } else {
@@ -186,6 +191,11 @@ class RecordHandler implements Runnable {
                 new NetworkEndpoint(command.getSwitchId(), command.getPortNumber()));
         context.getKafkaProducer().postMessage(context.getKafkaTopoDiscoTopic(),
                 new InfoMessage(confirmation, System.currentTimeMillis(), message.getCorrelationId()));
+    }
+
+    private void doPingRequest(CommandContext context, PingRequest request) {
+        PingRequestCommand command = new PingRequestCommand(context, request.getPing());
+        commandProcessor.process(command);
     }
 
     private void doDiscoverPathCommand(CommandData data) {
@@ -673,11 +683,6 @@ class RecordHandler implements Runnable {
         } catch (Exception e) {
             logger.error("Could not get port data for stats {}", e.getMessage(), e);
         }
-    }
-
-    private void doPingRequest(CommandContext context, PingRequest request) {
-        PingRequestCommand command = new PingRequestCommand(context, request.getPing());
-        command.execute();
     }
 
     private void doDeleteMeter(CommandMessage message, String replyToTopic, Destination replyDestination) {

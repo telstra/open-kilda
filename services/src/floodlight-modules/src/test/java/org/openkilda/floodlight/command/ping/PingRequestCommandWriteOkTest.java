@@ -29,20 +29,22 @@ import org.openkilda.floodlight.error.OfBatchException;
 import org.openkilda.floodlight.error.OfErrorResponseException;
 import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
-import org.openkilda.floodlight.service.PingService;
 import org.openkilda.floodlight.service.batch.OfBatchService;
+import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.service.ping.PingInputTranslator;
+import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
 
 import com.google.common.collect.ImmutableList;
-import net.floodlightcontroller.core.IFloodlightProviderService;
 import org.easymock.Capture;
 import org.easymock.Mock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -65,16 +67,16 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
     public void setUp() throws Exception {
         super.setUp();
 
+        InputService inputService = createMock(InputService.class);
+        inputService.addTranslator(eq(OFType.PACKET_IN), anyObject(PingInputTranslator.class));
+        moduleContext.addService(InputService.class, inputService);
+
         expect(scheduler.schedule(
                         anyObject(Runnable.class),
                         eq(PingService.SWITCH_PACKET_OUT_TIMEOUT), eq(TimeUnit.MILLISECONDS)))
                 .andReturn(timeoutFuture);
 
-        final IFloodlightProviderService providerService = createMock(IFloodlightProviderService.class);
-        moduleContext.addService(IFloodlightProviderService.class, providerService);
-        providerService.addOFMessageListener(anyObject(), anyObject());
-
-        final PingService realPingService = new PingService(commandContextFactory);
+        final PingService realPingService = new PingService();
         expect(pingService.getSignature()).andDelegateTo(realPingService);
         expect(pingService.wrapData(anyObject(Ping.class), anyObject())).andDelegateTo(realPingService);
 
@@ -88,12 +90,10 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         moduleContext.addService(OfBatchService.class, batchService);
         expect(batchService.write(capture(ioPayloadCatch))).andReturn(writeFuture);
 
-        final IPingResponseFactory responseFactory = createMock(IPingResponseFactory.class);
-
         replayAll();
 
         moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");
-        realPingService.init(moduleContext, responseFactory);
+        realPingService.init(moduleContext);
     }
 
     @Test
@@ -117,14 +117,14 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         final Ping ping = makePing(switchAlpha, switchBeta);
         PingRequestCommand command = makeCommand(ping);
 
-        command.execute();
+        command.call();
         command.timeout(writeFuture);
 
         verifySentErrorResponse(ping, Errors.WRITE_FAILURE);
     }
 
     @Test
-    public void errorResponse() {
+    public void errorResponse() throws Exception {
         reset(timeoutFuture);
         expect(timeoutFuture.cancel(false)).andReturn(false);
         replay(timeoutFuture);
@@ -132,7 +132,7 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         final Ping ping = makePing(switchAlpha, switchBeta);
         PingRequestCommand command = makeCommand(ping);
 
-        command.execute();
+        command.call();
 
         List<OfRequestResponse> ioPayload = ioPayloadCatch.getValue();
         Assert.assertEquals(1, ioPayload.size());
@@ -146,11 +146,11 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         verifySentErrorResponse(ping, Errors.WRITE_FAILURE);
     }
 
-    private void expectSuccess(Ping ping) {
+    private void expectSuccess(Ping ping) throws Exception {
         PingRequestCommand command = makeCommand(ping);
-        command.execute();
+        command.call();
 
-        List<Message> replies = producerPostMessage.getValues();
+        List<Message> replies = kafkaMessageCatcher.getValues();
         Assert.assertEquals(0, replies.size());
     }
 

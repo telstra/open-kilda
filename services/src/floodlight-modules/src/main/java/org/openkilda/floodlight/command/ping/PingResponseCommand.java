@@ -15,50 +15,80 @@
 
 package org.openkilda.floodlight.command.ping;
 
+import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.error.CorruptedNetworkDataException;
+import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.model.PingData;
+import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.model.PingMeters;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
-import org.projectfloodlight.openflow.types.DatapathId;
+import net.floodlightcontroller.packet.Ethernet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PingResponseCommand extends Abstract {
     private static final Logger log = LoggerFactory.getLogger(PingResponseCommand.class);
 
-    private final DatapathId datapathId;
-    private final long latency;
-    private final byte[] payload;
+    private final OfInput input;
 
-    public PingResponseCommand(CommandContext context, DatapathId dpId, long latency, byte[] payload) {
+    public PingResponseCommand(CommandContext context, OfInput input) {
         super(context);
 
-        this.datapathId = dpId;
-        this.latency = latency;
-        this.payload = payload;
+        this.input = input;
     }
 
     @Override
-    public void execute() {
-        PingData data;
+    public Command call() throws Exception {
+        log.debug("{} - {}", getClass().getCanonicalName(), input);
+
+        byte[] payload = unwrap();
+        if (payload == null) {
+            return null;
+        }
+
         try {
-            DecodedJWT token = getPingService().getSignature().verify(payload);
-            data = PingData.of(token);
-            getContext().setCorrelationId(data.getPingId().toString());
+            PingData pingData = decode(payload);
+            getContext().setCorrelationId(pingData.getPingId().toString());
+
+            process(pingData);
         } catch (CorruptedNetworkDataException e) {
-            logPing.error(String.format("dpid:%s %s", datapathId, e));
-            return;
+            logPing.error(String.format("dpid:%s %s", input.getDpId(), e));
         }
 
-        if (!data.getDest().equals(datapathId)) {
-            logPing.error("Catch ping package on %s while target is %s", datapathId, data.getDest());
-            return;
+        return null;
+    }
+
+    private byte[] unwrap() {
+        final PingService pingService = getPingService();
+
+        if (pingService.isCookieMismatch(input)) {
+            return null;
         }
 
-        PingMeters meters = data.produceMeasurements(latency);
+        Ethernet ethernetPackage = input.getPacketInPayload();
+        if (ethernetPackage == null) {
+            log.error("{} - payload is missing", input);
+            return null;
+        }
+
+        return pingService.unwrapData(input.getDpId(), ethernetPackage);
+    }
+
+    private PingData decode(byte[] payload) throws CorruptedNetworkDataException {
+        DecodedJWT token = getPingService().getSignature().verify(payload);
+        return PingData.of(token);
+    }
+
+    private void process(PingData data) {
+        Long latency = input.getLatency();
+        if (latency == null) {
+            log.warn("There is no latency info for {} - ping latency is unreliable");
+            latency = 0L;
+        }
+        PingMeters meters = data.produceMeasurements(input.getReceiveTime(), latency);
         logCatch(data, meters);
 
         PingResponse response = new PingResponse(getContext().getCtime(), data.getPingId(), meters);

@@ -24,7 +24,6 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.module.IFloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.slf4j.Logger;
@@ -42,13 +41,11 @@ public abstract class AbstractOfHandler implements IOFMessageListener {
     }
 
     protected abstract boolean handle(
-            CommandContext commandContext, IOFSwitch sw, OFMessage message, FloodlightContext contest);
+            CommandContext commandContext, IOFSwitch sw, OFMessage message, FloodlightContext context);
 
-    protected void activateSubscription(IFloodlightModuleContext moduleContext, OFType... desiredTypes) {
-        IFloodlightProviderService flProviderService = moduleContext.getServiceImpl(IFloodlightProviderService.class);
-
+    protected void activateSubscription(IFloodlightProviderService flProviderService, OFType... desiredTypes) {
         for (OFType target : desiredTypes) {
-            log.debug("activateSubscription {} for OFMessage with OFType.{}", this, target);
+            log.debug("{} activateSubscription for OFMessage with OFType.{}", this.getClass().getName(), target);
             flProviderService.addOFMessageListener(target, this);
         }
     }

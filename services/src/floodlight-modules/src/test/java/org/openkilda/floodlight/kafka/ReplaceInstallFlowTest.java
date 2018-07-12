@@ -109,7 +109,6 @@ public class ReplaceInstallFlowTest {
         collector = new KafkaMessageCollector();
         context.addConfigParam(collector, "topic", "");
         context.addConfigParam(collector, "bootstrap-servers", "");
-        collector.init(context);
 
         initScheme();
     }

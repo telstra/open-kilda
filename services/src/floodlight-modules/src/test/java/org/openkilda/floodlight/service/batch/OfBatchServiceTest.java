@@ -19,13 +19,14 @@ import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.expect;
 
 import org.openkilda.floodlight.SwitchUtils;
-import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.model.OfRequestResponse;
-import org.openkilda.floodlight.utils.CommandContextFactory;
+import org.openkilda.floodlight.service.of.InputService;
 
 import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
 import org.junit.After;
@@ -36,17 +37,23 @@ import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortMod;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class OfBatchServiceTest extends EasyMockSupport {
-    private CommandContextFactory commandContextFactory = new CommandContextFactory();
-    private OfBatchService batchService = new OfBatchService(commandContextFactory);
+    private OfBatchService batchService = new OfBatchService();
+
+    protected final FloodlightModuleContext moduleContext = new FloodlightModuleContext();
+
+    @Mock
+    private InputService inputService;
 
     @Mock
     private IOFSwitch switchAlpha;
@@ -58,11 +65,17 @@ public class OfBatchServiceTest extends EasyMockSupport {
     public void setUp() throws Exception {
         injectMocks(this);
 
+        moduleContext.addService(InputService.class, inputService);
+
+        inputService.addTranslator(OFType.ERROR, batchService);
+        inputService.addTranslator(OFType.BARRIER_REPLY, batchService);
+
         final DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
 
         OFFactory ofFactory = new OFFactoryVer13();
         expect(switchAlpha.getOFFactory()).andReturn(ofFactory).anyTimes();
         expect(switchAlpha.getId()).andReturn(dpIdAlpha).anyTimes();
+        expect(switchAlpha.getLatency()).andReturn(U64.of(8)).anyTimes();
 
         expect(switchUtils.lookupSwitch(dpIdAlpha)).andReturn(switchAlpha).anyTimes();
     }
@@ -73,9 +86,10 @@ public class OfBatchServiceTest extends EasyMockSupport {
     }
 
     @Test
-    public void handle() {
+    public void input() {
         expect(switchAlpha.write(anyObject(OFMessage.class))).andReturn(true).times(2);
         replayAll();
+        batchService.init(moduleContext);
 
         final OFFactory ofFactory = switchAlpha.getOFFactory();
         final OFPortMod requestAlpha = ofFactory.buildPortMod()
@@ -93,16 +107,16 @@ public class OfBatchServiceTest extends EasyMockSupport {
         Assert.assertEquals(1, pendingMap.size());
 
         // mismatch xId
-        Assert.assertFalse(feedMessage(switchAlpha, ofFactory.errorMsgs().buildBadRequestErrorMsg()
+        feedMessage(switchAlpha, ofFactory.errorMsgs().buildBadRequestErrorMsg()
                 .setCode(OFBadRequestCode.BAD_LEN)
                 .setXid(requestAlpha.getXid() + 1000)
-                .build()));
+                .build());
         Assert.assertFalse(future.isDone());
 
         // match barrier
-        Assert.assertTrue(feedMessage(switchAlpha, ofFactory.buildBarrierReply()
+        feedMessage(switchAlpha, ofFactory.buildBarrierReply()
                 .setXid(batch.getPendingBarriers().get(0).xid)
-                .build()));
+                .build());
         Assert.assertTrue(future.isDone());
 
         // cleanup must remove all complete batches
@@ -113,6 +127,7 @@ public class OfBatchServiceTest extends EasyMockSupport {
     public void futureCancel() {
         expect(switchAlpha.write(anyObject(OFMessage.class))).andReturn(true).times(2);
         replayAll();
+        batchService.init(moduleContext);
 
         final OFFactory ofFactory = switchAlpha.getOFFactory();
         final OFPortMod requestAlpha = ofFactory.buildPortMod()
@@ -126,17 +141,16 @@ public class OfBatchServiceTest extends EasyMockSupport {
         batchService.write(batch);
 
         // any OF message from switch mentioned in OfBatch record
-        Assert.assertFalse(feedMessage(switchAlpha, ofFactory.errorMsgs().buildBadRequestErrorMsg()
+        feedMessage(switchAlpha, ofFactory.errorMsgs().buildBadRequestErrorMsg()
                 .setCode(OFBadRequestCode.BAD_LEN)
                 .setXid(requestAlpha.getXid() + 1000)
-                .build()));
+                .build());
 
         Assert.assertEquals(0, batchService.getPendingMap().size());
     }
 
-    private boolean feedMessage(IOFSwitch sw, OFMessage message) {
-        CommandContext commandContext = commandContextFactory.produce();
-        FloodlightContext floodlightContext = new FloodlightContext();
-        return batchService.handle(commandContext, sw, message, floodlightContext);
+    private void feedMessage(IOFSwitch sw, OFMessage message) {
+        OfInput input = new OfInput(sw, message, new FloodlightContext());
+        batchService.input(input);
     }
 }

@@ -16,17 +16,16 @@
 package org.openkilda.floodlight.service.batch;
 
 import org.openkilda.floodlight.SwitchUtils;
+import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.model.OfRequestResponse;
-import org.openkilda.floodlight.service.AbstractOfHandler;
-import org.openkilda.floodlight.utils.CommandContextFactory;
+import org.openkilda.floodlight.service.of.IInputTranslator;
+import org.openkilda.floodlight.service.of.InputService;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
@@ -36,16 +35,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public class OfBatchService extends AbstractOfHandler implements IFloodlightService {
+public class OfBatchService implements IFloodlightService, IInputTranslator {
     private static final Logger log = LoggerFactory.getLogger(OfBatchService.class);
 
     private final HashMap<DatapathId, OfBatchSwitchQueue> pendingMap = new HashMap<>();
 
     private SwitchUtils switchUtils;
-
-    public OfBatchService(CommandContextFactory commandContextFactory) {
-        super(commandContextFactory);
-    }
 
     /**
      * Receive notification about lost connection to switch.
@@ -65,9 +60,15 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
         }
     }
 
+    /**
+     * Service init(late) method.
+     */
     public void init(FloodlightModuleContext moduleContext) {
         switchUtils = new SwitchUtils(moduleContext.getServiceImpl(IOFSwitchService.class));
-        activateSubscription(moduleContext, OFType.ERROR, OFType.BARRIER_REPLY);
+
+        InputService inputService = moduleContext.getServiceImpl(InputService.class);
+        inputService.addTranslator(OFType.ERROR, this);
+        inputService.addTranslator(OFType.BARRIER_REPLY, this);
     }
 
     /**
@@ -93,21 +94,31 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
     }
 
     @Override
-    public boolean handle(CommandContext commandContext, IOFSwitch sw, OFMessage message, FloodlightContext context) {
-        DatapathId dpId = sw.getId();
+    public Command makeCommand(CommandContext context, OfInput input) {
+        return new Command(context) {
+            @Override
+            public Command call() throws Exception {
+                input(input);
+                return null;
+            }
+        };
+    }
+
+    void input(OfInput input) {
+        DatapathId dpId = input.getDpId();
         synchronized (pendingMap) {
             OfBatchSwitchQueue queue = pendingMap.get(dpId);
             if (queue == null) {
-                return false;
+                return;
             }
 
-            OfBatch match = queue.receiveResponse(message);
+            OfBatch match = queue.receiveResponse(input.getMessage());
             if (queue.isGarbage()) {
                 pendingMap.remove(dpId);
             }
 
             if (match == null) {
-                return false;
+                return;
             }
 
             if (match.isGarbage()) {
@@ -130,8 +141,6 @@ public class OfBatchService extends AbstractOfHandler implements IFloodlightServ
                 }
             }
         }
-
-        return true;
     }
 
     HashMap<DatapathId, OfBatchSwitchQueue> getPendingMap() {
