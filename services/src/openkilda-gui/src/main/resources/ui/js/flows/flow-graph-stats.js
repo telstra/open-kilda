@@ -9,7 +9,7 @@
 * on the filter input values of datetimepicker, downsampling and menulist.
 */
 
-var flowid = window.location.href.split("#")[1];
+var flowid =window.location.href.split("#")[1];
 var graphInterval;
 $(function() {
 				
@@ -26,6 +26,25 @@ $(function() {
 		$("#downsampling,#menulist,#autoreload").on("change",function(event) {
 				getGraphData();	
 		});
+		
+		$('#timezone').on('change',function(){
+			var timezone = $('#timezone option:selected').val();
+			var dat2 = new Date();
+			var dat1 = new Date(dat2.getTime());
+			dat1.setDate(dat2.getDate() - 1);		
+			if(timezone == 'UTC'){
+				var startDate = moment(dat1).utc().format("YYYY/MM/DD HH:mm:ss");
+				var endDate = moment(dat2).utc().format("YYYY/MM/DD HH:mm:ss");
+				$('#datetimepicker7').val(startDate);
+				$('#datetimepicker8').val(endDate)
+			}else{
+				var startDate = moment(dat1).format("YYYY/MM/DD HH:mm:ss");
+				var endDate = moment(dat2).format("YYYY/MM/DD HH:mm:ss");
+				$('#datetimepicker7').val(startDate);
+				$('#datetimepicker8').val(endDate)
+			}
+			getGraphData();	
+		})
 });	
 
 /**
@@ -37,14 +56,21 @@ $(document).ready(function() {
 	
 	$.datetimepicker.setLocale('en');
 	var date = new Date()
+	$('#timezone').val("LOCAL");
 	var yesterday = new Date(date.getTime());
 	yesterday.setDate(date.getDate() - 1);
 	var YesterDayDate = moment(yesterday).format("YYYY/MM/DD HH:mm:ss");
 	var EndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");
-	var convertedStartDate = moment(yesterday).format("YYYY-MM-DD-HH:mm:ss");
-	var convertedEndDate = moment(date).format("YYYY-MM-DD-HH:mm:ss");	
-	var downsampling = "10m";
-
+	 if($('#timezone option:selected').val() == 'UTC'){
+		 var convertedStartDate = moment(yesterday).format("YYYY-MM-DD-HH:mm:ss");
+		 var convertedEndDate = moment(date).format("YYYY-MM-DD-HH:mm:ss");	
+    }else{
+    	var convertedStartDate = moment(yesterday).utc().format("YYYY-MM-DD-HH:mm:ss");
+    	var convertedEndDate = moment(date).utc().format("YYYY-MM-DD-HH:mm:ss");	
+    }
+	
+	var downsampling = "30s";
+	
 	$("#downsampling").val(downsampling)
 	$("#datetimepicker7").val(YesterDayDate);	
 	$("#datetimepicker8").val(EndDate);
@@ -54,14 +80,15 @@ $(document).ready(function() {
 	$('#datetimepicker8').datetimepicker({
 		  format:'Y/m/d H:i:s',
 	});
-	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
+	$('#datetimepicker_dark').datetimepicker({theme:'dark'});
+	
 	var selMetric="packets";
 	var url ="/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
 	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
-		
+		var timezone = $('#timezone option:selected').val();
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
-		showStatsGraph.showStatsData(response,selMetric,null,null,yesterday,EndDate); 
+		showStatsGraph.showStatsData(response,selMetric,null,null,yesterday,EndDate,timezone); 
 	})
 })
 
@@ -71,15 +98,22 @@ $(document).ready(function() {
 * html page.
 */
 function getGraphData() {
-	
+
 	var regex = new RegExp("^\\d+(s|h|m){1}$");
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
 	var endDate =  new Date($("#datetimepicker8").val());
 	var downsampling = $("#downsampling").val();
+	var timezone = $('#timezone option:selected').val();
 	var downsamplingValidated = regex.test(downsampling);
-	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
-	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");		
+	if(timezone == 'UTC'){ 
+		var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
+		var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
+	}else{
+		var convertedStartDate = moment(startDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+		var convertedEndDate = moment(endDate).utc().format("YYYY-MM-DD-HH:mm:ss");	
+	}
+		
 	var selMetric=$("select.selectbox_menulist").val();
 	var valid=true;
 	
@@ -91,16 +125,14 @@ function getGraphData() {
 		return
 	}
 	
-	if(startDate.getTime() > currentDate.getTime()) {
-		
+	if(startDate.getTime() >= currentDate.getTime()) {
 		$("#fromId").addClass("has-error")	
 		$(".from-error-message").html("From date should not be greater than currentDate.");		
 		valid=false;
 		return;
-	} else if(endDate.getTime() < startDate.getTime()){
-		
+	} else if(endDate.getTime() <= startDate.getTime()){
 		$("#toId").addClass("has-error")	
-		$(".to-error-message").html("To date should not be less than from fate.");
+		$(".to-error-message").html("To date should not be less than from date.");
 		valid=false;
 		return;
 	}
@@ -137,12 +169,11 @@ function getGraphData() {
 		if(megaBytes == "megabytes"){
 			selMetric = "bytes";		
 		}
-		
 		loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
     			
     			$("#wait1").css("display", "none");
     			$('body').css('pointer-events', 'all');
-    			showStatsGraph.showStatsData(response,selMetric,null,null,startDate,endDate); 
+    			showStatsGraph.showStatsData(response,selMetric,null,null,startDate,endDate,timezone); 
     	})
     		
     				try {
@@ -163,19 +194,26 @@ function callIntervalData() {
 	
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
-	var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
 	var autoreload = $("#autoreload").val();
 	var savedEnddate = new Date($('#savedEnddate').val());
+	var timezone = $('#timezone option:selected').val();
 	savedEnddate = new Date(savedEnddate.getTime() + (autoreload * 1000));
 	$('#savedEnddate').val(savedEnddate);
-	var endDate =savedEnddate ;// new Date() ||
-	var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");	
+	var endDate = savedEnddate ;// new Date() ||
+	if(timezone == 'UTC'){
+		var convertedStartDate = moment(startDate).format("YYYY-MM-DD-HH:mm:ss");
+		var convertedEndDate = moment(endDate).format("YYYY-MM-DD-HH:mm:ss");
+	}else{
+		var convertedStartDate = moment(startDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+		var convertedEndDate = moment(endDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+	}
+		
 	var selMetric=$("select.selectbox_menulist").val();
 	var downsampling = $("#downsampling").val();
 	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
-		showStatsGraph.showStatsData(response,selMetric,null,null,startDate,endDate); 
+		showStatsGraph.showStatsData(response,selMetric,null,null,startDate,endDate,timezone); 
 	})
 }
 
