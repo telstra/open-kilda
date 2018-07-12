@@ -74,8 +74,8 @@ public class PingRequestCommand extends Abstract {
     @Override
     public Command call() throws Exception {
         try {
-            validate();
-            send();
+            checkDestintaion();
+            send(checkSource());
         } catch (PingImpossibleException e) {
             log.error(e.getMessage());
             sendErrorResponse(ping.getPingId(), e.getError());
@@ -83,7 +83,7 @@ public class PingRequestCommand extends Abstract {
         return null;
     }
 
-    private void validate() throws PingImpossibleException {
+    private void checkDestintaion() throws PingImpossibleException {
         final String destId = ping.getDest().getDatapath();
         IOFSwitch destSw = lookupSwitch(destId);
         if (destSw == null) {
@@ -92,12 +92,10 @@ public class PingRequestCommand extends Abstract {
             throw new PingImpossibleException(ping, Errors.DEST_NOT_AVAILABLE);
         }
 
-        if (0 < OFVersion.OF_13.compareTo(destSw.getOFFactory().getVersion())) {
-            throw new PingImpossibleException(ping, Errors.NOT_CAPABLE);
-        }
+        checkCapability(destSw);
     }
 
-    private void send() throws PingImpossibleException {
+    private IOFSwitch checkSource() throws PingImpossibleException {
         String swId = ping.getSource().getDatapath();
         IOFSwitch sw = lookupSwitch(swId);
         if (sw == null) {
@@ -106,6 +104,12 @@ public class PingRequestCommand extends Abstract {
             throw new PingImpossibleException(ping, Errors.SOURCE_NOT_AVAILABLE);
         }
 
+        checkCapability(sw);
+
+        return sw;
+    }
+
+    private void send(IOFSwitch sw) {
         PingData data = PingData.of(ping);
         data.setSenderLatency(sw.getLatency().getValue());
 
@@ -165,6 +169,12 @@ public class PingRequestCommand extends Abstract {
         OFMessageUtils.setInPort(pktOut, OFPort.of(ping.getSource().getPortNumber()));
 
         return pktOut.build();
+    }
+
+    private void checkCapability(IOFSwitch sw) throws PingImpossibleException {
+        if (0 < OFVersion.OF_13.compareTo(sw.getOFFactory().getVersion())) {
+            throw new PingImpossibleException(ping, Errors.NOT_CAPABLE);
+        }
     }
 
     private IOFSwitch lookupSwitch(String switchId) {

@@ -102,11 +102,6 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
     }
 
     @Test
-    public void sourceSwitchIsNotCapable() throws Exception {
-        expectSuccess(makePing(switchNotCapable, switchBeta));
-    }
-
-    @Test
     public void writeTimeout() throws Exception {
         resetToStrict(writeFuture);
         expect(writeFuture.exceptionally(anyObject())).andReturn(null);
