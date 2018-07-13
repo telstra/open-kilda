@@ -1,3 +1,18 @@
+/* Copyright 2017 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.wfm.isl;
 
 import static org.junit.Assert.assertEquals;
@@ -25,9 +40,6 @@ import java.util.List;
 public class DiscoveryManagerTest {
 
     private DiscoveryManager dm;
-    private DiscoveryLink link1;
-    private DiscoveryLink link2;
-    private DiscoveryLink link3;
     private NetworkEndpoint srcNode1;
     private NetworkEndpoint dstNode1;
     private NetworkEndpoint srcNode2;
@@ -36,7 +48,8 @@ public class DiscoveryManagerTest {
     private NetworkEndpoint dstNode3;
     private int islHealthCheckInterval;
     private int islHealthFailureLimit;
-    private int forlornLimit;
+    // Determines how many attempts to discover isl will be made
+    private int maxAttemptsLimit;
     private int minutesKeepRemovedIsl;
 
     /**
@@ -46,103 +59,203 @@ public class DiscoveryManagerTest {
     public void setUp() throws Exception {
         islHealthCheckInterval = 0; // means check ever tick
         islHealthFailureLimit  = 1; // for testing, failure after 1 tick;
-        forlornLimit = 2;
-        forlornLimit = 2;
+        maxAttemptsLimit = 2;
         minutesKeepRemovedIsl = 10;
 
         dm = new DiscoveryManager(
                 new DummyIIslFilter(), new LinkedList<>(), islHealthCheckInterval,
-                islHealthFailureLimit, forlornLimit, minutesKeepRemovedIsl);
+                islHealthFailureLimit, maxAttemptsLimit, minutesKeepRemovedIsl);
     }
 
     /**
-     * Several tests start with creating/adding 3 ports.
-     * */
-    void setupThreeLinks() {
-        link1 = new DiscoveryLink("sw1", 1, "sw3", 1, islHealthCheckInterval, forlornLimit, true);
-        link2 = new DiscoveryLink("sw1", 2, "sw3", 2, islHealthCheckInterval, forlornLimit, true);
-        link3 = new DiscoveryLink("sw2", 1, "sw3", 3, islHealthCheckInterval, forlornLimit, true);
-        
-        srcNode1 = link1.getSource();
-        dstNode1 = link1.getDestination();
-        srcNode2 = link2.getSource();
-        dstNode2 = link2.getDestination();
-        srcNode3 = link3.getSource();
-        dstNode3 = link3.getDestination();
-        dm.handlePortUp(srcNode1.getSwitchDpId(), srcNode1.getPortId());
-        dm.handlePortUp(srcNode2.getSwitchDpId(), srcNode2.getPortId());
-        dm.handlePortUp(srcNode3.getSwitchDpId(), srcNode3.getPortId());
+     * Creates three endpoints(switch and port) and activates such ports.
+     */
+    private void setupThreeLinks() {
+        srcNode1 = new NetworkEndpoint("sw1", 1);
+        dstNode1 = new NetworkEndpoint("sw3", 1);
+        srcNode2 = new NetworkEndpoint("sw1", 2);
+        dstNode2 = new NetworkEndpoint("sw3", 2);
+        srcNode3 = new NetworkEndpoint("sw2", 1);
+        dstNode3 = new NetworkEndpoint("sw3", 3);
+
+        dm.handlePortUp(srcNode1.getDatapath(), srcNode1.getPortNumber());
+        dm.handlePortUp(srcNode2.getDatapath(), srcNode2.getPortNumber());
+        dm.handlePortUp(srcNode3.getDatapath(), srcNode3.getPortNumber());
     }
 
-
     @Test
-    public void makeDiscoveryPlan() {
-        // The discovery plan should test every link that isn't forlorned and where sufficient ticks
-        // have passed. Additionally, the disco plan determines what is part of the failure notification
-        // plan.
-        //
-        // Tests:
-        //  1) all ports that should send a disco packet sent are in the needDiscovery list.
-        //  2) all ports that haven't had a response within timeout are in the discoveryFailure list.
-        //
-        List<DiscoveryLink> nodes;
+    public void shouldDiscoveryPlanContainsAllEndpoints() {
         setupThreeLinks();
 
         // Initially, given 0 tick interval, everything should be in discoveryPlan and no failures
         DiscoveryManager.Plan discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(3, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
+    }
 
-        // In order for one of them to be in failure plan, it has to have been a success beforehand
-        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
-                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
-                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode3.getSwitchDpId(), srcNode3.getPortId(),
-                dstNode3.getSwitchDpId(), dstNode3.getPortId()); // clear attempts
-        dm.makeDiscoveryPlan();                                      // increase attempts of all to 1
-        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
-                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
-                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
-        dm.makeDiscoveryPlan();                                      // attempts: link1&2 @ 1, link3 @ 2
-        discoveryPlan = dm.makeDiscoveryPlan();                      // the attempts test is based on the 1 & 2 count
-        assertEquals(3, discoveryPlan.needDiscovery.size());
+    @Test
+    public void shouldAlwaysSendDiscoveryForActiveLinks() {
+        setupThreeLinks();
+
+        for (int attempt = 0; attempt <= maxAttemptsLimit + islHealthFailureLimit + 1; attempt++) {
+
+            DiscoveryManager.Plan discoveryPlan;
+            discoveryPlan = dm.makeDiscoveryPlan();
+            // number of attempts is always cleared up after receiving the response
+            assertEquals(1, dm.findBySourceSwitch(srcNode1).get(0).getAttempts());
+            assertEquals(1, dm.findBySourceSwitch(srcNode2).get(0).getAttempts());
+            assertEquals(1, dm.findBySourceSwitch(srcNode3).get(0).getAttempts());
+
+            discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleDiscoPacketSent(endpoint));
+            // we should receive acknowledge for every sent disco packet
+            assertEquals(1, dm.findBySourceSwitch(srcNode1).get(0).getAckAttempts());
+            assertEquals(1, dm.findBySourceSwitch(srcNode2).get(0).getAckAttempts());
+            assertEquals(1, dm.findBySourceSwitch(srcNode3).get(0).getAckAttempts());
+
+            assertEquals(3, discoveryPlan.needDiscovery.size());
+            assertEquals(0, discoveryPlan.discoveryFailure.size());
+
+            dm.handleDiscovered(srcNode1.getDatapath(), srcNode1.getPortNumber(),
+                    dstNode1.getDatapath(), dstNode1.getPortNumber());
+            dm.handleDiscovered(srcNode2.getDatapath(), srcNode2.getPortNumber(),
+                    dstNode2.getDatapath(), dstNode2.getPortNumber());
+            dm.handleDiscovered(srcNode3.getDatapath(), srcNode3.getPortNumber(),
+                    dstNode3.getDatapath(), dstNode3.getPortNumber());
+
+            verifyAllLinks(true);
+        }
+    }
+
+    @Test
+    public void shouldBreakDiscoveredLinkCorrectly() {
+        DiscoveryLink link = new DiscoveryLink("sw1", 1, "sw2", 2,
+                islHealthCheckInterval, islHealthFailureLimit, false);
+        NetworkEndpoint srcNode = link.getSource();
+        dm.handlePortUp(srcNode.getDatapath(), srcNode.getPortNumber());
+
+        DiscoveryManager.Plan discoveryPlan = dm.makeDiscoveryPlan();
+        discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleDiscoPacketSent(endpoint));
+        dm.handleDiscovered(srcNode.getDatapath(), srcNode.getPortNumber(),
+                link.getDestination().getDatapath(), link.getDestination().getPortNumber());
+
+        assertTrue(dm.findBySourceSwitch(srcNode).get(0).isActive());
+
+        // 1st attempt
+        discoveryPlan = dm.makeDiscoveryPlan();
+        assertEquals(1, discoveryPlan.needDiscovery.size());
+        assertEquals(0, discoveryPlan.discoveryFailure.size());
+        discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleDiscoPacketSent(endpoint));
+        assertTrue(dm.findBySourceSwitch(srcNode).get(0).isActive());
+
+        // 2nd attempt and we have only one acknowledged dispatch of disco packet
+        discoveryPlan = dm.makeDiscoveryPlan();
+        assertEquals(1, discoveryPlan.needDiscovery.size());
+        assertEquals(0, discoveryPlan.discoveryFailure.size());
+        discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleDiscoPacketSent(endpoint));
+        assertTrue(dm.findBySourceSwitch(srcNode).get(0).isActive());
+
+        // 3rd attempt and 1st failure
+        // link should be marked as inactive because 2 ackAttempts > current islHealthFailureLimit
+        discoveryPlan = dm.makeDiscoveryPlan();
+        assertEquals(1, discoveryPlan.needDiscovery.size());
         assertEquals(1, discoveryPlan.discoveryFailure.size());
-        assertEquals(srcNode3.getSwitchDpId(), discoveryPlan.discoveryFailure.get(0).getSwitchDpId());
-        assertEquals(srcNode3.getPortId(), discoveryPlan.discoveryFailure.get(0).getPortId());
+        discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleDiscoPacketSent(endpoint));
+        assertFalse(dm.findBySourceSwitch(srcNode).get(0).isActive());
 
-        // Now verify it doesn't re-send the failure
-        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
-                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
-                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
-        discoveryPlan = dm.makeDiscoveryPlan();                      // the attempts test is based on the 0 & 3 count
+        // 4th attempt, 1st consecutive failure
+        discoveryPlan = dm.makeDiscoveryPlan();
+        assertEquals(1, discoveryPlan.needDiscovery.size());
+        assertEquals(0, discoveryPlan.discoveryFailure.size());
+        discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleDiscoPacketSent(endpoint));
+        assertFalse(dm.findBySourceSwitch(srcNode).get(0).isActive());
+
+        // 5th attempt, 2nd consecutive failure
+        // should be removed from discovery because consecutiveFailure > consecutiveFailureLimit
+        discoveryPlan = dm.makeDiscoveryPlan();
+        assertEquals(0, discoveryPlan.needDiscovery.size());
+        assertEquals(0, discoveryPlan.discoveryFailure.size());
+        assertFalse(dm.findBySourceSwitch(srcNode).get(0).isActive());
+    }
+
+    @Test
+    public void shouldIslBeAbandonedAfterSeveralConsecutiveFailures() {
+        setupThreeLinks();
+
+        DiscoveryManager.Plan discoveryPlan;
+        for (int attempt = 0; attempt <= maxAttemptsLimit + islHealthFailureLimit; attempt++) {
+            discoveryPlan = dm.makeDiscoveryPlan();
+            discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleDiscoPacketSent(endpoint));
+            assertEquals(3, discoveryPlan.needDiscovery.size());
+            assertEquals(0, discoveryPlan.discoveryFailure.size());
+        }
+
+        // 5th attempt to send disco packet. 3rd failure and it is bigger than islConsecutiveFailureLimit (2).
+        discoveryPlan = dm.makeDiscoveryPlan();
+        // we should stop sending disco packets from these endpoints.
+        assertEquals(0, discoveryPlan.needDiscovery.size());
+        assertEquals(0, discoveryPlan.discoveryFailure.size());
+
+        // all links are discovered - we need to add them to discovery plan again.
+        dm.handleDiscovered(srcNode1.getDatapath(), srcNode1.getPortNumber(),
+                dstNode1.getDatapath(), dstNode1.getPortNumber());
+        dm.handleDiscovered(srcNode2.getDatapath(),
+                srcNode2.getPortNumber(), dstNode2.getDatapath(), dstNode2.getPortNumber());
+        dm.handleDiscovered(srcNode3.getDatapath(), srcNode3.getPortNumber(),
+                dstNode3.getDatapath(), dstNode3.getPortNumber());
+        discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(3, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
+    }
 
-        // Now test forlorn
-        dm.makeDiscoveryPlan();                                       // the attempts test is based on the 1 & 4 count
-        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(), 
-                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode2.getSwitchDpId(),
-                srcNode2.getPortId(), dstNode2.getSwitchDpId(), 0); // clear attempts
-        discoveryPlan = dm.makeDiscoveryPlan();                       // now consecutive failure at 3 for link3
-        assertEquals(2, discoveryPlan.needDiscovery.size());
-        assertEquals(0, discoveryPlan.discoveryFailure.size());
+    @Test
+    public void shouldNotStopSendingDiscoIfConfirmationOfSendingDiscoIsNotReceived() {
+        setupThreeLinks();
 
+        // if we don't receive confirmation of sending discovery packet we should not mark ISL as inactive
+        for (int attempt = 0; attempt <= maxAttemptsLimit + islHealthFailureLimit + 1; attempt++) {
+            DiscoveryManager.Plan discoveryPlan;
+            discoveryPlan = dm.makeDiscoveryPlan();
+            assertEquals(3, discoveryPlan.needDiscovery.size());
+            assertEquals(0, discoveryPlan.discoveryFailure.size());
+        }
+    }
 
+    @Test
+    public void shouldNotBreakActiveIslIfConfirmationOfSendingDiscoIsNotReceived() {
+        setupThreeLinks();
+        DiscoveryManager.Plan discoveryPlan = dm.makeDiscoveryPlan();
+        discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleDiscoPacketSent(endpoint));
+
+        dm.handleDiscovered(srcNode1.getDatapath(), srcNode1.getPortNumber(),
+                dstNode1.getDatapath(), dstNode1.getPortNumber());
+        dm.handleDiscovered(srcNode2.getDatapath(), srcNode2.getPortNumber(),
+                dstNode2.getDatapath(), dstNode2.getPortNumber());
+        dm.handleDiscovered(srcNode3.getDatapath(), srcNode3.getPortNumber(),
+                dstNode3.getDatapath(), dstNode3.getPortNumber());
+
+        // if we don't receive confirmation of sending discovery packet we should not mark ISL as inactive
+        for (int attempt = 0; attempt <= maxAttemptsLimit + islHealthFailureLimit + 1; attempt++) {
+            discoveryPlan = dm.makeDiscoveryPlan();
+            assertEquals(3, discoveryPlan.needDiscovery.size());
+            assertEquals(0, discoveryPlan.discoveryFailure.size());
+        }
+
+        verifyAllLinks(true);
+    }
+
+    @Test
+    public void shouldCheckIslWithInterval() {
         // verify Health Check Interval is working properly.
         islHealthCheckInterval = 2;
         islHealthFailureLimit  = 4; // for testing, failure after 1 tick;
-        forlornLimit = 8;
+        maxAttemptsLimit = 8;
 
         dm = new DiscoveryManager(
                 new DummyIIslFilter(), new LinkedList<>(), islHealthCheckInterval,
-                islHealthFailureLimit, forlornLimit, minutesKeepRemovedIsl);
+                islHealthFailureLimit, maxAttemptsLimit, minutesKeepRemovedIsl);
         setupThreeLinks();
         // Initially, given 2 tick interval, nothing should be in the lists
-        discoveryPlan = dm.makeDiscoveryPlan();
+        DiscoveryManager.Plan discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(0, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
 
@@ -160,7 +273,6 @@ public class DiscoveryManagerTest {
         discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(0, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
-
     }
 
     @Test
@@ -313,64 +425,6 @@ public class DiscoveryManagerTest {
         assertEquals(0, nodes.size());
     }
 
-
-    @Test
-    public void handleIslDiscoOtherEnd() {
-        // This is to test that we correctly handle the scenario where one side of an ISL comes up,
-        // and we want to make sure the other side comes up correctly.
-        //
-        // This models the behavior from OFELinkBolt.
-        // TODO: change this test when the behavior moves from OFELinkBolt to DiscoveryManager.
-
-
-        // What to test?  Assume we have 2 nodes, and we just received Discovered on one.
-        // Ensure that the other one starts discovery as well.
-        // We can use forlorn to create the "stop discovery" scenario, then see if it changes.
-        setupThreeLinks();
-
-        DiscoveryManager.Plan discoveryPlan = dm.makeDiscoveryPlan();
-        assertEquals(3, discoveryPlan.needDiscovery.size());
-        assertEquals(0, discoveryPlan.discoveryFailure.size());
-
-        // push one of them to be forlorned..
-        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
-                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
-                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
-        dm.makeDiscoveryPlan();                                      // 1 & 2 after
-        dm.makeDiscoveryPlan();                                      // 2 & 3 after
-
-        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
-                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
-                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
-        dm.makeDiscoveryPlan();                                      // 1 & 4 after
-        dm.makeDiscoveryPlan();                                      // n3 @5 attempts, 3 cons.fails
-
-        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
-                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
-                dstNode2.getSwitchDpId(), dstNode2.getPortId()); // clear attempts
-        discoveryPlan = dm.makeDiscoveryPlan();                      // link3 forlorned..
-        assertEquals(2, discoveryPlan.needDiscovery.size());
-        assertEquals(0, discoveryPlan.discoveryFailure.size());
-
-        // Now link3 is forlorned .. let's get it back into the discovery;
-        // Let's act like link1 is connected to link3, and link1 was just discovered..
-        dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
-                dstNode1.getSwitchDpId(), dstNode1.getPortId()); // clear attempts
-        // This part mirrors what happens in OFELinkBolt *if* there was a state change on src.
-        if (!dm.checkForIsl(srcNode3.getSwitchDpId(), srcNode3.getPortId())) {
-            // Only call PortUp if we aren't checking for ISL. Otherwise, we could end up in an
-            // infinite cycle of always sending a Port UP when one side is discovered.
-            dm.handlePortUp(srcNode3.getSwitchDpId(), srcNode3.getPortId());
-        }
-        discoveryPlan = dm.makeDiscoveryPlan();                      // link3 not forlorned
-        assertEquals(3, discoveryPlan.needDiscovery.size());
-        assertEquals(0, discoveryPlan.discoveryFailure.size());
-
-    }
-
     @Test
     public void shouldWorksCorrectlyWhenIslUpdating() {
         setupThreeLinks();
@@ -386,6 +440,76 @@ public class DiscoveryManagerTest {
         stateChanged = dm.handleDiscovered(srcNode1.getSwitchDpId(), srcNode1.getPortId(),
                 dstNode2.getSwitchDpId(), dstNode2.getPortId());
         assertTrue(stateChanged);
+    }
+
+    @Test
+    public void shouldReturnFalseWhenDiscoPacketsAreNotSendingFromEndpoint() {
+        NetworkEndpoint source = new NetworkEndpoint("sw1", 1);
+        assertFalse(dm.isInDiscoveryPlan(source.getDatapath(), source.getPortNumber()));
+    }
+
+    @Test
+    public void shouldEndpointBeRemovedFromDiscoveryPlanAfterFailures() {
+        NetworkEndpoint source = new NetworkEndpoint("sw1", 1);
+        dm.handlePortUp(source.getDatapath(), source.getPortNumber());
+
+        // 1st attempt to discover
+        dm.makeDiscoveryPlan();
+        dm.handleDiscoPacketSent(source);
+
+        // 2nd attempt to discover
+        dm.makeDiscoveryPlan();
+        dm.handleDiscoPacketSent(source);
+
+        // 3rd attempt to send disco packet. 1st failure because ISL still not discovered.
+        dm.makeDiscoveryPlan();
+        dm.handleDiscoPacketSent(source);
+
+        // 4th attempt to send disco packet. 2nd failure because ISL still not discovered.
+        dm.makeDiscoveryPlan();
+
+        // 5th attempt to send disco packet. 3rd failure and it is bigger than islConsecutiveFailureLimit (2).
+        dm.makeDiscoveryPlan();
+
+        assertFalse(dm.isInDiscoveryPlan(source.getDatapath(), source.getPortNumber()));
+    }
+
+    @Test
+    public void shouldReturnTrueWhenEndpointIsSendingDisco() {
+        NetworkEndpoint source = new NetworkEndpoint("sw1", 1);
+        dm.handlePortUp(source.getDatapath(), source.getPortNumber());
+        assertTrue(dm.isInDiscoveryPlan(source.getDatapath(), source.getPortNumber()));
+    }
+
+    @Test
+    public void shouldIncreaseAcknowledgedAttempts() {
+        NetworkEndpoint source = new NetworkEndpoint("sw1", 1);
+        dm.handlePortUp(source.getDatapath(), source.getPortNumber());
+
+        // originally all counters should be 0.
+        List<DiscoveryLink> links = dm.findBySourceSwitch(source);
+        assertEquals(1, links.size());
+        assertEquals(0, links.get(0).getAckAttempts());
+        assertEquals(0, links.get(0).getAttempts());
+
+        // simulate receiving the confirmation abound sending disco packet
+        dm.handleDiscoPacketSent(source);
+        links = dm.findBySourceSwitch(source);
+        assertEquals(1, links.size());
+        assertEquals(1, links.get(0).getAckAttempts());
+        assertEquals(0, links.get(0).getAttempts());
+    }
+
+    private void verifyAllLinks(boolean shouldBeActive) {
+        if (shouldBeActive) {
+            assertTrue(dm.findBySourceSwitch(srcNode1).get(0).isActive());
+            assertTrue(dm.findBySourceSwitch(srcNode2).get(0).isActive());
+            assertTrue(dm.findBySourceSwitch(srcNode3).get(0).isActive());
+        } else {
+            assertFalse(dm.findBySourceSwitch(srcNode1).get(0).isActive());
+            assertFalse(dm.findBySourceSwitch(srcNode2).get(0).isActive());
+            assertFalse(dm.findBySourceSwitch(srcNode3).get(0).isActive());
+        }
     }
 
 }
