@@ -35,9 +35,9 @@ public class TestAwareConsumer extends Consumer {
     private KafkaBreakTrigger breakTrigger;
     private List<KafkaBreakTrigger> expectedTriggers;
 
-    public TestAwareConsumer(ConsumerContext context, ExecutorService handlersPool,
+    public TestAwareConsumer(ConsumerContext context, KafkaConsumerConfig kafkaConfig, ExecutorService handlersPool,
                              Factory handlerFactory, ISwitchManager switchManager, String topic, String... moreTopics) {
-        super(context, handlersPool, handlerFactory, switchManager, topic, moreTopics);
+        super(kafkaConfig, handlersPool, handlerFactory, switchManager, topic, moreTopics);
 
         breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_CONSUMER);
 
@@ -65,7 +65,7 @@ public class TestAwareConsumer extends Consumer {
             return;
         }
 
-        if (! breakTrigger.isCommunicationEnabled()) {
+        if (!breakTrigger.isCommunicationEnabled()) {
             logger.info("Suppress record - key: {}, value: {}", record.key(), record.value());
             return;
         }
