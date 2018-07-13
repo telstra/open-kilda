@@ -24,7 +24,6 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.HeartBeat;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
