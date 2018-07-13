@@ -24,11 +24,14 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.HeartBeat;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.CommandWithReplyToMessage;
+import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.discovery.NetworkSyncBeginMarker;
 import org.openkilda.messaging.info.discovery.NetworkSyncEndMarker;
 import org.openkilda.messaging.info.event.IslChangeType;
@@ -271,9 +274,11 @@ public class OFELinkBolt
      * Helper method for sending an ISL Discovery Message.
      */
     private void sendDiscoveryMessage(Tuple tuple, NetworkEndpoint node, String correlationId) throws IOException {
-        String json = OFEMessageUtils.createIslDiscovery(node.getSwitchDpId(), node.getPortId(), correlationId);
-        logger.debug("LINK: Send ISL discovery command: {}", json);
-        collector.emit(SPEAKER_STREAM, tuple, new Values(PAYLOAD, json));
+        DiscoverIslCommandData data = new DiscoverIslCommandData(node.getDatapath(), node.getPortNumber());
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(),
+                correlationId, Destination.CONTROLLER);
+        logger.debug("LINK: Send ISL discovery command: {}", message);
+        collector.emit(SPEAKER_STREAM, tuple, new Values(PAYLOAD, Utils.MAPPER.writeValueAsString(message)));
     }
 
     @Override
@@ -394,6 +399,8 @@ public class OFELinkBolt
             passToTopologyEngine(tuple);
         } else if (data instanceof IslInfoData) {
             handleIslEvent(tuple, (IslInfoData) data, infoMessage.getCorrelationId());
+        } else if (data instanceof DiscoPacketSendingConfirmation) {
+            handleSentDiscoPacket((DiscoPacketSendingConfirmation) data);
         } else {
             reportInvalidEvent(data);
         }
@@ -495,17 +502,9 @@ public class OFELinkBolt
             stateChanged = discovery.handleDiscovered(srcSwitch, srcPort, dstSwitch, dstPort);
             // If the state has changed, and since we've discovered one end of an ISL, let's make
             // sure we can test the other side as well.
-            if (stateChanged && discoveredIsl.getPath().size() > 1) {
-                if (!discovery.checkForIsl(dstSwitch, dstPort)) {
-                    // Only call PortUp if we aren't checking for ISL. Otherwise, we could end up in an
-                    // infinite cycle of always sending a Port UP when one side is discovered.
-                    discovery.handlePortUp(dstSwitch, dstPort);
-                }
-
+            if (stateChanged && !discovery.isInDiscoveryPlan(dstSwitch, dstPort)) {
+                discovery.handlePortUp(dstSwitch, dstPort);
             }
-
-        } else if (IslChangeType.FAILED.equals(state)) {
-            stateChanged = discovery.handleFailed(srcSwitch, srcPort);
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("ISL Event: ignoring state: {}", state);
@@ -567,6 +566,11 @@ public class OFELinkBolt
         IslInfoData reverseLink = new IslInfoData(Lists.newArrayList(srcNode, dstNode), IslChangeType.MOVED);
         message = new InfoMessage(reverseLink, System.currentTimeMillis(), correlationId);
         passToTopologyEngine(tuple, message);
+    }
+
+    private void handleSentDiscoPacket(DiscoPacketSendingConfirmation confirmation) {
+        logger.debug("Discovery packet is sent from {}", confirmation);
+        discovery.handleDiscoPacketSent(confirmation.getEndpoint());
     }
 
     @Override
