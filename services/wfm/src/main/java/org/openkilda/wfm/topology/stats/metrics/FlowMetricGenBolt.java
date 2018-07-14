@@ -119,7 +119,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             }
 
             if (!isMatch && LOGGER.isDebugEnabled()) {
-                LOGGER.debug("FlowStats with cookie {} and flow {} is not ingress not egress bc switch {} "
+                LOGGER.debug("FlowStatsEntry with cookie {} and flow {} is not ingress not egress bc switch {} "
                         + "is not any of {}, {}", entry.getCookie(), flowId, switchId,
                         flowEntry.getIngressSwitch(), flowEntry.getEgressSwitch());
             }

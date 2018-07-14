@@ -19,8 +19,7 @@ public enum ServiceType {
     FLOW_TOPOLOGY("flow-storm-topology"),
     STATS_TOPOLOGY("statistics-storm-topology"),
     CACHE_TOPOLOGY("cache-storm-topology"),
-    WFM_TOPOLOGY("event-wfm-storm-topology"),
-    PACKETMON_TOPOLOGY("packet-mon-storm-topology");
+    WFM_TOPOLOGY("event-wfm-storm-topology");
 
     private final String id;
 
