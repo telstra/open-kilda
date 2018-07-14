@@ -107,9 +107,11 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         final IOFSwitch sw = switchService.getSwitch(switchId);
         logger.info("ACTIVATING SWITCH: {}", switchId);
 
-//        Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED, switchManager.dumpFlowTable(switchId));
-//        kafkaProducer.postMessage(topoDiscoTopic, message);
+        // Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED,
+        // switchManager.dumpFlowTable(switchId));
+        // kafkaProducer.postMessage(topoDiscoTopic, message);
         ConnectModeRequest.Mode mode = switchManager.connectMode(null);
+        logger.debug("Floodlight is in {} mode", mode);
 
         try {
             if (mode == ConnectModeRequest.Mode.SAFE) {
@@ -132,17 +134,23 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
 
     }
 
+    /**
+     * Determines is port is physical or logical.
+     *
+     * @param p OFPort to check
+     * @return boolen true if physical port else false
+     */
     public static boolean isPhysicalPort(OFPort p) {
-        return !(p.equals(OFPort.LOCAL) ||
-                p.equals(OFPort.ALL) ||
-                p.equals(OFPort.CONTROLLER) ||
-                p.equals(OFPort.ANY) ||
-                p.equals(OFPort.FLOOD) ||
-                p.equals(OFPort.ZERO) ||
-                p.equals(OFPort.NO_MASK) ||
-                p.equals(OFPort.IN_PORT) ||
-                p.equals(OFPort.NORMAL) ||
-                p.equals(OFPort.TABLE));
+        return !(p.equals(OFPort.LOCAL)
+                || p.equals(OFPort.ALL)
+                || p.equals(OFPort.CONTROLLER)
+                || p.equals(OFPort.ANY)
+                || p.equals(OFPort.FLOOD)
+                || p.equals(OFPort.ZERO)
+                || p.equals(OFPort.NO_MASK)
+                || p.equals(OFPort.IN_PORT)
+                || p.equals(OFPort.NORMAL)
+                || p.equals(OFPort.TABLE));
     }
 
     /**
@@ -253,19 +261,6 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     }
 
     /**
-     * Builds a switch message type with flows.
-     *
-     * @param sw        switch instance.
-     * @param eventType type of event.
-     * @param flowStats flows one the switch.
-     * @return Message
-     */
-    private Message buildExtendedSwitchMessage(final IOFSwitch sw, final SwitchState eventType,
-            OFFlowStatsReply flowStats) {
-        return buildMessage(IOFSwitchConverter.buildSwitchInfoDataExtended(sw, eventType, flowStats));
-    }
-
-    /**
      * Builds a switch message type.
      *
      * @param switchId  switch id
@@ -278,6 +273,19 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         InfoData data = new SwitchInfoData(switchId.toString(), eventType, unknown, unknown, unknown, unknown);
 
         return buildMessage(data);
+    }
+
+    /**
+     * Builds a switch message type with flows.
+     *
+     * @param sw        switch instance.
+     * @param eventType type of event.
+     * @param flowStats flows one the switch.
+     * @return Message
+     */
+    private Message buildExtendedSwitchMessage(final IOFSwitch sw, final SwitchState eventType,
+            OFFlowStatsReply flowStats) {
+        return buildMessage(IOFSwitchConverter.buildSwitchInfoDataExtended(sw, eventType, flowStats));
     }
 
     /**
