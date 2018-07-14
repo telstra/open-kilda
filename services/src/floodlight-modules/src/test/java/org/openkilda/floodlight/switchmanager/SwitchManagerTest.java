@@ -47,6 +47,8 @@ import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 
+import org.openkilda.floodlight.test.standard.OutputCommands;
+import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
@@ -68,8 +70,6 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.openkilda.floodlight.test.standard.OutputCommands;
-import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
