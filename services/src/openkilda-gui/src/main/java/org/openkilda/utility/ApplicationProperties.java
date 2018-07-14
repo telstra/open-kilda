@@ -14,10 +14,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class ApplicationProperties {
 
-    /**
-     * Properties has to synch with application.properties file
-     */
-
     /** The application properties. */
 
     @Value("${floodlight.base.url}")
@@ -25,10 +21,10 @@ public class ApplicationProperties {
 
     @Value("${GET_SWITCHES}")
     private String switches;
-    
+
     @Value("${GET_SWITCH_RULES}")
     private String switchRules;
-    
+
     @Value("${GET_SWITCH_PORTS}")
     private String switchPorts;
 
@@ -76,6 +72,9 @@ public class ApplicationProperties {
 
     @Value("${switch.data.file.path}")
     private String switchDataFilePath;
+    
+    @Value("${UPDATE_FLOW}")
+    private String updateFlow;
 
     public String getFloodlightBaseUrl() {
         return floodlightBaseUrl;
@@ -152,5 +151,9 @@ public class ApplicationProperties {
     public String getSwitchRules() {
         return switchRules;
     }
+
+	public String getUpdateFlow() {
+		return updateFlow;
+	}
 
 }

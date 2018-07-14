@@ -17,7 +17,7 @@ package org.openkilda.wfm;
 
 import org.openkilda.wfm.error.AbstractException;
 
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseRichBolt;
@@ -25,7 +25,7 @@ import org.apache.storm.tuple.Tuple;
 
 import java.util.Map;
 
-@Log4j2
+@Slf4j
 public abstract class AbstractBolt extends BaseRichBolt {
     private OutputCollector output;
 

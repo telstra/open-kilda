@@ -129,7 +129,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
             // ISL discovery will fail.
             switchManager.sendPortUpEvents(sw);
         } catch (SwitchOperationException e) {
-            logger.error("Could not activate switch={}", switchId);
+            logger.error("Could not activate switch={}", switchId, e);
         }
 
     }

@@ -4,4 +4,4 @@ org.openkilda.floodlight.pathverification.PathVerificationService
 org.openkilda.floodlight.switchmanager.SwitchEventCollector
 org.openkilda.floodlight.switchmanager.SwitchManager
 org.openkilda.floodlight.statistics.StatisticsService
-net.floodlightcontroller.ui.web.StaticWebRoutable
+org.openkilda.floodlight.KildaModule

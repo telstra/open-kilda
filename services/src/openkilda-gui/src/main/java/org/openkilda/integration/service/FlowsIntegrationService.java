@@ -22,6 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * The Class FlowsIntegrationService.
  *
@@ -48,6 +51,9 @@ public class FlowsIntegrationService {
 
     @Autowired
     private ApplicationService applicationService;
+    
+    @Autowired
+    private ObjectMapper objectMapper;
 
 
     /**
@@ -186,11 +192,72 @@ public class FlowsIntegrationService {
                     restClientManager.invoke(applicationProperties.getFlows() + "/" + flowId,
                             HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                return restClientManager.getResponse(response, Flow.class);
+                Flow flow = restClientManager.getResponse(response, Flow.class);
+                return flowConverter.toFlowWithSwitchNames(flow);
             }
         } catch (Exception exception) {
             LOGGER.error("Exception in getFlowById " + exception.getMessage());
             throw new IntegrationException(exception);
+        }
+        return null;
+    }
+    
+    /**
+     * Creates the flow.
+     *
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow createFlow(Flow flow){
+        try {
+            HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(flow), "application/json",
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, Flow.class);
+            }
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Inside createFlow  Exception :", e);
+            throw new IntegrationException(e);
+        }
+        return null;
+    }
+    
+    /**
+     * Update flow.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow updateFlow(String flowId, Flow flow){
+        try {
+            HttpResponse response = restClientManager.invoke(applicationProperties.getUpdateFlow().replace("{flow_id}", flowId),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(flow), "application/json",
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, Flow.class);
+            }
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Inside updateFlow  Exception :", e);
+            throw new IntegrationException(e);
+        }
+        return null;
+    }
+    
+    /**
+     * Update flow.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow deleteFlow(String flowId) {
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getUpdateFlow().replace("{flow_id}", flowId),
+                HttpMethod.DELETE, "", "application/json", applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            return restClientManager.getResponse(response, Flow.class);
         }
         return null;
     }

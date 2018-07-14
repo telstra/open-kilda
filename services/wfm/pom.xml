@@ -1,11 +1,12 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>org.openkilda.wfm</groupId>
     <artifactId>WorkflowManager</artifactId>
-    <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
     <name>WFM</name>
     <url>https://bitbucket.org/openkilda/controller/wiki/Home</url>
 
@@ -35,21 +36,6 @@
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <puppycrawl-tools-checkstyle.version>8.10</puppycrawl-tools-checkstyle.version>
     </properties>
-
-    <profiles>
-        <profile>
-            <id>local</id>
-            <properties>
-                    <provided.scope>compile</provided.scope>
-            </properties>
-        </profile>
-        <profile>
-            <id>remote</id>
-            <properties>
-                    <provided.scope>provided</provided.scope>
-            </properties>
-        </profile>
-    </profiles>
 
     <dependencies>
         <dependency>
@@ -308,7 +294,6 @@
         </dependency>
     </dependencies>
 
-
     <build>
         <pluginManagement>
             <plugins>
@@ -344,7 +329,6 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -557,7 +541,36 @@
                     </dependency>
                 </dependencies>
             </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>tidy-maven-plugin</artifactId>
+                <version>1.1.0</version>
+                <executions>
+                    <execution>
+                        <id>validate</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>local</id>
+            <properties>
+                    <provided.scope>compile</provided.scope>
+            </properties>
+        </profile>
+        <profile>
+            <id>remote</id>
+            <properties>
+                    <provided.scope>provided</provided.scope>
+            </properties>
+        </profile>
+    </profiles>
 </project>

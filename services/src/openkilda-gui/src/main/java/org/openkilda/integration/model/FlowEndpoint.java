@@ -27,6 +27,9 @@ public class FlowEndpoint implements Serializable {
 
     @JsonProperty("vlan-id")
     private int vlanId;
+    
+    @JsonProperty("switch-name")
+    private String switchName;
 
     public String getSwitchId() {
         return switchId;
@@ -55,7 +58,15 @@ public class FlowEndpoint implements Serializable {
     public static long getSerialversionuid() {
         return serialVersionUID;
     }
+    
+    public String getSwitchName() {
+        return switchName;
+    }
 
+    public void setSwitchName(String switchName) {
+        this.switchName = switchName;
+    }
+    
     @Override
     public String toString() {
         return "FlowEndpoint [switchId=" + switchId + ", portId=" + portId + ", vlanId=" + vlanId

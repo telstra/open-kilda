@@ -42,13 +42,11 @@ import static org.openkilda.floodlight.Constants.meterId;
 import static org.openkilda.floodlight.Constants.outputPort;
 import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
-import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.DROP_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 
-import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
-import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
@@ -70,6 +68,8 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.openkilda.floodlight.test.standard.OutputCommands;
+import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;

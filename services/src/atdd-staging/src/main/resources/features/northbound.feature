@@ -18,6 +18,21 @@ Feature: Northbound endpoints
     Then response switch_id matches id of 'switch1'
     And response has at least 1 rule installed
 
+  @Switches
+  Scenario: Remove meter on switch
+    Given select a random switch and alias it as 'srcSwitch'
+    And select a random switch and alias it as 'dstSwitch'
+    And create flow between 'srcSwitch' and 'dstSwitch' and alias it as 'flow1'
+    And 'flow1' flow is in UP state
+    When request all switch meters for switch 'srcSwitch' and alias results as 'srcSwitchMeters'
+    And select first meter of 'srcSwitchMeters' and alias it as 'meterToDelete'
+    And remove 'meterToDelete' from 'srcSwitch'
+    Then remove meter response is successful
+
+    When request all switch meters for switch 'srcSwitch' and alias results as 'srcSwitchMeters'
+    Then meters 'srcSwitchMeters' does not have 'meterToDelete'
+
+
   @Links
   Scenario: Get all links
     When request all available links from Northbound
@@ -66,7 +81,7 @@ Feature: Northbound endpoints
   @Links
   Scenario: Search link properties
     Given select a random isl and alias it as 'isl1'
-    And create link properties request for isl 'isl1'
+    And create link properties request for ISL 'isl1'
     And update request: change src_switch to 'link search test'
     And update request: change src_port to '888'
     And send update link properties request

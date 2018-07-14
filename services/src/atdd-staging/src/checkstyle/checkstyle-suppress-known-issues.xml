@@ -18,8 +18,8 @@
     <suppress files="src/main/java/org/openkilda/atdd/staging/model/topology/TopologyDefinition.java" lines="80" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/model/topology/TopologyDefinition.java" lines="86" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/model/topology/TopologyDefinition.java" lines="93" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/model/topology/TopologyDefinition.java" lines="115" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/atdd/staging/model/topology/TopologyDefinition.java" lines="248" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/model/topology/TopologyDefinition.java" lines="125" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/atdd/staging/model/topology/TopologyDefinition.java" lines="258" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/service/floodlight/FloodlightServiceImpl.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/service/floodlight/FloodlightServiceImpl.java" lines="87" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/atdd/staging/service/floodlight/model/FlowApplyActions.java" lines="39" checks="JavadocMethod"/>

@@ -55,4 +55,21 @@ public class FlowConverter {
         }
         return flowInfo;
     }
+    
+    public Flow toFlowWithSwitchNames(final Flow flow) {
+        final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+        FlowEndpoint source = flow.getSource();
+        if (source != null) {
+            String switchName =
+                    switchIntegrationService.customSwitchName(csNames, source.getSwitchId());
+            source.setSwitchName(switchName);
+        }
+        FlowEndpoint destination = flow.getDestination();
+        if (destination != null) {
+            String switchName =
+                    switchIntegrationService.customSwitchName(csNames, destination.getSwitchId());
+            destination.setSwitchName(switchName);
+        }
+        return flow;
+    }
 }

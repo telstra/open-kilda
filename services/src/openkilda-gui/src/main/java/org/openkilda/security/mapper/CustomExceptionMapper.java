@@ -16,6 +16,9 @@ import java.util.Collections;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.openkilda.constants.HttpError;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
@@ -77,8 +80,20 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     protected ResponseEntity<Object> invalidResponseExceptionHandler(
             final InvalidResponseException ex, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
-        return response(HttpError.INTERNAL_ERROR.getHttpStatus(),
-                HttpError.INTERNAL_ERROR.getCode(), HttpError.INTERNAL_ERROR.getAuxilaryMessage(),
+        if (ex.getResponse() != null) {
+            JSONParser jsonParser = new JSONParser();
+            try {
+                JSONObject jsonObject = (JSONObject) jsonParser.parse(ex.getResponse());
+                return response(HttpError.PRECONDITION_FAILED.getHttpStatus(),
+                        HttpError.PRECONDITION_FAILED.getCode(),
+                        jsonObject.get("error-message").toString(),
+                        jsonObject.get("error-type").toString());
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+        return response(HttpError.PRECONDITION_FAILED.getHttpStatus(),
+                HttpError.PRECONDITION_FAILED.getCode(), HttpError.PRECONDITION_FAILED.getAuxilaryMessage(),
                 ex.toString());
     }
 
