@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,22 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging;
+package org.openkilda.wfm.topology.packetmon.type;
 
-public enum ServiceType {
-    FLOW_TOPOLOGY("flow-storm-topology"),
-    STATS_TOPOLOGY("statistics-storm-topology"),
-    CACHE_TOPOLOGY("cache-storm-topology"),
-    WFM_TOPOLOGY("event-wfm-storm-topology"),
-    PACKETMON_TOPOLOGY("packet-mon-storm-topology");
-
-    private final String id;
-
-    ServiceType(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
+public enum FlowType {
+    INGRESS,
+    EGRESS
 }
