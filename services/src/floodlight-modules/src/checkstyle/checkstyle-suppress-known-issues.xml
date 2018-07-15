@@ -40,58 +40,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="56" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="57" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="58" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="34" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="36" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="37" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="38" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="39" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="40" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="41" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="42" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="43" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="44" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="45" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="46" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="47" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="57" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="152" checks="LeftCurly"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="162" checks="LeftCurly"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="253" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="257" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="277" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="280" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="283" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="287" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="288" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="290" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="290" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="294" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="295" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="295" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="310" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="332" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="338" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="344" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="348" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="360" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="364" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="375" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/PathVerificationService.java" lines="443" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="32" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="44" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="51" checks="SummaryJavadoc"/>
@@ -174,8 +122,6 @@
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="29" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="89" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="134" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="296" checks="[a-zA-Z0-9]*"/>
     <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="27" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="28" checks="CustomImportOrder"/>
@@ -196,13 +142,6 @@
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathTest.java" lines="145" checks="CommentsIndentation"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationFlowTest.java" lines="64" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationFlowTest.java" lines="125" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketInTest.java" lines="61" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketInTest.java" lines="61" checks="MultipleVariableDeclarations"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketInTest.java" lines="62" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketInTest.java" lines="62" checks="MultipleVariableDeclarations"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketInTest.java" lines="64" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketInTest.java" lines="64" checks="MultipleVariableDeclarations"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketInTest.java" lines="125" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="24" checks="CustomImportOrder"/>

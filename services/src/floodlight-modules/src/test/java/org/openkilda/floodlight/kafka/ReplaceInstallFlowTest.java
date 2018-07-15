@@ -130,7 +130,8 @@ public class ReplaceInstallFlowTest {
 
     @Test
     public void installOneSwitchReplaceFlow() throws IOException, InterruptedException {
-        String value = Resources.toString(getClass().getResource("/install_one_switch_replace_flow.json"), Charsets.UTF_8);
+        String value = Resources.toString(
+                getClass().getResource("/install_one_switch_replace_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
         OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getMeterId());
         OFFlowAdd flowCommand = scheme.oneSwitchReplaceFlowMod(data.getInputPort(), data.getOutputPort(),
@@ -288,12 +289,6 @@ public class ReplaceInstallFlowTest {
         }
     }
 
-    /**
-     * Prepares test mocks for run.
-     *
-     * @param flowAddCapture  Capture for FlowAdd command
-     * @param meterAddCapture Capture for MeterMod<Add> command
-     */
     private void prepareMocks(Capture<OFFlowAdd> flowAddCapture, Capture<OFMeterMod> meterAddCapture,
                               boolean needCheckReverseFlow, boolean needCheckReverseMeter) {
         IOFSwitch iofSwitch = createMock(IOFSwitch.class);

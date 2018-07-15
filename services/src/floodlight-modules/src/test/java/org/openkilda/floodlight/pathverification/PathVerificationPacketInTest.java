@@ -65,10 +65,13 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
     protected PathVerificationService pvs;
     protected InputService inputService = new InputService(commandContextFactory);
 
-    protected String sw1HwAddrTarget, sw2HwAddrTarget;
-    protected IOFSwitch sw1, sw2;
+    protected String sw1HwAddrTarget;
+    protected String sw2HwAddrTarget;
+    protected IOFSwitch sw1;
+    protected IOFSwitch sw2;
     protected OFPacketIn pktIn;
-    protected InetSocketAddress srcIpTarget, dstIpTarget;
+    protected InetSocketAddress srcIpTarget;
+    protected InetSocketAddress dstIpTarget;
     protected InetSocketAddress swIp = new InetSocketAddress("192.168.10.1", 200);
 
     private byte[] pkt = {(byte) 0xAA, (byte) 0xBB, (byte) 0xCC, (byte) 0xDD, (byte) 0xEE, (byte) 0xFF, // src mac
@@ -206,8 +209,4 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         IPacket expected = getPacket();
         assertArrayEquals(expected.serialize(), ethernet.serialize());
     }
-
-
-
-
 }

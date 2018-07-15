@@ -231,12 +231,13 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true);
 
                 if (ofPacketOut != null) {
-                    logger.debug("==> Sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
+                    logger.debug("==> Sending verification packet out {}/{}: {}",
+                            srcSwitch.getId().toString(), port.getPortNumber(),
                             Hex.encodeHexString(ofPacketOut.getData()));
                     result = srcSwitch.write(ofPacketOut);
                 } else {
-                    logger.error("<== Received null from generateVerificationPacket, inputs where: " +
-                            "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
+                    logger.error("<== Received null from generateVerificationPacket, inputs where: "
+                            + "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
                 }
 
                 if (result) {
@@ -254,32 +255,32 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return result;
     }
 
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port) {
-        return generateVerificationPacket(srcSw,port,null,true);
+    OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port) {
+        return generateVerificationPacket(srcSw, port, null, true);
     }
 
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
+    OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
             boolean sign) {
         try {
-            OFPortDesc ofPortDesc = srcSw.getPort(port);
+            final OFPortDesc ofPortDesc = srcSw.getPort(port);
 
-            byte[] chassisId = new byte[]{4, 0, 0, 0, 0, 0, 0};
-            byte[] portId = new byte[]{2, 0, 0};
-            byte[] ttlValue = new byte[]{0, 0x78};
-            byte[] dpidTLVValue = new byte[]{0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            final byte[] chassisId = new byte[]{4, 0, 0, 0, 0, 0, 0};
+            final byte[] portId = new byte[]{2, 0, 0};
+            final byte[] ttlValue = new byte[]{0, 0x78};
+            final byte[] dpidTlvValue = new byte[]{0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-            LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127).setLength((short) dpidTLVValue.length)
-                    .setValue(dpidTLVValue);
+            final LLDPTLV dpidTlv = new LLDPTLV().setType((byte) 127).setLength((short) dpidTlvValue.length)
+                    .setValue(dpidTlvValue);
 
-            byte[] dpidArray = new byte[8];
-            ByteBuffer dpidBB = ByteBuffer.wrap(dpidArray);
-            ByteBuffer portBB = ByteBuffer.wrap(portId, 1, 2);
+            final byte[] dpidArray = new byte[8];
+            final ByteBuffer dpidBuffer = ByteBuffer.wrap(dpidArray);
+            final ByteBuffer portBuffer = ByteBuffer.wrap(portId, 1, 2);
 
             DatapathId dpid = srcSw.getId();
-            dpidBB.putLong(dpid.getLong());
+            dpidBuffer.putLong(dpid.getLong());
             System.arraycopy(dpidArray, 2, chassisId, 1, 6);
             // Set the optionalTLV to the full SwitchID
-            System.arraycopy(dpidArray, 0, dpidTLVValue, 4, 8);
+            System.arraycopy(dpidArray, 0, dpidTlvValue, 4, 8);
 
 
             byte[] zeroMac = {0, 0, 0, 0, 0, 0};
@@ -287,12 +288,13 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             if (Arrays.equals(srcMac, zeroMac)) {
                 int portVal = ofPortDesc.getPortNo().getPortNumber();
                 // this is a common scenario
-                logger.debug("Port {}/{} has zero hardware address: overwrite with lower 6 bytes of dpid",
-                dpid.toString(), portVal);
+                logger.debug(
+                        "Port {}/{} has zero hardware address: overwrite with lower 6 bytes of dpid",
+                        dpid.toString(), portVal);
                 System.arraycopy(dpidArray, 2, srcMac, 0, 6);
             }
 
-            portBB.putShort(port.getShortPortNumber());
+            portBuffer.putShort(port.getShortPortNumber());
 
             VerificationPacket vp = new VerificationPacket();
             vp.setChassisId(
@@ -303,32 +305,32 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             vp.setTtl(
                     new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
 
-            vp.getOptionalTLVList().add(dpidTLV);
+            vp.getOptionalTLVList().add(dpidTlv);
             // Add the controller identifier to the TLV value.
             //    vp.getOptionalTLVList().add(controllerTLV);
 
             // Add T0 based on format from Floodlight LLDP
             long time = System.currentTimeMillis();
             long swLatency = srcSw.getLatency().getValue();
-            byte[] timestampTLVValue = ByteBuffer.allocate(Long.SIZE / 8 + 4).put((byte) 0x00)
+            byte[] timestampTlvValue = ByteBuffer.allocate(Long.SIZE / 8 + 4).put((byte) 0x00)
                     .put((byte) 0x26).put((byte) 0xe1)
                     .put((byte) 0x01) // 0x01 is what we'll use to differentiate DPID (0x00) from time (0x01)
                     .putLong(time + swLatency /* account for our switch's one-way latency */)
                     .array();
 
-            LLDPTLV timestampTLV = new LLDPTLV().setType((byte) 127)
-                    .setLength((short) timestampTLVValue.length).setValue(timestampTLVValue);
+            LLDPTLV timestampTlv = new LLDPTLV().setType((byte) 127)
+                    .setLength((short) timestampTlvValue.length).setValue(timestampTlvValue);
 
-            vp.getOptionalTLVList().add(timestampTLV);
+            vp.getOptionalTLVList().add(timestampTlv);
 
             // Type
-            byte[] typeTLVValue = ByteBuffer.allocate(Integer.SIZE / 8 + 4).put((byte) 0x00)
+            byte[] typeTlvValue = ByteBuffer.allocate(Integer.SIZE / 8 + 4).put((byte) 0x00)
                     .put((byte) 0x26).put((byte) 0xe1)
                     .put((byte) 0x02)
                     .putInt(PathType.ISL.ordinal()).array();
-            LLDPTLV typeTLV = new LLDPTLV().setType((byte) 127)
-                    .setLength((short) typeTLVValue.length).setValue(typeTLVValue);
-            vp.getOptionalTLVList().add(typeTLV);
+            LLDPTLV typeTlv = new LLDPTLV().setType((byte) 127)
+                    .setLength((short) typeTlvValue.length).setValue(typeTlvValue);
+            vp.getOptionalTLVList().add(typeTlv);
 
             if (sign) {
                 String token = JWT.create()
@@ -337,15 +339,14 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                         .sign(algorithm);
 
                 byte[] tokenBytes = token.getBytes(Charset.forName("UTF-8"));
-
-                byte[] tokenTLVValue = ByteBuffer.allocate(4 + tokenBytes.length).put((byte) 0x00)
+                byte[] tokenTlvValue = ByteBuffer.allocate(4 + tokenBytes.length).put((byte) 0x00)
                         .put((byte) 0x26).put((byte) 0xe1)
                         .put((byte) 0x03)
                         .put(tokenBytes).array();
-                LLDPTLV tokenTLV = new LLDPTLV().setType((byte) 127)
-                        .setLength((short) tokenTLVValue.length).setValue(tokenTLVValue);
+                LLDPTLV tokenTlv = new LLDPTLV().setType((byte) 127)
+                        .setLength((short) tokenTlvValue.length).setValue(tokenTlvValue);
 
-                vp.getOptionalTLVList().add(tokenTLV);
+                vp.getOptionalTLVList().add(tokenTlv);
             }
 
             MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
@@ -353,7 +354,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 OFPortDesc sw2OfPortDesc = dstSw.getPort(port);
                 dstMac = sw2OfPortDesc.getHwAddr();
             }
-            Ethernet l2 = new Ethernet().setSourceMACAddress(MacAddress.of(srcMac))
+            final Ethernet l2 = new Ethernet().setSourceMACAddress(MacAddress.of(srcMac))
                     .setDestinationMACAddress(dstMac).setEtherType(EthType.IPv4);
 
             IPv4Address dstIp = IPv4Address.of(VERIFICATION_PACKET_IP_DST);
