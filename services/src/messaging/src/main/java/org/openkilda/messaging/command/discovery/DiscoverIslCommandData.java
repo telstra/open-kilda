@@ -40,19 +40,19 @@ public class DiscoverIslCommandData extends CommandData {
     /**
      * Port number.
      */
-    @JsonProperty("port_no")
-    private int portNo;
+    @JsonProperty("port_number")
+    private int portNumber;
 
     /**
      * Instance constructor.
      *
      * @param switchId switch id
-     * @param portNo   port number
+     * @param portNumber   port number
      */
     @JsonCreator
     public DiscoverIslCommandData(@JsonProperty("switch_id") final String switchId,
-                                  @JsonProperty("port_no") final int portNo) {
+                                  @JsonProperty("port_number") final int portNumber) {
         this.switchId = switchId;
-        this.portNo = portNo;
+        this.portNumber = portNumber;
     }
 }

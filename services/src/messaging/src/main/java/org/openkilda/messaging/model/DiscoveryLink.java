@@ -196,10 +196,10 @@ public class DiscoveryLink implements Serializable {
 
     /**
      * Checks if limit of not acknowledged attempts is exceeded. It means that we send .
-     * @return true if attempts is greater than attemptLimit and amount of acknowledged attempts is zero.
+     * @return true if attempts is greater than attemptLimit.
      */
     public boolean isAttemptsLimitExceeded(int attemptsLimit) {
-        return attempts > attemptsLimit && ackAttempts == 0;
+        return attempts > attemptsLimit;
     }
 
     /**

@@ -182,10 +182,10 @@ class RecordHandler implements Runnable {
         DiscoverIslCommandData command = (DiscoverIslCommandData) message.getData();
         String switchId = command.getSwitchId();
         context.getPathVerificationService().sendDiscoveryMessage(
-                DatapathId.of(switchId), OFPort.of(command.getPortNo()));
+                DatapathId.of(switchId), OFPort.of(command.getPortNumber()));
 
         DiscoPacketSendingConfirmation confirmation = new DiscoPacketSendingConfirmation(
-                new NetworkEndpoint(command.getSwitchId(), command.getPortNo()));
+                new NetworkEndpoint(command.getSwitchId(), command.getPortNumber()));
         context.getKafkaProducer().postMessage(context.getKafkaTopoDiscoTopic(),
                 new InfoMessage(confirmation, System.currentTimeMillis(), message.getCorrelationId()));
     }

@@ -82,10 +82,12 @@ public class DiscoveryManager {
      */
     public Plan makeDiscoveryPlan() {
         Plan result = new Plan();
-        boolean speakerSendsDiscoPackets = true;
+        int unsentDiscoPackets = 0;
 
         for (DiscoveryLink link : pollQueue) {
             if (!link.isNewAttemptAllowed()) {
+                logger.trace("Disco packet from {} is not sent due to exceeding limit of consecutive failures: {}",
+                        link.getSource(), link.getConsecutiveFailure());
                 continue;
             }
 
@@ -106,12 +108,14 @@ public class DiscoveryManager {
                     logger.info("ISL IS DOWN (NO RESPONSE): {}", link);
                 }
                 // Increment Failure = 1 after isAttemptsLimitExceeded failure, then increases every attempt.
+                logger.debug("No response to the disco packet from {}", link.getSource());
                 link.fail();
                 // NB: this node can be in both discoveryFailure and needDiscovery
             }
 
-            if (speakerSendsDiscoPackets && link.isAttemptsLimitExceeded(islConsecutiveFailureLimit)) {
-                speakerSendsDiscoPackets = false;
+            if (link.isAttemptsLimitExceeded(islConsecutiveFailureLimit)) {
+                logger.debug("Speaker doesn't send disco packet from {}", link.getSource());
+                unsentDiscoPackets++;
             }
 
             /*
@@ -131,8 +135,8 @@ public class DiscoveryManager {
 
         }
 
-        if (!speakerSendsDiscoPackets) {
-            logger.warn("Speaker does not send discovery packets");
+        if (unsentDiscoPackets > 0) {
+            logger.warn("Speaker does not send discovery packets. Affected links amount: {}", unsentDiscoPackets);
         }
 
         return result;
