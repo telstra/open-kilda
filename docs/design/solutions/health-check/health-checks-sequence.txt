@@ -1,0 +1,22 @@
+@startuml
+title Kilda health check diagram
+
+actor Admin
+
+loop for each module, periodically
+    Monitoring -> HealthEndpoint : REST call
+    HealthEndpoint -> Monitoring : HTTP 200 (Ok)
+
+    alt error, timeout
+        HealthEndpoint -> Monitoring : HTTP 5xx
+    else
+         note right of Monitoring: no reply
+    end
+end
+
+alt sequence of failures
+    note left of Monitoring: grouping logic
+    Monitoring -> Admin: Sending alert
+end
+
+@enduml
