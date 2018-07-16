@@ -19,8 +19,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 import org.openkilda.messaging.command.CommandData;
 
-import java.util.List;
-
 @Value
 public class PortStatusUpdateRequest extends CommandData {
 

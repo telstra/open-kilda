@@ -274,6 +274,7 @@
     <suppress files="src/main/java/org/openkilda/messaging/command/switches/SwitchRulesValidateRequest.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/switches/SwitchRulesValidateRequest.java" lines="30" checks="Indentation"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/switches/SwitchRulesValidateRequest.java" lines="31" checks="Indentation"/>
+    <suppress files="src/main/java/org/openkilda/messaging/command/switches/PortStatusUpdateRequest.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/switches/SwitchRulesDeleteRequest.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/switches/SwitchRulesDeleteRequest.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/switches/DeleteRulesCriteria.java" lines="48" checks="JavadocMethod"/>
