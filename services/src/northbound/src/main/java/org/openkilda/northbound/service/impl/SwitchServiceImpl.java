@@ -28,6 +28,8 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.command.switches.PortStatus;
+import org.openkilda.messaging.command.switches.PortStatusUpdateRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
@@ -37,12 +39,14 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
+import org.openkilda.messaging.info.switches.PortStatusUpdateResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.messaging.MessageConsumer;
@@ -236,7 +240,7 @@ public class SwitchServiceImpl implements SwitchService {
         String syncCorrelationId = format("%s-sync", RequestCorrelationId.getId());
         CommandWithReplyToMessage syncCommandMessage = new CommandWithReplyToMessage(
                 new SwitchRulesSyncRequest(switchId, missingRules),
-                System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+                System.currentTimeMillis(), syncCorrelationId, Destination.CONTROLLER, northboundTopic);
         messageProducer.send(topoEngTopic, syncCommandMessage);
 
         Message syncResponseMessage = messageConsumer.poll(syncCorrelationId);
@@ -257,5 +261,21 @@ public class SwitchServiceImpl implements SwitchService {
         Message response = messageConsumer.poll(requestId);
         DeleteMeterResponse result = (DeleteMeterResponse) validateInfoMessage(deleteCommand, response, requestId);
         return new DeleteMeterResult(result.isDeleted());
+    }
+    @Override
+    public PortDto updateStatus(String switchId, String portId, String status) {
+        String correlationId = RequestCorrelationId.getId();
+        CommandWithReplyToMessage updateStatusCommand = new CommandWithReplyToMessage(
+                new PortStatusUpdateRequest(switchId, portId, 
+                    "UP".equalsIgnoreCase(status) ? PortStatus.UP : PortStatus.DOWN), 
+                System.currentTimeMillis(), correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+        messageProducer.send(floodlightTopic, updateStatusCommand);
+
+        Message response = messageConsumer.poll(correlationId);
+        PortStatusUpdateResponse switchPortResponse = (PortStatusUpdateResponse) validateInfoMessage(
+                updateStatusCommand, response, correlationId);
+
+        return new PortDto(switchPortResponse.getSwitchId(), switchPortResponse.getPortId(), 
+                switchPortResponse.getStatus().toString(), switchPortResponse.getOldStatus().toString());
     }
 }

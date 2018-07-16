@@ -19,6 +19,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.PortStatus;
+import org.openkilda.messaging.info.switches.PortStatusUpdateResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
@@ -248,4 +250,6 @@ public interface ISwitchManager extends IFloodlightService {
     void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException;
 
     void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException;
+
+    PortStatusUpdateResponse updatePortStatus(final DatapathId dpid, final String portId, final PortStatus status) throws SwitchOperationException;
 }
