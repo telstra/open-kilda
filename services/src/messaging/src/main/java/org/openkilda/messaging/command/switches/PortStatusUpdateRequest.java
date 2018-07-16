@@ -34,11 +34,11 @@ public class PortStatusUpdateRequest extends CommandData {
     private PortStatus status;
 
     public PortStatusUpdateRequest(
-        @JsonProperty("switch_id") String switchId,
-        @JsonProperty("port_id") String portId, @JsonProperty("status") PortStatus status) {
-       this.switchId = switchId;
-       this.portId = portId;
-       this.status = status;
+            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("port_id") String portId, @JsonProperty("status") PortStatus status) {
+        this.switchId = switchId;
+        this.portId = portId;
+        this.status = status;
     }
 }
 

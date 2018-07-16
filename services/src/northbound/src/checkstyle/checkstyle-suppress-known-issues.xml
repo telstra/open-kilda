@@ -161,6 +161,8 @@
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="7" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="8" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="9" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="10" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="11" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="22" checks="CustomImportOrder"/>

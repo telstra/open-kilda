@@ -251,5 +251,6 @@ public interface ISwitchManager extends IFloodlightService {
 
     void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException;
 
-    PortStatusUpdateResponse updatePortStatus(final DatapathId dpid, final String portId, final PortStatus status) throws SwitchOperationException;
+    PortStatusUpdateResponse updatePortStatus(final DatapathId dpid, final String portId, 
+            final PortStatus status) throws SwitchOperationException;
 }
