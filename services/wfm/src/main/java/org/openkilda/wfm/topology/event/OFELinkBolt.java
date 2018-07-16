@@ -31,8 +31,10 @@ import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
-import org.openkilda.messaging.info.discovery.NetworkSyncBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkSyncEndMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -102,7 +104,8 @@ public class OFELinkBolt
     private static final int BOLT_TICK_INTERVAL = 1;
 
     private static final String STREAM_ID_CTRL = "ctrl";
-    private static final String STATE_ID_DISCOVERY = "discovery-manager";
+    @VisibleForTesting
+    static final String STATE_ID_DISCOVERY = "discovery-manager";
     static final String TOPO_ENG_STREAM = "topo.eng";
     static final String SPEAKER_STREAM = "speaker";
 
@@ -124,7 +127,8 @@ public class OFELinkBolt
     private String dumpRequestCorrelationId = null;
     private float dumpRequestTimeout;
     private Timer dumpRequestTimer;
-    private State state = State.NEED_SYNC;
+    @VisibleForTesting
+    State state = State.NEED_SYNC;
 
     /**
      * Default constructor .. default health check frequency
@@ -352,7 +356,7 @@ public class OFELinkBolt
 
     private void dispatchWaitSync(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
-        if (data instanceof NetworkSyncBeginMarker) {
+        if (data instanceof NetworkDumpBeginMarker) {
             if (dumpRequestCorrelationId.equals(infoMessage.getCorrelationId())) {
                 logger.info("Got response on network sync request, start processing network events");
                 enableDumpRequestTimer();
@@ -370,11 +374,16 @@ public class OFELinkBolt
 
     private void dispatchSyncInProgress(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
-        if (data instanceof SwitchInfoData) {
-            handleSwitchEvent(tuple, (SwitchInfoData) data);
-        } else if (data instanceof PortInfoData) {
-            handlePortEvent(tuple, (PortInfoData) data);
-        } else if (data instanceof NetworkSyncEndMarker) {
+        if (data instanceof NetworkDumpSwitchData) {
+            logger.info("Event/WFM Sync: switch {}", data);
+            // no sync actions required for switches.
+
+        } else if (data instanceof NetworkDumpPortData) {
+            logger.info("Event/WFM Sync: port {}", data);
+            NetworkDumpPortData portData = (NetworkDumpPortData) data;
+            discovery.registerPort(portData.getSwitchId(), portData.getPortNo());
+
+        } else if (data instanceof NetworkDumpEndMarker) {
             logger.info("End of network sync stream received");
             stateTransition(State.MAIN);
         } else {
@@ -626,7 +635,8 @@ public class OFELinkBolt
         return this.discoveryQueue;
     }
 
-    private enum State {
+    @VisibleForTesting
+    enum State {
         NEED_SYNC,
         WAIT_SYNC,
         SYNC_IN_PROGRESS,

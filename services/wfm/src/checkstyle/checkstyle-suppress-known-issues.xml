@@ -892,7 +892,7 @@
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltFloodTest.java" lines="100" checks="LeftCurly"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltFloodTest.java" lines="101" checks="NeedBraces"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="20" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="54" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="31" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="95" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="121" checks="CommentsIndentation"/>

@@ -179,7 +179,16 @@
 								 	<li>Forward</li>
 								  	<li>Reverse</li>
 								</ul>
-
+								<fieldset class="form-group clearfix">
+													
+									<label class="col-xs-4 text-label">Timezone:</label>
+									<div class="col-xs-8">
+										<select id="timezone" name="timezone">
+											<option value="UTC">UTC</option>
+											<option value="LOCAL">My Timezone</option>
+										</select>
+									</div>
+								</fieldset>
 								<fieldset  id= "fromId" class="form-group clearfix">
 									<label class="col-xs-4 text-label">From:</label>
 									<div class="col-xs-8">
@@ -205,9 +214,15 @@
 								<fieldset id="DownsampleID" class="form-group">
 									<label class="col-xs-4 text-label">Downsample:</label>
 									<div class="col-xs-8">
-										<input type="text" id="downsamplingISL" placeholder="Downsample"
+									<select class="form-control" id="downsamplingISL">
+										<option value="30s">30s</option>
+										<option value="1m">1m</option>
+										<option value="5m">5m</option>
+										<option value="10m">10m</option>
+									</select>
+										<!-- <input type="text" id="downsamplingISL" placeholder="Downsample"
 											class="form-control"></input>
-											
+											 -->
 											<span class="downsample-error-message pull-left"></span>
 									</div>
 								</fieldset>

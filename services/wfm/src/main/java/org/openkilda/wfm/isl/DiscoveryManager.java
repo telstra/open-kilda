@@ -264,24 +264,37 @@ public class DiscoveryManager {
      * Handle port up event.
      */
     public void handlePortUp(String switchId, int portId) {
-        DiscoveryLink link;
-        NetworkEndpoint node = new NetworkEndpoint(switchId, portId);
-        List<DiscoveryLink> subjectList = findBySourceSwitch(node);
-
-        if (subjectList.size() != 0) {
+        DiscoveryLink link = registerPort(switchId, portId);
+        if (link.isActive() || link.isDiscoverySuspended()) {
             // Similar to SwitchUp, if we have a PortUp on an existing port, either we are receiving
             // a duplicate, or we missed the port down, or a new discovery has occurred.
             // NB: this should cause an ISL discovery packet to be sent.
             // TODO: we should probably separate "port up" from "do discovery". ATM, one would call
             //          this function just to get the "do discovery" functionality.
-            link = subjectList.get(0);
             logger.info("Port UP on existing node {};  clear failures and ISLFound", link);
             link.deactivate();
         } else {
-            link = new DiscoveryLink(node.getSwitchDpId(), node.getPortId(),
+            logger.info("Port UP on new node: {}", link);
+        }
+    }
+
+    /**
+     * Register a switch port for the discovery process.
+     *
+     * @param switchId the port's switch.
+     * @param portId   the port number.
+     * @return either a link of already registered port or a new one.
+     */
+    public DiscoveryLink registerPort(String switchId, int portId) {
+        NetworkEndpoint node = new NetworkEndpoint(switchId, portId);
+        List<DiscoveryLink> subjectList = findBySourceSwitch(node);
+        if (!subjectList.isEmpty()) {
+            return subjectList.get(0);
+        } else {
+            DiscoveryLink link = new DiscoveryLink(switchId, portId,
                     this.islHealthCheckInterval, this.maxAttempts);
             pollQueue.add(link);
-            logger.info("New {}", link);
+            return link;
         }
     }
 

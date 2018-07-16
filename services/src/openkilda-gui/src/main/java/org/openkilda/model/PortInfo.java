@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.io.Serializable;
+import java.util.Map;
 
 /**
  * The Class PortInfo.
@@ -15,7 +16,7 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"assignmenttype", "interfacetype", "status", "crossconnect", "customeruuid",
-        "switch_id", "port_name"})
+        "switch_id", "port_name", "stats"})
 public class PortInfo implements Serializable, Comparable<PortInfo> {
 
     
@@ -49,6 +50,9 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
     
     @JsonProperty("port_number")
     private String portNumber;
+    
+    @JsonProperty("stats")
+    private Map<String, Double> stats;
 
     /** The Constant serialVersionUID. */
     private final static long serialVersionUID = 6234209548424333879L;
@@ -212,6 +216,17 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
     public void setPortNumber(final String portNumber) {
         this.portNumber = portNumber;
     }
+
+    
+    public Map<String, Double> getStats() {
+        return stats;
+    }
+    
+
+    public void setStats(Map<String, Double> stats) {
+        this.stats = stats;
+    }
+    
 
     /*
      * (non-Javadoc)

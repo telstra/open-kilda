@@ -131,15 +131,24 @@ public class SwitchIntegrationService {
      * @return the isl links
      */
     public List<IslLinkInfo> getIslLinks() {
+        List<IslLink> links = getIslLinkPortsInfo();
+        if (CollectionUtil.isEmpty(links)) {
+            throw new ContentNotFoundException();
+        }
+        return islLinkConverter.toIslLinksInfo(links, islCostMap());
+    }
+    
+    /**
+     * Gets the isl links port info.
+     *
+     * @return the isl links port info
+     */
+    public List<IslLink> getIslLinkPortsInfo() {
         HttpResponse response = restClientManager.invoke(applicationProperties.getLinks(),
                 HttpMethod.GET, "", "", applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
-            if (CollectionUtil.isEmpty(links)) {
-                throw new ContentNotFoundException();
-            }
-           
-            return islLinkConverter.toIslLinksInfo(links,islCostMap());
+            return links;
         }
         return null;
     }

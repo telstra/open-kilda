@@ -20,7 +20,6 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.flow.VerificationDispatchCommand;
-import org.openkilda.floodlight.converter.IOFSwitchConverter;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
@@ -57,12 +56,11 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
-import org.openkilda.messaging.info.discovery.NetworkSyncBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkSyncEndMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortChangeType;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.stats.PortStatus;
@@ -422,23 +420,20 @@ class RecordHandler implements Runnable {
         try {
 
             kafkaProducer.postMessage(outputDiscoTopic,
-                    new InfoMessage(new NetworkSyncBeginMarker(), System.currentTimeMillis(), correlationId));
+                    new InfoMessage(new NetworkDumpBeginMarker(), System.currentTimeMillis(), correlationId));
 
             Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
 
             allSwitchMap.values().stream()
-                    .map(this::buildSwitchInfoData)
+                    .map(this::buildNetworkDumpSwitchData)
                     .forEach(sw ->
                             kafkaProducer.postMessage(outputDiscoTopic,
                                     new InfoMessage(sw, System.currentTimeMillis(), correlationId)));
 
             allSwitchMap.values().stream()
-                    .flatMap(sw ->
-                            sw.getEnabledPorts().stream()
-                                    .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
-                                    .map(port -> buildPort(sw, port))
-                                    .collect(Collectors.toSet())
-                                    .stream())
+                    .flatMap(sw -> sw.getEnabledPorts().stream()
+                            .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
+                            .map(port -> buildNetworkDumpPortData(sw, port)))
                     .forEach(port ->
                             kafkaProducer.postMessage(outputDiscoTopic,
                                     new InfoMessage(port, System.currentTimeMillis(), correlationId)));
@@ -446,11 +441,25 @@ class RecordHandler implements Runnable {
             kafkaProducer.postMessage(
                     outputDiscoTopic,
                     new InfoMessage(
-                            new NetworkSyncEndMarker(), System.currentTimeMillis(),
+                            new NetworkDumpEndMarker(), System.currentTimeMillis(),
                             correlationId));
         } finally {
             kafkaProducer.getProducer().disableGuaranteedOrder(outputDiscoTopic);
         }
+    }
+
+    /**
+     * Builds {@link NetworkDumpSwitchData} representation of {@link IOFSwitch}.
+     */
+    protected NetworkDumpSwitchData buildNetworkDumpSwitchData(IOFSwitch sw) {
+        return new NetworkDumpSwitchData(sw.getId().toString());
+    }
+
+    /**
+     * Builds {@link NetworkDumpPortData} representation of {@link OFPortDesc}.
+     */
+    private NetworkDumpPortData buildNetworkDumpPortData(IOFSwitch sw, OFPortDesc port) {
+        return new NetworkDumpPortData(sw.getId().toString(), port.getPortNo().getPortNumber());
     }
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
@@ -728,17 +737,6 @@ class RecordHandler implements Runnable {
     @Override
     public void run() {
         parseRecord(record);
-    }
-
-    protected SwitchInfoData buildSwitchInfoData(IOFSwitch sw) {
-        // I don't know is that correct
-        SwitchState state = sw.isActive() ? SwitchState.ACTIVATED : SwitchState.ADDED;
-        return IOFSwitchConverter.buildSwitchInfoData(sw, state);
-    }
-
-    private PortInfoData buildPort(IOFSwitch sw, OFPortDesc port) {
-        return new PortInfoData(sw.getId().toString(), port.getPortNo().getPortNumber(), null,
-                PortChangeType.UP);
     }
 
     public static class Factory {

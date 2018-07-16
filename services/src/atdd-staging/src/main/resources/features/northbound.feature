@@ -103,6 +103,14 @@ Feature: Northbound endpoints
     And update request: change src_port to '999'
     And get link properties for defined request
     Then link props response has 1 result
-
     And delete all link properties
+
+  @Links
+  Scenario: Link property 'cost' cannot have non-numeric values
+    Given select a random isl and alias it as 'isl1'
+
+    When create link properties request for ISL 'isl1'
+    And update request: add link property 'cost' with value '1000L'
+    And send update link properties request
+    Then response has 1 failure and 0 successes
     
