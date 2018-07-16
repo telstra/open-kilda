@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.service;
 
+import org.openkilda.northbound.dto.switches.PortDto;
+import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -109,4 +111,6 @@ public interface SwitchService extends BasicService {
      * @param meterId meter to be deleted.
      */
     DeleteMeterResult deleteMeter(String switchId, long meterId);
+    
+    PortDto updateStatus(String switchId, String portId, String status);
 }

@@ -26,6 +26,7 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
@@ -250,5 +251,18 @@ public class SwitchController {
     public DeleteMeterResult deleteMeter(@PathVariable(name = "switch_id") String switchId,
                                          @PathVariable(name = "meter_id") long meterId) {
         return switchService.deleteMeter(switchId, meterId);
+    }
+    
+    /**
+     * Validate the rules installed on the switch against the flows in Neo4J.
+     *
+     * @return the validation details.
+     */
+    @ApiOperation(value = "Validate the rules installed on the switch", response = RulesValidationResult.class)
+    @GetMapping(path = "/switches/{switch_id}/port/{port_id}/{status}")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<PortDto> updateStatus(@PathVariable(name = "switch_id") String switchId, 
+            @PathVariable(name = "port_id") String portId, @PathVariable(name = "status") String status) {
+        return ResponseEntity.ok(switchService.updateStatus(switchId, portId, status));
     }
 }
