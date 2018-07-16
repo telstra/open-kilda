@@ -17,7 +17,7 @@ package org.openkilda.floodlight.kafka;
 
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 class RecordHandlerMock extends RecordHandler {
-    Map<DatapathId, SwitchInfoData> switchInfoDataOverride;
+    Map<DatapathId, NetworkDumpSwitchData> switchInfoDataOverride;
 
     RecordHandlerMock(ConsumerContext context) {
         super(context, EasyMock.mock(ConsumerRecord.class), new MeterPool());
@@ -39,15 +39,15 @@ class RecordHandlerMock extends RecordHandler {
         doControllerMsg(message);
     }
 
-    public void overrideSwitchInfoData(DatapathId swId, SwitchInfoData infoData) {
+    public void overrideNetworkDumpSwitchData(DatapathId swId, NetworkDumpSwitchData infoData) {
         switchInfoDataOverride.put(swId, infoData);
     }
 
     @Override
-    protected SwitchInfoData buildSwitchInfoData(IOFSwitch sw) {
+    protected NetworkDumpSwitchData buildNetworkDumpSwitchData(IOFSwitch sw) {
         if (switchInfoDataOverride.containsKey(sw.getId())) {
             return switchInfoDataOverride.get(sw.getId());
         }
-        return super.buildSwitchInfoData(sw);
+        return super.buildNetworkDumpSwitchData(sw);
     }
 }

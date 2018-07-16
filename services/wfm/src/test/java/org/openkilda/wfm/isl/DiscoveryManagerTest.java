@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.wfm.isl;
 
 import static org.junit.Assert.assertEquals;
@@ -388,4 +403,43 @@ public class DiscoveryManagerTest {
         assertTrue(stateChanged);
     }
 
+    @Test
+    public void shouldNotDeactivateLinkOnPortRegistration() {
+        // given
+        setupThreeLinks();
+
+        List<DiscoveryLink> foundAsLink1Before = dm.findBySourceSwitch(srcNode1);
+        assertEquals(1, foundAsLink1Before.size());
+        foundAsLink1Before.get(0).activate(dstNode1);
+
+        // when
+        DiscoveryLink affectedLink = dm.registerPort(srcNode1.getDatapath(), srcNode1.getPortNumber());
+        assertEquals(affectedLink.getSource(), srcNode1);
+        assertTrue("The link must be active.", affectedLink.isActive());
+
+        // then
+        List<DiscoveryLink> foundAsLink1After = dm.findBySourceSwitch(srcNode1);
+        assertEquals(1, foundAsLink1After.size());
+        assertTrue("The link must be active.", foundAsLink1After.get(0).isActive());
+    }
+
+    @Test
+    public void shouldAddInactiveLinkOnPortRegistration() {
+        // given
+        setupThreeLinks();
+
+        NetworkEndpoint srcNode4 = new NetworkEndpoint("sw2", 2);
+
+        List<DiscoveryLink> foundAsLink4Before = dm.findBySourceSwitch(srcNode4);
+        assertTrue(foundAsLink4Before.isEmpty());
+
+        // when
+        DiscoveryLink addedLink = dm.registerPort(srcNode4.getDatapath(), srcNode4.getPortNumber());
+        assertEquals(addedLink.getSource(), srcNode4);
+        assertFalse("The link must be inactive.", addedLink.isActive());
+
+        // then
+        List<DiscoveryLink> foundAsLink4After = dm.findBySourceSwitch(srcNode4);
+        assertEquals(1, foundAsLink4After.size());
+    }
 }

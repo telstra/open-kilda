@@ -32,8 +32,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -133,12 +132,12 @@ public class RecordHandlerTest extends EasyMockSupport {
 
         // Logic in SwitchEventCollector.buildSwitchInfoData is too complicated and requires a lot
         // of mocking code so I replaced it with mock on kafkaMessageCollector.buildSwitchInfoData
-        handler.overrideSwitchInfoData(
+        handler.overrideNetworkDumpSwitchData(
                 DatapathId.of(1),
-                new SwitchInfoData("sw1", SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda"));
-        handler.overrideSwitchInfoData(
+                new NetworkDumpSwitchData("sw1"));
+        handler.overrideNetworkDumpSwitchData(
                 DatapathId.of(2),
-                new SwitchInfoData("sw2", SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda"));
+                new NetworkDumpSwitchData("sw2"));
 
         // setup hook for verify that we create new message for producer
         producer.postMessage(eq(consumerContext.getKafkaTopoDiscoTopic()), anyObject(InfoMessage.class));
