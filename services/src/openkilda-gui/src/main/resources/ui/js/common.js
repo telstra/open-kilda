@@ -376,6 +376,14 @@ var graphAutoReload = {
 			
 			if(key.includes("isl")) {				
 				$("#autoreloadISL").toggle();
+				var timezone = $('#timezone option:selected').val();
+				if(timezone == 'UTC'){
+					var date = moment(new Date()).utc().format("YYYY/MM/DD HH:mm:ss");
+					$('#datetimepicker8ISL').val(date);
+				}else{
+					var date = moment(new Date()).format("YYYY/MM/DD HH:mm:ss");
+					$('#datetimepicker8ISL').val(date);
+				}
 				var savedEndDate =  new Date($('#datetimepicker8ISL').val());
 				$('#savedEnddate').val(savedEndDate);
 				$("#toId").toggle();
@@ -398,6 +406,14 @@ var graphAutoReload = {
 				}
 			} else {	
 				$("#autoreload").toggle();
+				var timezone = $('#timezone option:selected').val();
+				if(timezone == 'UTC'){
+					var date = moment(new Date()).utc().format("YYYY/MM/DD HH:mm:ss");
+					$('#datetimepicker8').val(date);
+				}else{
+					var date = moment(new Date()).format("YYYY/MM/DD HH:mm:ss");
+					$('#datetimepicker8').val(date);
+				}
 				var savedEndDate =  new Date($('#datetimepicker8').val());
 				$('#savedEnddate').val(savedEndDate);
 				$("#toId").toggle();
@@ -1291,7 +1307,7 @@ function getISLGraphData(switchId,portId,domId) {
 		var convertedEndDate = moment(endDate).utc().format("YYYY-MM-DD-HH:mm:ss");
 	}
 	
-	var downsampling = $("#downsamplingISL").val();
+	var downsampling = $("#downsamplingISL option:selected").val();
 	var downsamplingValidated = regex.test(downsampling);
 	var selMetric=$("select.selectbox_menulist").val();
 	var valid=true;
@@ -1411,7 +1427,7 @@ function callIslSwitchIntervalData(switchId,portId){
 		var convertedEndDate = moment(endDate).utc().format("YYYY-MM-DD-HH:mm:ss");
 	}
 		
-	var downsampling =$("#downsamplingISL").val()
+	var downsampling =$("#downsamplingISL option:selected").val()
 	selMetric = $('#menulistISL').val();
 	var switch_id = switchId.replace(/:/g, "");
 	var url = "/stats/switchid/"+switch_id+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;

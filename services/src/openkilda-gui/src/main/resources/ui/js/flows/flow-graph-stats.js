@@ -9,7 +9,7 @@
 * on the filter input values of datetimepicker, downsampling and menulist.
 */
 
-var flowid =window.location.href.split("#")[1];
+var flowid = window.location.href.split("#")[1];
 var graphInterval;
 $(function() {
 				
@@ -103,7 +103,7 @@ function getGraphData() {
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7").val());
 	var endDate =  new Date($("#datetimepicker8").val());
-	var downsampling = $("#downsampling").val();
+	var downsampling = $("#downsampling option:selected").val();
 	var timezone = $('#timezone option:selected').val();
 	var downsamplingValidated = regex.test(downsampling);
 	if(timezone == 'UTC'){ 
@@ -209,7 +209,7 @@ function callIntervalData() {
 	}
 		
 	var selMetric=$("select.selectbox_menulist").val();
-	var downsampling = $("#downsampling").val();
+	var downsampling = $("#downsampling option:selected").val();
 	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
