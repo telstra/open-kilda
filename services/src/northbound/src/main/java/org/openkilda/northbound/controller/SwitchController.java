@@ -104,7 +104,7 @@ public class SwitchController {
             @PathVariable("switch-id") String switchId,
             @ApiParam(value = "Results will be filtered based on matching the cookie.",
                     required = false)
-            @RequestParam("cookie, required = false") Optional<Long> cookie) {
+            @RequestParam(value = "cookie", required = false) Optional<Long> cookie) {
         SwitchFlowEntries response = switchService.getRules(switchId, cookie.orElse(0L));
         return response;
     }
