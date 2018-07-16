@@ -72,6 +72,7 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -424,8 +425,7 @@ class RecordHandler implements Runnable {
             allSwitchMap.values().stream()
                     .flatMap(sw -> sw.getEnabledPorts().stream()
                             .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
-                            .map(port ->
-                                    new NetworkDumpPortData(sw.getId().toString(), port.getPortNo().getPortNumber())))
+                            .map(port -> buildNetworkDumpPortData(sw, port)))
                     .forEach(port ->
                             kafkaProducer.postMessage(outputDiscoTopic,
                                     new InfoMessage(port, System.currentTimeMillis(), correlationId)));
@@ -438,6 +438,20 @@ class RecordHandler implements Runnable {
         } finally {
             kafkaProducer.getProducer().disableGuaranteedOrder(outputDiscoTopic);
         }
+    }
+
+    /**
+     * Builds {@link NetworkDumpSwitchData} representation of {@link IOFSwitch}.
+     */
+    protected NetworkDumpSwitchData buildNetworkDumpSwitchData(IOFSwitch sw) {
+        return new NetworkDumpSwitchData(sw.getId().toString());
+    }
+
+    /**
+     * Builds {@link NetworkDumpPortData} representation of {@link OFPortDesc}.
+     */
+    private NetworkDumpPortData buildNetworkDumpPortData(IOFSwitch sw, OFPortDesc port) {
+        return new NetworkDumpPortData(sw.getId().toString(), port.getPortNo().getPortNumber());
     }
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
@@ -715,13 +729,6 @@ class RecordHandler implements Runnable {
     @Override
     public void run() {
         parseRecord(record);
-    }
-
-    /**
-     * Transforms {@link IOFSwitch} to {@link NetworkDumpSwitchData} object.
-     */
-    protected NetworkDumpSwitchData buildNetworkDumpSwitchData(IOFSwitch sw) {
-        return new NetworkDumpSwitchData(sw.getId().toString());
     }
 
     public static class Factory {

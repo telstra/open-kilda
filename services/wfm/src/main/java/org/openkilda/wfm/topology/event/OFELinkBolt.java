@@ -371,11 +371,11 @@ public class OFELinkBolt
     private void dispatchSyncInProgress(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
         if (data instanceof NetworkDumpSwitchData) {
-            logger.info("DISCO Sync: switch {}", data);
+            logger.info("Event/WFM Sync: switch {}", data);
             // no sync actions required for switches.
 
         } else if (data instanceof NetworkDumpPortData) {
-            logger.info("DISCO Sync: port {}", data);
+            logger.info("Event/WFM Sync: port {}", data);
             NetworkDumpPortData portData = (NetworkDumpPortData) data;
             discovery.registerPort(portData.getSwitchId(), portData.getPortNo());
 

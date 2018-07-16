@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Defines the payload payload of a Message representing a switch info.
+ * Defines the payload of a Message representing a switch info.
  * <p/>
  * TODO: it doesn't look correct that we utilize SwitchInfo DTO class as cache entiries
  * and also injected cache related fields there.

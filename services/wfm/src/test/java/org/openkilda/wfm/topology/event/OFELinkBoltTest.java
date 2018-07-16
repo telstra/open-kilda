@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.event;
 
 import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -43,7 +44,6 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.tuple.Values;
-import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
@@ -115,7 +115,7 @@ public class OFELinkBoltTest extends AbstractStormTest {
         // then
         @SuppressWarnings("unchecked")
         LinkedList<DiscoveryLink> stateAfterSync = (LinkedList<DiscoveryLink>) boltState.get(STATE_ID_DISCOVERY);
-        assertThat(stateAfterSync, Matchers.contains(
+        assertThat(stateAfterSync, contains(
                 allOf(hasProperty("source", hasProperty("datapath", is("sw1"))),
                         hasProperty("destination", hasProperty("datapath", is("sw2"))),
                         hasProperty("active", is(true)))));
