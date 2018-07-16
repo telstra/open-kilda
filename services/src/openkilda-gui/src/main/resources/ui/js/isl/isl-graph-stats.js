@@ -126,7 +126,7 @@ function getGraphData(changeFlag) {
 		var convertedEndDate = moment(endDate).utc().format("YYYY-MM-DD-HH:mm:ss");
 	}
 	
-	var downsampling = $("#downsamplingISL").val();
+	var downsampling = $("#downsamplingISL option:selected").val();
 	var downsamplingValidated = regex.test(downsampling);
 	var valid=true;
 	if(downsamplingValidated == false) {	
@@ -236,7 +236,7 @@ function callIntervalData(){
 		var convertedEndDate = moment(endDate).utc().format("YYYY-MM-DD-HH:mm:ss");
 	}
 		
-	var downsampling =$("#downsamplingISL").val()	
+	var downsampling =$("#downsamplingISL option:selected").val()	
 	$('#wait1').show();
 
 	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric,"GET",selMetric).then(function(response) {
