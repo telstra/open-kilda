@@ -1482,15 +1482,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public PortStatusUpdateResponse updatePortStatus(final DatapathId dpid, final String portId, final PortStatus status) throws SwitchOperationException {
+    public PortStatusUpdateResponse updatePortStatus(final DatapathId dpid, final String portId,
+            final PortStatus status) throws SwitchOperationException {
         logger.debug("updating status(new status '{}') of port '{}' of switch '{}'", status, portId, dpid);
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
         OFPortDesc ofPortDesc = sw.getPort(portId);
 
-        PortStatusUpdateResponse response = new PortStatusUpdateResponse(String.valueOf(dpid.getLong()), portId, 
-                    null, ofPortDesc.isEnabled() ? PortStatus.UP : PortStatus.DOWN);
-
-        if(status == PortStatus.UP) {
+        if (status == PortStatus.UP) {
             ofPortDesc.getConfig().remove(OFPortConfig.PORT_DOWN);
         } else {
             ofPortDesc.getConfig().add(OFPortConfig.PORT_DOWN);
@@ -1505,6 +1503,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         sw = ofSwitchService.getSwitch(dpid);
         ofPortDesc = sw.getPort(portId);
+
+        PortStatusUpdateResponse response = new PortStatusUpdateResponse(String.valueOf(dpid.getLong()), portId, 
+                    null, ofPortDesc.isEnabled() ? PortStatus.UP : PortStatus.DOWN);
 
         response.setStatus(ofPortDesc.isEnabled() ? PortStatus.UP : PortStatus.DOWN);
         return response;

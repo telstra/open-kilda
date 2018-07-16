@@ -262,6 +262,7 @@ public class SwitchServiceImpl implements SwitchService {
         DeleteMeterResponse result = (DeleteMeterResponse) validateInfoMessage(deleteCommand, response, requestId);
         return new DeleteMeterResult(result.isDeleted());
     }
+
     @Override
     public PortDto updateStatus(String switchId, String portId, String status) {
         String correlationId = RequestCorrelationId.getId();
