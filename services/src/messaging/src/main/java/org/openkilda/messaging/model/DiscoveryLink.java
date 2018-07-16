@@ -159,7 +159,7 @@ public class DiscoveryLink implements Serializable {
     }
 
     /**
-     * Checks if discovery should be suspended for that link.
+     * Checks if discovery should be suspended for that link or we can try to discover it.
      * @return true if link should be excluded from discovery plan and discovery packets should not be sent.
      */
     public boolean isNewAttemptAllowed() {

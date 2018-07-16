@@ -122,7 +122,7 @@ public class DiscoveryManagerTest {
             dm.handleDiscovered(srcNode3.getDatapath(), srcNode3.getPortNumber(),
                     dstNode3.getDatapath(), dstNode3.getPortNumber());
 
-            verifyAllLinks(true);
+            verifyAllLinks();
         }
     }
 
@@ -240,7 +240,7 @@ public class DiscoveryManagerTest {
             assertEquals(0, discoveryPlan.discoveryFailure.size());
         }
 
-        verifyAllLinks(true);
+        verifyAllLinks();
     }
 
     @Test

@@ -265,7 +265,7 @@ public class DiscoveryManager {
      */
     public void handlePortUp(String switchId, int portId) {
         DiscoveryLink link = registerPort(switchId, portId);
-        if (link.isActive() || link.isDiscoverySuspended()) {
+        if (link.isActive() || !link.isNewAttemptAllowed()) {
             // Similar to SwitchUp, if we have a PortUp on an existing port, either we are receiving
             // a duplicate, or we missed the port down, or a new discovery has occurred.
             // NB: this should cause an ISL discovery packet to be sent.
