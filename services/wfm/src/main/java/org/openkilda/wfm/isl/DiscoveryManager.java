@@ -86,7 +86,7 @@ public class DiscoveryManager {
 
         for (DiscoveryLink link : pollQueue) {
             if (!link.isNewAttemptAllowed()) {
-                logger.trace("Disco packet from {} is not sent due to exceeding limit of consecutive failures: {}",
+                logger.trace("Disco packet from {} is not sent due to exceeded limit of consecutive failures: {}",
                         link.getSource(), link.getConsecutiveFailure());
                 continue;
             }
@@ -103,18 +103,17 @@ public class DiscoveryManager {
                 // Time to mark it as a failure and send a failure notice ** if ** it was an ISL.
                 if (link.isActive() && link.getConsecutiveFailure() == 0) {
                     // It is a discovery failure if it was previously a success.
-                    // NB:
                     result.discoveryFailure.add(node);
                     logger.info("ISL IS DOWN (NO RESPONSE): {}", link);
                 }
                 // Increment Failure = 1 after isAttemptsLimitExceeded failure, then increases every attempt.
-                logger.debug("No response to the disco packet from {}", link.getSource());
+                logger.trace("No response to the disco packet from {}", link.getSource());
                 link.fail();
                 // NB: this node can be in both discoveryFailure and needDiscovery
             }
 
-            if (link.isAttemptsLimitExceeded(islConsecutiveFailureLimit)) {
-                logger.debug("Speaker doesn't send disco packet from {}", link.getSource());
+            if (link.isAttemptsLimitExceeded(islConsecutiveFailureLimit) && link.isActive()) {
+                logger.info("Speaker doesn't send disco packet for {}", link);
                 unsentDiscoPackets++;
             }
 
@@ -129,6 +128,8 @@ public class DiscoveryManager {
                 link.incAttempts();
                 link.resetTickCounter();
                 result.needDiscovery.add(node);
+
+                logger.trace("Added to discovery plan: {}", link);
             } else {
                 link.tick();
             }
