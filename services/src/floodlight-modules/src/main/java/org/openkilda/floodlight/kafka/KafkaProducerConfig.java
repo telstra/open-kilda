@@ -18,9 +18,11 @@ package org.openkilda.floodlight.kafka;
 import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
 import java.util.Properties;
+import javax.validation.constraints.Min;
 
 @Configuration
 public interface KafkaProducerConfig extends KafkaFloodlightConfig {
@@ -28,6 +30,8 @@ public interface KafkaProducerConfig extends KafkaFloodlightConfig {
     String getTestingMode();
 
     @Key("heart-beat-interval")
+    @Default("1")
+    @Min(1)
     float getHeartBeatInterval();
 
     default boolean isTestingMode() {

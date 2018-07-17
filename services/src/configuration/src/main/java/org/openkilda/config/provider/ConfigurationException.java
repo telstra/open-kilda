@@ -13,17 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.config;
+package org.openkilda.config.provider;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Key;
+/**
+ * {@code ConfigurationException} indicates that an error has occurred while constructing a configuration instance.
+ */
+public class ConfigurationException extends RuntimeException {
+    public ConfigurationException(String message) {
+        super(message);
+    }
 
-import javax.validation.constraints.NotBlank;
-
-@Configuration
-@Key("kafka")
-public interface KafkaConfig {
-    @Key("hosts")
-    @NotBlank
-    String getHosts();
+    public ConfigurationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

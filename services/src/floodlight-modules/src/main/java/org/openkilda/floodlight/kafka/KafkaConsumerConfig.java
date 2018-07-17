@@ -24,6 +24,7 @@ import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
 import java.util.Properties;
+import javax.validation.constraints.Min;
 
 @Configuration
 public interface KafkaConsumerConfig extends KafkaFloodlightConfig, KafkaConsumerGroupConfig {
@@ -37,10 +38,12 @@ public interface KafkaConsumerConfig extends KafkaFloodlightConfig, KafkaConsume
 
     @Key("consumer.executors")
     @Default("10")
+    @Min(1)
     int getExecutorCount();
 
     @Key("consumer.auto-commit-interval")
     @Default("1000")
+    @Min(1)
     long getAutoCommitInterval();
 
     default boolean isTestingMode() {

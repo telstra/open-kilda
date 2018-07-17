@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.kafka;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 import org.openkilda.floodlight.kafka.producer.Producer;
@@ -32,7 +33,10 @@ public class HeartBeat {
 
     public HeartBeat(Producer producer, long interval, String topoDiscoTopic) {
         this.producer = producer;
+
+        checkArgument(interval > 0, "interval must be positive");
         this.interval = interval;
+
         this.topoDiscoTopic = requireNonNull(topoDiscoTopic, "topoDiscoTopic cannot be null");
 
         task = new HeartBeatAction(producer, topoDiscoTopic);
