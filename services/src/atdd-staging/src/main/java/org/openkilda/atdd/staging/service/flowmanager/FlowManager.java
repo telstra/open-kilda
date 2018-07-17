@@ -15,8 +15,8 @@
 
 package org.openkilda.atdd.staging.service.flowmanager;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.testlib.model.topology.TopologyDefinition;
 
 import java.util.List;
 import java.util.Map;

@@ -22,16 +22,16 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.ASwitch;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
-import org.openkilda.atdd.staging.service.aswitch.ASwitchService;
-import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.testlib.model.topology.TopologyDefinition;
+import org.openkilda.testlib.model.topology.TopologyDefinition.ASwitch;
+import org.openkilda.testlib.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testlib.service.aswitch.ASwitchService;
+import org.openkilda.testlib.service.aswitch.model.ASwitchFlow;
+import org.openkilda.testlib.service.northbound.NorthboundService;
 
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;

@@ -20,12 +20,12 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
-import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
-import org.openkilda.atdd.staging.steps.helpers.DefaultFlowsChecker;
-import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.SwitchEntryMatcher;
+import org.openkilda.atdd.staging.helpers.DefaultFlowsChecker;
+import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchEntryMatcher;
+import org.openkilda.testlib.model.topology.TopologyDefinition;
+import org.openkilda.testlib.service.floodlight.FloodlightService;
+import org.openkilda.testlib.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.testlib.service.floodlight.model.SwitchEntry;
 
 import cucumber.api.Scenario;
 import cucumber.api.java.Before;

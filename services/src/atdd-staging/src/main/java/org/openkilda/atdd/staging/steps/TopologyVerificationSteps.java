@@ -22,15 +22,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.IslMatcher;
-import org.openkilda.atdd.staging.steps.helpers.TopologyChecker.SwitchMatcher;
+import org.openkilda.atdd.staging.helpers.TopologyChecker.IslMatcher;
+import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchMatcher;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.testlib.model.topology.TopologyDefinition;
+import org.openkilda.testlib.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testlib.service.northbound.NorthboundService;
+import org.openkilda.testlib.service.topology.TopologyEngineService;
 
 import cucumber.api.Scenario;
 import cucumber.api.java.Before;
