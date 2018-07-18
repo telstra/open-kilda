@@ -1,15 +1,5 @@
 package org.openkilda.controller;
 
-import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
-import org.openkilda.constants.IConstants;
-import org.openkilda.model.IslLinkInfo;
-import org.openkilda.model.LinkProps;
-import org.openkilda.model.PortInfo;
-import org.openkilda.model.SwitchInfo;
-import org.openkilda.service.SwitchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -20,6 +10,20 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.ModelAndView;
+
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.openkilda.auth.model.Permissions;
+import org.openkilda.constants.IConstants;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
+import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkProps;
+import org.openkilda.model.PortInfo;
+import org.openkilda.model.SwitchInfo;
+import org.openkilda.service.SwitchService;
 
 /**
  * The Class SwitchController.
@@ -34,6 +38,9 @@ public class SwitchController extends BaseController {
     @Autowired
     private SwitchService serviceSwitch;
 
+    @Autowired
+    private ActivityLogger activityLogger;
+
 
     /**
      * Switch list.
@@ -43,6 +50,7 @@ public class SwitchController extends BaseController {
      * @return the model and view
      */
     @RequestMapping
+    @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
     public ModelAndView switchList(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.SWITCH_LIST);
 
@@ -82,6 +90,7 @@ public class SwitchController extends BaseController {
      * @return the model and view
      */
     @RequestMapping(value = "/isllist", method = RequestMethod.GET)
+    @Permissions(values = {IConstants.Permission.MENU_ISL})
     public ModelAndView islList(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.ISL_LIST);
     }
@@ -136,37 +145,39 @@ public class SwitchController extends BaseController {
 
     /**
      * Get Link Props.
-     * 
+     *
      * @param keys
      * @return
      */
     @RequestMapping(path = "/link/props", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody LinkProps getLinkProps(LinkProps keys) {
+    public @ResponseBody LinkProps getLinkProps(final LinkProps keys) {
         return serviceSwitch.getLinkProps(keys);
     }
 
     /**
      * Get Link Props.
-     * 
+     *
      * @param keys
      * @return
      */
     @RequestMapping(path = "/link/props", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody String updateLinkProps(@RequestBody List<LinkProps> keys) {
+    public @ResponseBody String updateLinkProps(@RequestBody final List<LinkProps> keys) {
+        activityLogger.log(ActivityType.ISL_UPDATE_COST, "Test");
         return serviceSwitch.updateLinkProps(keys);
     }
 
     /**
      * Get Switch Rules.
-     * 
+     *
      * @param switchId
      * @return
      */
     @RequestMapping(path = "/{switchId}/rules", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody String getSwitchRules(@PathVariable final String switchId) {
+        activityLogger.log(ActivityType.SWITCH_RULES, switchId);
         return serviceSwitch.getSwitchRules(switchId);
     }
 }

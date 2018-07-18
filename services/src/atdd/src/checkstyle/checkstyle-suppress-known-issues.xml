@@ -479,36 +479,26 @@
     <suppress files="src/test/java/org/openkilda/topo/TopologyPrinter.java" lines="112" checks="ParenPad"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyPrinter.java" lines="112" checks="OperatorWrap"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyPrinter.java" lines="120" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="38" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="40" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="47" checks="SeparatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="50" checks="SeparatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="51" checks="SeparatorWrap"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="40" checks="HideUtilityClassConstructor"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="42" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="49" checks="SeparatorWrap"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="52" checks="SeparatorWrap"/>
     <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="53" checks="SeparatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="79" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="89" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="102" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="106" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="125" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="126" checks="NonEmptyAtclauseDescription"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="55" checks="SeparatorWrap"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="81" checks="SummaryJavadoc"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="91" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="104" checks="SummaryJavadoc"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="108" checks="LocalVariableName"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="127" checks="NonEmptyAtclauseDescription"/>
     <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="128" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="132" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="132" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="136" checks="MultipleVariableDeclarations"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="140" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="173" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="180" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="220" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="130" checks="NonEmptyAtclauseDescription"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="134" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="134" checks="LocalVariableName"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="138" checks="MultipleVariableDeclarations"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="142" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="175" checks="SummaryJavadoc"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="182" checks="SummaryJavadoc"/>
+    <suppress files="src/test/java/org/openkilda/topo/TestUtils.java" lines="227" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/smoke/MininetSmokeTest.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/smoke/MininetSmokeTest.java" lines="20" checks="AvoidStarImport"/>
     <suppress files="src/test/java/org/openkilda/smoke/MininetSmokeTest.java" lines="23" checks="UnusedImports"/>
@@ -895,37 +885,18 @@
     <suppress files="src/test/java/org/openkilda/atdd/utils/controller/DpIdNotFoundException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="54" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="62" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="63" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="82" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="88" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="102" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="125" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="126" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="175" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/perf/TopologyEnginePerfTest.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/perf/TopologyEnginePerfTest.java" lines="32" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/perf/MininetPerfTest.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/flow/FlowOperationException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/flow/FlowOperationException.java" lines="8" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="45" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="72" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="85" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="302" checks="JavadocParagraph"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="460" checks="ParameterName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="460" checks="ParameterName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="490" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="543" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="544" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="560" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="594" checks="OverloadMethodsDeclarationOrder"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="601" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="607" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="664" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="694" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="705" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/flow/FlowUtils.java" lines="752" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="69" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/LinksUtils.java" lines="88" checks="JavadocMethod"/>

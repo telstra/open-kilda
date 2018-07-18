@@ -1,0 +1,442 @@
+<!doctype html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head>
+<meta charset="utf-8"></meta>
+<title>OPEN KILDA</title>
+
+<link th:href="@{../ui/images/kilda.png}" rel="shortcut icon" type="image/png"></link>
+<link th:href="@{../lib/css/select2.min.css}" rel="stylesheet" type="text/css"/>
+<link th:href="@{../lib/css/on-off-switch.css}" rel="stylesheet" type="text/css" />
+<script th:inline="javascript" th:src="@{../ui/js/flows/flowobject.js}"></script>
+</head>
+<body>
+<div th:include="common/importResources:: commonPathImports"></div>
+<div th:include="common/importResources:: statsImports"></div>
+	<div th:replace="common/header :: header" ></div>
+	<div th:include="common/importResources:: toggleSwitch"></div>
+	<div th:replace="common/menu :: menu" ></div>
+
+	<div class="content">
+		<div class="row">
+			<div class="navigation-bar container-fluid">
+				<ul class="col-lg-12">
+					<li><a th:href="@{/home}">Home</a></li>
+					<li><i class="fa icon-double-angle-right"></i><a
+						th:href="@{/flows}">Flows</a></li>
+					<li><i class="fa icon-double-angle-right" id="flow-id-name"></i></li>
+
+				</ul>
+			</div>
+		</div>
+		<div id="editflowloader" class="bg_load" style="display:none;">
+			<div class="loader"></div>
+			<span class="load-text" id="loaderText">Fetching Switches
+					<span class="loader__dot">.</span>
+ 			  			<span class="loader__dot">.</span>
+ 			 			<span class="loader__dot">.</span>
+ 			 	</span>  
+		</div>
+		<div id="updateflowloader" class="bg_load" style="display:none;">
+			<div class="loader"></div>
+			<span class="load-text" id="loaderText">Updating flow
+					<span class="loader__dot">.</span>
+ 			  			<span class="loader__dot">.</span>
+ 			 			<span class="loader__dot">.</span>
+ 			 	</span>  
+		</div>
+		<!-- <div id="validateOtpLoader" class="bg_load" style="display:none;">
+			<div class="loader"></div>
+			<span class="load-text" id="loaderText">validating OTP
+					<span class="loader__dot">.</span>
+ 			  			<span class="loader__dot">.</span>
+ 			 			<span class="loader__dot">.</span>
+ 			 	</span>  
+		</div> -->
+		<div id="deleteFlowLoader" class="bg_load" style="display:none;">
+			<div class="loader"></div>
+			<span class="load-text" id="loaderText">Deleting flow
+					<span class="loader__dot">.</span>
+ 			  			<span class="loader__dot">.</span>
+ 			 			<span class="loader__dot">.</span>
+ 			 	</span>  
+		</div>
+		<div class="container-fluid" id="edit_flow_div" style="display:none;">
+		
+		</div>
+		<div class="container-fluid" id="flow_detail_div">
+			<div class='form-group  col-lg-12 text-center flow_details'>
+			<div class="col-md-9" style="right:-100px">
+				<label class='col-form-label' style='display: inline-block;'>Flow
+					id:</label>
+				<p class='flow_div_flow_id copy_to_clipBoard' style='display: inline-block;'></p>
+			</div>
+				
+				<div class="col-md-3 pull-right" style="right:-100px;">
+					<span class="btn kilda_btn hidePermission" onClick="flowObj.deleteFlowAlert()" id="delete_flow" permission="fw_flow_delete">Delete</span>
+					<span class="btn kilda_btn hidePermission" style="padding:6px 20px;" onClick="flowObj.editFlow();" id="edit_flow" permission="fw_flow_update">Edit</span>
+				</div>
+			</div>
+			
+			<div class="row">
+				<div class="col-md-6 flow_details">
+					<h5 class='flow-modal-title'>SOURCE DETAILS</h5>
+					<div id="flow-source-details-div">
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Port:</label>
+							<p class='col-sm-8 flow_div_source_port'></p>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Switch Id:</label>
+							<div class='col-sm-4'>
+								<span class="flow_div_source_switch copy_to_clipBoard"></span>
+							</div>
+							<div class='col-sm-4'>	
+								<input type="hidden" id="on-off-switch-src" name="src_switch" value="0"/>
+							</div>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Name:</label>
+							<p class='col-sm-8 copy_to_clipBoard flow_div_source_switch_name'></p>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Vlan:</label>
+							<p class='col-sm-8 flow_div_source_vlan'></p>
+						</div>
+	
+					</div>
+				</div>
+	
+				<div class="col-md-6 flow_details">
+					<h5 class='flow-modal-title'>DESTINATION DETAILS</h5>
+					<div id="flow-destination-details-div">
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Port:</label>
+							<p class='col-sm-8 flow_div_destination_port'></p>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Switch Id:</label>
+							<div class='col-sm-4'>
+								<span class="flow_div_destination_switch copy_to_clipBoard"></span>
+							</div>
+							<div class='col-sm-4'>	
+								<input type="hidden" id="on-off-switch-dest" name="dest_switch" value="0"/>
+							</div>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Name:</label>
+							<p class='col-sm-8 copy_to_clipBoard flow_div_destination_switch_name'></p>
+						</div>
+						<div class='form-group row'>
+							<label class='col-sm-4 col-form-label'>Vlan:</label>
+							<p class='col-sm-8 flow_div_destination_vlan'></p>
+						</div>
+					</div>
+				</div>
+	
+				<div class="col-lg-12 flow_detail_title_div">
+					<h5 class='modal-title'>FLOW DETAILS</h5>
+					<div class="col-md-6 flow_detail_title_div"></div>
+					<div class="isl-source-details-div">
+	
+	
+						<div class='form-group row flow_details'>
+							<label class='col-sm-4 col-form-label'>Status:</label>
+							<p class='col-sm-8 flow_div_Status'></p>
+						</div>
+	
+						<div class='form-group row flow_details'>
+							<label class='col-sm-4 col-form-label'>Description:</label>
+							<p class='col-sm-8 flow_div_desc'></p>
+						</div>
+	
+						<div class='form-group row flow_details'>
+							<label class='col-sm-4 col-form-label'>Maximum Bandwidth:</label>
+							<p class='col-sm-8 flow_div_maximum_bandwidth'></p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div id="switchdetails_div">
+				<div class="row">
+					<div id="exTab1" class="col-lg-12 tab-wrapper">
+						<ul class="nav nav-pills">
+							<li class="active"><a href="#1a" data-toggle="tab">Graph</a></li>
+							<li ><a href="#2a" data-toggle="tab" >Path</a></li>
+							<li class="hidePermission" permission="fw_permission_validate"><a href="#validate_flow" data-toggle="tab">Validate</a></li>
+						</ul>
+
+						<div class="tab-content clearfix">
+							<div class="tab-pane active" id="1a">
+								<div class="row graph_div">
+									<div class="col-xs-12">
+										<div id="flow_path_stats_div" class="topology-graph row">
+											<div class="col-xs-8">
+												<div id="wait1" class="bg-data-loader" style="bottom:1px;">
+													<div class="loader"></div>
+												</div>
+											
+												<div id="graphdiv"></div>
+											</div>
+											<div class="col-xs-4 filter">
+												<div class="stats-graph row">
+												<ul class="line-legend col-lg-12">
+												 	<li>Forward</li>
+												  	<li>Reverse</li>
+												</ul>
+												<fieldset class="form-group clearfix">
+													
+														<label class="col-xs-4 text-label">Timezone:</label>
+														<div class="col-xs-8">
+															<select id="timezone" name="timezone">
+																<option value="UTC">UTC</option>
+																<option value="LOCAL">My Timezone</option>
+															</select>
+								
+														</div>
+													</fieldset>
+													<fieldset id= "fromId" class="form-group clearfix">
+													
+														<label class="col-xs-4 text-label">From:</label>
+														<div class="col-xs-8">
+															<input type="text" id="datetimepicker7"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
+																class="form-control"></input>
+								
+																<span class="from-error-message"></span>
+														</div>
+														<input type="hidden" id="savedEnddate"  />
+													</fieldset>
+
+
+													<fieldset id="toId" class="form-group">
+														<label class="col-xs-4 text-label">To:</label>
+														<div class="col-xs-8">
+															<input type="text" id="datetimepicker8"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
+																class="form-control"></input>
+																
+																<span class="to-error-message"></span>
+														</div>
+													</fieldset>
+
+
+													<fieldset id="DownsampleID" class="form-group">
+														<label class="col-xs-4 text-label">Downsample:</label>
+														<div class="col-xs-8">
+														<select class="form-control" id="downsampling">
+															<option value="30s">30s</option>
+															<option value="1m">1m</option>
+															<option value="5m">5m</option>
+															<option value="10m">10m</option>
+														</select>
+															<!-- <input type="text" id="downsampling" placeholder="Downsample"
+																class="form-control"></input> -->
+															<span class="downsample-error-message pull-left"></span>
+														</div>
+													</fieldset>
+
+													<fieldset class="form-group">
+														<label class="col-xs-4 text-label">Metric:</label>
+														<div class="col-xs-8">
+															<span class="form-control kilda_select"> <span
+																class="selectbox_arrow"></span> <select
+																class="selectbox_menulist" id="menulist">
+																	<option value="pen.isl.latency">pen.isl.latency</option>
+															</select>
+															</span>													
+														</div>
+													</fieldset>
+
+													<fieldset  id="autoreloadId" class="form-group">
+														<label class="col-xs-4 text-label">Autoreload(Sec):</label>
+														<div class="col-xs-8">
+															<input type="checkbox" id="check" onclick="graphAutoReload.autoreload()"
+																style="margin-top: 12px;" /> <input type="text"
+																id="autoreload" name="autoloadInput"
+																class="form-control"
+																style="display: none; width: calc(100% - 20px); float: right;" />
+														        
+														        <span class="error-message"></span>
+														        
+														</div>
+													</fieldset>
+
+
+													<div class="col-xs-12 submit-btn">
+														<div id="errorMesg" class="error"></div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="tab-pane" id="2a" >
+								<div class="row">
+									<div class="btn kilda_btn reroute_flow_btn hidePermission" id="reroute_flow" permission="fw_permission_reroute" >Re-route flow</div>
+									<div id="path_reroute_loader" class="bg-data-loader" style="bottom:1px;display:none;">
+										<div class="loader"></div>
+									</div>
+									<div id="ForwardRow" class="col-xs-12">
+										<h3 class="text-center">FORWARD PATH</h3>
+									</div>
+
+									<div id="ReversePath" class="col-xs-12">
+										<h3 class="text-center">REVERSE PATH</h3>
+									</div>
+								</div>
+							</div>
+							<div class="tab-pane" id="validate_flow" >
+								
+							<div class="row">
+								<div class="btn kilda_btn hidePermission" id="validate_flow_btn" permission="fw_permission_validate">Validate Flow</div>
+								<div id="validate_json_loader" class="bg-data-loader" style="bottom:1px;display:none;">
+										<div class="loader"></div>
+									</div>
+								<div class="col-md-12">
+								 <pre id="validate_json" class="validate_json copy_to_clipBoard"></pre>
+								</div>	
+									
+							</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+	<div th:replace="common/footer :: footer" ></div>	
+	
+	 <!-- Confirmation modal-->
+		<div class="modal confirm_modal fade" id="deleteflowconfirmModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Confirmation</h4>
+				</div>
+				<div class="modal-body">Are you sure you want to delete flow?</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">No</button>
+					<button type="button" class="btn kilda_btn" onClick="flowObj.confirmFlowDelete()" id="confirmdeleteflow">Yes</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- Edit confirmation -->
+	<div class="modal confirm_modal fade" id="editflowconfirmModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Confirmation</h4>
+				</div>
+				<div class="modal-body">Are you sure you want to update the flow?</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal" onClick="flowObj.cancelEditFlow()">No</button>
+					<button type="button" class="btn kilda_btn" onClick="flowObj.updateFlow()" id="confirmeditflow">Yes</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- 2FA otp modal popup -->
+	<div class="modal confirm_modal fade" id="twoFaOtpModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="row">
+			<div class="modal-content">
+			
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">2FA Authentication</h4>
+				</div>
+				<div class="modal-body">
+					<div class="form-group">
+						<label for="otp">Enter the authentication code <span class="mandatory-text text-danger">*</span></label>
+						 <div class="barcode-bg">					
+							<div class="otp otp-container">
+							<input name="code" id="twofacode" type="hidden" maxlength="6"  placeholder="OTP"  />
+							<input  autofocus="true" class="form-control otpdigit" placeholder="*" maxlength="1" onkeypress="flowObj.validateOtpFragment()" onkeyup="flowObj.assembleOtp();flowObj.removeErrorOtp();" />
+							<input class="form-control otpdigit" placeholder="*" maxlength="1"  onkeypress="flowObj.validateOtpFragment()" onkeyup="flowObj.assembleOtp();flowObj.removeErrorOtp();"/>
+							<input class="form-control otpdigit" placeholder="*" maxlength="1" onkeypress="flowObj.validateOtpFragment()"  onkeyup="flowObj.assembleOtp();flowObj.removeErrorOtp();"/>
+							<input class="form-control otpdigit" placeholder="*" maxlength="1"  onkeypress="flowObj.validateOtpFragment()" onkeyup="flowObj.assembleOtp();flowObj.removeErrorOtp();"/>
+							<input class="form-control otpdigit" placeholder="*" maxlength="1"  onkeypress="flowObj.validateOtpFragment()" onkeyup="flowObj.assembleOtp();flowObj.removeErrorOtp();"/>
+							<input class="form-control otpdigit" placeholder="*" maxlength="1" onkeypress="flowObj.validateOtpFragment()"  onkeyup="flowObj.assembleOtp();flowObj.removeErrorOtp();"/> 
+							</div>    
+						</div> 
+						<span id="codeOtpError" class="error" style="display:none; color:red; float:left; width:100%; font-size:14px;">Authentication code is required.</span>
+						<span id="otpError" class="error" style="display:none; color:red;float:left; width:100%; font-size:14px;">Authentication code is not valid.</span>
+						<div class="clear clearfix"></div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">cancel</button>
+					<button type="button" class="btn kilda_btn" onClick="flowObj.deleteFlow()">submit</button>
+				</div>
+			  </div>
+			</div>
+		</div>
+	</div>
+	
+	<div class="modal confirm_modal fade" id="twofa_warning" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Warning</h4>
+				</div>
+				<div class="modal-body">You are not authorised to delete the flow?</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Ok</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script th:inline="javascript" th:src="@{../ui/js/flows/flowdetails.js}"></script>
+	<script th:inline="javascript" th:src="@{../ui/js/common.js}"></script>
+	<script th:inline="javascript" th:src="@{../ui/js/flows/flow-graph-stats.js}"></script>
+   <script th:inline="javascript" th:src="@{../lib/javascript/select2.min.js}"></script>
+	<script>
+		$(document).ready(function() {
+			new DG.OnOffSwitch({
+			    el: '#on-off-switch-src',
+			    textOn: 'Legacy',
+			    textOff: 'Kilda',
+			    listener:function(name, checked){
+			    	$('.flow_div_source_switch').html(common.toggleSwitchID($('.flow_div_source_switch').html()));
+			    }
+			});
+			new DG.OnOffSwitch({
+			    el: '#on-off-switch-dest',
+			    textOn: 'Legacy',
+			    textOff: 'Kilda',
+			    listener:function(name, checked){
+			    	$('.flow_div_destination_switch').html(common.toggleSwitchID($('.flow_div_destination_switch').html()));
+			    }
+			});
+		});
+	</script>
+	
+	<div id="loading" class="bg_load" style="display:none;">
+				<div class="loader"></div>
+				<span class="load-text">Loading Flow
+						<span class="loader__dot">.</span>
+  			  			<span class="loader__dot">.</span>
+  			 			<span class="loader__dot">.</span>
+  			 	</span>  
+			</div>
+</body>
+</html>

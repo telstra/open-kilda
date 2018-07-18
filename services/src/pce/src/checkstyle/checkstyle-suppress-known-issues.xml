@@ -43,12 +43,7 @@
     <suppress files="src/main/java/org/openkilda/neo/NeoUtils.java" lines="81" checks="MethodParamPad"/>
     <suppress files="src/main/java/org/openkilda/neo/NeoUtils.java" lines="81" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/neo/NeoUtils.java" lines="86" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/pce/cache/ResourceCache.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/cache/ResourceCache.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/cache/ResourceCache.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/cache/ResourceCache.java" lines="76" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/cache/ResourceCache.java" lines="76" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/cache/ResourceCache.java" lines="265" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/pce/cache/ResourceCache.java" lines="266" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/pce/cache/FlowCache.java" lines="160" checks="OverloadMethodsDeclarationOrder"/>
     <suppress files="src/main/java/org/openkilda/pce/cache/FlowCache.java" lines="173" checks="OverloadMethodsDeclarationOrder"/>
     <suppress files="src/main/java/org/openkilda/pce/cache/FlowCache.java" lines="187" checks="OverloadMethodsDeclarationOrder"/>
@@ -335,47 +330,8 @@
     <suppress files="src/main/java/org/openkilda/pce/algo/SimpleGetShortestPath.java" lines="256" checks="ParameterName"/>
     <suppress files="src/test/java/org/openkilda/pce/NetworkTopologyConstants.java" lines="26" checks="HideUtilityClassConstructor"/>
     <suppress files="src/test/java/org/openkilda/pce/cache/NetworkCacheTest.java" lines="143" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="34" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="36" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="37" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="118" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="118" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="121" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="121" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="125" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="125" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="130" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="130" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="156" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="172" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="214" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="223" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="232" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="237" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="237" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="240" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="240" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="246" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="246" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="256" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="264" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="264" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="264" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="266" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="266" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="271" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="272" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="272" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="272" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="274" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="274" checks="WhitespaceAround"/>
+    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="157" checks="CommentsIndentation"/>
+    <suppress files="src/test/java/org/openkilda/pce/cache/ResourceCacheTest.java" lines="173" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/pce/cache/FlowCacheTest.java" lines="74" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/pce/cache/FlowCacheTest.java" lines="110" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/pce/cache/FlowCacheTest.java" lines="110" checks="WhitespaceAround"/>

@@ -67,7 +67,9 @@
     </RollingFile>
 
     <Socket name="LOGSTASH" host="{{ logging.logstash_host }}" port="{{ logging.port.storm }}">
-        <JsonLayout compact="true" eventEol="true" properties="true" />
+        <JsonLayout compact="true" eventEol="true" properties="true">
+            <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+        </JsonLayout>
     </Socket>
 
     <Syslog name="syslog" format="RFC5424" charset="UTF-8" host="localhost" port="514"

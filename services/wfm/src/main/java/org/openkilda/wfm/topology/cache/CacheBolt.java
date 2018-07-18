@@ -34,7 +34,6 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.NetworkTopologyChange;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -56,9 +55,6 @@ import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Sets;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -66,18 +62,14 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class CacheBolt
@@ -117,12 +109,6 @@ public class CacheBolt
 
     private final Auth pathComputerAuth;
 
-    /**
-     * We need to store rerouted flows for ability to restore initial path if it is possible.
-     * Here is a mapping between switch and all flows that was rerouted because switch went down.
-     */
-    private final Map<String, Set<String>> reroutedFlows = new ConcurrentHashMap<>();
-
     private TopologyContext context;
     private OutputCollector outputCollector;
 
@@ -148,8 +134,6 @@ public class CacheBolt
             flowCache = new FlowCache();
             this.state.put(FLOW_CACHE, flowCache);
         }
-
-        reroutedFlows.clear();
 
         logger.info("Request initial network state");
 
@@ -363,7 +347,7 @@ public class CacheBolt
                 return;
 
             case ENDPOINT_ADD:
-                affectedFlows = getFlowsForRerouting(topologyChange);
+                affectedFlows = getFlowsForRerouting();
                 break;
 
             default:
@@ -405,8 +389,8 @@ public class CacheBolt
                         request, System.currentTimeMillis(), msgCorrelationId, Destination.WFM)));
                 outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
 
-                logger.warn("Flow {} reroute command message sent with correlationId {}",
-                        flow.getLeft().getFlowId(), msgCorrelationId);
+                logger.warn("Flow {} reroute command message sent with correlationId {}, reason {}",
+                        flow.getLeft().getFlowId(), msgCorrelationId, reason);
             } catch (JsonProcessingException exception) {
                 logger.error("Could not format flow reroute request by flow={}", flow, exception);
             }
@@ -438,7 +422,6 @@ public class CacheBolt
                         correlationId);
                 String flowsId2 = flowData.getPayload().getLeft().getFlowId();
                 flowCache.removeFlow(flowsId2);
-                reroutedFlows.remove(flowsId2);
                 logger.debug("Flow {} message processed: {}, correlationId: {}", flowData.getOperation(), flowData,
                         correlationId);
                 break;
@@ -457,14 +440,12 @@ public class CacheBolt
                 logger.trace("Flow remove message received: {}, correlationId: {}", flowData, correlationId);
                 String flowsId = flowData.getPayload().getLeft().getFlowId();
                 flowCache.removeFlow(flowsId);
-                reroutedFlows.remove(flowsId);
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
                 logger.debug("Flow remove message sent: {}, correlationId: {} ", flowData, correlationId);
                 break;
 
             case UPDATE:
                 logger.trace("Flow update message received: {}, correlationId: {}", flowData, correlationId);
-                processFlowUpdate(flowData.getPayload().getLeft());
                 // TODO: This should be more lenient .. in case of retries
                 flowCache.putFlow(flowData.getPayload());
                 emitFlowMessage(flowData, tuple, flowData.getCorrelationId());
@@ -491,75 +472,12 @@ public class CacheBolt
         }
     }
 
-    /**
-     * Checks whether flow path was changed. If so we store switches through which flow was built.
-     * @param flow flow to be processed
-     */
-    private void processFlowUpdate(Flow flow) {
-        final String flowId = flow.getFlowId();
-        ImmutablePair<Flow, Flow> cachedFlow = flowCache.getFlow(flowId);
-        //check whether flow path was changed
-        if (!flowPathWasChanges(cachedFlow.getLeft(), flow)) {
-            Set<PathNode> affectedNodes = getAffectedNodes(cachedFlow.getLeft().getFlowPath().getPath(),
-                    flow.getFlowPath().getPath());
-            logger.debug("Saving flow {} new path for possibility to rollback it", flow.getFlowId());
-            affectedNodes.stream()
-                    .map(PathNode::getSwitchId)
-                    //we need to store only deactivated switches, so when they come up again we will be able
-                    //to try to reroute flows through this switches
-                    .filter(switchId -> !networkCache.switchIsOperable(switchId))
-                    .forEach(switchId -> {
-                        Set<String> flows = reroutedFlows.get(switchId);
-                        if (CollectionUtils.isEmpty(flows)) {
-                            reroutedFlows.put(switchId, Sets.newHashSet(flowId));
-                        } else {
-                            flows.add(flowId);
-                        }
-                    });
-        }
-    }
-
-    private boolean flowPathWasChanges(Flow initial, Flow updated) {
-        return initial.getFlowPath().getPath().equals(updated.getFlowPath().getPath());
-    }
-
-    /**
-     * Returns difference in switches between previous and current path.
-     * @param cachedPath previous flow path.
-     * @param updatedPath current flow path.
-     * @return switches from previous path, that not involved in the updated path
-     */
-    private Set<PathNode> getAffectedNodes(List<PathNode> cachedPath, List<PathNode> updatedPath) {
-        Set<PathNode> prevPath = new HashSet<>(cachedPath);
-        prevPath.removeAll(updatedPath);
-        return prevPath;
-    }
-
-    private Set<ImmutablePair<Flow, Flow>> getFlowsForRerouting(NetworkTopologyChange rerouteData) {
+    private Set<ImmutablePair<Flow, Flow>> getFlowsForRerouting() {
         Set<ImmutablePair<Flow, Flow>> inactiveFlows = flowCache.dumpFlows().stream()
                 .filter(flow -> FlowState.DOWN.equals(flow.getLeft().getState()))
                 .collect(Collectors.toSet());
 
-        Set<ImmutablePair<Flow, Flow>> transitFlows = getTransitFlowsPreviouslyInstalled(rerouteData.getSwitchId());
-        return Sets.union(inactiveFlows, transitFlows);
-
-    }
-
-    /**
-     * Returns flows where specific switch was involved as transit switch before.
-     * @param switchId switch id to be searched.
-     * @return list of flows.
-     */
-    private Set<ImmutablePair<Flow, Flow>> getTransitFlowsPreviouslyInstalled(String switchId) {
-        Set<String> flowIds = reroutedFlows.remove(switchId);
-        if (!CollectionUtils.isEmpty(flowIds)) {
-            logger.debug("Found transit flows ({}) for switch {}", StringUtils.join(flowIds, ", "), switchId);
-            return flowIds.stream()
-                    .map(flowId -> flowCache.getFlow(flowId))
-                    .collect(Collectors.toSet());
-        } else {
-            return Collections.emptySet();
-        }
+        return inactiveFlows;
     }
 
     private void initNetwork(PathComputer pathComputer) {

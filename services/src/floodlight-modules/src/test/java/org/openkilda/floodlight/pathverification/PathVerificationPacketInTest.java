@@ -20,8 +20,8 @@ import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
-import org.openkilda.floodlightcontroller.test.FloodlightTestCase;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;

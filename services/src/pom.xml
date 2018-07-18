@@ -4,10 +4,22 @@
 
     <groupId>org.openkilda</groupId>
     <artifactId>kilda-parent</artifactId>
-    <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
     <name>Kilda</name>
     <description>Kilda SDN Controller</description>
+
+    <modules>
+        <module>messaging</module>
+        <module>configuration</module>
+        <module>pce</module>
+        <module>floodlight-modules</module>
+        <module>northbound</module>
+        <module>api</module>
+        <module>atdd</module>
+        <module>atdd-staging</module>
+  </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -45,6 +57,7 @@
         <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
         <openflowj.version>3.2.0-kilda-2</openflowj.version>
         <slf4j.version>1.7.25</slf4j.version>
+        <log4j.version>2.11.0</log4j.version>
         <snakeyaml.version>1.18</snakeyaml.version>
         <lombok.version>1.16.20</lombok.version>
         <failsafe.version>1.0.5</failsafe.version>
@@ -53,19 +66,7 @@
         <conf4j.version>1.0</conf4j.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
-        <failsafe.version>1.0.5</failsafe.version>
     </properties>
-
-    <modules>
-        <module>messaging</module>
-        <module>configuration</module>
-        <module>pce</module>
-        <module>floodlight-modules</module>
-        <module>northbound</module>
-        <module>api</module>
-        <module>atdd</module>
-        <module>atdd-staging</module>
-  </modules>
 
     <dependencyManagement>
         <dependencies>
@@ -175,8 +176,28 @@
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
                 <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-core</artifactId>
+                <version>${log4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
+                <version>${log4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j-impl</artifactId>
+                <version>${log4j.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.yaml</groupId>
@@ -187,6 +208,11 @@
                 <groupId>org.aspectj</groupId>
                 <artifactId>aspectjrt</artifactId>
                 <version>${aspectj.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sabre.oss.conf4j</groupId>
+                <artifactId>conf4j-api</artifactId>
+                <version>${conf4j.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.sabre.oss.conf4j</groupId>
@@ -422,36 +448,22 @@
                         </dependency>
                     </dependencies>
                 </plugin>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>tidy-maven-plugin</artifactId>
+                    <version>1.1.0</version>
+                    <executions>
+                        <execution>
+                            <id>validate</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
-
-        <!--
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-        -->
     </build>
 </project>

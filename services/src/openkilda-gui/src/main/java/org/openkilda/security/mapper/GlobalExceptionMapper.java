@@ -2,6 +2,8 @@ package org.openkilda.security.mapper;
 
 import static java.util.stream.Collectors.joining;
 
+import java.nio.file.AccessDeniedException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,16 +25,20 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.ServletRequestBindingException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.usermanagement.exception.RequestValidationException;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonMappingException.Reference;
 
 import org.openkilda.constants.HttpError;
+import org.openkilda.exception.InvalidOtpException;
+import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.model.response.ErrorMessage;
 
 /**
@@ -242,5 +248,64 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
         headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
         return new ResponseEntity<Object>(
                 new ErrorMessage(code, message, auxilaryMessage, correlationId), headers, status);
+    }
+    
+    /**
+     * Handle entity not found.
+     *
+     * @param ex the ex
+     * @return the response entity
+     */
+    @ExceptionHandler(RequestValidationException.class)
+    protected ResponseEntity<Object> handleEntityNotFound(
+ 		   RequestValidationException ex) {
+ 	   ex.setStackTrace(new StackTraceElement[0]);
+       return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(),
+    		   ex.getCode() != null ? ex.getCode() :HttpError.UNPROCESSABLE_ENTITY.getCode(),
+               ex.getMessage(), ex.getMessage());
+    }
+    
+    /**
+     * Unauthorize access.
+     *
+     * @param ex the ex
+     * @return the response entity
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    protected ResponseEntity<Object> unauthorizeAccess(
+    		AccessDeniedException ex) {
+ 	   ex.setStackTrace(new StackTraceElement[0]);
+       return response(HttpError.UNAUTHORIZED.getHttpStatus(),
+               HttpError.UNAUTHORIZED.getCode(),
+               ex.getMessage(), ex.getMessage());
+    }
+    /**
+     * Invalid OTP access.
+     *
+     * @param ex the ex
+     * @return the response entity
+     */
+    @ExceptionHandler(InvalidOtpException.class)
+    protected ResponseEntity<Object> invalidOTP(
+            InvalidOtpException ex) {
+       ex.setStackTrace(new StackTraceElement[0]);
+       return response(HttpError.UNAUTHORIZED.getHttpStatus(),
+               HttpError.UNAUTHORIZED.getCode(),
+               ex.getMessage(), ex.getMessage());
+    }
+    
+    /**
+     * Two fa key not set exception.
+     *
+     * @param ex the ex
+     * @return the response entity
+     */
+    @ExceptionHandler(TwoFaKeyNotSetException.class)
+    protected ResponseEntity<Object> twoFaKeyNotSetException(
+            TwoFaKeyNotSetException ex) {
+       ex.setStackTrace(new StackTraceElement[0]);
+       return response(HttpError.UNAUTHORIZED.getHttpStatus(),
+               HttpError.UNAUTHORIZED.getCode(),
+               ex.getMessage(), ex.getMessage());
     }
 }

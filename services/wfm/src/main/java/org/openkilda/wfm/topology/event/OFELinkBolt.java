@@ -24,13 +24,17 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.HeartBeat;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkSyncBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkSyncEndMarker;
+import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -55,6 +59,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.storm.kafka.spout.internal.Timer;
+import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -99,7 +104,8 @@ public class OFELinkBolt
     private static final int BOLT_TICK_INTERVAL = 1;
 
     private static final String STREAM_ID_CTRL = "ctrl";
-    private static final String STATE_ID_DISCOVERY = "discovery-manager";
+    @VisibleForTesting
+    static final String STATE_ID_DISCOVERY = "discovery-manager";
     static final String TOPO_ENG_STREAM = "topo.eng";
     static final String SPEAKER_STREAM = "speaker";
 
@@ -121,7 +127,8 @@ public class OFELinkBolt
     private String dumpRequestCorrelationId = null;
     private float dumpRequestTimeout;
     private Timer dumpRequestTimer;
-    private State state = State.NEED_SYNC;
+    @VisibleForTesting
+    State state = State.NEED_SYNC;
 
     /**
      * Default constructor .. default health check frequency
@@ -270,9 +277,11 @@ public class OFELinkBolt
      * Helper method for sending an ISL Discovery Message.
      */
     private void sendDiscoveryMessage(Tuple tuple, NetworkEndpoint node, String correlationId) throws IOException {
-        String json = OFEMessageUtils.createIslDiscovery(node.getSwitchDpId(), node.getPortId(), correlationId);
-        logger.debug("LINK: Send ISL discovery command: {}", json);
-        collector.emit(SPEAKER_STREAM, tuple, new Values(PAYLOAD, json));
+        DiscoverIslCommandData data = new DiscoverIslCommandData(node.getDatapath(), node.getPortNumber());
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(),
+                correlationId, Destination.CONTROLLER);
+        logger.debug("LINK: Send ISL discovery command: {}", message);
+        collector.emit(SPEAKER_STREAM, tuple, new Values(PAYLOAD, Utils.MAPPER.writeValueAsString(message)));
     }
 
     @Override
@@ -347,7 +356,7 @@ public class OFELinkBolt
 
     private void dispatchWaitSync(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
-        if (data instanceof NetworkSyncBeginMarker) {
+        if (data instanceof NetworkDumpBeginMarker) {
             if (dumpRequestCorrelationId.equals(infoMessage.getCorrelationId())) {
                 logger.info("Got response on network sync request, start processing network events");
                 enableDumpRequestTimer();
@@ -365,11 +374,16 @@ public class OFELinkBolt
 
     private void dispatchSyncInProgress(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
-        if (data instanceof SwitchInfoData) {
-            handleSwitchEvent(tuple, (SwitchInfoData) data);
-        } else if (data instanceof PortInfoData) {
-            handlePortEvent(tuple, (PortInfoData) data);
-        } else if (data instanceof NetworkSyncEndMarker) {
+        if (data instanceof NetworkDumpSwitchData) {
+            logger.info("Event/WFM Sync: switch {}", data);
+            // no sync actions required for switches.
+
+        } else if (data instanceof NetworkDumpPortData) {
+            logger.info("Event/WFM Sync: port {}", data);
+            NetworkDumpPortData portData = (NetworkDumpPortData) data;
+            discovery.registerPort(portData.getSwitchId(), portData.getPortNo());
+
+        } else if (data instanceof NetworkDumpEndMarker) {
             logger.info("End of network sync stream received");
             stateTransition(State.MAIN);
         } else {
@@ -393,6 +407,8 @@ public class OFELinkBolt
             passToTopologyEngine(tuple);
         } else if (data instanceof IslInfoData) {
             handleIslEvent(tuple, (IslInfoData) data, infoMessage.getCorrelationId());
+        } else if (data instanceof DiscoPacketSendingConfirmation) {
+            handleSentDiscoPacket((DiscoPacketSendingConfirmation) data);
         } else {
             reportInvalidEvent(data);
         }
@@ -494,17 +510,9 @@ public class OFELinkBolt
             stateChanged = discovery.handleDiscovered(srcSwitch, srcPort, dstSwitch, dstPort);
             // If the state has changed, and since we've discovered one end of an ISL, let's make
             // sure we can test the other side as well.
-            if (stateChanged && discoveredIsl.getPath().size() > 1) {
-                if (!discovery.checkForIsl(dstSwitch, dstPort)) {
-                    // Only call PortUp if we aren't checking for ISL. Otherwise, we could end up in an
-                    // infinite cycle of always sending a Port UP when one side is discovered.
-                    discovery.handlePortUp(dstSwitch, dstPort);
-                }
-
+            if (stateChanged && !discovery.isInDiscoveryPlan(dstSwitch, dstPort)) {
+                discovery.handlePortUp(dstSwitch, dstPort);
             }
-
-        } else if (IslChangeType.FAILED.equals(state)) {
-            stateChanged = discovery.handleFailed(srcSwitch, srcPort);
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("ISL Event: ignoring state: {}", state);
@@ -568,6 +576,11 @@ public class OFELinkBolt
         passToTopologyEngine(tuple, message);
     }
 
+    private void handleSentDiscoPacket(DiscoPacketSendingConfirmation confirmation) {
+        logger.debug("Discovery packet is sent from {}", confirmation);
+        discovery.handleDiscoPacketSent(confirmation.getEndpoint());
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(SPEAKER_STREAM, new Fields("key", "message"));
@@ -584,6 +597,12 @@ public class OFELinkBolt
     @Override
     public String getCtrlStreamId() {
         return STREAM_ID_CTRL;
+    }
+
+    @Override
+    public void clearState() {
+        logger.info("ClearState request has been received.");
+        initState(new InMemoryKeyValueState<>());
     }
 
     @Override
@@ -616,7 +635,8 @@ public class OFELinkBolt
         return this.discoveryQueue;
     }
 
-    private enum State {
+    @VisibleForTesting
+    enum State {
         NEED_SYNC,
         WAIT_SYNC,
         SYNC_IN_PROGRESS,

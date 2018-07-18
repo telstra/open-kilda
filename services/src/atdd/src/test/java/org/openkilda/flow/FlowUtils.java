@@ -40,6 +40,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.VerificationInput;
+import org.openkilda.northbound.dto.flows.VerificationOutput;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;
@@ -68,8 +70,7 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-
-public class FlowUtils {
+public final class FlowUtils {
 
     private static final String auth = topologyUsername + ":" + topologyPassword;
     private static final String authHeaderValue = "Basic " + getEncoder().encodeToString(auth.getBytes());
@@ -77,11 +78,15 @@ public class FlowUtils {
     private static final int WAIT_ATTEMPTS = 10;
     private static final int WAIT_DELAY = 2;
 
-    public static final Client clientFactory() {
-        Client client = ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
-        return client;
+    private static final Client client = clientFactory();
+
+    public static Client clientFactory() {
+        return ClientBuilder.newClient(new ClientConfig()).register(JacksonFeature.class);
     }
 
+    /**
+     * Method getHealthCheck.
+     */
     public static int getHealthCheck() {
         System.out.println("\n==> Northbound Health-Check");
 
@@ -298,9 +303,22 @@ public class FlowUtils {
     }
 
     /**
+     * Fetch flow's path directly from PathComputer.
+     *
+     * @param flow flow
+     * @return flow path
+     */
+    public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
+            throws InterruptedException, UnroutablePathException, RecoverableException {
+        Thread.sleep(1000);
+        PathComputer pathComputer = new NeoDriver(DefaultParameters.neoAuth.getDriver());
+        return pathComputer.getPath(flow, PathComputer.Strategy.COST);
+    }
+
+    /**
      * Poll flow status via getFlowStatus calls until it become equal to expected. Or until timeout.
      *
-     * TODO: Why do we loop for 10 and sleep for 2? (ie why what for 20 seconds for flow state?)
+     * <p>TODO: Why do we loop for 10 and sleep for 2? (ie why what for 20 seconds for flow state?)
      *
      * @return last result received from getFlowStatus (can be null)
      */
@@ -457,7 +475,7 @@ public class FlowUtils {
      *
      * @return The JSON document of all flows
      */
-    public static Integer getLinkBandwidth(final String src_switch, final String src_port) {
+    public static Integer getLinkBandwidth(final String srcSwitch, final String srcPort) {
         System.out.println("\n==> Topology-Engine Link Bandwidth");
 
         long current = System.currentTimeMillis();
@@ -468,8 +486,8 @@ public class FlowUtils {
                 .path("/api/v1/topology/links/bandwidth/")
                 .path("{src_switch}")
                 .path("{src_port}")
-                .resolveTemplate("src_switch", src_switch)
-                .resolveTemplate("src_port", src_port)
+                .resolveTemplate("src_switch", srcSwitch)
+                .resolveTemplate("src_port", srcPort)
                 .request()
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
                 .get();
@@ -479,7 +497,7 @@ public class FlowUtils {
 
         try {
             Integer bandwidth = new ObjectMapper().readValue(response.readEntity(String.class), Integer.class);
-            System.out.println(format("====> Link switch=%s port=%s bandwidth=%d", src_switch, src_port, bandwidth));
+            System.out.println(format("====> Link switch=%s port=%s bandwidth=%d", srcSwitch, srcPort, bandwidth));
 
             return bandwidth;
         } catch (IOException ex) {
@@ -487,6 +505,9 @@ public class FlowUtils {
         }
     }
 
+    /**
+     * Method restoreFlows.
+     */
     public static void restoreFlows() {
         System.out.println("\n==> Topology-Engine Restore Flows");
 
@@ -540,24 +561,24 @@ public class FlowUtils {
             flows.forEach(FlowUtils::deleteFlow);
 
             // Wait for them to become zero
-            int nb_count = -1;
-            int ter_count = -1;
+            int nbCount = -1;
+            int terCount = -1;
             for (int i = 0; i < 10; ++i) {
                 TimeUnit.SECONDS.sleep(2);
-                nb_count = dumpFlows().size();
-                ter_count = getFlowDump().size();
-                if (nb_count == 0 && ter_count == 0) {
+                nbCount = dumpFlows().size();
+                terCount = getFlowDump().size();
+                if (nbCount == 0 && terCount == 0) {
                     break;
                 }
             }
 
-            assertEquals(0, nb_count);
-            assertEquals(0, ter_count);
+            assertEquals(0, nbCount);
+            assertEquals(0, terCount);
 
-// (crimi) - it is unclear why we are doing a count validation here .. it makes sense to do this
-// in the creation. But on cleanup, we just want things to be zero.
-//            assertEquals(nbFlows.size() * 2, tpeFlows.size());
-//            assertEquals(nbFlows.size(), flows.size());
+        // (crimi) - it is unclear why we are doing a count validation here .. it makes sense to do this
+        // in the creation. But on cleanup, we just want things to be zero.
+        //            assertEquals(nbFlows.size() * 2, tpeFlows.size());
+        //            assertEquals(nbFlows.size(), flows.size());
 
         } catch (Exception exception) {
             System.out.println(format("Error during flow deletion: %s", exception.getMessage()));
@@ -586,24 +607,17 @@ public class FlowUtils {
     }
 
     /**
-     * Gets flow path.
-     *
-     * @param flow flow
-     * @return flow path
+     * Method isTrafficTestsEnabled.
      */
-    public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
-            throws InterruptedException, UnroutablePathException, RecoverableException {
-        Thread.sleep(1000);
-        PathComputer pathComputer = new NeoDriver(DefaultParameters.neoAuth.getDriver());
-        return pathComputer.getPath(flow, PathComputer.Strategy.COST);
-    }
-
     public static boolean isTrafficTestsEnabled() {
         boolean isEnabled = Boolean.valueOf(System.getProperty("traffic", "true"));
         System.out.println(format("\n=====> Traffic check is %s", isEnabled ? "enabled" : "disabled"));
         return isEnabled;
     }
 
+    /**
+     * Method updateFeaturesStatus.
+     */
     public static FeatureTogglePayload updateFeaturesStatus(FeatureTogglePayload desired) {
         System.out.println("\n==> toggle features status");
 
@@ -643,7 +657,7 @@ public class FlowUtils {
     /**
      * Perform the flow cache synchronization (via Northbound service).
      */
-    public static FlowCacheSyncResults synchFlowCache() {
+    public static FlowCacheSyncResults syncFlowCache() {
         System.out.println("\n==> Northbound Sync Flow Cache");
 
         long current = System.currentTimeMillis();
@@ -691,7 +705,8 @@ public class FlowUtils {
         System.out.println(format("===> Northbound Invalidate Flow Cache Time: %,.3f", getTimeDuration(current)));
 
         if (response.getStatus() != 200) {
-            System.out.println(format("====> Error: Northbound Invalidate Flow Cache = PATCH status: %s", response.getStatus()));
+            System.out.println(
+                    format("====> Error: Northbound Invalidate Flow Cache = PATCH status: %s", response.getStatus()));
             return null;
         }
 
@@ -702,7 +717,7 @@ public class FlowUtils {
     /**
      * Deletes flow through TopologyEngine service.
      */
-    public static boolean deleteFlowViaTE(final String flowId) {
+    public static boolean deleteFlowViaTe(final String flowId) {
         System.out.println("\n==> TopologyEngine Delete Flow");
 
         long current = System.currentTimeMillis();
@@ -805,4 +820,38 @@ public class FlowUtils {
             return null;
         }
     }
+
+    /**
+     * Method verifyFlow.
+     */
+    public static VerificationOutput verifyFlow(String flowId, VerificationInput payload) {
+        long currentTime = System.currentTimeMillis();
+        String correlationId = String.valueOf(currentTime);
+
+        System.out.println(String.format("\n==> Northbound verify Flow request (correlationId: %s)", correlationId));
+        Response response = client
+                .target(northboundEndpoint)
+                .path("/api/v1/flows/{id}/verify")
+                .resolveTemplate("id", flowId)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, correlationId)
+                .method("PUT", Entity.json(payload));
+
+        System.out.println(format("===> Response = %s", response.toString()));
+        System.out.println(format("===> Northbound VERIFY Flow Time: %,.3f", getTimeDuration(currentTime)));
+
+        int responseCode = response.getStatus();
+        if (responseCode == 200) {
+            VerificationOutput result = response.readEntity(VerificationOutput.class);
+            System.out.println(format("====> Northbound VERIFY Flow = %s", result));
+            return result;
+        } else {
+            System.out.println(format("====> Error: Northbound VERIFY Flow = %s",
+                    response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+
+    private FlowUtils() { }
 }

@@ -484,7 +484,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                         .collect(Collectors.toList());
             }
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            logger.error("Could not get flow stats: {}", e.getMessage());
+            logger.error("Could not get flow stats for {}.", dpid, e);
         }
 
         return entries;
@@ -515,7 +515,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             ListenableFuture<OFMeterConfigStatsReply> future = sw.writeRequest(meterRequest);
             values = future.get(5, TimeUnit.SECONDS);
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            logger.error("Could not get meter config stats: {}", e.getMessage());
+            logger.error("Could not get meter config stats for {}.", dpid, e);
         }
 
         return values;
@@ -884,7 +884,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             ListenableFuture<OFBarrierReply> future = sw.writeRequest(barrierRequest);
             result = future.get(10, TimeUnit.SECONDS);
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            logger.error("Could not get a barrier reply: {}", e.getMessage());
+            logger.error("Could not get a barrier reply for {}.", sw.getId(), e);
         }
         return result;
     }

@@ -6,9 +6,6 @@ path:
   - northbound_properties: 
     dest: services/src/northbound/src/main/resources/northbound.properties
     tmpl: templates/northbound/northbound.properties.j2
-  - topology_properties:
-    dest: services/src/topology/src/main/resources/topology.properties
-    tmpl: templates/topology/topology.properties.j2
   - topology_engine_ini:
     dest: services/topology-engine/queue-engine/topology_engine.ini
     tmpl: templates/topology-engine/topology_engine.ini.j2

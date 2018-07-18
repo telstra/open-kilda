@@ -56,11 +56,11 @@ public class DiscoveryLinkTest {
     public void forlorn() {
         int threshhold = 2;
         dn = new DiscoveryLink("sw1", 2, 0, threshhold);
-        assertEquals("A DN starts out as not excluded", false, dn.isDiscoverySuspended());
+        assertEquals("A DN starts out as not excluded", true, dn.isNewAttemptAllowed());
         dn.fail();
         dn.fail();
         dn.fail();
-        assertEquals("The DN should now be excluded", true, dn.isDiscoverySuspended());
+        assertEquals("The DN should now be excluded", false, dn.isNewAttemptAllowed());
     }
 
     /**

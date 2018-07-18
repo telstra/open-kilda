@@ -23,19 +23,6 @@ import static org.openkilda.DefaultParameters.trafficEndpoint;
 import static org.openkilda.flow.FlowUtils.getTimeDuration;
 import static org.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 
-import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.DockerClient;
-import com.spotify.docker.client.DockerClient.ListContainersParam;
-import com.spotify.docker.client.messages.Container;
-import cucumber.api.java.en.And;
-import cucumber.api.java.en.Given;
-import cucumber.api.java.en.Then;
-import cucumber.api.java.en.When;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.glassfish.jersey.client.ClientConfig;
 import org.openkilda.KafkaUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
@@ -49,6 +36,19 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.topo.TestUtils;
 import org.openkilda.topo.TopologyHelp;
 
+import com.spotify.docker.client.DefaultDockerClient;
+import com.spotify.docker.client.DockerClient;
+import com.spotify.docker.client.DockerClient.ListContainersParam;
+import com.spotify.docker.client.messages.Container;
+import cucumber.api.java.en.And;
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.glassfish.jersey.client.ClientConfig;
+
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
@@ -57,8 +57,6 @@ import javax.ws.rs.core.Response;
 
 
 public class StormTopologyLCM {
-
-    private static final Logger LOGGER = Logger.getLogger(StormTopologyLCM.class);
 
     private static final String WFM_CONTAINER_NAME = "/wfm";
 
@@ -80,7 +78,7 @@ public class StormTopologyLCM {
     }
 
     /**
-     * We restart wfm container which kill all storm topologies and send new to storm
+     * We restart wfm container which kill all storm topologies and send new to storm.
     */
     @When("^storm topologies are restarted$")
     public void reloadStormTopologies() throws Exception {
@@ -91,7 +89,7 @@ public class StormTopologyLCM {
     }
 
     /**
-     * Test initial function, clear all then load basic network topology and create flow
+     * Test initial function, clear all then load basic network topology and create flow.
     */
     @Given("^active simple network topology with two switches and flow$")
     public void activeSimpleNetworkTopologyWithTwoSwitchesAndFlow() throws Throwable {
@@ -131,7 +129,7 @@ public class StormTopologyLCM {
     }
 
     /**
-     * Just check that flow is here and it in UP state
+     * Just check that flow is here and it in UP state.
      */
     @Then("^network topology in the same state$")
     public void networkTopologyInTheSameState() throws Throwable {
@@ -159,10 +157,10 @@ public class StormTopologyLCM {
         DumpStateManager actualSateDumpsFromBolts = kafkaUtils.getStateDumpsFromBolts();
 
         // CacheBolt part
-        Set<ImmutablePair<Flow, Flow>> actualCacheBoltFlows = actualSateDumpsFromBolts.
-                getCacheBoltState().getFlowDump().getFlows();
-        Set<ImmutablePair<Flow, Flow>> expectedCacheBoltFlows = expectedStateDumpsFromBolts.
-                getCacheBoltState().getFlowDump().getFlows();
+        Set<ImmutablePair<Flow, Flow>> actualCacheBoltFlows = actualSateDumpsFromBolts
+                .getCacheBoltState().getFlowDump().getFlows();
+        Set<ImmutablePair<Flow, Flow>> expectedCacheBoltFlows = expectedStateDumpsFromBolts
+                .getCacheBoltState().getFlowDump().getFlows();
         assertTrue(CollectionUtils.isEqualCollection(actualCacheBoltFlows, expectedCacheBoltFlows));
 
         // OFELinkBolt

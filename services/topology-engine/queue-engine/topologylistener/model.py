@@ -30,11 +30,17 @@ logger = logging.getLogger(__name__)
 
 
 def convert_integer(raw, limit=sys.maxint):
-    if isinstance(raw, (int, long)):
-        return raw
-    value = int(raw, 0)
-    if value > limit:
-        raise exc.UnacceptableDataError(raw, 'numeric value too big {}'.format(raw))
+    if not isinstance(raw, (int, long)):
+        try:
+            value = int(raw, 0)
+        except ValueError:
+            raise exc.UnacceptableDataError(raw, 'not numeric value: {}'.format(raw))
+    else:
+        value = raw
+
+    if limit is not None and value > limit:
+        raise exc.UnacceptableDataError(
+            raw, 'integer value too big {}'.format(raw))
     return value
 
 
