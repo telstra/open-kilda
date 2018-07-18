@@ -69,7 +69,7 @@ public class VerificationSendCommand extends AbstractVerificationCommand {
     @Override
     public void run() {
         UniFlowVerificationRequest verificationRequest = getVerificationRequest();
-        DatapathId sourceDpId = DatapathId.of(verificationRequest.getSourceSwitchId());
+        DatapathId sourceDpId = DatapathId.of(verificationRequest.getSourceSwitchId().toLong());
         IOFSwitch sw = switchUtils.lookupSwitch(sourceDpId);
 
         VerificationData data = VerificationData.of(verificationRequest);
@@ -112,8 +112,10 @@ public class VerificationSendCommand extends AbstractVerificationCommand {
         l2.setEtherType(EthType.IPv4);
 
         UniFlowVerificationRequest verificationRequest = getVerificationRequest();
-        l2.setSourceMACAddress(switchUtils.dpIdToMac(DatapathId.of(verificationRequest.getSourceSwitchId())));
-        l2.setDestinationMACAddress(switchUtils.dpIdToMac(DatapathId.of(verificationRequest.getDestSwitchId())));
+        l2.setSourceMACAddress(switchUtils.dpIdToMac(
+                DatapathId.of(verificationRequest.getSourceSwitchId().toLong())));
+        l2.setDestinationMACAddress(switchUtils.dpIdToMac(
+                DatapathId.of(verificationRequest.getDestSwitchId().toLong())));
         if (0 != verificationRequest.getVlanId()) {
             l2.setVlanID((short) verificationRequest.getVlanId());
         }

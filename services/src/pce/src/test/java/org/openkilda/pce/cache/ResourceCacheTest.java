@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.NetworkTopologyConstants;
 
@@ -34,16 +35,18 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 
 public class ResourceCacheTest {
-    private static final String SWITCH_ID = "switch-id";
-    private static final String SWITCH_ID_2 = "switch-id-2";
-    private final Flow forwardCreatedFlow = new Flow("created-flow", 0L, false, 10L, "description",
-            "timestamp", "sw3", "sw4", 21, 22, 100, 200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
-    private final Flow reverseCreatedFlow = new Flow("created-flow", 0L, false, 10L, "description",
-            "timestamp", "sw4", "sw3", 22, 21, 200, 100, 5, 5, new PathInfoData(), FlowState.ALLOCATED);
+    private static final SwitchId SWITCH_ID = new SwitchId("ff:00");
+    private static final SwitchId SWITCH_ID_2 = new SwitchId("ff:02");
+    private final Flow forwardCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
+            "timestamp", new SwitchId("ff:03"), new SwitchId("ff:04"), 21, 22, 100,
+            200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
+    private final Flow reverseCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
+            "timestamp", new SwitchId("ff:04"), new SwitchId("ff:03"), 22, 21, 200,
+            100, 5, 5, new PathInfoData(), FlowState.ALLOCATED);
     private ResourceCache resourceCache;
 
     @After
@@ -143,18 +146,18 @@ public class ResourceCacheTest {
         }
     }
 
+    // (crimi - 2018.04.06  ... Don't do this ... cookie pool is massive
+    //
+    //    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    //    public void cookiePoolFullTest() {
+    //        resourceCache.allocateCookie();
+    //        int i = ResourceCache.MIN_COOKIE;
+    //        while (i++ <= ResourceCache.MAX_COOKIE) {
+    //            resourceCache.allocateCookie();
+    //        }
+    //    }
+    //
 
-// (crimi - 2018.04.06  ... Don't do this ... cookie pool is massive
-//
-//    @Test(expected = ArrayIndexOutOfBoundsException.class)
-//    public void cookiePoolFullTest() {
-//        resourceCache.allocateCookie();
-//        int i = ResourceCache.MIN_COOKIE;
-//        while (i++ <= ResourceCache.MAX_COOKIE) {
-//            resourceCache.allocateCookie();
-//        }
-//    }
-//
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void meterIdPoolFullTest() {
         resourceCache.allocateMeterId(SWITCH_ID);
@@ -170,7 +173,6 @@ public class ResourceCacheTest {
         resourceCache.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
 
         Set<Integer> allocatedCookies = resourceCache.getAllCookies();
-        Set<Integer> allocatedVlanIds = resourceCache.getAllVlanIds();
         Set<Integer> allocatedMeterIds = new HashSet<>();
 
         allocatedMeterIds.addAll(resourceCache.getAllMeterIds(
@@ -190,6 +192,7 @@ public class ResourceCacheTest {
                 forwardCreatedFlow.getMeterId(),
                 reverseCreatedFlow.getMeterId()));
 
+        Set<Integer> allocatedVlanIds = resourceCache.getAllVlanIds();
         assertEquals(expectedCookies, allocatedCookies);
         assertEquals(expectedVlanIds, allocatedVlanIds);
         assertEquals(expectedMeterIds, allocatedMeterIds);
@@ -214,7 +217,8 @@ public class ResourceCacheTest {
     @Test
     public void shouldSkipDellocateMeterPoolIfSwitchNotFound() {
         // given
-        final String switchId = format("%s-%s", SWITCH_ID, UUID.randomUUID());
+        Random random = new Random();
+        final SwitchId switchId = new SwitchId(format("%s:%s", SWITCH_ID, Integer.toString(random.nextInt(0X100), 16)));
 
         // then
         assertNull(resourceCache.deallocateMeterId(switchId));
@@ -223,7 +227,8 @@ public class ResourceCacheTest {
     @Test
     public void shouldSkipDellocateMeterIdIfSwitchNotFound() {
         // given
-        final String switchId = format("%s-%s", SWITCH_ID, UUID.randomUUID());
+        Random random = new Random();
+        final SwitchId switchId = new SwitchId(format("%s:%s", SWITCH_ID, Integer.toString(random.nextInt(0X100), 16)));
 
         // then
         assertNull(resourceCache.deallocateMeterId(switchId, forwardCreatedFlow.getMeterId()));
@@ -246,7 +251,7 @@ public class ResourceCacheTest {
         second = resourceCache.allocateMeterId(SWITCH_ID_2);
         assertEquals(ResourceCache.MIN_METER_ID + 1, second);
 
-        Map<String, Set<Integer>> allMeterIds = resourceCache.getAllMeterIds();
+        Map<SwitchId, Set<Integer>> allMeterIds = resourceCache.getAllMeterIds();
         assertEquals(2, allMeterIds.size());
         assertEquals(3, allMeterIds.get(SWITCH_ID).size());
         assertEquals(2, allMeterIds.get(SWITCH_ID_2).size());

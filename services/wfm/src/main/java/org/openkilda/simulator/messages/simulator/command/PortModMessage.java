@@ -1,5 +1,7 @@
 package org.openkilda.simulator.messages.simulator.command;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -23,10 +25,10 @@ public class PortModMessage extends SimulatorCommandMessage {
     @JsonProperty("forwarding")
     private boolean isForwarding;
 
-    public PortModMessage(@JsonProperty("dpid") String dpid,
+    public PortModMessage(@JsonProperty("dpid") SwitchId dpid,
                           @JsonProperty("port-num") int portNum,
                           @JsonProperty("active") boolean isActive,
-                          @JsonProperty("forwarding") boolean isForwarding ) {
+                          @JsonProperty("forwarding") boolean isForwarding) {
         this.dpid = dpid;
         this.portNum = portNum;
         this.isActive = isActive;

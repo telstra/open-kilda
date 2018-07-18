@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package org.openkilda.northbound.controller;
 
 import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
@@ -81,9 +82,9 @@ public class LinkController {
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public List<LinkPropsDto> getLinkProps(@RequestParam(value = "src_switch", required = false) String srcSwitch,
+    public List<LinkPropsDto> getLinkProps(@RequestParam(value = "src_switch", required = false) SwitchId srcSwitch,
                                            @RequestParam(value = "src_port", required = false) Integer srcPort,
-                                           @RequestParam(value = "dst_switch", required = false) String dstSwitch,
+                                           @RequestParam(value = "dst_switch", required = false) SwitchId dstSwitch,
                                            @RequestParam(value = "dst_port", required = false) Integer dstPort) {
         return linkService.getLinkProps(srcSwitch, srcPort, dstSwitch, dstPort);
     }

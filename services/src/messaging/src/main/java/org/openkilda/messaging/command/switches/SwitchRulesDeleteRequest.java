@@ -15,12 +15,14 @@
 
 package org.openkilda.messaging.command.switches;
 
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandData;
 
 import java.util.Objects;
 
@@ -29,7 +31,7 @@ import java.util.Objects;
 public class SwitchRulesDeleteRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("delete_rules")
     private DeleteRulesAction deleteRulesAction;
@@ -49,7 +51,7 @@ public class SwitchRulesDeleteRequest extends CommandData {
      */
     @JsonCreator
     public SwitchRulesDeleteRequest(
-            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("delete_rules") DeleteRulesAction deleteRulesAction,
             @JsonProperty("criteria") DeleteRulesCriteria criteria
     ) {

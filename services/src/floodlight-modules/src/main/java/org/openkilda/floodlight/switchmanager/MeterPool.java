@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.ResourcePool;
 
 import org.slf4j.Logger;
@@ -30,22 +31,31 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MeterPool {
     private static final Logger logger = LoggerFactory.getLogger(MeterPool.class);
-    //@carmine: Probably should also start it at 200 and not 1 … I doubt we’ll end up with 200 Metered flows before we fix this.
+    //@carmine: Probably should also start it at 200 and not 1 …
+    // I doubt we’ll end up with 200 Metered flows before we fix this.
     private static final Integer MIN_METER_ID = 200;
     private static final Integer MAX_METER_ID = 4095;
-    private final Map<String, ResourcePool> switchMeterPool = new ConcurrentHashMap<>();
+    private final Map<SwitchId, ResourcePool> switchMeterPool = new ConcurrentHashMap<>();
     private final Map<String, Set<Integer>> flowMeterPool = new ConcurrentHashMap<>();
 
     public synchronized Set<Integer> getMetersByFlow(final String flowId) {
         return flowMeterPool.get(flowId);
     }
 
-    public synchronized Set<Integer> getMetersBySwitch(final String switchId) {
+    public synchronized Set<Integer> getMetersBySwitch(final SwitchId switchId) {
         ResourcePool pool = switchMeterPool.get(switchId);
         return pool == null ? null : pool.dumpPool();
     }
 
-    public synchronized Integer allocate(final String switchId, final String flowId, Integer meterId) {
+    /**
+     * The method actually does allocate a method id, not previously allocated.
+     *
+     * @param switchId switch id.
+     * @param flowId flow id.
+     * @param meterId meter id.
+     * @return allocated meter id.
+     */
+    public synchronized Integer allocate(final SwitchId switchId, final String flowId, Integer meterId) {
         ResourcePool switchPool = getSwitchPool(switchId);
         Set<Integer> flowPool = getFlowPool(flowId);
 
@@ -59,7 +69,10 @@ public class MeterPool {
         return allocatedMeterId;
     }
 
-    public synchronized Integer allocate(final String switchId, final String flowId) {
+    /**
+     * The method actually does allocate a method id, not previously allocated.
+     */
+    public synchronized Integer allocate(final SwitchId switchId, final String flowId) {
         ResourcePool switchPool = getSwitchPool(switchId);
         Set<Integer> flowPool = getFlowPool(flowId);
 
@@ -69,7 +82,10 @@ public class MeterPool {
         return meterId;
     }
 
-    public synchronized Integer deallocate(final String switchId, final String flowId) {
+    /**
+     * The method actually does de-allocate a method id, not previously de-allocated.
+     */
+    public synchronized Integer deallocate(final SwitchId switchId, final String flowId) {
         ResourcePool switchPool = switchMeterPool.get(switchId);
         if (switchPool == null) {
             logger.error("Could not deallocate meter: no such switch {}", switchId);
@@ -93,7 +109,7 @@ public class MeterPool {
         return meterId;
     }
 
-    private ResourcePool getSwitchPool(final String switchId) {
+    private ResourcePool getSwitchPool(final SwitchId switchId) {
         ResourcePool switchPool = switchMeterPool.get(switchId);
         if (switchPool == null) {
             switchPool = new ResourcePool(MIN_METER_ID, MAX_METER_ID);

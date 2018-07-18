@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.NetworkTopologyConstants;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputerMock;
@@ -49,24 +50,24 @@ public class FlowCacheTest {
     private final PathComputer.Strategy defaultStrategy = PathComputer.Strategy.COST;
 
     private final Flow firstFlow = new Flow("first-flow", 1, false, "first-flow",
-            "sw1", 11, 100,
-            "sw3", 11, 200);
+            new SwitchId("ff:01"), 11, 100,
+            new SwitchId("ff:03"), 11, 200);
     private final Flow secondFlow = new Flow("second-flow", 1, false, "second-flow",
-            "sw5", 12, 100,
-            "sw3", 12, 200);
+            new SwitchId("ff:05"), 12, 100,
+            new SwitchId("ff:03"), 12, 200);
     private final Flow thirdFlow = new Flow("third-flow", 1, false, "third-flow",
-            "sw3", 21, 100,
-            "sw3", 22, 200);
+            new SwitchId("ff:03"), 21, 100,
+            new SwitchId("ff:03"), 22, 200);
     private final Flow fourthFlow = new Flow("fourth-flow", 1, false, "fourth-flow",
-            "sw4", 21, 100,
-            "sw4", 22, 200);
+            new SwitchId("ff:04"), 21, 100,
+            new SwitchId("ff:04"), 22, 200);
     private final Flow fifthFlow = new Flow("fifth-flow", 1, false, "fifth-flow",
-            "sw5", 21, 100,
-            "sw5", 22, 200);
+            new SwitchId("ff:05"), 21, 100,
+            new SwitchId("ff:05"), 22, 200);
 
     private final Flow noBandwidthFlow = new Flow("no-bandwidth-flow", 0, true, "no-bandwidth-flow",
-            "sw1", 11, 100,
-            "sw3", 11, 200);
+            new SwitchId("ff:01"), 11, 100,
+            new SwitchId("ff:03"), 11, 200);
 
     @Before
     public void setUp() {
@@ -159,7 +160,7 @@ public class FlowCacheTest {
 
         final Set<Integer> allocatedVlans = flowCache.getAllocatedVlans();
         final Set<Integer> allocatedCookies = flowCache.getAllocatedCookies();
-        final Map<String, Set<Integer>> allocatedMeters = flowCache.getAllocatedMeters();
+        final Map<SwitchId, Set<Integer>> allocatedMeters = flowCache.getAllocatedMeters();
         try {
             flowCache.createFlow(firstFlow, path);
             throw new AssertionError(String.format(
@@ -194,20 +195,20 @@ public class FlowCacheTest {
         ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
 
         final ImmutablePair<Flow, Flow> oldFlow = flowCache.createFlow(firstFlow, path);
-        assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw1").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw2").size());
-        assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw3").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw4").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw5").size());
+        assertEquals(1, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:01")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:02")).size());
+        assertEquals(1, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:03")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:04")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:05")).size());
         assertEquals(2, flowCache.resourceCache.getAllVlanIds().size());
         assertEquals(1, flowCache.resourceCache.getAllCookies().size());
 
         final ImmutablePair<Flow, Flow> newFlow = flowCache.updateFlow(firstFlow, path);
-        assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw1").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw2").size());
-        assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw3").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw4").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw5").size());
+        assertEquals(1, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:01")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:02")).size());
+        assertEquals(1, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:03")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:04")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:05")).size());
         assertEquals(2, flowCache.resourceCache.getAllVlanIds().size());
         assertEquals(1, flowCache.resourceCache.getAllCookies().size());
 
@@ -245,7 +246,7 @@ public class FlowCacheTest {
 
         final Set<Integer> allocatedVlans = flowCache.getAllocatedVlans();
         final Set<Integer> allocatedCookies = flowCache.getAllocatedCookies();
-        final Map<String, Set<Integer>> allocatedMeters = flowCache.getAllocatedMeters();
+        final Map<SwitchId, Set<Integer>> allocatedMeters = flowCache.getAllocatedMeters();
 
         try {
             flowCache.updateFlow(firstFlow, path);

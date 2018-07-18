@@ -139,7 +139,7 @@ public class PathTest extends FloodlightTestCase {
         System.out.println(Hex.encodeHexString(packetOut.getData()));
         System.out.println(Hex.encodeHexString(d));
 
-//    Path path = new Path(sw2, sw2Port1.getPortNo(), verPacket);
+//    Path path = new Path(sw2, sw2Port1.getPortNumber(), verPacket);
 //    assertTrue(path.getSource().equals(sw1Port1));
 //    assertTrue(path.getDestination().equals(sw2Port1));
 //    assertEquals(path.getLatency(), 100);

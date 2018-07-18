@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.payload.flow;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
@@ -33,7 +35,7 @@ public class PathNodePayload implements Serializable {
      * Switch id.
      */
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     /**
      * Input port number.
@@ -49,7 +51,7 @@ public class PathNodePayload implements Serializable {
 
     @JsonCreator
     public PathNodePayload(
-            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("input_port") int inputPort,
             @JsonProperty("output_port") int outputPort) {
         this.switchId = switchId;

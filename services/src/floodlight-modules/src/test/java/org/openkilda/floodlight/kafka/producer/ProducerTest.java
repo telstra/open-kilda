@@ -24,6 +24,7 @@ import static org.easymock.EasyMock.verify;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -176,7 +177,7 @@ public class ProducerTest extends EasyMockSupport {
 
     private InfoMessage makePayload() {
         return new InfoMessage(
-                new PortInfoData("ff:fe:00:00:00:00:00:01", 8, PortChangeType.UP),
+                new PortInfoData(new SwitchId("ff:fe:00:00:00:00:00:01"), 8, PortChangeType.UP),
                 System.currentTimeMillis(), getClass().getCanonicalName() + "-test");
     }
 

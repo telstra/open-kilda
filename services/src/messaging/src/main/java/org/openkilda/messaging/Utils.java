@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -91,6 +93,13 @@ public final class Utils {
     private static final int MAX_VLAN_ID = 4095;
 
     /**
+     * A private constructor.
+     */
+    private Utils() {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Checks if specified vlan id is in allowable range.
      *
      * @param vlanId vlan id
@@ -108,9 +117,9 @@ public final class Utils {
      * @return true if output vlan operation type is valid
      */
     public static boolean validateOutputVlanType(final Integer outputVlanId, final OutputVlanType outputVlanType) {
-        return (outputVlanId != null && outputVlanId != 0) ?
-                (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.REPLACE.equals(outputVlanType)) :
-                (OutputVlanType.POP.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType));
+        return (outputVlanId != null && outputVlanId != 0)
+                ? (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.REPLACE.equals(outputVlanType))
+                : (OutputVlanType.POP.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType));
     }
 
     /**
@@ -121,20 +130,20 @@ public final class Utils {
      * @return true if output vlan operation type is valid
      */
     public static boolean validateInputVlanType(final Integer inputVlanId, final OutputVlanType outputVlanType) {
-        return (inputVlanId != null && inputVlanId != 0) ?
-                (OutputVlanType.POP.equals(outputVlanType) || OutputVlanType.REPLACE.equals(outputVlanType)) :
-                (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType));
+        return (inputVlanId != null && inputVlanId != 0)
+                ? (OutputVlanType.POP.equals(outputVlanType) || OutputVlanType.REPLACE.equals(outputVlanType))
+                : (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType));
     }
 
     /**
-     * Validates switch id value.
+     * Return true if switch id is valid.
      *
-     * @param switchId switch id
-     * @return true if switch id is valid
+     * @param switchId switch id.
+     * @return true if switch id is valid.
      */
-    public static boolean validateSwitchId(final String switchId) {
+    public static boolean validateSwitchId(SwitchId switchId) {
         // TODO: check valid switch id
-        return switchId != null && !switchId.isEmpty();
+        return switchId != null;
     }
 }
 

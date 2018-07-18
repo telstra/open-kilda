@@ -20,15 +20,21 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.SwitchId;
 
 import java.util.Arrays;
 
 public final class NetworkTopologyConstants {
-    public static final SwitchInfoData sw1 = new SwitchInfoData("sw1", SwitchState.ACTIVATED, "", "", "", "localhost");
-    public static final SwitchInfoData sw2 = new SwitchInfoData("sw2", SwitchState.ACTIVATED, "", "", "", "localhost");
-    public static final SwitchInfoData sw3 = new SwitchInfoData("sw3", SwitchState.ADDED, "", "", "", "remote");
-    public static final SwitchInfoData sw4 = new SwitchInfoData("sw4", SwitchState.ADDED, "", "", "", "remote");
-    public static final SwitchInfoData sw5 = new SwitchInfoData("sw5", SwitchState.REMOVED, "", "", "", "remote");
+    public static final SwitchInfoData sw1 = new SwitchInfoData(new SwitchId("ff:01"), SwitchState.ACTIVATED,
+            "", "", "", "localhost");
+    public static final SwitchInfoData sw2 = new SwitchInfoData(new SwitchId("ff:02"), SwitchState.ACTIVATED,
+            "", "", "", "localhost");
+    public static final SwitchInfoData sw3 = new SwitchInfoData(new SwitchId("ff:03"), SwitchState.ADDED,
+            "", "", "", "remote");
+    public static final SwitchInfoData sw4 = new SwitchInfoData(new SwitchId("ff:04"), SwitchState.ADDED,
+            "", "", "", "remote");
+    public static final SwitchInfoData sw5 = new SwitchInfoData(new SwitchId("ff:05"), SwitchState.REMOVED,
+            "", "", "", "remote");
 
     public static final IslInfoData isl12 = new IslInfoData(3L, Arrays.asList(
             new PathNode(sw1.getSwitchId(), 1, 0, 0L, 3L),
@@ -86,4 +92,8 @@ public final class NetworkTopologyConstants {
             new PathNode(sw3.getSwitchId(), 1, 0, 0L, 8L),
             new PathNode(sw5.getSwitchId(), 3, 1, 0L, 0L)),
             10L, IslChangeType.DISCOVERED, 10L);
+
+    private NetworkTopologyConstants() {
+        throw new UnsupportedOperationException();
+    }
 }

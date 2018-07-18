@@ -6,11 +6,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
@@ -20,7 +15,13 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.wfm.topology.utils.StatsUtil;
+import org.openkilda.messaging.model.SwitchId;
+
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,33 +29,33 @@ import java.util.List;
 import java.util.Map;
 
 public class IslStatsBoltTest {
-    private String SWITCH1_ID = "0000b0d2f5b00934";
-    private String SWITCH1_ID_OTSD_FORMAT = StatsUtil.formatSwitchId(SWITCH1_ID);
-    private int SWITCH1_PORT = 1;
-    private int PATH1_SEQID = 1;
-    private long PATH1_LATENCY = 10;
-    private PathNode NODE1 = new PathNode(SWITCH1_ID, SWITCH1_PORT, PATH1_SEQID, PATH1_LATENCY);
+    private SwitchId switchId = new SwitchId("00:00:b0:d2:f5:b0:09:34");
+    private String switch1IdOtsdFormat = switchId.toOtsdFormat();
+    private int switch1Port = 1;
+    private int path1Seqid = 1;
+    private long path1Latency = 10L;
+    private PathNode node1 = new PathNode(switchId, switch1Port, path1Seqid, path1Latency);
 
-    private String SWITCH2_ID = "0000b0d2f5005e18";
-    private String SWITCH2_ID_OTSD_FORMAT = StatsUtil.formatSwitchId(SWITCH2_ID);
-    private int SWITCH2_PORT = 5;
-    private int PATH2_SEQID = 2;
-    private long PATH2_LATENCY = 15;
-    private PathNode NODE2 = new PathNode(SWITCH2_ID, SWITCH2_PORT, PATH2_SEQID, PATH2_LATENCY);
+    private SwitchId switchId1 = new SwitchId("00:00:b0:d2:f5:00:5e:18");
+    private String switch2IdOtsdFormat = switchId1.toOtsdFormat();
+    private int switch2Port = 5;
+    private int path2Seqid = 2;
+    private long path2Latency = 15L;
+    private PathNode node2 = new PathNode(switchId1, switch2Port, path2Seqid, path2Latency);
 
-    private int LATENCY = 1000;
-    private List<PathNode> PATH = java.util.Arrays.asList(NODE1, NODE2);
-    private long SPEED = 400;
-    private IslChangeType STATE = IslChangeType.DISCOVERED;
-    private long AVAILABLE_BANDWIDTH = 500;
-    private IslInfoData islInfoData = new IslInfoData(LATENCY, PATH, SPEED, STATE, AVAILABLE_BANDWIDTH);
-    private long TIMESTAMP = 1507433872;
+    private int latency = 1000;
+    private List<PathNode> path = java.util.Arrays.asList(node1, node2);
+    private long speed = 400L;
+    private IslChangeType state = IslChangeType.DISCOVERED;
+    private long availableBandwidth = 500L;
+    private IslInfoData islInfoData = new IslInfoData(latency, path, speed, state, availableBandwidth);
+    private long timestamp = 1507433872L;
 
     private IslStatsBolt statsBolt = new IslStatsBolt();
 
-    private static String CORRELATION = "system";
-    private static Destination DESTINATION = null;
-    private InfoMessage message = new InfoMessage(islInfoData, TIMESTAMP,CORRELATION, DESTINATION);
+    private static String correlation = "system";
+    private static Destination destination = null;
+    private InfoMessage message = new InfoMessage(islInfoData, timestamp, correlation, destination);
 
     private static Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
 
@@ -72,19 +73,19 @@ public class IslStatsBoltTest {
 
     @Test
     public void buildTsdbTuple() throws Exception {
-        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(islInfoData, TIMESTAMP);
+        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(islInfoData, timestamp);
         assertThat(tsdbTuple.size(), is(1));
 
         Datapoint datapoint = Utils.MAPPER.readValue(tsdbTuple.get(0).toString(), Datapoint.class);
         assertEquals("pen.isl.latency", datapoint.getMetric());
-        assertEquals((Long) TIMESTAMP, datapoint.getTime());
-        assertEquals(LATENCY, datapoint.getValue());
+        assertEquals((Long) timestamp, datapoint.getTime());
+        assertEquals(latency, datapoint.getValue());
 
         Map<String, String> pathNode = datapoint.getTags();
-        assertEquals(SWITCH1_ID_OTSD_FORMAT, pathNode.get("src_switch"));
-        assertEquals(SWITCH2_ID_OTSD_FORMAT, pathNode.get("dst_switch"));
-        assertEquals(SWITCH1_PORT, Integer.parseInt(pathNode.get("src_port")));
-        assertEquals(SWITCH2_PORT, Integer.parseInt(pathNode.get("dst_port")));
+        assertEquals(switch1IdOtsdFormat, pathNode.get("src_switch"));
+        assertEquals(switch2IdOtsdFormat, pathNode.get("dst_switch"));
+        assertEquals(switch1Port, Integer.parseInt(pathNode.get("src_port")));
+        assertEquals(switch2Port, Integer.parseInt(pathNode.get("dst_port")));
     }
 
     @Test
@@ -102,7 +103,7 @@ public class IslStatsBoltTest {
         thrown.expect(Exception.class);
         thrown.expectMessage(containsString("is not an IslInfoData"));
         PortInfoData portData = new PortInfoData();
-        InfoMessage badMessage = new InfoMessage(portData,TIMESTAMP, CORRELATION, null);
+        InfoMessage badMessage = new InfoMessage(portData, timestamp, correlation, null);
         data = statsBolt.getIslInfoData(statsBolt.getIslInfoData(badMessage.getData()));
     }
 

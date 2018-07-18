@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -250,12 +251,13 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true);
 
                 if (ofPacketOut != null) {
-                    logger.debug("==> Sending verification packet out {}/{}: {}", srcSwitch.getId().toString(), port.getPortNumber(),
+                    logger.debug("==> Sending verification packet out {}/{}: {}", srcSwitch.getId().toString(),
+                            port.getPortNumber(),
                             Hex.encodeHexString(ofPacketOut.getData()));
                     result = srcSwitch.write(ofPacketOut);
                 } else {
-                    logger.error("<== Received null from generateVerificationPacket, inputs where: " +
-                            "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
+                    logger.error("<== Received null from generateVerificationPacket, inputs where: "
+                            + "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
                 }
 
                 if (result) {
@@ -274,44 +276,46 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     }
 
     public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port) {
-        return generateVerificationPacket(srcSw,port,null,true);
+        return generateVerificationPacket(srcSw, port, null, true);
     }
 
+    /**
+     * Return verification packet.
+     *
+     * @param srcSw source switch.
+     * @param port port.
+     * @param dstSw destination switch
+     * @param sign sign.
+     * @return verification packet.
+     */
     public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
-            boolean sign) {
+                                                  boolean sign) {
         try {
-            OFPortDesc ofPortDesc = srcSw.getPort(port);
-
-            byte[] chassisId = new byte[]{4, 0, 0, 0, 0, 0, 0};
-            byte[] portId = new byte[]{2, 0, 0};
-            byte[] ttlValue = new byte[]{0, 0x78};
-            byte[] dpidTLVValue = new byte[]{0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-            LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127).setLength((short) dpidTLVValue.length)
-                    .setValue(dpidTLVValue);
-
             byte[] dpidArray = new byte[8];
-            ByteBuffer dpidBB = ByteBuffer.wrap(dpidArray);
-            ByteBuffer portBB = ByteBuffer.wrap(portId, 1, 2);
+            ByteBuffer dpidBb = ByteBuffer.wrap(dpidArray);
 
             DatapathId dpid = srcSw.getId();
-            dpidBB.putLong(dpid.getLong());
+            dpidBb.putLong(dpid.getLong());
+            byte[] chassisId = new byte[]{4, 0, 0, 0, 0, 0, 0};
             System.arraycopy(dpidArray, 2, chassisId, 1, 6);
             // Set the optionalTLV to the full SwitchID
-            System.arraycopy(dpidArray, 0, dpidTLVValue, 4, 8);
+            byte[] dpidTlvValue = new byte[]{0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            System.arraycopy(dpidArray, 0, dpidTlvValue, 4, 8);
 
-
+            OFPortDesc ofPortDesc = srcSw.getPort(port);
             byte[] zeroMac = {0, 0, 0, 0, 0, 0};
             byte[] srcMac = ofPortDesc.getHwAddr().getBytes();
             if (Arrays.equals(srcMac, zeroMac)) {
                 int portVal = ofPortDesc.getPortNo().getPortNumber();
                 // this is a common scenario
                 logger.debug("Port {}/{} has zero hardware address: overwrite with lower 6 bytes of dpid",
-                dpid.toString(), portVal);
+                        dpid.toString(), portVal);
                 System.arraycopy(dpidArray, 2, srcMac, 0, 6);
             }
 
-            portBB.putShort(port.getShortPortNumber());
+            byte[] portId = new byte[]{2, 0, 0};
+            ByteBuffer portBb = ByteBuffer.wrap(portId, 1, 2);
+            portBb.putShort(port.getShortPortNumber());
 
             VerificationPacket vp = new VerificationPacket();
             vp.setChassisId(
@@ -319,35 +323,38 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
             vp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId));
 
+            byte[] ttlValue = new byte[]{0, 0x78};
             vp.setTtl(
                     new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
 
-            vp.getOptionalTLVList().add(dpidTLV);
+            LLDPTLV dpidTlv = new LLDPTLV().setType((byte) 127).setLength((short) dpidTlvValue.length)
+                    .setValue(dpidTlvValue);
+            vp.getOptionalTLVList().add(dpidTlv);
             // Add the controller identifier to the TLV value.
             //    vp.getOptionalTLVList().add(controllerTLV);
 
             // Add T0 based on format from Floodlight LLDP
             long time = System.currentTimeMillis();
             long swLatency = srcSw.getLatency().getValue();
-            byte[] timestampTLVValue = ByteBuffer.allocate(Long.SIZE / 8 + 4).put((byte) 0x00)
+            byte[] timestampTlvValue = ByteBuffer.allocate(Long.SIZE / 8 + 4).put((byte) 0x00)
                     .put((byte) 0x26).put((byte) 0xe1)
                     .put((byte) 0x01) // 0x01 is what we'll use to differentiate DPID (0x00) from time (0x01)
                     .putLong(time + swLatency /* account for our switch's one-way latency */)
                     .array();
 
-            LLDPTLV timestampTLV = new LLDPTLV().setType((byte) 127)
-                    .setLength((short) timestampTLVValue.length).setValue(timestampTLVValue);
+            LLDPTLV timestampTlv = new LLDPTLV().setType((byte) 127)
+                    .setLength((short) timestampTlvValue.length).setValue(timestampTlvValue);
 
-            vp.getOptionalTLVList().add(timestampTLV);
+            vp.getOptionalTLVList().add(timestampTlv);
 
             // Type
-            byte[] typeTLVValue = ByteBuffer.allocate(Integer.SIZE / 8 + 4).put((byte) 0x00)
+            byte[] typeTlvValue = ByteBuffer.allocate(Integer.SIZE / 8 + 4).put((byte) 0x00)
                     .put((byte) 0x26).put((byte) 0xe1)
                     .put((byte) 0x02)
                     .putInt(PathType.ISL.ordinal()).array();
-            LLDPTLV typeTLV = new LLDPTLV().setType((byte) 127)
-                    .setLength((short) typeTLVValue.length).setValue(typeTLVValue);
-            vp.getOptionalTLVList().add(typeTLV);
+            LLDPTLV typeTlv = new LLDPTLV().setType((byte) 127)
+                    .setLength((short) typeTlvValue.length).setValue(typeTlvValue);
+            vp.getOptionalTLVList().add(typeTlv);
 
             if (sign) {
                 String token = JWT.create()
@@ -357,14 +364,14 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
 
                 byte[] tokenBytes = token.getBytes(Charset.forName("UTF-8"));
 
-                byte[] tokenTLVValue = ByteBuffer.allocate(4 + tokenBytes.length).put((byte) 0x00)
+                byte[] tokenTlvValue = ByteBuffer.allocate(4 + tokenBytes.length).put((byte) 0x00)
                         .put((byte) 0x26).put((byte) 0xe1)
                         .put((byte) 0x03)
                         .put(tokenBytes).array();
-                LLDPTLV tokenTLV = new LLDPTLV().setType((byte) 127)
-                        .setLength((short) tokenTLVValue.length).setValue(tokenTLVValue);
+                LLDPTLV tokenTlv = new LLDPTLV().setType((byte) 127)
+                        .setLength((short) tokenTlvValue.length).setValue(tokenTlvValue);
 
-                vp.getOptionalTLVList().add(tokenTLV);
+                vp.getOptionalTLVList().add(tokenTlv);
             }
 
             MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
@@ -372,8 +379,6 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 OFPortDesc sw2OfPortDesc = dstSw.getPort(port);
                 dstMac = sw2OfPortDesc.getHwAddr();
             }
-            Ethernet l2 = new Ethernet().setSourceMACAddress(MacAddress.of(srcMac))
-                    .setDestinationMACAddress(dstMac).setEtherType(EthType.IPv4);
 
             IPv4Address dstIp = IPv4Address.of(VERIFICATION_PACKET_IP_DST);
             if (dstSw != null) {
@@ -389,6 +394,9 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
             l4.setSourcePort(TransportPort.of(VERIFICATION_PACKET_UDP_PORT));
             l4.setDestinationPort(TransportPort.of(VERIFICATION_PACKET_UDP_PORT));
 
+
+            Ethernet l2 = new Ethernet().setSourceMACAddress(MacAddress.of(srcMac))
+                    .setDestinationMACAddress(dstMac).setEtherType(EthType.IPv4);
             l2.setPayload(l3);
             l3.setPayload(l4);
             l4.setPayload(vp);
@@ -440,11 +448,8 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
         }
 
         try {
-            OFPort inPort = pkt.getVersion().compareTo(OFVersion.OF_12) < 0 ? pkt.getInPort()
-                    : pkt.getMatch().get(MatchField.IN_PORT);
-            ByteBuffer portBB = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
-            portBB.position(1);
-            OFPort remotePort = OFPort.of(portBB.getShort());
+            ByteBuffer portBb = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
+            portBb.position(1);
 
             long timestamp = 0;
             int pathOrdinal = 10;
@@ -456,24 +461,24 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x0) {
-                    ByteBuffer dpidBB = ByteBuffer.wrap(lldptlv.getValue());
-                    remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBB.getLong(4)));
+                    ByteBuffer dpidBb = ByteBuffer.wrap(lldptlv.getValue());
+                    remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBb.getLong(4)));
                 } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x01) {
-                    ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
+                    ByteBuffer tsBb = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
                     long swLatency = sw.getLatency().getValue();
-                    timestamp = tsBB.getLong(4); /* include the RX switch latency to "subtract" it */
+                    timestamp = tsBb.getLong(4); /* include the RX switch latency to "subtract" it */
                     timestamp = timestamp + swLatency;
                 } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 8
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x02) {
-                    ByteBuffer typeBB = ByteBuffer.wrap(lldptlv.getValue());
-                    pathOrdinal = typeBB.getInt(4);
+                    ByteBuffer typeBb = ByteBuffer.wrap(lldptlv.getValue());
+                    pathOrdinal = typeBb.getInt(4);
                 } else if (lldptlv.getType() == 127
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
@@ -488,9 +493,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                     try {
                         DecodedJWT jwt = verifier.verify(token);
                         signed = true;
-                    }
-                    catch (JWTVerificationException e)
-                    {
+                    } catch (JWTVerificationException e) {
                         logger.error("Packet verification failed", e);
                         return Command.STOP;
                     }
@@ -507,22 +510,25 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 return Command.STOP;
             }
 
-            if (!signed)
-            {
+            if (!signed) {
                 logger.warn("verification packet without sign");
                 return Command.STOP;
             }
 
             U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 
+            OFPort inPort = pkt.getVersion().compareTo(OFVersion.OF_12) < 0 ? pkt.getInPort()
+                    : pkt.getMatch().get(MatchField.IN_PORT);
+            OFPort remotePort = OFPort.of(portBb.getShort());
             logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{}",
                     remoteSwitch.getId(), remotePort, latency.getValue(), sw.getId(), inPort);
 
             // this verification packet was sent from remote switch/port to received switch/port
             // so the link direction is from remote switch/port to received switch/port
             List<PathNode> nodes = Arrays.asList(
-                    new PathNode(remoteSwitch.getId().toString(), remotePort.getPortNumber(), 0, latency.getValue()),
-                    new PathNode(sw.getId().toString(), inPort.getPortNumber(), 1));
+                    new PathNode(new SwitchId(remoteSwitch.getId().toString()), remotePort.getPortNumber(), 0,
+                            latency.getValue()),
+                    new PathNode(new SwitchId(sw.getId().toString()), inPort.getPortNumber(), 1));
 
             OFPortDesc port = sw.getPort(inPort);
             long speed = Integer.MAX_VALUE;

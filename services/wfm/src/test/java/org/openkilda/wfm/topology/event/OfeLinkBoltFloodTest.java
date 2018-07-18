@@ -15,9 +15,17 @@
 
 package org.openkilda.wfm.topology.event;
 
-
 import static org.junit.Assert.assertEquals;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.wfm.AbstractStormTest;
+import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.storm.Config;
@@ -26,40 +34,33 @@ import org.apache.storm.utils.Utils;
 import org.junit.AfterClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.wfm.AbstractStormTest;
-import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.UUID;
 
-/** That test is part of warming mechanism.
- * When we reload OFELinkBolt, FL can spam in our topic with thousands of messages. And we need to
- * sure that our dump state message can be processed because we use one topic for communication
+/**
+ * That test is part of warming mechanism. When we reload OfeLinkBolt, FL can spam in our topic with thousands of
+ * messages. And we need to sure that our dump state message can be processed because we use one topic for communication
  * with FL.
  */
 @Ignore // TODO(nmarchenko): move that test to perf and unignore
-public class OFELinkBoltFloodTest extends AbstractStormTest {
+public class OfeLinkBoltFloodTest extends AbstractStormTest {
 
-    private static OFEventWFMTopology topology;
+    private static OfEventWfmTopology topology;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private TestKafkaConsumer teConsumer;
 
     @AfterClass
     public static void teardownOnce() throws Exception {
-        cluster.killTopology(OFELinkBoltFloodTest.class.getSimpleName());
+        cluster.killTopology(OfeLinkBoltFloodTest.class.getSimpleName());
         Utils.sleep(4 * 1000);
         AbstractStormTest.teardownOnce();
     }
 
-    @Test(timeout=5000*60)
+    @Test(timeout = 5000 * 60)
     public void warmBoltOnHighLoadedTopic() throws Exception {
-        topology = new OFEventWFMTopology(makeLaunchEnvironment());
+        topology = new OfEventWfmTopology(makeLaunchEnvironment());
 
         teConsumer = new TestKafkaConsumer(
                 topology.getConfig().getKafkaTopoEngTopic(),
@@ -70,7 +71,7 @@ public class OFELinkBoltFloodTest extends AbstractStormTest {
         // Size of messages in topic before bolt start
         final int floodSize = 100000;
 
-        SwitchInfoData data = new SwitchInfoData("switchId", SwitchState.ADDED, "address",
+        SwitchInfoData data = new SwitchInfoData(new SwitchId("ff:00"), SwitchState.ADDED, "address",
                 "hostname", "description", "controller");
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString());
 
@@ -80,7 +81,7 @@ public class OFELinkBoltFloodTest extends AbstractStormTest {
 
         StormTopology stormTopology = topology.createTopology();
         Config config = stormConfig();
-        cluster.submitTopology(OFELinkBoltFloodTest.class.getSimpleName(), config, stormTopology);
+        cluster.submitTopology(OfeLinkBoltFloodTest.class.getSimpleName(), config, stormTopology);
 
         NetworkInfoData dump = new NetworkInfoData(
                 "test", Collections.emptySet(),
@@ -96,10 +97,10 @@ public class OFELinkBoltFloodTest extends AbstractStormTest {
 
         // Wait all messages
         int pooled = 0;
-        while (pooled < floodSize)
-        {
-            if (teConsumer.pollMessage() != null)
+        while (pooled < floodSize) {
+            if (teConsumer.pollMessage() != null) {
                 ++pooled;
+            }
         }
         assertEquals(floodSize, pooled);
     }

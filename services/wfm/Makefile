@@ -24,7 +24,7 @@ all-in-one:
 
 deploy-wfm:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.openkilda.wfm.topology.event.OFEventWFMTopology \
+        org.openkilda.wfm.topology.event.OfEventWfmTopology \
         --name=wfm ${config}
 
 kill-wfm:
