@@ -55,6 +55,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
@@ -67,6 +68,7 @@ import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -129,7 +131,7 @@ class RecordHandler implements Runnable {
         CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
         if (data instanceof DiscoverIslCommandData) {
-            doDiscoverIslCommand((DiscoverIslCommandData) data);
+            doDiscoverIslCommand(message);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
@@ -174,10 +176,16 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDiscoverIslCommand(DiscoverIslCommandData command) {
+    private void doDiscoverIslCommand(CommandMessage message) {
+        DiscoverIslCommandData command = (DiscoverIslCommandData) message.getData();
         String switchId = command.getSwitchId();
         context.getPathVerificationService().sendDiscoveryMessage(
-                DatapathId.of(switchId), OFPort.of(command.getPortNo()));
+                DatapathId.of(switchId), OFPort.of(command.getPortNumber()));
+
+        DiscoPacketSendingConfirmation confirmation = new DiscoPacketSendingConfirmation(
+                new NetworkEndpoint(command.getSwitchId(), command.getPortNumber()));
+        context.getKafkaProducer().postMessage(context.getKafkaTopoDiscoTopic(),
+                new InfoMessage(confirmation, System.currentTimeMillis(), message.getCorrelationId()));
     }
 
     private void doDiscoverPathCommand(CommandData data) {

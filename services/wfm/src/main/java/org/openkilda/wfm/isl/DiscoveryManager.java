@@ -3,6 +3,7 @@ package org.openkilda.wfm.isl;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -81,10 +82,12 @@ public class DiscoveryManager {
      */
     public Plan makeDiscoveryPlan() {
         Plan result = new Plan();
+        int unsentDiscoPackets = 0;
 
         for (DiscoveryLink link : pollQueue) {
-
-            if (!checkForIsl(link)) {
+            if (!link.isNewAttemptAllowed()) {
+                logger.trace("Disco packet from {} is not sent due to exceeded limit of consecutive failures: {}",
+                        link.getSource(), link.getConsecutiveFailure());
                 continue;
             }
 
@@ -95,18 +98,23 @@ public class DiscoveryManager {
              * Further, consecutivefailures = attempts - failure limit (we wait until attempt limit before increasing)
              */
             NetworkEndpoint node = link.getSource();
-            if (link.isAttemptsLimitExceeded(islConsecutiveFailureLimit)) {
+            if (link.isAckAttemptsLimitExceeded(islConsecutiveFailureLimit)) {
                 // We've attempted to get the health multiple times, with no response.
                 // Time to mark it as a failure and send a failure notice ** if ** it was an ISL.
                 if (link.isActive() && link.getConsecutiveFailure() == 0) {
                     // It is a discovery failure if it was previously a success.
-                    // NB:
                     result.discoveryFailure.add(node);
                     logger.info("ISL IS DOWN (NO RESPONSE): {}", link);
                 }
                 // Increment Failure = 1 after isAttemptsLimitExceeded failure, then increases every attempt.
+                logger.trace("No response to the disco packet from {}", link.getSource());
                 link.fail();
                 // NB: this node can be in both discoveryFailure and needDiscovery
+            }
+
+            if (link.isAttemptsLimitExceeded(islConsecutiveFailureLimit) && link.isActive()) {
+                logger.info("Speaker doesn't send disco packet for {}", link);
+                unsentDiscoPackets++;
             }
 
             /*
@@ -120,10 +128,16 @@ public class DiscoveryManager {
                 link.incAttempts();
                 link.resetTickCounter();
                 result.needDiscovery.add(node);
+
+                logger.trace("Added to discovery plan: {}", link);
             } else {
                 link.tick();
             }
 
+        }
+
+        if (unsentDiscoPackets > 0) {
+            logger.warn("Speaker does not send discovery packets. Affected links amount: {}", unsentDiscoPackets);
         }
 
         return result;
@@ -198,6 +212,17 @@ public class DiscoveryManager {
     }
 
     /**
+     * Processes response from speaker. Speaker notifies us that disco packet is sent as requested.
+     * @param endpoint the switch and the port from which disco packets is sent.
+     * */
+    public void handleDiscoPacketSent(NetworkEndpoint endpoint) {
+        List<DiscoveryLink> subjectList = findBySourceSwitch(endpoint);
+        DiscoveryLink link = subjectList.get(0);
+
+        link.incAcknowledgedAttempts();
+    }
+
+    /**
      * Handle added/activated switch.
      * @param switchId id of the switch.
      */
@@ -241,7 +266,7 @@ public class DiscoveryManager {
      */
     public void handlePortUp(String switchId, int portId) {
         DiscoveryLink link = registerPort(switchId, portId);
-        if (link.isActive() || link.isDiscoverySuspended()) {
+        if (link.isActive() || !link.isNewAttemptAllowed()) {
             // Similar to SwitchUp, if we have a PortUp on an existing port, either we are receiving
             // a duplicate, or we missed the port down, or a new discovery has occurred.
             // NB: this should cause an ISL discovery packet to be sent.
@@ -407,35 +432,17 @@ public class DiscoveryManager {
     }
 
     /**
-     * The "ISL" could be down if it is.
-     * - not an ISL
-     * - has timed out (forlorned)
-     *
-     * @return true if not an ISL or is forlorned
+     * Checks if we are sending disco packets from specified endpoint.
+     * @param switchId switch datapath id.
+     * @param portId port number.
+     * @return true if we already send disco packets, no need to add it one more time to discovery plan.
      */
-    public boolean checkForIsl(String switchId, int portId) {
-        List<DiscoveryLink> subjectList = findBySourceSwitch(new NetworkEndpoint(switchId, portId));
+    public boolean isInDiscoveryPlan(String switchId, int portId) {
+        List<DiscoveryLink> links = findBySourceSwitch(new NetworkEndpoint(switchId, portId));
 
-        if (subjectList.size() != 0) {
-            return checkForIsl(subjectList.get(0));
-        }
-        // We don't know about this node .. definitely not testing for ISL.
-        return false;
+        return CollectionUtils.isNotEmpty(links)
+                && links.stream().allMatch(DiscoveryLink::isNewAttemptAllowed);
     }
-
-    private boolean checkForIsl(DiscoveryLink link) {
-        if (filter.isMatch(link)) {
-            // skip checks on what is in the Filter:
-            // TODO: what is in the FILTER? Is this the external filter (ie known ISL's?)
-            // Still want health check in this scenario..
-            logger.debug("Skip {} due to ISL filter match", link);
-            link.renew();
-            link.resetTickCounter();
-            return false;
-        }
-        return !link.isDiscoverySuspended();
-    }
-
 
     public final class Plan {
         public final List<NetworkEndpoint> needDiscovery;

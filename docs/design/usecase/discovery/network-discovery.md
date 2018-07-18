@@ -30,7 +30,7 @@ series of events at a high level.
 
 ### Sequence Diagram Graph
 
-![Network Discovery](./network-discovery.png "Network Discovery")
+![Network Discovery](network-discovery.png "Network Discovery")
 
 
 ### Sequence Diagram Text

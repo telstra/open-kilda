@@ -131,7 +131,7 @@ public class SpeakerBolt extends BaseRichBolt {
         if (!sw.isActive()) {
             return;
         }
-        IPortImpl localPort = sw.getPort(data.getPortNo());
+        IPortImpl localPort = sw.getPort(data.getPortNumber());
 
         if (localPort.isActiveIsl()) {
             List<PathNode> path = new ArrayList<>();
