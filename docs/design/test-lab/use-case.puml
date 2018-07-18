@@ -1,0 +1,25 @@
+@startuml
+
+title Common UC
+
+actor QA << Human >>
+actor DEV << Human >>
+actor JENKINS
+actor :LAB: as lab << Rest API >>
+actor :VIRTUAL LAB: as vl << Docker instance >>
+actor :HARDWARE LAB: as hwl
+left to right direction
+QA --> lab
+DEV --> lab
+JENKINS --> lab
+lab --> ( Create virtual environment )
+( Create virtual environment ) --> vl
+lab --> ( Run test on virtual environment )
+( Run test on virtual environment ) --> vl
+lab --> ( Delete virtual environment )
+( Delete virtual environment ) --> vl
+lab --> ( Define hardware environment )
+lab --> ( Run test on hardware environment )
+( Run test on hardware environment ) --> hwl
+
+@enduml

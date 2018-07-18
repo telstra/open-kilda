@@ -1,0 +1,30 @@
+@startuml
+
+title Virtual Lab
+
+interface "REST" as lab_api_rest
+interface "REST" as v_lock_keeper_rest
+interface "REST" as v_traffgen_rest
+
+
+node << Docker >> {
+    lab_api_rest - [Lab Api]
+}
+
+
+node << Docker >>  {
+    component "Lock Keeper\n SW impl" as lc
+    interface "OVS-port" as ovs_port
+    v_lock_keeper_rest - lc
+    lc -> OpenFlow
+    [Lab Api] -> v_lock_keeper_rest
+    [Lab Api] -> v_traffgen_rest
+    [Traffgen] -> ovs_port
+
+    [Traffgen] - v_traffgen_rest
+    ovs_port -up- [OVS]
+    OpenFlow -down- [OVS]
+}
+
+
+@enduml

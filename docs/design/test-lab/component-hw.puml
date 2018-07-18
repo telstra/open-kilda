@@ -1,0 +1,31 @@
+@startuml
+
+title Hardware Lab
+
+interface "REST" as lab_api_rest
+interface "REST" as hw_lock_keeper_rest
+interface "REST" as hw_traffgen_rest
+
+
+node << Docker >> {
+    lab_api_rest - [Lab Api]
+}
+
+node << Docker >>  {
+    hw_lock_keeper_rest - [Lock Keeper\n HW impl]
+    [Lab Api] --> hw_lock_keeper_rest
+}
+
+node << A Switch >> {
+    [Lock Keeper\n HW impl] -> SSH
+}
+
+node << VM >> {
+    hw_traffgen_rest - [Traffgen]
+    [Lab Api] -> hw_traffgen_rest
+    interface "OS Interface" as os_i
+    [Traffgen] - os_i
+}
+
+
+@enduml
