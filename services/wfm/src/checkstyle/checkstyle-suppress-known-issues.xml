@@ -376,7 +376,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="93" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="93" checks="MemberName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="94" checks="MemberName"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="96" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="100" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="160" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="173" checks="MissingSwitchDefault"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFELinkBolt.java" lines="205" checks="Indentation"/>
@@ -797,25 +797,6 @@
     <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="121" checks="ArrayTypeStyle"/>
     <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="125" checks="NoWhitespaceBefore"/>
     <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="126" checks="ArrayTypeStyle"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="0" checks="NewlineAtEndOfFile"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="5" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="10" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="10" checks="AvoidStarImport"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="15" checks="JavadocParagraph"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="17" checks="JavadocParagraph"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="32" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="44" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="45" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="84" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="85" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="181" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="198" checks="NoWhitespaceBefore"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="243" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="249" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="309" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="309" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryManagerTest.java" lines="312" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryNodeTest.java" lines="0" checks="NewlineAtEndOfFile"/>
     <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryNodeTest.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryNodeTest.java" lines="5" checks="CustomImportOrder"/>
@@ -911,7 +892,7 @@
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltFloodTest.java" lines="100" checks="LeftCurly"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltFloodTest.java" lines="101" checks="NeedBraces"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="20" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="54" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="31" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="95" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="121" checks="CommentsIndentation"/>

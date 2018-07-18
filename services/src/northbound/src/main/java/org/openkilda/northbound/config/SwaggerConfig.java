@@ -38,7 +38,6 @@ public class SwaggerConfig {
     public Docket api() {
         return new Docket(DocumentationType.SWAGGER_2)
                 .apiInfo(apiInfo())
-                .enableUrlTemplating(true)
                 .select()
                 .apis(RequestHandlerSelectors.any())
                 .paths(Predicates.not(PathSelectors.regex("/error.*")))

@@ -1,14 +1,18 @@
 class Flow {
+	constructor () {
+		this.isEdit = false;
+	}
 	
 	getFlow () {
 		return this.flow;
 	}
 	
+	
 	setFlow (flow) {
 		this.flow = flow;
 	}
-		
-	createFlow () {
+	
+	validateFlow () {
 		var data = $('#flowForm').serializeArray();
 		var formData =[];
 		
@@ -22,7 +26,25 @@ class Flow {
 		}
 		
 		if(common.validateFormData(data)) {
-			var flowData = {
+			if(this.isEdit){
+				this.editFlowConfirm();
+			}else{
+				this.createFlowConfirm();
+			}
+			
+		}
+		return false;
+	}
+	
+	
+	createFlow () {
+		$("#createflowconfirmModal").modal('hide');
+		var data = $('#flowForm').serializeArray();
+		var formData =[];
+		$.each(data,function() {
+			formData[this.name] = this.value;
+		})
+		var flowData = {
 				"source": {
 					"switch-id":formData['source_switch'],
 					"port-id":formData['source_port'],
@@ -51,14 +73,12 @@ class Flow {
 				$('#saveflowloader').hide();
 				common.infoMessage(error.responseJSON['error-auxiliary-message'],'error');
 			})
-		}
-		return false;
 	}
 	
 	
 	createNewFlow () {
 		
-		$("#createflowconfirmModal").modal('hide');
+		
 		$('#addflowloader').show();
 		common.getData('/switch/list').then(function(switches){
 			if(switches && switches.length){
@@ -115,15 +135,12 @@ class Flow {
 	
 	createFlowConfirm () {
 		$("#createflowconfirmModal").modal('show');
-		
 	}
 	
 	editFlowConfirm(){
 		$("#editflowconfirmModal").modal('show');
 		
 	}
-	
-	
 	cancelEditFlow () {
 		$("#edit_flow_div").empty().hide();
 		$('#flow_detail_div').show();
@@ -131,6 +148,7 @@ class Flow {
 	
 	editFlow () {
 		var flowData = this.getFlow();
+		this.isEdit = true;
 		$("#editflowconfirmModal").modal('hide');
 		$('#editflowloader').show();
 			common.getData('/switch/list').then(function(switches) {
@@ -204,18 +222,12 @@ class Flow {
 	}
 	
 	updateFlow () {
+		$("#editflowconfirmModal").modal('hide');
 		var data = $('#flowForm').serializeArray();
 		var formData =[];
-		if(data && data.length){
-			$.each(data,function(){
+		$.each(data,function(){
 				formData[this.name] = this.value;
 			})
-		}else{
-			common.infoMessage("Please fill all the fields",'error');
-			return false;
-		}
-		console.log('formData',formData);
-		if(common.validateFormData(data)){
 			var flowData ={
 					"source":{
 						"switch-id":formData['source_switch'],
@@ -245,9 +257,6 @@ class Flow {
 				$('#updateflowloader').hide();
 				common.infoMessage(error.responseJSON['error-message'],'error');
 			})
-		 
-		}
-		return false;
 	}
 	
 	deleteFlowAlert () {

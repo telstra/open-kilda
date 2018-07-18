@@ -18,6 +18,11 @@ public abstract class IConstants {
         public static final String ADMIN = "ROLE_ADMIN";
         public static final String USER = "ROLE_USER";
     }
+    
+    public class Status {
+        public static final String UP = "UP";
+        public static final String DOWN = "DOWN";
+    }
 
     public class Permission {
     	public static final String MENU_TOPOLOGY = "menu_topology";
@@ -96,6 +101,10 @@ public abstract class IConstants {
         PEN_FLOW_BYTES("Flow_bytes", "pen.flow.bytes"),
 
         PEN_FLOW_PACKETS("Flow_packets", "pen.flow.packets"),
+        
+        PEN_FLOW_INGRESS_PACKETS("Flow_ingress_packets", "pen.flow.ingress.packets"),
+        
+        PEN_FLOW_RAW_PACKETS("Flow_raw_packets", "pen.flow.raw.packets"),
 
         PEN_FLOW_TABLEID("Flow_tableid", "pen.flow.tableid"),
 
@@ -127,7 +136,9 @@ public abstract class IConstants {
 
         PEN_SWITCH_TX_PACKETS("Switch_packets", "pen.switch.tx-packets"),
 
-        PEN_SWITCH_RX_PACKETS("Switch_packets", "pen.switch.rx-packets");
+        PEN_SWITCH_RX_PACKETS("Switch_packets", "pen.switch.rx-packets"),
+        
+        PEN_SWITCH_STATE("Switch_state", "pen.switch.state");
 
         private String tag;
         private String displayTag;
@@ -153,13 +164,15 @@ public abstract class IConstants {
             return displayTag;
         }
 
-        public static List<String> flowValue(String tag) {
+        public static List<String> flowValue(String tag, boolean uniDirectional) {
             List<String> list = new ArrayList<String>();
             tag = "Flow_" + tag;
             for (Metrics metric : values()) {
                 if (metric.getTag().equalsIgnoreCase(tag)) {
                     list.add(metric.getDisplayTag());
-                    list.add(metric.getDisplayTag());
+                    if (uniDirectional) {
+                        list.add(metric.getDisplayTag());
+                    }
                 }
             }
             return list;
@@ -175,6 +188,16 @@ public abstract class IConstants {
             }
             for (Metrics metric : values()) {
                 if (metric.getTag().equalsIgnoreCase(tag)) {
+                    list.add(metric.getDisplayTag());
+                }
+            }
+            return list;
+        }
+        
+        public static List<String> getStartsWith(String tag) {
+            List<String> list = new ArrayList<String>();
+            for (Metrics metric : values()) {
+                if (metric.getTag().startsWith(tag)) {
                     list.add(metric.getDisplayTag());
                 }
             }

@@ -228,7 +228,8 @@ public class RestClientManager {
         } else {
             try {
                 String content = IoUtil.toString(response.getEntity().getContent());
-                LOGGER.error("[getResponse] Invalid Response. Status Code: " + response.getStatusLine().getStatusCode() + ", content: " +  content);
+                LOGGER.error("[getResponse] Invalid Response. Status Code: "
+                        + response.getStatusLine().getStatusCode() + ", content: " + content);
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(),
                         content);
             } catch (IOException exception) {
