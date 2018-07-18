@@ -1,0 +1,40 @@
+@startuml
+title ISL Disco guaranteed delivery
+
+participant OFELinkBolt
+
+control kilda.speaker
+control kilda.disco
+
+participant Floodlight
+
+participant Switch
+
+OFELinkBolt -> kilda.speaker: CommandMessage\nDiscoveryIslCommandData
+
+kilda.speaker -> Floodlight: CommandMessage\nDiscoveryIslCommandData
+activate Floodlight
+
+Floodlight -> Switch: Send PACKET_OUT
+kilda.disco <--Floodlight: PACKET_OUT is sent
+deactivate Floodlight
+
+OFELinkBolt <-- kilda.disco: PACKET_OUT is sent
+activate OFELinkBolt
+OFELinkBolt -> OFELinkBolt: tick counter started
+
+alt discovery packet is received
+    Floodlight <-- Switch: PACKET_IN message
+    kilda.disco <-- Floodlight: Discovered Isl
+    OFELinkBolt <-- kilda.disco: Discovered Isl
+    OFELinkBolt -> OFELinkBolt: mark ISL as active
+
+end
+
+alt the number of sent disco packets without answer exceeded limit
+    OFELinkBolt -> OFELinkBolt: mark ISL as inactive
+end
+
+deactivate OFELinkBolt
+
+@enduml

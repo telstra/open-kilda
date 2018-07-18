@@ -28,6 +28,7 @@ import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.converter.PortConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
@@ -130,15 +131,24 @@ public class SwitchIntegrationService {
      * @return the isl links
      */
     public List<IslLinkInfo> getIslLinks() {
+        List<IslLink> links = getIslLinkPortsInfo();
+        if (CollectionUtil.isEmpty(links)) {
+            throw new ContentNotFoundException();
+        }
+        return islLinkConverter.toIslLinksInfo(links, islCostMap());
+    }
+    
+    /**
+     * Gets the isl links port info.
+     *
+     * @return the isl links port info
+     */
+    public List<IslLink> getIslLinkPortsInfo() {
         HttpResponse response = restClientManager.invoke(applicationProperties.getLinks(),
                 HttpMethod.GET, "", "", applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
-            if (CollectionUtil.isEmpty(links)) {
-                throw new ContentNotFoundException();
-            }
-           
-            return islLinkConverter.toIslLinksInfo(links,islCostMap());
+            return links;
         }
         return null;
     }
@@ -174,12 +184,17 @@ public class SwitchIntegrationService {
         String fullUri = builder.build().toUriString();
         HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
-        if (RestClientManager.isValidResponse(response)) {
-            List<LinkProps> linkPropsResponses =
-                    restClientManager.getResponseList(response, LinkProps.class);
-            if (!CollectionUtil.isEmpty(linkPropsResponses)) {
-                return linkPropsResponses;
+        try {
+            if (RestClientManager.isValidResponse(response)) {
+                List<LinkProps> linkPropsResponses =
+                        restClientManager.getResponseList(response, LinkProps.class);
+                if (!CollectionUtil.isEmpty(linkPropsResponses)) {
+                    return linkPropsResponses;
+                }
             }
+        } catch (InvalidResponseException exception) {
+            LOGGER.error("Exception in getIslLinkProps " + exception.getMessage(), exception);
+            return null;
         }
         return null;
     }

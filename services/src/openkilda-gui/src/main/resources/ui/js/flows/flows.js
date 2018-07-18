@@ -3,59 +3,7 @@
 var storage = new LocalStorageHandler();
 	
 $(document).ready(function(){
-	$(document).on("click","#add_flow",function(e){
-		$('#addflowloader').show();
-		common.getData('/switch/list').then(function(switches){
-			if(switches && switches.length){
-				var options =[];
-				for(var i=0; i<switches.length; i++){
-					var switch_state = switches[i].state;
-						options.push({id:switches[i].switch_id,text:switches[i].name+"("+switch_state.toLowerCase()+")"})
-				}
-				var vlanOptions ="<option value='0'>0</option>";
-				for(var i=1; i<=4094; i++){
-					vlanOptions+="<option value='"+i+"'>"+i+"</option>";
-				}
-				$('#addflowloader').hide();
-				$('#switchdetails_div').hide();
-				$('#breadcrum_flow').append("<li id='new_flow_crum'><i class='fa icon-double-angle-right'></i>New Flow</li>")
-				$("#add_flow_div").show().load('ui/templates/flows/addflow.html',function(){
-					$("#add_flow_div").find("#source_vlan").html(vlanOptions);
-					$("#add_flow_div").find("#target_vlan").html(vlanOptions);
-					$("#source_switch").select2({
-						width: "100%",
-		                data:options,
-		                placeholder: "Please select a switch",
-		                matcher: common.matchCustomFlow
-		            }).on("select2:close", function (e) { flowObj.checkValidate('source_switch') });
-				$("#target_switch").select2({
-					width:"100%",
-					data:options,
-					placeholder:"Please select a switch",
-					matcher: common.matchCustomFlow
-				}).on("select2:close", function (e) { flowObj.checkValidate('target_switch')});
-			
-				})
-				}else{
-				$('#addflowloader').hide();
-				common.infoMessage('No Switch Available','info');
-			}
-			
-		}).fail(function(error){
-			console.log("Error in fetching Switches:"+JSON.stringify(error))
-			common.infoMessage('Error Fetching Switches','error');
-			$('#addflowloader').hide();
-		})
-		
-		
-	})
-	$(document).on('click',"#cancel_flow",function(e){
-		$("#add_flow_div").empty().hide();
-		$('#switchdetails_div').show();
-		$('#breadcrum_flow').find('#new_flow_crum').remove();
-		$(document).find("#flow-list").trigger('click');
-		
-	})
+	
 	$(document).on("click","#flow-list",function(e){
 		var FLOWS_LIST = storage.get('FLOWS_LIST');
 		if(FLOWS_LIST){
@@ -64,11 +12,11 @@ $(document).ready(function(){
 			flows();
 		}
 	});
-		$('#flowid').keyup(function(e){
-			if(e.keyCode === 13){
-				validateFlowForm();
-			}
-		});
+	$('#flowid').keyup(function(e){
+		if(e.keyCode === 13){
+			validateFlowForm();
+		}
+	});
 	$(document).on("click","#refresh_list",function(e){
 		$('input').each(function(index){  
 	        var input = $(this);

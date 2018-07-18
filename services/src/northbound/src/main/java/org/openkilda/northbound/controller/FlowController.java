@@ -254,7 +254,7 @@ public class FlowController {
             @RequestBody List<FlowInfoData> externalFlows,
             @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> propagate,
+            @RequestParam(value = "propagate", required = false) Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
             @RequestParam("verify") Optional<Boolean> verify) {
@@ -281,10 +281,10 @@ public class FlowController {
             @RequestBody List<FlowInfoData> externalFlows,
             @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> propagate,
+            @RequestParam(value = "propagate", required = false) Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
-            @RequestParam("verify") Optional<Boolean> verify) {
+            @RequestParam(value = "verify", required = false) Optional<Boolean> verify) {
         Boolean defaultPropagate = false;
         Boolean defaultVerify = false;
         return flowService.unpushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));

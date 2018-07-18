@@ -15,6 +15,10 @@
 
 package org.openkilda.atdd.staging.steps;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -229,20 +233,23 @@ public class IslSteps {
      */
     private void waitIslStatusChange(List<Isl> isls, String expectedStatus) {
         IslChangeType expectedIslState = IslChangeType.valueOf(expectedStatus);
-        List<IslChangeType> actualIslStates = Failsafe.with(retryPolicy()
-                .retryIf(states -> ((List<IslChangeType>) states).stream()
+
+        List<IslInfoData> actualIsl = Failsafe.with(retryPolicy()
+                .retryIf(states -> ((List<IslInfoData>) states).stream()
+                        .map(IslInfoData::getState)
                         .anyMatch(state -> !state.equals(expectedIslState))))
                 .get(() -> {
                     List<IslInfoData> allLinks = northboundService.getAllLinks();
-                    return isls.stream().map(isl -> allLinks.stream().filter(link -> {
+                    return isls.stream().flatMap(isl -> allLinks.stream().filter(link -> {
                         PathNode src = link.getPath().get(0);
                         PathNode dst = link.getPath().get(1);
                         return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort()
                                 && src.getSwitchId().equals(isl.getSrcSwitch().getDpId())
                                 && dst.getSwitchId().equals(isl.getDstSwitch().getDpId());
-                    }).findFirst().get().getState()).collect(Collectors.toList());
+                    })).collect(Collectors.toList());
                 });
-        assertTrue(actualIslStates.stream().allMatch(state -> state.equals(expectedIslState)));
+
+        assertThat(actualIsl, everyItem(hasProperty("state",  equalTo(expectedIslState))));
     }
 
     @And("^select a random not connected A-Switch link and alias it as '(.*)'$")

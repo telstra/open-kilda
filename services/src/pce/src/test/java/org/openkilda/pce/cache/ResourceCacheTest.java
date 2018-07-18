@@ -20,17 +20,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import edu.emory.mathcs.backport.java.util.Collections;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.NetworkTopologyConstants;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -115,19 +116,19 @@ public class ResourceCacheTest {
         assertEquals(m1, first);
 
         int second = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(m1+1, second);
+        assertEquals(m1 + 1, second);
 
         int third = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(m1+2, third);
+        assertEquals(m1 + 2, third);
 
         resourceCache.deallocateMeterId(SWITCH_ID, second);
         int fourth = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(m1+3, fourth);
+        assertEquals(m1 + 3, fourth);
 
         assertEquals(4, resourceCache.getAllMeterIds(SWITCH_ID).size());
 
         int fifth = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(m1+4, fifth);
+        assertEquals(m1 + 4, fifth);
 
         assertEquals(5, resourceCache.deallocateMeterId(SWITCH_ID).size());
         assertEquals(0, resourceCache.getAllMeterIds(SWITCH_ID).size());
@@ -211,7 +212,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void shouldSkipDellocateMeterPoolIfSwitchNotFound(){
+    public void shouldSkipDellocateMeterPoolIfSwitchNotFound() {
         // given
         final String switchId = format("%s-%s", SWITCH_ID, UUID.randomUUID());
 
@@ -220,7 +221,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void shouldSkipDellocateMeterIdIfSwitchNotFound(){
+    public void shouldSkipDellocateMeterIdIfSwitchNotFound() {
         // given
         final String switchId = format("%s-%s", SWITCH_ID, UUID.randomUUID());
 
@@ -229,21 +230,21 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void getAllMeterIds(){
+    public void getAllMeterIds() {
         int first = resourceCache.allocateMeterId(SWITCH_ID);
         assertEquals(ResourceCache.MIN_METER_ID, first);
 
         int second = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(ResourceCache.MIN_METER_ID+1, second);
+        assertEquals(ResourceCache.MIN_METER_ID + 1, second);
 
         int third = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(ResourceCache.MIN_METER_ID+2, third);
+        assertEquals(ResourceCache.MIN_METER_ID + 2, third);
 
         first = resourceCache.allocateMeterId(SWITCH_ID_2);
         assertEquals(ResourceCache.MIN_METER_ID, first);
 
         second = resourceCache.allocateMeterId(SWITCH_ID_2);
-        assertEquals(ResourceCache.MIN_METER_ID+1, second);
+        assertEquals(ResourceCache.MIN_METER_ID + 1, second);
 
         Map<String, Set<Integer>> allMeterIds = resourceCache.getAllMeterIds();
         assertEquals(2, allMeterIds.size());
@@ -253,7 +254,7 @@ public class ResourceCacheTest {
 
 
     @Test
-    public void earlyMeterIds(){
+    public void earlyMeterIds() {
         /*
          * Test that we can add a meter id less than the minimum, assuming the minimum is > 1.
          */
@@ -261,17 +262,17 @@ public class ResourceCacheTest {
         int first = resourceCache.allocateMeterId(SWITCH_ID);
         assertEquals(m1, first);
 
-        resourceCache.allocateMeterId(SWITCH_ID,m1-1);
+        resourceCache.allocateMeterId(SWITCH_ID, m1 - 1);
         assertEquals(2, resourceCache.getAllMeterIds(SWITCH_ID).size());
-        assertTrue(resourceCache.getAllMeterIds(SWITCH_ID).contains(m1-1));
+        assertTrue(resourceCache.getAllMeterIds(SWITCH_ID).contains(m1 - 1));
 
         /*
          * verify that if we delete all, and then request a new vlan, it starts at min.
          */
-        resourceCache.deallocateMeterId(SWITCH_ID,m1);
-        resourceCache.deallocateMeterId(SWITCH_ID,m1-1);
+        resourceCache.deallocateMeterId(SWITCH_ID, m1);
+        resourceCache.deallocateMeterId(SWITCH_ID, m1 - 1);
         first = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(m1+1, first);
+        assertEquals(m1 + 1, first);
     }
 
 

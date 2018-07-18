@@ -267,7 +267,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
                 }
             }
         } catch (Exception exception) {
-            logger.error("Error trying to sendDiscoveryMessage: {}", exception);
+            logger.error(String.format("Unhandled exception in %s", getClass().getName()), exception);
         }
 
         return result;

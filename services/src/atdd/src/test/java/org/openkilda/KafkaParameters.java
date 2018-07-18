@@ -31,7 +31,7 @@ import java.io.InputStream;
 import java.util.Properties;
 
 public class KafkaParameters {
-    private static final String CONFIG_FILE = "atdd.properties";
+    private static final String CONFIG_FILE = "/atdd.properties";
 
     private final KafkaConfig kafkaConfig;
     private final KafkaTopicsConfig kafkaTopicsConfig;

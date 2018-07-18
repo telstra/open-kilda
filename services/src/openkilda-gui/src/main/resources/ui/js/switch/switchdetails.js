@@ -5,6 +5,7 @@
 /** show switch details when page is loaded or
  *  when user is redirected to this page*/
  var obj = {};
+ var PortTimeInterval;
 $(document).ready(function(){
 		
 	var switchData = localStorage.getItem("switchDetailsJSON");
@@ -32,29 +33,30 @@ $(document).ready(function(){
 	
 	$("#kilda-switch-name").parent().append(switchname)	
 	obj = JSON.parse(switchData);
-	
 	showSwitchData(obj); 
-	callPortDetailsAPI(switchname);
-	$(document).on("click",".flowDataRow",function(e){
-		setPortData(switchname,this);
-	})
-	
-	  localStorage.removeItem("portDetails");
+	callPortDetailsAPI(switchname,true);
+	PortTimeInterval = setInterval(function(){
+		callPortDetailsAPI(switchname,false);
+	},30000);
+  localStorage.removeItem("portDetails");
 })
 
 /** function to retrieve and show port details*/
- function callPortDetailsAPI(switchname){
-	
-	common.getData("/switch/"+switchname+"/ports","GET").then(function(response) { 
-		
+ function callPortDetailsAPI(switchname,loader){
+	 var switch_id =common.toggleSwitchID(switchname);
+	 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
+	 var startDate = moment().utc().subtract(10,'minutes').format("YYYY-MM-DD-HH:mm:ss");
+	 var downSample = "30s";	
+	 var url ='/stats/switchports/' + switch_id + '/'+ startDate +'/' + endDate + '/'+ downSample
+	 if(loader){$('#port_loading').show();}
+	 common.getData(url,"GET").then(function(response) { 
 		$('body').css('pointer-events','all'); 	
-		showPortData(response);
-	},
-	function(error){
-		response=[]
+		showPortData(response,loader);
+	},function(error){
+		var response=[]
 		$('body').css('pointer-events','all'); 
-		showPortData(response);
-	})
+		showPortData(response,loader);
+	});
 }
 
 /** function to retrieve and show switch details from 
@@ -78,42 +80,54 @@ $( 'input').on( 'click', function () {
 
 /** function to retrieve and show port details from 
  * the port response json object and display on the html page*/
-function showPortData(response) {
-	if ( $.fn.DataTable.isDataTable('#flowTable') ) {
-		  $('#flowTable').DataTable().destroy();
+function showPortData(response,loader) {
+	if ( $.fn.DataTable.isDataTable('#portsTable') ) {
+		  $('#portsTable').DataTable().destroy();
 		}
 	
 	if(!response || response.length==0) {
 		response=[]
-		common.infoMessage('No Ports Available','info');
+		if(loader){
+			common.infoMessage('No Ports Available','info');
+		}
+		
 	}else{
-		$('#flowTable tbody').empty();
+		$('#portsTable tbody').empty();
+	}
+	if(loader){
+		$("#port_loading").hide();
 	}
 	
-	$("#flowTable #div_loader").remove();
 	
 		for(var i = 0; i < response.length; i++) {
 			 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
-			 			    +"<td class='divTableCell' title ='"+((response[i].interfacetype == undefined)?"-":response[i].interfacetype)+"'>"+((response[i].interfacetype === "" || response[i].interfacetype == undefined)?"-":response[i].interfacetype)+"</td>"
-			 			    +"<td class='divTableCell' title ='"+((response[i].port_name == undefined)?"-":response[i].port_name)+"'>"+((response[i].port_name === "" || response[i].port_name == undefined)?"-":response[i].port_name)+"</td>"
-			 			    +"<td class='divTableCell' title ='"+((response[i].port_number == undefined)?"-":response[i].port_number)+"'>"+((response[i].port_number === "" || response[i].port_number == undefined)?"-":response[i].port_number)+"</td>"
-			 			    +"<td class='divTableCell' title ='"+((response[i].status == undefined)?"-":response[i].status)+"'>"+((response[i].status == undefined)?"-":response[i].status)+"</td>"
-			 			    +"</tr>";
+			 				+"<td class='divTableCell' title ='"+((response[i].port_number == undefined)?"-":response[i].port_number)+"'><p>"+((response[i].port_number === "" || response[i].port_number == undefined)?"-":response[i].port_number)+"</p></td>"
+			   				+"<td class='divTableCell' title ='"+((response[i].interfacetype == undefined)?"-":response[i].interfacetype)+"'><p>"+((response[i].interfacetype === "" || response[i].interfacetype == undefined)?"-":response[i].interfacetype)+"</p></td>"
+			    		    +"<td class='divTableCell subPortTable' title =''><span title='"+((response[i].stats['tx-bytes'] == undefined)?"-":response[i].stats['tx-bytes'] * 1024)+"'>"+((response[i].stats['tx-bytes'] == undefined)?"-":response[i].stats['tx-bytes'] * 1024)+"</span><span title='"+((response[i].stats['rx-bytes'] == undefined)?"-":response[i].stats['rx-bytes'] * 1024)+"'>"+((response[i].stats['rx-bytes'] == undefined)?"-":response[i].stats['rx-bytes'] * 1024)+"</span></td>"
+				 			+"<td class='divTableCell subPortTable' title =''><span title='"+((response[i].stats['tx-packets'] == undefined)?"-":response[i].stats['tx-packets'])+"'>"+((response[i].stats['tx-packets'] == undefined)?"-":response[i].stats['tx-packets'])+"</span><span title='"+((response[i].stats['rx-packets'] == undefined)?"-":response[i].stats['rx-packets'])+"'>"+((response[i].stats['rx-packets'] == undefined)?"-":response[i].stats['rx-packets'])+"</span></td>"
+				 			+"<td class='divTableCell subPortTable' title =''><span title='"+((response[i].stats['tx-dropped'] == undefined)?"-":response[i].stats['tx-dropped'])+"'>"+((response[i].stats['tx-dropped'] == undefined)?"-":response[i].stats['tx-dropped'])+"</span><span title='"+((response[i].stats['rx-dropped'] == undefined)?"-":response[i].stats['rx-dropped'])+"'>"+((response[i].stats['rx-dropped'] == undefined)?"-":response[i].stats['rx-dropped'])+"</span></td>"
+				 			+"<td class='divTableCell subPortTable' title =''><span title='"+((response[i].stats['tx-errors'] == undefined)?"-":response[i].stats['tx-errors'])+"'>"+((response[i].stats['tx-errors'] == undefined)?"-":response[i].stats['tx-errors'])+"</span><span title='"+((response[i].stats['rx-errors'] == undefined)?"-":response[i].stats['rx-errors'])+"'>"+((response[i].stats['rx-errors'] == undefined)?"-":response[i].stats['rx-errors'])+"</span></td>"
+				 			+"<td class='divTableCell' title ='"+((response[i].stats["collisions"] == undefined)?"-":response[i].stats["collisions"])+"'><p>"+((response[i].stats["collisions"] == undefined)?"-":response[i].stats["collisions"])+"</p></td>"
+				 			+"<td class='divTableCell' title ='"+((response[i].stats["rx-frame-error"] == undefined)?"-":response[i].stats["rx-frame-error"])+"'><p>"+((response[i].stats["rx-frame-error"] == undefined)?"-":response[i].stats["rx-frame-error"])+"</p></td>"
+				 			+"<td class='divTableCell' title ='"+((response[i].stats["rx-over-error"] == undefined)?"-":response[i].stats["rx-over-error"])+"'><p>"+((response[i].stats["rx-over-error"] == undefined)?"-":response[i].stats["rx-over-error"])+"</p></td>"
+				 			+"<td class='divTableCell' title ='"+((response[i].stats["rx-crc-error"] == undefined)?"-":response[i].stats["rx-crc-error"])+"'><p>"+((response[i].stats["rx-crc-error"] == undefined)?"-":response[i].stats["rx-crc-error"])+"</p></td>"
+		 			        +"</tr>";
 			 		 
 			 
-				$("#flowTable").append(tableRow);
+				$("#portsTable").append(tableRow);
 			 			   
-			 	if(response[i].status == "LIVE") {
-			 		$("#div_"+(i+1)).addClass('up-state');
+			 	if(response[i].status == "UP") {
+			 		$("#div_"+(i+1)).addClass('up-status');
 			 	} else {
-			 		$("#div_"+(i+1)).addClass('down-state');
+			 		$("#div_"+(i+1)).addClass('down-status');
 			 	}
 		 }
 		
-		 var tableVar  =  $('#flowTable').DataTable( {
+		 var tableVar  =  $('#portsTable').DataTable( {
 			 "iDisplayLength": 10,
 			 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
 			 "responsive": true,
+			 "bPaginate":false,
 			 "bSortCellsTop": true,
 			  language: {searchPlaceholder: "Search"},
 			 "autoWidth": false

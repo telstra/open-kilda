@@ -1,0 +1,28 @@
+@startuml
+title Delete Meter from switch
+
+participant NB
+
+control kilda.northbound
+control kilda.speaker
+
+participant Floodlight
+
+participant Switch
+
+activate NB
+NB -> kilda.speaker: CommandMessage\nDeleteMeterRequest
+
+kilda.speaker -> Floodlight: CommandMessage\nDeleteMeterRequest
+alt switch does not exist
+    Floodlight -> kilda.northbound: ErrorMessage
+end
+
+alt normal flow
+    Floodlight -> Switch: OFMeterMod with DELETE command and meterId
+    note right of Switch: removes meter and corresponding flow
+    Switch -> Floodlight: transaction id
+    Floodlight -> kilda.northbound: InfoMessage\nDeleteMeterResponse
+end
+kilda.northbound -> NB: InfoMessage\nDeleteMeterResponse
+@enduml

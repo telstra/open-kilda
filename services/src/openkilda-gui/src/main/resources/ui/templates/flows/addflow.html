@@ -1,4 +1,4 @@
-	<form id="flowForm" name="FlowForm" onsubmit="return flowObj.submitFlow();" novalidate >
+	<form id="flowForm" name="FlowForm" onsubmit="return flowObj.validateFlow();" novalidate >
 		<div class="col-lg-12">
 				<div class="col-lg-12 flow_detail_title_div">
 					<h5 class='modal-title'>FLOW DETAILS</h5>
@@ -7,8 +7,9 @@
 							<div class='form-group row flow_details flow-crud'>
 							<label class='col-sm-3 col-form-label'>Flow Name:</label>
 							<div class='col-sm-4'>	
-								<input type="text" class="form-control" id="flowname" name="flowname" required  onblur="flowObj.checkValidate('flowname')"/>
+								<input type="text" class="form-control" id="flowname" name="flowname" required alphanumeric-only onkeypress="return flowObj.IsAlphaNumeric()"  onblur="flowObj.checkValidate('flowname')"/>
 								<span id="flownameError" class="has-error error">Flow Name is required!</span>
+								<span id="flownamepatternError" class="has-error error">Only Alphanumeric small characters are allowed!</span>
 							</div>
 							</div>
 							<div class='form-group row flow_details flow-crud'>
@@ -97,7 +98,7 @@
 				</div>
 				<div class="col-sm-12">
 				<input type="submit" class="btn kilda_btn" value="Add"/>
-				<span id="cancel_flow" class="btn kilda_btn">Cancel</span>
+				<span onClick="flowObj.cancelCreateFlow()" class="btn kilda_btn">Cancel</span>
 			</div>
 				
 			</div>
