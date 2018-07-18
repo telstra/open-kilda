@@ -81,21 +81,23 @@ public class Consumer implements Runnable {
                         new KafkaOffsetRegistry(consumer, kafkaConfig.getAutoCommitInterval());
 
                 while (true) {
-                    ConsumerRecords<String, String> batch = consumer.poll(100);
-                    if (batch.isEmpty()) {
-                        continue;
+                    try {
+                        ConsumerRecords<String, String> batch = consumer.poll(100);
+                        if (batch.isEmpty()) {
+                            continue;
+                        }
+
+                        logger.debug("Received records batch contain {} messages", batch.count());
+
+                        for (ConsumerRecord<String, String> record : batch) {
+                            handle(record);
+
+                            offsetRegistry.addAndCommit(record);
+                        }
+                    } finally {
+                        // force to commit after each completed batch or in a case of an exception / error.
+                        offsetRegistry.commitOffsets();
                     }
-
-                    logger.debug("Received records batch contain {} messages", batch.count());
-
-                    for (ConsumerRecord<String, String> record : batch) {
-                        handle(record);
-
-                        offsetRegistry.addAndCommit(record);
-                    }
-
-                    // force to commit after each completed batch.
-                    offsetRegistry.commitOffsets();
 
                     switchManager.safeModeTick(); // HACK alert .. should go in its own timer loop
                 }
@@ -116,10 +118,10 @@ public class Consumer implements Runnable {
 
     @VisibleForTesting
     static class KafkaOffsetRegistry {
-        final KafkaConsumer<String, String> consumer;
-        final long autoCommitInterval;
-        final Map<TopicPartition, Long> partitionToUncommittedOffset = new HashMap<>();
-        long lastCommitTime;
+        private final KafkaConsumer<String, String> consumer;
+        private final long autoCommitInterval;
+        private final Map<TopicPartition, Long> partitionToUncommittedOffset = new HashMap<>();
+        private long lastCommitTime;
 
         KafkaOffsetRegistry(KafkaConsumer<String, String> consumer, long autoCommitInterval) {
             this.consumer = requireNonNull(consumer);
