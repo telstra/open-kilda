@@ -36,12 +36,22 @@ public class PathComputerMock implements PathComputer {
 
     @Override
     public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
-        return null;
+        return new MockedAvailableNetwork();
     }
 
     private static ImmutablePair<PathInfoData, PathInfoData> emptyPath() {
         return new ImmutablePair<>(
                 new PathInfoData(0L, Collections.emptyList()),
                 new PathInfoData(0L, Collections.emptyList()));
+    }
+
+    private class MockedAvailableNetwork extends AvailableNetwork {
+        MockedAvailableNetwork() {
+            super(null);
+        }
+
+        @Override
+        public void addIslsOccupiedByFlow(String flowId) {
+        }
     }
 }

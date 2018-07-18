@@ -115,8 +115,8 @@ public interface PathComputer extends Serializable {
 
     /**
      * Loads network and ignores all ISLs with not enough available bandwidth if ignoreBandwidth is false.
-     * @param ignoreBandwidth skip all ISLs that don't have enough available bandwidth.
-     * @param requestedBandwidth flow bandwidth.
+     * @param ignoreBandwidth defines if available bandwidth of links should be taken into account for calculations.
+     * @param requestedBandwidth links in path should have enough amount of available bandwidth.
      * @return built network.
      */
     AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth);
