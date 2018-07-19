@@ -17,20 +17,15 @@ package org.openkilda.floodlight.command.ping;
 
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.error.OfBatchException;
 import org.openkilda.floodlight.error.PingImpossibleException;
-import org.openkilda.floodlight.model.OfRequestResponse;
 import org.openkilda.floodlight.model.PingData;
-import org.openkilda.floodlight.service.batch.OfBatchService;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
 
-import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -44,21 +39,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public class PingRequestCommand extends Abstract {
     private static Logger log = LoggerFactory.getLogger(PingRequestCommand.class);
 
     private final Ping ping;
 
-    private final ScheduledExecutorService scheduler;
     private final IOFSwitchService switchService;
-
-    private final OfBatchService batchService;
 
     public PingRequestCommand(CommandContext context, Ping ping) {
         super(context);
@@ -67,14 +54,12 @@ public class PingRequestCommand extends Abstract {
 
         FloodlightModuleContext moduleContext = context.getModuleContext();
         switchService = moduleContext.getServiceImpl(IOFSwitchService.class);
-        batchService = moduleContext.getServiceImpl(OfBatchService.class);
-        scheduler = moduleContext.getServiceImpl(IThreadPoolService.class).getScheduledExecutor();
     }
 
     @Override
     public Command call() throws Exception {
         try {
-            checkDestintaion();
+            checkDestination();
             send(checkSource());
         } catch (PingImpossibleException e) {
             log.error(e.getMessage());
@@ -83,7 +68,7 @@ public class PingRequestCommand extends Abstract {
         return null;
     }
 
-    private void checkDestintaion() throws PingImpossibleException {
+    private void checkDestination() throws PingImpossibleException {
         final String destId = ping.getDest().getDatapath();
         IOFSwitch destSw = lookupSwitch(destId);
         if (destSw == null) {
@@ -118,42 +103,12 @@ public class PingRequestCommand extends Abstract {
         byte[] rawPackage = pingService.wrapData(ping, signedData).serialize();
         OFMessage message = makePacketOut(sw, rawPackage);
 
-        logPing.info("Send ping {}", ping);
-        final CompletableFuture<List<OfRequestResponse>> future = batchService.write(ImmutableList.of(
-                new OfRequestResponse(sw.getId(), message)));
-
-        ScheduledFuture<?> timeoutFuture = scheduler.schedule(new Runnable() {
-            @Override
-            public void run() {
-                timeout(future);
-            }
-        }, PingService.SWITCH_PACKET_OUT_TIMEOUT, TimeUnit.MILLISECONDS);
-
-        future.exceptionally(new Function<Throwable, List<OfRequestResponse>>() {
-            @Override
-            public List<OfRequestResponse> apply(Throwable throwable) {
-                exceptional(throwable, timeoutFuture);
-                return null;
-            }
-        });
-    }
-
-    void timeout(CompletableFuture<List<OfRequestResponse>> future) {
-        if (future.isDone()) {
-            return;
+        if (sw.write(message)) {
+            logPing.info("Send ping {}", ping);
+        } else {
+            logPing.error("Unable to send ping {}", ping);
+            sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
         }
-
-        future.cancel(false);
-
-        log.error("Unable to send ping {} - switch I/O timeout ({}ms)", ping, PingService.SWITCH_PACKET_OUT_TIMEOUT);
-        sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
-    }
-
-    void exceptional(Throwable e, ScheduledFuture<?> timeoutFuture) {
-        timeoutFuture.cancel(false);
-
-        reportSendError(e);
-        sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
     }
 
     private OFMessage makePacketOut(IOFSwitch sw, byte[] data) {
@@ -180,23 +135,5 @@ public class PingRequestCommand extends Abstract {
     private IOFSwitch lookupSwitch(String switchId) {
         DatapathId dpId = DatapathId.of(switchId);
         return switchService.getActiveSwitch(dpId);
-    }
-
-    private void reportSendError(Throwable rawException) {
-        try {
-            throw rawException;
-        } catch (OfBatchException e) {
-            final String prefix = String.format("Unable to send ping %s", ping);
-            boolean isReported = false;
-            for (OfRequestResponse error : e.getErrors()) {
-                isReported = true;
-                log.error("{}: {}", prefix, error);
-            }
-            if (!isReported) {
-                log.error("{}: {}", prefix, e.getMessage());
-            }
-        } catch (Throwable e) {
-            log.error("Unexpected error during switch communication: {}: {}", e.getClass().getName(), e.getMessage());
-        }
     }
 }

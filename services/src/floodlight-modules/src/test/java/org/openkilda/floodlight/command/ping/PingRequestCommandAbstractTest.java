@@ -26,7 +26,6 @@ import org.openkilda.messaging.model.Ping;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.easymock.Mock;
 import org.junit.Assert;
 import org.junit.Before;
@@ -36,12 +35,8 @@ import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
 
 abstract class PingRequestCommandAbstractTest extends AbstractTest {
-    @Mock
-    protected ScheduledExecutorService scheduler;
-
     @Mock
     protected IOFSwitchService switchService;
 
@@ -61,10 +56,6 @@ abstract class PingRequestCommandAbstractTest extends AbstractTest {
     @Before
     public void setUp() throws Exception {
         super.setUp();
-
-        final IThreadPoolService threadPoolService = createMock(IThreadPoolService.class);
-        expect(threadPoolService.getScheduledExecutor()).andReturn(scheduler);
-        moduleContext.addService(IThreadPoolService.class, threadPoolService);
 
         moduleContext.addService(ConfigService.class, configService);
         moduleContext.addService(IOFSwitchService.class, switchService);
