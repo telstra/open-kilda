@@ -29,4 +29,6 @@ public interface FlowManager {
     Set<FlowPayload> allActiveSwitchesFlows();
 
     Set<FlowPayload> allActiveTraffgenFlows();
+
+    FlowPayload randomFlow();
 }

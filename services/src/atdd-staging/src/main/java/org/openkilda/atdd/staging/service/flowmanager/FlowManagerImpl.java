@@ -18,6 +18,7 @@ package org.openkilda.atdd.staging.service.flowmanager;
 import static java.lang.String.format;
 
 import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
+import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
 import org.openkilda.atdd.staging.service.northbound.NorthboundService;
 import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
 import org.openkilda.atdd.staging.steps.helpers.FlowSet;
@@ -35,6 +36,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -60,7 +62,7 @@ public class FlowManagerImpl implements FlowManager {
      * Note that unlike some other methods here, the flow(s) will already be created in the system.
      *
      * @param flowsAmount amount of flows to create. Will throw assumption error if unable to find enough flows in
-     *        given topology
+     *              given topology
      * @param alternatePaths amount of alternate paths that should be available for the created flows
      * @param bandwidth bandwidth for created flows
      * @return map. Key: created flow. Value: list of a-switch isls for flow.
@@ -182,5 +184,20 @@ public class FlowManagerImpl implements FlowManager {
             });
         });
         return flowSet.getFlows();
+    }
+
+    @Override
+    public FlowPayload randomFlow() {
+        FlowSet flowSet = new FlowSet();
+        Random r = new Random();
+        List<Switch> activeSwitches = topologyDefinition.getActiveSwitches();
+        Switch srcSwitch = activeSwitches.get(r.nextInt(activeSwitches.size()));
+        activeSwitches = activeSwitches.stream()
+                .filter(s -> !s.equals(srcSwitch))
+                .collect(Collectors.toList());
+        Switch dstSwitch = activeSwitches.get(r.nextInt(activeSwitches.size()));
+        String flowId = format("%s-%s-%s", srcSwitch.getName(), dstSwitch.getName(),
+                sdf.format(new Date()));
+        return flowSet.buildWithAnyPortsInUniqueVlan(flowId, srcSwitch, dstSwitch, 1000);
     }
 }

@@ -204,19 +204,14 @@ public class FlowPayload implements Serializable {
         } else {
             throw new IllegalArgumentException("need to set non negative bandwidth");
         }
-        this.maximumBandwidth = maximumBandwidth;
     }
 
-    /**
-     *
-     * @return ignore bandwidth flag
-     */
     public boolean isIgnoreBandwidth() {
         return ignoreBandwidth;
     }
 
     /**
-     * Sets ignore bandwidth flag
+     * Sets ignore bandwidth flag.
      *
      * @param ignoreBandwidth flag value
      */
