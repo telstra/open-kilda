@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.kafka;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -116,6 +117,11 @@ public class Consumer implements Runnable {
         handlersPool.execute(handlerFactory.produce(record));
     }
 
+    /**
+     * Holds offsets for Kafka partitions and performs sync commits of them.
+     * <p/>
+     * Note: the implementation is not thread-safe.
+     */
     @VisibleForTesting
     static class KafkaOffsetRegistry {
         private final KafkaConsumer<String, String> consumer;
@@ -137,6 +143,14 @@ public class Consumer implements Runnable {
          */
         void addAndCommit(ConsumerRecord<String, String> record) {
             TopicPartition partition = new TopicPartition(record.topic(), record.partition());
+
+            Long previousOffset = partitionToUncommittedOffset.get(partition);
+            if (previousOffset != null && previousOffset > record.offset()) {
+                throw new IllegalArgumentException(
+                        format("The record has offset %d which less than the previously added %d.",
+                                record.offset(), previousOffset));
+            }
+
             partitionToUncommittedOffset.put(partition, record.offset());
 
             // commit offsets of processed messages
