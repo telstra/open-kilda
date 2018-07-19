@@ -33,6 +33,7 @@ import org.openkilda.wfm.topology.ping.bolt.MonotonicTick;
 import org.openkilda.wfm.topology.ping.bolt.NorthboundEncoder;
 import org.openkilda.wfm.topology.ping.bolt.OnDemandResultManager;
 import org.openkilda.wfm.topology.ping.bolt.OtsdbEncoder;
+import org.openkilda.wfm.topology.ping.bolt.PeriodicPingShaping;
 import org.openkilda.wfm.topology.ping.bolt.PeriodicResultManager;
 import org.openkilda.wfm.topology.ping.bolt.PingProducer;
 import org.openkilda.wfm.topology.ping.bolt.PingRouter;
@@ -63,6 +64,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         inputRouter(topology);
 
         flowFetcher(topology);
+        periodicPingShaping(topology);
         pingProducer(topology);
         pingRouter(topology);
         blacklist(topology);
@@ -115,10 +117,17 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
                 .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_REQUEST_ID);
     }
 
+    private void periodicPingShaping(TopologyBuilder topology) {
+        PeriodicPingShaping bolt = new PeriodicPingShaping(topologyConfig.getPingInterval());
+        topology.setBolt(PeriodicPingShaping.BOLT_ID, bolt)
+                .allGrouping(MonotonicTick.BOLT_ID)
+                .shuffleGrouping(FlowFetcher.BOLT_ID);
+    }
+
     private void pingProducer(TopologyBuilder topology) {
         PingProducer bolt = new PingProducer();
         topology.setBolt(PingProducer.BOLT_ID, bolt)
-                .fieldsGrouping(FlowFetcher.BOLT_ID, new Fields(FlowFetcher.FIELD_ID_FLOW_ID));
+                .fieldsGrouping(PeriodicPingShaping.BOLT_ID, new Fields(PeriodicPingShaping.FIELD_ID_FLOW_ID));
     }
 
     private void pingRouter(TopologyBuilder topology) {

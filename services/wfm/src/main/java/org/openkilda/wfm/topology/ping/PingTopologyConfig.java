@@ -67,7 +67,7 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.ping")
     interface PingConfig {
         @Key("interval")
-        @Default("5")
+        @Default("10")
         int getPingInterval();
 
         @Key("timeout")
@@ -75,7 +75,7 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
         int getTimeout();
 
         @Key("fail.delay")
-        @Default("30")
+        @Default("45")
         int getFailDelay();
 
         @Key("fail.reset")

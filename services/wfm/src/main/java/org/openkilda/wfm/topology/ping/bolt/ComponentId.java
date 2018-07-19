@@ -25,6 +25,7 @@ public enum ComponentId {
     FLOW_FETCHER("flow_fetcher"),
     PING_PRODUCER("ping_producer"),
     PING_ROUTER("ping.router"),
+    PERIODIC_PING_SHAPING("shaping.periodic"),
     BLACKLIST("blacklist"),
     TIMEOUT_MANAGER("timeout_manager"),
     RESULT_DISPATCHER("result.dispatcher"),

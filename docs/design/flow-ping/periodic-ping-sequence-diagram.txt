@@ -5,6 +5,7 @@ control Time
 
 participant FlowFetcher
 participant Neo4j
+participant PeriodicPingShaping
 
 participant PingRouter
 participant Blacklist
@@ -30,8 +31,14 @@ deactivate Neo4j
 
 note right of FlowFetcher: for each flow
 note right of FlowFetcher: make PingContext(kind=PERIODIC)
-FlowFetcher -> PING: PingContext
+FlowFetcher -> PeriodicPingShaping: PingContext
 deactivate FlowFetcher
+
+activate PeriodicPingShaping
+note right of PeriodicPingShaping: schedule ping\nrequest equally\nacross ping period
+PeriodicPingShaping -> PeriodicPingShaping: delay
+PeriodicPingShaping -> PING: PingContext
+deactivate PeriodicPingShaping
 
 activate PING
 note right of PING: see details\nin "The Ping" diagram
