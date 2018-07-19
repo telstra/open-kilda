@@ -55,7 +55,7 @@ public class NorthboundRunTest {
     private static final PathInfoData expectedReverseFlowPath = new PathInfoData(0L, Arrays.asList(
             new PathNode("de:ad:be:ef:00:00:00:05", 1, 0),
             new PathNode("de:ad:be:ef:00:00:00:04", 2, 1),
-            new PathNode("de:ad:be:ef:00:00:00:04", 1, 3),
+            new PathNode("de:ad:be:ef:00:00:00:04", 1, 2),
             new PathNode("de:ad:be:ef:00:00:00:03", 2, 3)));
 
     @Then("^path of flow (\\w+) could be read$")

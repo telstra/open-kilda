@@ -22,11 +22,11 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.BidirectionalFlowRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowGetRequest;
-import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
@@ -195,10 +195,10 @@ public class SplitterBolt extends BaseRichBolt {
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
-            } else if (data instanceof FlowPathRequest) {
-                String flowId = ((FlowPathRequest) data).getPayload().getId();
+            } else if (data instanceof BidirectionalFlowRequest) {
+                String flowId = ((BidirectionalFlowRequest) data).getPayload().getId();
 
-                logger.info("Flow {} path message: values={}", flowId, values);
+                logger.info("Flow {} get bidirectional message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.READ_BIDIRECTIONAL.toString(), tuple, values);

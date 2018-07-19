@@ -13,9 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.flow;
+package org.openkilda.messaging.command.flow;
 
-import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -23,44 +24,31 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Value;
 
-import java.io.Serializable;
-
 /**
- * Flow path representation class.
+ * Represents get bidirectional flow northbound request.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
-public class FlowPathPayload implements Serializable {
+public class BidirectionalFlowRequest extends CommandData {
     /**
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
 
     /**
-     * The id of the flow.
+     * The request payload.
      */
-    @JsonProperty("flowid")
-    protected String id;
+    @JsonProperty("payload")
+    protected FlowIdStatusPayload payload;
 
     /**
-     * The forward path of the flow.
+     * Instance constructor.
+     *
+     * @param payload request payload
      */
-    @JsonProperty("flowpath")
-    protected PathInfoData forwardPath;
-
-    /**
-     * The reverse path of the flow.
-     */
-    @JsonProperty("reverse")
-    protected PathInfoData reversePath;
-
     @JsonCreator
-    public FlowPathPayload(@JsonProperty("flowid") String id,
-                           @JsonProperty("flowpath") PathInfoData forwardPath,
-                           @JsonProperty("reverse") PathInfoData reversePath) {
-        this.id = id;
-        this.forwardPath = forwardPath;
-        this.reversePath = reversePath;
+    public BidirectionalFlowRequest(@JsonProperty("payload") final FlowIdStatusPayload payload) {
+        this.payload = payload;
     }
 }

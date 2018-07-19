@@ -509,7 +509,7 @@ public class FlowCrudSteps implements En {
             + "and '(.*)' respectively$")
     public void getAvailableBandwidthAndSpeed(String flowAlias, String bwAlias, String speedAlias) {
         FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
-        List<PathNode> flowPath = northboundService.getFlowPath(flow.getId()).getPath().getPath();
+        List<PathNode> flowPath = northboundService.getFlowPath(flow.getId()).getForwardPath().getPath();
         List<IslInfoData> allLinks = northboundService.getAllLinks();
         long minBw = Long.MAX_VALUE;
         long minSpeed = Long.MAX_VALUE;

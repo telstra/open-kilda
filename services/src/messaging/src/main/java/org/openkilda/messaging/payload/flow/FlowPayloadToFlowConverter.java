@@ -16,11 +16,9 @@
 package org.openkilda.messaging.payload.flow;
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Northbound utility methods.
@@ -71,25 +69,13 @@ public final class FlowPayloadToFlowConverter {
     }
 
     /**
-     * Builds list of {@link FlowPayload} instances by list of {@link Flow} instance.
-     *
-     * @param flows list of {@link Flow} instance
-     * @return list of {@link FlowPayload} instance
-     */
-    public static List<FlowPayload> buildFlowsPayloadByFlows(List<Flow> flows) {
-        return flows.stream().map(FlowPayloadToFlowConverter::buildFlowPayloadByFlow).collect(Collectors.toList());
-    }
-
-    /**
      * Builds {@link FlowPayload} instance by {@link ImmutablePair} instance.
      *
-     * @param flowId flow id
-     * @param pair {@link ImmutablePair} with paths
+     * @param flow {@link BidirectionalFlow} the bidirectional flow with paths
      * @return {@link FlowPayload} instance
      */
-    public static FlowPathPayload buildFlowPathPayloadByFlowPath(
-            String flowId, ImmutablePair<PathInfoData, PathInfoData> pair) {
-        return new FlowPathPayload(flowId, pair.left, pair.right);
+    public static FlowPathPayload buildFlowPathPayloadByFlowPath(BidirectionalFlow flow) {
+        return new FlowPathPayload(flow.getFlowId(), flow.getForward().getFlowPath(), flow.getReverse().getFlowPath());
     }
 
     /**

@@ -15,10 +15,8 @@
 
 package org.openkilda.messaging.info.flow;
 
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.BidirectionalFlow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -27,12 +25,12 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Value;
 
 /**
- * Represents a flow path northbound response.
+ * Represents a bidirectional flow northbound response.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
-public class FlowPathResponse extends InfoData {
+public class BidirectionalFlowResponse extends InfoData {
     /**
      * Serialization version number constant.
      */
@@ -41,8 +39,8 @@ public class FlowPathResponse extends InfoData {
     /**
      * The response payload.
      */
-    @JsonProperty(Utils.PAYLOAD)
-    protected ImmutablePair<PathInfoData, PathInfoData> payload;
+    @JsonProperty("payload")
+    protected BidirectionalFlow payload;
 
     /**
      * Instance constructor.
@@ -50,7 +48,7 @@ public class FlowPathResponse extends InfoData {
      * @param payload response payload
      */
     @JsonCreator
-    public FlowPathResponse(@JsonProperty(Utils.PAYLOAD) ImmutablePair<PathInfoData, PathInfoData> payload) {
+    public BidirectionalFlowResponse(@JsonProperty("payload") BidirectionalFlow payload) {
         this.payload = payload;
     }
 }

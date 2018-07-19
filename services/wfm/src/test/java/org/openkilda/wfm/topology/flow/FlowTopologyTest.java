@@ -23,11 +23,11 @@ import static org.junit.Assert.assertTrue;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.BidirectionalFlowRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowGetRequest;
-import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -46,13 +46,14 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
@@ -423,12 +424,12 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record.value());
 
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
-        FlowPathResponse infoData = (FlowPathResponse) infoMessage.getData();
+        BidirectionalFlowResponse infoData = (BidirectionalFlowResponse) infoMessage.getData();
         assertNotNull(infoData);
 
-        ImmutablePair<PathInfoData, PathInfoData> flowPayload = infoData.getPayload();
-        assertEquals(emptyPath, flowPayload.left);
-        assertEquals(emptyPath, flowPayload.right);
+        BidirectionalFlow flowPayload = infoData.getPayload();
+        assertEquals(emptyPath, flowPayload.getForward().getFlowPath());
+        assertEquals(emptyPath, flowPayload.getReverse().getFlowPath());
     }
 
     @Test
@@ -738,10 +739,10 @@ public class FlowTopologyTest extends AbstractStormTest {
         InfoMessage response = objectMapper.readValue(nbRecord.value(), InfoMessage.class);
         assertNotNull(response);
 
-        FlowPathResponse responseData = (FlowPathResponse) response.getData();
+        BidirectionalFlowResponse responseData = (BidirectionalFlowResponse) response.getData();
         assertNotNull(responseData);
-        assertEquals(payload, responseData.getPayload().left);
-        assertEquals(payload, responseData.getPayload().right);
+        assertEquals(payload, responseData.getPayload().getForward().getFlowPath());
+        assertEquals(payload, responseData.getPayload().getReverse().getFlowPath());
     }
 
     @Test
@@ -1183,7 +1184,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private PathInfoData pathFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Path flow");
         FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
-        FlowPathRequest commandData = new FlowPathRequest(payload);
+        BidirectionalFlowRequest commandData = new BidirectionalFlowRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "path-flow", Destination.WFM);
         //sendNorthboundMessage(message);
         sendFlowMessage(message);
@@ -1257,11 +1258,14 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private PathInfoData pathFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Path flow");
-        PathInfoData payload = new PathInfoData(0L, Collections.singletonList(new PathNode("test-switch", 1, 0, null)));
-        FlowPathResponse infoData = new FlowPathResponse(new ImmutablePair<>(payload, payload));
-        InfoMessage infoMessage = new InfoMessage(infoData, 0, "path-flow", Destination.WFM);
+        PathInfoData pathInfoData = new PathInfoData(
+                0L, Collections.singletonList(new PathNode("test-switch", 1, 0, null)));
+        Flow flow = Flow.builder().flowPath(pathInfoData).build();
+        BidirectionalFlowResponse infoData = new BidirectionalFlowResponse(new BidirectionalFlow(flow, flow));
+        InfoMessage infoMessage =
+                new InfoMessage(infoData, 0, "bidirectional-flow", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
-        return payload;
+        return pathInfoData;
     }
 
     private ErrorMessage errorFlowTopologyEngineCommand(final String flowId, final ErrorType type) throws IOException {
