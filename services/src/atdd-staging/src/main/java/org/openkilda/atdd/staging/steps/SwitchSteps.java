@@ -85,11 +85,10 @@ public class SwitchSteps {
         }
 
         Random r = new Random();
-        Switch theSwitch = ofSwitches.get(r.nextInt(switches.size()));
+        Switch theSwitch = ofSwitches.get(r.nextInt(ofSwitches.size()));
         log.info("Selected random switch with id: {}", theSwitch.getDpId());
         topologyUnderTest.addAlias(switchAlias, theSwitch);
     }
-
 
     @When("^request all switch rules for switch '(.*)'$")
     public void requestAllSwitchRulesForSwitch(String switchAlias) {
