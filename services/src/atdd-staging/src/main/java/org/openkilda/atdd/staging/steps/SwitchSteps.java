@@ -35,6 +35,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.junit.Assume;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -71,6 +72,24 @@ public class SwitchSteps {
         log.info("Selected random switch with id: {}", theSwitch.getDpId());
         topologyUnderTest.addAlias(switchAlias, theSwitch);
     }
+
+    @Given("^select a random switch with Openflow version '(.*)' and alias it as '(.*)'$")
+    public void selectARandomSwitchWithSpecificOfVersion(String ofVersion, String switchAlias) {
+        List<Switch> switches = getUnaliasedSwitches();
+        List<Switch> ofSwitches = new ArrayList<>();
+
+        for (Switch s: switches) {
+            if (ofVersion.equalsIgnoreCase(s.getOfVersion())) {
+                ofSwitches.add(s);
+            }
+        }
+
+        Random r = new Random();
+        Switch theSwitch = ofSwitches.get(r.nextInt(switches.size()));
+        log.info("Selected random switch with id: {}", theSwitch.getDpId());
+        topologyUnderTest.addAlias(switchAlias, theSwitch);
+    }
+
 
     @When("^request all switch rules for switch '(.*)'$")
     public void requestAllSwitchRulesForSwitch(String switchAlias) {

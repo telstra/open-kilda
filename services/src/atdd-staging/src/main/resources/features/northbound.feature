@@ -20,7 +20,7 @@ Feature: Northbound endpoints
 
   @Switches
   Scenario: Remove meter on switch
-    Given select a random switch and alias it as 'srcSwitch'
+    Given select a random switch with Openflow version 'OF_13' and alias it as 'srcSwitch'
     And select a random switch and alias it as 'dstSwitch'
     And create flow between 'srcSwitch' and 'dstSwitch' and alias it as 'flow1'
     And 'flow1' flow is in UP state
