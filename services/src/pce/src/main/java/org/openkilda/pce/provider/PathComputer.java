@@ -51,12 +51,23 @@ public interface PathComputer extends Serializable {
     }
 
     /**
-     * Gets path between source and destination switch.
+     * Gets path between source and destination switches for specified flow in preloaded network topology.
+     *
+     * @param flow {@link Flow} instances
+     * @param network prepared network where searching will be performed.
+     * @return {@link PathInfoData} instances
+     */
+    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
+            throws UnroutablePathException, RecoverableException;
+
+    /**
+     * Gets path between source and destination switch for specified flow.
      *
      * @param flow {@link Flow} instances
      * @return {@link PathInfoData} instances
      */
-    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) throws UnroutablePathException, RecoverableException;
+    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
+            throws UnroutablePathException, RecoverableException;
 
     /**
      * Interact with the PathComputer to get the FlowInfo for all flows.
@@ -78,9 +89,7 @@ public interface PathComputer extends Serializable {
     }
 
     /**
-     * Read a single flow from Neo4j and convert to our common representation
-     * org.openkilda.messaging.model.Flow.
-     *
+     * Read a single flow from Neo4j and convert to our common representation {@link Flow}.
      * In reality, a single flow will typically be bi-directional, so just represent as a list.
      *
      * @return the Flow if it exists, null otherwise.
@@ -104,7 +113,11 @@ public interface PathComputer extends Serializable {
         return null;
     }
 
-    default AvailableNetwork getAvailableNetwork(boolean ignore_bandwidth, int available_bandwidth) {
-        return null;
-    }
+    /**
+     * Loads network and ignores all ISLs with not enough available bandwidth if ignoreBandwidth is false.
+     * @param ignoreBandwidth defines if available bandwidth of links should be taken into account for calculations.
+     * @param requestedBandwidth links in path should have enough amount of available bandwidth.
+     * @return built network.
+     */
+    AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth);
 }

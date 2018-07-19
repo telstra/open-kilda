@@ -15,12 +15,16 @@
 
 package org.openkilda.pce;
 
+import lombok.extern.slf4j.Slf4j;
+import org.neo4j.driver.v1.Value;
+
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
  * Utils class contains basic utilities and constants.
  */
+@Slf4j
 public final class Utils {
     /**
      * Return timestamp.
@@ -29,5 +33,25 @@ public final class Utils {
      */
     public static String getIsoTimestamp() {
         return ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT);
+    }
+
+    /**
+     * Safe transformation to integer (property value might be stored in neo4j in different types: string, null, etc).
+     * @param val the value to parse
+     * @return 0 if val is null or not parseable, the int otherwise
+     */
+    public static int safeAsInt(Value val) {
+        int asInt = 0;
+        if (!val.isNull()) {
+            try {
+                asInt = Integer.parseInt(val.asObject().toString());
+            } catch (Exception e) {
+                log.info("Exception trying to get an Integer; the String isn't parseable. Value: {}", val);
+            }
+        }
+        return asInt;
+    }
+
+    private Utils() {
     }
 }
