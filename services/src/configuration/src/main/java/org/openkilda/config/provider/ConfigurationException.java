@@ -15,15 +15,37 @@
 
 package org.openkilda.config.provider;
 
+import static java.util.Collections.emptySet;
+
+import java.util.Set;
+
 /**
  * {@code ConfigurationException} indicates that an error has occurred while constructing a configuration instance.
  */
 public class ConfigurationException extends RuntimeException {
+    private final Set<String> errorDetails;
+
     public ConfigurationException(String message) {
+        this(message, emptySet());
+    }
+
+    public ConfigurationException(String message, Set<String> errorDetails) {
         super(message);
+
+        this.errorDetails = errorDetails;
     }
 
     public ConfigurationException(String message, Throwable cause) {
+        this(message, cause, emptySet());
+    }
+
+    public ConfigurationException(String message, Throwable cause, Set<String> errorDetails) {
         super(message, cause);
+
+        this.errorDetails = errorDetails;
+    }
+
+    public Set<String> getErrorDetails() {
+        return errorDetails;
     }
 }

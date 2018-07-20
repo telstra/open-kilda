@@ -17,12 +17,12 @@ package org.openkilda.config.provider;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toSet;
 
 import com.sabre.oss.conf4j.factory.ConfigurationFactory;
 import com.sabre.oss.conf4j.source.ConfigurationSource;
 
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.Validator;
@@ -61,13 +61,13 @@ public class ValidatingConfigurationProvider {
 
         Set<ConstraintViolation<T>> errors = validator.validate(instance);
         if (!errors.isEmpty()) {
-            String errorDetails = errors.stream()
+            Set<String> errorDetails = errors.stream()
                     .map(v -> v.getPropertyPath() + " " + v.getMessage())
-                    .collect(Collectors.joining(";"));
+                    .collect(toSet());
 
             throw new ConfigurationException(
                     format("The configuration value(s) for %s violate constraint(s): %s",
-                            configurationType.getSimpleName(), errorDetails));
+                            configurationType.getSimpleName(), String.join(";", errorDetails)), errorDetails);
         }
 
         return instance;
