@@ -711,8 +711,8 @@ public class FlowServiceImpl implements FlowService {
          * 3) Do the comparison
          */
 
-        List<Flow> flows = pathComputer.getFlow(flowId);
-        if (flows == null) {
+        List<Flow> flows = pathComputer.getFlows(flowId);
+        if (flows == null || flows.isEmpty()) {
             return null;
         }
 
