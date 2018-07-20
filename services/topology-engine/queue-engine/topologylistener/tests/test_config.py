@@ -38,9 +38,10 @@ class TestConfig(share.AbstractTest):
         messageclasses.read_config()
 
     def test_update(self):
-        self.assertTrue(make_feature_toggle_request({
+        features_request = share.feature_toggle_request(**{
             messageclasses.features_status_app_to_transport_map[
-                messageclasses.FEATURE_REROUTE_ON_ISL_DISCOVERY]: False}))
+                messageclasses.FEATURE_REROUTE_ON_ISL_DISCOVERY]: False})
+        self.assertTrue(share.feed_message(share.command(features_request)))
 
         with share.env.neo4j_connect.begin() as tx:
             cursor = tx.run(
