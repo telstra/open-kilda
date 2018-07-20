@@ -64,6 +64,7 @@ logging:
   logfile_path: "/var/log/volume"
   logstash_host: "logstash.pendev"
   elasticsearch_hosts: "elasticsearch.pendev:9200"
+  fl_loglevel: "INFO"
   port:
     topology_engine: 5000
     storm: 5001
