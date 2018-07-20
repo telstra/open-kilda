@@ -39,6 +39,16 @@ or
 
 1. ```make up-test-mode```
 
+### How to run ATDD
+
+Steps:
+1. Build Kilda controller. See *"How to Build Kilda Controller"* section.
+2. Run Kilda controller in *"test mode"*. ```make up-test-mode```
+3. Update your /etc/hosts file. Replace ```127.0.0.1 localhost``` to 
+   ```127.0.0.1    localhost nimbus.pendev kafka.pendev logstash neo4j.pendev logstash.pendev```
+4. Run ATDD using ```make atdd``` command.
+5. Profit?!? :)
+
 ### How to run floodlight-modules locally
 
 From the base directory run these commands:
