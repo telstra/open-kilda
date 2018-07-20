@@ -204,12 +204,12 @@ public class FlowCrudSteps implements En {
         List<Flow> expextedFlows = flows.stream()
                 .map(flow -> new Flow(flow.getId(),
                         flow.getMaximumBandwidth(),
-                        flow.isIgnoreBandwidth(), 0,
+                        flow.isIgnoreBandwidth(), flow.isPeriodicPings(), 0,
                         flow.getDescription(), null,
-                        flow.getSource().getSwitchDpId(),
-                        flow.getDestination().getSwitchDpId(),
-                        flow.getSource().getPortId(),
-                        flow.getDestination().getPortId(),
+                        flow.getSource().getDatapath(),
+                        flow.getDestination().getDatapath(),
+                        flow.getSource().getPortNumber(),
+                        flow.getDestination().getPortNumber(),
                         flow.getSource().getVlanId(),
                         flow.getDestination().getVlanId(),
                         0, 0, null, null))

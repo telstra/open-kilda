@@ -49,30 +49,6 @@ public final class FlowPayloadToFlowConverter {
     }
 
     /**
-     * Builds {@link FlowPayload} instance by {@link Flow} instance.
-     *
-     * @param flow {@link Flow} instance
-     * @return {@link FlowPayload} instance
-     */
-    public static FlowPayload buildFlowPayloadByFlow(Flow flow) {
-        return new FlowPayload(
-                flow.getFlowId(),
-                new FlowEndpointPayload(
-                        flow.getSourceSwitch(),
-                        flow.getSourcePort(),
-                        flow.getSourceVlan()),
-                new FlowEndpointPayload(
-                        flow.getDestinationSwitch(),
-                        flow.getDestinationPort(),
-                        flow.getDestinationVlan()),
-                flow.getBandwidth(),
-                flow.isIgnoreBandwidth(),
-                flow.getDescription(),
-                flow.getLastUpdated(),
-                flow.getState().getState());
-    }
-
-    /**
      * Builds {@link FlowPayload} instance by {@link ImmutablePair} instance.
      *
      * @param flow {@link BidirectionalFlow} the bidirectional flow with paths
@@ -89,9 +65,6 @@ public final class FlowPayloadToFlowConverter {
     /**
      * Makes flow path as list of {@link PathNodePayload} representation by a {@link Flow} instance.
      * Includes input and output nodes.
-     *
-     * @param flow the {@link Flow} instance.
-     * @return flow path as list of {@link PathNodePayload} representation.
      */
     private static List<PathNodePayload> convertFlowToPathNodePayloadList(Flow flow) {
         List<PathNode> path = new ArrayList<>(flow.getFlowPath().getPath());

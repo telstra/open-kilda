@@ -220,11 +220,12 @@ def format_switch(switch):
 
 
 def format_flow(raw_flow):
-    flow = raw_flow.copy()
+    flow = dict(raw_flow)
 
     path = json.loads(raw_flow['flowpath'])
     path['clazz'] = 'org.openkilda.messaging.info.event.PathInfoData'
 
+    flow['periodic-pings'] = flow.pop('periodic_pings', False)
     flow['flowpath'] = path
 
     return flow

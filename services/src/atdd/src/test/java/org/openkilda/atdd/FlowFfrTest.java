@@ -78,7 +78,7 @@ public class FlowFfrTest {
         FlowPayload flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
                 new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, false, flowId, null, FlowState.UP.getState());
+                bandwidth, false, false, flowId, null, FlowState.UP.getState());
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         assertNotNull(response);

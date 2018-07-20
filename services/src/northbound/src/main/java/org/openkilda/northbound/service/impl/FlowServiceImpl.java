@@ -187,16 +187,19 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPayload createFlow(final FlowPayload flow) {
+    public FlowPayload createFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Create flow: {}={}", CORRELATION_ID, correlationId);
-        FlowCreateRequest data = new FlowCreateRequest(FlowPayloadToFlowConverter.buildFlowByFlowPayload(flow));
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
+
+        FlowCreateRequest payload = new FlowCreateRequest(new Flow(input));
+        CommandMessage request = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
+
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload());
+
+        return flowMapper.toFlowOutput(response.getPayload());
     }
 
     /**
@@ -231,7 +234,8 @@ public class FlowServiceImpl implements FlowService {
     private FlowPayload deleteFlowResponse(final String correlationId, CommandMessage request) {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload());
+
+        return flowMapper.toFlowOutput(response.getPayload());
     }
 
 
@@ -248,7 +252,8 @@ public class FlowServiceImpl implements FlowService {
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload());
+
+        return flowMapper.toFlowOutput(response.getPayload());
     }
 
 
@@ -256,16 +261,19 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPayload updateFlow(final FlowPayload flow) {
+    public FlowPayload updateFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Update flow: {}={}", CORRELATION_ID, correlationId);
-        FlowUpdateRequest data = new FlowUpdateRequest(FlowPayloadToFlowConverter.buildFlowByFlowPayload(flow));
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
+
+        FlowUpdateRequest payload = new FlowUpdateRequest(new Flow(input));
+        CommandMessage request = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageProducer.send(topic, request);
+
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return FlowPayloadToFlowConverter.buildFlowPayloadByFlow(response.getPayload());
+
+        return flowMapper.toFlowOutput(response.getPayload());
     }
 
     /**
@@ -283,7 +291,7 @@ public class FlowServiceImpl implements FlowService {
 
         return result.stream()
                 .map(FlowResponse::getPayload)
-                .map(FlowPayloadToFlowConverter::buildFlowPayloadByFlow)
+                .map(flowMapper::toFlowOutput)
                 .collect(Collectors.toList());
     }
 
@@ -792,7 +800,7 @@ public class FlowServiceImpl implements FlowService {
         FlowPingResponse response = (FlowPingResponse) validateInfoMessage(
                 message, rawResponse, correlationId);
 
-        return flowMapper.toFlowPingOutput(response);
+        return flowMapper.toPingOutput(response);
     }
 
     /**

@@ -35,6 +35,7 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.BatchResults;
@@ -81,13 +82,17 @@ public class FlowCrudBasicRunTest {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(new SwitchId(sourceSwitch), sourcePort, sourceVlan),
                 new FlowEndpointPayload(new SwitchId(destinationSwitch), destinationPort, destinationVlan),
-                bandwidth, false, flowId, null, FlowState.UP.getState());
+                bandwidth, false, false, flowId, null, FlowState.UP.getState());
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         assertNotNull(response);
-        response.setLastUpdated(null);
 
-        assertEquals(flowPayload, response);
+        System.out.println(String.format(
+                "==> Ensure flow %s status is \"UP\" (%s <--> %s)",
+                flowId, flowPayload.getSource(), flowPayload.getDescription()));
+        FlowIdStatusPayload actual = FlowUtils.waitFlowStatus(flowPayload.getId(), FlowState.UP);
+        assertNotNull(actual);
+        assertEquals(FlowState.UP, actual.getStatus());
     }
 
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is failed$")
@@ -97,7 +102,7 @@ public class FlowCrudBasicRunTest {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(new SwitchId(sourceSwitch), sourcePort, sourceVlan),
                 new FlowEndpointPayload(new SwitchId(destinationSwitch), destinationPort, destinationVlan),
-                bandwidth, false, flowId, null, FlowState.DOWN.getState());
+                bandwidth, false, false, flowId, null, FlowState.DOWN.getState());
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
 
@@ -107,9 +112,9 @@ public class FlowCrudBasicRunTest {
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be created$")
     public void checkFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                                  final int destinationVlan, final int bandwidth) throws Exception {
+                                  final int destinationVlan, final long bandwidth) throws Exception {
         Flow expectedFlow =
-                new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, 0, flowId, null,
+                new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, false, 0, flowId, null,
                         new SwitchId(sourceSwitch), new SwitchId(destinationSwitch), sourcePort, destinationPort,
                         sourceVlan, destinationVlan, 0, 0, null, null);
 
@@ -129,11 +134,11 @@ public class FlowCrudBasicRunTest {
         System.out.println(format("===> Flow was created at %s\n", flow.getLastUpdated()));
 
         assertEquals(FlowUtils.getFlowName(flowId), flow.getId());
-        assertEquals(new SwitchId(sourceSwitch), flow.getSource().getSwitchDpId());
-        assertEquals(sourcePort, flow.getSource().getPortId().longValue());
+        assertEquals(new SwitchId(sourceSwitch), flow.getSource().getDatapath());
+        assertEquals(sourcePort, flow.getSource().getPortNumber().longValue());
         assertEquals(sourceVlan, flow.getSource().getVlanId().longValue());
-        assertEquals(new SwitchId(destinationSwitch), flow.getDestination().getSwitchDpId());
-        assertEquals(destinationPort, flow.getDestination().getPortId().longValue());
+        assertEquals(new SwitchId(destinationSwitch), flow.getDestination().getDatapath());
+        assertEquals(destinationPort, flow.getDestination().getPortNumber().longValue());
         assertEquals(destinationVlan, flow.getDestination().getVlanId().longValue());
         assertEquals(bandwidth, flow.getMaximumBandwidth());
         assertNotNull(flow.getLastUpdated());
@@ -149,7 +154,7 @@ public class FlowCrudBasicRunTest {
         assertNotNull(response);
         response.setLastUpdated(null);
 
-        assertEquals(flowPayload, response);
+        assertEquals(flowPayload.getMaximumBandwidth(), response.getMaximumBandwidth());
 
         checkFlowCreation(flowId, sourceSwitch, sourcePort, sourceVlan, destinationSwitch,
                 destinationPort, destinationVlan, newBand);
@@ -164,9 +169,7 @@ public class FlowCrudBasicRunTest {
 
         FlowPayload response = FlowUtils.deleteFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(response);
-        response.setLastUpdated(null);
-
-        assertEquals(flowPayload, response);
+        assertEquals(flowPayload.getId(), response.getId());
 
         FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
         if (flow != null) {
@@ -296,7 +299,7 @@ public class FlowCrudBasicRunTest {
     private int checkPingTraffic(String sourceSwitch, String destSwitch,
                                  int sourceVlan, int destinationVlan, int expectedStatus) {
         if (isTrafficTestsEnabled()) {
-            System.out.print("=====> Send PING traffic");
+            System.out.print("=====> Send traffic ");
 
             long current = System.currentTimeMillis();
             Client client = ClientBuilder.newClient(new ClientConfig());
@@ -320,7 +323,6 @@ public class FlowCrudBasicRunTest {
             System.out.println(format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
                     from, fromPort, sourceVlan, sourceSwitch,
                     to, toPort, destinationVlan, destSwitch));
-
 
             Response result = client
                     .target(mininetEndpoint)

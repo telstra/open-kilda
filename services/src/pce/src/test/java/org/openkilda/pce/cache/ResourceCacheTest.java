@@ -41,12 +41,31 @@ import java.util.Set;
 public class ResourceCacheTest {
     private static final SwitchId SWITCH_ID = new SwitchId("ff:00");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("ff:02");
-    private final Flow forwardCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
-            "timestamp", new SwitchId("ff:03"), new SwitchId("ff:04"), 21, 22, 100,
-            200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
-    private final Flow reverseCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
-            "timestamp", new SwitchId("ff:04"), new SwitchId("ff:03"), 22, 21, 200,
-            100, 5, 5, new PathInfoData(), FlowState.ALLOCATED);
+    private final Flow forwardCreatedFlow = Flow.builder()
+            .flowId("created-flow")
+            .sourceSwitch(new SwitchId("ff:03")).sourcePort(21).sourceVlan(100)
+            .destinationSwitch(new SwitchId("ff:04")).destinationPort(22).destinationVlan(200)
+            .bandwidth(0L)
+            .ignoreBandwidth(false)
+            .periodicPings(false)
+            .cookie(10L)
+            .description("description")
+            .lastUpdated("timestamp")
+            .meterId(4).transitVlan(4)
+            .flowPath(new PathInfoData())
+            .state(FlowState.ALLOCATED)
+            .build();
+    private final Flow reverseCreatedFlow = forwardCreatedFlow.toBuilder()
+            .sourceSwitch(forwardCreatedFlow.getDestinationSwitch())
+            .sourcePort(forwardCreatedFlow.getDestinationPort())
+            .sourceVlan(forwardCreatedFlow.getDestinationVlan())
+            .destinationSwitch(forwardCreatedFlow.getSourceSwitch())
+            .destinationPort(forwardCreatedFlow.getSourcePort())
+            .destinationVlan(forwardCreatedFlow.getSourceVlan())
+            .meterId(5).transitVlan(5)
+            .flowPath(new PathInfoData())
+            .build();
+
     private ResourceCache resourceCache;
 
     @After

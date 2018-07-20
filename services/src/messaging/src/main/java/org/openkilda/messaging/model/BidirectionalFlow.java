@@ -36,8 +36,12 @@ public class BidirectionalFlow implements Serializable {
 
     @JsonProperty("bandwidth")
     private long bandwidth;
+
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
+
+    @JsonProperty("periodic-pings")
+    private boolean periodicPings;
 
     @JsonProperty("cookie")
     private long cookie;
@@ -56,14 +60,13 @@ public class BidirectionalFlow implements Serializable {
     }
 
     public BidirectionalFlow(Flow forward, Flow reverse) {
-        flowId = forward.getFlowId();
-        bandwidth = forward.getBandwidth();
-        ignoreBandwidth = forward.isIgnoreBandwidth();
-        cookie = forward.getFlagglessCookie();
-        description = forward.getDescription();
-
-        this.forward = forward;
-        this.reverse = reverse;
+        this(forward.getFlowId(),
+                forward.getBandwidth(),
+                forward.isIgnoreBandwidth(),
+                forward.isPeriodicPings(),
+                forward.getFlagglessCookie(),
+                forward.getDescription(),
+                forward, reverse);
     }
 
     @Builder
@@ -72,6 +75,7 @@ public class BidirectionalFlow implements Serializable {
             @JsonProperty("flow_id")  String flowId,
             @JsonProperty("bandwidth") long bandwidth,
             @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
+            @JsonProperty("periodic-pings") boolean periodicPings,
             @JsonProperty("cookie") long cookie,
             @JsonProperty("description") String description,
             @JsonProperty("forward") Flow forward,
@@ -79,6 +83,7 @@ public class BidirectionalFlow implements Serializable {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
+        this.periodicPings = periodicPings;
         this.cookie = cookie;
         this.description = description;
         this.forward = forward;

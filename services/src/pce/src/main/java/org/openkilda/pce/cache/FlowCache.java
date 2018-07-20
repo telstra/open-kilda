@@ -386,6 +386,7 @@ public class FlowCache extends Cache {
      */
     private ImmutablePair<Flow, Flow> buildFlow(final Flow flow,
                                                ImmutablePair<PathInfoData, PathInfoData> path) {
+        // FIXME(surabujin): format datetime as '2011-12-03T10:15:30Z' (don't match with format used in TE)
         String timestamp = Utils.getIsoTimestamp();
         int cookie = resourceCache.allocateCookie();
 
@@ -401,17 +402,9 @@ public class FlowCache extends Cache {
             forwardVlan = reverseVlan = 0;
         }
 
-        Flow.FlowBuilder forwardBuilder = Flow.builder()
-                .flowId(flow.getFlowId())
+        Flow.FlowBuilder forwardBuilder = flow.toBuilder()
                 .cookie(cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK)
-                .description(flow.getDescription())
                 .lastUpdated(timestamp)
-                .sourceSwitch(flow.getSourceSwitch())
-                .destinationSwitch(flow.getDestinationSwitch())
-                .sourcePort(flow.getSourcePort())
-                .destinationPort(flow.getDestinationPort())
-                .sourceVlan(flow.getSourceVlan())
-                .destinationVlan(flow.getDestinationVlan())
                 .transitVlan(forwardVlan)
                 .flowPath(path.getLeft())
                 .state(FlowState.ALLOCATED);
@@ -419,20 +412,18 @@ public class FlowCache extends Cache {
                 () -> resourceCache.allocateMeterId(flow.getSourceSwitch()));
         Flow forward = forwardBuilder.build();
 
-        Flow.FlowBuilder reverseBuilder = Flow.builder()
-                .flowId(flow.getFlowId())
+        Flow.FlowBuilder reverseBuilder = flow.toBuilder()
                 .cookie(cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK)
-                .description(flow.getDescription())
                 .lastUpdated(timestamp)
-                .sourceSwitch(flow.getDestinationSwitch())
-                .destinationSwitch(flow.getSourceSwitch())
-                .sourcePort(flow.getDestinationPort())
-                .destinationPort(flow.getSourcePort())
-                .sourceVlan(flow.getDestinationVlan())
-                .destinationVlan(flow.getSourceVlan())
                 .transitVlan(reverseVlan)
                 .flowPath(path.getRight())
-                .state(FlowState.ALLOCATED);
+                .state(FlowState.ALLOCATED)
+                .sourceSwitch(flow.getDestinationSwitch())
+                .sourcePort(flow.getDestinationPort())
+                .sourceVlan(flow.getDestinationVlan())
+                .destinationSwitch(flow.getSourceSwitch())
+                .destinationPort(flow.getSourcePort())
+                .destinationVlan(flow.getSourceVlan());
         setBandwidthAndMeter(reverseBuilder, flow.getBandwidth(), flow.isIgnoreBandwidth(),
                 () -> resourceCache.allocateMeterId(flow.getDestinationSwitch()));
         Flow reverse = reverseBuilder.build();
