@@ -129,7 +129,9 @@ public class FailReporter extends Abstract {
             String cookies = flowObserver.getFlowTreadsInState(state).stream()
                     .map(cookie -> String.format("0x%016x", cookie))
                     .collect(Collectors.joining(", "));
-            logMessage += String.format("(%s)", cookies);
+            if (!cookies.isEmpty()) {
+                logMessage += String.format("(%s)", cookies);
+            }
         }
 
         log.info(logMessage);

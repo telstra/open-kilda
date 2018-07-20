@@ -94,7 +94,7 @@ public class PingRequestCommand extends Abstract {
         return sw;
     }
 
-    private void send(IOFSwitch sw) {
+    private void send(IOFSwitch sw) throws PingImpossibleException {
         PingData data = PingData.of(ping);
         data.setSenderLatency(sw.getLatency().getValue());
 
@@ -103,12 +103,10 @@ public class PingRequestCommand extends Abstract {
         byte[] rawPackage = pingService.wrapData(ping, signedData).serialize();
         OFMessage message = makePacketOut(sw, rawPackage);
 
-        if (sw.write(message)) {
-            logPing.info("Send ping {}", ping);
-        } else {
-            logPing.error("Unable to send ping {}", ping);
-            sendErrorResponse(ping.getPingId(), Ping.Errors.WRITE_FAILURE);
+        if (!sw.write(message)) {
+            throw new PingImpossibleException(ping, Errors.WRITE_FAILURE);
         }
+        logPing.info("Send ping {}", ping);
     }
 
     private OFMessage makePacketOut(IOFSwitch sw, byte[] data) {
