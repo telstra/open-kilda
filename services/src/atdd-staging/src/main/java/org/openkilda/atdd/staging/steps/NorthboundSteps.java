@@ -23,10 +23,10 @@ import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
-import org.openkilda.testlib.model.topology.TopologyDefinition;
-import org.openkilda.testlib.model.topology.TopologyDefinition.Switch;
-import org.openkilda.testlib.service.floodlight.model.MeterEntry;
-import org.openkilda.testlib.service.northbound.NorthboundService;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.floodlight.model.MeterEntry;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Then;

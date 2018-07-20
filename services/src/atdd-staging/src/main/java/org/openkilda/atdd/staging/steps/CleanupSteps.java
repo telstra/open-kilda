@@ -21,9 +21,9 @@ import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.testlib.model.topology.TopologyDefinition;
-import org.openkilda.testlib.service.floodlight.FloodlightService;
-import org.openkilda.testlib.service.northbound.NorthboundService;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java8.En;

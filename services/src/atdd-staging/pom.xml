@@ -162,7 +162,6 @@
             <groupId>org.openkilda</groupId>
             <artifactId>test-library</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 

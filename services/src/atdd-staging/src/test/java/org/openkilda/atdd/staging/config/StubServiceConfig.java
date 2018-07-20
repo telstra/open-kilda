@@ -18,12 +18,12 @@ package org.openkilda.atdd.staging.config;
 import org.openkilda.atdd.staging.service.StubServiceFactory;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
-import org.openkilda.testlib.model.topology.TopologyDefinition;
-import org.openkilda.testlib.service.aswitch.ASwitchService;
-import org.openkilda.testlib.service.floodlight.FloodlightService;
-import org.openkilda.testlib.service.northbound.NorthboundService;
-import org.openkilda.testlib.service.topology.TopologyEngineService;
-import org.openkilda.testlib.service.traffexam.TraffExamService;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.aswitch.ASwitchService;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.northbound.NorthboundService;
+import org.openkilda.testing.service.topology.TopologyEngineService;
+import org.openkilda.testing.service.traffexam.TraffExamService;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

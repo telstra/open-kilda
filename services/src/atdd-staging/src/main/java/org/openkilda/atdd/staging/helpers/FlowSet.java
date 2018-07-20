@@ -21,8 +21,8 @@ import static java.util.Collections.unmodifiableSet;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.testlib.model.topology.TopologyDefinition.OutPort;
-import org.openkilda.testlib.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.model.topology.TopologyDefinition.OutPort;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;

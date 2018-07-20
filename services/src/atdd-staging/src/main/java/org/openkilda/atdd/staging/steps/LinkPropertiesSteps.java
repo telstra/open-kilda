@@ -23,9 +23,9 @@ import static org.junit.Assert.assertThat;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
-import org.openkilda.testlib.model.topology.TopologyDefinition;
-import org.openkilda.testlib.model.topology.TopologyDefinition.Isl;
-import org.openkilda.testlib.service.northbound.NorthboundService;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Then;

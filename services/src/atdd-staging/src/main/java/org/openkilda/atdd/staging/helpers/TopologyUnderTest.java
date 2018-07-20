@@ -16,7 +16,7 @@
 package org.openkilda.atdd.staging.helpers;
 
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.testlib.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition;
 
 import lombok.Data;
 

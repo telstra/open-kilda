@@ -21,10 +21,10 @@ import static org.junit.Assert.assertTrue;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.testlib.model.topology.TopologyDefinition;
-import org.openkilda.testlib.model.topology.TopologyDefinition.Isl;
-import org.openkilda.testlib.model.topology.TopologyDefinition.Switch;
-import org.openkilda.testlib.service.northbound.NorthboundService;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;

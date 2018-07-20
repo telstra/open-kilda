@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.testlib.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundService
 import org.springframework.beans.factory.annotation.Autowired
 
 class LinkPropertiesSpec extends BaseSpecification {

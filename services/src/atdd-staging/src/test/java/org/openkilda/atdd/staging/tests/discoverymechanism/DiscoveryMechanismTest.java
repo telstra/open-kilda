@@ -20,8 +20,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import org.openkilda.atdd.staging.cucumber.CucumberWithSpringProfile;
-import org.openkilda.testlib.service.floodlight.FloodlightService;
-import org.openkilda.testlib.service.northbound.NorthboundService;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import cucumber.api.CucumberOptions;
 import cucumber.api.java.After;

@@ -22,10 +22,10 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.atdd.staging.helpers.DefaultFlowsChecker;
 import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchEntryMatcher;
-import org.openkilda.testlib.model.topology.TopologyDefinition;
-import org.openkilda.testlib.service.floodlight.FloodlightService;
-import org.openkilda.testlib.service.floodlight.model.FlowEntriesMap;
-import org.openkilda.testlib.service.floodlight.model.SwitchEntry;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.testing.service.floodlight.model.SwitchEntry;
 
 import cucumber.api.Scenario;
 import cucumber.api.java.Before;

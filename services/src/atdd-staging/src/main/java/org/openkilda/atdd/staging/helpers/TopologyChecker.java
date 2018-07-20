@@ -21,10 +21,10 @@ import static org.hamcrest.Matchers.equalTo;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.testlib.model.topology.TopologyDefinition;
-import org.openkilda.testlib.model.topology.TopologyDefinition.Isl;
-import org.openkilda.testlib.model.topology.TopologyDefinition.Switch;
-import org.openkilda.testlib.service.floodlight.model.SwitchEntry;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.floodlight.model.SwitchEntry;
 
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;

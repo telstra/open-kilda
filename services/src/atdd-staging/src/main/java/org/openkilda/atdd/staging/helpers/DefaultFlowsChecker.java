@@ -15,12 +15,12 @@
 
 package org.openkilda.atdd.staging.helpers;
 
-import org.openkilda.testlib.service.floodlight.model.FlowApplyActions;
-import org.openkilda.testlib.service.floodlight.model.FlowEntriesMap;
-import org.openkilda.testlib.service.floodlight.model.FlowEntry;
-import org.openkilda.testlib.service.floodlight.model.FlowInstructions;
-import org.openkilda.testlib.service.floodlight.model.FlowMatchField;
-import org.openkilda.testlib.service.floodlight.model.SwitchEntry;
+import org.openkilda.testing.service.floodlight.model.FlowApplyActions;
+import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.testing.service.floodlight.model.FlowEntry;
+import org.openkilda.testing.service.floodlight.model.FlowInstructions;
+import org.openkilda.testing.service.floodlight.model.FlowMatchField;
+import org.openkilda.testing.service.floodlight.model.SwitchEntry;
 
 import cucumber.api.Scenario;
 import org.apache.commons.lang3.StringUtils;
