@@ -255,10 +255,11 @@ public class IslSteps {
     @And("^select a random not connected A-Switch link and alias it as '(.*)'$")
     public void selectNotConnectedASwitchLink(String alias) {
         List<Isl> links = topologyDefinition.getNotConnectedIsls().stream()
-                .filter(isl -> isl.getAswitch() != null && isl.getAswitch().getOutPort() == null)
+                .filter(isl -> isl.getSrcSwitch().isActive() && isl.getAswitch() != null && isl.getAswitch().getOutPort() == null)
                 .collect(Collectors.toList());
         Random r = new Random();
         Isl theLink = links.get(r.nextInt(links.size()));
+        log.warn("Selecting link {}", theLink.toString());
         topologyUnderTest.addAlias(alias, theLink);
     }
 
