@@ -35,9 +35,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.junit.Assume;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 @Slf4j
 public class SwitchSteps {
