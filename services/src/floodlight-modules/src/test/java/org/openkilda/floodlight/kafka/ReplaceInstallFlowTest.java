@@ -26,6 +26,7 @@ import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.of
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
@@ -257,10 +258,11 @@ public class ReplaceInstallFlowTest {
         ConsumerRecord<String, String> record = new ConsumerRecord<>("", 0, 0, "", value);
 
         ConfigurationProvider provider = new ConfigurationProvider(context, collector);
+        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
 
         // create parser instance
-        ConsumerContext kafkaContext = new ConsumerContext(context, topicsConfig);
+        ConsumerContext kafkaContext = new ConsumerContext(context, kafkaConfig, topicsConfig);
         RecordHandler parseRecord = new RecordHandler(kafkaContext, record, new MeterPool());
         // init test mocks
         Capture<OFFlowAdd> flowAddCapture = flowCommand == null ? null : newCapture(CaptureType.ALL);
