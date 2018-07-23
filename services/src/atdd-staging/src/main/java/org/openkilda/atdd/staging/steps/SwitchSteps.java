@@ -64,30 +64,26 @@ public class SwitchSteps {
         assertTrue(allSwitchesResponse.size() >= expectedSwitchesAmount);
     }
 
-    @Given("^select a random switch and alias it as '(.*)'$")
+    @Given("^select a switch and alias it as '(.*)'$")
     public void selectARandomSwitch(String switchAlias) {
         List<Switch> switches = getUnaliasedSwitches();
-        Random r = new Random();
-        Switch theSwitch = switches.get(r.nextInt(switches.size()));
-        log.info("Selected random switch with id: {}", theSwitch.getDpId());
+        Switch theSwitch = switches.get(0);
+        log.info("Selected switch with id: {}", theSwitch.getDpId());
         topologyUnderTest.addAlias(switchAlias, theSwitch);
     }
 
-    @Given("^select a random switch with Openflow version '(.*)' and alias it as '(.*)'$")
+    @Given("^select a switch with Openflow version '(.*)' and alias it as '(.*)'$")
     public void selectARandomSwitchWithSpecificOfVersion(String ofVersion, String switchAlias) {
         List<Switch> switches = getUnaliasedSwitches();
-        List<Switch> ofSwitches = new ArrayList<>();
 
         for (Switch s: switches) {
             if (ofVersion.equalsIgnoreCase(s.getOfVersion())) {
-                ofSwitches.add(s);
+                log.info("Selected switch with id: {}", s.getDpId());
+                topologyUnderTest.addAlias(switchAlias, s);
+                return;
             }
         }
-
-        Random r = new Random();
-        Switch theSwitch = ofSwitches.get(r.nextInt(ofSwitches.size()));
-        log.info("Selected random switch with id: {}", theSwitch.getDpId());
-        topologyUnderTest.addAlias(switchAlias, theSwitch);
+        log.error("No switches found with Openflow version {}", ofVersion);
     }
 
     @When("^request all switch rules for switch '(.*)'$")
