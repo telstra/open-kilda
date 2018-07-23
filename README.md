@@ -45,7 +45,7 @@ Steps:
 1. Build Kilda controller. See *"How to Build Kilda Controller"* section.
 2. Run Kilda controller in *"test mode"*. ```make up-test-mode```
 3. Update your /etc/hosts file. Replace ```127.0.0.1 localhost``` to 
-   ```127.0.0.1    localhost nimbus.pendev kafka.pendev logstash neo4j.pendev logstash.pendev```
+   ```127.0.0.1    localhost kafka.pendev```
 4. Run ATDD using ```make atdd``` command.
 5. Profit?!? :)
 
