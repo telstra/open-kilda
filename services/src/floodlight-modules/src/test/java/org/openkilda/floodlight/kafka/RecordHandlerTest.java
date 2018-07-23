@@ -22,6 +22,7 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.verify;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -69,9 +70,10 @@ public class RecordHandlerTest extends EasyMockSupport {
         collectorModule.init(context);
 
         ConfigurationProvider provider = new ConfigurationProvider(context, collectorModule);
+        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
 
-        consumerContext = new ConsumerContext(context, topicsConfig);
+        consumerContext = new ConsumerContext(context, kafkaConfig, topicsConfig);
 
         handler = new RecordHandlerMock(consumerContext);
     }
