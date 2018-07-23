@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.provider.PathComputer;
 
 import java.util.Collections;
@@ -28,9 +29,29 @@ public class PathComputerMock implements PathComputer {
         return emptyPath();
     }
 
+    @Override
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy) {
+        return emptyPath();
+    }
+
+    @Override
+    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
+        return new MockedAvailableNetwork();
+    }
+
     private static ImmutablePair<PathInfoData, PathInfoData> emptyPath() {
         return new ImmutablePair<>(
                 new PathInfoData(0L, Collections.emptyList()),
                 new PathInfoData(0L, Collections.emptyList()));
+    }
+
+    private class MockedAvailableNetwork extends AvailableNetwork {
+        MockedAvailableNetwork() {
+            super(null);
+        }
+
+        @Override
+        public void addIslsOccupiedByFlow(String flowId) {
+        }
     }
 }

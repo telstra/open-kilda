@@ -4,7 +4,7 @@
   - name: add neo4j apt repo
     shell: "{{ item }}"
     with_items:
-    - wget --no-check-certificate -O - https://debian.neo4j.org/neotechnology.gpg.key | apt-key add -
+    - wget -O - https://debian.neo4j.org/neotechnology.gpg.key | apt-key add -
     - echo 'deb http://debian.neo4j.org/repo stable/' | tee /etc/apt/sources.list.d/neo4j.list
     - apt-get clean
     - apt-get -o Acquire::CompressionTypes::Order=bz2 update

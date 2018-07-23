@@ -45,7 +45,7 @@ public class SimpleSwitch implements Comparable<SimpleSwitch> {
     }
 
     public SimpleSwitch addOutbound(SimpleIsl isl) {
-        outbound.computeIfAbsent(isl.dst_dpid, newSet -> new HashSet<>()).add(isl);
+        outbound.computeIfAbsent(isl.getDstDpid(), newSet -> new HashSet<>()).add(isl);
         return this;
     }
 

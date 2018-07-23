@@ -13,15 +13,15 @@ Feature: Northbound endpoints
 
   @Switches
   Scenario: Get switch rules
-    Given select a random switch and alias it as 'switch1'
+    Given select a switch and alias it as 'switch1'
     When request all switch rules for switch 'switch1'
     Then response switch_id matches id of 'switch1'
     And response has at least 1 rule installed
 
   @Switches
   Scenario: Remove meter on switch
-    Given select a random switch and alias it as 'srcSwitch'
-    And select a random switch and alias it as 'dstSwitch'
+    Given select a switch with Openflow version 'OF_13' and alias it as 'srcSwitch'
+    And select a switch and alias it as 'dstSwitch'
     And create flow between 'srcSwitch' and 'dstSwitch' and alias it as 'flow1'
     And 'flow1' flow is in UP state
     When request all switch meters for switch 'srcSwitch' and alias results as 'srcSwitchMeters'
