@@ -46,6 +46,7 @@ function showflowData(response){
 	var obj = JSON.parse(flowDetailsData)
 	
 	 for(var i = 0; i < response.length; i++) {
+		 var percentage = common.getPercentage(response[i].available_bandwidth,response[i].speed);
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
 		 				+"<td class='divTableCell' title ='"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"'>"+((response[i].source_switch_name === "" || response[i].source_switch_name == undefined)?"-":response[i].source_switch_name)+"</td>"
 		    			+"<td class='divTableCell' title ='"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"'>"+((response[i].source_switch === "" || response[i].source_switch == undefined)?"-":response[i].source_switch)+"</td>"
@@ -55,6 +56,7 @@ function showflowData(response){
 		 			    +"<td class='divTableCell' title ='"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"'>"+((response[i].dst_port === "" || response[i].dst_port == undefined)?"-":response[i].dst_port)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].cost === "" || response[i].cost == undefined)?"-":response[i].cost)+"'>"+((response[i].cost === "" || response[i].cost == undefined)?"-":response[i].cost)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"'>"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((percentage === "" || percentage == undefined)?"-":percentage)+"'> "+ ((percentage=== "" || percentage == undefined)?"-":percentage)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000)+"'> "+ ((response[i].speed === "" || response[i].speed == undefined)?"-":response[i].speed/1000)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000)+"'> "+ ((response[i].available_bandwidth === "" || response[i].available_bandwidth == undefined)?"-":response[i].available_bandwidth/1000)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"'>"+((response[i].latency === "" || response[i].latency == undefined)?"-":response[i].latency)+"</td>"
@@ -86,6 +88,7 @@ function showflowData(response){
 		                { sWidth: '8%' },
 		                { sWidth: '8%' },
 		                { sWidth: '7%' },
+		                { sWidth: '12%' },
 		                { sWidth: '12%' },
 		                { sWidth: '12%' },
 		                { sWidth: '12%' },

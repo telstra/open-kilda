@@ -12,6 +12,21 @@ class Flow {
 		this.flow = flow;
 	}
 	
+	getPorts (id) {
+		 var switch_id = common.toggleSwitchID($("#" + id).val());
+		 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
+		 var startDate = moment().utc().subtract(10,'minutes').format("YYYY-MM-DD-HH:mm:ss");
+		 var downSample = "30s";
+		 var options =[];
+		 common.getData('/stats/switchports/' + switch_id + '/'+ startDate +'/' + endDate + '/'+ downSample).then(function(ports){
+		  for(var i=0; i<ports.length; i++){
+		   var port = ports[i];
+		   options.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+		  }
+		 });
+		 return options;
+	}
+	
 	validateFlow () {
 		var data = $('#flowForm').serializeArray();
 		var formData =[];
@@ -109,7 +124,27 @@ class Flow {
 					placeholder:"Please select a switch",
 					matcher: common.matchCustomFlow
 				}).on("select2:close", function (e) { flowObj.checkValidate('target_switch')});
-			
+				
+			    $(document).on("change","#source_switch",function(e){
+			        var portoptions = flowObj.getPorts("source_switch");
+			        $("#source_port").select2({
+			         width:"100%",
+			         data:portoptions,
+			         placeholder:"Please select a port",
+			         matcher: common.matchCustomFlow
+			        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
+			       });
+			       
+			       $(document).on("change","#target_switch",function(e){
+			        var portoptions = flowObj.getPorts("target_switch");
+			        $("#target_port").select2({
+			         width:"100%",
+			         data:portoptions,
+			         placeholder:"Please select a port",
+			         matcher: common.matchCustomFlow
+			        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
+			       });
+			       
 				})
 				}else{
 				$('#addflowloader').hide();
@@ -182,6 +217,7 @@ class Flow {
 					for( var i = 1; i <= 4094; i++) {
 						vlanOptions += "<option value='" + i + "'>" + i + "</option>";
 					}
+
 					$('#editflowloader').hide();
 					$('#flow_detail_div').hide();
 					$("#edit_flow_div").show().load('../ui/templates/flows/editflow.html',function(){
@@ -189,26 +225,47 @@ class Flow {
 						$("#edit_flow_div").find("#target_vlan").html(vlanOptions).val(flowData.destination['vlan-id']);
 						$("#edit_flow_div").find("#flowname").val(flowData.flowid);
 						$("#edit_flow_div").find("#flowname_read").val(flowData.flowid);
-						$("#edit_flow_div").find("#flow_description").val(flowData.description)
-						$("#edit_flow_div").find("#max_bandwidth").val(flowData['maximum-bandwidth'])
-						$("#edit_flow_div").find("#source_port").val(flowData.source['port-id'])
-						$("#edit_flow_div").find("#target_port").val(flowData.destination['port-id']);
+						$("#edit_flow_div").find("#flow_description").val(flowData.description);
+						$("#edit_flow_div").find("#max_bandwidth").val(flowData['maximum-bandwidth']);
 						
 						$("#source_switch").select2({
 							width: "100%",
 							data:options,
 							placeholder: "Please select a switch",
 							matcher: common.matchCustomFlow
-						}).on("select2:close", function (e) { checkValidate('source_switch') });
+						}).on("select2:close", function (e) { flowObj.checkValidate('source_switch') });
 						
 						$("#target_switch").select2({
 							width:"100%",
 							data:options,
 							placeholder:"Please select a switch",
 							matcher: common.matchCustomFlow
-						}).on("select2:close", function (e) { checkValidate('target_switch')});
+						}).on("select2:close", function (e) { flowObj.checkValidate('target_switch')});
+						
+					    $(document).on("change","#source_switch",function(e){
+					        var portoptions = flowObj.getPorts("source_switch");
+					        $("#source_port").select2({
+					         width:"100%",
+					         data:portoptions,
+					         placeholder:"Please select a port",
+					         matcher: common.matchCustomFlow
+					        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
+					       });
+					       
+					       $(document).on("change","#target_switch",function(e){
+					        var portoptions = flowObj.getPorts("target_switch");
+					        $("#target_port").select2({
+					         width:"100%",
+					         data:portoptions,
+					         placeholder:"Please select a port",
+					         matcher: common.matchCustomFlow
+					        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
+					       });
+
 						$('#source_switch').val(selectedSourceSwitch.id).trigger('change');
 						$("#target_switch").val(selectedTargetSwitch.id).trigger('change');
+						$("#source_port").val(flowData.source['port-id']).trigger('change');
+						$("#target_port").val(flowData.destination['port-id']).trigger('change');
 					})
 				} else {
 					$('#editflowloader').hide();

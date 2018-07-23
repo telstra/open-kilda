@@ -250,7 +250,7 @@ public class StatsIntegrationService {
         } else if (statsType.equals(StatsType.SWITCH_PORT)) {
             queries = getSwitchPortQueries(queries, switchIds, metricList, statsType, downsample);
         } else {
-            String switchId = switchIds.isEmpty() ? null : switchIds.get(0);
+            String switchId = (switchIds == null || switchIds.isEmpty()) ? null : switchIds.get(0);
             Map<String, String[]> params = getParam(statsType, switchId, port, flowId, srcSwitch,
                     srcPort, dstSwitch, dstPort);
             if (metricList != null && !metricList.isEmpty()) {

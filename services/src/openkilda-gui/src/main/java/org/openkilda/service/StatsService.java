@@ -194,7 +194,7 @@ public class StatsService {
         for (SwitchPortStats stats : switchPortStats) {
             String port = stats.getTags().getPort();
 
-            if (Integer.parseInt(port) > 1) {
+            if (Integer.parseInt(port) > 0) {
                 if (!portStatsByPortNo.containsKey(port)) {
                     portStatsByPortNo.put(port, new HashMap<String, Double>());
                 }

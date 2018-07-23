@@ -23,7 +23,7 @@ $(function() {
 			}			
 		});
 		
-		$("#downsampling,#menulist,#autoreload").on("change",function(event) {
+		$("#downsampling,#menulist,#autoreload,#directionlist").on("change",function(event) {
 				getGraphData();	
 		});
 		
@@ -45,6 +45,24 @@ $(function() {
 			}
 			getGraphData();	
 		})
+	
+		
+	$('#flowselectedGraph').on('change',function(){
+		if($(this).val() == 'flow'){
+			$('#directionDropdown').hide();
+			$('#islmenuListDropdown').show();
+			$('#flow_graph_directions').show();
+			$('#menulist').val('packets');
+			getGraphData();	
+		}else{
+			$('#directionDropdown').show();
+			$('#islmenuListDropdown').hide();
+			$('#directionDropdown').val('forward');
+			$('#flow_graph_directions').hide();
+			getGraphData();	
+			
+		}
+	})
 });	
 
 /**
@@ -83,15 +101,30 @@ $(document).ready(function() {
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'});
 	
 	var selMetric="packets";
-	var url ="/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	fetchAndLoadGraphData(flowid,convertedStartDate,convertedEndDate,downsampling,selMetric,yesterday,EndDate,timezone);
+	
+})
+
+function fetchAndLoadGraphData(flowid,convertedStartDate,convertedEndDate,downsampling,selMetric,yesterday,EndDate,timezone){
+	var selectedGraph = $('#flowselectedGraph').val();
+	var direction = $('#directionlist option:selected').val();
+	if(selectedGraph == 'flow'){
+		var url ="/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	}else{
+		var url ="/stats/flow/losspackets/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+direction;
+	}
 	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
 		var timezone = $('#timezone option:selected').val();
 		$("#wait1").css("display", "none");
 		$('body').css('pointer-events', 'all');
 		showStatsGraph.showStatsData(response,selMetric,null,null,yesterday,EndDate,timezone); 
+	},function(error){
+		var timezone = $('#timezone option:selected').val();
+		$("#wait1").css("display", "none");
+		$('body').css('pointer-events', 'all');
+		showStatsGraph.showStatsData([],selMetric,null,null,yesterday,EndDate,timezone); 
 	})
-})
-
+}
 
 /**
 * Execute this function to  show stats data whenever user filters data in the
@@ -169,25 +202,20 @@ function getGraphData() {
 		if(megaBytes == "megabytes"){
 			selMetric = "bytes";		
 		}
-		loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
-    			
-    			$("#wait1").css("display", "none");
-    			$('body').css('pointer-events', 'all');
-    			showStatsGraph.showStatsData(response,selMetric,null,null,startDate,endDate,timezone); 
-    	})
-    		
-    				try {
-    					clearInterval(graphInterval);
-    				} catch(err) {
+		
+		fetchAndLoadGraphData(flowid,convertedStartDate,convertedEndDate,downsampling,selMetric,startDate,endDate,timezone);
+		try {
+				clearInterval(graphInterval);
+			} catch(err) {
 
-    				}
-    				
-    				if(autoreload){
-    					graphInterval = setInterval(function(){
-    						callIntervalData() 
-    					}, 1000*autoreload);
-    				}
-    		}
+			}
+			
+			if(autoreload){
+				graphInterval = setInterval(function(){
+					callIntervalData() 
+				}, 1000*autoreload);
+			}
+    }
 }
 
 function callIntervalData() {
@@ -210,11 +238,7 @@ function callIntervalData() {
 		
 	var selMetric=$("select.selectbox_menulist").val();
 	var downsampling = $("#downsampling option:selected").val();
-	loadGraph.loadGraphData("/stats/flowid/"+flowid+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric,"GET",selMetric).then(function(response) {
-		$("#wait1").css("display", "none");
-		$('body').css('pointer-events', 'all');
-		showStatsGraph.showStatsData(response,selMetric,null,null,startDate,endDate,timezone); 
-	})
+	fetchAndLoadGraphData(flowid,convertedStartDate,convertedEndDate,downsampling,selMetric,startDate,endDate,timezone);
 }
 
 /* ]]> */
