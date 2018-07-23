@@ -499,7 +499,7 @@ public class FlowCrudSteps implements En {
         flow.setMaximumBandwidth(bw);
     }
 
-    @And("^create flow (.*)$")
+    @And("^create flow '(.*)'$")
     public void createFlow(String flowAlias) {
         FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
         flowResponse = northboundService.addFlow(flow);

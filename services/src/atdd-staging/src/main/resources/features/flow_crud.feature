@@ -42,7 +42,7 @@ Feature: Flow CRUD
   Scenario: Update bandwidth
     Given random flow aliased as 'flow1'
     And change bandwidth of flow1 flow to 1000
-    And create flow flow1
+    And create flow 'flow1'
     And 'flow1' flow is in UP state
     And get available bandwidth and maximum speed for flow flow1 and alias them as 'flow1_available_bw' and 'flow1_speed' respectively
     And get path of 'flow1' and alias it as 'flow1path'
