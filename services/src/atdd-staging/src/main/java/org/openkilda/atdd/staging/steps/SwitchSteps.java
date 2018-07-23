@@ -67,6 +67,7 @@ public class SwitchSteps {
     @Given("^select a switch and alias it as '(.*)'$")
     public void selectARandomSwitch(String switchAlias) {
         List<Switch> switches = getUnaliasedSwitches();
+        Assume.assumeFalse("All switches are already aliased", CollectionUtils.isEmpty(switches));
         Switch theSwitch = switches.get(0);
         log.info("Selected switch with id: {}", theSwitch.getDpId());
         topologyUnderTest.addAlias(switchAlias, theSwitch);
@@ -83,7 +84,7 @@ public class SwitchSteps {
                 return;
             }
         }
-        log.error("No switches found with Openflow version {}", ofVersion);
+        Assume.assumeTrue("No switches found with OpenFlow version " + ofVersion, false);
     }
 
     @When("^request all switch rules for switch '(.*)'$")
