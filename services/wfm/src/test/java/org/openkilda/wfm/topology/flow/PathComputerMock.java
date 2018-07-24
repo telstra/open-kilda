@@ -15,13 +15,18 @@
 
 package org.openkilda.wfm.topology.flow;
 
+import static java.util.Collections.emptyList;
+
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.pce.model.AvailableNetwork;
+import org.openkilda.pce.provider.FlowInfo;
 import org.openkilda.pce.provider.PathComputer;
 
-import java.util.Collections;
+import java.util.List;
 
 public class PathComputerMock implements PathComputer {
     @Override
@@ -41,8 +46,43 @@ public class PathComputerMock implements PathComputer {
 
     private static ImmutablePair<PathInfoData, PathInfoData> emptyPath() {
         return new ImmutablePair<>(
-                new PathInfoData(0L, Collections.emptyList()),
-                new PathInfoData(0L, Collections.emptyList()));
+                new PathInfoData(0L, emptyList()),
+                new PathInfoData(0L, emptyList()));
+    }
+
+    @Override
+    public long getWeight(IslInfoData isl) {
+        return 1L;
+    }
+
+    @Override
+    public List<FlowInfo> getFlowInfo() {
+        return emptyList();
+    }
+
+    @Override
+    public List<Flow> getAllFlows() {
+        return emptyList();
+    }
+
+    @Override
+    public List<Flow> getFlows(String flowId) {
+        return emptyList();
+    }
+
+    @Override
+    public List<SwitchInfoData> getSwitches() {
+        return emptyList();
+    }
+
+    @Override
+    public List<IslInfoData> getIsls() {
+        return emptyList();
+    }
+
+    @Override
+    public boolean isIslPort(String switchId, int port) {
+        return false;
     }
 
     private class MockedAvailableNetwork extends AvailableNetwork {

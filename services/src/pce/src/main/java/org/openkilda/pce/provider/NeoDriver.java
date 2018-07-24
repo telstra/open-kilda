@@ -31,6 +31,7 @@ import org.openkilda.pce.api.FlowAdapter;
 import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.neo4j.driver.v1.AccessMode;
 import org.neo4j.driver.v1.Driver;
@@ -45,9 +46,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
-public class NeoDriver implements PathComputer {
-
+public class NeoDriver implements PathComputer, TopologyRepository {
     private static final Logger logger = LoggerFactory.getLogger(NeoDriver.class);
 
     private final Driver driver;
@@ -77,7 +78,7 @@ public class NeoDriver implements PathComputer {
         List<PathNode> forwardNodes = new LinkedList<>();
         List<PathNode> reverseNodes = new LinkedList<>();
 
-        if (! flow.isOneSwitchFlow()) {
+        if (!flow.isOneSwitchFlow()) {
             try {
                 Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> biPath = getPathFromNetwork(flow, network, strategy);
                 if (biPath.getLeft().size() == 0 || biPath.getRight().size() == 0) {
@@ -100,7 +101,7 @@ public class NeoDriver implements PathComputer {
                             seqId++, (long) isl.getLatency()));
                     reverseNodes.add(new PathNode(isl.getDstDpid(), isl.getDstPort(), seqId++, 0L));
                 }
-            // FIXME(surabujin): Need to catch and trace exact exception thrown in recoverable places.
+                // FIXME(surabujin): Need to catch and trace exact exception thrown in recoverable places.
             } catch (TransientException e) {
                 throw new RecoverableException("TransientError from neo4j", e);
             } catch (ClientException e) {
@@ -156,22 +157,16 @@ public class NeoDriver implements PathComputer {
 
             for (Record record : result.list()) {
                 flows.add(new FlowInfo()
-                            .setFlowId(record.get("flow_id").asString())
-                            .setSrcSwitchId(record.get("src_switch").asString())
-                            .setCookie(record.get("cookie").asLong())
-                            .setMeterId(safeAsInt(record.get("meter_id")))
-                            .setTransitVlanId(safeAsInt(record.get("transit_vlan")))
+                        .setFlowId(record.get("flow_id").asString())
+                        .setSrcSwitchId(record.get("src_switch").asString())
+                        .setCookie(record.get("cookie").asLong())
+                        .setMeterId(safeAsInt(record.get("meter_id")))
+                        .setTransitVlanId(safeAsInt(record.get("transit_vlan")))
                 );
             }
 
         }
         return flows;
-    }
-
-    @Override
-    public List<Flow> getFlow(String flowId) {
-        List<Flow> found = getFlows(flowId);
-        return found.size() > 0 ? found : null;
     }
 
     @Override
@@ -221,7 +216,7 @@ public class NeoDriver implements PathComputer {
     }
 
     @Override
-    public  List<SwitchInfoData> getSwitches() {
+    public List<SwitchInfoData> getSwitches() {
         String q =
                 "MATCH (sw:switch) "
                         + "RETURN "
@@ -314,5 +309,24 @@ public class NeoDriver implements PathComputer {
     @Override
     public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
         return new AvailableNetwork(driver, ignoreBandwidth, requestedBandwidth);
+    }
+
+    @Override
+    public long getWeight(IslInfoData isl) {
+        return 1L;
+    }
+
+    @Override
+    public boolean isIslPort(String switchId, int port) {
+        String queryForIsl = "MATCH ()-[isl:isl]->() "
+                + "WHERE isl.src_switch = {switch} AND isl.src_port = {port} "
+                + "OR isl.dst_switch = {switch} AND isl.dst_port = {port} "
+                + "RETURN isl";
+        Map<String, Object> queryParams = ImmutableMap.of("switch", switchId, "port", port);
+
+        try (Session session = driver.session()) {
+            StatementResult queryResults = session.run(queryForIsl, queryParams);
+            return queryResults.hasNext();
+        }
     }
 }
