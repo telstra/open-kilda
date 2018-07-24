@@ -517,8 +517,20 @@ def validate_switch_rules(switch_id, switch_rules):
             logger.warn('Rule %s is excessive on the switch %s', cookie, switch_id)
             excess_rules.add(cookie)
 
-    return {"missing_rules": missing_rules, "excess_rules": excess_rules,
-            "proper_rules": proper_rules}
+    level = logging.INFO
+    if missing_rules:
+        level = logging.ERROR
+    elif excess_rules:
+        level = logging.WARN
+
+    diff = {
+        "missing_rules": missing_rules,
+        "excess_rules": excess_rules,
+        "proper_rules": proper_rules}
+
+    logger.log(level, 'Switch %s rules validation result: %s', switch_id, diff)
+
+    return diff
 
 
 def build_commands_to_sync_rules(switch_id, switch_rules):
