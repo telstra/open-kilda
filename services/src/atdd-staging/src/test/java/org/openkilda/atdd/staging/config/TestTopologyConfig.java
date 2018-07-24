@@ -17,10 +17,11 @@ package org.openkilda.atdd.staging.config;
 
 import static org.mockito.Mockito.spy;
 
+import org.openkilda.testing.model.topology.TopologyDefinition;
+
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

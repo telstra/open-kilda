@@ -12,6 +12,7 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.atdd.staging.steps;
 
 import static java.lang.String.format;
@@ -20,12 +21,12 @@ import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.northbound.NorthboundService;
+
 import cucumber.api.java.en.Given;
 import cucumber.api.java8.En;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 

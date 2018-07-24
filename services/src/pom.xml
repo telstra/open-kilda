@@ -12,14 +12,16 @@
 
     <modules>
         <module>messaging</module>
+        <module>api</module>
         <module>configuration</module>
+        <module>test-library</module>
         <module>pce</module>
         <module>floodlight-modules</module>
         <module>northbound</module>
-        <module>api</module>
         <module>atdd</module>
+        <module>functional-tests</module>
         <module>atdd-staging</module>
-  </modules>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
