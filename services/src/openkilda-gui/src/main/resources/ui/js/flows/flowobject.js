@@ -15,16 +15,9 @@ class Flow {
 	getPorts (id) {
 		 var switch_id = common.toggleSwitchID($("#" + id).val());
 		 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
-		 var startDate = moment().utc().subtract(10,'minutes').format("YYYY-MM-DD-HH:mm:ss");
+		 var startDate = moment().utc().subtract(15,'minutes').format("YYYY-MM-DD-HH:mm:ss");
 		 var downSample = "30s";
-		 var options =[];
-		 common.getData('/stats/switchports/' + switch_id + '/'+ startDate +'/' + endDate + '/'+ downSample).then(function(ports){
-		  for(var i=0; i<ports.length; i++){
-		   var port = ports[i];
-		   options.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
-		  }
-		 });
-		 return options;
+		 return common.getData('/stats/switchports/' + switch_id + '/'+ startDate +'/' + endDate + '/'+ downSample);
 	}
 	
 	validateFlow () {
@@ -126,23 +119,37 @@ class Flow {
 				}).on("select2:close", function (e) { flowObj.checkValidate('target_switch')});
 				
 			    $(document).on("change","#source_switch",function(e){
-			        var portoptions = flowObj.getPorts("source_switch");
-			        $("#source_port").select2({
-			         width:"100%",
-			         data:portoptions,
-			         placeholder:"Please select a port",
-			         matcher: common.matchCustomFlow
-			        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
+			        var portoptions = [];
+			        flowObj.getPorts("source_switch").then(function(ports){
+			  		  for(var i=0; i<ports.length; i++){
+			  			   var port = ports[i];
+			  			 portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+			  			  }
+				  		 $("#source_port").select2({
+					         width:"100%",
+					         data:portoptions,
+					         placeholder:"Please select a port",
+					         matcher: common.matchCustomFlow
+					        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
+			  		 });
+			       
 			       });
 			       
 			       $(document).on("change","#target_switch",function(e){
-			        var portoptions = flowObj.getPorts("target_switch");
-			        $("#target_port").select2({
-			         width:"100%",
-			         data:portoptions,
-			         placeholder:"Please select a port",
-			         matcher: common.matchCustomFlow
-			        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
+			        var portoptions = [];
+			        flowObj.getPorts("target_switch").then(function(ports){
+				  		  for(var i=0; i<ports.length; i++){
+				  			   var port = ports[i];
+				  			   	portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+				  			  }
+						  		$("#target_port").select2({
+							         width:"100%",
+							         data:portoptions,
+							         placeholder:"Please select a port",
+							         matcher: common.matchCustomFlow
+							        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
+				  		 });
+			        
 			       });
 			       
 				})
@@ -243,29 +250,43 @@ class Flow {
 						}).on("select2:close", function (e) { flowObj.checkValidate('target_switch')});
 						
 					    $(document).on("change","#source_switch",function(e){
-					        var portoptions = flowObj.getPorts("source_switch");
-					        $("#source_port").select2({
-					         width:"100%",
-					         data:portoptions,
-					         placeholder:"Please select a port",
-					         matcher: common.matchCustomFlow
-					        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
+					        var portoptions = []; 
+					        	flowObj.getPorts("source_switch").then(function(ports){
+						  		  for(var i=0; i<ports.length; i++){
+						  			   var port = ports[i];
+						  			 portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+						  			  }
+							  		 $("#source_port").select2({
+								         width:"100%",
+								         data:portoptions,
+								         placeholder:"Please select a port",
+								         matcher: common.matchCustomFlow
+								        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
+							  		 $("#source_port").val(flowData.source['port-id']).trigger('change');
+						  		 });
 					       });
 					       
 					       $(document).on("change","#target_switch",function(e){
-					        var portoptions = flowObj.getPorts("target_switch");
-					        $("#target_port").select2({
-					         width:"100%",
-					         data:portoptions,
-					         placeholder:"Please select a port",
-					         matcher: common.matchCustomFlow
-					        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
+					        var portoptions =[];
+					        flowObj.getPorts("target_switch").then(function(ports){
+					  		  for(var i=0; i<ports.length; i++){
+					  			   var port = ports[i];
+					  			   portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+					  			  }
+						  		 $("#target_port").select2({
+							         width:"100%",
+							         data:portoptions,
+							         placeholder:"Please select a port",
+							         matcher: common.matchCustomFlow
+							        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
+								$("#target_port").val(flowData.destination['port-id']).trigger('change');
+					  		 });
+					       
 					       });
 
 						$('#source_switch').val(selectedSourceSwitch.id).trigger('change');
 						$("#target_switch").val(selectedTargetSwitch.id).trigger('change');
-						$("#source_port").val(flowData.source['port-id']).trigger('change');
-						$("#target_port").val(flowData.destination['port-id']).trigger('change');
+						
 					})
 				} else {
 					$('#editflowloader').hide();
