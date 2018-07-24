@@ -192,7 +192,7 @@ public class FlowControllerTest extends NorthboundBaseTest {
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void pathFlow() throws Exception {
-        MvcResult result = mockMvc.perform(get("/flows/path/{flow-id}", TestMessageMock.FLOW_ID)
+        MvcResult result = mockMvc.perform(get("/flows/{flow-id}/path", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk())

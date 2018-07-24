@@ -229,7 +229,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow path", response = FlowPathPayload.class)
     @RequestMapping(
-            value = "/flows/path/{flow-id}", method = RequestMethod.GET,
+            value = "/flows/{flow-id}/path", method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPathPayload> pathFlow(@PathVariable(name = "flow-id") String flowId) {
         FlowPathPayload response = flowService.pathFlow(flowId);
@@ -298,7 +298,7 @@ public class FlowController {
      * @param flowId id of flow to be rerouted.
      * @return flow payload with updated path.
      */
-    @ApiOperation(value = "Reroute flow", response = FlowPathPayload.class)
+    @ApiOperation(value = "Reroute flow", response = FlowReroutePayload.class)
     @RequestMapping(path = "/flows/{flow_id}/reroute",
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
