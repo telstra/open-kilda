@@ -654,19 +654,32 @@ function reset() {
 	force.charge(-1000).resume();
 	zoom.scale(min_zoom);
 	zoomFit(min_zoom,500);
-	d3.selectAll('g.node')
-    .each(function(d) {
-    	var element = document.getElementById("circle_" + d.switch_id);
-    	var classes = "circle blue";
-		if(d.state && d.state.toLowerCase() == "deactivated"){
-			classes = "circle red";
-		}
-		element.setAttribute("class", classes);
-    	d3.select(this).classed("fixed", d.fixed = false);
-    	coordinates[d.switch_id] = [d.px, d.py];
-    });
-	storage.set('isDirtyCordinates', true);
-	storage.set('NODES_COORDINATES', coordinates);
+	if(USER_SESSION!='' && typeof(USER_SESSION)!='undefined' && USER_SESSION.userId == 2 && USER_SESSION.username =='admin'){
+		d3.selectAll('g.node')
+	    .each(function(d) {
+	    	var element = document.getElementById("circle_" + d.switch_id);
+	    	var classes = "circle blue";
+			if(d.state && d.state.toLowerCase() == "deactivated"){
+				classes = "circle red";
+			}
+			element.setAttribute("class", classes);
+	    	d3.select(this).classed("fixed", d.fixed = false);
+	    });
+	}else{
+		d3.selectAll('g.node')
+	    .each(function(d) {
+	    	var element = document.getElementById("circle_" + d.switch_id);
+	    	var classes = "circle blue";
+			if(d.state && d.state.toLowerCase() == "deactivated"){
+				classes = "circle red";
+			}
+			element.setAttribute("class", classes);
+	    	d3.select(this).classed("fixed", d.fixed = false);
+	    	coordinates[d.switch_id] = [d.px, d.py];
+	    });
+		storage.set('isDirtyCordinates', true);
+		storage.set('NODES_COORDINATES', coordinates);
+	}
 	
 }
 
