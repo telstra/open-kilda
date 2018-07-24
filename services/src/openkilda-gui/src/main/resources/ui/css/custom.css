@@ -1627,7 +1627,7 @@ table.dataTable .divTableCell .fa {
     top: 0;
     width: 14px;
     content: "";
-    background: #495cff;
+    background: #182488;
 }
 
 #sidebar-left {
@@ -2362,6 +2362,10 @@ display: inline-block;
   stroke:#d934CF;
   stroke-width:5px!important;
 }
+.orange_percentage{
+    stroke-width: 5!important;	
+  stroke:#FF8C00;
+}
 
 table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTable thead .sorting_desc, table.dataTable thead .sorting_asc_disabled, table.dataTable thead .sorting_desc_disabled {
 	background-position: right 8px;
@@ -2743,7 +2747,7 @@ body.twofa_body {
 }
 
 #portsTable .up-status .divTableCell:first-child{
-	border-left: 4px solid green;
+	border-left: 4px solid #182488;
 }
 
 #portsTable th{
@@ -2753,9 +2757,6 @@ body.twofa_body {
 #portsTable .subPortHeadTable{
 	padding:0;
 } 
-div#portsTable_info {
-    display: none;
-}
 #portsTable .subPortHeadTable span{
 	width: 50%;
     overflow: hidden;
@@ -2766,7 +2767,9 @@ div#portsTable_info {
     font-weight: 400;
     font-size: 11px;
 }
-
+div#portsTable_info {
+    display: none;
+}
 #portsTable .subPortTable{
 	padding:0;
 } 
@@ -2777,7 +2780,6 @@ div#portsTable_info {
     display: inline-block;
     padding: 15px 10px;
 }
-
 #portsTable .subPortTable span:last-child{
     border-left:1px solid #dddddd;
 }

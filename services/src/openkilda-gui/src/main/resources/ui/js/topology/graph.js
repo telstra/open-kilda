@@ -139,7 +139,6 @@ var max_zoom = 3;
 var isDragMove = false;
 var scale = 1.0;
 var optArray = [];
-
 var mLinkNum ={};
 var linkedByIndex = {};
 var nodes = [], links = [], flows = [];
@@ -417,25 +416,38 @@ graph = {
 		        };
 		    }).on("mouseover", function(d, index) {
 		        var element = $("#link" + index)[0];
+		        var availbandwidth = d.available_bandwidth;
+				var speed = d.speed;
+				var percentage = common.getPercentage(availbandwidth,speed);
 		        if (d.hasOwnProperty("flow_count")) {
 		            classes = "link logical overlay";
 		        } else {
-		        	classes =  "link physical overlay";
+		        	if(percentage < 50){
+            			classes =  "link physical orange_percentage overlay";
+            		}else{
+            			classes =  "link physical overlay";
+            		}
 		        }
 		        element.setAttribute("class", classes);
 		
 		    }).on("mouseout", function(d, index) {
 		        var element = $("#link" + index)[0];
+		        var availbandwidth = d.available_bandwidth;
+				var speed = d.speed;
+				var percentage = common.getPercentage(availbandwidth,speed);
 		        if (d.hasOwnProperty("flow_count")) {
 		            classes = "link logical";
 		        } else {
-		        	classes =  "link physical";
+		        	if(percentage < 50){
+            			classes =  "link physical orange_percentage";
+            		}else{
+            			classes =  "link physical";
+            		}
 		        }
 		        element.setAttribute("class", classes);
 		    }).on(
 		        "click",
 		        function(d, index) {
-		
 		            showFlowDetails(d);
 		        })
 		    .attr("class", "linecircle")
@@ -638,6 +650,10 @@ function tick() {
 
 function reset() {
 	storage.remove("NODES_COORDINATES");
+	var coordinates = {};
+	force.charge(-1000).resume();
+	zoom.scale(min_zoom);
+	zoomFit(min_zoom,500);
 	d3.selectAll('g.node')
     .each(function(d) {
     	var element = document.getElementById("circle_" + d.switch_id);
@@ -647,10 +663,11 @@ function reset() {
 		}
 		element.setAttribute("class", classes);
     	d3.select(this).classed("fixed", d.fixed = false);
+    	coordinates[d.switch_id] = [d.px, d.py];
     });
-	force.charge(-1000).resume();
-	zoom.scale(min_zoom);
-	zoomFit(min_zoom,500);
+	storage.set('isDirtyCordinates', true);
+	storage.set('NODES_COORDINATES', coordinates);
+	
 }
 
 function zoomClick(id) {
@@ -1320,6 +1337,9 @@ function insertLinks(links){
 	link = g.selectAll(".link").data(links);
 	link.enter().append("path")
 	.attr("class", function(d, index) {
+		var availbandwidth = d.available_bandwidth;
+		var speed = d.speed;
+		var percentage = common.getPercentage(availbandwidth,speed);
         if (d.hasOwnProperty("flow_count")) {
             return "link logical";
         } else {
@@ -1334,6 +1354,9 @@ function insertLinks(links){
             	if(d.affected){
             		return "link physical dashed_path";
             	}else{
+            		if(percentage < 50){
+            			return "link physical orange_percentage";
+            		}
             		return "link physical";
             	}
                 
@@ -1346,6 +1369,9 @@ function insertLinks(links){
     .on("mouseover", function(d, index) {
     	$('#switch_hover').css('display', 'none');
 	    var element = $("#link" + index)[0];	
+	    var availbandwidth = d.available_bandwidth;
+		var speed = d.speed;
+		var percentage = common.getPercentage(availbandwidth,speed);
         if (d.hasOwnProperty("flow_count")) {
         	if(d.affected){
         		element.setAttribute("class","link logical overlay dashed_path");
@@ -1358,14 +1384,24 @@ function insertLinks(links){
             	if(d.affected){
             		element.setAttribute("class","link physical dashed_path pathoverlay");
             	}else{
-            		element.setAttribute("class","link physical pathoverlay");
+            		
+            		if(percentage < 50){
+            			element.setAttribute("class","link physical orange_percentage overlay");
+            		}else{
+            			element.setAttribute("class","link physical overlay");
+            		}
             	}
             	
             }else{
             	if(d.affected){
             		element.setAttribute("class","link physical overlay dashed_path");
             	}else{
-            		element.setAttribute("class","link physical overlay");
+            		if(percentage < 50){
+            			element.setAttribute("class","link physical orange_percentage overlay");
+            		}else{
+            			element.setAttribute("class","link physical overlay");
+            		}
+            		
             	}
             	
             }
@@ -1390,13 +1426,16 @@ function insertLinks(links){
 		    d3.select(".isldetails_div_speed").html("<span>" + ((d.speed=="" || d.speed == undefined)? "-":d.speed/1000) + " Mbps</span>");
 		    d3.select(".isldetails_div_state").html("<span>" + ((d.state=="" || d.state == undefined)? "-":d.state) + "</span>");
 		    d3.select(".isldetails_div_latency").html("<span>" + ((d.latency=="" || d.latency == undefined)? "-":d.latency) + "</span>");
-		    d3.select(".isldetails_div_bandwidth").html("<span>" + ((d.available_bandwidth=="" || d.available_bandwidth == undefined)? "-":d.available_bandwidth/1000) + " Mbps</span>");
+		    d3.select(".isldetails_div_bandwidth").html("<span>" + ((d.available_bandwidth=="" || d.available_bandwidth == undefined)? "-":d.available_bandwidth/1000) + " Mbps ("+percentage+"%)</span>");
 		    d3.select(".isldetails_div_unidirectional").html("<span>" + ((d.unidirectional=="" || d.unidirectional == undefined)? "-":d.unidirectional) + "</span>"); 
 		    d3.select(".isldetails_div_cost").html("<span>" + ((d.cost=="" || d.cost == undefined)? "-":d.cost) + "</span>"); 
 		      
         }
     }).on("mouseout", function(d, index) {
         var element = $("#link" + index)[0];
+        var availbandwidth = d.available_bandwidth;
+		var speed = d.speed;
+		var percentage = common.getPercentage(availbandwidth,speed);
         if (d.hasOwnProperty("flow_count")) {
         	if(d.affected){
         		element.setAttribute("class", "link logical dashed_path");
@@ -1415,7 +1454,11 @@ function insertLinks(links){
             	if(d.affected){
             		element.setAttribute("class","link physical dashed_path");
             	}else{
-            		element.setAttribute("class","link physical");
+            		if(percentage < 50){
+            			element.setAttribute("class","link physical orange_percentage ");
+            		}else{
+            			element.setAttribute("class","link physical ");
+            		}
             	}
                 
             }
@@ -1426,6 +1469,9 @@ function insertLinks(links){
     	}
     }).on("click", function(d, index) {
         var element = $("#link" + index)[0];
+        var availbandwidth = d.available_bandwidth;
+		var speed = d.speed;
+		var percentage = common.getPercentage(availbandwidth,speed);
         if (d.hasOwnProperty("flow_count")) {
         	if(d.affected){
         		element.setAttribute("class", "link logical overlay dashed_path");
@@ -1446,7 +1492,11 @@ function insertLinks(links){
             	if(d.affected){
             		element.setAttribute("class","link physical overlay dashed_path");
             	}else{
-            		element.setAttribute("class","link physical overlay");
+            		if(percentage < 50){
+            			element.setAttribute("class","link physical orange_percentage overlay");
+            		}else{
+            			element.setAttribute("class","link physical overlay");
+            		}
             	}
                 
             }
@@ -1671,6 +1721,9 @@ var interval = {
 						for(var i=0,len=response.length;i<len;i++){
 							if(d.source_switch == response[i].source_switch && d.target_switch == response[i].target_switch && d.src_port ==  response[i].src_port && d.dst_port == response[i].dst_port){
 									d.state = response[i].state;
+									var availbandwidth = d.available_bandwidth;
+									var speed = d.speed;
+									var percentage = common.getPercentage(availbandwidth,speed);
 									if(response[i].affected){
 										d['affected']= response[i].affected;
 									}else{
@@ -1688,8 +1741,12 @@ var interval = {
 					                	if(d.affected){
 					                		classes = "link physical dashed_path";
 									    }else{
-									    	classes = "link physical";
-									    }
+									    	if(percentage < 50){
+						            			classes =  "link physical orange_percentage";
+						            		}else{
+						            			classes =  "link physical ";
+						            		}
+								  	  }
 					                	
 					                }
 								    var element = document.getElementById("link" + index);

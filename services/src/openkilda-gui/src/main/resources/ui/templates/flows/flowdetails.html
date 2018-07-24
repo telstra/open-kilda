@@ -182,7 +182,7 @@
 											</div>
 											<div class="col-xs-4 filter">
 												<div class="stats-graph row">
-												<ul class="line-legend col-lg-12">
+												<ul id="flow_graph_directions" class="line-legend col-lg-12">
 												 	<li>Forward</li>
 												  	<li>Reverse</li>
 												</ul>
@@ -237,14 +237,38 @@
 															<span class="downsample-error-message pull-left"></span>
 														</div>
 													</fieldset>
-
-													<fieldset class="form-group">
+													<fieldset  id="selectedgraphContainer" class="form-group">
+														<label class="col-xs-4 text-label">Graph:</label>
+														<div class="col-xs-8">
+															<span class="form-control kilda_select"> 
+																<span class="selectbox_arrow"></span> 
+																	<select class="selectbox_list" id="flowselectedGraph" onChange="islDetails.getIslMetricData(this)">
+																	<option value="flow">Flow</option>
+																	<option value="flowpacket">Loss packets</option>
+																</select>
+															</span>
+														</div>
+														
+														</fieldset>
+													<fieldset class="form-group" id="islmenuListDropdown">
 														<label class="col-xs-4 text-label">Metric:</label>
 														<div class="col-xs-8">
 															<span class="form-control kilda_select"> <span
 																class="selectbox_arrow"></span> <select
 																class="selectbox_menulist" id="menulist">
 																	<option value="pen.isl.latency">pen.isl.latency</option>
+															</select>
+															</span>													
+														</div>
+													</fieldset>
+													
+													<fieldset id="directionDropdown" class="form-group" style="display:none;">
+														<label class="col-xs-4 text-label">Direction:</label>
+														<div class="col-xs-8">
+															<span class="form-control kilda_select"> <span
+																class="selectbox_arrow"></span> <select class="selectbox_list" id="directionlist">
+																	<option value="forward">Forward</option>
+																	<option value="reverse">Reverse</option>
 															</select>
 															</span>													
 														</div>

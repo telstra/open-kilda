@@ -45,7 +45,7 @@ $(document).ready(function(){
  function callPortDetailsAPI(switchname,loader){
 	 var switch_id =common.toggleSwitchID(switchname);
 	 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
-	 var startDate = moment().utc().subtract(10,'minutes').format("YYYY-MM-DD-HH:mm:ss");
+	 var startDate = moment().utc().subtract(15,'minutes').format("YYYY-MM-DD-HH:mm:ss");
 	 var downSample = "30s";	
 	 var url ='/stats/switchports/' + switch_id + '/'+ startDate +'/' + endDate + '/'+ downSample
 	 if(loader){$('#port_loading').show();}

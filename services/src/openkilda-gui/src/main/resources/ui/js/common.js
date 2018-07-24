@@ -138,6 +138,17 @@ var common = {
 			}
 			
 		},
+		getPercentage:function(val,baseVal){
+			var percentage = (val/baseVal) * 100;
+			var percentage_fixed = percentage.toFixed(2);
+			var value_percentage = percentage_fixed.split(".");
+			if(value_percentage[1] > 0){
+				return percentage.toFixed(2);
+			}else{
+				return value_percentage[0];
+			}
+				
+		},
 		updateData:function(apiUrl,requestType,data){
 			return $.ajax({url : APP_CONTEXT+apiUrl,contentType:'application/json',dataType : "json",type : requestType,data:JSON.stringify(data)});	
 		},
@@ -350,14 +361,15 @@ var loadGraph = {
 						if(domId == 'target'){
 							$("#waitisl2").css("display", "none");	
 						}
-						if($('#selectedGraph').val() == 'isl'){
+						var selectedGraph = $('#selectedGraph').val();
+						if(selectedGraph == 'isl' || selectedGraph == 'isllossforward' || selectedGraph == 'isllossreverse'){
 							$("#wait1").css("display", "none");
 						}
 						if(domId == undefined && domId == undefined){
 							$("#waitisl1").css("display", "none");
 							$("#waitisl2").css("display", "none");	
 						}
-						if($('#selectedGraph').val() != 'isl' ) {
+						if(selectedGraph != 'isl' && selectedGraph != 'isllossforward' && selectedGraph != 'isllossreverse') {
 							showIslSwitchStats.showIslSwitchStatsData(errResponse,selMetric,null,domId);
 						} else{
 							showStatsGraph.showStatsData(errResponse,selMetric,null,domId);
@@ -455,6 +467,9 @@ function ZoomCallBack(minX, maxX, yRanges) {
  var showStatsGraph = {	
 
 	showStatsData:function(response,metricVal,graphCode,domId,startDate,endDate,timezone) {
+		if(typeof(timezone) == 'undefined'){
+			timezone = $('#timezone option:selected').val();
+		}
 		var metric1 = "";
 		var metric2 = "";
 		var direction1 = "";
@@ -470,7 +485,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							 		      drawPoints: true,
 							 		      labels: "test",									 			 
 							 		      labelsUTC:true, 		      
-							 		      colors: ["#495cff","#aad200"],
+							 		      colors: ["#151B4C","#aad200"],
 							 	  });	
 						 return;
 					}
@@ -480,7 +495,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							 		      drawPoints: true,
 							 		      labels: "test",									 			 
 							 		      labelsUTC:true, 		      
-							 		      colors: ["#495cff","#aad200"],
+							 		      colors: ["#151B4C","#aad200"],
 							 	  });	
 						 return;
 					}
@@ -489,7 +504,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				 		      drawPoints: true,
 				 		      labels: "test",									 			 
 				 		      labelsUTC:true,
-				 		      colors: ["#495cff","#aad200"],
+				 		      colors: ["#182488","#aad200"],
 				 	  });	
 			 return;
 			 } 
@@ -532,7 +547,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
                               if(getValue[i]<0){
                               	getValue[i] = 0;
                               }    
-                              if(getVal[i]<0){
+                              if(typeof(getVal[i])!=='undefined' && getVal[i]<0){
                             	  getVal[i] = 0;
                               }
 						      var temparr = [];
@@ -581,7 +596,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 								 		      labels: labels,									 			 
 								 		      labelsUTC:true, 
 								 		      includeZero : true,		      
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -591,7 +606,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							{
 								 		      drawPoints: true,
 								 		      labels: labels,									 			 
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -606,7 +621,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 								 		      labels: labels,	 								 			 
 								 		      labelsUTC:true,	
 								 		      includeZero : true,	      
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -616,7 +631,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							{
 								 		      drawPoints: true,
 								 		      labels: labels,	 								 			 
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -625,7 +640,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				
 			} else {
 
-			if($('#selectedGraph').val() =='isl') {
+			if($('#selectedGraph').val() =='isl' || $('#selectedGraph').val() =='isllossforward' || $('#selectedGraph').val() =='isllossreverse') {
 				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 					var g = new Dygraph(document.getElementById("graphdiv"), graphData,
 							{    										
@@ -633,7 +648,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 								 		      labels: labels,									 			 
 								 		      labelsUTC:true, 
 								 		      includeZero : true,
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		      zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -643,7 +658,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							{    										
 								 		      drawPoints: true,
 								 		      labels: labels,									 			 
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		      zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -658,7 +673,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 													 		      drawPoints: true,
 													 		      labels:labels,	 
 													 		      labelsUTC:true,
-													 		      colors: ["#495cff","#aad200"],
+													 		      colors: ["#182488","#aad200"],
 													 		      zoomCallback:function(minX, maxX, yRanges){
 													 		    	ZoomCallBack(minX, maxX, yRanges)
 													 		      },
@@ -668,7 +683,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 										{
 													 		      drawPoints: true,
 													 		      labels:labels,	
-													 		      colors: ["#495cff","#aad200"],
+													 		      colors: ["#182488","#aad200"],
 													 		      zoomCallback:function(minX, maxX, yRanges){
 													 		    	ZoomCallBack(minX, maxX, yRanges)
 													 		      },
@@ -685,7 +700,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 											 		      labels: labels,								 			 
 											 		      labelsUTC:true,
 											 		      includeZero : true,
-											 		      colors: ["#495cff","#aad200"],
+											 		      colors: ["#182488","#aad200"],
 											 		      zoomCallback:function(minX, maxX, yRanges){
 											 		    	ZoomCallBack(minX, maxX, yRanges)
 											 		      },
@@ -695,7 +710,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 										  {
 											 		      drawPoints: true,
 											 		      labels: labels,								 			 
-											 		      colors: ["#495cff","#aad200"],
+											 		      colors: ["#182488","#aad200"],
 											 		      zoomCallback:function(minX, maxX, yRanges){
 											 		    	ZoomCallBack(minX, maxX, yRanges)
 											 		      },
@@ -712,7 +727,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 											 		      labels: labels,									 			 
 											 		      labelsUTC:true, 	
 											 		      includeZero : true,	      
-											 		      colors: ["#495cff","#aad200"],
+											 		      colors: ["#182488","#aad200"],
 											 		      zoomCallback:function(minX, maxX, yRanges){
 												 		    	ZoomCallBack(minX, maxX, yRanges)
 												 		      },
@@ -722,7 +737,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 										  {
 											 		      drawPoints: true,
 											 		      labels: labels,									 			 
-											 		      colors: ["#495cff","#aad200"],
+											 		      colors: ["#182488","#aad200"],
 											 		      zoomCallback:function(minX, maxX, yRanges){
 												 		    	ZoomCallBack(minX, maxX, yRanges)
 												 		      },
@@ -742,7 +757,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 								 		      labels: labels,	 									 			 
 								 		      labelsUTC:true,	
 								 		      includeZero : true,      
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -752,7 +767,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							{
 								 		      drawPoints: true,
 								 		      labels: labels,	 									 			 
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -770,7 +785,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 							 		      labels: labels,	 								 			 
 							 		      labelsUTC:true,	
 							 		      includeZero : true,	      
-							 		      colors: ["#495cff","#aad200"],
+							 		      colors: ["#182488","#aad200"],
 							 		     zoomCallback:function(minX, maxX, yRanges){
 								 		    	ZoomCallBack(minX, maxX, yRanges)
 								 		      },
@@ -780,7 +795,7 @@ function ZoomCallBack(minX, maxX, yRanges) {
 						{
 							 		      drawPoints: true,
 							 		      labels: labels,	 								 			 
-							 		      colors: ["#495cff","#aad200"],
+							 		      colors: ["#182488","#aad200"],
 							 		     zoomCallback:function(minX, maxX, yRanges){
 								 		    	ZoomCallBack(minX, maxX, yRanges)
 								 		      },
@@ -818,14 +833,14 @@ var showIslSwitchStats = {
 									 		      labels: "test",
 									 		      labelsUTC:true,
 									 		      includeZero : true,
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 	  });	
 							} else {
 								 var g = new Dygraph(document.getElementById("source-graph_div"), [],
 									 	 {
 									 		      drawPoints: true,
 									 		      labels: "test",	 		      
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 	  });	
 							}
 							
@@ -839,14 +854,14 @@ var showIslSwitchStats = {
 									 		      labels: "test",
 									 		      labelsUTC:true,
 									 		      includeZero : true,
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 	  });
 							} else {
 								 var g = new Dygraph(document.getElementById("dest-graph_div"), [],
 									 	 {
 									 		      drawPoints: true,
 									 		      labels: "test",	 		      
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 	  });
 							}
 								
@@ -941,7 +956,7 @@ var showIslSwitchStats = {
 									 		      labels: labels,								 			 
 									 		      labelsUTC:true,
 									 		      includeZero : true,
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
 										 		    	ZoomCallBack(minX, maxX, yRanges)
 										 		      },
@@ -951,7 +966,7 @@ var showIslSwitchStats = {
 								{
 									 		      drawPoints: true,
 									 		      labels: labels,								 			 
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
 										 		    	ZoomCallBack(minX, maxX, yRanges)
 										 		      },
@@ -966,7 +981,7 @@ var showIslSwitchStats = {
 									 		      labels: labels,								 			 
 									 		      labelsUTC:true,
 									 		      includeZero : true,
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
 										 		    	ZoomCallBack(minX, maxX, yRanges)
 										 		      },
@@ -976,7 +991,7 @@ var showIslSwitchStats = {
 								{
 									 		      drawPoints: true,
 									 		      labels: labels,								 			 
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
 										 		    	ZoomCallBack(minX, maxX, yRanges)
 										 		      },
@@ -992,7 +1007,7 @@ var showIslSwitchStats = {
 												 		      labels: labels,									 			 
 												 		      labelsUTC:true,
 												 		      includeZero : true, 		      
-												 		      colors: ["#495cff","#aad200"],
+												 		      colors: ["#182488","#aad200"],
 												 		     zoomCallback:function(minX, maxX, yRanges){
 													 		    	ZoomCallBack(minX, maxX, yRanges)
 													 		      },
@@ -1002,7 +1017,7 @@ var showIslSwitchStats = {
 											  {
 												 		      drawPoints: true,
 												 		      labels: labels,									 			 
-												 		      colors: ["#495cff","#aad200"],
+												 		      colors: ["#182488","#aad200"],
 												 		     zoomCallback:function(minX, maxX, yRanges){
 													 		    	ZoomCallBack(minX, maxX, yRanges)
 													 		      },
@@ -1018,7 +1033,7 @@ var showIslSwitchStats = {
 												 		      labels: labels,									 			 
 												 		      labelsUTC:true, 
 												 		      includeZero : true,		      
-												 		      colors: ["#495cff","#aad200"],
+												 		      colors: ["#182488","#aad200"],
 												 		     zoomCallback:function(minX, maxX, yRanges){
 													 		    	ZoomCallBack(minX, maxX, yRanges)
 													 		      },
@@ -1028,7 +1043,7 @@ var showIslSwitchStats = {
 											  {
 												 		      drawPoints: true,
 												 		      labels: labels,									 			 
-												 		      colors: ["#495cff","#aad200"],
+												 		      colors: ["#182488","#aad200"],
 												 		     zoomCallback:function(minX, maxX, yRanges){
 													 		    	ZoomCallBack(minX, maxX, yRanges)
 													 		      },
@@ -1047,7 +1062,7 @@ var showIslSwitchStats = {
 								 		      labels: labels,	 									 			 
 								 		      labelsUTC:true,	 
 								 		      includeZero : true,     
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -1057,7 +1072,7 @@ var showIslSwitchStats = {
 							{
 								 		      drawPoints: true,
 								 		      labels: labels,	 									 			 
-								 		      colors: ["#495cff","#aad200"],
+								 		      colors: ["#182488","#aad200"],
 								 		     zoomCallback:function(minX, maxX, yRanges){
 									 		    	ZoomCallBack(minX, maxX, yRanges)
 									 		      },
@@ -1075,7 +1090,7 @@ var showIslSwitchStats = {
 									 		      labels: labels,	 								 			 
 									 		      labelsUTC:true,	
 									 		      includeZero : true,	      
-									 		      colors: ["#495cff","#aad200"],
+									 		      colors: ["#182488","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
 										 		    	ZoomCallBack(minX, maxX, yRanges)
 										 		      },
@@ -1085,7 +1100,7 @@ var showIslSwitchStats = {
 								{
 									 		      drawPoints: true,
 									 		      labels: labels,	 								 			 
-									 		       colors: ["#495cff","#aad200"],
+									 		       colors: ["#182488","#aad200"],
 									 		     zoomCallback:function(minX, maxX, yRanges){
 										 		    	ZoomCallBack(minX, maxX, yRanges)
 										 		      },
@@ -1271,6 +1286,19 @@ var islDetails = {
 				$('#sourceGraphDiv').hide();
 				$('#targetGraphDiv').hide();
 				$('#isl_latency_graph').show();
+				$("#graphLabel").text("ISL Latency Graph");
+			}
+			
+			if(selectedgraph == 'isllossforward' || selectedgraph == 'isllossreverse'){
+				$('#sourceGraphDiv').hide();
+				$('#targetGraphDiv').hide();
+				$('#isl_latency_graph').show();
+				$("#islMetric").show();
+				if (selectedgraph == 'isllossforward') {
+					$("#graphLabel").text("ISL Loss Packets Forward Graph");
+				} else {
+					$("#graphLabel").text("ISL Loss Packets Resverse Graph");
+				}
 			}
 		}
 }

@@ -149,7 +149,7 @@
 										<div class="loader"></div>
 									</div>
 									
-								<h2 class="isl-header text-center">ISL Latency Graph</h2>	
+								<h2 class="isl-header text-center" id="graphLabel">ISL Latency Graph</h2>	
 								<div id="graphdiv"></div>
 							</div>
 						</div>	
@@ -171,7 +171,6 @@
 							</div>
 						
 						
-
 
 						<div class="col-xs-4 filter">
 							<div class="stats-graph row">
@@ -246,9 +245,11 @@
 									<span class="form-control kilda_select"> 
 										<span class="selectbox_arrow"></span> 
 											<select class="selectbox_list" id="selectedGraph" onChange="islDetails.getIslMetricData(this)">
-											<option value="isl">ISL Latency Graph</option>
-											<option value="source">Source Graph</option>
-											<option value="target">Destination Graph</option>
+											<option value="isl">Latency</option>
+											<option value="source">Source</option>
+											<option value="target">Destination</option>
+											<option value="isllossforward">Loss packet forward</option>
+											<option value="isllossreverse">Loss packet reverse</option>
 										</select>
 									</span>
 								</div>
