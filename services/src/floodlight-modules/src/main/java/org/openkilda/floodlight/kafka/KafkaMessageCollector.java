@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +39,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
 
     /**
-     * IFloodLightModule Methods
+     * IFloodLightModule Methods.
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -69,7 +70,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
         // A thread pool of fixed sized and no work queue.
         ExecutorService parseRecordExecutor = new ThreadPoolExecutor(consumerConfig.getExecutorCount(),
-                consumerConfig.getExecutorCount(), 0L, TimeUnit.MILLISECONDS, new SynchronousQueue<>());
+                consumerConfig.getExecutorCount(), 0L, TimeUnit.MILLISECONDS,
+                new SynchronousQueue<>(), new RetryableExecutionHandler());
 
         ConsumerContext context = new ConsumerContext(moduleContext, topicsConfig);
         RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
@@ -91,6 +93,23 @@ public class KafkaMessageCollector implements IFloodlightModule {
             Executors.newSingleThreadExecutor().execute(consumer);
         } catch (Exception exception) {
             logger.error("error", exception);
+        }
+    }
+
+    /**
+     * Handler of rejected messages by ThreadPoolExecutor, in case of reject this handler will wait
+     * until one of executors becomes available.
+     */
+    private class RetryableExecutionHandler implements RejectedExecutionHandler {
+        @Override
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+            if (!executor.isShutdown()) {
+                try {
+                    executor.getQueue().put(r);
+                } catch (InterruptedException e) {
+                    logger.error("Couldn't retry to process message", e);
+                }
+            }
         }
     }
 }
