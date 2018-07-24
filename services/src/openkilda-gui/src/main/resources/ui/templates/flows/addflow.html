@@ -48,7 +48,9 @@
 						<div class='form-group row flow-crud'>
 							<label class='col-sm-3 col-form-label'>Port:</label>
 							<div class='col-sm-6'>
-								<input id="source_port" class="form-control" name="source_port" type="text" required onkeypress="return flowObj.isNumberOnly()" onblur="flowObj.checkValidate('source_port')" />
+						        <select id="source_port" class="form-control" name="source_port" required onblur="flowObj.checkValidate('source_port')">
+						         <option value="">Please select a value</option>
+						        </select>
 								<span id="source_portError" class="has-error error">Source Port is required!</span>
 							</div>
 						</div>
@@ -81,7 +83,9 @@
 						<div class='form-group row flow-crud'>
 							<label class='col-sm-3 col-form-label'>Port:</label>
 							<div class='col-sm-6'>
-								<input id="target_port" class="form-control" name="target_port" type="text" required onkeypress="return flowObj.isNumberOnly()" onblur="flowObj.checkValidate('target_port')" />
+						        <select id="target_port" class="form-control" name="target_port" required onblur="flowObj.checkValidate('target_port')">
+						         <option value="">Please select a value</option>
+						        </select>
 								 <span id="target_portError" class="has-error error">Target Port is required!</span>
 							</div>
 						</div>
