@@ -190,10 +190,10 @@ public class AvailableNetwork {
      */
     public void addIslsOccupiedByFlow(String flowId) {
         String query = ""
-                + "MATCH (:switch)-[fs:flow_segment{flowid: '" + flowId + "'}]->(:switch) "
-                + "MATCH (:switch)-[link:isl]->(:switch) "
-                + "WHERE link.src_switch = fs.src_switch AND link.src_port = fs.src_port "
-                + "AND link.dst_switch = fs.dst_switch AND link.dst_port = fs.dst_port "
+                + "MATCH (src:switch)-[fs:flow_segment{flowid: '" + flowId + "'}]->(dst:switch) "
+                + "MATCH (src)-[link:isl]->(dst) "
+                + "WHERE src.state = 'active' AND dst.state = 'active' AND link.status = 'active' "
+                + "AND link.src_port = fs.src_port AND link.dst_port = fs.dst_port "
                 + "RETURN link";
 
         try (Session session = driver.session(AccessMode.READ)) {
