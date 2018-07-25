@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.service.northbound.NorthboundService;
 import org.openkilda.testing.service.topology.TopologyEngineService;
 
@@ -71,7 +72,9 @@ public class FlowManagerImpl implements FlowManager {
     public Map<FlowPayload, List<TopologyDefinition.Isl>> createFlowsWithASwitch(int flowsAmount,
                                                                                  int alternatePaths, int bandwidth) {
 
-        final List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
+        List<TopologyDefinition.TraffGen> traffGens = topologyDefinition.getActiveTraffGens();
+        final List<TopologyDefinition.Switch> switches = traffGens.stream().map(TraffGen::getSwitchConnected)
+                .collect(Collectors.toList());
         FlowSet flowSet = new FlowSet();
         boolean foundEnoughFlows = false;
         Map<FlowPayload, List<TopologyDefinition.Isl>> result = new HashMap<>();
