@@ -64,6 +64,9 @@
         <commons.io.version>1.3.2</commons.io.version>
         <aspectj.version>1.8.13</aspectj.version>
         <conf4j.version>1.0</conf4j.version>
+        <validation-api.version>2.0.0.Final</validation-api.version>
+        <hibernate-validator.version>6.0.10.Final</hibernate-validator.version>
+        <glassfish-el.version>3.0.1-b09</glassfish-el.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
     </properties>
@@ -228,6 +231,21 @@
                 <groupId>net.jodah</groupId>
                 <artifactId>failsafe</artifactId>
                 <version>${failsafe.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>javax.validation</groupId>
+                <artifactId>validation-api</artifactId>
+                <version>${validation-api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hibernate.validator </groupId>
+                <artifactId>hibernate-validator</artifactId>
+                <version>${hibernate-validator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish</groupId>
+                <artifactId>javax.el</artifactId>
+                <version>${glassfish-el.version}</version>
             </dependency>
 
             <dependency>

@@ -18,8 +18,11 @@ package org.openkilda.floodlight.statistics;
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Key;
 
+import javax.validation.constraints.Min;
+
 @Configuration
 public interface StatisticsServiceConfig {
     @Key("interval")
+    @Min(0)
     int getInterval();
 }
