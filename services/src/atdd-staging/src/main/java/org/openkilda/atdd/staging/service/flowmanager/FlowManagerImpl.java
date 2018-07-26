@@ -18,12 +18,12 @@ package org.openkilda.atdd.staging.service.flowmanager;
 import static java.lang.String.format;
 
 import org.openkilda.atdd.staging.helpers.FlowSet;
+import org.openkilda.atdd.staging.helpers.FlowSet.FlowBuilder;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
-import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.service.northbound.NorthboundService;
 import org.openkilda.testing.service.topology.TopologyEngineService;
 
@@ -63,7 +63,6 @@ public class FlowManagerImpl implements FlowManager {
      * Note that unlike some other methods here, the flow(s) will already be created in the system.
      *
      * @param flowsAmount amount of flows to create. Will throw assumption error if unable to find enough flows
-     *              in given topology
      * @param alternatePaths amount of alternate paths that should be available for the created flows
      * @param bandwidth bandwidth for created flows
      * @return map. Key: created flow. Value: list of a-switch isls for flow.
@@ -72,15 +71,15 @@ public class FlowManagerImpl implements FlowManager {
     public Map<FlowPayload, List<TopologyDefinition.Isl>> createFlowsWithASwitch(int flowsAmount,
                                                                                  int alternatePaths, int bandwidth) {
 
-        List<TopologyDefinition.TraffGen> traffGens = topologyDefinition.getActiveTraffGens();
-        final List<TopologyDefinition.Switch> switches = traffGens.stream().map(TraffGen::getSwitchConnected)
-                .collect(Collectors.toList());
+        final List<TopologyDefinition.TraffGen> traffGens = topologyDefinition.getActiveTraffGens();
         FlowSet flowSet = new FlowSet();
         boolean foundEnoughFlows = false;
         Map<FlowPayload, List<TopologyDefinition.Isl>> result = new HashMap<>();
 
-        for (TopologyDefinition.Switch srcSwitch : switches) {
-            for (TopologyDefinition.Switch dstSwitch : switches) {
+        for (TopologyDefinition.TraffGen srcTraffGen : traffGens) {
+            for (TopologyDefinition.TraffGen dstTraffGen : traffGens) {
+                TopologyDefinition.Switch srcSwitch = srcTraffGen.getSwitchConnected();
+                TopologyDefinition.Switch dstSwitch = dstTraffGen.getSwitchConnected();
                 if (srcSwitch.getDpId().compareTo(dstSwitch.getDpId()) >= 0) {
                     continue;
                 }
@@ -94,7 +93,10 @@ public class FlowManagerImpl implements FlowManager {
                     //try creating flow to see the actual path being used
                     String flowId = format("%s_%s_%s", srcSwitch.getName(), dstSwitch.getName(),
                             sdf.format(new Date()));
-                    FlowPayload flow = flowSet.buildWithAnyPortsInUniqueVlan(flowId, srcSwitch, dstSwitch, bandwidth);
+                    FlowBuilder builder = flowSet.getFlowBuilder(flowId, srcSwitch, dstSwitch);
+                    FlowPayload flow = builder.buildInUniqueVlan(srcTraffGen.getSwitchPort(),
+                            dstTraffGen.getSwitchPort());
+                    flow.setMaximumBandwidth(bandwidth);
                     northboundService.addFlow(flow);
                     List<PathNode> path = northboundService.getFlowPath(flowId).getPath().getPath();
                     List<TopologyDefinition.Isl> isls = new ArrayList<>();
