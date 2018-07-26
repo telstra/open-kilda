@@ -589,8 +589,8 @@
     <suppress files="src/test/java/org/openkilda/atdd/FlowIgnoreBandwidthTest.java" lines="97" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowIgnoreBandwidthTest.java" lines="108" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowIgnoreBandwidthTest.java" lines="127" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="131" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="170" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="128" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/atdd/NorthboundRunTest.java" lines="167" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/atdd/PathComputationTest.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/PathComputationTest.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/atdd/PathComputationTest.java" lines="28" checks="AvoidStarImport"/>

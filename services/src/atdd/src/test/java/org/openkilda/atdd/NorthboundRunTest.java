@@ -26,14 +26,13 @@ import static org.openkilda.flow.FlowUtils.getHealthCheck;
 import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
@@ -47,16 +46,14 @@ import java.util.stream.Collectors;
 
 public class NorthboundRunTest {
     private static final FlowState expectedFlowStatus = FlowState.UP;
-    private static final PathInfoData expectedForwardFlowPath = new PathInfoData(0L, Arrays.asList(
-            new PathNode("de:ad:be:ef:00:00:00:03", 2, 0),
-            new PathNode("de:ad:be:ef:00:00:00:04", 1, 1),
-            new PathNode("de:ad:be:ef:00:00:00:04", 2, 2),
-            new PathNode("de:ad:be:ef:00:00:00:05", 1, 3)));
-    private static final PathInfoData expectedReverseFlowPath = new PathInfoData(0L, Arrays.asList(
-            new PathNode("de:ad:be:ef:00:00:00:05", 1, 0),
-            new PathNode("de:ad:be:ef:00:00:00:04", 2, 1),
-            new PathNode("de:ad:be:ef:00:00:00:04", 1, 2),
-            new PathNode("de:ad:be:ef:00:00:00:03", 2, 3)));
+    private static final List<PathNodePayload> expectedForwardFlowPath = Arrays.asList(
+            new PathNodePayload("de:ad:be:ef:00:00:00:03", 11, 2),
+            new PathNodePayload("de:ad:be:ef:00:00:00:04", 1, 2),
+            new PathNodePayload("de:ad:be:ef:00:00:00:05", 1, 12));
+    private static final List<PathNodePayload> expectedReverseFlowPath = Arrays.asList(
+            new PathNodePayload("de:ad:be:ef:00:00:00:05", 12, 1),
+            new PathNodePayload("de:ad:be:ef:00:00:00:04", 2, 1),
+            new PathNodePayload("de:ad:be:ef:00:00:00:03", 2, 11));
 
     @Then("^path of flow (\\w+) could be read$")
     public void checkFlowPath(final String flowId) {

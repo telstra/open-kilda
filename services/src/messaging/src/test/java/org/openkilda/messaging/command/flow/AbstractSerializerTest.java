@@ -290,7 +290,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowGetBidirectionalRequestTest() throws IOException, ClassNotFoundException {
-        BidirectionalFlowRequest data = new BidirectionalFlowRequest(flowIdStatusRequest);
+        BidirectionalFlowRequest data = new BidirectionalFlowRequest(FLOW_NAME);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -306,7 +306,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(FLOW_NAME, resultData.getFlowId());
     }
 
     @Test

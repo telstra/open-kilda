@@ -48,6 +48,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
@@ -55,6 +56,7 @@ import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -73,7 +75,9 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
             FlowState.UP.getState());
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.IN_PROGRESS);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
-    static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, path, path);
+    static final List<PathNodePayload> pathPayloadsList =
+            Collections.singletonList(new PathNodePayload(FLOW_ID, 1, 1));
+    static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList);
     static final Flow flowModel = new Flow(FLOW_ID, 10000, false, 0L, FLOW_ID, null, FLOW_ID,
             FLOW_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP);
 

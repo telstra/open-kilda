@@ -333,14 +333,14 @@ public class FlowServiceImpl implements FlowService {
     public FlowPathPayload pathFlow(final String id) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Flow path: {}={}", CORRELATION_ID, correlationId);
-        BidirectionalFlowRequest data = new BidirectionalFlowRequest(new FlowIdStatusPayload(id, null));
+        BidirectionalFlowRequest data = new BidirectionalFlowRequest(id);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         BidirectionalFlowResponse response =
                 (BidirectionalFlowResponse) validateInfoMessage(request, message, correlationId);
-        return FlowPayloadToFlowConverter.buildFlowPathPayloadByFlowPath(response.getPayload());
+        return FlowPayloadToFlowConverter.buildFlowPathPayload(response.getPayload());
     }
 
     /**

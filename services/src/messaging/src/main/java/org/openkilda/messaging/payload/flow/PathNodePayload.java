@@ -13,27 +13,47 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
-
-import org.openkilda.messaging.command.CommandData;
+package org.openkilda.messaging.payload.flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
+import java.io.Serializable;
+
 /**
- * Represents get bidirectional flow northbound request.
+ * Flow path node NB representation class.
  */
 @Value
-public class BidirectionalFlowRequest extends CommandData {
+public class PathNodePayload implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty("flowid")
-    protected String flowId;
+    /**
+     * Switch id.
+     */
+    @JsonProperty("switch_id")
+    private String switchId;
+
+    /**
+     * Input port number.
+     */
+    @JsonProperty("input_port")
+    private int inputPort;
+
+    /**
+     * Output port number.
+     */
+    @JsonProperty("output_port")
+    private int outputPort;
 
     @JsonCreator
-    public BidirectionalFlowRequest(@JsonProperty("flowid") String flowId) {
-        this.flowId = flowId;
+    public PathNodePayload(
+            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("input_port") int inputPort,
+            @JsonProperty("output_port") int outputPort) {
+        this.switchId = switchId;
+        this.inputPort = inputPort;
+        this.outputPort = outputPort;
     }
 }

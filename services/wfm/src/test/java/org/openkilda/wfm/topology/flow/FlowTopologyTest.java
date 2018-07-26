@@ -1183,8 +1183,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private PathInfoData pathFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Path flow");
-        FlowIdStatusPayload payload = new FlowIdStatusPayload(flowId);
-        BidirectionalFlowRequest commandData = new BidirectionalFlowRequest(payload);
+        BidirectionalFlowRequest commandData = new BidirectionalFlowRequest(flowId);
         CommandMessage message = new CommandMessage(commandData, 0, "path-flow", Destination.WFM);
         //sendNorthboundMessage(message);
         sendFlowMessage(message);

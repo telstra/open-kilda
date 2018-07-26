@@ -15,8 +15,6 @@
 
 package org.openkilda.messaging.payload.flow;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -24,6 +22,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * Flow path representation class.
@@ -46,19 +45,19 @@ public class FlowPathPayload implements Serializable {
     /**
      * The forward path of the flow.
      */
-    @JsonProperty("flowpath")
-    protected PathInfoData forwardPath;
+    @JsonProperty("flowpath_forward")
+    protected List<PathNodePayload> forwardPath;
 
     /**
      * The reverse path of the flow.
      */
-    @JsonProperty("reverse")
-    protected PathInfoData reversePath;
+    @JsonProperty("flowpath_reverse")
+    protected List<PathNodePayload> reversePath;
 
     @JsonCreator
     public FlowPathPayload(@JsonProperty("flowid") String id,
-                           @JsonProperty("flowpath") PathInfoData forwardPath,
-                           @JsonProperty("reverse") PathInfoData reversePath) {
+                           @JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
+                           @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath) {
         this.id = id;
         this.forwardPath = forwardPath;
         this.reversePath = reversePath;

@@ -196,7 +196,7 @@ public class SplitterBolt extends BaseRichBolt {
                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
             } else if (data instanceof BidirectionalFlowRequest) {
-                String flowId = ((BidirectionalFlowRequest) data).getPayload().getId();
+                String flowId = ((BidirectionalFlowRequest) data).getFlowId();
 
                 logger.info("Flow {} get bidirectional message: values={}", flowId, values);
 
