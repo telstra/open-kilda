@@ -165,7 +165,7 @@ public class FlowCrudBasicRunTest {
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                   final int destinationVlan, final int bandwidth) throws Exception {
         int unknownFlowCount = -1; // use -1 to communicate "I don't know what it should be")
-        int expectedFlowCount = getFlowCount(unknownFlowCount) - 2;
+        final int expectedFlowCount = getFlowCount(unknownFlowCount) - 2;
 
         FlowPayload response = FlowUtils.deleteFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(response);

@@ -29,6 +29,7 @@ import org.openkilda.pce.NetworkTopologyConstants;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -165,17 +166,15 @@ public class ResourceCacheTest {
         }
     }
 
-    // (crimi - 2018.04.06  ... Don't do this ... cookie pool is massive
-    //
-    //    @Test(expected = ArrayIndexOutOfBoundsException.class)
-    //    public void cookiePoolFullTest() {
-    //        resourceCache.allocateCookie();
-    //        int i = ResourceCache.MIN_COOKIE;
-    //        while (i++ <= ResourceCache.MAX_COOKIE) {
-    //            resourceCache.allocateCookie();
-    //        }
-    //    }
-    //
+    @Ignore("(crimi - 2018.04.06  ... Don't do this ... cookie pool is massive")
+    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    public void cookiePoolFullTest() {
+        resourceCache.allocateCookie();
+        int i = ResourceCache.MIN_COOKIE;
+        while (i++ <= ResourceCache.MAX_COOKIE) {
+            resourceCache.allocateCookie();
+        }
+    }
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void meterIdPoolFullTest() {
@@ -234,7 +233,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void shouldSkipDellocateMeterPoolIfSwitchNotFound() {
+    public void shouldSkipDeallocateMeterPoolIfSwitchNotFound() {
         // given
         Random random = new Random();
         final SwitchId switchId = new SwitchId(format("%s:%s", SWITCH_ID, Integer.toString(random.nextInt(0X100), 16)));
@@ -244,7 +243,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void shouldSkipDellocateMeterIdIfSwitchNotFound() {
+    public void shouldSkipDeallocateMeterIdIfSwitchNotFound() {
         // given
         Random random = new Random();
         final SwitchId switchId = new SwitchId(format("%s:%s", SWITCH_ID, Integer.toString(random.nextInt(0X100), 16)));
@@ -276,7 +275,6 @@ public class ResourceCacheTest {
         assertEquals(2, allMeterIds.get(SWITCH_ID_2).size());
     }
 
-
     @Test
     public void earlyMeterIds() {
         /*
@@ -298,6 +296,4 @@ public class ResourceCacheTest {
         first = resourceCache.allocateMeterId(SWITCH_ID);
         assertEquals(m1 + 1, first);
     }
-
-
 }
