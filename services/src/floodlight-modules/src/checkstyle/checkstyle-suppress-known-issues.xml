@@ -30,7 +30,7 @@
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="18" checks="UnusedImports"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="41" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="40" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="85" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="12" checks="JavadocMethod"/>
@@ -209,8 +209,8 @@
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="29" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="89" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="134" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="296" checks="[a-zA-Z0-9]*"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="133" checks="LineLength"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/kafka/ReplaceInstallFlowTest.java" lines="294" checks="[a-zA-Z0-9]*"/>
     <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="27" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="28" checks="CustomImportOrder"/>
