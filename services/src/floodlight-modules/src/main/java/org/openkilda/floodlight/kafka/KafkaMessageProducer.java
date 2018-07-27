@@ -15,8 +15,9 @@
 
 package org.openkilda.floodlight.kafka;
 
+import static java.lang.String.format;
+
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.messaging.Message;
@@ -37,8 +38,6 @@ import java.util.Map;
 public class KafkaMessageProducer implements IFloodlightModule, IFloodlightService {
     private Producer producer;
     private HeartBeat heartBeat;
-
-    private String topoDiscoTopic;
 
     /**
      * {@inheritDoc}
@@ -70,15 +69,11 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
     @Override
     public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         ConfigurationProvider provider = new ConfigurationProvider(moduleContext, this);
-
+        KafkaProducerConfig producerConfig = provider.getConfiguration(KafkaProducerConfig.class);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
-        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
 
-        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
-        Context context = new Context(moduleContext, kafkaConfig);
-
-        initProducer(context);
-        initHeartBeat(context);
+        initProducer(producerConfig, producerConfig);
+        initHeartBeat(producerConfig, topicsConfig.getTopoDiscoTopic());
     }
 
     /**
@@ -99,30 +94,23 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
         heartBeat.reschedule();
     }
 
-    private void initProducer(Context context) {
-        if (!context.isTestingMode()) {
-            producer = new Producer(context);
+    private void initProducer(KafkaProducerConfig kafkaConfig, KafkaProducerConfig producerConfig) {
+        if (!producerConfig.isTestingMode()) {
+            producer = new Producer(kafkaConfig);
         } else {
-            producer = new TestAwareProducer(context);
+            producer = new TestAwareProducer(kafkaConfig);
         }
     }
 
-    private void initHeartBeat(Context context) throws FloodlightModuleException {
-        final String option = "heart-beat-interval";
-
-        String value = context.getHeartBeatInterval();
-
-        try {
-            Float interval = Float.valueOf(value);
-            if (interval < 1) {
-                throw new FloodlightModuleException(String.format(
-                        "Invalid value for option %s: %s < 1", option, value));
-            }
-            heartBeat = new HeartBeat(producer, (long) (interval * 1000), topoDiscoTopic);
-        } catch (NumberFormatException e) {
-            throw new FloodlightModuleException(String.format(
-                    "Invalid value for option %s=\"%s\", expect number", option, value));
+    private void initHeartBeat(KafkaProducerConfig producerConfig, String topoDiscoTopic)
+            throws FloodlightModuleException {
+        float interval = producerConfig.getHeartBeatInterval();
+        if (interval < 1) {
+            throw new FloodlightModuleException(
+                    format("Invalid value for option heart-beat-interval: %s < 1", interval));
         }
+
+        heartBeat = new HeartBeat(producer, (long) (interval * 1000), topoDiscoTopic);
     }
 
     public Producer getProducer() {
