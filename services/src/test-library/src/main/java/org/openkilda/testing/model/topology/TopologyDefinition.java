@@ -114,7 +114,8 @@ public class TopologyDefinition {
      */
     public List<Isl> getNotConnectedIsls() {
         return isls.stream()
-                .filter(isl -> isl.getSrcSwitch() != null && isl.getDstSwitch() == null)
+                .filter(isl -> isl.getSrcSwitch() != null && isl.getSrcSwitch().isActive()
+                        && isl.getDstSwitch() == null)
                 .collect(toList());
     }
 
