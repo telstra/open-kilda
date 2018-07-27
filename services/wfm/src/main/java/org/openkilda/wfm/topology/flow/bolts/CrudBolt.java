@@ -171,7 +171,7 @@ public class CrudBolt
         }
         initFlowCache();
 
-        flowValidator = new FlowValidator(flowCache, pathComputer);
+        flowValidator = new FlowValidator(flowCache);
     }
 
     /**

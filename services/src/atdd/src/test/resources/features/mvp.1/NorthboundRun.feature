@@ -15,39 +15,39 @@ Feature: Northbound tests
 
   This scenario setups flows across the entire set of switches and checks that response was successful
 
-    Then flow nbc creation request with de:ad:be:ef:00:00:00:03 11 100 and de:ad:be:ef:00:00:00:05 12 100 and 10000 is successful
+    Then flow nbc creation request with de:ad:be:ef:00:00:00:03 1 100 and de:ad:be:ef:00:00:00:05 2 100 and 10000 is successful
 
   @MVP1
   Scenario: Flow Reading
 
   This scenario setups flows across the entire set of switches and checks that response was successful
 
-    When flow nbr creation request with de:ad:be:ef:00:00:00:03 11 101 and de:ad:be:ef:00:00:00:05 12 101 and 10000 is successful
-    Then flow nbr with de:ad:be:ef:00:00:00:03 11 101 and de:ad:be:ef:00:00:00:05 12 101 and 10000 could be read
+    When flow nbr creation request with de:ad:be:ef:00:00:00:03 1 101 and de:ad:be:ef:00:00:00:05 2 101 and 10000 is successful
+    Then flow nbr with de:ad:be:ef:00:00:00:03 1 101 and de:ad:be:ef:00:00:00:05 2 101 and 10000 could be read
 
   @MVP1
   Scenario: Flow Updating
 
   This scenario setups flows across the entire set of switches, then updates them and checks that response was successful
 
-    When flow nbu creation request with de:ad:be:ef:00:00:00:03 11 102 and de:ad:be:ef:00:00:00:05 12 102 and 10000 is successful
-    Then flow nbu with de:ad:be:ef:00:00:00:03 11 102 and de:ad:be:ef:00:00:00:05 12 102 and 10000 could be updated with 20000
+    When flow nbu creation request with de:ad:be:ef:00:00:00:03 1 102 and de:ad:be:ef:00:00:00:05 2 102 and 10000 is successful
+    Then flow nbu with de:ad:be:ef:00:00:00:03 1 102 and de:ad:be:ef:00:00:00:05 2 102 and 10000 could be updated with 20000
 
   @MVP1
   Scenario: Flow Deletion
 
   This scenario setups flows across the entire set of switches, then deletes them and checks that response was successful
 
-    When flow nbd creation request with de:ad:be:ef:00:00:00:03 11 103 and de:ad:be:ef:00:00:00:05 12 103 and 10000 is successful
-    Then flow nbd with de:ad:be:ef:00:00:00:03 11 103 and de:ad:be:ef:00:00:00:05 12 103 and 10000 could be created
-    Then flow nbd with de:ad:be:ef:00:00:00:03 11 103 and de:ad:be:ef:00:00:00:05 12 103 and 10000 could be deleted
+    When flow nbd creation request with de:ad:be:ef:00:00:00:03 1 103 and de:ad:be:ef:00:00:00:05 2 103 and 10000 is successful
+    Then flow nbd with de:ad:be:ef:00:00:00:03 1 103 and de:ad:be:ef:00:00:00:05 2 103 and 10000 could be created
+    Then flow nbd with de:ad:be:ef:00:00:00:03 1 103 and de:ad:be:ef:00:00:00:05 2 103 and 10000 could be deleted
 
   @MVP1
   Scenario: Flow Path
 
   This scenario setups flows across the entire set of switches and checks that these flows could be read from database
 
-    When flow nbp creation request with de:ad:be:ef:00:00:00:03 11 104 and de:ad:be:ef:00:00:00:05 12 104 and 10000 is successful
+    When flow nbp creation request with de:ad:be:ef:00:00:00:03 1 104 and de:ad:be:ef:00:00:00:05 2 104 and 10000 is successful
     Then path of flow nbp could be read
 
   @MVP1
@@ -55,7 +55,7 @@ Feature: Northbound tests
 
   This scenario setups flows across the entire set of switches and checks that these flows could be read from database
 
-    When flow nbs creation request with de:ad:be:ef:00:00:00:03 11 105 and de:ad:be:ef:00:00:00:05 12 105 and 10000 is successful
+    When flow nbs creation request with de:ad:be:ef:00:00:00:03 1 105 and de:ad:be:ef:00:00:00:05 2 105 and 10000 is successful
     Then status of flow nbs could be read
 
   @MVP1
@@ -72,12 +72,12 @@ Feature: Northbound tests
 
     Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
-    When flow nbdnr creation request with de:ad:be:ef:00:00:00:02 11 106 and de:ad:be:ef:00:00:00:03 12 106 and 1000 is successful
+    When flow nbdnr creation request with de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is successful
     And flow nbdnr in UP state
-    And traffic through de:ad:be:ef:00:00:00:02 11 106 and de:ad:be:ef:00:00:00:03 12 106 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is pingable
 
     Then delete all non-default rules request on de:ad:be:ef:00:00:00:03 switch is successful with 2 rules deleted
-    And traffic through de:ad:be:ef:00:00:00:02 11 106 and de:ad:be:ef:00:00:00:03 12 106 and 1000 is not pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 106 and de:ad:be:ef:00:00:00:03 2 106 and 1000 is not pingable
     And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
   @MVP1
@@ -87,12 +87,12 @@ Feature: Northbound tests
 
     Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
-    When flow nbdar creation request with de:ad:be:ef:00:00:00:02 11 107 and de:ad:be:ef:00:00:00:03 12 107 and 1000 is successful
+    When flow nbdar creation request with de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is successful
     And flow nbdar in UP state
-    And traffic through de:ad:be:ef:00:00:00:02 11 107 and de:ad:be:ef:00:00:00:03 12 107 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is pingable
 
     Then delete all rules request on de:ad:be:ef:00:00:00:03 switch is successful with 5 rules deleted
-    And traffic through de:ad:be:ef:00:00:00:02 11 107 and de:ad:be:ef:00:00:00:03 12 107 and 1000 is not pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 107 and de:ad:be:ef:00:00:00:03 2 107 and 1000 is not pingable
     And No rules installed on de:ad:be:ef:00:00:00:03 switch
 
   @MVP1
@@ -102,12 +102,12 @@ Feature: Northbound tests
 
     Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
-    When flow nbdrip creation request with de:ad:be:ef:00:00:00:02 11 116 and de:ad:be:ef:00:00:00:03 12 116 and 1000 is successful
+    When flow nbdrip creation request with de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is successful
     And flow nbdrip in UP state
-    And traffic through de:ad:be:ef:00:00:00:02 11 116 and de:ad:be:ef:00:00:00:03 12 116 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is pingable
 
     Then delete rules request by 1 in-port on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
-    And traffic through de:ad:be:ef:00:00:00:02 11 116 and de:ad:be:ef:00:00:00:03 12 116 and 1000 is not pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 116 and de:ad:be:ef:00:00:00:03 2 116 and 1000 is not pingable
     And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
   @MVP1
@@ -117,12 +117,12 @@ Feature: Northbound tests
 
     Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
-    When flow nbdripn creation request with de:ad:be:ef:00:00:00:02 11 121 and de:ad:be:ef:00:00:00:03 12 121 and 1000 is successful
+    When flow nbdripn creation request with de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is successful
     And flow nbdripn in UP state
-    And traffic through de:ad:be:ef:00:00:00:02 11 121 and de:ad:be:ef:00:00:00:03 12 121 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is pingable
 
     Then delete rules request by 10 in-port on de:ad:be:ef:00:00:00:02 switch is successful with 0 rules deleted
-    And traffic through de:ad:be:ef:00:00:00:02 11 121 and de:ad:be:ef:00:00:00:03 12 121 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 121 and de:ad:be:ef:00:00:00:03 2 121 and 1000 is pingable
     And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
   @MVP1
@@ -132,12 +132,12 @@ Feature: Northbound tests
 
     Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
-    When flow nbdripv creation request with de:ad:be:ef:00:00:00:02 11 117 and de:ad:be:ef:00:00:00:03 12 117 and 1000 is successful
+    When flow nbdripv creation request with de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is successful
     And flow nbdripv in UP state
-    And traffic through de:ad:be:ef:00:00:00:02 11 117 and de:ad:be:ef:00:00:00:03 12 117 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is pingable
 
     Then delete rules request by 1 in-port and 117 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
-    And traffic through de:ad:be:ef:00:00:00:02 11 117 and de:ad:be:ef:00:00:00:03 12 117 and 1000 is not pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 117 and de:ad:be:ef:00:00:00:03 2 117 and 1000 is not pingable
     And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
   @MVP1
@@ -147,12 +147,12 @@ Feature: Northbound tests
 
     Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
-    When flow nbdripvn creation request with de:ad:be:ef:00:00:00:02 11 122 and de:ad:be:ef:00:00:00:03 12 122 and 1000 is successful
+    When flow nbdripvn creation request with de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is successful
     And flow nbdripvn in UP state
-    And traffic through de:ad:be:ef:00:00:00:02 11 122 and de:ad:be:ef:00:00:00:03 12 122 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is pingable
 
     Then delete rules request by 1 in-port and 200 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 0 rules deleted
-    And traffic through de:ad:be:ef:00:00:00:02 11 122 and de:ad:be:ef:00:00:00:03 12 122 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 122 and de:ad:be:ef:00:00:00:03 2 122 and 1000 is pingable
     And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
   @MVP1
@@ -162,12 +162,12 @@ Feature: Northbound tests
 
     Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
-    When flow nbdriv creation request with de:ad:be:ef:00:00:00:02 11 119 and de:ad:be:ef:00:00:00:03 12 119 and 1000 is successful
+    When flow nbdriv creation request with de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is successful
     And flow nbdriv in UP state
-    And traffic through de:ad:be:ef:00:00:00:02 11 119 and de:ad:be:ef:00:00:00:03 12 119 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is pingable
 
     Then delete rules request by 119 in-vlan on de:ad:be:ef:00:00:00:02 switch is successful with 1 rules deleted
-    And traffic through de:ad:be:ef:00:00:00:02 11 119 and de:ad:be:ef:00:00:00:03 12 119 and 1000 is not pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 119 and de:ad:be:ef:00:00:00:03 2 119 and 1000 is not pingable
     And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:02 switch
 
   @MVP1
@@ -177,12 +177,12 @@ Feature: Northbound tests
 
     Given 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
-    When flow nbdrop creation request with de:ad:be:ef:00:00:00:02 11 118 and de:ad:be:ef:00:00:00:03 12 118 and 1000 is successful
+    When flow nbdrop creation request with de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is successful
     And flow nbdrop in UP state
-    And traffic through de:ad:be:ef:00:00:00:02 11 118 and de:ad:be:ef:00:00:00:03 12 118 and 1000 is pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is pingable
 
     Then delete rules request by 2 out-port on de:ad:be:ef:00:00:00:03 switch is successful with 1 rules deleted
-    And traffic through de:ad:be:ef:00:00:00:02 11 118 and de:ad:be:ef:00:00:00:03 12 118 and 1000 is not pingable
+    And traffic through de:ad:be:ef:00:00:00:02 1 118 and de:ad:be:ef:00:00:00:03 2 118 and 1000 is not pingable
     And 8000000000000001,8000000000000002,8000000000000003 rules are installed on de:ad:be:ef:00:00:00:03 switch
 
   @MVP1
@@ -191,8 +191,8 @@ Feature: Northbound tests
   This scenario setups flows through NB, then deletes from DB and perform synchronization of the flow cache
 
     Given a clean flow topology
-    And flow sfc1 creation request with de:ad:be:ef:00:00:00:03 11 108 and de:ad:be:ef:00:00:00:05 12 108 and 10000 is successful
-    And flow sfc2 creation request with de:ad:be:ef:00:00:00:04 11 108 and de:ad:be:ef:00:00:00:06 12 108 and 10000 is successful
+    And flow sfc1 creation request with de:ad:be:ef:00:00:00:03 1 108 and de:ad:be:ef:00:00:00:05 2 108 and 10000 is successful
+    And flow sfc2 creation request with de:ad:be:ef:00:00:00:04 1 108 and de:ad:be:ef:00:00:00:06 2 108 and 10000 is successful
     And flows dump contains 2 flows
 
     When flow sfc1 could be deleted from DB
@@ -224,7 +224,7 @@ Feature: Northbound tests
   This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs flow validation check
 
     Given a clean flow topology
-    And flow vfris creation request with de:ad:be:ef:00:00:00:01 11 110 and de:ad:be:ef:00:00:00:04 12 110 and 1000 is successful
+    And flow vfris creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
     And flow vfris in UP state
     And validation of flow vfris is successful with no discrepancies
 
@@ -238,7 +238,7 @@ Feature: Northbound tests
   This scenario setups a flow through NB, then deletes rules from an ingress switch and performs flow validation check
 
     Given a clean flow topology
-    And flow vfrins creation request with de:ad:be:ef:00:00:00:01 11 110 and de:ad:be:ef:00:00:00:04 12 110 and 1000 is successful
+    And flow vfrins creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
     And flow vfrins in UP state
     And validation of flow vfrins is successful with no discrepancies
 
@@ -252,7 +252,7 @@ Feature: Northbound tests
   This scenario setups a flow through NB, then deletes rules from an egress switch and performs flow validation check
 
     Given a clean flow topology
-    And flow vfres creation request with de:ad:be:ef:00:00:00:01 11 110 and de:ad:be:ef:00:00:00:04 12 110 and 1000 is successful
+    And flow vfres creation request with de:ad:be:ef:00:00:00:01 1 110 and de:ad:be:ef:00:00:00:04 2 110 and 1000 is successful
     And flow vfres in UP state
     And validation of flow vfres is successful with no discrepancies
 
@@ -322,7 +322,7 @@ Feature: Northbound tests
   This scenario setups a flow through NB, then deletes rules from an ingress switch and performs switch validation check
 
     Given a clean flow topology
-    And flow vinsmr creation request with de:ad:be:ef:00:00:00:01 11 123 and de:ad:be:ef:00:00:00:04 12 123 and 1000 is successful
+    And flow vinsmr creation request with de:ad:be:ef:00:00:00:01 1 123 and de:ad:be:ef:00:00:00:04 2 123 and 1000 is successful
     And flow vinsmr in UP state
     And validation of rules on de:ad:be:ef:00:00:00:01 switch is successful with no discrepancies
 
@@ -336,7 +336,7 @@ Feature: Northbound tests
   This scenario setups a flow through NB, then deletes rules from an egress switch and performs switch validation check
 
     Given a clean flow topology
-    And flow vesmr creation request with de:ad:be:ef:00:00:00:01 11 124 and de:ad:be:ef:00:00:00:04 12 124 and 1000 is successful
+    And flow vesmr creation request with de:ad:be:ef:00:00:00:01 1 124 and de:ad:be:ef:00:00:00:04 2 124 and 1000 is successful
     And flow vesmr in UP state
     And validation of rules on de:ad:be:ef:00:00:00:04 switch is successful with no discrepancies
 
@@ -392,7 +392,7 @@ Feature: Northbound tests
   This scenario setups a flow through NB, then deletes rules from an intermediate switch and performs switch synchronization
 
     Given a clean flow topology
-    And flow ssr creation request with de:ad:be:ef:00:00:00:01 11 113 and de:ad:be:ef:00:00:00:04 12 113 and 1000 is successful
+    And flow ssr creation request with de:ad:be:ef:00:00:00:01 1 113 and de:ad:be:ef:00:00:00:04 2 113 and 1000 is successful
     And flow ssr in UP state
     And validation of rules on de:ad:be:ef:00:00:00:03 switch is successful with no discrepancies
 

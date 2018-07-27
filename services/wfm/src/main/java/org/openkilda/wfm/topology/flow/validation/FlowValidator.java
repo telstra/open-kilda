@@ -16,11 +16,9 @@
 package org.openkilda.wfm.topology.flow.validation;
 
 import static java.lang.String.format;
-import static java.util.Objects.requireNonNull;
 
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.provider.TopologyRepository;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -33,11 +31,9 @@ import java.util.Set;
 public class FlowValidator {
 
     private final FlowCache flowCache;
-    private final TopologyRepository topologyRepository;
 
-    public FlowValidator(FlowCache flowCache, TopologyRepository topologyRepository) {
-        this.flowCache = requireNonNull(flowCache, "flowCache cannot be null");
-        this.topologyRepository = requireNonNull(topologyRepository, "topologyRepository cannot be null");
+    public FlowValidator(FlowCache flowCache) {
+        this.flowCache = flowCache;
     }
 
     /**
@@ -49,7 +45,6 @@ public class FlowValidator {
     public void validate(Flow flow) throws FlowValidationException {
         checkBandwidth(flow);
         checkFlowForEndpointConflicts(flow);
-        checkFlowForIslConflicts(flow);
     }
 
     @VisibleForTesting
@@ -116,29 +111,6 @@ public class FlowValidator {
                             requestedFlow.getDestinationPort(),
                             requestedFlow.getDestinationSwitch(),
                             conflictedFlow.get().getFlowId()));
-        }
-    }
-
-    /**
-     * Checks a flow for conflicts with ISL ports.
-     *
-     * @param flow a flow to be validated.
-     * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing ISL ports.
-     */
-    @VisibleForTesting
-    void checkFlowForIslConflicts(Flow flow) throws FlowValidationException {
-        // Check the source
-        if (topologyRepository.isIslPort(flow.getSourceSwitch(), flow.getSourcePort())) {
-            throw new FlowValidationException(
-                    format("The port %d on the switch '%s' is occupied by an ISL.",
-                            flow.getSourcePort(), flow.getSourceSwitch()));
-        }
-
-        // Check the destination
-        if (topologyRepository.isIslPort(flow.getDestinationSwitch(), flow.getDestinationPort())) {
-            throw new FlowValidationException(
-                    format("The port %d on the switch '%s' is occupied by an ISL.",
-                            flow.getDestinationPort(), flow.getDestinationSwitch()));
         }
     }
 }

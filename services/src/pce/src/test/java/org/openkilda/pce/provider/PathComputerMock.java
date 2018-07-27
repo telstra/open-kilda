@@ -15,8 +15,6 @@
 
 package org.openkilda.pce.provider;
 
-import static java.util.Collections.emptyList;
-
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -44,7 +42,7 @@ public class PathComputerMock implements PathComputer {
     private MutableNetwork<SwitchInfoData, IslInfoData> network;
 
     @Override
-    public long getWeight(IslInfoData isl) {
+    public Long getWeight(IslInfoData isl) {
         return 1L;
     }
 
@@ -181,30 +179,5 @@ public class PathComputerMock implements PathComputer {
         path.getPath().add(destination);
 
         path.setLatency(path.getLatency() + isl.getLatency());
-    }
-
-    @Override
-    public List<Flow> getAllFlows() {
-        return emptyList();
-    }
-
-    @Override
-    public List<Flow> getFlows(String flowId) {
-        return emptyList();
-    }
-
-    @Override
-    public List<SwitchInfoData> getSwitches() {
-        return emptyList();
-    }
-
-    @Override
-    public List<IslInfoData> getIsls() {
-        return emptyList();
-    }
-
-    @Override
-    public boolean isIslPort(String switchId, int port) {
-        return false;
     }
 }

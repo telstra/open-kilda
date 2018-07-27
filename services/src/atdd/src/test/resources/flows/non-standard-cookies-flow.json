@@ -12,10 +12,10 @@
             "cookie": 73183493944770561,
             "meter_id": 1,
             "src_switch": "de:ad:be:ef:00:00:00:01",
-            "src_port": 11,
+            "src_port": 1,
             "src_vlan": 200,
             "dst_switch": "de:ad:be:ef:00:00:00:03",
-            "dst_port": 12,
+            "dst_port": 2,
             "dst_vlan": 201,
             "flowpath": {
                 "path": [
@@ -56,10 +56,10 @@
             "cookie": 109212290963734529,
             "meter_id": 2,
             "src_switch": "de:ad:be:ef:00:00:00:03",
-            "src_port": 12,
+            "src_port": 2,
             "src_vlan": 201,
             "dst_switch": "de:ad:be:ef:00:00:00:01",
-            "dst_port": 11,
+            "dst_port": 1,
             "dst_vlan": 200,
             "flowpath": {
                 "path": [
