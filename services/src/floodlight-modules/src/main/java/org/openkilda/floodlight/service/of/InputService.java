@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.service.of;
 
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.command.InputDispatchCommand;
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.service.AbstractOfHandler;
 import org.openkilda.floodlight.service.CommandProcessorService;
@@ -29,9 +30,12 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class InputService extends AbstractOfHandler implements IFloodlightService {
     private final HashMap<OFType, List<IInputTranslator>> translators = new HashMap<>();
@@ -56,30 +60,24 @@ public class InputService extends AbstractOfHandler implements IFloodlightServic
      */
     public void addTranslator(OFType ofType, IInputTranslator inputTranslator) {
         synchronized (this.translators) {
-            List<IInputTranslator> queue = translators.computeIfAbsent(ofType, kind -> new ArrayList<>());
-
-            if (queue.size() == 0) {
+            List<IInputTranslator> queue = translators.merge(
+                    ofType, Collections.singletonList(inputTranslator),
+                    (stored, toAdd) -> Stream.of(stored, toAdd)
+                            .flatMap(Collection::stream)
+                            .collect(Collectors.toList()));
+            if (queue.size() == 1) {
                 activateSubscription(flProviderService, ofType);
             }
-            queue.add(inputTranslator);
         }
     }
 
     @Override
     protected boolean handle(
             CommandContext commandContext, IOFSwitch sw, OFMessage message, FloodlightContext context) {
-        OfInput input = new OfInput(sw, message, context);
+        final OfInput input = new OfInput(sw, message, context);  // must be constructed as early as possible
 
-        final ArrayList<org.openkilda.floodlight.command.Command> pendingCommands = new ArrayList<>();
         List<IInputTranslator> queue = translators.get(input.getType());
-        for (IInputTranslator entry : queue) {
-            org.openkilda.floodlight.command.Command command = entry.makeCommand(commandContext, input);
-            if (command != null) {
-                pendingCommands.add(command);
-            }
-        }
-
-        commandProcessor.process(pendingCommands);
+        commandProcessor.processLazy(new InputDispatchCommand(commandContext, commandProcessor, queue, input));
 
         return false;
     }
