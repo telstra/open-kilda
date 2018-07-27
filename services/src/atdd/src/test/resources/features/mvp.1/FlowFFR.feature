@@ -149,8 +149,8 @@ Feature: Flow failover, failure and recovery
   Examples:
     | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth | split_state |
       # flow with transit vlans and intermediate switches
-    | c3swap  | 00:00:00:00:00:00:00:02 |      11      |     103     | 00:00:00:00:00:00:00:07 |         12        |       203        |   10000   |    DOWN     |
+    | c3swap  | 00:00:00:00:00:00:00:02 |      1      |     103     | 00:00:00:00:00:00:00:07 |         2        |       203        |   10000   |    DOWN     |
       # flow with transit vlans and without intermediate switches
-    | c2swap  | 00:00:00:00:00:00:00:05 |      11      |     102     | 00:00:00:00:00:00:00:06 |         12        |       202        |   10000   |    DOWN     |
+    | c2swap  | 00:00:00:00:00:00:00:05 |      1      |     102     | 00:00:00:00:00:00:00:06 |         2        |       202        |   10000   |    DOWN     |
       # flow without transit vlans and intermediate switches
-    | c1swap  | 00:00:00:00:00:00:00:04 |      11      |     101     | 00:00:00:00:00:00:00:04 |         12        |       201        |   10000   |     UP      |
+    | c1swap  | 00:00:00:00:00:00:00:04 |      1      |     101     | 00:00:00:00:00:00:00:04 |         2        |       201        |   10000   |     UP      |
