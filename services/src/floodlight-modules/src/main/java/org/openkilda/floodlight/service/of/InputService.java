@@ -48,7 +48,7 @@ public class InputService extends AbstractOfHandler implements IFloodlightServic
     }
 
     /**
-     * Service init(late) method.
+     * Service initialize(late) method.
      */
     public void init(FloodlightModuleContext moduleContext) {
         flProviderService = moduleContext.getServiceImpl(IFloodlightProviderService.class);

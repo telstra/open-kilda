@@ -18,6 +18,7 @@ package org.openkilda.floodlight.service;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.PendingCommandSubmitter;
+import org.openkilda.floodlight.kafka.KafkaConsumerConfig;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -28,10 +29,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class CommandProcessorService implements IFloodlightService {
@@ -43,7 +44,7 @@ public class CommandProcessorService implements IFloodlightService {
 
     private final CommandContextFactory commandContextFactory;
 
-    private ExecutorService executor = Executors.newCachedThreadPool();
+    private ThreadPoolExecutor executor;
     private long commandsInWork = 0;
     private long warnCooldown = -1;
 
@@ -53,7 +54,24 @@ public class CommandProcessorService implements IFloodlightService {
         this.commandContextFactory = commandContextFactory;
     }
 
+    /**
+     * Service initialize(late) method.
+     */
     public void init(FloodlightModuleContext moduleContext) {
+        KafkaConsumerConfig config = moduleContext.getServiceImpl(ConfigService.class).getConsumerConfig();
+
+        String name = getClass().getCanonicalName();
+        log.info("{} config - persistent workers - {}", name, config.getCommandPersistentWorkersCount());
+        log.info("{} config - idle workers keep alive seconds - {}",
+                name, config.getCommandIdleWorkersKeepAliveSeconds());
+        log.info("{} config - deferred requests limit - {}", name, config.getCommandDeferredRequestsLimit());
+
+        executor = new ThreadPoolExecutor(
+                config.getCommandPersistentWorkersCount(), Integer.MAX_VALUE,
+                config.getCommandIdleWorkersKeepAliveSeconds(), TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(config.getCommandDeferredRequestsLimit()));
+        executor.prestartAllCoreThreads();
+
         scheduleFutureCheckTrigger(moduleContext.getServiceImpl(IThreadPoolService.class).getScheduledExecutor());
     }
 
