@@ -106,7 +106,7 @@ public class FlowCrudBasicRunTest {
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be created$")
     public void checkFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                                  final int destinationVlan, final int bandwidth) throws Exception {
+                                  final int destinationVlan, final long bandwidth) throws Exception {
         Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, 0, flowId, null, sourceSwitch,
                 destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, null);
 

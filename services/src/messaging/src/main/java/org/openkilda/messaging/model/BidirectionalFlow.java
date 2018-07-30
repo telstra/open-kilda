@@ -35,7 +35,7 @@ public class BidirectionalFlow implements Serializable {
     // private String lastUpdated;
 
     @JsonProperty("bandwidth")
-    private int bandwidth;
+    private long bandwidth;
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
 
@@ -70,7 +70,7 @@ public class BidirectionalFlow implements Serializable {
     @JsonCreator
     public BidirectionalFlow(
             @JsonProperty("flow_id")  String flowId,
-            @JsonProperty("bandwidth") int bandwidth,
+            @JsonProperty("bandwidth") long bandwidth,
             @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
             @JsonProperty("cookie") long cookie,
             @JsonProperty("description") String description,

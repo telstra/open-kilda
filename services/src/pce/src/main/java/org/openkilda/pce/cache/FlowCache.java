@@ -562,11 +562,11 @@ public class FlowCache extends Cache {
         return new ImmutablePair<>(forward, reverse);
     }
 
-    private void setBandwidthAndMeter(Flow.FlowBuilder builder, int bandwidth, boolean isIgnoreBandwidth,
+    private void setBandwidthAndMeter(Flow.FlowBuilder builder, long bandwidth, boolean isIgnoreBandwidth,
                                       Supplier<Integer> meterIdSupplier) {
         builder.bandwidth(bandwidth);
 
-        if (bandwidth > 0) {
+        if (bandwidth > 0L) {
             builder.ignoreBandwidth(isIgnoreBandwidth);
             builder.meterId(meterIdSupplier.get());
         } else {
