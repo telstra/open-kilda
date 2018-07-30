@@ -68,7 +68,7 @@ public class FlowPayload implements Serializable {
      * Bandwidth.
      */
     @JsonProperty("maximum-bandwidth")
-    private int maximumBandwidth;
+    private long maximumBandwidth;
 
     /**
      * If SET ignore bandwidth in path computation
@@ -106,7 +106,7 @@ public class FlowPayload implements Serializable {
     public FlowPayload(@JsonProperty(Utils.FLOW_ID) String id,
                        @JsonProperty("source") FlowEndpointPayload source,
                        @JsonProperty("destination") FlowEndpointPayload destination,
-                       @JsonProperty("maximum-bandwidth") int maximumBandwidth,
+                       @JsonProperty("maximum-bandwidth") long maximumBandwidth,
                        @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                        @JsonProperty("description") String description,
                        @JsonProperty("last-updated") String lastUpdated,
@@ -189,7 +189,7 @@ public class FlowPayload implements Serializable {
      *
      * @return maximum-bandwidth
      */
-    public int getMaximumBandwidth() {
+    public long getMaximumBandwidth() {
         return maximumBandwidth;
     }
 
@@ -198,7 +198,7 @@ public class FlowPayload implements Serializable {
      *
      * @param maximumBandwidth maximum bandwidth
      */
-    public void setMaximumBandwidth(int maximumBandwidth) {
+    public void setMaximumBandwidth(long maximumBandwidth) {
         if (maximumBandwidth >= 0L) {
             this.maximumBandwidth = maximumBandwidth;
         } else {

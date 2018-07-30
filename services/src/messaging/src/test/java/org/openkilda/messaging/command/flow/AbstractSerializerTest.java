@@ -70,7 +70,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final int INPUT_VLAN_ID = 101;
     private static final int OUTPUT_VLAN_ID = 102;
     private static final int TRANSIT_VLAN_ID = 103;
-    private static final int BANDWIDTH = 10000;
+    private static final long BANDWIDTH = 10000L;
     private static final long COOKIE = 0x1L;
     private static final long METER_ID = 0L;
     private static final OutputVlanType OUTPUT_VLAN_TYPE = OutputVlanType.REPLACE;
@@ -120,7 +120,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallIngressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallIngressFlow data = new InstallIngressFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID,
-                INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, (long) BANDWIDTH, METER_ID);
+                INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -162,7 +162,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallOneSwitchFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallOneSwitchFlow data = new InstallOneSwitchFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
-                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, (long) BANDWIDTH, METER_ID);
+                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

@@ -61,5 +61,5 @@ public interface PathComputer extends TopologyRepository, Serializable {
      * @param requestedBandwidth links in path should have enough amount of available bandwidth.
      * @return built network.
      */
-    AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth);
+    AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth);
 }
