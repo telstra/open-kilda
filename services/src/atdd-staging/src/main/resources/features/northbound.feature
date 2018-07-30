@@ -31,6 +31,7 @@ Feature: Northbound endpoints
 
     When request all switch meters for switch 'srcSwitch' and alias results as 'srcSwitchMeters'
     Then meters 'srcSwitchMeters' does not have 'meterToDelete'
+    And delete flow flow1
 
 
   @Links
