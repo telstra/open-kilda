@@ -13,7 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.flow;
+package org.openkilda.messaging.info.flow;
+
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.BidirectionalFlow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -21,45 +24,31 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Value;
 
-import java.io.Serializable;
-import java.util.List;
-
 /**
- * Flow path representation class.
+ * Represents a bidirectional flow northbound response.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
-public class FlowPathPayload implements Serializable {
+public class BidirectionalFlowResponse extends InfoData {
     /**
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
 
     /**
-     * The id of the flow.
+     * The response payload.
      */
-    @JsonProperty("flowid")
-    protected String id;
+    @JsonProperty("payload")
+    protected BidirectionalFlow payload;
 
     /**
-     * The forward path of the flow.
+     * Instance constructor.
+     *
+     * @param payload response payload
      */
-    @JsonProperty("flowpath_forward")
-    protected List<PathNodePayload> forwardPath;
-
-    /**
-     * The reverse path of the flow.
-     */
-    @JsonProperty("flowpath_reverse")
-    protected List<PathNodePayload> reversePath;
-
     @JsonCreator
-    public FlowPathPayload(@JsonProperty("flowid") String id,
-                           @JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
-                           @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath) {
-        this.id = id;
-        this.forwardPath = forwardPath;
-        this.reversePath = reversePath;
+    public BidirectionalFlowResponse(@JsonProperty("payload") BidirectionalFlow payload) {
+        this.payload = payload;
     }
 }

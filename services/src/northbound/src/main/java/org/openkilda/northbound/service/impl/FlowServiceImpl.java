@@ -20,11 +20,11 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.BidirectionalFlowRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowGetRequest;
-import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
@@ -32,10 +32,10 @@ import org.openkilda.messaging.command.flow.FlowVerificationRequest;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -333,13 +333,14 @@ public class FlowServiceImpl implements FlowService {
     public FlowPathPayload pathFlow(final String id) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Flow path: {}={}", CORRELATION_ID, correlationId);
-        FlowPathRequest data = new FlowPathRequest(new FlowIdStatusPayload(id, null));
+        BidirectionalFlowRequest data = new BidirectionalFlowRequest(id);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageConsumer.clear();
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
-        FlowPathResponse response = (FlowPathResponse) validateInfoMessage(request, message, correlationId);
-        return FlowPayloadToFlowConverter.buildFlowPathPayloadByFlowPath(id, response.getPayload());
+        BidirectionalFlowResponse response =
+                (BidirectionalFlowResponse) validateInfoMessage(request, message, correlationId);
+        return FlowPayloadToFlowConverter.buildFlowPathPayload(response.getPayload());
     }
 
     /**

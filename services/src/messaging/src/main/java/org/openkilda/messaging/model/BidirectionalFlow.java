@@ -21,8 +21,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-public class BidirectionalFlow {
+public class BidirectionalFlow implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     @JsonProperty("flow_id")
     private String flowId;
 
@@ -40,7 +45,7 @@ public class BidirectionalFlow {
     @JsonProperty("description")
     private String description;
 
-    @JsonProperty("fowrard")
+    @JsonProperty("forward")
     private Flow forward;
 
     @JsonProperty("reverse")

@@ -39,13 +39,13 @@ import org.openkilda.atdd.staging.helpers.FlowTrafficExamBuilder;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
@@ -509,7 +509,7 @@ public class FlowCrudSteps implements En {
             + "and '(.*)' respectively$")
     public void getAvailableBandwidthAndSpeed(String flowAlias, String bwAlias, String speedAlias) {
         FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
-        List<PathNode> flowPath = northboundService.getFlowPath(flow.getId()).getPath().getPath();
+        List<PathNodePayload> flowPath = northboundService.getFlowPath(flow.getId()).getForwardPath();
         List<IslInfoData> allLinks = northboundService.getAllLinks();
         long minBw = Long.MAX_VALUE;
         long minSpeed = Long.MAX_VALUE;
@@ -519,12 +519,13 @@ public class FlowCrudSteps implements En {
         Take minimum available bandwidth and minimum available speed from those links
         (flow's speed and left bandwidth depends on the weakest isl)
         */
-        for (int i = 1; i < flowPath.size(); i += 2) {
-            PathNode from = flowPath.get(i - 1);
-            PathNode to = flowPath.get(i);
+        for (int i = 1; i < flowPath.size(); i++) {
+            PathNodePayload from = flowPath.get(i - 1);
+            PathNodePayload to = flowPath.get(i);
             IslInfoData isl = allLinks.stream().filter(link ->
-                    link.getPath().get(0).equals(from)
-                            && link.getPath().get(1).equals(to)).findFirst().get();
+                    link.getPath().get(0).getSwitchId().equals(from.getSwitchId())
+                            && link.getPath().get(1).getSwitchId().equals(to.getSwitchId()))
+                    .findFirst().get();
             minBw = Math.min(isl.getAvailableBandwidth(), minBw);
             minSpeed = Math.min(isl.getSpeed(), minSpeed);
         }

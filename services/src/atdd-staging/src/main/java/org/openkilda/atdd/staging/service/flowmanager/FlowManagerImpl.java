@@ -20,8 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.atdd.staging.helpers.FlowSet;
 import org.openkilda.atdd.staging.helpers.FlowSet.FlowBuilder;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.northbound.NorthboundService;
@@ -98,11 +98,11 @@ public class FlowManagerImpl implements FlowManager {
                             dstTraffGen.getSwitchPort());
                     flow.setMaximumBandwidth(bandwidth);
                     northboundService.addFlow(flow);
-                    List<PathNode> path = northboundService.getFlowPath(flowId).getPath().getPath();
+                    List<PathNodePayload> flowPath = northboundService.getFlowPath(flowId).getForwardPath();
                     List<TopologyDefinition.Isl> isls = new ArrayList<>();
-                    for (int i = 1; i < path.size(); i += 2) {
-                        PathNode from = path.get(i - 1);
-                        PathNode to = path.get(i);
+                    for (int i = 1; i < flowPath.size(); i++) {
+                        PathNodePayload from = flowPath.get(i - 1);
+                        PathNodePayload to = flowPath.get(i);
                         isls.addAll(topologyDefinition.getIslsForActiveSwitches().stream().filter(isl ->
                                 ((isl.getSrcSwitch().getDpId().equals(from.getSwitchId())
                                         && isl.getDstSwitch().getDpId().equals(to.getSwitchId()))
