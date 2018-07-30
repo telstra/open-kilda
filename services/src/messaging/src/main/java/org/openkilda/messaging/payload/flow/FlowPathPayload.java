@@ -16,10 +16,9 @@
 package org.openkilda.messaging.payload.flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Value;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
@@ -27,9 +26,9 @@ import java.util.List;
 /**
  * Flow path representation class.
  */
-@JsonSerialize
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@Value
+// TODO move into api module
+@Data
+@NoArgsConstructor
 public class FlowPathPayload implements Serializable {
     /**
      * Serialization version number constant.

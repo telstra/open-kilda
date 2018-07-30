@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,27 +13,38 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.messaging.info.flow;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.BidirectionalFlow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
 /**
- * Represents get bidirectional flow northbound request.
+ * Represents a flow read northbound response.
  */
 @Value
-public class BidirectionalFlowRequest extends CommandData {
-
+public class FlowReadResponse extends InfoData {
+    /**
+     * Serialization version number constant.
+     */
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty("flowid")
-    protected String flowId;
+    /**
+     * The response payload.
+     */
+    @JsonProperty("payload")
+    protected BidirectionalFlow payload;
 
+    /**
+     * Instance constructor.
+     *
+     * @param payload response payload
+     */
     @JsonCreator
-    public BidirectionalFlowRequest(@JsonProperty("flowid") String flowId) {
-        this.flowId = flowId;
+    public FlowReadResponse(@JsonProperty("payload") BidirectionalFlow payload) {
+        this.payload = payload;
     }
 }
