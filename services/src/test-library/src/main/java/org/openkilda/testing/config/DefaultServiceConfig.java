@@ -43,7 +43,7 @@ import java.util.List;
 @Configuration
 @Profile("default")
 @PropertySource("file:${kilda.config.file:kilda.properties}")
-@ComponentScan(basePackages = {"org.openkilda.testing.service"})
+@ComponentScan(basePackages = {"org.openkilda.testing.service", "org.openkilda.testing.tools"})
 public class DefaultServiceConfig {
 
     @Bean(name = "northboundRestTemplate")
