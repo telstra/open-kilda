@@ -9,11 +9,14 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"flowid", "startDate", "endDate", "downsample", "switches"})
+@JsonPropertyOrder({"flowid", "startDate", "endDate", "downsample", "switches", "direction"})
 public class FlowPathStats {
 
     @JsonProperty("flowid")
     private String flowid;
+    
+    @JsonProperty("direction")
+    private String direction;
 
     @JsonProperty("startdate")
     private String startDate;
@@ -67,6 +70,13 @@ public class FlowPathStats {
         this.switches = switches;
     }
 
+    public String getDirection() {
+        return direction;
+    }
+    
 
-
+    public void setDirection(String direction) {
+        this.direction = direction;
+    }
+    
 }

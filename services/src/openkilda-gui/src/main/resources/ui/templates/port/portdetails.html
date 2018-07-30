@@ -9,11 +9,13 @@
 
 <link th:href="@{../ui/images/kilda.png}" rel="shortcut icon" type="image/png"></link>
 
+<link th:href="@{../lib/css/on-off-switch.css}" rel="stylesheet" type="text/css" />
 </head>
 <body>
 <div th:include="common/importResources:: commonPathImports"></div>
 <div th:include="common/importResources:: statsImports"></div>
 	<div th:replace="common/header :: header" ></div>
+	<div th:include="common/importResources:: toggleSwitch"></div>
 	<div th:replace="common/menu :: menu" ></div>
 	<div class="content">
 		<div class="row">
@@ -34,12 +36,13 @@
 				<h5 class='modal-title'>PORT DETAILS</h5>
 				<div class='form-wrapper'>
 					<div class='form-group row'>
-						<label class='col-sm-4 col-form-label'>Status:</label>
-						<p class='col-sm-8 port_details_div_status'></p>
-					</div>
-					<div class='form-group row'>
-						<label class='col-sm-4 col-form-label'>Port Name:</label>
-						<p class='col-sm-8 port_details_div_name'></p>
+						<label class='col-sm-4 col-form-label'>Switch ID:</label>
+						<div class='col-sm-2'>
+							<span class="switchportdetails_div_switch_id copy_to_clipBoard"></span>	
+						</div>
+						<div class='col-sm-6'>
+							<input type="hidden" class="on-off-switch" value="0"/>					
+						</div>
 					</div>
 					<div class='form-group row'>
 						<label class='col-sm-4 col-form-label'>Port Number:</label>
@@ -48,6 +51,10 @@
 					<div class='form-group row'>
 						<label class='col-sm-4 col-form-label'>Interface Type:</label>
 						<p class='col-sm-8 switchdetails_div_interface'></p>
+					</div>
+					<div class='form-group row'>
+						<label class='col-sm-4 col-form-label'>Status:</label>
+						<p class='col-sm-8 port_details_div_status'></p>
 					</div>
 				</div>
 			</div>
@@ -73,6 +80,16 @@
 								 	<li>Forward</li>
 								  	<li>Reverse</li>
 								</ul>
+								<fieldset class="form-group clearfix">
+													
+									<label class="col-xs-4 text-label">Timezone:</label>
+									<div class="col-xs-8">
+										<select id="timezone" name="timezone">
+											<option value="UTC">UTC</option>
+											<option value="LOCAL">My Timezone</option>
+										</select>
+									</div>
+								</fieldset>
 								<fieldset id= "fromId" class="form-group clearfix">
 									<label class="col-xs-4 text-label">From:</label>
 									<div class="col-xs-8">
@@ -99,8 +116,14 @@
 								<fieldset id="DownsampleID" class="form-group">
 									<label class="col-xs-4 text-label">Downsample:</label>
 									<div class="col-xs-8">
-										<input type="text" id="downsampling" placeholder="Downsample"
-											class="form-control"></input>
+									<select class="form-control" id="downsampling">
+															<option value="30s">30s</option>
+															<option value="1m">1m</option>
+															<option value="5m">5m</option>
+															<option value="10m">10m</option>
+														</select>
+										<!-- <input type="text" id="downsampling" placeholder="Downsample"
+											class="form-control"></input> -->
 											<span class="downsample-error-message pull-left"></span>
 									</div>
 								</fieldset>
@@ -153,5 +176,21 @@
 	<script th:inline="javascript" th:src="@{../ui/js/ports/portdetails.js}"></script>
 	<script th:inline="javascript" th:src="@{../ui/js/common.js}"></script>
 	<script th:inline="javascript" th:src="@{../ui/js/ports/port-graph.js}"></script>
+	
+<script>
+ 
+ 	$(document).ready(function() {
+ 			$('body').css('pointer-events','all');
+			new DG.OnOffSwitch({
+			    el: '.on-off-switch',
+			    textOn: 'Legacy',
+			    textOff: 'Kilda',
+			    listener:function(name, checked){
+			       $('.switchportdetails_div_switch_id').html(common.toggleSwitchID($('.switchportdetails_div_switch_id').html()));
+			    }
+			});
+
+		});
+</script>
 </body>
 </html>

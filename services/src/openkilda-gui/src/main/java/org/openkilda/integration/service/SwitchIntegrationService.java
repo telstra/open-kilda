@@ -12,7 +12,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
@@ -22,17 +21,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.http.HttpResponse;
-import org.json.simple.JSONObject;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.IslLinkConverter;
-import org.openkilda.integration.converter.PortConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
-import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.ApplicationService;
 import org.openkilda.utility.ApplicationProperties;
@@ -199,28 +195,6 @@ public class SwitchIntegrationService {
         return null;
     }
 
-    /**
-     * Gets the switch ports.
-     *
-     * @return the switch ports
-     * @throws IntegrationException
-     */
-    public List<PortInfo> getSwitchPorts(final String switchId) throws IntegrationException {
-        HttpResponse response = null;
-        try {
-//            HttpResponse response = restClientManager.invoke(applicationProperties.getSwitchPorts(),
-//                    HttpMethod.GET, "", "", "");
-            if (RestClientManager.isValidResponse(response)) {
-                String responseEntity = IoUtil.toString(response.getEntity().getContent());
-                JSONObject jsonObject = JsonUtil.toObject(responseEntity, JSONObject.class);
-                return PortConverter.toPortsInfo(jsonObject, switchId);
-            }
-        } catch (IOException exception) {
-            LOGGER.error("Exception in getSwitchPorts " + exception.getMessage(), exception);
-            throw new IntegrationException(exception);
-        }
-        return null;
-    }
 
     /**
      * Get custom switch name from file.

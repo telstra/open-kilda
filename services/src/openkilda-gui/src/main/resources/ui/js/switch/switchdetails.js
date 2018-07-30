@@ -39,6 +39,10 @@ $(document).ready(function(){
 		callPortDetailsAPI(switchname,false);
 	},30000);
   localStorage.removeItem("portDetails");
+  
+	$(document).on("click",".flowDataRow",function(e){
+		  setPortData(switchname,this);
+		 });
 })
 
 /** function to retrieve and show port details*/
@@ -90,8 +94,9 @@ function showPortData(response,loader) {
 		if(loader){
 			common.infoMessage('No Ports Available','info');
 		}
-		
+		localStorage.removeItem('switchPortDetail');
 	}else{
+		localStorage.setItem('switchPortDetail',JSON.stringify(response));
 		$('#portsTable tbody').empty();
 	}
 	if(loader){
@@ -100,7 +105,7 @@ function showPortData(response,loader) {
 	
 	
 		for(var i = 0; i < response.length; i++) {
-			 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
+			 var tableRow = "<tr rel='"+((response[i].port_number == undefined)?"-":response[i].port_number)+"'  id='div_"+(i+1)+"' class='flowDataRow'>"
 			 				+"<td class='divTableCell' title ='"+((response[i].port_number == undefined)?"-":response[i].port_number)+"'><p>"+((response[i].port_number === "" || response[i].port_number == undefined)?"-":response[i].port_number)+"</p></td>"
 			   				+"<td class='divTableCell' title ='"+((response[i].interfacetype == undefined)?"-":response[i].interfacetype)+"'><p>"+((response[i].interfacetype === "" || response[i].interfacetype == undefined)?"-":response[i].interfacetype)+"</p></td>"
 			    		    +"<td class='divTableCell subPortTable' title =''><span title='"+((response[i].stats['tx-bytes'] == undefined)?"-":response[i].stats['tx-bytes'] * 1024)+"'>"+((response[i].stats['tx-bytes'] == undefined)?"-":response[i].stats['tx-bytes'] * 1024)+"</span><span title='"+((response[i].stats['rx-bytes'] == undefined)?"-":response[i].stats['rx-bytes'] * 1024)+"'>"+((response[i].stats['rx-bytes'] == undefined)?"-":response[i].stats['rx-bytes'] * 1024)+"</span></td>"
@@ -147,24 +152,20 @@ function showPortData(response,loader) {
 
 
 function setPortData(switchname,domObj){
-	
-	$(domObj).html()
-	var portData = {'interface':"",'port_name':"",'port_number':"",'status':""};
-	if($(domObj).find('td:nth-child(1)')){
-		portData.interface = $(domObj).find('td:nth-child(1)').html();
+	var port_number = $(domObj).attr('rel');
+	var portData = null;
+	var port_data = JSON.parse(localStorage.getItem('switchPortDetail'));
+	for(var i = 0; i < port_data.length ; i++){
+		if(port_number == port_data[i].port_number){
+			portData = port_data[i];
+			break;
+		}
 	}
-	if($(domObj).find('td:nth-child(2)')){
-		portData.port_name = $(domObj).find('td:nth-child(2)').html();
-	}	
-	if($(domObj).find('td:nth-child(3)')){
-		portData.port_number = $(domObj).find('td:nth-child(3)').html();
-	}	
-	if($(domObj).find('td:nth-child(4)')){
-		portData.status = $(domObj).find('td:nth-child(4)').html();
+	if(portData){
+		localStorage.setItem('portDetails',JSON.stringify(portData));
+		url = "portdetails#" + switchname +"#" +portData.port_number;
+		window.location = url;
 	}
-	localStorage.setItem('portDetails',JSON.stringify(portData));
-	url = "portdetails#" + switchname +"#" +portData.port_name;
-	window.location = url;
 }
 
 function showSearch(idname,$event) {
@@ -189,6 +190,6 @@ function callSwitchRules(switch_id){
 
 $('#switch_rules_btn').click(function(e){
 		e.preventDefault();
-		callSwitchRules(obj.switch_id);
+		callSwitchRules(common.toggleSwitchID(obj.switch_id));
 	});
 /* ]]> */
