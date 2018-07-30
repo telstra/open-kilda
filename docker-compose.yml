@@ -372,6 +372,26 @@ services:
          - opentsdb.pendev
 
 
+  openkilda-gui:
+    container_name: openkilda-gui
+    build:
+      context: services/src/openkilda-gui
+    image: "kilda/openkilda-gui:${full_build_number:-latest}"
+    ports:
+      - "1010:1010"
+    depends_on:
+      northbound:
+        condition: service_started
+      topology-engine-rest:
+        condition: service_started
+      opentsdb:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+         - openkilda-gui.pendev
+
+
   elasticsearch:
     container_name: elasticsearch
     image: elasticsearch:5.6.5
