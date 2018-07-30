@@ -15,7 +15,7 @@
 
 package org.openkilda.atdd.staging.config;
 
-import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;

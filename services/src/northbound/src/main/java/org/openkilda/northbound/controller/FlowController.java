@@ -229,7 +229,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow path", response = FlowPathPayload.class)
     @RequestMapping(
-            value = "/flows/path/{flow-id}", method = RequestMethod.GET,
+            value = "/flows/{flow-id}/path", method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPathPayload> pathFlow(@PathVariable(name = "flow-id") String flowId) {
         FlowPathPayload response = flowService.pathFlow(flowId);
@@ -255,7 +255,7 @@ public class FlowController {
             @RequestBody List<FlowInfoData> externalFlows,
             @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> propagate,
+            @RequestParam(value = "propagate", required = false) Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
             @RequestParam("verify") Optional<Boolean> verify) {
@@ -282,10 +282,10 @@ public class FlowController {
             @RequestBody List<FlowInfoData> externalFlows,
             @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> propagate,
+            @RequestParam(value = "propagate", required = false) Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
-            @RequestParam("verify") Optional<Boolean> verify) {
+            @RequestParam(value = "verify", required = false) Optional<Boolean> verify) {
         Boolean defaultPropagate = false;
         Boolean defaultVerify = false;
         return flowService.unpushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));
@@ -298,11 +298,11 @@ public class FlowController {
      * @param flowId id of flow to be rerouted.
      * @return flow payload with updated path.
      */
-    @ApiOperation(value = "Reroute flow", response = FlowPathPayload.class)
+    @ApiOperation(value = "Reroute flow", response = FlowReroutePayload.class)
     @RequestMapping(path = "/flows/{flow_id}/reroute",
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
-    public FlowPathPayload rerouteFlow(@PathVariable("flow_id") String flowId) {
+    public FlowReroutePayload rerouteFlow(@PathVariable("flow_id") String flowId) {
         logger.debug("Received reroute request for flow {}", flowId);
         return flowService.rerouteFlow(flowId);
     }

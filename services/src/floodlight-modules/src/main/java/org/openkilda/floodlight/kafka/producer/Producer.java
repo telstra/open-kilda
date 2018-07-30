@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.kafka.producer;
 
-import org.openkilda.floodlight.kafka.Context;
+import org.openkilda.floodlight.kafka.KafkaProducerConfig;
 import org.openkilda.messaging.Message;
 
 import org.apache.kafka.clients.producer.Callback;
@@ -34,8 +34,8 @@ public class Producer {
     private final org.apache.kafka.clients.producer.Producer producer;
     private final Map<String, AbstractWorker> workersMap = new HashMap<>();
 
-    public Producer(Context context) {
-        this(new KafkaProducer<>(context.getKafkaProducerProperties()));
+    public Producer(KafkaProducerConfig kafkaConfig) {
+        this(new KafkaProducer<>(kafkaConfig.createKafkaProducerProperties()));
     }
 
     Producer(org.apache.kafka.clients.producer.Producer producer) {

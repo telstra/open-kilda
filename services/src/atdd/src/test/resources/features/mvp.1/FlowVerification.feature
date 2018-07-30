@@ -5,7 +5,7 @@ Feature: Test flow integrity by sending special discovery packet by flow's path
     And a nonrandom linear topology of 7 switches
     And a clean flow topology
     And topology contains 12 links
-    And flow de:ad:be:ef:00:00:00:01(4) and de:ad:be:ef:00:00:00:07(4) with id="positive-flow-verify" is created
+    And flow de:ad:be:ef:00:00:00:01(14) and de:ad:be:ef:00:00:00:07(14) with id="positive-flow-verify" is created
 
     Then use flow verification for flow id="positive-flow-verify"
     And flow verification for flow id="positive-flow-verify" is ok ok
@@ -15,7 +15,7 @@ Feature: Test flow integrity by sending special discovery packet by flow's path
     And a nonrandom linear topology of 7 switches
     And a clean flow topology
     And topology contains 12 links
-    And flow de:ad:be:ef:00:00:00:01(4) and de:ad:be:ef:00:00:00:07(4) with id="half-fail-flow-verify" is created
+    And flow de:ad:be:ef:00:00:00:01(14) and de:ad:be:ef:00:00:00:07(14) with id="half-fail-flow-verify" is created
     And forward flow path is broken
 
     Then use flow verification for flow id="half-fail-flow-verify"

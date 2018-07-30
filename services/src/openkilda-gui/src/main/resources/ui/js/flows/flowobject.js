@@ -1,14 +1,26 @@
 class Flow {
+	constructor () {
+		this.isEdit = false;
+	}
 	
 	getFlow () {
 		return this.flow;
 	}
 	
+	
 	setFlow (flow) {
 		this.flow = flow;
 	}
-		
-	createFlow () {
+	
+	getPorts (id) {
+		 var switch_id = common.toggleSwitchID($("#" + id).val());
+		 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
+		 var startDate = moment().utc().subtract(15,'minutes').format("YYYY-MM-DD-HH:mm:ss");
+		 var downSample = "30s";
+		 return common.getData('/stats/switchports/' + switch_id + '/'+ startDate +'/' + endDate + '/'+ downSample);
+	}
+	
+	validateFlow () {
 		var data = $('#flowForm').serializeArray();
 		var formData =[];
 		
@@ -22,7 +34,25 @@ class Flow {
 		}
 		
 		if(common.validateFormData(data)) {
-			var flowData = {
+			if(this.isEdit){
+				this.editFlowConfirm();
+			}else{
+				this.createFlowConfirm();
+			}
+			
+		}
+		return false;
+	}
+	
+	
+	createFlow () {
+		$("#createflowconfirmModal").modal('hide');
+		var data = $('#flowForm').serializeArray();
+		var formData =[];
+		$.each(data,function() {
+			formData[this.name] = this.value;
+		})
+		var flowData = {
 				"source": {
 					"switch-id":formData['source_switch'],
 					"port-id":formData['source_port'],
@@ -51,14 +81,12 @@ class Flow {
 				$('#saveflowloader').hide();
 				common.infoMessage(error.responseJSON['error-auxiliary-message'],'error');
 			})
-		}
-		return false;
 	}
 	
 	
 	createNewFlow () {
 		
-		$("#createflowconfirmModal").modal('hide');
+		
 		$('#addflowloader').show();
 		common.getData('/switch/list').then(function(switches){
 			if(switches && switches.length){
@@ -89,7 +117,41 @@ class Flow {
 					placeholder:"Please select a switch",
 					matcher: common.matchCustomFlow
 				}).on("select2:close", function (e) { flowObj.checkValidate('target_switch')});
-			
+				
+			    $(document).on("change","#source_switch",function(e){
+			        var portoptions = [];
+			        flowObj.getPorts("source_switch").then(function(ports){
+			  		  for(var i=0; i<ports.length; i++){
+			  			   var port = ports[i];
+			  			 portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+			  			  }
+				  		 $("#source_port").select2({
+					         width:"100%",
+					         data:portoptions,
+					         placeholder:"Please select a port",
+					         matcher: common.matchCustomFlow
+					        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
+			  		 });
+			       
+			       });
+			       
+			       $(document).on("change","#target_switch",function(e){
+			        var portoptions = [];
+			        flowObj.getPorts("target_switch").then(function(ports){
+				  		  for(var i=0; i<ports.length; i++){
+				  			   var port = ports[i];
+				  			   	portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+				  			  }
+						  		$("#target_port").select2({
+							         width:"100%",
+							         data:portoptions,
+							         placeholder:"Please select a port",
+							         matcher: common.matchCustomFlow
+							        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
+				  		 });
+			        
+			       });
+			       
 				})
 				}else{
 				$('#addflowloader').hide();
@@ -115,15 +177,12 @@ class Flow {
 	
 	createFlowConfirm () {
 		$("#createflowconfirmModal").modal('show');
-		
 	}
 	
 	editFlowConfirm(){
 		$("#editflowconfirmModal").modal('show');
 		
 	}
-	
-	
 	cancelEditFlow () {
 		$("#edit_flow_div").empty().hide();
 		$('#flow_detail_div').show();
@@ -131,6 +190,7 @@ class Flow {
 	
 	editFlow () {
 		var flowData = this.getFlow();
+		this.isEdit = true;
 		$("#editflowconfirmModal").modal('hide');
 		$('#editflowloader').show();
 			common.getData('/switch/list').then(function(switches) {
@@ -164,6 +224,7 @@ class Flow {
 					for( var i = 1; i <= 4094; i++) {
 						vlanOptions += "<option value='" + i + "'>" + i + "</option>";
 					}
+
 					$('#editflowloader').hide();
 					$('#flow_detail_div').hide();
 					$("#edit_flow_div").show().load('../ui/templates/flows/editflow.html',function(){
@@ -171,26 +232,61 @@ class Flow {
 						$("#edit_flow_div").find("#target_vlan").html(vlanOptions).val(flowData.destination['vlan-id']);
 						$("#edit_flow_div").find("#flowname").val(flowData.flowid);
 						$("#edit_flow_div").find("#flowname_read").val(flowData.flowid);
-						$("#edit_flow_div").find("#flow_description").val(flowData.description)
-						$("#edit_flow_div").find("#max_bandwidth").val(flowData['maximum-bandwidth'])
-						$("#edit_flow_div").find("#source_port").val(flowData.source['port-id'])
-						$("#edit_flow_div").find("#target_port").val(flowData.destination['port-id']);
+						$("#edit_flow_div").find("#flow_description").val(flowData.description);
+						$("#edit_flow_div").find("#max_bandwidth").val(flowData['maximum-bandwidth']);
 						
 						$("#source_switch").select2({
 							width: "100%",
 							data:options,
 							placeholder: "Please select a switch",
 							matcher: common.matchCustomFlow
-						}).on("select2:close", function (e) { checkValidate('source_switch') });
+						}).on("select2:close", function (e) { flowObj.checkValidate('source_switch') });
 						
 						$("#target_switch").select2({
 							width:"100%",
 							data:options,
 							placeholder:"Please select a switch",
 							matcher: common.matchCustomFlow
-						}).on("select2:close", function (e) { checkValidate('target_switch')});
+						}).on("select2:close", function (e) { flowObj.checkValidate('target_switch')});
+						
+					    $(document).on("change","#source_switch",function(e){
+					        var portoptions = []; 
+					        	flowObj.getPorts("source_switch").then(function(ports){
+						  		  for(var i=0; i<ports.length; i++){
+						  			   var port = ports[i];
+						  			 portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+						  			  }
+							  		 $("#source_port").select2({
+								         width:"100%",
+								         data:portoptions,
+								         placeholder:"Please select a port",
+								         matcher: common.matchCustomFlow
+								        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
+							  		 $("#source_port").val(flowData.source['port-id']).trigger('change');
+						  		 });
+					       });
+					       
+					       $(document).on("change","#target_switch",function(e){
+					        var portoptions =[];
+					        flowObj.getPorts("target_switch").then(function(ports){
+					  		  for(var i=0; i<ports.length; i++){
+					  			   var port = ports[i];
+					  			   portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+					  			  }
+						  		 $("#target_port").select2({
+							         width:"100%",
+							         data:portoptions,
+							         placeholder:"Please select a port",
+							         matcher: common.matchCustomFlow
+							        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
+								$("#target_port").val(flowData.destination['port-id']).trigger('change');
+					  		 });
+					       
+					       });
+
 						$('#source_switch').val(selectedSourceSwitch.id).trigger('change');
 						$("#target_switch").val(selectedTargetSwitch.id).trigger('change');
+						
 					})
 				} else {
 					$('#editflowloader').hide();
@@ -204,18 +300,12 @@ class Flow {
 	}
 	
 	updateFlow () {
+		$("#editflowconfirmModal").modal('hide');
 		var data = $('#flowForm').serializeArray();
 		var formData =[];
-		if(data && data.length){
-			$.each(data,function(){
+		$.each(data,function(){
 				formData[this.name] = this.value;
 			})
-		}else{
-			common.infoMessage("Please fill all the fields",'error');
-			return false;
-		}
-		console.log('formData',formData);
-		if(common.validateFormData(data)){
 			var flowData ={
 					"source":{
 						"switch-id":formData['source_switch'],
@@ -245,9 +335,6 @@ class Flow {
 				$('#updateflowloader').hide();
 				common.infoMessage(error.responseJSON['error-message'],'error');
 			})
-		 
-		}
-		return false;
 	}
 	
 	deleteFlowAlert () {

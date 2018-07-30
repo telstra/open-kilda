@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.atdd.staging.service;
 
 import static java.util.Arrays.asList;
@@ -8,27 +23,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.atdd.staging.service.aswitch.ASwitchService;
-import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowApplyActions;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowEntry;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowInstructions;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowMatchField;
-import org.openkilda.atdd.staging.service.floodlight.model.MeterBand;
-import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
-import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
-import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
-import org.openkilda.atdd.staging.service.traffexam.model.Bandwidth;
-import org.openkilda.atdd.staging.service.traffexam.model.Exam;
-import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
-import org.openkilda.atdd.staging.service.traffexam.model.Host;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -43,6 +37,27 @@ import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.aswitch.ASwitchService;
+import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.floodlight.model.FlowApplyActions;
+import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.testing.service.floodlight.model.FlowEntry;
+import org.openkilda.testing.service.floodlight.model.FlowInstructions;
+import org.openkilda.testing.service.floodlight.model.FlowMatchField;
+import org.openkilda.testing.service.floodlight.model.MeterBand;
+import org.openkilda.testing.service.floodlight.model.MeterEntry;
+import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
+import org.openkilda.testing.service.floodlight.model.SwitchEntry;
+import org.openkilda.testing.service.northbound.NorthboundService;
+import org.openkilda.testing.service.topology.TopologyEngineService;
+import org.openkilda.testing.service.traffexam.TraffExamService;
+import org.openkilda.testing.service.traffexam.model.Bandwidth;
+import org.openkilda.testing.service.traffexam.model.Exam;
+import org.openkilda.testing.service.traffexam.model.ExamReport;
+import org.openkilda.testing.service.traffexam.model.Host;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.mockito.stubbing.Answer;
@@ -127,7 +142,7 @@ public class StubServiceFactory {
 
         when(serviceMock.getSwitches())
                 .then((Answer<List<SwitchEntry>>) invocation -> topologyDefinition.getActiveSwitches().stream()
-                        .map(sw -> SwitchEntry.builder().switchId(sw.getDpId()).oFVersion(sw.getOfVersion()).build())
+                        .map(sw -> SwitchEntry.builder().switchId(sw.getDpId()).ofVersion(sw.getOfVersion()).build())
                         .collect(toList()));
 
         return serviceMock;

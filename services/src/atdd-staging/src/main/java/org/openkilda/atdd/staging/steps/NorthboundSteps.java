@@ -19,14 +19,14 @@ import static com.nitorcreations.Matchers.reflectEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.floodlight.model.MeterEntry;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Then;

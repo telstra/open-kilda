@@ -34,47 +34,49 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.openkilda.atdd.staging.helpers.FlowSet;
+import org.openkilda.atdd.staging.helpers.FlowTrafficExamBuilder;
+import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.floodlight.model.MeterEntry;
+import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
+import org.openkilda.testing.service.northbound.NorthboundService;
+import org.openkilda.testing.service.topology.TopologyEngineService;
+import org.openkilda.testing.service.traffexam.FlowNotApplicableException;
+import org.openkilda.testing.service.traffexam.OperationalException;
+import org.openkilda.testing.service.traffexam.TraffExamService;
+import org.openkilda.testing.service.traffexam.model.Exam;
+import org.openkilda.testing.service.traffexam.model.ExamReport;
+import org.openkilda.testing.service.traffexam.model.ExamResources;
+import org.openkilda.testing.tools.SoftAssertions;
+
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.ListValuedMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
-
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
-import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
-import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.atdd.staging.service.traffexam.FlowNotApplicableException;
-import org.openkilda.atdd.staging.service.traffexam.OperationalException;
-import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
-import org.openkilda.atdd.staging.service.traffexam.model.Exam;
-import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
-import org.openkilda.atdd.staging.service.traffexam.model.ExamResources;
-import org.openkilda.atdd.staging.steps.helpers.FlowSet;
-import org.openkilda.atdd.staging.steps.helpers.FlowTrafficExamBuilder;
-import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
-import org.openkilda.atdd.staging.tools.SoftAssertions;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
-
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import cucumber.api.java8.En;
+import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.collections4.ListValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
@@ -117,6 +119,7 @@ public class FlowCrudSteps implements En {
     private TopologyUnderTest topologyUnderTest;
 
     private Set<FlowPayload> flows;
+    private FlowPayload flowResponse;
 
     @Given("^flows defined over active switches in the reference topology$")
     public void defineFlowsOverActiveSwitches() {
@@ -476,6 +479,101 @@ public class FlowCrudSteps implements En {
         return new RetryPolicy()
                 .withDelay(2, TimeUnit.SECONDS)
                 .withMaxRetries(10);
+    }
+
+    @Given("^random flow aliased as '(.*)'$")
+    public void randomFlowAliasedAsFlow(String flowAlias) {
+        topologyUnderTest.addAlias(flowAlias, flowManager.randomFlow());
+    }
+
+    @And("^change bandwidth of (.*) flow to (\\d+)$")
+    public void changeBandwidthOfFlow(String flowAlias, int newBw) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        flow.setMaximumBandwidth(newBw);
+    }
+
+    @When("^change bandwidth of (.*) flow to '(.*)'$")
+    public void changeBandwidthOfFlow(String flowAlias, String bwAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        int bw = ((Long) topologyUnderTest.getAliasedObject(bwAlias)).intValue();
+        flow.setMaximumBandwidth(bw);
+    }
+
+    @And("^create flow '(.*)'$")
+    public void createFlow(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        flowResponse = northboundService.addFlow(flow);
+    }
+
+    @And("^get available bandwidth and maximum speed for flow (.*) and alias them as '(.*)' "
+            + "and '(.*)' respectively$")
+    public void getAvailableBandwidthAndSpeed(String flowAlias, String bwAlias, String speedAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        List<PathNodePayload> flowPath = northboundService.getFlowPath(flow.getId()).getForwardPath();
+        List<IslInfoData> allLinks = northboundService.getAllLinks();
+        long minBw = Long.MAX_VALUE;
+        long minSpeed = Long.MAX_VALUE;
+
+        /*
+        Take flow path and all links. Now for every pair in flow path find a link.
+        Take minimum available bandwidth and minimum available speed from those links
+        (flow's speed and left bandwidth depends on the weakest isl)
+        */
+        for (int i = 1; i < flowPath.size(); i++) {
+            PathNodePayload from = flowPath.get(i - 1);
+            PathNodePayload to = flowPath.get(i);
+            IslInfoData isl = allLinks.stream().filter(link ->
+                    link.getPath().get(0).getSwitchId().equals(from.getSwitchId())
+                            && link.getPath().get(1).getSwitchId().equals(to.getSwitchId()))
+                    .findFirst().get();
+            minBw = Math.min(isl.getAvailableBandwidth(), minBw);
+            minSpeed = Math.min(isl.getSpeed(), minSpeed);
+        }
+        topologyUnderTest.addAlias(bwAlias, minBw);
+        topologyUnderTest.addAlias(speedAlias, minSpeed);
+    }
+
+    @And("^update flow (.*)$")
+    public void updateFlow(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        flowResponse = northboundService.updateFlow(flow.getId(), flow);
+    }
+
+    @When("^get info about flow (.*)$")
+    public void getInfoAboutFlow(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        flowResponse = northboundService.getFlow(flow.getId());
+    }
+
+    @Then("^response flow has bandwidth equal to '(.*)'$")
+    public void responseFlowHasBandwidth(String bwAlias) {
+        long expectedBw = topologyUnderTest.getAliasedObject(bwAlias);
+        assertThat((long) flowResponse.getMaximumBandwidth(), equalTo(expectedBw));
+    }
+
+    @Then("^response flow has bandwidth equal to (\\d+)$")
+    public void responseFlowHasBandwidth(int expectedBw) {
+        assertThat(flowResponse.getMaximumBandwidth(), equalTo(expectedBw));
+    }
+
+    @And("^delete flow (.*)$")
+    public void deleteFlow(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        northboundService.deleteFlow(flow.getId());
+    }
+
+    @And("^get path of '(.*)' and alias it as '(.*)'$")
+    public void getPathAndAlias(String flowAlias, String pathAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        topologyUnderTest.addAlias(pathAlias, northboundService.getFlowPath(flow.getId()));
+    }
+
+    @And("^(.*) flow's path equals to '(.*)'$")
+    public void verifyFlowPath(String flowAlias, String pathAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        FlowPathPayload expectedPath = topologyUnderTest.getAliasedObject(pathAlias);
+        FlowPathPayload actualPath = northboundService.getFlowPath(flow.getId());
+        assertThat(actualPath, equalTo(expectedPath));
     }
 
     private String getTimestamp() {

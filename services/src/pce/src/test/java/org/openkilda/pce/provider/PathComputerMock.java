@@ -15,6 +15,8 @@
 
 package org.openkilda.pce.provider;
 
+import static java.util.Collections.emptyList;
+
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -23,6 +25,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.pce.model.AvailableNetwork;
 
 import com.google.common.graph.MutableNetwork;
 
@@ -41,13 +44,14 @@ public class PathComputerMock implements PathComputer {
     private MutableNetwork<SwitchInfoData, IslInfoData> network;
 
     @Override
-    public Long getWeight(IslInfoData isl) {
+    public long getWeight(IslInfoData isl) {
         return 1L;
     }
 
 
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork currentNetwork,
+                                                             Strategy strategy) {
         /*
          * TODO: Implement other strategies? Default is HOPS ...
          * TODO: Is PathComputerMock necessary, since we can embed Neo4J?
@@ -72,14 +76,23 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
+        return getPath(flow, null, strategy);
+    }
+
+    @Override
     public List<FlowInfo> getFlowInfo() {
         return new ArrayList<>();
+    }
+
+    @Override
+    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
+        return null;
     }
 
     private PathInfoData path(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
         System.out.println("Get Path By SimpleSwitch Instances " + bandwidth + ": " + srcSwitch + " - " + dstSwitch);
 
-        LinkedList<IslInfoData> islInfoDataLinkedList = new LinkedList<>();
         List<PathNode> nodes = new ArrayList<>();
         PathInfoData path = new PathInfoData(0L, nodes);
 
@@ -126,6 +139,7 @@ public class PathComputerMock implements PathComputer {
         if (nextHop == null) {
             return null;
         }
+        LinkedList<IslInfoData> islInfoDataLinkedList = new LinkedList<>();
         islInfoDataLinkedList.add(nextHop.getRight());
 
         while (predecessors.get(nextHop.getLeft()) != null) {
@@ -167,5 +181,30 @@ public class PathComputerMock implements PathComputer {
         path.getPath().add(destination);
 
         path.setLatency(path.getLatency() + isl.getLatency());
+    }
+
+    @Override
+    public List<Flow> getAllFlows() {
+        return emptyList();
+    }
+
+    @Override
+    public List<Flow> getFlows(String flowId) {
+        return emptyList();
+    }
+
+    @Override
+    public List<SwitchInfoData> getSwitches() {
+        return emptyList();
+    }
+
+    @Override
+    public List<IslInfoData> getIsls() {
+        return emptyList();
+    }
+
+    @Override
+    public boolean isIslPort(String switchId, int port) {
+        return false;
     }
 }

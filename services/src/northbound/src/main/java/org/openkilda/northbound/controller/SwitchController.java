@@ -104,7 +104,7 @@ public class SwitchController {
             @PathVariable("switch-id") String switchId,
             @ApiParam(value = "Results will be filtered based on matching the cookie.",
                     required = false)
-            @RequestParam("cookie") Optional<Long> cookie) {
+            @RequestParam(value = "cookie", required = false) Optional<Long> cookie) {
         SwitchFlowEntries response = switchService.getRules(switchId, cookie.orElse(0L));
         return response;
     }
@@ -133,12 +133,12 @@ public class SwitchController {
                     + "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS,"
                     + "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
                     required = false)
-            @RequestParam("delete-action") Optional<DeleteRulesAction> deleteAction,
-            @RequestParam("cookie") Optional<Long> cookie,
-            @RequestParam("in-port") Optional<Integer> inPort,
-            @RequestParam("in-vlan") Optional<Integer> inVlan,
-            @RequestParam("priority") Optional<Integer> priority,
-            @RequestParam("out-port") Optional<Integer> outPort) {
+            @RequestParam(value = "delete-action", required = false) Optional<DeleteRulesAction> deleteAction,
+            @RequestParam(value = "cookie", required = false) Optional<Long> cookie,
+            @RequestParam(value = "in-port", required = false) Optional<Integer> inPort,
+            @RequestParam(value = "in-vlan", required = false) Optional<Integer> inVlan,
+            @RequestParam(value = "priority", required = false) Optional<Integer> priority,
+            @RequestParam(value = "out-port", required = false) Optional<Integer> outPort) {
 
         List<Long> result;
 
@@ -186,7 +186,7 @@ public class SwitchController {
             @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
                     + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
                     required = false)
-            @RequestParam("install-action") Optional<InstallRulesAction> installAction) {
+            @RequestParam(value = "install-action", required = false) Optional<InstallRulesAction> installAction) {
         List<Long> response = switchService
                 .installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS));
         return ResponseEntity.ok(response);

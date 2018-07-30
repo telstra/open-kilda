@@ -17,12 +17,9 @@ spring.datasource.driver-class-name=org.apache.derby.jdbc.EmbeddedDriver
 spring.datasource.testOnBorrow: true
 spring.datasource.validationQuery: SELECT 1
 
-logging.config=logback.xml
+logging.config=classpath:logback.xml
 
 spring.mvc.throw-exception-if-no-handler-found=true
-#Floodlight Base URL
-floodlight.base.url={{ floodlight_endpoint }}:{{ floodlight_port }}/wm/core
-GET_SWITCH_PORTS=${floodlight.base.url}/switch/all/port-desc/json
  
 #Topology-Engine Base URL
 tpe.base.url={{ topology_engine_endpoint }}:{{ topology_engine_rest_port }}/api/v1

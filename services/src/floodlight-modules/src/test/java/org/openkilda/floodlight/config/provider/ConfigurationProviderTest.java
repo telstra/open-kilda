@@ -19,7 +19,8 @@ import static org.easymock.EasyMock.niceMock;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.floodlight.config.EnvironmentFloodlightConfig;
-import org.openkilda.floodlight.config.KafkaFloodlightConfig;
+import org.openkilda.floodlight.kafka.KafkaConsumerConfig;
+import org.openkilda.floodlight.kafka.KafkaProducerConfig;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -37,7 +38,7 @@ public class ConfigurationProviderTest {
         context.addConfigParam(module, "bootstrap-servers", TEST_BOOTSTRAP_SERVERS);
 
         ConfigurationProvider provider = new ConfigurationProvider(context, module);
-        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        KafkaProducerConfig kafkaConfig = provider.getConfiguration(KafkaProducerConfig.class);
 
         assertEquals(TEST_BOOTSTRAP_SERVERS, kafkaConfig.getBootstrapServers());
     }
@@ -63,8 +64,8 @@ public class ConfigurationProviderTest {
         context.addConfigParam(module, "environment-naming-prefix", TEST_PREFIX);
 
         ConfigurationProvider provider = new ConfigurationProvider(context, module);
-        KafkaFloodlightConfig kafkaFloodlightConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        KafkaConsumerConfig kafkaConsumerConfig = provider.getConfiguration(KafkaConsumerConfig.class);
 
-        assertEquals(TEST_PREFIX + "_floodlight", kafkaFloodlightConfig.getGroupId());
+        assertEquals(TEST_PREFIX + "_floodlight", kafkaConsumerConfig.getGroupId());
     }
 }

@@ -58,18 +58,6 @@ public class SwitchControllerTest {
 	}
 
 	@Test
-	public void testGetSwichPortDetails() {
-		List<PortInfo> portResponse = new ArrayList<PortInfo>();
-		try {
-		    Mockito.when(serviceSwitch.getPortsBySwitchId(switchUuid)).thenReturn(portResponse);
-			mockMvc.perform(get("/switch/{switchId}/ports", switchUuid).contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-			assertTrue(true);
-		} catch (Exception e) {
-			assertTrue(false);
-		}
-	}
-
-	@Test
 	public void testGetSwichLinkDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
 		try {

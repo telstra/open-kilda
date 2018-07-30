@@ -153,9 +153,11 @@ public class StatsService {
      */
     public String getFlowPathStats(FlowPathStats flowPathStats) {
         return statsIntegrationService.getStats(flowPathStats.getStartDate(),
-                flowPathStats.getEndDate(), flowPathStats.getDownsample(), flowPathStats.getSwitches(),
-                null, flowPathStats.getFlowid(), null, null, null, null, StatsType.FLOW_RAW_PACKET,
-                Metrics.PEN_FLOW_RAW_PACKETS.getTag().replace("Flow_", ""), null);
+                flowPathStats.getEndDate(), flowPathStats.getDownsample(),
+                flowPathStats.getSwitches(), null, flowPathStats.getFlowid(), null, null, null,
+                null, StatsType.FLOW_RAW_PACKET,
+                Metrics.PEN_FLOW_RAW_PACKETS.getTag().replace("Flow_", ""),
+                flowPathStats.getDirection());
     }
 
     /**
@@ -194,7 +196,7 @@ public class StatsService {
         for (SwitchPortStats stats : switchPortStats) {
             String port = stats.getTags().getPort();
 
-            if (Integer.parseInt(port) > 1) {
+            if (Integer.parseInt(port) > 0) {
                 if (!portStatsByPortNo.containsKey(port)) {
                     portStatsByPortNo.put(port, new HashMap<String, Double>());
                 }

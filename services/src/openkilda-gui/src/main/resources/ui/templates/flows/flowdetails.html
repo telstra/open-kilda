@@ -75,7 +75,7 @@
 				
 				<div class="col-md-3 pull-right" style="right:-100px;">
 					<span class="btn kilda_btn hidePermission" onClick="flowObj.deleteFlowAlert()" id="delete_flow" permission="fw_flow_delete">Delete</span>
-					<span class="btn kilda_btn hidePermission" style="padding:6px 20px;" onClick="flowObj.editFlowConfirm()" id="edit_flow" permission="fw_flow_update">Edit</span>
+					<span class="btn kilda_btn hidePermission" style="padding:6px 20px;" onClick="flowObj.editFlow();" id="edit_flow" permission="fw_flow_update">Edit</span>
 				</div>
 			</div>
 			
@@ -182,7 +182,7 @@
 											</div>
 											<div class="col-xs-4 filter">
 												<div class="stats-graph row">
-												<ul class="line-legend col-lg-12">
+												<ul id="flow_graph_directions" class="line-legend col-lg-12">
 												 	<li>Forward</li>
 												  	<li>Reverse</li>
 												</ul>
@@ -226,19 +226,49 @@
 													<fieldset id="DownsampleID" class="form-group">
 														<label class="col-xs-4 text-label">Downsample:</label>
 														<div class="col-xs-8">
-															<input type="text" id="downsampling" placeholder="Downsample"
-																class="form-control"></input>
+														<select class="form-control" id="downsampling">
+															<option value="30s">30s</option>
+															<option value="1m">1m</option>
+															<option value="5m">5m</option>
+															<option value="10m">10m</option>
+														</select>
+															<!-- <input type="text" id="downsampling" placeholder="Downsample"
+																class="form-control"></input> -->
 															<span class="downsample-error-message pull-left"></span>
 														</div>
 													</fieldset>
-
-													<fieldset class="form-group">
+													<fieldset  id="selectedgraphContainer" class="form-group">
+														<label class="col-xs-4 text-label">Graph:</label>
+														<div class="col-xs-8">
+															<span class="form-control kilda_select"> 
+																<span class="selectbox_arrow"></span> 
+																	<select class="selectbox_list" id="flowselectedGraph" onChange="islDetails.getIslMetricData(this)">
+																	<option value="flow">Flow</option>
+																	<option value="flowpacket">Loss packets</option>
+																</select>
+															</span>
+														</div>
+														
+														</fieldset>
+													<fieldset class="form-group" id="islmenuListDropdown">
 														<label class="col-xs-4 text-label">Metric:</label>
 														<div class="col-xs-8">
 															<span class="form-control kilda_select"> <span
 																class="selectbox_arrow"></span> <select
 																class="selectbox_menulist" id="menulist">
 																	<option value="pen.isl.latency">pen.isl.latency</option>
+															</select>
+															</span>													
+														</div>
+													</fieldset>
+													
+													<fieldset id="directionDropdown" class="form-group" style="display:none;">
+														<label class="col-xs-4 text-label">Direction:</label>
+														<div class="col-xs-8">
+															<span class="form-control kilda_select"> <span
+																class="selectbox_arrow"></span> <select class="selectbox_list" id="directionlist">
+																	<option value="forward">Forward</option>
+																	<option value="reverse">Reverse</option>
 															</select>
 															</span>													
 														</div>
@@ -334,10 +364,10 @@
 					</button>
 					<h4 class="modal-title" id="myModalLabel">Confirmation</h4>
 				</div>
-				<div class="modal-body">Are you sure you want to edit flow?</div>
+				<div class="modal-body">Are you sure you want to update the flow?</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-default" data-dismiss="modal">No</button>
-					<button type="button" class="btn kilda_btn" onClick="flowObj.editFlow()" id="confirmeditflow">Yes</button>
+					<button type="button" class="btn btn-default" data-dismiss="modal" onClick="flowObj.cancelEditFlow()">No</button>
+					<button type="button" class="btn kilda_btn" onClick="flowObj.updateFlow()" id="confirmeditflow">Yes</button>
 				</div>
 			</div>
 		</div>
