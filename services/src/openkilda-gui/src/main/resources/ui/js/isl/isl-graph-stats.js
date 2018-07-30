@@ -90,7 +90,9 @@ $(document).ready(function() {
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
 	var loadUrl = "/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric;
 	var reverseLoadUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric;
-	fetchGraphData(loadUrl, reverseLoadUrl, selMetric);
+	setTimeout(function(){
+		fetchGraphData(loadUrl, reverseLoadUrl, selMetric);
+	},1000)
 
 })
 
@@ -220,6 +222,8 @@ function callIntervalData(loadUrl, reverseLoadUrl, selMetric){
 }
 
 function fetchGraphData(loadUrl, reverseLoadUrl, metric,timezone){
+	var startDate = new Date($("#datetimepicker7ISL").val());
+	var endDate =  new Date($("#datetimepicker8ISL").val());
 	loadGraph.loadGraphData(loadUrl, "GET", metric).then( function(response) {
 		if (response && response.length && typeof(response[0].tags)!=='undefined' ) {
 			response[0].tags.direction ="F";
@@ -232,16 +236,16 @@ function fetchGraphData(loadUrl, reverseLoadUrl, metric,timezone){
 				response.push(responseReverse[0]);
 				$("#wait1").css("display", "none");
 				$('body').css('pointer-events', 'all');
-				showStatsGraph.showStatsData(response, metric, null, null, null, null, timezone); 
+				showStatsGraph.showStatsData(response, metric, null, null, startDate, endDate, timezone); 
 			})
 		}else{
 			$("#wait1").css("display", "none");
 			$('body').css('pointer-events', 'all');
-			showStatsGraph.showStatsData(response, metric, null, null, null, null, timezone); 
+			showStatsGraph.showStatsData(response, metric, null, null, startDate, endDate, timezone); 
 		}
 		
 	},function(error){
-		showStatsGraph.showStatsData([], metric, null, null, null, null, timezone); 
+		showStatsGraph.showStatsData([], metric, null, null, startDate, endDate, timezone); 
 	})
 }
 

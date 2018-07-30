@@ -6,9 +6,7 @@ import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
-import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -45,24 +43,14 @@ public class SwitchService {
 
 
     /**
-     * get All Ports.
-     *
-     * @param switchId the switch id
-     * @return List<PortInfo>
-     * @throws IntegrationException
-     */
-    public List<PortInfo> getPortsBySwitchId(final String switchId) throws IntegrationException {
-        return switchIntegrationService.getSwitchPorts(switchId);
-    }
-
-    /**
      * Get link props.
      * 
      * @param keys
      * @return
      */
     public LinkProps getLinkProps(LinkProps keys) {
-        return switchIntegrationService.getIslLinkProps(keys).get(0);
+        List<LinkProps> linkPropsList = switchIntegrationService.getIslLinkProps(keys);
+        return (linkPropsList != null && !linkPropsList.isEmpty()) ? linkPropsList.get(0) : null;
     }
 
     /**

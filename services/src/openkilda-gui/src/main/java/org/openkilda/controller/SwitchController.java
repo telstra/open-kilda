@@ -21,7 +21,6 @@ import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
-import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.SwitchService;
 
@@ -119,18 +118,6 @@ public class SwitchController extends BaseController {
         return serviceSwitch.getSwitches();
     }
 
-    /**
-     * Gets the ports detail switch id.
-     *
-     * @param switchId the switch id
-     * @return the ports detail switch id
-     */
-    @RequestMapping(value = "/{switchId}/ports", method = RequestMethod.GET)
-    @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody List<PortInfo> getPortsDetailbySwitchId(
-            @PathVariable final String switchId) {
-        return serviceSwitch.getPortsBySwitchId(switchId);
-    }
 
     /**
      * Gets the links detail.

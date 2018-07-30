@@ -21,7 +21,7 @@ $(document).ready(function() {
 			var obj = JSON.parse(portData)
 			$("#kilda-port-name").parent().append(obj.port_name)
 			$('body').css('pointer-events', 'all');							
-			showSwitchData(obj);
+			showSwitchData(obj,switchname);
 			getMetricDetails.getPortMetricData();
 			
 })
@@ -30,13 +30,13 @@ $(document).ready(function() {
  * function to retrieve and show switch details from the switch response json
  * object and display on the html page
  */
-function showSwitchData(obj) {
+function showSwitchData(obj,switchname) {
 	
 
 	$(".graph_div").show();
 	$(".port_details_div_status").html(obj.status);
-	$(".port_details_div_name").html(obj.port_name);
 	$(".switchdetails_div_number").html(obj.port_number);
-	$(".switchdetails_div_interface").html(obj.interface);
+	$(".switchdetails_div_interface").html(obj.interfacetype);
+	$(".switchportdetails_div_switch_id").html(switchname);
 }
 /* ]]> */
