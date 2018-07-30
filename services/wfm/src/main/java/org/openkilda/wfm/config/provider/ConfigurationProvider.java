@@ -19,6 +19,8 @@ import static com.sabre.oss.conf4j.source.OptionalValue.absent;
 import static com.sabre.oss.conf4j.source.OptionalValue.present;
 import static java.util.Objects.requireNonNull;
 
+import org.openkilda.config.provider.ValidatingConfigurationProvider;
+
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.processor.ConfigurationValueProcessor;
 import com.sabre.oss.conf4j.source.ConfigurationSource;
@@ -36,36 +38,22 @@ import java.util.Properties;
  * @see ConfigurationSource
  * @see JdkProxyStaticConfigurationFactory
  */
-public class ConfigurationProvider {
-    private final ConfigurationSource source;
-    private final JdkProxyStaticConfigurationFactory factory;
-
+public class ConfigurationProvider extends ValidatingConfigurationProvider {
     public ConfigurationProvider(Properties payload, String... prefixes) {
         this(payload, prefixes, null);
     }
 
     public ConfigurationProvider(Properties payload, String[] prefixes,
                                  List<ConfigurationValueProcessor> configurationValueProcessors) {
-        source = new MultiPrefixConfigurationSource(payload, prefixes);
-        factory = new JdkProxyStaticConfigurationFactory();
+        super(new MultiPrefixConfigurationSource(payload, prefixes), new JdkProxyStaticConfigurationFactory());
+
         if (configurationValueProcessors != null) {
-            factory.setConfigurationValueProcessors(configurationValueProcessors);
+            ((JdkProxyStaticConfigurationFactory) factory)
+                    .setConfigurationValueProcessors(configurationValueProcessors);
         }
     }
 
-    /**
-     * Creates a configuration class and fills it with values.
-     *
-     * @param configurationType configuration class.
-     * @return configuration instance
-     */
-    public <T> T getConfiguration(Class<T> configurationType) {
-        requireNonNull(configurationType, "configurationType cannot be null");
-
-        return factory.createConfiguration(configurationType, source);
-    }
-
-    class MultiPrefixConfigurationSource implements ConfigurationSource {
+    private static class MultiPrefixConfigurationSource implements ConfigurationSource {
         private Properties payload;
         private String[] prefixes;
 
