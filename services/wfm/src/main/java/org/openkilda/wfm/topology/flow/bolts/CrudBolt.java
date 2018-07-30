@@ -649,12 +649,13 @@ public class CrudBolt
 
             case UPDATE:
                 flow = flowCache.getFlow(flowId);
+                final Flow flowForward = flow.getLeft();
 
                 try {
-                    logger.warn("Origin flow {} path: {} correlationId {}", flowId, flow.getLeft().getFlowPath(),
+                    logger.warn("Origin flow {} path: {} correlationId {}", flowId, flowForward.getFlowPath(),
                             correlationId);
-                    AvailableNetwork network = pathComputer.getAvailableNetwork(requestedFlow.isIgnoreBandwidth(),
-                            requestedFlow.getBandwidth());
+                    AvailableNetwork network = pathComputer.getAvailableNetwork(flowForward.isIgnoreBandwidth(),
+                            flowForward.getBandwidth());
                     network.addIslsOccupiedByFlow(flowId);
                     ImmutablePair<PathInfoData, PathInfoData> path =
                             pathComputer.getPath(flow.getLeft(), network, Strategy.COST);
