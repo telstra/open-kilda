@@ -11,7 +11,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     And a clean controller
     And created simple topology from two switches
     And topology contains 2 links
-    And flow pcet creation request with 00:01:00:00:00:00:00:01 11 0 and 00:01:00:00:00:00:00:02 12 0 and 1000000 is successful
+    And flow pcet creation request with 00:01:00:00:00:00:00:01 1 0 and 00:01:00:00:00:00:00:02 2 0 and 1000000 is successful
     And flow pcet in UP state
 
     When switch switch1 is turned off
@@ -31,7 +31,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     And a clean controller
     And a random linear topology of 3 switches
     And topology contains 8 links
-    When flow pcet creation request with de:ad:be:ef:00:00:00:01 12 0 and de:ad:be:ef:00:00:00:03 12 0 and 100 is successful
+    When flow pcet creation request with de:ad:be:ef:00:00:00:01 2 0 and de:ad:be:ef:00:00:00:03 2 0 and 100 is successful
     And flow pcet in UP state
 
     When switch 00000002 is turned off
@@ -52,7 +52,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     And a clean controller
     And a random linear topology of 3 switches
     And topology contains 8 links
-    When flow disableReflowTest creation request with de:ad:be:ef:00:00:00:01 12 0 and de:ad:be:ef:00:00:00:03 12 0 and 100 is successful
+    When flow disableReflowTest creation request with de:ad:be:ef:00:00:00:01 2 0 and de:ad:be:ef:00:00:00:03 2 0 and 100 is successful
     And flow disableReflowTest in UP state
 
     And flow reroute feature is off
@@ -73,7 +73,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     And a clean controller
     And a multi-path topology
     And topology contains 16 links
-    And flow fr_multipath creation request with 00:00:00:00:00:00:00:01 11 0 and 00:00:00:00:00:00:00:08 11 0 and 100 is successful
+    And flow fr_multipath creation request with 00:00:00:00:00:00:00:01 1 0 and 00:00:00:00:00:00:00:08 1 0 and 100 is successful
     And flow fr_multipath is built through 00:00:00:00:00:00:00:03 switch
 
     When switch s3 is turned off
