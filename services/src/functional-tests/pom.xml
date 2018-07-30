@@ -114,6 +114,11 @@
                         <version>${surefire.version}</version>
                         <configuration>
                             <testFailureIgnore>false</testFailureIgnore>
+                            <skipAfterFailureCount>1</skipAfterFailureCount>
+                            <redirectTestOutputToFile>false</redirectTestOutputToFile>
+                            <printSummary>true</printSummary>
+                            <useFile>false</useFile>
+                            <disableXmlReport>true</disableXmlReport>
                         </configuration>
                         <executions>
                             <execution>

@@ -40,4 +40,30 @@ class IslMovingSpec extends BaseSpecification {
         and: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], "MOVED")
     }
+
+    def "ISL status changes to MOVED when replugging (self-loop case)"() {
+        given: "A connected a-switch link"
+        def isl = topology.islsForActiveSwitches.find {
+            it.getAswitch()?.inPort && it.getAswitch()?.outPort
+        }
+        assert isl
+
+        when: "Replug one end of link into 'itself'"
+        def loopedIsl = islUtils.replug(isl, false, isl, true)
+
+        then: "New self-looped ISL becomes Discovered"
+        islUtils.waitForIslStatus([loopedIsl, islUtils.reverseIsl(loopedIsl)], "DISCOVERED")
+
+        and: "Replugged ISL status changes to MOVED"
+        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], "MOVED")
+
+        when: "Replug the link back where it was"
+        islUtils.replug(loopedIsl, true, isl, false)
+
+        then: "Original ISL becomes Discovered again"
+        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], "DISCOVERED")
+
+        and: "self-looped ISL status changes to MOVED"
+        islUtils.waitForIslStatus([loopedIsl, islUtils.reverseIsl(loopedIsl)], "MOVED")
+    }
 }
