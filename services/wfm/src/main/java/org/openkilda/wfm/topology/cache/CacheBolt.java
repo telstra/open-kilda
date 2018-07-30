@@ -37,7 +37,6 @@ import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
@@ -295,8 +294,7 @@ public class CacheBolt
 
                 affectedFlows = flowCache.getActiveFlowsWithAffectedPath(isl);
                 String reason = String.format("isl %s FAILED", isl.getId());
-                emitRerouteCommands(affectedFlows, tuple, correlationId,
-                        FlowOperation.UPDATE, reason);
+                emitRerouteCommands(tuple, affectedFlows, correlationId, reason);
                 break;
 
             case OTHER_UPDATE:
@@ -321,7 +319,7 @@ public class CacheBolt
                 Set<ImmutablePair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
                 String reason = String.format("port %s_%s is %s",
                         port.getSwitchId(), port.getPortNo(), port.getState());
-                emitRerouteCommands(affectedFlows, tuple, correlationId, FlowOperation.UPDATE, reason);
+                emitRerouteCommands(tuple, affectedFlows, correlationId, reason);
                 break;
 
             case UP:
@@ -357,8 +355,7 @@ public class CacheBolt
         String reason = String.format("network topology change  %s_%s is %s",
                 topologyChange.getSwitchId(), topologyChange.getPortNumber(),
                 topologyChange.getType());
-        emitRerouteCommands(affectedFlows, tuple, correlationId,
-                FlowOperation.UPDATE, reason);
+        emitRerouteCommands(tuple, affectedFlows, correlationId, reason);
     }
 
     private void emitFlowMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
@@ -375,25 +372,31 @@ public class CacheBolt
         logger.debug("Flow command message sent");
     }
 
-    private void emitRerouteCommands(Set<ImmutablePair<Flow, Flow>> flows, Tuple tuple,
-            String correlationId, FlowOperation operation, String reason) {
+    private void emitRerouteCommands(Tuple input, Set<ImmutablePair<Flow, Flow>> flows,
+                                     String initialCorrelationId, String reason) {
         for (ImmutablePair<Flow, Flow> flow : flows) {
+            final String flowId = flow.getLeft().getFlowId();
+            FlowRerouteRequest request = new FlowRerouteRequest(flowId);
+
+            String correlationId = format("%s-%s", initialCorrelationId, flowId);
+
+            String json;
             try {
-                flow.getLeft().setState(FlowState.DOWN);
-                flow.getRight().setState(FlowState.DOWN);
-                FlowRerouteRequest request = new FlowRerouteRequest(flow.getLeft(), operation);
-
-                String msgCorrelationId = format("%s-%s", correlationId, flow.getLeft().getFlowId());
-
-                Values values = new Values(Utils.MAPPER.writeValueAsString(new CommandMessage(
-                        request, System.currentTimeMillis(), msgCorrelationId, Destination.WFM)));
-                outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, values);
-
-                logger.warn("Flow {} reroute command message sent with correlationId {}, reason {}",
-                        flow.getLeft().getFlowId(), msgCorrelationId, reason);
+                json = Utils.MAPPER.writeValueAsString(new CommandMessage(
+                        request, System.currentTimeMillis(), correlationId, Destination.WFM));
             } catch (JsonProcessingException exception) {
                 logger.error("Could not format flow reroute request by flow={}", flow, exception);
+                return;
             }
+
+            Values values = new Values(json);
+            outputCollector.emit(StreamType.WFM_DUMP.toString(), input, values);
+
+            flow.getLeft().setState(FlowState.DOWN);
+            flow.getRight().setState(FlowState.DOWN);
+
+            logger.warn("Flow {} reroute command message sent with correlationId {}, reason {}",
+                    flowId, correlationId, reason);
         }
     }
 

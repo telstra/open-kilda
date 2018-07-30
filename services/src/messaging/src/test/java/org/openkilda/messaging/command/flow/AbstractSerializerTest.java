@@ -546,7 +546,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowRerouteCommandTest() throws IOException, ClassNotFoundException {
-        FlowRerouteRequest data = new FlowRerouteRequest(flowModel, FlowOperation.CREATE);
+        FlowRerouteRequest data = new FlowRerouteRequest(FLOW_NAME, FlowOperation.CREATE, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
