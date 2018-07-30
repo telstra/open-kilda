@@ -23,9 +23,12 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.isIn;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -84,6 +87,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -119,6 +123,7 @@ public class FlowCrudSteps implements En {
     private TopologyUnderTest topologyUnderTest;
 
     private Set<FlowPayload> flows;
+    private Set<FlowPathPayload> flowPaths = new HashSet<>();
     private FlowPayload flowResponse;
 
     @Given("^flows defined over active switches in the reference topology$")
@@ -138,6 +143,24 @@ public class FlowCrudSteps implements En {
         flowIsls.putAll(flowManager.createFlowsWithASwitch(flowsAmount, alternatePaths, bw));
         //temporary resaving flows before refactoring all methods to work with topologyUnderTest
         flows = flowIsls.keySet();
+        flows.forEach(flow -> flowPaths.add(northboundService.getFlowPath(flow.getId())));
+    }
+
+    @And("^flow paths? (?:is|are) changed")
+    public void flowPathIsChanged() {
+        Set<FlowPathPayload> actualFlowPaths = new HashSet<>();
+        flows.forEach(flow -> actualFlowPaths.add(northboundService.getFlowPath(flow.getId())));
+        assertThat(actualFlowPaths, everyItem(not(isIn(flowPaths))));
+
+        // Save actual flow paths
+        flowPaths = actualFlowPaths;
+    }
+
+    @And("^flow paths? (?:is|are) unchanged")
+    public void flowPathIsUnchanged() {
+        Set<FlowPathPayload> actualFlowPaths = new HashSet<>();
+        flows.forEach(flow -> actualFlowPaths.add(northboundService.getFlowPath(flow.getId())));
+        assertThat(actualFlowPaths, everyItem(isIn(flowPaths)));
     }
 
     @And("Create defined flows?")

@@ -128,7 +128,7 @@ public class FlowManagerImpl implements FlowManager {
         if (!foundEnoughFlows) {
             result.keySet().forEach(f -> northboundService.deleteFlow(f.getId()));
         }
-        Assume.assumeTrue("Didn't find enough of requested flows. This test cannot be run on given topology."
+        Assume.assumeTrue("Didn't find enough of requested flows. This test cannot be run on given topology. "
                 + "Do you have enough a-switch links in the topology?", foundEnoughFlows);
         return result;
     }
