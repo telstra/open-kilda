@@ -177,8 +177,6 @@
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="36" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationId.java" lines="26" checks="HideUtilityClassConstructor"/>
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationId.java" lines="34" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/FlowControllerTest.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/FlowControllerTest.java" lines="43" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="15" checks="EmptyLineSeparator"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="18" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="24" checks="CustomImportOrder"/>

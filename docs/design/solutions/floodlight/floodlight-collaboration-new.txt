@@ -1,0 +1,83 @@
+@startuml
+title Floodlight Kilda Modules collaboration diagram
+
+participant OFEventWFMTopology
+participant "Topology Engine" as TE
+control kilda.speaker
+participant "FL::KafkaMessageCollector" as KafkaMessageCollector
+participant "FL::Consumer" as Consumer
+participant FixedThreadPool
+collections "FL::RecordHandler" as RecordHandler
+participant "FL::SwitchManager" as SwitchManager
+collections Switch
+control kilda.flow
+participant "FL::PathVerificationService" as PathVerificationService
+control kilda.topo.disco
+
+create Consumer
+KafkaMessageCollector -> Consumer : Start the reactor thread
+
+ref over OFEventWFMTopology, TE: Kilda components communicates to Floodlight
+
+OFEventWFMTopology -> kilda.speaker: Send a discovery command
+
+
+TE -> kilda.speaker : Send a flow command
+
+== Reactor thread ==
+
+loop forever, a single thread
+    Consumer -> kilda.speaker : Poll messages
+    activate Consumer
+    kilda.speaker -> Consumer : A batch of messages
+    loop for each message
+        create RecordHandler
+        Consumer -> RecordHandler : Build a message handler
+        Consumer -> FixedThreadPool : Schedule execution of the handler
+        activate FixedThreadPool
+            FixedThreadPool -> FixedThreadPool : Wait until an execution thread is free
+            FixedThreadPool -> RecordHandler : Execute in the execution thread
+            note right: Now the reactor waits \nfor an execution thread to be allocated\n before processing of the next message.
+            activate RecordHandler
+            FixedThreadPool -> Consumer
+        deactivate  FixedThreadPool
+        Consumer -> kilda.speaker: Commit the offset for a message
+    end
+    Consumer -> SwitchManager : safeModeTick
+    deactivate Consumer
+    activate SwitchManager
+        SwitchManager -> SwitchManager : Handle safe rule application
+    deactivate SwitchManager
+end
+
+== Execution threads ==
+
+activate RecordHandler
+    RecordHandler -> RecordHandler : Dispatch a command
+    alt A flow command
+        RecordHandler -> SwitchManager : Send OFMessage(s)
+        RecordHandler -> SwitchManager : Send OFBarrier request
+        activate SwitchManager
+        SwitchManager -> RecordHandler : OFBarrier response
+        deactivate SwitchManager
+        RecordHandler -> kilda.flow : Send a reply
+    else A discovery command
+        RecordHandler -> Switch: LLDP Packet
+    else An error occurred
+        RecordHandler -> kilda.flow : Send an error message
+    end
+    deactivate RecordHandler
+deactivate RecordHandler
+destroy RecordHandler
+
+== Discovery messages from switches ==
+
+loop for each discovered ISL
+    Switch -> PathVerificationService : LLDP Packet
+    activate PathVerificationService
+    PathVerificationService -> kilda.topo.disco : ISL discovered message
+    deactivate PathVerificationService
+    kilda.topo.disco -> OFEventWFMTopology : Receive the message
+end
+
+@enduml

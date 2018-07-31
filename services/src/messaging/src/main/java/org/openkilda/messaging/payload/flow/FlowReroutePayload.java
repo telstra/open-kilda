@@ -15,20 +15,41 @@
 
 package org.openkilda.messaging.payload.flow;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.event.PathInfoData;
 
-public class FlowReroutePayload extends FlowPathPayload {
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Value;
+
+import java.io.Serializable;
+
+/**
+ * Flow reroute representation class.
+ */
+@JsonSerialize
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@Value
+public class FlowReroutePayload implements Serializable {
+
+    /**
+     * Serialization version number constant.
+     */
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * The id of the flow.
+     */
+    @JsonProperty(Utils.FLOW_ID)
+    protected String id;
+
+    /**
+     * The path of the flow.
+     */
+    @JsonProperty(Utils.FLOW_PATH)
+    protected PathInfoData path;
 
     @JsonProperty("rerouted")
     private boolean rerouted;
-
-    public FlowReroutePayload(String id, PathInfoData path, boolean rerouted) {
-        super(id, path);
-        this.rerouted = rerouted;
-    }
-
-    public boolean isRerouted() {
-        return rerouted;
-    }
 }

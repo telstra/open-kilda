@@ -84,7 +84,7 @@
 							</div>
 						</div>
 						<div class='form-group row'>
-							<label class='col-sm-4 col-form-label'> Switch Name:</label>
+							<label class='col-sm-4 col-form-label'> Name:</label>
 							<p class='col-sm-8 copy_to_clipBoard link_div_destination_switch_name'></p>
 						</div>
 					</div>
@@ -149,7 +149,7 @@
 										<div class="loader"></div>
 									</div>
 									
-								<h2 class="isl-header text-center">ISL Latency Graph</h2>	
+								<h2 class="isl-header text-center" id="graphLabel">ISL Latency Graph</h2>	
 								<div id="graphdiv"></div>
 							</div>
 						</div>	
@@ -171,7 +171,6 @@
 							</div>
 						
 						
-
 
 						<div class="col-xs-4 filter">
 							<div class="stats-graph row">
@@ -214,9 +213,15 @@
 								<fieldset id="DownsampleID" class="form-group">
 									<label class="col-xs-4 text-label">Downsample:</label>
 									<div class="col-xs-8">
-										<input type="text" id="downsamplingISL" placeholder="Downsample"
+									<select class="form-control" id="downsamplingISL">
+										<option value="30s">30s</option>
+										<option value="1m">1m</option>
+										<option value="5m">5m</option>
+										<option value="10m">10m</option>
+									</select>
+										<!-- <input type="text" id="downsamplingISL" placeholder="Downsample"
 											class="form-control"></input>
-											
+											 -->
 											<span class="downsample-error-message pull-left"></span>
 									</div>
 								</fieldset>
@@ -240,9 +245,11 @@
 									<span class="form-control kilda_select"> 
 										<span class="selectbox_arrow"></span> 
 											<select class="selectbox_list" id="selectedGraph" onChange="islDetails.getIslMetricData(this)">
-											<option value="isl">ISL Latency Graph</option>
-											<option value="source">Source Graph</option>
-											<option value="target">Destination Graph</option>
+											<option value="isl">Latency</option>
+											<option value="source">Source</option>
+											<option value="target">Destination</option>
+											<option value="isllossforward">Loss packet forward</option>
+											<option value="isllossreverse">Loss packet reverse</option>
 										</select>
 									</span>
 								</div>

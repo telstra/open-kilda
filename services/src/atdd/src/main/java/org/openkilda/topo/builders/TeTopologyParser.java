@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+
 
 /**
  * A factory class that parses TopologyEngine JSON and builds a corresponding Topology entity.
@@ -58,7 +58,7 @@ public class TeTopologyParser {
             if (Strings.isNullOrEmpty(name)) {
                 throw new TopologyProcessingException("The node must have a name.");
             }
-            Objects.requireNonNull(name, "The name must be provided");
+
             String switchId = name.toUpperCase();
             switches.put(switchId, new Switch(switchId));
         });

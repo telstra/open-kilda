@@ -15,9 +15,9 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static org.openkilda.messaging.command.Constants.flowName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.messaging.command.Constants.flowName;
 
 import org.openkilda.messaging.AbstractSerializer;
 import org.openkilda.messaging.Destination;
@@ -38,11 +38,13 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
 import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.info.flow.FlowPathResponse;
+import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -79,7 +81,6 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final SwitchState SWITCH_EVENT = SwitchState.CHANGED;
     private static final Destination DESTINATION = null;
 
-    private static final FlowIdStatusPayload flowsIdStatusRequest = new FlowIdStatusPayload();
     private static final FlowIdStatusPayload flowIdStatusRequest = new FlowIdStatusPayload(FLOW_NAME);
     private static final FlowIdStatusPayload flowIdStatusResponse = new FlowIdStatusPayload(FLOW_NAME, FLOW_STATUS);
 
@@ -288,8 +289,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     }
 
     @Test
-    public void flowPathRequestTest() throws IOException, ClassNotFoundException {
-        FlowPathRequest data = new FlowPathRequest(flowIdStatusRequest);
+    public void flowGetBidirectionalRequestTest() throws IOException, ClassNotFoundException {
+        BidirectionalFlowRequest data = new BidirectionalFlowRequest(FLOW_NAME);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -299,18 +300,20 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(message instanceof CommandMessage);
 
         CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() instanceof FlowPathRequest);
+        assertTrue(resultCommand.getData() instanceof BidirectionalFlowRequest);
 
-        FlowPathRequest resultData = (FlowPathRequest) resultCommand.getData();
+        BidirectionalFlowRequest resultData = (BidirectionalFlowRequest) resultCommand.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(FLOW_NAME, resultData.getFlowId());
     }
 
     @Test
-    public void flowPathResponseTest() throws IOException, ClassNotFoundException {
-        FlowPathResponse data = new FlowPathResponse(path);
+    public void flowGetBidirectionalResponseTest() throws IOException, ClassNotFoundException {
+        Flow flow = Flow.builder().flowPath(path).build();
+        BidirectionalFlow bidirectionalFlow = BidirectionalFlow.builder().forward(flow).reverse(flow).build();
+        BidirectionalFlowResponse data = new BidirectionalFlowResponse(bidirectionalFlow);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -320,9 +323,31 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(message instanceof InfoMessage);
 
         InfoMessage resultInfo = (InfoMessage) message;
-        assertTrue(resultInfo.getData() instanceof FlowPathResponse);
+        assertTrue(resultInfo.getData() instanceof BidirectionalFlowResponse);
 
-        FlowPathResponse resultData = (FlowPathResponse) resultInfo.getData();
+        BidirectionalFlowResponse resultData = (BidirectionalFlowResponse) resultInfo.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
+        assertEquals(data.hashCode(), resultData.hashCode());
+        assertEquals(path, resultData.getPayload().getForward().getFlowPath());
+        assertEquals(path, resultData.getPayload().getReverse().getFlowPath());
+    }
+
+    @Test
+    public void flowRerouteResponseTest() throws IOException, ClassNotFoundException {
+        FlowRerouteResponse data = new FlowRerouteResponse(path, true);
+        System.out.println(data);
+
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        serialize(info);
+
+        Message message = (Message) deserialize();
+        assertTrue(message instanceof InfoMessage);
+
+        InfoMessage resultInfo = (InfoMessage) message;
+        assertTrue(resultInfo.getData() instanceof FlowRerouteResponse);
+
+        FlowRerouteResponse resultData = (FlowRerouteResponse) resultInfo.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());

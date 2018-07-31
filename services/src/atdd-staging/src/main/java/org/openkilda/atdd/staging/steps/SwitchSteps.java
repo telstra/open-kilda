@@ -18,13 +18,13 @@ package org.openkilda.atdd.staging.steps;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
@@ -36,7 +36,6 @@ import org.junit.Assume;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
-import java.util.Random;
 
 @Slf4j
 public class SwitchSteps {
@@ -63,13 +62,27 @@ public class SwitchSteps {
         assertTrue(allSwitchesResponse.size() >= expectedSwitchesAmount);
     }
 
-    @Given("^select a random switch and alias it as '(.*)'$")
+    @Given("^select a switch and alias it as '(.*)'$")
     public void selectARandomSwitch(String switchAlias) {
         List<Switch> switches = getUnaliasedSwitches();
-        Random r = new Random();
-        Switch theSwitch = switches.get(r.nextInt(switches.size()));
-        log.info("Selected random switch with id: {}", theSwitch.getDpId());
+        Assume.assumeFalse("All switches are already aliased", CollectionUtils.isEmpty(switches));
+        Switch theSwitch = switches.get(0);
+        log.info("Selected switch with id: {}", theSwitch.getDpId());
         topologyUnderTest.addAlias(switchAlias, theSwitch);
+    }
+
+    @Given("^select a switch with Openflow version '(.*)' and alias it as '(.*)'$")
+    public void selectARandomSwitchWithSpecificOfVersion(String ofVersion, String switchAlias) {
+        List<Switch> switches = getUnaliasedSwitches();
+
+        for (Switch s: switches) {
+            if (ofVersion.equalsIgnoreCase(s.getOfVersion())) {
+                log.info("Selected switch with id: {}", s.getDpId());
+                topologyUnderTest.addAlias(switchAlias, s);
+                return;
+            }
+        }
+        Assume.assumeTrue("No switches found with OpenFlow version " + ofVersion, false);
     }
 
     @When("^request all switch rules for switch '(.*)'$")

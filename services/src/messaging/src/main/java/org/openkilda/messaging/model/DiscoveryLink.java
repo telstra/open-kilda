@@ -42,9 +42,17 @@ public class DiscoveryLink implements Serializable {
     @JsonProperty("destination")
     private NetworkEndpoint destination;
 
-    /** How many attempts have we made .. will fail after X attempts and no response */
+    /**
+     * How many attempts have we made, in other words defines how many discovery messages we have sent to speaker.
+     */
     @JsonProperty("attempts")
     private int attempts;
+
+    /**
+     * Indicates how many discovery packets were sent by speaker to switches.
+     */
+    @JsonProperty("ack_attempts")
+    private int ackAttempts;
 
     @JsonProperty("time_counter")
     private int timeCounter;
@@ -102,6 +110,7 @@ public class DiscoveryLink implements Serializable {
     public DiscoveryLink(@JsonProperty("source") final NetworkEndpoint source,
             @JsonProperty("destination") final NetworkEndpoint destination,
             @JsonProperty("attempts") final int attempts,
+            @JsonProperty("ack_attempts") final int ackAttempts,
             @JsonProperty("time_counter") final int timeCounter,
             @JsonProperty("check_interval") final int checkInterval,
             @JsonProperty("consecutive_failure") final int consecutiveFailure,
@@ -111,6 +120,7 @@ public class DiscoveryLink implements Serializable {
         this.source = source;
         this.destination = destination;
         this.attempts = attempts;
+        this.ackAttempts = ackAttempts;
         this.timeCounter = timeCounter;
         this.checkInterval = checkInterval;
         this.consecutiveFailureLimit = consecutiveFailureLimit;
@@ -134,6 +144,7 @@ public class DiscoveryLink implements Serializable {
     public void deactivate() {
         this.active = false;
         this.consecutiveFailure = 0;
+        this.consecutiveSuccess = 0;
     }
 
     /**
@@ -143,18 +154,19 @@ public class DiscoveryLink implements Serializable {
      */
     public void renew() {
         attempts = 0;
+        ackAttempts = 0;
         timeCounter = 0;
     }
 
     /**
-     * Checks if discovery should be suspended for that link.
+     * Checks if discovery should be suspended for that link or we can try to discover it.
      * @return true if link should be excluded from discovery plan and discovery packets should not be sent.
      */
-    public boolean isDiscoverySuspended() {
+    public boolean isNewAttemptAllowed() {
         if (consecutiveFailureLimit == ENDLESS_ATTEMPTS) { // never gonna give a link up.
-            return false;
+            return true;
         }
-        return consecutiveFailure > consecutiveFailureLimit;
+        return consecutiveFailure < consecutiveFailureLimit;
     }
 
     public void clearConsecutiveFailure() {
@@ -167,6 +179,7 @@ public class DiscoveryLink implements Serializable {
 
     public void fail() {
         consecutiveFailure++;
+        active = false;
     }
 
     public void success() {
@@ -182,15 +195,33 @@ public class DiscoveryLink implements Serializable {
     }
 
     /**
-     * Check if we should stop to verify ISL.
+     * Checks if limit of not acknowledged attempts is exceeded.
      * @return true if attempts is greater than attemptLimit.
      */
     public boolean isAttemptsLimitExceeded(int attemptsLimit) {
         return attempts > attemptsLimit;
     }
 
+    /**
+     * Increases amount of attempts.
+     */
     public void incAttempts() {
         attempts++;
+    }
+
+    /**
+     * Checks if we should stop trying to discover isl, because of the limit of attempts.
+     * @return true if attempts is greater than attemptLimit.
+     */
+    public boolean isAckAttemptsLimitExceeded(int attemptsLimit) {
+        return ackAttempts > attemptsLimit;
+    }
+
+    /**
+     * Increases amount of acknowledged attempts.
+     */
+    public void incAcknowledgedAttempts() {
+        ackAttempts++;
     }
 
     public boolean timeToCheck() {

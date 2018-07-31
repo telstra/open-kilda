@@ -84,17 +84,23 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
             JSONParser jsonParser = new JSONParser();
             try {
                 JSONObject jsonObject = (JSONObject) jsonParser.parse(ex.getResponse());
+                String error_message = HttpError.PRECONDITION_FAILED.getAuxilaryMessage();
+                String error_type = ex.toString();
+                if (jsonObject.get("error-message") != null) {
+                    error_message = jsonObject.get("error-message").toString();
+                }
+                if (jsonObject.get("error-type") != null) {
+                    error_message = jsonObject.get("error-type").toString();
+                }
                 return response(HttpError.PRECONDITION_FAILED.getHttpStatus(),
-                        HttpError.PRECONDITION_FAILED.getCode(),
-                        jsonObject.get("error-message").toString(),
-                        jsonObject.get("error-type").toString());
+                        HttpError.PRECONDITION_FAILED.getCode(), error_message, error_type);
             } catch (ParseException e) {
                 e.printStackTrace();
             }
         }
         return response(HttpError.PRECONDITION_FAILED.getHttpStatus(),
-                HttpError.PRECONDITION_FAILED.getCode(), HttpError.PRECONDITION_FAILED.getAuxilaryMessage(),
-                ex.toString());
+                HttpError.PRECONDITION_FAILED.getCode(),
+                HttpError.PRECONDITION_FAILED.getAuxilaryMessage(), ex.toString());
     }
 
     @ExceptionHandler(value = {ContentNotFoundException.class})

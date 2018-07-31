@@ -24,7 +24,7 @@
 
         <!-- Dependency versions -->
         <kafka.version>kafka_2.11</kafka.version>
-        <swagger.version>2.6.1</swagger.version>
+        <swagger.version>2.9.2</swagger.version>
         <mapstruct.version>1.2.0.Final</mapstruct.version>
         <guava.version>24.1-jre</guava.version>
     </properties>

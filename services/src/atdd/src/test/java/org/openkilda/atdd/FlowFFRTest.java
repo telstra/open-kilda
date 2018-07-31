@@ -106,7 +106,7 @@ public class FlowFFRTest {
         assertNotNull(payload);
 
         assertEquals(flowName, payload.getId());
-        assertEquals(FlowPathTest.expectedShortestPath.getLeft(), payload.getPath());
+        assertEquals(FlowPathTest.expectedShortestPath.getLeft(), payload.getForwardPath());
     }
 
     @When("^flow (.+) path is alternate$")
@@ -117,7 +117,7 @@ public class FlowFFRTest {
         assertNotNull(payload);
 
         assertEquals(flowName, payload.getId());
-        assertEquals(FlowPathTest.expectedAlternatePath.getLeft(), payload.getPath());
+        assertEquals(FlowPathTest.expectedAlternatePath.getLeft(), payload.getForwardPath());
     }
 
     @When("^a switch (.*) port (\\d+) is disabled")
@@ -167,7 +167,7 @@ public class FlowFFRTest {
         FlowPathPayload payload = FlowUtils.getFlowPath(flowName);
         for (int i = 0; i < 10; i++) {
             payload = FlowUtils.getFlowPath(flowName);
-            if (payload != null && expectedPath.equals(payload.getPath())) {
+            if (payload != null && expectedPath.equals(payload.getForwardPath())) {
                 break;
             }
             TimeUnit.SECONDS.sleep(2);
