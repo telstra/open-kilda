@@ -174,13 +174,25 @@ class RecordHandler implements Runnable {
     private void doConfigurePort(final CommandMessage message, final String replyToTopic, 
             final Destination replyDestination) throws SwitchOperationException {
         PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
-        logger.info("Updating status of port '{}' of switch '{}'", request.getSwitchId(), request.getPortNo());
-        ISwitchManager switchManager = context.getSwitchManager();
-        PortConfigurationResponse response = switchManager.configurePort(request);
+        
+        try {
+            logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
+                    request.getPortNo());
+            ISwitchManager switchManager = context.getSwitchManager();
+            PortConfigurationResponse response = switchManager.configurePort(request);
 
-        InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
-                message.getCorrelationId());
-        context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
+                    message.getCorrelationId());
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+        } catch (Exception e) {
+            logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
+                    request.getPortNo());
+            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), 
+                    "Port configuration request failed");
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
     }
 
     private Destination getDestinationForTopic(String replyToTopic) {
