@@ -15,8 +15,6 @@
 
 package org.openkilda.floodlight.kafka;
 
-import static java.lang.String.format;
-
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.kafka.producer.Producer;
@@ -102,15 +100,8 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
         }
     }
 
-    private void initHeartBeat(KafkaProducerConfig producerConfig, String topoDiscoTopic)
-            throws FloodlightModuleException {
-        float interval = producerConfig.getHeartBeatInterval();
-        if (interval < 1) {
-            throw new FloodlightModuleException(
-                    format("Invalid value for option heart-beat-interval: %s < 1", interval));
-        }
-
-        heartBeat = new HeartBeat(producer, (long) (interval * 1000), topoDiscoTopic);
+    private void initHeartBeat(KafkaProducerConfig producerConfig, String topoDiscoTopic) {
+        heartBeat = new HeartBeat(producer, (long) (producerConfig.getHeartBeatInterval() * 1000), topoDiscoTopic);
     }
 
     public Producer getProducer() {
