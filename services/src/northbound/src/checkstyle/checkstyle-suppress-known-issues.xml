@@ -41,6 +41,12 @@
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="24" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="25" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="39" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="40" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="56" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="57" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="58" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="59" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="60" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="124" checks="NoWhitespaceBefore"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="130" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="131" checks="OperatorWrap"/>
@@ -141,6 +147,7 @@
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/SwitchServiceImpl.java" lines="27" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/SwitchServiceImpl.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/SwitchServiceImpl.java" lines="29" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/service/impl/SwitchServiceImpl.java" lines="31" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/SwitchServiceImpl.java" lines="50" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/SwitchServiceImpl.java" lines="72" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/SwitchServiceImpl.java" lines="72" checks="MemberName"/>
@@ -163,6 +170,7 @@
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="9" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="10" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="11" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="12" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="22" checks="CustomImportOrder"/>

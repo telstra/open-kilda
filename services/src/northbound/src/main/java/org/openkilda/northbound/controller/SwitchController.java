@@ -17,6 +17,9 @@ package org.openkilda.northbound.controller;
 
 import static org.openkilda.messaging.error.ErrorType.PARAMETERS_INVALID;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -25,6 +28,7 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
@@ -33,12 +37,6 @@ import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.openkilda.northbound.utils.RequestCorrelationId;
-
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,12 +48,16 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Optional;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 /**
  * REST Controller for switches.
@@ -254,15 +256,22 @@ public class SwitchController {
     }
     
     /**
-     * Validate the rules installed on the switch against the flows in Neo4J.
+     * Configure port.
      *
-     * @return the validation details.
+     * @param switchId the switch id
+     * @param portNo the port no
+     * @param portConfig the port configuration payload
+     * @return the response entity
      */
-    @ApiOperation(value = "Validate the rules installed on the switch", response = RulesValidationResult.class)
-    @GetMapping(path = "/switches/{switch_id}/port/{port_id}/{status}")
-    @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<PortDto> updateStatus(@PathVariable(name = "switch_id") String switchId, 
-            @PathVariable(name = "port_id") String portId, @PathVariable(name = "status") String status) {
-        return ResponseEntity.ok(switchService.updateStatus(switchId, portId, status));
+    @ApiOperation(value = "Configure port on the switch", response = PortDto.class)
+    @ApiResponse(code = 200, response = PortDto.class, message = "Operation is successful")
+    @PutMapping(value = "/switches/{switch_id}/port/{port_no}/config",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<PortDto> configurePort(
+            @PathVariable(name = "switch_id") String switchId, 
+            @PathVariable(name = "port_no") int portNo,
+            @RequestBody PortConfigurationPayload portConfig) {
+        LOGGER.info("switch_id: {}, port_no: {}, portConfigDto: {}", switchId, portNo, portConfig);
+        return ResponseEntity.ok(switchService.configurePort(switchId, portNo, portConfig));
     }
 }

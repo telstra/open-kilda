@@ -16,29 +16,35 @@
 package org.openkilda.messaging.command.switches;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+
+import lombok.Getter;
+import lombok.Setter;
 import org.openkilda.messaging.command.CommandData;
 
-@Value
-public class PortStatusUpdateRequest extends CommandData {
+@Getter
+@Setter
+public class PortConfigurationRequest extends CommandData {
 
     private static final long serialVersionUID = 7393431355263735216L;
 
     @JsonProperty("switch_id")
     private String switchId;
 
-    @JsonProperty("port_id")
-    private String portId;
+    @JsonProperty("port_no")
+    private int portNo;
 
     @JsonProperty("status")
-    private PortStatus status;
+    private String status;
 
-    public PortStatusUpdateRequest(
-            @JsonProperty("switch_id") String switchId,
-            @JsonProperty("port_id") String portId, @JsonProperty("status") PortStatus status) {
+    @JsonProperty("speed")
+    private long speed;
+
+    public PortConfigurationRequest(
+            @JsonProperty("switch_id") String switchId, @JsonProperty("port_no") int portNo, 
+            @JsonProperty("status") String status, @JsonProperty("speed") long speed) {
         this.switchId = switchId;
-        this.portId = portId;
+        this.portNo = portNo;
         this.status = status;
+        this.speed = speed;
     }
 }
-

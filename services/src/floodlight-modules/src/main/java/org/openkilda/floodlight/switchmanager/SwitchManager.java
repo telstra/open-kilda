@@ -34,12 +34,13 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.info.switches.PortStatusUpdateResponse;
+import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -76,9 +77,12 @@ import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFPortConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortDescProp;
+import org.projectfloodlight.openflow.protocol.OFPortMod;
 import org.projectfloodlight.openflow.protocol.OFPortReason;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -103,6 +107,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -127,7 +132,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Cookie IDs when creating a flow.
      */
     public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
-
+    
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
 
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
@@ -1480,34 +1485,93 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
         }
     }
-
+    
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public PortStatusUpdateResponse updatePortStatus(final DatapathId dpid, final String portId,
-            final PortStatus status) throws SwitchOperationException {
-        logger.debug("updating status(new status '{}') of port '{}' of switch '{}'", status, portId, dpid);
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
-        OFPortDesc ofPortDesc = sw.getPort(portId);
-
-        if (status == PortStatus.UP) {
-            ofPortDesc.getConfig().remove(OFPortConfig.PORT_DOWN);
-        } else {
-            ofPortDesc.getConfig().add(OFPortConfig.PORT_DOWN);
+    public PortConfigurationResponse configurePort(final PortConfigurationRequest request) 
+            throws SwitchOperationException {
+        DatapathId dpId = DatapathId.of(request.getSwitchId());
+        IOFSwitch sw = lookupSwitch(dpId);
+        
+        OFPortDesc ofPortDesc = getPort(sw, request.getPortNo());
+        logger.debug("Switch: {}, port: {}", sw, ofPortDesc);
+        
+        PortStatus newStatus = PortStatus.getPortStatus(request.getStatus());
+        if (newStatus != null) {
+            updatePortStatus(sw, ofPortDesc, newStatus);
         }
 
-        OFFactory ofFactory = sw.getOFFactory();
-        OFPortStatus portStatus = ofFactory.buildPortStatus().setDesc(ofPortDesc)
-                .setReason(OFPortReason.MODIFY)
+        if (request.getSpeed() > 0) {
+            updatePortSpeed(sw, ofPortDesc, request.getSpeed());
+        }
+
+        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNo(), true);
+    }
+    
+    private void updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus) {
+        OFPortDesc.Builder builder = ofPortDesc.createBuilder();
+    
+        Set<OFPortConfig> configs = builder.getConfig() == null 
+                ? EnumSet.noneOf(OFPortConfig.class) : new HashSet<>(builder.getConfig());
+    
+        if (portStatus == PortStatus.UP) {
+            configs.remove(OFPortConfig.PORT_DOWN);
+        } else {
+            configs.add(OFPortConfig.PORT_DOWN);
+        }
+        builder.setConfig(configs);
+        
+        Set<OFPortConfig> portMask = EnumSet.noneOf(OFPortConfig.class);
+        portMask.add(OFPortConfig.PORT_DOWN);
+        
+        OFPortDesc updatedPort = builder.build();
+        
+        OFPortMod ofPortMod = sw.getOFFactory().buildPortMod().setConfig(configs)
+                .setPortNo(updatedPort.getPortNo())
+                .setHwAddr(updatedPort.getHwAddr())
+                .setMask(portMask)
                 .build();
 
-        pushFlow(sw, "--UpdateStatus--", portStatus);
+        logger.debug("oFPortMod request {}", ofPortMod);
 
-        sw = ofSwitchService.getSwitch(dpid);
-        ofPortDesc = sw.getPort(portId);
+        boolean result = sw.write(ofPortMod);
+        logger.debug("Update port status call result: {}", result);
+    }
 
-        PortStatusUpdateResponse response = new PortStatusUpdateResponse(String.valueOf(dpid.getLong()), portId, 
-                    null, ofPortDesc.isEnabled() ? PortStatus.UP : PortStatus.DOWN);
+    private void updatePortSpeed(final IOFSwitch sw, final OFPortDesc ofPortDesc, final long speed) {
+        OFPortDesc.Builder builder = ofPortDesc.createBuilder();
 
-        response.setStatus(ofPortDesc.isEnabled() ? PortStatus.UP : PortStatus.DOWN);
-        return response;
+        if (ofPortDesc.getVersion() == OFVersion.OF_11) {
+            logger.info("version {} speed update functionality not supported", ofPortDesc.getVersion());
+        } else if (ofPortDesc.getVersion().wireVersion > OFVersion.OF_11.wireVersion 
+                && ofPortDesc.getVersion().wireVersion < OFVersion.OF_14.wireVersion) {
+            builder.setCurrSpeed(speed);
+        } else {
+            List<OFPortDescProp> properties = new ArrayList<>(ofPortDesc.getProperties());
+            properties.forEach((property) -> {
+                logger.info("property {}", property);
+            });
+            builder.setProperties(properties);
+        }
+
+        OFPortDesc updatedPortDesc = builder.build();
+        OFPortStatus ofPortStatus = sw.getOFFactory().buildPortStatus()
+                .setReason(OFPortReason.MODIFY)
+                .setDesc(updatedPortDesc).build();
+        logger.debug("oFPortMod request {}", ofPortStatus);
+        
+        boolean result = sw.write(ofPortStatus);
+        logger.debug("Update port speed call result: {}", result);
+    }
+
+    private OFPortDesc getPort(final IOFSwitch sw, final int portNo) throws SwitchOperationException {
+        OFPortDesc ofPortDesc = sw.getPort(sw.getPort(OFPort.of(portNo)).getName());
+                
+        if (ofPortDesc == null) {
+            throw new SwitchOperationException(sw.getId(), String.format("Port %s was not found", portNo));
+        }
+        return ofPortDesc;
     }
 }

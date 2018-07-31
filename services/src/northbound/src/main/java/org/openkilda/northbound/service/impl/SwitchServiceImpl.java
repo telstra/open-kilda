@@ -28,8 +28,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
-import org.openkilda.messaging.command.switches.PortStatus;
-import org.openkilda.messaging.command.switches.PortStatusUpdateRequest;
+import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
@@ -39,10 +38,11 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
-import org.openkilda.messaging.info.switches.PortStatusUpdateResponse;
+import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.SwitchDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
@@ -262,21 +262,26 @@ public class SwitchServiceImpl implements SwitchService {
         DeleteMeterResponse result = (DeleteMeterResponse) validateInfoMessage(deleteCommand, response, requestId);
         return new DeleteMeterResult(result.isDeleted());
     }
-
+    
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public PortDto updateStatus(String switchId, String portId, String status) {
+    public PortDto configurePort(String switchId,  int port, PortConfigurationPayload config) {
+        logger.info("status {}, speed {}", config.getStatus(), config.getSpeed());
         String correlationId = RequestCorrelationId.getId();
+        PortConfigurationRequest request = new PortConfigurationRequest(switchId, 
+                port, config.getStatus(), config.getSpeed());
         CommandWithReplyToMessage updateStatusCommand = new CommandWithReplyToMessage(
-                new PortStatusUpdateRequest(switchId, portId, 
-                    "UP".equalsIgnoreCase(status) ? PortStatus.UP : PortStatus.DOWN), 
-                System.currentTimeMillis(), correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+                request, System.currentTimeMillis(), correlationId, 
+                Destination.CONTROLLER, northboundTopic);
         messageProducer.send(floodlightTopic, updateStatusCommand);
 
         Message response = messageConsumer.poll(correlationId);
-        PortStatusUpdateResponse switchPortResponse = (PortStatusUpdateResponse) validateInfoMessage(
+        PortConfigurationResponse switchPortResponse = (PortConfigurationResponse) validateInfoMessage(
                 updateStatusCommand, response, correlationId);
 
-        return new PortDto(switchPortResponse.getSwitchId(), switchPortResponse.getPortId(), 
-                switchPortResponse.getStatus().toString(), switchPortResponse.getOldStatus().toString());
+        return new PortDto(switchPortResponse.getSwitchId(), switchPortResponse.getPortNo(), 
+                true, null);
     }
 }
