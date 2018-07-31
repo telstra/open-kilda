@@ -15,7 +15,6 @@
 
 package org.openkilda.messaging.info.switches;
 
-import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -28,35 +27,24 @@ import lombok.Setter;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
 @Setter
-public class PortStatusUpdateResponse extends InfoData {
+public class PortConfigurationResponse extends InfoData {
 
     private static final long serialVersionUID = 7332950619136252164L;
 
     @JsonProperty("switch_id")
     private String switchId;
 
-    @JsonProperty("port_id")
-    private String portId;
+    @JsonProperty("port_no")
+    private int portNo;
 
-    @JsonProperty("status")
-    private PortStatus status;
+    @JsonProperty("successs")
+    private boolean successs;
 
-    @JsonProperty("old_status")
-    private PortStatus oldStatus;
-
-    /**
-     * Instance constructor.
-     *
-     * @param ruleIds
-     *            the list of affected rules
-     */
     @JsonCreator
-    public PortStatusUpdateResponse(@JsonProperty("switch_id") String switchId, 
-            @JsonProperty("port_id") String portId, @JsonProperty("status") PortStatus status,
-            @JsonProperty("status") PortStatus oldStatus) {
+    public PortConfigurationResponse(@JsonProperty("switch_id") String switchId, 
+            @JsonProperty("port_no") int portNo, @JsonProperty("successs") boolean successs) {
         this.switchId = switchId;
-        this.portId = portId;
-        this.status = status;
-        this.oldStatus = oldStatus;
+        this.portNo = portNo;
+        this.successs = successs;
     }
 }

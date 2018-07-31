@@ -49,7 +49,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
-import org.openkilda.messaging.command.switches.PortStatusUpdateRequest;
+import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -68,7 +68,7 @@ import org.openkilda.messaging.info.stats.PortStatus;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
-import org.openkilda.messaging.info.switches.PortStatusUpdateResponse;
+import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
@@ -164,22 +164,19 @@ class RecordHandler implements Runnable {
             doFlowVerificationRequest(context, (UniFlowVerificationRequest) data);
         } else if (data instanceof DeleteMeterRequest) {
             doDeleteMeter(message, replyToTopic, replyDestination);
-        } else if (data instanceof PortStatusUpdateRequest) {
-            logger.info("doSwitchPortsStatusUpdateRequest");
-            doSwitchPortsStatusUpdateRequest(message, replyToTopic, replyDestination);
+        } else if (data instanceof PortConfigurationRequest) {
+            doConfigurePort(message, replyToTopic, replyDestination);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
     }
 
-    private void doSwitchPortsStatusUpdateRequest(final CommandMessage message, final String replyToTopic, 
+    private void doConfigurePort(final CommandMessage message, final String replyToTopic, 
             final Destination replyDestination) throws SwitchOperationException {
-        PortStatusUpdateRequest data = (PortStatusUpdateRequest) message.getData();
-        DatapathId dpid = DatapathId.of(data.getSwitchId());
-        logger.info("Updating status of port '{}' of switch '{}'", data.getSwitchId(), data.getPortId());
+        PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
+        logger.info("Updating status of port '{}' of switch '{}'", request.getSwitchId(), request.getPortNo());
         ISwitchManager switchManager = context.getSwitchManager();
-        PortStatusUpdateResponse response = switchManager.updatePortStatus(dpid, data.getPortId(), 
-                data.getStatus());
+        PortConfigurationResponse response = switchManager.configurePort(request);
 
         InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
                 message.getCorrelationId());
