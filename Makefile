@@ -84,6 +84,11 @@ update-props:
 update-props-dryrun:
 	ansible-playbook -D -C -v -s config.yml
 
+check-kafka-host:
+	nslookup kafka1.pendev > /dev/null\
+	|| (echo "FIXME: Can't resolve 'kafka.pendev' host. Please add 'kafka.pendev' to /etc/hosts file to fix this issue."\
+	&& exit 1)
+
 # NB: To override the default (localhost) kilda location, you can make a call like this:
 #		cd services/src/atdd && \
 #		mvn "-Dtest=org.bitbucket.openkilda.atdd.*" \
@@ -107,16 +112,16 @@ kilda := 127.0.0.1
 #   mvn -f services/src/atdd/pom.xml -Patdd test -Dkilda.host="127.0.0.1" -Dcucumber.options="--tags @CRUD_UPDATE"
 #   mvn -f services/src/atdd/pom.xml -Patdd test -Dkilda.host="127.0.0.1" -Dsurefire.useFile=false -Dcucumber.options="--tags @CRUD_UPDATE"
 
-atdd: update
+atdd: check-kafka-host update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)" -Dcucumber.options="--tags $(tags)"
 
-smoke: update
+smoke: check-kafka-host update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-perf: update
+perf: check-kafka-host update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
-sec: update
+sec: check-kafka-host update
 	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
 
 .PHONY: default run-dev build-latest build-base
