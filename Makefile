@@ -85,7 +85,7 @@ update-props-dryrun:
 	ansible-playbook -D -C -v -s config.yml
 
 check-kafka-host:
-	nslookup kafka1.pendev > /dev/null\
+	nslookup kafka.pendev > /dev/null\
 	|| (echo "FIXME: Can't resolve 'kafka.pendev' host. Please add 'kafka.pendev' to /etc/hosts file to fix this issue."\
 	&& exit 1)
 
