@@ -27,13 +27,12 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableRangeSet;
-import com.google.common.collect.Range;
-import com.google.common.collect.RangeSet;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -122,6 +121,18 @@ public class TopologyDefinition {
                 .collect(toList());
     }
 
+    /**
+     * Get list of switch ports excluding the ports which are busy with ISLs.
+     */
+    public List<Integer> getAllowedPortsForSwitch(Switch sw) {
+        List<Integer> allPorts = new ArrayList<>(sw.getAllPorts());
+        allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
+                isl.getSrcSwitch().getDpId().equals(sw.getDpId())).map(Isl::getSrcPort).collect(Collectors.toList()));
+        allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
+                isl.getDstSwitch().getDpId().equals(sw.getDpId())).map(Isl::getDstPort).collect(Collectors.toList()));
+        return allPorts;
+    }
+
     @Value
     @NonFinal
     @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
@@ -137,6 +148,8 @@ public class TopologyDefinition {
         @NonNull
         private List<OutPort> outPorts;
 
+        private Integer maxPorts;
+
         /**
          * Create a Switch instance.
          */
@@ -146,16 +159,31 @@ public class TopologyDefinition {
                 @JsonProperty("dp_id") SwitchId dpId,
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
-                @JsonProperty("out_ports") List<OutPort> outPorts) {
+                @JsonProperty("out_ports") List<OutPort> outPorts,
+                @JsonProperty("max_ports") Integer maxPorts) {
             if (outPorts == null) {
                 outPorts = emptyList();
             }
+            if (maxPorts == null) {
+                maxPorts = 20;
+            }
 
-            return new Switch(name, dpId, ofVersion, status, outPorts);
+            return new Switch(name, dpId, ofVersion, status, outPorts, maxPorts);
         }
 
         public boolean isActive() {
             return status == Status.Active;
+        }
+
+        /**
+         * Get list of all available ports on this switch.
+         */
+        public List<Integer> getAllPorts() {
+            List<Integer> allPorts = new ArrayList<>();
+            for (int i = 1; i <= maxPorts; i++) {
+                allPorts.add(i);
+            }
+            return allPorts;
         }
     }
 
@@ -165,7 +193,7 @@ public class TopologyDefinition {
 
         private int port;
         @NonNull
-        private RangeSet<Integer> vlanRange;
+        private List<Integer> vlanRange;
 
         @JsonCreator
         public static OutPort factory(
@@ -175,13 +203,13 @@ public class TopologyDefinition {
             return new OutPort(port, parseVlanRange(vlanRange));
         }
 
-        private static RangeSet<Integer> parseVlanRange(String vlanRangeAsStr) {
+        private static List<Integer> parseVlanRange(String vlanRangeAsStr) {
             String[] splitRanges = vlanRangeAsStr.split(",");
             if (splitRanges.length == 0) {
                 throw new IllegalArgumentException("Vlan range must be non-empty.");
             }
 
-            ImmutableRangeSet.Builder<Integer> resultVlanRange = ImmutableRangeSet.builder();
+            List<Integer> vlans = new ArrayList<>();
             for (String range : splitRanges) {
                 String[] boundaries = range.split("\\.\\.");
                 if (boundaries.length == 0 || boundaries.length > 2) {
@@ -189,20 +217,22 @@ public class TopologyDefinition {
                 }
 
                 int lowerBound = Integer.parseInt(boundaries[0].trim());
-                if (boundaries.length == 2) {
-                    int upperBound = Integer.parseInt(boundaries[1].trim());
-                    resultVlanRange.add(Range.closed(lowerBound, upperBound));
-                } else {
-                    resultVlanRange.add(Range.closed(lowerBound, lowerBound));
+                int upperBound = Integer.parseInt(boundaries[1].trim());
+                if (lowerBound > upperBound) {
+                    throw new IllegalArgumentException("Range " + range
+                            + " is not valid. Lower bound cannot be bigger than upper bound");
+                }
+                for (int i = lowerBound; i <= upperBound; i++) {
+                    vlans.add(i);
                 }
             }
-
-            return resultVlanRange.build();
+            return vlans;
         }
     }
 
     @Value
     @NonFinal
+    @EqualsAndHashCode
     public static class Isl {
 
         @NonNull

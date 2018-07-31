@@ -29,7 +29,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.ResponseErrorHandler;
@@ -90,7 +90,7 @@ public class DefaultServiceConfig {
 
     private RestTemplate buildLoggingRestTemplate() {
         final RestTemplate restTemplate = new RestTemplate(new BufferingClientHttpRequestFactory(
-                new SimpleClientHttpRequestFactory()));
+                new HttpComponentsClientHttpRequestFactory()));
         List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
         interceptors.add(new LoggingRequestInterceptor());
         restTemplate.setErrorHandler(buildErrorHandler());
