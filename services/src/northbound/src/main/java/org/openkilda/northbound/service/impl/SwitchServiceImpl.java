@@ -240,7 +240,7 @@ public class SwitchServiceImpl implements SwitchService {
         String syncCorrelationId = format("%s-sync", RequestCorrelationId.getId());
         CommandWithReplyToMessage syncCommandMessage = new CommandWithReplyToMessage(
                 new SwitchRulesSyncRequest(switchId, missingRules),
-                System.currentTimeMillis(), syncCorrelationId, Destination.CONTROLLER, northboundTopic);
+                System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
         messageProducer.send(topoEngTopic, syncCommandMessage);
 
         Message syncResponseMessage = messageConsumer.poll(syncCorrelationId);
@@ -282,6 +282,6 @@ public class SwitchServiceImpl implements SwitchService {
                 updateStatusCommand, response, correlationId);
 
         return new PortDto(switchPortResponse.getSwitchId(), switchPortResponse.getPortNo(), 
-                true, null);
+                switchPortResponse.isSuccesss());
     }
 }

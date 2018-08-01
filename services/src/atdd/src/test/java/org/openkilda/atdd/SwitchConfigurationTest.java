@@ -18,19 +18,18 @@ package org.openkilda.atdd;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.SwitchesUtils;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.northbound.dto.switches.PortDto;
 
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Then;
 
 public class SwitchConfigurationTest {
-    public static final String STATUS_UP = "UP";
-    public static final String STATUS_DOWN = "DOWN";
     
     @Then("^switch \"([^\"]*)\" with port name as \"([^\"]*)\" status from down to up and verify the state$")
-    public void changePortStatusDownToUp(String switchName, String portName) throws Throwable {
+    public void changePortStatusDownToUp(String switchName, int portNumber) throws Throwable {
         try {
-            PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portName, STATUS_UP);
+            PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portNumber, PortStatus.UP);
             assertTrue(portDto != null);
         } catch (Exception e) {
             assertTrue(false);
@@ -38,9 +37,9 @@ public class SwitchConfigurationTest {
     }
 
     @And("^switch \"([^\"]*)\" with port name as \"([^\"]*)\" status from up to down and verify the state$")
-    public void changePortStatusUpToDown(String switchName, String portName) throws Throwable {
+    public void changePortStatusUpToDown(String switchName, int portNumber) throws Throwable {
         try {
-            PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portName, STATUS_DOWN);
+            PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portNumber, PortStatus.DOWN);
             assertTrue(portDto != null);
         } catch (Exception e) {
             assertTrue(false);

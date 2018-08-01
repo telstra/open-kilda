@@ -1496,41 +1496,32 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpId);
         
         OFPortDesc ofPortDesc = getPort(sw, request.getPortNo());
-        logger.debug("Switch: {}, port: {}", sw, ofPortDesc);
         
         PortStatus newStatus = PortStatus.getPortStatus(request.getStatus());
+        boolean result = true;
         if (newStatus != null) {
-            updatePortStatus(sw, ofPortDesc, newStatus);
+            result = updatePortStatus(sw, ofPortDesc, newStatus);
         }
 
-        if (request.getSpeed() > 0) {
-            updatePortSpeed(sw, ofPortDesc, request.getSpeed());
-        }
-
-        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNo(), true);
+        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNo(), result);
     }
     
-    private void updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus) {
-        OFPortDesc.Builder builder = ofPortDesc.createBuilder();
-    
+    private boolean updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus) {
         Set<OFPortConfig> configs = builder.getConfig() == null 
-                ? EnumSet.noneOf(OFPortConfig.class) : new HashSet<>(builder.getConfig());
+                ? EnumSet.noneOf(OFPortConfig.class) : new HashSet<>(ofPortDesc.getConfig());
     
         if (portStatus == PortStatus.UP) {
             configs.remove(OFPortConfig.PORT_DOWN);
         } else {
             configs.add(OFPortConfig.PORT_DOWN);
         }
-        builder.setConfig(configs);
         
         Set<OFPortConfig> portMask = EnumSet.noneOf(OFPortConfig.class);
         portMask.add(OFPortConfig.PORT_DOWN);
         
-        OFPortDesc updatedPort = builder.build();
-        
         OFPortMod ofPortMod = sw.getOFFactory().buildPortMod().setConfig(configs)
-                .setPortNo(updatedPort.getPortNo())
-                .setHwAddr(updatedPort.getHwAddr())
+                .setPortNo(ofPortDesc.getPortNo())
+                .setHwAddr(ofPortDesc.getHwAddr())
                 .setMask(portMask)
                 .build();
 
@@ -1538,32 +1529,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         boolean result = sw.write(ofPortMod);
         logger.debug("Update port status call result: {}", result);
-    }
-
-    private void updatePortSpeed(final IOFSwitch sw, final OFPortDesc ofPortDesc, final long speed) {
-        OFPortDesc.Builder builder = ofPortDesc.createBuilder();
-
-        if (ofPortDesc.getVersion() == OFVersion.OF_11) {
-            logger.info("version {} speed update functionality not supported", ofPortDesc.getVersion());
-        } else if (ofPortDesc.getVersion().wireVersion > OFVersion.OF_11.wireVersion 
-                && ofPortDesc.getVersion().wireVersion < OFVersion.OF_14.wireVersion) {
-            builder.setCurrSpeed(speed);
-        } else {
-            List<OFPortDescProp> properties = new ArrayList<>(ofPortDesc.getProperties());
-            properties.forEach((property) -> {
-                logger.info("property {}", property);
-            });
-            builder.setProperties(properties);
-        }
-
-        OFPortDesc updatedPortDesc = builder.build();
-        OFPortStatus ofPortStatus = sw.getOFFactory().buildPortStatus()
-                .setReason(OFPortReason.MODIFY)
-                .setDesc(updatedPortDesc).build();
-        logger.debug("oFPortMod request {}", ofPortStatus);
-        
-        boolean result = sw.write(ofPortStatus);
-        logger.debug("Update port speed call result: {}", result);
+        return result;
     }
 
     private OFPortDesc getPort(final IOFSwitch sw, final int portNo) throws SwitchOperationException {

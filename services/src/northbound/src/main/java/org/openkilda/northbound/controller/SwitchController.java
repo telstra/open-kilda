@@ -267,11 +267,11 @@ public class SwitchController {
     @ApiResponse(code = 200, response = PortDto.class, message = "Operation is successful")
     @PutMapping(value = "/switches/{switch_id}/port/{port_no}/config",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<PortDto> configurePort(
+    public PortDto configurePort(
             @PathVariable(name = "switch_id") String switchId, 
             @PathVariable(name = "port_no") int portNo,
             @RequestBody PortConfigurationPayload portConfig) {
-        LOGGER.info("switch_id: {}, port_no: {}, portConfigDto: {}", switchId, portNo, portConfig);
-        return ResponseEntity.ok(switchService.configurePort(switchId, portNo, portConfig));
+        LOGGER.info("Port Configuration '{}' request for port {} of switch {}", portConfig, portNo, switchId);
+        return switchService.configurePort(switchId, portNo, portConfig);
     }
 }

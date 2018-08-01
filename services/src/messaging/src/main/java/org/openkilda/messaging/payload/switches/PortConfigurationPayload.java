@@ -27,9 +27,6 @@ import lombok.Setter;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "status",
-        "speed"})
 @Getter
 @Setter
 public class PortConfigurationPayload implements Serializable {

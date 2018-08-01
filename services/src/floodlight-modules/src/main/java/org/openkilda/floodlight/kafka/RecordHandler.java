@@ -171,30 +171,6 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doConfigurePort(final CommandMessage message, final String replyToTopic, 
-            final Destination replyDestination) throws SwitchOperationException {
-        PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
-        
-        try {
-            logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
-                    request.getPortNo());
-            ISwitchManager switchManager = context.getSwitchManager();
-            PortConfigurationResponse response = switchManager.configurePort(request);
-
-            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
-                    message.getCorrelationId());
-            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
-        } catch (Exception e) {
-            logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
-                    request.getPortNo());
-            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), 
-                    "Port configuration request failed");
-            ErrorMessage error = new ErrorMessage(errorData,
-                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
-            context.getKafkaProducer().postMessage(replyToTopic, error);
-        }
-    }
-
     private Destination getDestinationForTopic(String replyToTopic) {
         //TODO: depending on the future system design, either get rid of destination or complete the switch-case.
         if (context.getKafkaNorthboundTopic().equals(replyToTopic)) {
@@ -721,6 +697,30 @@ class RecordHandler implements Runnable {
         } catch (SwitchOperationException e) {
             logger.info("Meter deletion is unsuccessful. Switch {} not found", request.getSwitchId());
             ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), request.getSwitchId());
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
+    }
+
+    private void doConfigurePort(final CommandMessage message, final String replyToTopic, 
+            final Destination replyDestination) throws SwitchOperationException {
+        PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
+        
+        try {
+            logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
+                    request.getPortNo());
+            ISwitchManager switchManager = context.getSwitchManager();
+            PortConfigurationResponse response = switchManager.configurePort(request);
+
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
+                    message.getCorrelationId());
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+        } catch (Exception e) {
+            logger.error("Port configuration request failed. Switch '{}', Port '{}'", request.getSwitchId(), 	
+                    request.getPortNo());
+            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), 
+                    "Port configuration request failed");
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
