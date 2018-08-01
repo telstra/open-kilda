@@ -10,6 +10,7 @@ import static org.openkilda.DefaultParameters.trafficEndpoint;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -300,7 +301,7 @@ public final class SwitchesUtils {
     /**
      * Update port status.
      */
-    public static PortDto changeSwitchPortStatus(String switchName, String port, String status) {
+    public static PortDto changeSwitchPortStatus(String switchName, int port, PortStatus status) {
         System.out.println("\n==> Revive port on switch");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
