@@ -121,9 +121,10 @@ class Flow {
 			    $(document).on("change","#source_switch",function(e){
 			        var portoptions = [];
 			        flowObj.getPorts("source_switch").then(function(ports){
+			        	ports = ports.sort(function(a,b){ return a.port_number - b.port_number});
 			  		  for(var i=0; i<ports.length; i++){
 			  			   var port = ports[i];
-			  			 portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+			  			   	portoptions.push({id:port.port_number,text:port.port_number});
 			  			  }
 				  		 $("#source_port").select2({
 					         width:"100%",
@@ -138,9 +139,10 @@ class Flow {
 			       $(document).on("change","#target_switch",function(e){
 			        var portoptions = [];
 			        flowObj.getPorts("target_switch").then(function(ports){
+			        	ports = ports.sort(function(a,b){ return a.port_number - b.port_number});
 				  		  for(var i=0; i<ports.length; i++){
 				  			   var port = ports[i];
-				  			   	portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
+				  			   	portoptions.push({id:port.port_number,text:port.port_number});
 				  			  }
 						  		$("#target_port").select2({
 							         width:"100%",
@@ -252,10 +254,11 @@ class Flow {
 					    $(document).on("change","#source_switch",function(e){
 					        var portoptions = []; 
 					        	flowObj.getPorts("source_switch").then(function(ports){
-						  		  for(var i=0; i<ports.length; i++){
-						  			   var port = ports[i];
-						  			 portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
-						  			  }
+					        		ports = ports.sort(function(a,b){ return a.port_number - b.port_number});
+							  		  for(var i=0; i<ports.length; i++){
+							  			   var port = ports[i];
+							  			   	portoptions.push({id:port.port_number,text:port.port_number});
+							  			  }
 							  		 $("#source_port").select2({
 								         width:"100%",
 								         data:portoptions,
@@ -269,10 +272,11 @@ class Flow {
 					       $(document).on("change","#target_switch",function(e){
 					        var portoptions =[];
 					        flowObj.getPorts("target_switch").then(function(ports){
-					  		  for(var i=0; i<ports.length; i++){
-					  			   var port = ports[i];
-					  			   portoptions.push({id:port.port_number,text:port.port_number+"("+port.status.toLowerCase()+")"});
-					  			  }
+					        	ports = ports.sort(function(a,b){ return a.port_number - b.port_number});
+						  		  for(var i=0; i<ports.length; i++){
+						  			   var port = ports[i];
+						  			   	portoptions.push({id:port.port_number,text:port.port_number});
+						  			  }
 						  		 $("#target_port").select2({
 							         width:"100%",
 							         data:portoptions,
