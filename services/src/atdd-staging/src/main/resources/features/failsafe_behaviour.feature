@@ -5,15 +5,16 @@ Feature: Failsafe Suite
 
   Background:
     Given the reference topology
-
+    
   Scenario: ISL connectivity is lost, system is able to react in expected way and reroute after some timeout
     Given Create 1 flow with A Switch used and at least 1 alternate path between source and destination switch and 500 bandwidth
 
     When ISL between switches loses connectivity
-    And Remains in this state for 30 seconds
+    And remains in this state for 30 seconds
     Then ISL status is DISCOVERED
     And ISL status changes to FAILED
     And flow is in UP state
+    And flow path is changed
     And flow is valid per Northbound validation
     And all active switches have correct rules installed per Northbound validation
     And flow has traffic going with bandwidth not less than 450 and not greater than 550
@@ -21,6 +22,7 @@ Feature: Failsafe Suite
     When Changed ISL restores connectivity
     Then ISL status changes to DISCOVERED
     And flow is in UP state
+    And flow path is unchanged
     And flow is valid per Northbound validation
     And all active switches have correct rules installed per Northbound validation
     And flow has traffic going with bandwidth not less than 450 and not greater than 550

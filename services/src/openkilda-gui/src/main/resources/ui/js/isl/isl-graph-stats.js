@@ -40,12 +40,14 @@ $(function() {
 		}
 	})
 	$("#datetimepicker7ISL,#datetimepicker8ISL,#downsamplingISL,#autoreloadISL,#timezone").on("change",function() {
-		if($('#selectedGraph').val() == 'isl'){
+		var selectedGraph = $('#selectedGraph').val();
+		if(selectedGraph == 'isl' || selectedGraph == 'isllossforward' || selectedGraph == 'isllossreverse'){
 			getGraphData();
 		}
 	});
 	$('#selectedGraph').on('change',function(e){
-		if($(this).val() == 'isl'){
+		var selectedGraph = $(this).val();
+		if(selectedGraph == 'isl' || selectedGraph == 'isllossforward' || selectedGraph == 'isllossreverse'){
 			getGraphData(true);
 		}else{
 			if(graphInterval){
@@ -86,25 +88,12 @@ $(document).ready(function() {
 		  format:'Y/m/d H:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
-	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric,"GET",selMetric).then(function(response) {
-		var timezone = $('#timezone option:selected').val();
-		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
-			response[0].tags.direction ="F"; // setting direction to forward
-		}
-		// calling reverse isl detail
-		var reverseUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric
-		loadGraph.loadGraphData(reverseUrl,"GET",selMetric).then(function(responseReverse) {
-			$("#wait1").css("display", "none");
-			$('body').css('pointer-events', 'all');
-			if(responseReverse && responseReverse.length && typeof(responseReverse[0].tags)!=='undefined' ){
-				responseReverse[0].tags.direction ="R"; // setting direction to reverse
-			}
-			var responseData =response;
-			responseData.push(responseReverse[0]);
-			showStatsGraph.showStatsData(responseData,selMetric,null,null,null,null,timezone);
-		})	
-		
-	})
+	var loadUrl = "/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric;
+	var reverseLoadUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric;
+	setTimeout(function(){
+		fetchGraphData(loadUrl, reverseLoadUrl, selMetric);
+	},1000)
+
 })
 
 
@@ -153,7 +142,7 @@ function getGraphData(changeFlag) {
 	var numbers = /^[-+]?[0-9]+$/;  
 	var checkNo = $("#autoreloadISL").val().match(numbers);
 	var checkbox =  $("#check").prop("checked");
-	
+	var selectedGraph = $('#selectedGraph').val();
 	var test = true;	
     autoVal.reloadValidation(function(valid){
 	  
@@ -161,71 +150,62 @@ function getGraphData(changeFlag) {
 		  test = false;		  
 		  return false;
 	  }
-  });
+    });
   
-if(test) {
-	$('#wait1').show();
-	$("#fromId").removeClass("has-error")
-    $(".from-error-message").html("");
-	
-	$("#toId").removeClass("has-error")
-    $(".to-error-message").html("");
-	
-	$("#autoreloadId").removeClass("has-error")
-    $(".error-message").html("");
-	
-  	$("#DownsampleID").removeClass("has-error")
-	$(".downsample-error-message").html("");
-  	if(typeof(changeFlag)!='undefined' &&  changeFlag){
-  		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+"30s"+"/"+selMetric;
-  	}else{
-  		var loadUrl ="/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
-  	}
-  	
-	loadGraph.loadGraphData(loadUrl,"GET",selMetric).then(function(response) {
-		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
-			response[0].tags.direction ="F";
-		}
-		if(typeof(changeFlag)!='undefined' &&  changeFlag){
-	  		var reverseLoadUrl ="/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+"30s"+"/"+selMetric;
-	  	}else{
-	  		var reverseLoadUrl ="/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
-	  	}
-		loadGraph.loadGraphData(reverseLoadUrl,"GET",selMetric).then(function(responseReverse) {
-			if(responseReverse && responseReverse.length && typeof(responseReverse[0].tags)!=='undefined' ){
-				responseReverse[0].tags.direction ="R";
-			}
-			var responseData =response;
-			responseData.push(responseReverse[0]);
-			$("#wait1").css("display", "none");
-			$('body').css('pointer-events', 'all');
-			showStatsGraph.showStatsData(responseData,selMetric,null,null,null,null,timezone); 
-		})
+	if(test) {
+		$('#wait1').show();
+		$("#fromId").removeClass("has-error")
+	    $(".from-error-message").html("");
 		
-})
+		$("#toId").removeClass("has-error")
+	    $(".to-error-message").html("");
+		
+		$("#autoreloadId").removeClass("has-error")
+	    $(".error-message").html("");
+		
+	  	$("#DownsampleID").removeClass("has-error")
+		$(".downsample-error-message").html("");
+	  	
+	  	var loadUrl;
+	  	var reverseLoadUrl = '';
+	  	if(typeof(changeFlag)!='undefined' &&  changeFlag){
+	  		downsampling = "30s";
+	  	}
+	  	if (selectedGraph == 'isl') {
+	  		selMetric="latency";
+	  		loadUrl = "/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	  		reverseLoadUrl ="/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	  	} else if (selectedGraph == 'isllossforward') {
+	  		selMetric = $("#menulistISL").val();
+	  		loadUrl ="/stats/isl/losspackets/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	  	} else if (selectedGraph == 'isllossreverse') {
+	  		selMetric = $("#menulistISL").val();
+	  		loadUrl ="/stats/isl/losspackets/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
+	  	} 
+	  	fetchGraphData(loadUrl, reverseLoadUrl, selMetric);
+	  	
+		
+				try {
+					clearInterval(graphInterval);
+				} catch(err) {
 	
-			try {
-				clearInterval(graphInterval);
-			} catch(err) {
-
-			}
-			
-			if(autoreload){
-				graphInterval = setInterval(function(){
-					callIntervalData() 
-				}, 1000*autoreload);
-			}
-	}	
+				}
+				
+				if(autoreload){
+					graphInterval = setInterval(function(){
+						callIntervalData(loadUrl, reverseLoadUrl, selMetric);
+					}, 1000*autoreload);
+				}
+		}	
 }
 		
-function callIntervalData(){
+function callIntervalData(loadUrl, reverseLoadUrl, selMetric){
 	var currentDate = new Date();
 	var startDate = new Date($("#datetimepicker7ISL").val());
 	var timezone = $('#timezone option:selected').val();
 	var savedEnddate = new Date($('#savedEnddate').val());
 	var autoreload = $("#autoreloadISL").val();
 	savedEnddate = new Date(savedEnddate.getTime() + (autoreload * 1000));
-	selMetric = 'latency';
 	$('#savedEnddate').val(savedEnddate);
 	var endDate =savedEnddate ;// new Date() ||
 	if(timezone == 'UTC'){
@@ -238,24 +218,35 @@ function callIntervalData(){
 		
 	var downsampling =$("#downsamplingISL option:selected").val()	
 	$('#wait1').show();
+	fetchGraphData(loadUrl, reverseLoadUrl, selMetric,timezone);
+}
 
-	loadGraph.loadGraphData("/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric,"GET",selMetric).then(function(response) {
-		if(response && response.length && typeof(response[0].tags)!=='undefined' ){
-			response[0].tags.direction ="F"; // setting direction to forward
+function fetchGraphData(loadUrl, reverseLoadUrl, metric,timezone){
+	var startDate = new Date($("#datetimepicker7ISL").val());
+	var endDate =  new Date($("#datetimepicker8ISL").val());
+	loadGraph.loadGraphData(loadUrl, "GET", metric).then( function(response) {
+		if (response && response.length && typeof(response[0].tags)!=='undefined' ) {
+			response[0].tags.direction ="F";
 		}
-		// calling reverse isl detail
-		var reverseUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric
-		loadGraph.loadGraphData(reverseUrl,"GET",selMetric).then(function(responseReverse) {
+		if(reverseLoadUrl != "") {
+			loadGraph.loadGraphData(reverseLoadUrl, "GET", metric).then( function(responseReverse) {
+				if(responseReverse && responseReverse.length && typeof(responseReverse[0].tags)!=='undefined' ){
+					responseReverse[0].tags.direction ="R";
+				}
+				response.push(responseReverse[0]);
+				$("#wait1").css("display", "none");
+				$('body').css('pointer-events', 'all');
+				showStatsGraph.showStatsData(response, metric, null, null, startDate, endDate, timezone); 
+			})
+		}else{
 			$("#wait1").css("display", "none");
 			$('body').css('pointer-events', 'all');
-			if(responseReverse && responseReverse.length && typeof(responseReverse[0].tags)!=='undefined' ){
-				responseReverse[0].tags.direction ="R"; // setting direction to reverse
-			}
-			var responseData =response;
-			responseData.push(responseReverse[0]);
-			showStatsGraph.showStatsData(responseData,selMetric,null,null,null,null,timezone);
-		})	
-	});
+			showStatsGraph.showStatsData(response, metric, null, null, startDate, endDate, timezone); 
+		}
+		
+	},function(error){
+		showStatsGraph.showStatsData([], metric, null, null, startDate, endDate, timezone); 
+	})
 }
 
 /* ]]> */

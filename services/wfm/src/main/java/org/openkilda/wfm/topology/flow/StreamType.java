@@ -30,6 +30,11 @@ public enum StreamType {
     READ,
 
     /**
+     * Get bidirectional flow topology stream.
+     */
+    READ_BIDIRECTIONAL,
+
+    /**
      * Update flow topology stream.
      */
     UPDATE,
@@ -53,11 +58,6 @@ public enum StreamType {
      * Reroute flow topology stream.
      */
     REROUTE,
-
-    /**
-     * Get flow path topology stream.
-     */
-    PATH,
 
     /**
      * Get flow status topology stream.

@@ -15,6 +15,8 @@
 
 package org.openkilda.pce.provider;
 
+import static org.openkilda.pce.Utils.safeAsInt;
+
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -30,11 +32,11 @@ import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.neo4j.driver.v1.AccessMode;
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
-import org.neo4j.driver.v1.Value;
 import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.TransientException;
 import org.slf4j.Logger;
@@ -45,6 +47,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class NeoDriver implements PathComputer {
+
     private static final Logger logger = LoggerFactory.getLogger(NeoDriver.class);
 
     private final Driver driver;
@@ -56,6 +59,16 @@ public class NeoDriver implements PathComputer {
     @Override
     public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
             throws UnroutablePathException, RecoverableException {
+        AvailableNetwork network = new AvailableNetwork(driver, flow.isIgnoreBandwidth(), flow.getBandwidth());
+        return getPath(flow, network, strategy);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
+            throws UnroutablePathException, RecoverableException {
 
         long latency = 0L;
         List<PathNode> forwardNodes = new LinkedList<>();
@@ -63,7 +76,7 @@ public class NeoDriver implements PathComputer {
 
         if (! flow.isOneSwitchFlow()) {
             try {
-                Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> biPath = getPathFromNetwork(flow, strategy);
+                Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> biPath = getPathFromNetwork(flow, network, strategy);
                 if (biPath.getLeft().size() == 0 || biPath.getRight().size() == 0) {
                     throw new UnroutablePathException(flow);
                 }
@@ -71,16 +84,18 @@ public class NeoDriver implements PathComputer {
                 int seqId = 0;
                 LinkedList<SimpleIsl> forwardIsl = biPath.getLeft();
                 for (SimpleIsl isl : forwardIsl) {
-                    latency += isl.latency;
-                    forwardNodes.add(new PathNode(isl.src_dpid, isl.src_port, seqId++, (long) isl.latency));
-                    forwardNodes.add(new PathNode(isl.dst_dpid, isl.dst_port, seqId++, 0L));
+                    latency += isl.getLatency();
+                    forwardNodes.add(new PathNode(isl.getSrcDpid(), isl.getSrcPort(),
+                            seqId++, (long) isl.getLatency()));
+                    forwardNodes.add(new PathNode(isl.getDstDpid(), isl.getDstPort(), seqId++, 0L));
                 }
 
                 seqId = 0;
                 LinkedList<SimpleIsl> reverseIsl = biPath.getRight();
                 for (SimpleIsl isl : reverseIsl) {
-                    reverseNodes.add(new PathNode(isl.src_dpid, isl.src_port, seqId++, (long) isl.latency));
-                    reverseNodes.add(new PathNode(isl.dst_dpid, isl.dst_port, seqId++, 0L));
+                    reverseNodes.add(new PathNode(isl.getSrcDpid(), isl.getSrcPort(),
+                            seqId++, (long) isl.getLatency()));
+                    reverseNodes.add(new PathNode(isl.getDstDpid(), isl.getDstPort(), seqId++, 0L));
                 }
             // FIXME(surabujin): Need to catch and trace exact exception thrown in recoverable places.
             } catch (TransientException e) {
@@ -98,10 +113,11 @@ public class NeoDriver implements PathComputer {
     /**
      * Create the query based on what the strategy is.
      */
-    private Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> getPathFromNetwork(Flow flow, Strategy strategy) {
+    private Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> getPathFromNetwork(Flow flow, AvailableNetwork network,
+                                                                                  Strategy strategy) {
+
         switch (strategy) {
             default:
-                AvailableNetwork network = getAvailableNetwork(flow.isIgnoreBandwidth(), flow.getBandwidth());
                 network.removeSelfLoops().reduceByCost();
                 SimpleGetShortestPath forward = new SimpleGetShortestPath(
                         network, flow.getSourceSwitch(), flow.getDestinationSwitch(), 35);
@@ -127,16 +143,18 @@ public class NeoDriver implements PathComputer {
                 + "f.transit_vlan as transit_vlan, "
                 + "f.src_switch as src_switch";
 
-        Session session = driver.session();
-        StatementResult result = session.run(subject);
-        for (Record record : result.list()) {
-            flows.add(new FlowInfo()
-                    .setFlowId(record.get("flow_id").asString())
-                    .setSrcSwitchId(record.get("src_switch").asString())
-                    .setCookie(record.get("cookie").asLong())
-                    .setMeterId(safeAsInt(record.get("meter_id")))
-                    .setTransitVlanId(safeAsInt(record.get("transit_vlan")))
-            );
+        try (Session session = driver.session(AccessMode.READ)) {
+            StatementResult result = session.run(subject);
+
+            for (Record record : result.list()) {
+                flows.add(new FlowInfo()
+                            .setFlowId(record.get("flow_id").asString())
+                            .setSrcSwitchId(record.get("src_switch").asString())
+                            .setCookie(record.get("cookie").asLong())
+                            .setMeterId(safeAsInt(record.get("meter_id")))
+                            .setTransitVlanId(safeAsInt(record.get("transit_vlan")))
+                );
+            }
         }
         return flows;
     }
@@ -149,41 +167,42 @@ public class NeoDriver implements PathComputer {
     @Override
     public List<Flow> getFlows(String flowId) {
         String where = "WHERE f.flowid='" + flowId + "'";
-        return queryFlows(where);
+        return loadFlows(where);
     }
 
     @Override
     public List<Flow> getAllFlows() {
-        return queryFlows();
+        return loadFlows();
     }
 
-    private List<Flow> queryFlows() {
-        return this.queryFlows("");
+    private List<Flow> loadFlows() {
+        return loadFlows("");
     }
 
-    private List<Flow> queryFlows(String whereClause) {
+    private List<Flow> loadFlows(String whereClause) {
         // FIXME(surabujin): remove cypher(graphQL) injection breach
-        String q = "MATCH (:switch)-[f:flow]->(:switch)"
-                + whereClause + "\n"
-                + "RETURN f.flowid as flowid, "
-                + "f.bandwidth as bandwidth, "
-                + "f.ignore_bandwidth as ignore_bandwidth, "
-                + "f.cookie as cookie, "
-                + "f.description as description, "
-                + "f.last_updated as last_updated, "
-                + "f.src_switch as src_switch, "
-                + "f.dst_switch as dst_switch, "
-                + "f.src_port as src_port, "
-                + "f.dst_port as dst_port, "
-                + "f.src_vlan as src_vlan, "
-                + "f.dst_vlan as dst_vlan, "
-                + "f.flowpath as path, "
-                + "f.meter_id as meter_id, "
-                + "f.transit_vlan as transit_vlan";
+        String q = ""
+                + "MATCH (:switch)-[f:flow]->(:switch)"
+                + "\n" + whereClause + "\n"
+                + "RETURN f.flowid as flowid,\n"
+                + "       f.bandwidth as bandwidth,\n"
+                + "       f.ignore_bandwidth as ignore_bandwidth,\n"
+                + "       f.cookie as cookie,\n"
+                + "       f.description as description,\n"
+                + "       f.last_updated as last_updated,\n"
+                + "       f.src_switch as src_switch,\n"
+                + "       f.dst_switch as dst_switch,\n"
+                + "       f.src_port as src_port,\n"
+                + "       f.dst_port as dst_port,\n"
+                + "       f.src_vlan as src_vlan,\n"
+                + "       f.dst_vlan as dst_vlan,\n"
+                + "       f.flowpath as path,\n"
+                + "       f.meter_id as meter_id,\n"
+                + "       f.transit_vlan as transit_vlan";
 
         logger.debug("Executing getFlows Query: {}", q);
 
-        try (Session session = driver.session()) {
+        try (Session session = driver.session(AccessMode.READ)) {
             StatementResult queryResults = session.run(q);
             List<Flow> results = new ArrayList<>();
             for (Record record : queryResults.list()) {
@@ -196,7 +215,8 @@ public class NeoDriver implements PathComputer {
 
     @Override
     public  List<SwitchInfoData> getSwitches() {
-        String q = "MATCH (sw:switch)\n"
+        String q = ""
+                + "MATCH (sw:switch)\n"
                 + "RETURN sw.name as name, "
                 + "sw.address as address, "
                 + "sw.hostname as hostname, "
@@ -204,87 +224,34 @@ public class NeoDriver implements PathComputer {
                 + "sw.controller as controller, "
                 + "sw.state as state\n"
                 + "ORDER BY sw.name";
-
         logger.debug("Executing getSwitches Query: {}", q);
-        Session session = driver.session();
-        StatementResult queryResults = session.run(q);
+
         List<SwitchInfoData> results = new LinkedList<>();
-        for (Record record : queryResults.list()) {
-            SwitchInfoData sw = new SwitchInfoData();
-            sw.setAddress(record.get("address").asString());
-            sw.setController(record.get("controller").asString());
-            sw.setDescription(record.get("description").asString());
-            sw.setHostname(record.get("hostname").asString());
+        try (Session session = driver.session(AccessMode.READ)) {
+            StatementResult queryResults = session.run(q);
+            for (Record record : queryResults.list()) {
+                SwitchInfoData sw = new SwitchInfoData();
+                sw.setAddress(record.get("address").asString());
+                sw.setController(record.get("controller").asString());
+                sw.setDescription(record.get("description").asString());
+                sw.setHostname(record.get("hostname").asString());
 
-            String status = record.get("state").asString();
-            SwitchState st = ("active".equals(status)) ? SwitchState.ACTIVATED : SwitchState.CACHED;
-            sw.setState(st);
+                String status = record.get("state").asString();
+                SwitchState st = ("active".equals(status)) ? SwitchState.ACTIVATED : SwitchState.CACHED;
+                sw.setState(st);
 
-            sw.setSwitchId(record.get("name").asString());
-            results.add(sw);
-        }
-        return results;
-    }
-
-    /**
-     * This will return a network where everything is active and the ISLs have the bandwidth needed.
-     * This is a specialization of the general query to get the entire network.
-     *
-     * <p>NB: If the more common case is required at some point, refactor this into reusing the getAll,
-     * then filter the results.
-     */
-    @Override
-    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int availableBandwidth) {
-        String q = "MATCH (src:switch)-[isl:isl]->(dst:switch)\n"
-                + "WHERE src.state = 'active'\n"
-                + "  AND dst.state = 'active'\n"
-                + "  AND isl.status = 'active'\n"
-                + "  AND src.name IS NOT NULL AND dst.name IS NOT NULL";
-        if (!ignoreBandwidth) {
-            q += "\n   AND isl.available_bandwidth >= " + availableBandwidth;
-        }
-        q += "\nRETURN src.name as src_name, dst.name as dst_name, "
-                + "isl.src_port as src_port, "
-                + "isl.dst_port as dst_port, "
-                + "isl.cost as cost, "
-                + "isl.latency as latency"
-                + "\nORDER BY src.name";
-
-        logger.debug("Executing getAvailableNetwork Query: {}", q);
-        AvailableNetwork network = new AvailableNetwork();
-        Session session = driver.session();
-        StatementResult queryResults = session.run(q);
-        for (Record record : queryResults.list()) {
-            network.initOneEntry(
-                    record.get("src_name").asString(),
-                    record.get("dst_name").asString(),
-                    safeAsInt(record.get("src_port")),
-                    safeAsInt(record.get("dst_port")),
-                    safeAsInt(record.get("cost")),
-                    safeAsInt(record.get("latency")));
-        }
-        return network;
-    }
-
-    /**
-     * Use crystal ball to guess numeric value read from DB.
-     */
-    private int safeAsInt(Value val) {
-        int asInt = 0;
-        if (!val.isNull()) {
-            try {
-                asInt = Integer.parseInt(val.asObject().toString());
-            } catch (Exception e) {
-                logger.info("Exception trying to get an Integer; the String isn't parseable. Value: {}", val);
+                sw.setSwitchId(record.get("name").asString());
+                results.add(sw);
             }
         }
-        return asInt;
+        return results;
     }
 
     @Override
     public List<IslInfoData> getIsls() {
 
-        String q = "MATCH (:switch)-[isl:isl]->(:switch) "
+        String q = ""
+                + "MATCH (:switch)-[isl:isl]->(:switch) "
                 + "RETURN isl.src_switch as src_switch, "
                 + "isl.src_port as src_port, "
                 + "isl.dst_switch as dst_switch, "
@@ -293,40 +260,50 @@ public class NeoDriver implements PathComputer {
                 + "isl.max_bandwidth as max_bandwidth, "
                 + "isl.latency as latency, "
                 + "isl.available_bandwidth as available_bandwidth, "
-                + "isl.status as status order by isl.src_switch";
+                + "isl.status as status\n"
+                + "ORDER BY isl.src_switch";
 
         logger.debug("Executing getSwitches Query: {}", q);
-        Session session = driver.session();
-        StatementResult queryResults = session.run(q);
-        List<IslInfoData> results = new LinkedList<>();
-        for (Record record : queryResults.list()) {
-            // max_bandwidth not used in IslInfoData
-            final List<PathNode> pathNodes = new ArrayList<>();
-            PathNode src = new PathNode();
-            src.setSwitchId(record.get("src_switch").asString());
-            src.setPortNo(safeAsInt(record.get("src_port")));
-            src.setSegLatency(safeAsInt(record.get("latency")));
-            pathNodes.add(src);
-            PathNode dst = new PathNode();
-            dst.setSwitchId(record.get("dst_switch").asString());
-            dst.setPortNo(safeAsInt(record.get("dst_port")));
-            dst.setSegLatency(safeAsInt(record.get("latency")));
-            pathNodes.add(dst);
+        try (Session session = driver.session(AccessMode.READ)) {
 
-            String status = record.get("status").asString();
-            IslChangeType state = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
+            StatementResult queryResults = session.run(q);
+            List<IslInfoData> results = new LinkedList<>();
+            for (Record record : queryResults.list()) {
+                // max_bandwidth not used in IslInfoData
+                PathNode src = new PathNode();
+                src.setSwitchId(record.get("src_switch").asString());
+                src.setPortNo(safeAsInt(record.get("src_port")));
+                src.setSegLatency(safeAsInt(record.get("latency")));
 
-            IslInfoData isl = new IslInfoData(
-                    safeAsInt(record.get("latency")),
-                    pathNodes,
-                    safeAsInt(record.get("speed")),
-                    state,
-                    safeAsInt(record.get("available_bandwidth"))
-            );
-            isl.setTimestamp(System.currentTimeMillis());
+                List<PathNode> pathNodes = new ArrayList<>();
+                pathNodes.add(src);
 
-            results.add(isl);
+                PathNode dst = new PathNode();
+                dst.setSwitchId(record.get("dst_switch").asString());
+                dst.setPortNo(safeAsInt(record.get("dst_port")));
+                dst.setSegLatency(safeAsInt(record.get("latency")));
+                pathNodes.add(dst);
+
+                String status = record.get("status").asString();
+                IslChangeType state = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
+
+                IslInfoData isl = new IslInfoData(
+                        safeAsInt(record.get("latency")),
+                        pathNodes,
+                        safeAsInt(record.get("speed")),
+                        state,
+                        safeAsInt(record.get("available_bandwidth"))
+                );
+                isl.setTimestamp(System.currentTimeMillis());
+
+                results.add(isl);
+            }
+            return results;
         }
-        return results;
+    }
+
+    @Override
+    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
+        return new AvailableNetwork(driver, ignoreBandwidth, requestedBandwidth);
     }
 }

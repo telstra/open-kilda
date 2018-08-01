@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 public class CommonSteps {
 
-    @And("(?:Remains? in this state|Wait) for (\\d+) seconds")
+    @And("(?:remains? in this state|wait) for (\\d+) seconds")
     public void delay(int seconds) throws InterruptedException {
         TimeUnit.SECONDS.sleep(seconds);
     }

@@ -15,30 +15,26 @@
 
 package org.openkilda.atdd.staging.steps;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.ASwitch;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Isl;
-import org.openkilda.atdd.staging.service.aswitch.ASwitchService;
-import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.ASwitch;
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.service.aswitch.ASwitchService;
+import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
+import org.openkilda.testing.service.northbound.NorthboundService;
+import org.openkilda.testing.tools.IslUtils;
 
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.collections4.CollectionUtils;
 import org.junit.Assume;
@@ -66,6 +62,9 @@ public class IslSteps {
 
     @Autowired
     private TopologyDefinition topologyDefinition;
+
+    @Autowired
+    private IslUtils islUtils;
 
     private List<TopologyDefinition.Isl> changedIsls = new ArrayList<>();
     private List<IslInfoData> linksResponse;
@@ -109,7 +108,7 @@ public class IslSteps {
      */
     @Then("ISLs? status changes? to (\\w*)$")
     public void waitForIslStatus(String islStatus) {
-        waitIslStatusChange(changedIsls, islStatus);
+        islUtils.waitForIslStatus(changedIsls, islStatus);
     }
 
     @Then("ISLs? status is (\\w*)$")
@@ -175,8 +174,7 @@ public class IslSteps {
     @And("^select a reverse path ISL for '(.*)' and alias it as '(.*)'$")
     public void selectAReversePathIsl(String islAlias, String newIslAlias) {
         Isl theIsl = topologyUnderTest.getAliasedObject(islAlias);
-        Isl reversedIsl = Isl.factory(theIsl.getDstSwitch(), theIsl.getDstPort(), theIsl.getSrcSwitch(),
-                theIsl.getSrcPort(), theIsl.getMaxBandwidth(), theIsl.getAswitch());
+        Isl reversedIsl = islUtils.reverseIsl(theIsl);
         topologyUnderTest.addAlias(newIslAlias, reversedIsl);
     }
 
@@ -203,7 +201,7 @@ public class IslSteps {
         List<Isl> isls = islAliases.stream()
                 .map(alias -> (Isl) topologyUnderTest.getAliasedObject(alias))
                 .collect(Collectors.toList());
-        waitIslStatusChange(isls, expectedStatus);
+        islUtils.waitForIslStatus(isls, expectedStatus);
     }
 
     @Then("^ISL status is (.*) for ISLs: (.*)$")
@@ -224,41 +222,16 @@ public class IslSteps {
         assertTrue(actualIslStates.stream().allMatch(state -> state.equals(expectedIslState)));
     }
 
-    /**
-     * Waits until all passed isls have the specified status. Fails after defined timeout.
-     * Checks happen via Northbound API calls
-     *
-     * @param isls which isls should have the specified status
-     * @param expectedStatus which status to wait on specified isls
-     */
-    private void waitIslStatusChange(List<Isl> isls, String expectedStatus) {
-        IslChangeType expectedIslState = IslChangeType.valueOf(expectedStatus);
-
-        List<IslInfoData> actualIsl = Failsafe.with(retryPolicy()
-                .retryIf(states -> ((List<IslInfoData>) states).stream()
-                        .map(IslInfoData::getState)
-                        .anyMatch(state -> !state.equals(expectedIslState))))
-                .get(() -> {
-                    List<IslInfoData> allLinks = northboundService.getAllLinks();
-                    return isls.stream().flatMap(isl -> allLinks.stream().filter(link -> {
-                        PathNode src = link.getPath().get(0);
-                        PathNode dst = link.getPath().get(1);
-                        return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort()
-                                && src.getSwitchId().equals(isl.getSrcSwitch().getDpId())
-                                && dst.getSwitchId().equals(isl.getDstSwitch().getDpId());
-                    })).collect(Collectors.toList());
-                });
-
-        assertThat(actualIsl, everyItem(hasProperty("state",  equalTo(expectedIslState))));
-    }
-
     @And("^select a random not connected A-Switch link and alias it as '(.*)'$")
     public void selectNotConnectedASwitchLink(String alias) {
         List<Isl> links = topologyDefinition.getNotConnectedIsls().stream()
-                .filter(isl -> isl.getAswitch() != null && isl.getAswitch().getOutPort() == null)
+                .filter(isl -> isl.getSrcSwitch().isActive()
+                        && isl.getAswitch() != null
+                        && isl.getAswitch().getOutPort() == null)
                 .collect(Collectors.toList());
         Random r = new Random();
         Isl theLink = links.get(r.nextInt(links.size()));
+        log.info("Selecting link {}", theLink.toString());
         topologyUnderTest.addAlias(alias, theLink);
     }
 
@@ -285,26 +258,9 @@ public class IslSteps {
     @When("^replug '(.*)' (source|destination) to '(.*)' (source|destination)$")
     public void replug(String srcAlias, String srcIsSourceStr, String dstAlias, String dstIsSourceStr) {
         final boolean dstIsSource = "source".equals(dstIsSourceStr);
+        final boolean srcIsSource = "source".equals(srcIsSourceStr);
         Isl srcIsl = topologyUnderTest.getAliasedObject(srcAlias);
         Isl dstIsl = topologyUnderTest.getAliasedObject(dstAlias);
-
-        //unplug
-        portsDown(srcIsSourceStr, srcAlias);
-
-        //change flow on aSwitch
-        //delete old flow
-        ASwitch srcASwitch = srcIsl.getAswitch();
-        ASwitch dstASwitch = dstIsl.getAswitch();
-        aswitchService.removeFlows(Arrays.asList(
-                new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
-                new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
-        //create new flow
-        ASwitchFlow aswFlowForward = new ASwitchFlow(srcASwitch.getInPort(),
-                dstIsSource ? dstASwitch.getInPort() : dstASwitch.getOutPort());
-        ASwitchFlow aswFlowReverse = new ASwitchFlow(aswFlowForward.getOutPort(), aswFlowForward.getInPort());
-        aswitchService.addFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
-
-        //plug back
-        portsUp(srcIsSourceStr, srcAlias);
+        islUtils.replug(srcIsl, srcIsSource, dstIsl, dstIsSource);
     }
 }

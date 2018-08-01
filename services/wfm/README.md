@@ -100,7 +100,7 @@ One way to look at what is going on in a topic:
 Whereas you should be able to look at logs through the storm UI (ie localhost:8888), 
 you can also look at the log files directly on the storm cluster:
 
-* connect to the supervisor: ```docker-compose exec storm_supervisor /bin/bash```
+* connect to the supervisor: ```docker-compose exec storm-supervisor /bin/bash```
 * cd to the base of the workers ```cd /opt/storm/logs/workers-artifacts```
     * __NB: `workers-artifacts` will exist if you've deployed a topology; otherwise maybe.__
 
