@@ -57,7 +57,7 @@ public class FlowIgnoreBandwidthTest {
         }
 
         Assert.assertNotNull(actual);
-        Assert.assertEquals("Actual bandwidth does not match expectations.", expected, (long)actual);
+        Assert.assertEquals("Actual bandwidth does not match expectations.", expected, (long) actual);
         System.out.println(String.format("Available bandwidth between %s and %s is %d", source, dest, actual));
     }
 
