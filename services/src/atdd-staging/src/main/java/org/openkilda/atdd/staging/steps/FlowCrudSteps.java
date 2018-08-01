@@ -23,9 +23,12 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.isIn;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -39,13 +42,13 @@ import org.openkilda.atdd.staging.helpers.FlowTrafficExamBuilder;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
@@ -84,6 +87,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -119,6 +123,7 @@ public class FlowCrudSteps implements En {
     private TopologyUnderTest topologyUnderTest;
 
     private Set<FlowPayload> flows;
+    private Set<FlowPathPayload> flowPaths = new HashSet<>();
     private FlowPayload flowResponse;
 
     @Given("^flows defined over active switches in the reference topology$")
@@ -138,6 +143,24 @@ public class FlowCrudSteps implements En {
         flowIsls.putAll(flowManager.createFlowsWithASwitch(flowsAmount, alternatePaths, bw));
         //temporary resaving flows before refactoring all methods to work with topologyUnderTest
         flows = flowIsls.keySet();
+        flows.forEach(flow -> flowPaths.add(northboundService.getFlowPath(flow.getId())));
+    }
+
+    @And("^flow paths? (?:is|are) changed")
+    public void flowPathIsChanged() {
+        Set<FlowPathPayload> actualFlowPaths = new HashSet<>();
+        flows.forEach(flow -> actualFlowPaths.add(northboundService.getFlowPath(flow.getId())));
+        assertThat(actualFlowPaths, everyItem(not(isIn(flowPaths))));
+
+        // Save actual flow paths
+        flowPaths = actualFlowPaths;
+    }
+
+    @And("^flow paths? (?:is|are) unchanged")
+    public void flowPathIsUnchanged() {
+        Set<FlowPathPayload> actualFlowPaths = new HashSet<>();
+        flows.forEach(flow -> actualFlowPaths.add(northboundService.getFlowPath(flow.getId())));
+        assertThat(actualFlowPaths, everyItem(isIn(flowPaths)));
     }
 
     @And("Create defined flows?")
@@ -509,7 +532,7 @@ public class FlowCrudSteps implements En {
             + "and '(.*)' respectively$")
     public void getAvailableBandwidthAndSpeed(String flowAlias, String bwAlias, String speedAlias) {
         FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
-        List<PathNode> flowPath = northboundService.getFlowPath(flow.getId()).getPath().getPath();
+        List<PathNodePayload> flowPath = northboundService.getFlowPath(flow.getId()).getForwardPath();
         List<IslInfoData> allLinks = northboundService.getAllLinks();
         long minBw = Long.MAX_VALUE;
         long minSpeed = Long.MAX_VALUE;
@@ -519,12 +542,13 @@ public class FlowCrudSteps implements En {
         Take minimum available bandwidth and minimum available speed from those links
         (flow's speed and left bandwidth depends on the weakest isl)
         */
-        for (int i = 1; i < flowPath.size(); i += 2) {
-            PathNode from = flowPath.get(i - 1);
-            PathNode to = flowPath.get(i);
+        for (int i = 1; i < flowPath.size(); i++) {
+            PathNodePayload from = flowPath.get(i - 1);
+            PathNodePayload to = flowPath.get(i);
             IslInfoData isl = allLinks.stream().filter(link ->
-                    link.getPath().get(0).equals(from)
-                            && link.getPath().get(1).equals(to)).findFirst().get();
+                    link.getPath().get(0).getSwitchId().equals(from.getSwitchId())
+                            && link.getPath().get(1).getSwitchId().equals(to.getSwitchId()))
+                    .findFirst().get();
             minBw = Math.min(isl.getAvailableBandwidth(), minBw);
             minSpeed = Math.min(isl.getSpeed(), minSpeed);
         }

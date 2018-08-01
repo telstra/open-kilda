@@ -16,12 +16,10 @@
 package org.openkilda.floodlight.kafka;
 
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.slf4j.Logger;
@@ -32,14 +30,16 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class KafkaMessageCollector implements IFloodlightModule {
-    private static int EXEC_POOL_SIZE = 10;
-
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageCollector.class);
 
     /**
-     * IFloodLightModule Methods
+     * IFloodLightModule Methods.
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -59,34 +59,57 @@ public class KafkaMessageCollector implements IFloodlightModule {
     }
 
     @Override
-    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+    public void init(FloodlightModuleContext context) {
     }
 
     @Override
-    public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
+    public void startUp(FloodlightModuleContext moduleContext) {
         ConfigurationProvider provider = new ConfigurationProvider(moduleContext, this);
-
-        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        KafkaConsumerConfig consumerConfig = provider.getConfiguration(KafkaConsumerConfig.class);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
-        String inputTopic = topicsConfig.getSpeakerTopic();
 
-        ConsumerContext context = new ConsumerContext(moduleContext, kafkaConfig, topicsConfig);
+        // A thread pool of fixed sized and no work queue.
+        ExecutorService parseRecordExecutor = new ThreadPoolExecutor(consumerConfig.getExecutorCount(),
+                consumerConfig.getExecutorCount(), 0L, TimeUnit.MILLISECONDS,
+                new SynchronousQueue<>(), new RetryableExecutionHandler());
+
+        ConsumerContext context = new ConsumerContext(moduleContext, topicsConfig);
         RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
-        ISwitchManager switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
+
+        ISwitchManager switchManager = context.getSwitchManager();
+        String inputTopic = topicsConfig.getSpeakerTopic();
 
         logger.info("Starting {}", this.getClass().getCanonicalName());
         try {
-            ExecutorService parseRecordExecutor = Executors.newFixedThreadPool(EXEC_POOL_SIZE);
 
             Consumer consumer;
-            if (!context.isTestingMode()) {
-                consumer = new Consumer(context, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
+            if (!consumerConfig.isTestingMode()) {
+                consumer = new Consumer(consumerConfig, parseRecordExecutor, handlerFactory, switchManager,
+                        inputTopic);
             } else {
-                consumer = new TestAwareConsumer(context, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
+                consumer = new TestAwareConsumer(context,
+                        consumerConfig, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
             }
             Executors.newSingleThreadExecutor().execute(consumer);
         } catch (Exception exception) {
             logger.error("error", exception);
+        }
+    }
+
+    /**
+     * Handler of rejected messages by ThreadPoolExecutor, in case of reject this handler will wait
+     * until one of executors becomes available.
+     */
+    private class RetryableExecutionHandler implements RejectedExecutionHandler {
+        @Override
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+            if (!executor.isShutdown()) {
+                try {
+                    executor.getQueue().put(r);
+                } catch (InterruptedException e) {
+                    logger.error("Couldn't retry to process message", e);
+                }
+            }
         }
     }
 }

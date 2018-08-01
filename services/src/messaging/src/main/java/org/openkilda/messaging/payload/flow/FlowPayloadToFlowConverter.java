@@ -16,10 +16,13 @@
 package org.openkilda.messaging.payload.flow;
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.ImmutablePair;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Northbound utility methods.
@@ -70,24 +73,41 @@ public final class FlowPayloadToFlowConverter {
     }
 
     /**
-     * Builds list of {@link FlowPayload} instances by list of {@link Flow} instance.
+     * Builds {@link FlowPayload} instance by {@link ImmutablePair} instance.
      *
-     * @param flows list of {@link Flow} instance
-     * @return list of {@link FlowPayload} instance
+     * @param flow {@link BidirectionalFlow} the bidirectional flow with paths
+     * @return {@link FlowPayload} instance
      */
-    public static List<FlowPayload> buildFlowsPayloadByFlows(List<Flow> flows) {
-        return flows.stream().map(FlowPayloadToFlowConverter::buildFlowPayloadByFlow).collect(Collectors.toList());
+    public static FlowPathPayload buildFlowPathPayload(BidirectionalFlow flow) {
+        return new FlowPathPayload(
+                flow.getFlowId(),
+                convertFlowToPathNodePayloadList(flow.getForward()),
+                convertFlowToPathNodePayloadList(flow.getReverse())
+        );
     }
 
     /**
-     * Builds {@link FlowPayload} instance by {@link Flow} instance.
+     * Makes flow path as list of {@link PathNodePayload} representation by a {@link Flow} instance.
+     * Includes input and output nodes.
      *
-     * @param flowId flow id
-     * @param path {@link PathInfoData} instance
-     * @return {@link FlowPayload} instance
+     * @param flow the {@link Flow} instance.
+     * @return flow path as list of {@link PathNodePayload} representation.
      */
-    public static FlowPathPayload buildFlowPathPayloadByFlowPath(String flowId, PathInfoData path) {
-        return new FlowPathPayload(flowId, path);
+    private static List<PathNodePayload> convertFlowToPathNodePayloadList(Flow flow) {
+        List<PathNode> path = new ArrayList<>(flow.getFlowPath().getPath());
+        // add input and output nodes
+        path.add(0, new PathNode(flow.getSourceSwitch(), flow.getSourcePort(), 0));
+        path.add(new PathNode(flow.getDestinationSwitch(), flow.getDestinationPort(), 0));
+
+        List<PathNodePayload> resultList = new ArrayList<>();
+        for (int i = 1; i < path.size(); i += 2) {
+            PathNode inputNode = path.get(i - 1);
+            PathNode outputNode = path.get(i);
+
+            resultList.add(
+                    new PathNodePayload(inputNode.getSwitchId(), inputNode.getPortNo(), outputNode.getPortNo()));
+        }
+        return resultList;
     }
 
     /**

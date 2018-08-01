@@ -42,10 +42,10 @@ import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -253,8 +253,8 @@ public class CrudBolt
                         case UNPUSH:
                             handleUnpushRequest(flowId, imsg, tuple);
                             break;
-                        case PATH:
-                            handlePathRequest(flowId, cmsg, tuple);
+                        case READ_BIDIRECTIONAL:
+                            handleReadBidirectionalRequest(flowId, cmsg, tuple);
                             break;
                         case REROUTE:
                             handleRerouteRequest(cmsg, tuple);
@@ -793,12 +793,13 @@ public class CrudBolt
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
-    private void handlePathRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
+    private void handleReadBidirectionalRequest(String flowId, CommandMessage message, Tuple tuple) {
         ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
 
-        logger.debug("Path flow: {}, correlationId {}", flow, message.getCorrelationId());
+        logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
-        Values northbound = new Values(new InfoMessage(new FlowPathResponse(flow.left.getFlowPath()),
+        Values northbound = new Values(
+                new InfoMessage(new BidirectionalFlowResponse(new BidirectionalFlow(flow)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }

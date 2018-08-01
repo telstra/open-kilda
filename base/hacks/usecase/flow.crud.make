@@ -39,7 +39,7 @@ help:
 up:
 	# NB: just specifying the minimal set .. taking advantage of embedded dependencies to bring
 	#     up the remaining containers
-	OK_TESTS="DISABLE_LOGIN" docker-compose up -d mininet floodlight storm_supervisor \
+	OK_TESTS="DISABLE_LOGIN" docker-compose up -d mininet floodlight storm-supervisor \
 	topology-engine kibana
 
 down:
@@ -65,7 +65,7 @@ stop:
 login-storm:
 	@echo ""
 	@echo "NB: For Logs, look at /opt/storm/logs/[workers-artifacts]"
-	docker-compose exec storm_supervisor "/bin/bash"
+	docker-compose exec storm-supervisor "/bin/bash"
 
 login-mininet:
 	@echo ""

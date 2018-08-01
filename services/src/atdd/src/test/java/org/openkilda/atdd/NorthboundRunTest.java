@@ -15,7 +15,6 @@
 
 package org.openkilda.atdd;
 
-
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasItems;
 import static org.junit.Assert.assertEquals;
@@ -24,22 +23,22 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.flow.FlowUtils.getHealthCheck;
 
-import cucumber.api.java.en.Given;
-import cucumber.api.java.en.Then;
-import cucumber.api.java.en.When;
 import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,11 +46,14 @@ import java.util.stream.Collectors;
 
 public class NorthboundRunTest {
     private static final FlowState expectedFlowStatus = FlowState.UP;
-    private static final PathInfoData expectedFlowPath = new PathInfoData(0L, Arrays.asList(
-            new PathNode("de:ad:be:ef:00:00:00:03", 2, 0),
-            new PathNode("de:ad:be:ef:00:00:00:04", 1, 1),
-            new PathNode("de:ad:be:ef:00:00:00:04", 2, 2),
-            new PathNode("de:ad:be:ef:00:00:00:05", 1, 3)));
+    private static final List<PathNodePayload> expectedForwardFlowPath = Arrays.asList(
+            new PathNodePayload("de:ad:be:ef:00:00:00:03", 11, 2),
+            new PathNodePayload("de:ad:be:ef:00:00:00:04", 1, 2),
+            new PathNodePayload("de:ad:be:ef:00:00:00:05", 1, 12));
+    private static final List<PathNodePayload> expectedReverseFlowPath = Arrays.asList(
+            new PathNodePayload("de:ad:be:ef:00:00:00:05", 12, 1),
+            new PathNodePayload("de:ad:be:ef:00:00:00:04", 2, 1),
+            new PathNodePayload("de:ad:be:ef:00:00:00:03", 2, 11));
 
     @Then("^path of flow (\\w+) could be read$")
     public void checkFlowPath(final String flowId) {
@@ -61,7 +63,8 @@ public class NorthboundRunTest {
         assertNotNull(payload);
 
         assertEquals(flowName, payload.getId());
-        assertEquals(expectedFlowPath, payload.getPath());
+        assertEquals(expectedForwardFlowPath, payload.getForwardPath());
+        assertEquals(expectedReverseFlowPath, payload.getReversePath());
     }
 
     @Then("^status of flow (\\w+) could be read$")

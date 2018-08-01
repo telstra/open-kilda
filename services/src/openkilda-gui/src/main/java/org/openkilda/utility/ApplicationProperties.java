@@ -16,17 +16,11 @@ public class ApplicationProperties {
 
     /** The application properties. */
 
-    @Value("${floodlight.base.url}")
-    private String floodlightBaseUrl;
-
     @Value("${GET_SWITCHES}")
     private String switches;
 
     @Value("${GET_SWITCH_RULES}")
     private String switchRules;
-
-    @Value("${GET_SWITCH_PORTS}")
-    private String switchPorts;
 
     @Value("${tpe.base.url}")
     private String tpeBaseUrl;
@@ -76,16 +70,8 @@ public class ApplicationProperties {
     @Value("${UPDATE_FLOW}")
     private String updateFlow;
 
-    public String getFloodlightBaseUrl() {
-        return floodlightBaseUrl;
-    }
-
     public String getSwitches() {
         return switches;
-    }
-
-    public String getSwitchPorts() {
-        return switchPorts;
     }
 
     public String getTpeBaseUrl() {

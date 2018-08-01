@@ -279,8 +279,7 @@ public final class FlowUtils {
 
         Response response = client
                 .target(northboundEndpoint)
-                .path("/api/v1/flows/path")
-                .path("{flowid}")
+                .path("/api/v1/flows/{flowid}/path")
                 .resolveTemplate("flowid", flowId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)

@@ -30,8 +30,8 @@ public class TestAwareProducer extends Producer {
 
     private KafkaBreakTrigger breakTrigger;
 
-    public TestAwareProducer(Context context) {
-        super(context);
+    public TestAwareProducer(KafkaProducerConfig kafkaConfig) {
+        super(kafkaConfig);
 
         breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_PRODUCER);
     }
