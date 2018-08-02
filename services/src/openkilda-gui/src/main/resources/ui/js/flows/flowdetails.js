@@ -122,7 +122,7 @@ function showFlowPathData(response ,isloader) {
 	
 	var check_flowpath_exists = 0;
 	for(var t in response) {
-	    if (Object.keys(response.flowpath).length > 0) {
+	    if (Object.keys(response.flowpath_forward).length > 0 || Object.keys(response.flowpath_reverse).length > 0) {
 	    	++check_flowpath_exists;
 	    } else {
 	    	var path_html = '<div class="alert alert-danger text-center"><strong></strong> No Path Data Found. </div>'
@@ -132,19 +132,19 @@ function showFlowPathData(response ,isloader) {
     	}  
 	}
 			
-	if(response.flowpath.forwardPath.length==0) {
+	if(response.flowpath_forward.length==0) {
 		var path_html = '<div class="alert alert-danger text-center"><strong></strong> No Path Data Found. </div>'
 			$('#ForwardRow').append(path_html);	
 	} else {
-		var obj = response.flowpath.forwardPath;	
+		var obj = response.flowpath_forward;	
 		for (var i = 0; i < obj.length; i++) {
 			
-			if(obj[i].in_port_no==null) {
-				obj[i].in_port_no="NA";
+			if(obj[i].input_port==null) {
+				obj[i].input_port="NA";
 			}
 			
-			if(obj[i].out_port_no==null) {
-				obj[i].out_port_no="NA";
+			if(obj[i].output_port==null) {
+				obj[i].output_port="NA";
 			}
 			
 			
@@ -152,20 +152,20 @@ function showFlowPathData(response ,isloader) {
 				var switchId = "'"+obj[i].switch_id+"'";
 				var path_html = '<div class="path"><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text cursor-pointer" id ="switch-name" onclick="openswitchDetail('+switchId+')">' 
+					+ obj[i].input_port + '</div><div class="line"></div><div class="text cursor-pointer" id ="switch-name" onclick="openswitchDetail('+switchId+')">' 
 					+ obj[i].switch_name + '</div><div class="line"></div><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].out_port_no + '</div><div class="line"></div></div>';
+					+ obj[i].output_port + '</div><div class="line"></div></div>';
 
 				$('#ForwardRow').append(path_html);		
 			} else {
 				var switchId = "'"+obj[i].switch_id+"'";
 				var path_html = '<div class="path"><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text cursor-pointer" id ="switch-name" onclick="openswitchDetail('+switchId+')">' 
+					+ obj[i].input_port + '</div><div class="line"></div><div class="text cursor-pointer" id ="switch-name" onclick="openswitchDetail('+switchId+')">' 
 					+ obj[i].switch_name + '</div><div class="line"></div><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].out_port_no + '</div><div class="line"></div><div class="vertical-line"></div><div class="horizontal-line"></div><div class="vertical-line-2"></div></div>';
+					+ obj[i].output_port + '</div><div class="line"></div><div class="vertical-line"></div><div class="horizontal-line"></div><div class="vertical-line-2"></div></div>';
 				
 				$('#ForwardRow').append(path_html);
 			}
@@ -174,38 +174,38 @@ function showFlowPathData(response ,isloader) {
 	$(".path:last-child .line:nth-child(6)").hide();
 	
 		
-	if(response.flowpath.reversePath.length==0) {
+	if(response.flowpath_reverse.length==0) {
 		var path_html = '<div class="alert alert-danger text-center"><strong></strong> No Path Data Found. </div>'
 			$('#ReversePath').append(path_html);	
 	}else{
-		var obj = response.flowpath.reversePath;
+		var obj = response.flowpath_reverse;
 		for (var i = 0; i < obj.length; i++) {
 
-			if(obj[i].in_port_no==null) {
-				obj[i].in_port_no="NA";
+			if(obj[i].input_port==null) {
+				obj[i].input_port="NA";
 			}
 			
-			if(obj[i].out_port_no==null) {
-				obj[i].out_port_no="NA";
+			if(obj[i].output_port==null) {
+				obj[i].output_port="NA";
 			}
 			
 			
 			if(obj.length <= 5) {
 				var path_html = '<div class="path"><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text" id ="switch-name">' 
+					+ obj[i].input_port + '</div><div class="line"></div><div class="text" id ="switch-name">' 
 					+ obj[i].switch_name + '</div><div class="line"></div><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].out_port_no + '</div><div class="line"></div></div>';
+					+ obj[i].output_port + '</div><div class="line"></div></div>';
 
 				$('#ReversePath').append(path_html);		
 			} else {
 				var path_html = '<div class="path"><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].in_port_no + '</div><div class="line"></div><div class="text" id ="switch-name">' 
+					+ obj[i].input_port + '</div><div class="line"></div><div class="text" id ="switch-name">' 
 					+ obj[i].switch_name + '</div><div class="line"></div><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
-					+ obj[i].out_port_no + '</div><div class="line"></div><div class="vertical-line"></div><div class="horizontal-line"></div><div class="vertical-line-2"></div></div>';
+					+ obj[i].output_port + '</div><div class="line"></div><div class="vertical-line"></div><div class="horizontal-line"></div><div class="vertical-line-2"></div></div>';
 				
 				$('#ReversePath').append(path_html);
 			}	
