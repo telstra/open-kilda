@@ -27,19 +27,16 @@ public class PortDto {
     private String switchId;
 
     @JsonProperty("port_no")
-    private int portNo;
+    private int portNumber;
 
     @JsonProperty("success")
     private Boolean success;
 
-    @JsonProperty("message")
-    private String message;
-
-    public PortDto(@JsonProperty("switch_id") String switchId, @JsonProperty("port_id") int portNo,
-                     @JsonProperty("success") Boolean success, @JsonProperty("message") String message) {
+    public PortDto(@JsonProperty("switch_id") String switchId, 
+            @JsonProperty("port_id") int portNumber, 
+            @JsonProperty("success") Boolean success) {
         this.switchId = switchId;
-        this.portNo = portNo;
+        this.portNumber = portNumber;
         this.success = success;
-        this.message = message;
     }
 }

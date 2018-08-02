@@ -15,19 +15,17 @@
 
 package org.openkilda.messaging.payload.switches;
 
-import java.io.Serializable;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Value;
+
+import java.io.Serializable;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Getter
-@Setter
+@Value
 public class PortConfigurationPayload implements Serializable {
 
     private static final long serialVersionUID = 7393431355263735216L;

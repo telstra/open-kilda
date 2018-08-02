@@ -709,7 +709,7 @@ class RecordHandler implements Runnable {
         
         try {
             logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
-                    request.getPortNo());
+                    request.getPortNumber());
             ISwitchManager switchManager = context.getSwitchManager();
             PortConfigurationResponse response = switchManager.configurePort(request);
 
@@ -717,8 +717,8 @@ class RecordHandler implements Runnable {
                     message.getCorrelationId());
             context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
         } catch (Exception e) {
-            logger.error("Port configuration request failed. Switch '{}', Port '{}'", request.getSwitchId(), 	
-                    request.getPortNo());
+            logger.error("Port configuration request failed. Switch '{}', Port '{}'", request.getSwitchId(), 
+                    request.getPortNumber());
             ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), 
                     "Port configuration request failed");
             ErrorMessage error = new ErrorMessage(errorData,

@@ -15,11 +15,12 @@
 
 package org.openkilda.messaging.command.switches;
 
+import org.openkilda.messaging.command.CommandData;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.openkilda.messaging.command.CommandData;
 
 @Getter
 @Setter
@@ -31,19 +32,21 @@ public class PortConfigurationRequest extends CommandData {
     private String switchId;
 
     @JsonProperty("port_no")
-    private int portNo;
+    private int portNumber;
 
     @JsonProperty("status")
-    private String status;
+    private PortStatus status;
 
     @JsonProperty("speed")
     private long speed;
 
     public PortConfigurationRequest(
-            @JsonProperty("switch_id") String switchId, @JsonProperty("port_no") int portNo, 
-            @JsonProperty("status") String status, @JsonProperty("speed") long speed) {
+            @JsonProperty("switch_id") String switchId, 
+            @JsonProperty("port_no") int portNumber, 
+            @JsonProperty("status") PortStatus status, 
+            @JsonProperty("speed") long speed) {
         this.switchId = switchId;
-        this.portNo = portNo;
+        this.portNumber = portNumber;
         this.status = status;
         this.speed = speed;
     }
