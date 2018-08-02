@@ -17,6 +17,7 @@ package org.openkilda.floodlight.service;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.kafka.KafkaConsumerConfig;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 
@@ -24,14 +25,25 @@ public class ConfigService implements IFloodlightService {
     private ConfigurationProvider provider;
 
     private KafkaTopicsConfig topics;
+    private KafkaConsumerConfig consumerConfig;
 
+    /**
+     * Late module initialization.
+     *
+     * <p>All FL modules must be initialized before this point.
+     */
     public void init(ConfigurationProvider provider) {
         this.provider = provider;
         topics = provider.getConfiguration(KafkaTopicsConfig.class);
+        consumerConfig = provider.getConfiguration(KafkaConsumerConfig.class);
     }
 
     public ConfigurationProvider getProvider() {
         return provider;
+    }
+
+    public KafkaConsumerConfig getConsumerConfig() {
+        return consumerConfig;
     }
 
     public KafkaTopicsConfig getTopics() {

@@ -101,9 +101,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
     @Override
     public void init(FloodlightModuleContext moduleContext) {
+        configService.init(new ConfigurationProvider(moduleContext, this));
         commandContextFactory.init(moduleContext);
-
-        commandProcessor.init(moduleContext);
         inputService.init(moduleContext);
     }
 
@@ -111,7 +110,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         logger.info("Starting {}", this.getClass().getCanonicalName());
 
-        configService.init(new ConfigurationProvider(moduleContext, this));
+        commandProcessor.init(moduleContext);
         ofBatchService.init(moduleContext);
         pingService.init(moduleContext);
 
@@ -119,15 +118,16 @@ public class KafkaMessageCollector implements IFloodlightModule {
     }
 
     private void initConsumer(FloodlightModuleContext moduleContext) {
-        ConfigurationProvider provider = new ConfigurationProvider(moduleContext, this);
-        KafkaConsumerConfig consumerConfig = provider.getConfiguration(KafkaConsumerConfig.class);
+        KafkaConsumerConfig consumerConfig = configService.getConsumerConfig();
+
+        logger.info("Consumer executor threads count is {} (fixed)", consumerConfig.getExecutorCount());
 
         // A thread pool of fixed sized and no work queue.
         ExecutorService parseRecordExecutor = new ThreadPoolExecutor(consumerConfig.getExecutorCount(),
                 consumerConfig.getExecutorCount(), 0L, TimeUnit.MILLISECONDS,
                 new SynchronousQueue<>(), new RetryableExecutionHandler());
 
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        KafkaTopicsConfig topicsConfig = configService.getTopics();
         ConsumerContext context = new ConsumerContext(moduleContext, topicsConfig);
 
         RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
@@ -135,7 +135,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
         ISwitchManager switchManager = context.getSwitchManager();
         String inputTopic = topicsConfig.getSpeakerTopic();
 
-        logger.info("Starting {}", this.getClass().getCanonicalName());
         try {
             Consumer consumer;
             if (!consumerConfig.isTestingMode()) {
