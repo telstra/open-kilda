@@ -20,23 +20,22 @@ ENV MININET_REPO https://github.com/mininet/mininet.git
 ENV MININET_INSTALLER mininet/util/install.sh
 ENV INSTALLER_SWITCHES -fbinptvwyx
 
-RUN apt-get update
-RUN apt-get -qy install net-tools
-RUN apt-get -qy install tcpdump
-RUN apt-get -qy install inetutils-ping
-RUN apt-get -qy install ca-certificates
-RUN apt-get -qy install openssh-client
-RUN apt-get -qy install vim
-RUN apt-get -qy install python-scapy
-
-RUN apt-get update
-RUN apt-get -qy install mininet
-RUN apt-get -qy install vlan
 # Adding openvswitch-testcontroller to facilitate running examples with embedded controller
-RUN apt-get -qy install openvswitch-testcontroller
-RUN cp /usr/bin/ovs-testcontroller /usr/bin/ovs-controller
-RUN cp /usr/bin/ovs-testcontroller /usr/bin/controller
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -qy \
+        net-tools \
+        tcpdump \
+        inetutils-ping \
+        ca-certificates \
+        openssh-client \
+        python-scapy \
+        mininet \
+        vlan \
+        openvswitch-testcontroller \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN ln -s /usr/bin/ovs-testcontroller /usr/bin/ovs-controller
+RUN ln -s /usr/bin/ovs-testcontroller /usr/bin/controller
 RUN ln -s /usr/sbin/tcpdump /usr/bin/tcpdump
 RUN pip install python-logstash requests
 
