@@ -50,6 +50,10 @@ public interface KafkaConsumerConfig extends KafkaFloodlightConfig, KafkaConsume
     @Default("4")
     int getCommandPersistentWorkersCount();
 
+    @Key("command-processor-workers-limit")
+    @Default("32")
+    int getCommandWorkersLimit();
+
     @Key("command-processor-deferred-requests-limit")
     @Default("8")
     int getCommandDeferredRequestsLimit();
