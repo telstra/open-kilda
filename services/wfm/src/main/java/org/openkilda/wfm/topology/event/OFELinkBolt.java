@@ -71,7 +71,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -122,7 +122,7 @@ public class OFELinkBolt
 
     private DummyIIslFilter islFilter;
     private DiscoveryManager discovery;
-    private LinkedList<DiscoveryLink> discoveryQueue;
+    private Map<String, List<DiscoveryLink>> linksBySwitch;
 
     private String dumpRequestCorrelationId = null;
     private float dumpRequestTimeout;
@@ -169,17 +169,17 @@ public class OFELinkBolt
         // TODO: what happens to state as workers go up or down
         Object payload = state.get(STATE_ID_DISCOVERY);
         if (payload == null) {
-            payload = discoveryQueue = new LinkedList<>();
+            payload = linksBySwitch = new HashMap<>();
             state.put(islDiscoveryTopic, payload);
         } else {
-            discoveryQueue = (LinkedList<DiscoveryLink>) payload;
+            linksBySwitch = (Map<String, List<DiscoveryLink>>) payload;
         }
 
         // DiscoveryManager counts failures as failed attempts,
         // so we need to convert islHealthCheckTimeout (which is in ticks) into attempts.
         int islConsecutiveFailureLimit = (int) Math.ceil(islHealthCheckTimeout / (float) islHealthCheckInterval);
 
-        discovery = new DiscoveryManager(islFilter, discoveryQueue, islHealthCheckInterval, islConsecutiveFailureLimit,
+        discovery = new DiscoveryManager(linksBySwitch, islHealthCheckInterval, islConsecutiveFailureLimit,
                 islHealthFailureLimit, islKeepRemovedTimeout);
     }
 
@@ -578,7 +578,7 @@ public class OFELinkBolt
 
     private void handleSentDiscoPacket(DiscoPacketSendingConfirmation confirmation) {
         logger.debug("Discovery packet is sent from {}", confirmation);
-        discovery.handleDiscoPacketSent(confirmation.getEndpoint());
+        discovery.handleSentDiscoPacket(confirmation.getEndpoint());
     }
 
     @Override
@@ -591,7 +591,12 @@ public class OFELinkBolt
 
     @Override
     public AbstractDumpState dumpState() {
-        return new OFELinkBoltState(discoveryQueue, islFilter.getMatchSet());
+        List<DiscoveryLink> links = linksBySwitch.values()
+                .stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+
+        return new OFELinkBoltState(links, islFilter.getMatchSet());
     }
 
     @Override
@@ -608,16 +613,14 @@ public class OFELinkBolt
     @Override
     public AbstractDumpState dumpStateBySwitchId(String switchId) {
 
-        List<DiscoveryLink> filteredDiscoveryQueue =  discoveryQueue.stream()
-                .filter(node -> node.getSource().getSwitchDpId().equals(switchId))
-                .collect(Collectors.toList());
+        List<DiscoveryLink> filteredDiscoveryList = linksBySwitch.get(switchId);
 
         Set<DiscoveryLink> filterdIslFilter = islFilter.getMatchSet().stream()
                 .filter(node -> node.getSource().getSwitchDpId().equals(switchId))
                 .collect(Collectors.toSet());
 
 
-        return new OFELinkBoltState(filteredDiscoveryQueue, filterdIslFilter);
+        return new OFELinkBoltState(filteredDiscoveryList, filterdIslFilter);
     }
 
     @Override
@@ -628,11 +631,6 @@ public class OFELinkBolt
     @Override
     public OutputCollector getOutput() {
         return collector;
-    }
-
-    @VisibleForTesting
-    List<DiscoveryLink> getDiscoveryQueue() {
-        return this.discoveryQueue;
     }
 
     @VisibleForTesting
