@@ -34,19 +34,6 @@
     <suppress files="src/main/java/org/openkilda/northbound/controller/LinkController.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/LinkController.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/LinkController.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="39" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="40" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="56" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="57" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="58" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="59" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="60" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="124" checks="NoWhitespaceBefore"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="130" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/SwitchController.java" lines="131" checks="OperatorWrap"/>

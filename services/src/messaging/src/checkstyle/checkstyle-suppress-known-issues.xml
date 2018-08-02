@@ -532,12 +532,6 @@
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowEndpointPayload.java" lines="32" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowEndpointPayload.java" lines="93" checks="NeedBraces"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowEndpointPayload.java" lines="94" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/switches/PortConfigurationPayload.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/switches/PortConfigurationPayload.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/switches/PortConfigurationPayload.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/switches/PortConfigurationPayload.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/switches/PortConfigurationPayload.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/switches/PortConfigurationPayload.java" lines="26" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/ResourcePool.java" lines="26" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/ResourcePool.java" lines="28" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/ResourcePool.java" lines="65" checks="NeedBraces"/>

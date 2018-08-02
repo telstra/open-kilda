@@ -77,12 +77,8 @@ import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFPortConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFPortDescProp;
 import org.projectfloodlight.openflow.protocol.OFPortMod;
-import org.projectfloodlight.openflow.protocol.OFPortReason;
-import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -132,7 +128,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Cookie IDs when creating a flow.
      */
     public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
-    
+
     static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
 
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
@@ -1495,19 +1491,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         DatapathId dpId = DatapathId.of(request.getSwitchId());
         IOFSwitch sw = lookupSwitch(dpId);
         
-        OFPortDesc ofPortDesc = getPort(sw, request.getPortNo());
+        OFPortDesc ofPortDesc = getPort(sw, request.getPortNumber());
         
-        PortStatus newStatus = PortStatus.getPortStatus(request.getStatus());
         boolean result = true;
-        if (newStatus != null) {
-            result = updatePortStatus(sw, ofPortDesc, newStatus);
+        if (request.getStatus() != null) {
+            result = updatePortStatus(sw, ofPortDesc, request.getStatus());
         }
 
-        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNo(), result);
+        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber(), result);
     }
     
     private boolean updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus) {
-        Set<OFPortConfig> configs = builder.getConfig() == null 
+        Set<OFPortConfig> configs = ofPortDesc.getConfig() == null 
                 ? EnumSet.noneOf(OFPortConfig.class) : new HashSet<>(ofPortDesc.getConfig());
     
         if (portStatus == PortStatus.UP) {
