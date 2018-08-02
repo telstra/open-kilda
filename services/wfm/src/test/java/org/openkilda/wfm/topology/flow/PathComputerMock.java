@@ -51,7 +51,8 @@ public class PathComputerMock implements PathComputer {
         }
 
         @Override
-        public void addIslsOccupiedByFlow(String flowId) {
+        public void addIslsOccupiedByFlow(String flowId, boolean ignoreBandwidth, long flowBandwidth) {
+
         }
     }
 }

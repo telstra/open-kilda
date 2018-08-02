@@ -656,7 +656,7 @@ public class CrudBolt
                             correlationId);
                     AvailableNetwork network = pathComputer.getAvailableNetwork(flowForward.isIgnoreBandwidth(),
                             flowForward.getBandwidth());
-                    network.addIslsOccupiedByFlow(flowId);
+                    network.addIslsOccupiedByFlow(flowId, flowForward.isIgnoreBandwidth(), flowForward.getBandwidth());
                     ImmutablePair<PathInfoData, PathInfoData> path =
                             pathComputer.getPath(flow.getLeft(), network, Strategy.COST);
                     logger.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {} correlationId {}",
@@ -732,7 +732,8 @@ public class CrudBolt
 
             AvailableNetwork network = pathComputer.getAvailableNetwork(requestedFlow.isIgnoreBandwidth(),
                     requestedFlow.getBandwidth());
-            network.addIslsOccupiedByFlow(requestedFlow.getFlowId());
+            network.addIslsOccupiedByFlow(requestedFlow.getFlowId(),
+                    requestedFlow.isIgnoreBandwidth(), requestedFlow.getBandwidth());
             path = pathComputer.getPath(requestedFlow, network, Strategy.COST);
             logger.info("Updated flow path: {}, correlationId {}", path, correlationId);
 
