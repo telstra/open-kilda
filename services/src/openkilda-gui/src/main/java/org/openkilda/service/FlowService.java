@@ -9,6 +9,7 @@ import org.apache.log4j.Logger;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
+import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.integration.service.FlowsIntegrationService;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.FlowCount;
@@ -94,7 +95,7 @@ public class FlowService {
      * @param flowId the flow id
      * @return the path link
      */
-    public FlowPath getFlowPath(final String flowId) throws IntegrationException {
+    public FlowPayload getFlowPath(final String flowId) throws IntegrationException {
         return flowsIntegrationService.getFlowPath(flowId);
     }
 
