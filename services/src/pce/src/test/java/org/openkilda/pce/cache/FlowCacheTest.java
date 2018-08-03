@@ -30,6 +30,7 @@ import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputerMock;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -151,12 +152,32 @@ public class FlowCacheTest {
 
     }
 
-
-    @Test(expected = CacheException.class)
+    @Test
     public void createAlreadyExistentFlow() throws Exception {
         ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
         flowCache.createFlow(firstFlow, path);
-        flowCache.createFlow(firstFlow, path);
+
+        final Set<Integer> allocatedVlans = flowCache.getAllocatedVlans();
+        final Set<Integer> allocatedCookies = flowCache.getAllocatedCookies();
+        final Map<String, Set<Integer>> allocatedMeters = flowCache.getAllocatedMeters();
+        try {
+            flowCache.createFlow(firstFlow, path);
+            throw new AssertionError(String.format(
+                    "Expected exception %s is not raised", CacheException.class.getName()));
+        } catch (CacheException e) {
+            // all good till now
+        }
+
+        String callName = String.format("%s.createFlow(...) call", flowCache.getClass().getCanonicalName());
+        Assert.assertEquals(
+                String.format("Detect VlanId leak in %s", callName),
+                allocatedVlans, flowCache.getAllocatedVlans());
+        Assert.assertEquals(
+                String.format("Detect cookies leak in %s", callName),
+                allocatedCookies, flowCache.getAllocatedCookies());
+        Assert.assertEquals(
+                String.format("Detect meterId leak in %s", callName),
+                allocatedMeters, flowCache.getAllocatedMeters());
     }
 
     @Test
@@ -216,6 +237,34 @@ public class FlowCacheTest {
 
         assertEquals(0, newFlow.left.getMeterId());
         assertEquals(0, newFlow.right.getMeterId());
+    }
+
+    @Test
+    public void updateMissingFlow() throws Exception {
+        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+
+        final Set<Integer> allocatedVlans = flowCache.getAllocatedVlans();
+        final Set<Integer> allocatedCookies = flowCache.getAllocatedCookies();
+        final Map<String, Set<Integer>> allocatedMeters = flowCache.getAllocatedMeters();
+
+        try {
+            flowCache.updateFlow(firstFlow, path);
+            throw new AssertionError(String.format(
+                    "Expected exception %s is not raised", CacheException.class.getName()));
+        } catch (CacheException e) {
+            // all good till now
+        }
+
+        String callName = String.format("%s.createFlow(...) call", flowCache.getClass().getCanonicalName());
+        Assert.assertEquals(
+                String.format("Detect VlanId leak in %s", callName),
+                allocatedVlans, flowCache.getAllocatedVlans());
+        Assert.assertEquals(
+                String.format("Detect cookies leak in %s", callName),
+                allocatedCookies, flowCache.getAllocatedCookies());
+        Assert.assertEquals(
+                String.format("Detect meterId leak in %s", callName),
+                allocatedMeters, flowCache.getAllocatedMeters());
     }
 
     @Test
