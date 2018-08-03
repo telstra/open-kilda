@@ -27,6 +27,11 @@ import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This class creates a configuration instance and fills it with values from the Floodlight module parameters.
@@ -41,8 +46,21 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
  * @see KafkaNamingForConfigurationValueProcessor
  */
 public class ConfigurationProvider extends ValidatingConfigurationProvider {
-    public ConfigurationProvider(FloodlightModuleContext context, IFloodlightModule module) {
-        super(new MapConfigurationSource(context.getConfigParams(module)), new JdkProxyStaticConfigurationFactory());
+    private static final Logger log = LoggerFactory.getLogger(ConfigurationProvider.class);
+
+    /**
+     * Build ConfigurationProvider instance from config data provided by FL's module context.
+     */
+    public static ConfigurationProvider of(FloodlightModuleContext moduleContext, IFloodlightModule module) {
+        Map<String, String> configData = moduleContext.getConfigParams(module);
+        ConfigurationProvider provider = new ConfigurationProvider(configData);
+
+        dumpConfigData(module, configData);
+        return provider;
+    }
+
+    protected ConfigurationProvider(Map<String, String> configData) {
+        super(new MapConfigurationSource(configData), new JdkProxyStaticConfigurationFactory());
 
         EnvironmentFloodlightConfig environmentConfig =
                 factory.createConfiguration(EnvironmentFloodlightConfig.class, source);
@@ -52,5 +70,15 @@ public class ConfigurationProvider extends ValidatingConfigurationProvider {
         // Apply the environment prefix to Kafka topics and groups in the configuration.
         ((JdkProxyStaticConfigurationFactory) factory).setConfigurationValueProcessors(
                 singletonList(new KafkaNamingForConfigurationValueProcessor(namingStrategy)));
+    }
+
+    private static void dumpConfigData(IFloodlightModule module, Map<String, String> configData) {
+        String delimiter = "\n      ";
+        String dump = configData.entrySet().stream()
+                .map(entry -> String.format("%s = %s", entry.getKey(), entry.getValue()))
+                .collect(Collectors.joining(delimiter));
+        log.debug(
+                "Dump config properties for {} (raw values, before filter and validation):{}{}",
+                module.getClass().getName(), delimiter, dump);
     }
 }

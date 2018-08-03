@@ -103,7 +103,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         statisticsTopic = topicsConfig.getStatsTopic();
 

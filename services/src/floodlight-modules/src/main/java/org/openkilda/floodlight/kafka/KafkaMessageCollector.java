@@ -20,6 +20,7 @@ import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.slf4j.Logger;
@@ -63,10 +64,14 @@ public class KafkaMessageCollector implements IFloodlightModule {
     }
 
     @Override
-    public void startUp(FloodlightModuleContext moduleContext) {
-        ConfigurationProvider provider = new ConfigurationProvider(moduleContext, this);
+    public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
+        logger.info("Starting {}", this.getClass().getCanonicalName());
+
+        ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
         KafkaConsumerConfig consumerConfig = provider.getConfiguration(KafkaConsumerConfig.class);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+
+        logger.info("Consumer executor threads count is {} (fixed)", consumerConfig.getExecutorCount());
 
         // A thread pool of fixed sized and no work queue.
         ExecutorService parseRecordExecutor = new ThreadPoolExecutor(consumerConfig.getExecutorCount(),
@@ -79,9 +84,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         ISwitchManager switchManager = context.getSwitchManager();
         String inputTopic = topicsConfig.getSpeakerTopic();
 
-        logger.info("Starting {}", this.getClass().getCanonicalName());
         try {
-
             Consumer consumer;
             if (!consumerConfig.isTestingMode()) {
                 consumer = new Consumer(consumerConfig, parseRecordExecutor, handlerFactory, switchManager,
