@@ -15,8 +15,6 @@
 
 FROM kilda/base-ubuntu
 
-RUN apt-get update
-
 ADD target/atdd-staging-*.jar /app/atdd-staging.jar
 ADD target/lib/*.jar /app/lib/
 ADD log4j2.xml /app/

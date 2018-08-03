@@ -26,6 +26,7 @@ import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
+import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.FlowCount;
@@ -112,7 +113,7 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/path/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody FlowPath getFlowPath(@PathVariable final String flowId) {
+    public @ResponseBody FlowPayload getFlowPath(@PathVariable final String flowId) {
         LOGGER.info("[getFlowPath] - start. Flow id: " + flowId);
         return flowService.getFlowPath(flowId);
     }

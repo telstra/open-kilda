@@ -18,19 +18,22 @@ import static org.openkilda.pce.Utils.safeAsInt;
 
 import org.neo4j.driver.v1.AccessMode;
 import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
 import org.neo4j.driver.v1.Value;
+import org.neo4j.driver.v1.Values;
+import org.neo4j.driver.v1.types.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 /**
@@ -50,7 +53,7 @@ public class AvailableNetwork {
     /**
      * Main constructor that reads topology from the database.
      */
-    public AvailableNetwork(Driver driver, boolean ignoreBandwidth, int requestedBandwidth) {
+    public AvailableNetwork(Driver driver, boolean ignoreBandwidth, long requestedBandwidth) {
         this.driver = driver;
 
         buildNetwork(ignoreBandwidth, requestedBandwidth);
@@ -69,7 +72,7 @@ public class AvailableNetwork {
      *
      * @param dpid the primary key of the switch, ie dpid
      */
-    private SimpleSwitch initSwitch(String dpid) {
+    private SimpleSwitch addSwitch(String dpid) {
         SimpleSwitch result = switches.get(dpid);
         if (result == null) {
             result = new SimpleSwitch(dpid);
@@ -79,11 +82,11 @@ public class AvailableNetwork {
     }
 
     /**
-     * Adds ISL between two switches.
+     * Creates switches (if they are not created yet) and ISL between them.
      */
-    public AvailableNetwork initOneEntry(String srcDpid, String dstDpid, int srcPort, int dstPort,
-                                          int cost, int latency) {
-        SimpleSwitch srcSwitch = initSwitch(srcDpid);
+    public AvailableNetwork addLink(String srcDpid, String dstDpid, int srcPort, int dstPort,
+                                    int cost, int latency) {
+        SimpleSwitch srcSwitch = addSwitch(srcDpid);
         SimpleIsl isl = new SimpleIsl(srcDpid, dstDpid, srcPort, dstPort, cost, latency);
         srcSwitch.addOutbound(isl);
         if (cost == 0) {
@@ -187,61 +190,75 @@ public class AvailableNetwork {
      * Since flow might be already existed and occupied some isls we should take it into account when filtering out
      * ISLs that don't have enough available bandwidth.
      * @param flowId current flow id.
+     * @param ignoreBandwidth defines whether bandwidth of links should be ignored.
+     * @param flowBandwidth required bandwidth amount that should be available on ISLs.
      */
-    public void addIslsOccupiedByFlow(String flowId) {
+    public void addIslsOccupiedByFlow(String flowId, boolean ignoreBandwidth, long flowBandwidth) {
         String query = ""
-                + "MATCH (src:switch)-[fs:flow_segment{flowid: '" + flowId + "'}]->(dst:switch) "
+                + "MATCH (src:switch)-[fs:flow_segment{flowid: $flow_id}]->(dst:switch) "
                 + "MATCH (src)-[link:isl]->(dst) "
                 + "WHERE src.state = 'active' AND dst.state = 'active' AND link.status = 'active' "
                 + "AND link.src_port = fs.src_port AND link.dst_port = fs.dst_port "
+                + "AND ($ignore_bandwidth OR link.available_bandwidth + fs.bandwidth >= $requested_bandwidth) "
                 + "RETURN link";
 
+        Value parameters = Values.parameters(
+                "flow_id", flowId,
+                "ignore_bandwidth", ignoreBandwidth,
+                "requested_bandwidth", flowBandwidth);
+
+        List<Relationship> links = loadAvailableLinks(query, parameters);
+        addLinksFromRelationships(links);
+    }
+
+    /**
+     * Reads all active links from the database and creates representation of the network in the form
+     * of {@link SimpleSwitch} and {@link SimpleIsl} between them.
+     * @param ignoreBandwidth defines whether bandwidth of links should be ignored.
+     * @param flowBandwidth required bandwidth amount that should be available on ISLs.
+     */
+    private void buildNetwork(boolean ignoreBandwidth, long flowBandwidth) {
+        String q = "MATCH (src:switch)-[link:isl]->(dst:switch) "
+                + " WHERE src.state = 'active' AND dst.state = 'active' AND link.status = 'active' "
+                + "   AND src.name IS NOT NULL AND dst.name IS NOT NULL "
+                + "   AND ($ignore_bandwidth OR link.available_bandwidth >= $requested_bandwidth) "
+                + " RETURN link";
+
+        Value parameters = Values.parameters(
+                "ignore_bandwidth", ignoreBandwidth,
+                "requested_bandwidth", flowBandwidth
+        );
+
+        List<Relationship> links = loadAvailableLinks(q, parameters);
+        addLinksFromRelationships(links);
+    }
+
+    /**
+     * Loads links from database and creates switches with ISLs between them.
+     * @param query to be executed.
+     * @param parameters list of parameters for the query.
+     */
+    private List<Relationship> loadAvailableLinks(String query, Value parameters) {
+        logger.debug("Executing query for getting links to fill AvailableNetwork: {}", query);
         try (Session session = driver.session(AccessMode.READ)) {
-            StatementResult queryResults = session.run(query);
-            queryResults.list()
+            StatementResult queryResults = session.run(query, parameters);
+            return queryResults.list()
                     .stream()
                     .map(record -> record.get("link"))
                     .map(Value::asRelationship)
-                    .forEach(isl ->
-                        initOneEntry(
-                                isl.get("src_switch").asString(),
-                                isl.get("dst_switch").asString(),
-                                safeAsInt(isl.get("src_port")),
-                                safeAsInt(isl.get("dst_port")),
-                                safeAsInt(isl.get("cost")),
-                                safeAsInt(isl.get("latency"))
-                        ));
+                    .collect(Collectors.toList());
         }
     }
 
-    private void buildNetwork(boolean ignoreBandwidth, int flowBandwidth) {
-        String q = "MATCH (src:switch)-[isl:isl]->(dst:switch)"
-                + " WHERE src.state = 'active' AND dst.state = 'active' AND isl.status = 'active' "
-                + "   AND src.name IS NOT NULL AND dst.name IS NOT NULL";
-        if (!ignoreBandwidth) {
-            q += "   AND isl.available_bandwidth >= " + flowBandwidth;
-        }
-        q += " RETURN src.name as src_name, dst.name as dst_name, "
-                + "isl.src_port as src_port, "
-                + "isl.dst_port as dst_port, "
-                + "isl.cost as cost, "
-                + "isl.latency as latency "
-                + "ORDER BY src.name";
-
-        logger.debug("Executing getAvailableNetwork Query: {}", q);
-        try (Session session = driver.session(AccessMode.READ)) {
-            StatementResult queryResults = session.run(q);
-            for (Record record : queryResults.list()) {
-                initOneEntry(
-                        record.get("src_name").asString(),
-                        record.get("dst_name").asString(),
-                        safeAsInt(record.get("src_port")),
-                        safeAsInt(record.get("dst_port")),
-                        safeAsInt(record.get("cost")),
-                        safeAsInt(record.get("latency"))
-                );
-            }
-        }
+    private void addLinksFromRelationships(List<Relationship> links) {
+        links.forEach(isl ->
+                addLink(isl.get("src_switch").asString(),
+                        isl.get("dst_switch").asString(),
+                        safeAsInt(isl.get("src_port")),
+                        safeAsInt(isl.get("dst_port")),
+                        safeAsInt(isl.get("cost")),
+                        safeAsInt(isl.get("latency"))
+                ));
     }
 
     @Override

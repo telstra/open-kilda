@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.extenstion.tags
+package org.openkilda.functionaltests.extension.tags
 
 /**
  * All available tags go here.

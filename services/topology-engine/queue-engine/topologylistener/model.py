@@ -44,6 +44,12 @@ def convert_integer(raw, limit=sys.maxint):
     return value
 
 
+def grab_fields(data, fields_mapping):
+    return {
+        y: data[x]
+        for x, y in fields_mapping.items() if x in data}
+
+
 LifeCycleFields = collections.namedtuple('LifeCycleFields', ('ctime', 'mtime'))
 
 

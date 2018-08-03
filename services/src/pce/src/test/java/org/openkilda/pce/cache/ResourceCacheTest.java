@@ -40,9 +40,9 @@ import java.util.UUID;
 public class ResourceCacheTest {
     private static final String SWITCH_ID = "switch-id";
     private static final String SWITCH_ID_2 = "switch-id-2";
-    private final Flow forwardCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
+    private final Flow forwardCreatedFlow = new Flow("created-flow", 0L, false, 10L, "description",
             "timestamp", "sw3", "sw4", 21, 22, 100, 200, 4, 4, new PathInfoData(), FlowState.ALLOCATED);
-    private final Flow reverseCreatedFlow = new Flow("created-flow", 0, false, 10L, "description",
+    private final Flow reverseCreatedFlow = new Flow("created-flow", 0L, false, 10L, "description",
             "timestamp", "sw4", "sw3", 22, 21, 200, 100, 5, 5, new PathInfoData(), FlowState.ALLOCATED);
     private ResourceCache resourceCache;
 

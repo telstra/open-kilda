@@ -17,7 +17,6 @@ FROM kilda/storm:latest
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update
 RUN pip install kafka
 RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 

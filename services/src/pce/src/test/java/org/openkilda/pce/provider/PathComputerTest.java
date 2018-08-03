@@ -26,6 +26,7 @@ import org.openkilda.pce.model.SimpleIsl;
 import org.openkilda.pce.model.SimpleSwitch;
 import org.openkilda.pce.provider.PathComputer.Strategy;
 
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -85,6 +86,14 @@ public class PathComputerTest {
         graphDb.shutdown();
     }
 
+    @After
+    public void cleanUp() {
+        try (Transaction tx = graphDb.beginTx()) {
+            graphDb.execute("MATCH (n) DETACH DELETE n");
+            tx.success();
+        }
+    }
+
     @Test
     public void testGetFlowInfo() {
         try (Transaction tx = graphDb.beginTx()) {
@@ -116,7 +125,7 @@ public class PathComputerTest {
         return n;
     }
 
-    private Relationship addRel(Node n1, Node n2, String status, String actual, int cost, int bw, int port) {
+    private Relationship addRel(Node n1, Node n2, String status, String actual, int cost, long bw, int port) {
         Relationship rel;
         rel = n1.createRelationshipTo(n2, RelationshipType.withName("isl"));
         rel.setProperty("status", status);
@@ -502,47 +511,76 @@ public class PathComputerTest {
     }
 
     /**
-     * Path should be exists for created flow in case of reroute/update.
+     * Checks that existed flow should always have available path even there is only links with 0 available bandwidth.
      */
     @Test
     public void shouldAlwaysFindPathForExistedFlow() throws Exception {
+        int flowBandwidth = 1000;
+
         Flow flow = new Flow();
+        flow.setBandwidth(flowBandwidth);
         flow.setSourceSwitch("A1:01");      // getPath will find an isl port
         flow.setDestinationSwitch("A1:03");
         flow.setIgnoreBandwidth(false);
-        flow.setBandwidth(1000);
         flow.setFlowId("flow-A1:01-A1:03");
 
-        createLinearTopoWithFlowSegments(10, "A1:", 1, flow.getFlowId());
+        long availableBandwidth = 0L;
+        createLinearTopoWithFlowSegments(10, "A1:", 1, availableBandwidth, flow.getFlowId(), flow.getBandwidth());
         AvailableNetwork network = nd.getAvailableNetwork(flow.isIgnoreBandwidth(), flow.getBandwidth());
-        network.addIslsOccupiedByFlow(flow.getFlowId());
+        network.addIslsOccupiedByFlow(flow.getFlowId(), flow.isIgnoreBandwidth(), flow.getBandwidth());
         ImmutablePair<PathInfoData, PathInfoData> result = nd.getPath(flow, network, Strategy.COST);
 
         Assert.assertEquals(4, result.getLeft().getPath().size());
         Assert.assertEquals(4, result.getRight().getPath().size());
     }
 
-    private void createLinearTopoWithFlowSegments(int cost, String switchStart, int startIndex, String flowId) {
+    /**
+     * Tests the case when we try to increase bandwidth of the flow and there is no available bandwidth left.
+     */
+    @Test(expected = UnroutablePathException.class)
+    public void shouldNotFindPathForExistedFlowAndIncreasedBandwidth() throws Exception {
+        long originFlowBandwidth = 1000L;
+
+        Flow flow = new Flow();
+        flow.setBandwidth(originFlowBandwidth);
+        flow.setSourceSwitch("A1:01");
+        flow.setDestinationSwitch("A1:03");
+        flow.setIgnoreBandwidth(false);
+        flow.setFlowId("flow-A1:01-A1:03");
+
+        // create network, all links have available bandwidth 0
+        long availableBandwidth = 0L;
+        createLinearTopoWithFlowSegments(10, "A1:", 1, availableBandwidth, flow.getFlowId(), flow.getBandwidth());
+
+        long updatedFlowBandwidth = originFlowBandwidth + 1;
+        AvailableNetwork network = nd.getAvailableNetwork(flow.isIgnoreBandwidth(), updatedFlowBandwidth);
+
+        network.addIslsOccupiedByFlow(flow.getFlowId(), flow.isIgnoreBandwidth(), updatedFlowBandwidth);
+        nd.getPath(flow, network, Strategy.COST);
+    }
+
+    private void createLinearTopoWithFlowSegments(int cost, String switchStart, int startIndex, long linkBw,
+                                                  String flowId, long flowBandwidth) {
         try (Transaction tx = graphDb.beginTx()) {
             int index = startIndex;
             // A - B - C
             Node nodeA = createNode(switchStart + String.format("%02X", index++));
             Node nodeB = createNode(switchStart + String.format("%02X", index++));
             Node nodeC = createNode(switchStart + String.format("%02X", index));
-            addRel(nodeA, nodeB, "active", "active", cost, 1000, 5);
-            addRel(nodeB, nodeC, "active", "active", cost, 1000, 6);
-            addRel(nodeC, nodeB, "active", "active", cost, 1000, 6);
-            addRel(nodeB, nodeA, "active", "active", cost, 1000, 5);
+            addRel(nodeA, nodeB, "active", "active", cost, linkBw, 5);
+            addRel(nodeB, nodeC, "active", "active", cost, linkBw, 6);
+            addRel(nodeC, nodeB, "active", "active", cost, linkBw, 6);
+            addRel(nodeB, nodeA, "active", "active", cost, linkBw, 5);
 
-            addFlowSegment(flowId, nodeA, nodeB, 5, 5);
-            addFlowSegment(flowId, nodeB, nodeA, 5, 5);
-            addFlowSegment(flowId, nodeB, nodeC, 6, 6);
-            addFlowSegment(flowId, nodeC, nodeB, 6, 6);
+            addFlowSegment(flowId, flowBandwidth, nodeA, nodeB, 5, 5);
+            addFlowSegment(flowId, flowBandwidth, nodeB, nodeA, 5, 5);
+            addFlowSegment(flowId, flowBandwidth, nodeB, nodeC, 6, 6);
+            addFlowSegment(flowId, flowBandwidth, nodeC, nodeB, 6, 6);
             tx.success();
         }
     }
 
-    private void addFlowSegment(String flowId, Node src, Node dst, int srcPort, int dstPort) {
+    private void addFlowSegment(String flowId, long flowBandwidth, Node src, Node dst, int srcPort, int dstPort) {
         Relationship rel;
         rel = src.createRelationshipTo(dst, RelationshipType.withName("flow_segment"));
         rel.setProperty("src_switch", src.getProperty("name"));
@@ -550,6 +588,7 @@ public class PathComputerTest {
         rel.setProperty("src_port", srcPort);
         rel.setProperty("dst_port", dstPort);
         rel.setProperty("flowid", flowId);
+        rel.setProperty("bandwidth", flowBandwidth);
     }
 
 }
