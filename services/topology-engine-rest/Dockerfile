@@ -17,26 +17,29 @@ FROM kilda/base-ubuntu
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y \
-    python-pip \
-    supervisor \
-    nginx \
-    vim \
-    sqlite
-RUN pip install --upgrade pip
-RUN pip install \
-    neo4j-driver \
-    kafka \
-    flask \
-    flask-login \
-    flask-sqlalchemy \
-    uwsgi \
-    pyotp \
-    jsonschema \
-    'py2neo<4.0.0' \
-    requests \
-    python-logstash \
-    pytz
+RUN apt-get update \
+    && apt-get install -y \
+        python-pip \
+        supervisor \
+        nginx \
+        vim \
+        sqlite \
+    && pip install --upgrade pip \
+    && pip install \
+        neo4j-driver \
+        kafka \
+        flask \
+        flask-login \
+        flask-sqlalchemy \
+        uwsgi \
+        pyotp \
+        jsonschema \
+        'py2neo<4.0.0' \
+        requests \
+        python-logstash \
+        pytz \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 ADD nginx/sites/ /etc/nginx/sites-available/
 ADD supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 ADD db/database.db /var/data/

@@ -518,7 +518,7 @@ public class FlowCrudSteps implements En {
     @When("^change bandwidth of (.*) flow to '(.*)'$")
     public void changeBandwidthOfFlow(String flowAlias, String bwAlias) {
         FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
-        int bw = ((Long) topologyUnderTest.getAliasedObject(bwAlias)).intValue();
+        long bw = topologyUnderTest.getAliasedObject(bwAlias);
         flow.setMaximumBandwidth(bw);
     }
 

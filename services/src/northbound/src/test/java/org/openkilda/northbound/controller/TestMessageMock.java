@@ -78,7 +78,7 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
     static final List<PathNodePayload> pathPayloadsList =
             Collections.singletonList(new PathNodePayload(FLOW_ID, 1, 1));
     static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList);
-    static final Flow flowModel = new Flow(FLOW_ID, 10000, false, 0L, FLOW_ID, null, FLOW_ID,
+    static final Flow flowModel = new Flow(FLOW_ID, 10000L, false, 0L, FLOW_ID, null, FLOW_ID,
             FLOW_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP);
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);

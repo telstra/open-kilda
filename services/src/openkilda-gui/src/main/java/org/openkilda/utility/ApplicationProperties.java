@@ -37,9 +37,6 @@ public class ApplicationProperties {
     @Value("${GET_FLOW}")
     private String flows;
 
-    @Value("${GET_TOPOLOGY_FLOWS}")
-    private String topologyFlows;
-
     @Value("${GET_PATH_FLOW}")
     private String pathFlow;
 
@@ -69,6 +66,9 @@ public class ApplicationProperties {
     
     @Value("${UPDATE_FLOW}")
     private String updateFlow;
+    
+    @Value("${GET_FLOW_PATH}")
+    private String flowPath;
 
     public String getSwitches() {
         return switches;
@@ -92,10 +92,6 @@ public class ApplicationProperties {
 
     public String getFlows() {
         return flows;
-    }
-
-    public String getTopologyFlows() {
-        return topologyFlows;
     }
 
     public String getPathFlow() {
@@ -142,4 +138,7 @@ public class ApplicationProperties {
 		return updateFlow;
 	}
 
+    public String getFlowPath() {
+        return flowPath;
+    }
 }

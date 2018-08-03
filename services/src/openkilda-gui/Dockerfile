@@ -1,14 +1,18 @@
 FROM kilda/base-ubuntu
 
 #RUN echo "deb http://archive.ubuntu.com/ubuntu precise main universe" > /etc/apt/sources.list
-RUN apt-get update
-RUN apt-get install -y nginx
+RUN apt-get update \
+    && apt-get install -y \
+        nginx \
+        maven \
+        wget \
+        net-tools \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN mkdir -p /app/src
+
 RUN echo 'Our first Docker image for Nginx' > /usr/share/nginx/html/index.html
 EXPOSE 1010
-
-RUN apt-get install -y maven wget
-RUN apt-get install -y net-tools
-RUN mkdir -p /app/src
 
 WORKDIR /app
 

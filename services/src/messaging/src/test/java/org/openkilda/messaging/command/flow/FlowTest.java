@@ -13,7 +13,7 @@ public class FlowTest {
     @Test
     public void sterilisationRoundTripTest() throws IOException {
         Flow source = new Flow(
-                "flowId", 100, true, 200, "description", "now", "source-switch", "dest-switch", 1, 2, 30, 40, 0, 50,
+                "flowId", 100L, true, 200, "description", "now", "source-switch", "dest-switch", 1, 2, 30, 40, 0, 50,
                 null, null);
 
         String encoded = MAPPER.writeValueAsString(source);
