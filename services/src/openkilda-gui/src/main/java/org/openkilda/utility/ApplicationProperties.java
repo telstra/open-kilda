@@ -22,9 +22,6 @@ public class ApplicationProperties {
     @Value("${GET_SWITCH_RULES}")
     private String switchRules;
 
-    @Value("${tpe.base.url}")
-    private String tpeBaseUrl;
-
     @Value("${GET_LINKS}")
     private String links;
 
@@ -72,10 +69,6 @@ public class ApplicationProperties {
 
     public String getSwitches() {
         return switches;
-    }
-
-    public String getTpeBaseUrl() {
-        return tpeBaseUrl;
     }
 
     public String getLinks() {
