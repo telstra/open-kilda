@@ -96,11 +96,11 @@ public class FlowsIntegrationService {
      * @return the flow paths
      * @throws IntegrationException
      */
-    public FlowPath getFlowPath(final String flowId) {
+    public FlowPayload getFlowPath(final String flowId) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getTopologyFlows() + "/" + flowId, HttpMethod.GET, "", "",
-                    "");
+                    applicationProperties.getFlowPath().replace("{flow_id}", flowId),
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 FlowPayload flowPayload =
                         restClientManager.getResponse(response, FlowPayload.class);
