@@ -57,7 +57,7 @@ public class Flow implements Serializable {
      * FLow bandwidth.
      */
     @JsonProperty("bandwidth")
-    private int bandwidth;
+    private long bandwidth;
 
     /**
      * Should flow ignore bandwidth in path computation.
@@ -197,7 +197,7 @@ public class Flow implements Serializable {
     @JsonCreator
     @Builder
     public Flow(@JsonProperty(Utils.FLOW_ID) final String flowId,
-                @JsonProperty("bandwidth") final int bandwidth,
+                @JsonProperty("bandwidth") final long bandwidth,
                 @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                 @JsonProperty("cookie") final long cookie,
                 @JsonProperty("description") final String description,
@@ -244,7 +244,7 @@ public class Flow implements Serializable {
      * @param destinationPort   destination port
      * @param destinationVlan   destination vlan id
      */
-    public Flow(String flowId, int bandwidth, boolean ignoreBandwidth, String description,
+    public Flow(String flowId, long bandwidth, boolean ignoreBandwidth, String description,
             String sourceSwitch, int sourcePort, int sourceVlan,
             String destinationSwitch, int destinationPort, int destinationVlan) {
         this.flowId = flowId;

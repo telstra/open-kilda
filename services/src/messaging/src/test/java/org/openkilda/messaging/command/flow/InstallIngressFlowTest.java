@@ -59,7 +59,7 @@ public class InstallIngressFlowTest {
     @Test
     public void setBandwidth() throws Exception {
         flow.setBandwidth(bandwidth);
-        assertEquals(bandwidth, flow.getBandwidth().intValue());
+        assertEquals(bandwidth, flow.getBandwidth().longValue());
     }
 
     @Test(expected = IllegalArgumentException.class)

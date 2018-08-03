@@ -50,7 +50,7 @@ public class AvailableNetwork {
     /**
      * Main constructor that reads topology from the database.
      */
-    public AvailableNetwork(Driver driver, boolean ignoreBandwidth, int requestedBandwidth) {
+    public AvailableNetwork(Driver driver, boolean ignoreBandwidth, long requestedBandwidth) {
         this.driver = driver;
 
         buildNetwork(ignoreBandwidth, requestedBandwidth);
@@ -214,7 +214,7 @@ public class AvailableNetwork {
         }
     }
 
-    private void buildNetwork(boolean ignoreBandwidth, int flowBandwidth) {
+    private void buildNetwork(boolean ignoreBandwidth, long flowBandwidth) {
         String q = "MATCH (src:switch)-[isl:isl]->(dst:switch)"
                 + " WHERE src.state = 'active' AND dst.state = 'active' AND isl.status = 'active' "
                 + "   AND src.name IS NOT NULL AND dst.name IS NOT NULL";

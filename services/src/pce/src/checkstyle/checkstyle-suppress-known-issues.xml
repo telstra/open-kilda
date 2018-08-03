@@ -221,22 +221,6 @@
     <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="311" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/NeoDriver.java" lines="320" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/main/java/org/openkilda/pce/RecoverableException.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="4" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="5" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="6" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="7" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="8" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="8" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="9" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="10" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="17" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="20" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="28" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="28" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="28" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="30" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/pce/api/FlowAdapter.java" lines="30" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/pce/model/SimpleSwitch.java" lines="15" checks="EmptyLineSeparator"/>
     <suppress files="src/main/java/org/openkilda/pce/model/SimpleSwitch.java" lines="18" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/pce/model/SimpleSwitch.java" lines="18" checks="AvoidStarImport"/>
