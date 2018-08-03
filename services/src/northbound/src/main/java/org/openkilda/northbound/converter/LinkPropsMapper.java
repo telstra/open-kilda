@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
-import org.openkilda.northbound.dto.LinkPropsDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 
 import org.mapstruct.Mapper;
 

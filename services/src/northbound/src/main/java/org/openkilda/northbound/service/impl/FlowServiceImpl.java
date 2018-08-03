@@ -443,7 +443,7 @@ public class FlowServiceImpl implements FlowService {
         BatchResults result = new BatchResults(
                 flowFailure + teFailure,
                 flowSuccess + teSuccess,
-                msgs.stream().toArray(String[]::new));
+                msgs);
 
         LOGGER.debug("Returned: ", result);
         return result;

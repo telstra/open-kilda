@@ -1,40 +1,35 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.northbound.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 /**
  * BatchResults encapsulates the response from a batch process - ie multiple operations.
- *
- * NB: This was copied from LinkPropsResult with no real changes .. drop LinkPropResults.
  */
-@JsonSerialize
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class BatchResults {
+
     private int failures;
     private int successes;
-    private String[] messages;
-
-    public BatchResults() {
-        this(0,0,null);
-    }
-
-    public BatchResults(int failures, int successes, String[] messages) {
-        this.failures = failures;
-        this.successes = successes;
-        if (messages != null)
-            this.messages = messages;
-        else
-            this.messages = new String[0];
-    }
-
-    public int getFailures() {
-        return failures;
-    }
-
-    public int getSuccesses() {
-        return successes;
-    }
-
-    public String[] getMessages() {
-        return messages;
-    }
+    private List<String> messages;
 }

@@ -27,11 +27,11 @@ import org.openkilda.messaging.te.request.LinkPropsPut;
 import org.openkilda.messaging.te.response.LinkPropsResponse;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
-import org.openkilda.northbound.dto.LinkPropsDto;
-import org.openkilda.northbound.dto.LinksDto;
+import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
-import org.openkilda.northbound.service.LinkPropsResult;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -83,7 +83,7 @@ public class LinkServiceImpl implements LinkService {
     private ResponseCollector<LinkPropsData> linksPropsCollector;
 
     @Override
-    public List<LinksDto> getLinks() {
+    public List<LinkDto> getLinks() {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get links request received");
         CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
@@ -112,7 +112,7 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public LinkPropsResult setLinkProps(List<LinkPropsDto> linkPropsList) {
+    public BatchResults setLinkProps(List<LinkPropsDto> linkPropsList) {
         logger.debug("Link props \"SET\" request received (consists of {} records)", linkPropsList.size());
 
         ArrayList<String> pendingRequest = new ArrayList<>(linkPropsList.size());
@@ -138,13 +138,11 @@ public class LinkServiceImpl implements LinkService {
             }
         }
 
-        return new LinkPropsResult(
-                linkPropsList.size() - successCount, successCount,
-                errors.toArray(new String[0]));
+        return new BatchResults(linkPropsList.size() - successCount, successCount, errors);
     }
 
     @Override
-    public LinkPropsResult delLinkProps(List<LinkPropsDto> linkPropsList) {
+    public BatchResults delLinkProps(List<LinkPropsDto> linkPropsList) {
         ArrayList<String> pendingChains = new ArrayList<>();
         for (LinkPropsDto requestItem : linkPropsList) {
             LinkPropsDrop teRequest = new LinkPropsDrop(linkPropsMapper.toLinkPropsMask(requestItem));
@@ -168,6 +166,6 @@ public class LinkServiceImpl implements LinkService {
             }
         }
 
-        return new LinkPropsResult(errors.size(), successCount, errors.toArray(new String[0]));
+        return new BatchResults(errors.size(), successCount, errors);
     }
 }
