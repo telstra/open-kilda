@@ -60,6 +60,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             // Put the request's correlationId into the logger context.
             // MDC is picked up by the %X in log4j2 formatter .. resources/log4j2.xml
             try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, correlationId)) {
+                response.addHeader(CORRELATION_ID, correlationId);
                 filterChain.doFilter(request, response);
             }
         }
