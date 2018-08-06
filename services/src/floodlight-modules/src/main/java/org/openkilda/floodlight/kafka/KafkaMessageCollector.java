@@ -120,7 +120,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private void initConsumer(FloodlightModuleContext moduleContext) {
         KafkaConsumerConfig consumerConfig = configService.getConsumerConfig();
 
-        logger.info("Consumer executor threads count is {} (fixed)", consumerConfig.getExecutorCount());
+        logger.info("config - executor threads = {}", consumerConfig.getExecutorCount());
 
         // A thread pool of fixed sized and no work queue.
         ExecutorService parseRecordExecutor = new ThreadPoolExecutor(consumerConfig.getExecutorCount(),

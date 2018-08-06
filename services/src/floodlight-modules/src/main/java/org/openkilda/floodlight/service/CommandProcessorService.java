@@ -42,6 +42,7 @@ public class CommandProcessorService implements IFloodlightService {
 
     private static final int FUTURE_COMPLETE_CHECK_INTERVAL = 200;
     private static final long REJECTED_REPORT_INTERVAL = 1000;
+    private static final long REJECTED_ERROR_LIMIT = 1024;
 
     private final CommandContextFactory commandContextFactory;
 
@@ -61,12 +62,10 @@ public class CommandProcessorService implements IFloodlightService {
     public void init(FloodlightModuleContext moduleContext) {
         KafkaConsumerConfig config = moduleContext.getServiceImpl(ConfigService.class).getConsumerConfig();
 
-        String name = getClass().getCanonicalName();
-        log.info("{} config - persistent workers - {}", name, config.getCommandPersistentWorkersCount());
-        log.info("{} config - workers limit - {}", name, config.getCommandWorkersLimit());
-        log.info("{} config - idle workers keep alive seconds - {}",
-                name, config.getCommandIdleWorkersKeepAliveSeconds());
-        log.info("{} config - deferred requests limit - {}", name, config.getCommandDeferredRequestsLimit());
+        log.info("config - persistent workers = {}", config.getCommandPersistentWorkersCount());
+        log.info("config - workers limit = {}", config.getCommandWorkersLimit());
+        log.info("config - idle workers keep alive seconds = {}", config.getCommandIdleWorkersKeepAliveSeconds());
+        log.info("config - deferred requests limit = {}", config.getCommandDeferredRequestsLimit());
 
         executor = new ThreadPoolExecutor(
                 config.getCommandPersistentWorkersCount(), config.getCommandWorkersLimit(),
@@ -168,16 +167,7 @@ public class CommandProcessorService implements IFloodlightService {
             count = rejectedQueue.size();
         }
 
-        if (0 < count) {
-            long now = System.currentTimeMillis();
-            if (lastRejectCountReportedAt + REJECTED_REPORT_INTERVAL < now) {
-                lastRejectCountReportedAt = now;
-                log.warn("Rejected commands queue size: {}", count);
-            }
-        } else if (0 < lastRejectCountReportedAt) {
-            log.warn("All rejected command have been submitted into executor");
-            lastRejectCountReportedAt = 0;
-        }
+        reportQueueStatus(count);
     }
 
     private void verifyPendingStatus() {
@@ -199,6 +189,27 @@ public class CommandProcessorService implements IFloodlightService {
         }
     }
 
+    private void reportQueueStatus(int rejectedQueueSize) {
+        if (0 < rejectedQueueSize) {
+            long now = System.currentTimeMillis();
+            if (lastRejectCountReportedAt + REJECTED_REPORT_INTERVAL < now) {
+                lastRejectCountReportedAt = now;
+
+                String message = String.format(
+                        "Rejected commands queue size: %d (workers: %d / %d)",
+                        rejectedQueueSize, executor.getActiveCount(), executor.getPoolSize());
+                if (rejectedQueueSize < REJECTED_ERROR_LIMIT) {
+                    log.warn(message);
+                } else {
+                    log.error(message);
+                }
+            }
+        } else if (0 < lastRejectCountReportedAt) {
+            log.warn("All rejected command have been submitted into executor");
+            lastRejectCountReportedAt = 0;
+        }
+    }
+
     private synchronized LinkedList<ProcessorTask> rotatePendingCommands() {
         LinkedList<ProcessorTask> current = tasks;
         tasks = new LinkedList<>();
@@ -206,12 +217,9 @@ public class CommandProcessorService implements IFloodlightService {
     }
 
     private void scheduleFutureCheckTrigger(ScheduledExecutorService scheduler) {
-        scheduler.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                timerTrigger();
-            }
-        }, FUTURE_COMPLETE_CHECK_INTERVAL, FUTURE_COMPLETE_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
+        scheduler.scheduleAtFixedRate(
+                this::timerTrigger,
+                FUTURE_COMPLETE_CHECK_INTERVAL, FUTURE_COMPLETE_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
     public static class VerifyBatch implements AutoCloseable {
@@ -224,7 +232,7 @@ public class CommandProcessorService implements IFloodlightService {
         }
 
         @Override
-        public void close() throws Exception {
+        public void close() {
             commandProcessor.reSubmitPending(tasksBatch);
         }
 
@@ -250,7 +258,7 @@ public class CommandProcessorService implements IFloodlightService {
     private static class RejectedExecutor implements RejectedExecutionHandler {
         private final CommandProcessorService commandProcessor;
 
-        public RejectedExecutor(CommandProcessorService commandProcessor) {
+        RejectedExecutor(CommandProcessorService commandProcessor) {
             this.commandProcessor = commandProcessor;
         }
 
