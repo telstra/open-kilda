@@ -43,6 +43,7 @@ import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -103,7 +104,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1502,17 +1502,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
     
     private boolean updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus) {
-        Set<OFPortConfig> configs = ofPortDesc.getConfig() == null 
-                ? EnumSet.noneOf(OFPortConfig.class) : new HashSet<>(ofPortDesc.getConfig());
-    
-        if (portStatus == PortStatus.UP) {
-            configs.remove(OFPortConfig.PORT_DOWN);
-        } else {
-            configs.add(OFPortConfig.PORT_DOWN);
-        }
+        Set<OFPortConfig> configs = portStatus == PortStatus.UP ? configs = ImmutableSet.of() : 
+                ImmutableSet.of(OFPortConfig.PORT_DOWN);
         
-        Set<OFPortConfig> portMask = EnumSet.noneOf(OFPortConfig.class);
-        portMask.add(OFPortConfig.PORT_DOWN);
+        Set<OFPortConfig> portMask = ImmutableSet.of(OFPortConfig.PORT_DOWN);
         
         OFPortMod ofPortMod = sw.getOFFactory().buildPortMod().setConfig(configs)
                 .setPortNo(ofPortDesc.getPortNo())

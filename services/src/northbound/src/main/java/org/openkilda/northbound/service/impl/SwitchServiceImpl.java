@@ -29,13 +29,10 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
-import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesValidateRequest;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -274,18 +271,8 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("status {}, speed {}", config.getStatus(), config.getSpeed());
         String correlationId = RequestCorrelationId.getId();
 
-        PortStatus portStatus = null;
-        if (config.getStatus() != null) {
-            portStatus = PortStatus.getPortStatus(config.getStatus());
-            if (portStatus == null) {
-                String errorMessage = "Invalid status " + config.getStatus();
-                throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID, 
-                        errorMessage, errorMessage);
-            }
-        }
-
         PortConfigurationRequest request = new PortConfigurationRequest(switchId, 
-                port, portStatus, config.getSpeed());
+                port, config.getStatus(), config.getSpeed());
         CommandWithReplyToMessage updateStatusCommand = new CommandWithReplyToMessage(
                 request, System.currentTimeMillis(), correlationId, 
                 Destination.CONTROLLER, northboundTopic);

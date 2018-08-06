@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.payload.switches;
 
+import org.openkilda.messaging.command.switches.PortStatus;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -31,13 +33,13 @@ public class PortConfigurationPayload implements Serializable {
     private static final long serialVersionUID = 7393431355263735216L;
 
     @JsonProperty("status")
-    private String status;
+    private PortStatus status;
 
     @JsonProperty("speed")
     private long speed;
 
     public PortConfigurationPayload(
-            @JsonProperty("status") String status, @JsonProperty("speed") long speed) {
+            @JsonProperty("status") PortStatus status, @JsonProperty("speed") long speed) {
         this.status = status;
         this.speed = speed;
     }

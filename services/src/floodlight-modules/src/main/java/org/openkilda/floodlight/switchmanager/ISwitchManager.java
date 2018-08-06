@@ -15,13 +15,14 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
