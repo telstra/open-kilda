@@ -97,9 +97,10 @@ public class CommandProcessorService implements IFloodlightService {
      * Execute command without intermediate completion check.
      */
     public void processLazy(Command command) {
-        Future<Command> successor = executor.submit(command);
-        synchronized (this) {
-            tasks.addLast(new ProcessorTask(command, successor));
+        if (command.isOneShot()) {
+            executeOneShot(command);
+        } else {
+            executeChainResult(command);
         }
     }
 
@@ -114,6 +115,23 @@ public class CommandProcessorService implements IFloodlightService {
     }
 
     public synchronized void markCompleted(ProcessorTask task) { }
+
+    private void executeOneShot(Command command) {
+        executor.execute(() -> {
+            try {
+                command.call();
+            } catch (Exception e) {
+                command.exceptional(e);
+            }
+        });
+    }
+
+    private void executeChainResult(Command command) {
+        Future<Command> successor = executor.submit(command);
+        synchronized (this) {
+            tasks.addLast(new ProcessorTask(command, successor));
+        }
+    }
 
     private synchronized void reSubmitPending(List<ProcessorTask> pending) {
         tasks.addAll(pending);

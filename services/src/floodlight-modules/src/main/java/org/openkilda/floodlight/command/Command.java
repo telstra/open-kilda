@@ -34,6 +34,14 @@ public abstract class Command implements Callable<Command> {
         return null;
     }
 
+    /**
+     * If true - this command will not produce subcommand and can be processed in simplified way by
+     * command processor.
+     */
+    public boolean isOneShot() {
+        return true;
+    }
+
     protected CommandContext getContext() {
         return context;
     }
