@@ -127,7 +127,7 @@ class RecordHandler implements Runnable {
     }
 
     private void handleCommand(CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException, SwitchOperationException {
+            throws FlowCommandException {
         logger.info("Request Received {}, {}, {}", message, replyToTopic, replyDestination);
         CommandData data = message.getData();
         CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
@@ -704,7 +704,7 @@ class RecordHandler implements Runnable {
     }
 
     private void doConfigurePort(final CommandMessage message, final String replyToTopic, 
-            final Destination replyDestination) throws SwitchOperationException {
+            final Destination replyDestination) {
         PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
         
         try {
