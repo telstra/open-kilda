@@ -153,7 +153,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         fmc.addConfigParam(pvs, "isl_bandwidth_quotient", "0.0");
         fmc.addConfigParam(pvs, "hmac256-secret", "secret");
         fmc.addConfigParam(pvs, "bootstrap-servers", "");
-        ConfigurationProvider provider = new ConfigurationProvider(fmc, pvs);
+        ConfigurationProvider provider = ConfigurationProvider.of(fmc, pvs);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
 
@@ -182,7 +182,6 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         replay(sw1);
         replay(sw2);
     }
-
 
     @After
     public void tearDown() throws Exception {
