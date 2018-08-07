@@ -91,5 +91,5 @@ Failure in forward direction:
 
 ![on-demand pings](./on-demand-ping-sequence-diagram.png "On demand ping sequence diagram")
 
-## Command part for all kinds of pings
+## Common part for all kinds of pings
 ![common pings](./ping-sequence-diagram.png "All ping kinds common part sequence diagram")

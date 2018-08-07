@@ -53,6 +53,12 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         super(env, PingTopologyConfig.class);
     }
 
+    /**
+     * Implement flow pings.
+     *
+     * <p>Topology sequence diagram plus design document:
+     * https://github.com/telstra/open-kilda/tree/master/docs/design/flow-ping/flow-ping.md
+     */
     @Override
     public StormTopology createTopology() throws NameCollisionException {
         TopologyBuilder topology = new TopologyBuilder();
