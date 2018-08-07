@@ -19,7 +19,6 @@ import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.ConfigService;
-import org.openkilda.floodlight.service.batch.OfBatchService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -55,7 +54,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
     private final CommandProcessorService commandProcessor;
     private final InputService inputService;
     private final ConfigService configService = new ConfigService();
-    private final OfBatchService ofBatchService = new OfBatchService();
     private final PingService pingService = new PingService();
 
     public KafkaMessageCollector() {
@@ -72,7 +70,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ConfigService.class,
                 CommandProcessorService.class,
                 InputService.class,
-                OfBatchService.class,
                 PingService.class);
     }
 
@@ -82,7 +79,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ConfigService.class, configService,
                 CommandProcessorService.class, commandProcessor,
                 InputService.class, inputService,
-                OfBatchService.class, ofBatchService,
                 PingService.class, pingService);
     }
 
@@ -111,7 +107,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
         logger.info("Starting {}", this.getClass().getCanonicalName());
 
         commandProcessor.init(moduleContext);
-        ofBatchService.init(moduleContext);
         pingService.init(moduleContext);
 
         initConsumer(moduleContext);
