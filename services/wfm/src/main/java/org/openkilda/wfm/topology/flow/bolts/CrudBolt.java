@@ -620,7 +620,8 @@ public class CrudBolt
                     ErrorType.CREATION_FAILURE, "Could not create flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.CREATION_FAILURE, "Could not create flow", "Not enough bandwidth found or path not found");
+                    ErrorType.CREATION_FAILURE, "Could not create flow",
+                    "Not enough bandwidth found or path not found");
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
