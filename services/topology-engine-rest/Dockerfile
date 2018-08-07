@@ -34,7 +34,7 @@ RUN apt-get update \
         uwsgi \
         pyotp \
         jsonschema \
-        'py2neo<4.0.0' \
+        'py2neo>=4.0.0' \
         requests \
         python-logstash \
         pytz \

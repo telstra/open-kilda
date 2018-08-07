@@ -22,7 +22,7 @@ RUN apt-get update \
     && pip install --upgrade pip \
     && pip install \
         kafka \
-        'py2neo<4.0.0' \
+        'py2neo>=4.0.0' \
         'gevent<=1.3.1' \
         python-logstash \
         pytz \
