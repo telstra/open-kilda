@@ -68,7 +68,7 @@ public class RecordHandlerTest extends EasyMockSupport {
         context.addConfigParam(collectorModule, "bootstrap-servers", "");
         collectorModule.init(context);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, collectorModule);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, collectorModule);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
 
         consumerContext = new ConsumerContext(context, topicsConfig);

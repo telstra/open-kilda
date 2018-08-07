@@ -223,7 +223,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
     }
