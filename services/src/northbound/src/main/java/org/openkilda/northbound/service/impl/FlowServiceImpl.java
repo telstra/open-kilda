@@ -460,34 +460,12 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public FlowReroutePayload rerouteFlow(String flowId) {
-        final String correlationId = RequestCorrelationId.getId();
-        Flow flow = new Flow();
-        flow.setFlowId(flowId);
-        FlowRerouteRequest data = new FlowRerouteRequest(flow, FlowOperation.UPDATE);
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
-        messageProducer.send(topic, command);
-
-        Message message = (Message) messageConsumer.poll(correlationId);
-        logger.debug("Got response {}", message);
-        FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
-        return FlowPayloadToFlowConverter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
+        return reroute(flowId, false);
     }
 
     @Override
     public FlowReroutePayload syncFlow(String flowId) {
-        final String correlationId = RequestCorrelationId.getId();
-        Flow flow = new Flow();
-        flow.setFlowId(flowId);
-        FlowRerouteRequest data = new FlowRerouteRequest(flow, FlowOperation.UPDATE, true);
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
-        messageProducer.send(topic, command);
-
-        Message message = (Message) messageConsumer.poll(correlationId);
-        logger.debug("Got response {}", message);
-        FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
-        return FlowPayloadToFlowConverter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
+        return reroute(flowId, true);
     }
 
     private static final class SimpleSwitchRule {
@@ -830,5 +808,19 @@ public class FlowServiceImpl implements FlowService {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowCacheSyncResponse response = (FlowCacheSyncResponse) validateInfoMessage(request, message, correlationId);
         return response.getPayload();
+    }
+
+    private FlowReroutePayload reroute(String flowId, boolean forced) {
+        String correlationId = RequestCorrelationId.getId();
+        FlowRerouteRequest payload = new FlowRerouteRequest(flowId, forced);
+        CommandMessage command = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        messageProducer.send(topic, command);
+        Message message = (Message) messageConsumer.poll(correlationId);
+
+        logger.debug("Got reroute response {}", message);
+        FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
+        return FlowPayloadToFlowConverter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
     }
 }

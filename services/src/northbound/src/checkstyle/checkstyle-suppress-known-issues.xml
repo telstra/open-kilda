@@ -161,12 +161,6 @@
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="7" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="8" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/SwitchService.java" lines="9" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="36" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationId.java" lines="26" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationId.java" lines="34" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="15" checks="EmptyLineSeparator"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="18" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="24" checks="CustomImportOrder"/>

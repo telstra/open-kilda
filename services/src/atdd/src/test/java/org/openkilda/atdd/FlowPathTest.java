@@ -113,10 +113,10 @@ public class FlowPathTest {
     }
 
     @When("^all links have available bandwidth (\\d+)$")
-    public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws InterruptedException {
+    public void checkAvailableBandwidth(long expectedAvailableBandwidth) throws InterruptedException {
         List<LinkDto> links = LinksUtils.dumpLinks();
         for (LinkDto link : links) {
-            int actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+            long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     link.getPath().get(0).getSwitchId(),
                     String.valueOf(link.getPath().get(0).getPortNo()));
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
@@ -124,28 +124,28 @@ public class FlowPathTest {
     }
 
     @Then("^shortest path links available bandwidth have available bandwidth (\\d+)$")
-    public void checkShortestPathAvailableBandwidthDecreased(int expectedAvailableBandwidth)
+    public void checkShortestPathAvailableBandwidthDecreased(long expectedAvailableBandwidth)
             throws InterruptedException {
         for (ImmutablePair<String, String> expectedLink : shortestPathLinks) {
-            Integer actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+            long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     expectedLink.getLeft(), expectedLink.getRight());
-            assertEquals(expectedAvailableBandwidth, actualBandwidth.intValue());
+            assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
     }
 
     @Then("^alternative path links available bandwidth have available bandwidth (\\d+)$")
-    public void checkAlternativePathAvailableBandwidthDecreased(int expectedAvailableBandwidth)
+    public void checkAlternativePathAvailableBandwidthDecreased(long expectedAvailableBandwidth)
             throws InterruptedException {
         for (ImmutablePair<String, String> expectedLink : alternativePathLinks) {
-            Integer actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+            long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     expectedLink.getLeft(), expectedLink.getRight());
-            assertEquals(expectedAvailableBandwidth, actualBandwidth.intValue());
+            assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
     }
 
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) path correct$")
     public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
-            String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth)
+            String destinationSwitch, int destinationPort, int destinationVlan, long bandwidth)
             throws UnroutablePathException, InterruptedException, RecoverableException {
         Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId, sourceSwitch,
                 sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
@@ -154,8 +154,8 @@ public class FlowPathTest {
         assertEquals(expectedShortestPath, path);
     }
 
-    private int getBandwidth(int expectedBandwidth, String src_switch, String src_port) throws InterruptedException {
-        int actualBandwidth = getLinkBandwidth(src_switch, src_port);
+    private long getBandwidth(long expectedBandwidth, String src_switch, String src_port) throws InterruptedException {
+        long actualBandwidth = getLinkBandwidth(src_switch, src_port);
         if (actualBandwidth != expectedBandwidth) {
             TimeUnit.SECONDS.sleep(2);
             actualBandwidth = getLinkBandwidth(src_switch, src_port);

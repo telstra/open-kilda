@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.event;
 
-import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasProperty;
@@ -49,7 +48,10 @@ import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
 import org.mockito.Mockito;
 
-import java.util.LinkedList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class OFELinkBoltTest extends AbstractStormTest {
 
@@ -99,7 +101,9 @@ public class OFELinkBoltTest extends AbstractStormTest {
         DiscoveryLink testLink = new DiscoveryLink("sw1", 2, "sw2", 2, 0, -1, true);
 
         KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
-        boltState.put(STATE_ID_DISCOVERY, new LinkedList<DiscoveryLink>(singletonList(testLink)));
+        Map<String, List<DiscoveryLink>> links =
+                Collections.singletonMap(testLink.getSource().getDatapath(), Collections.singletonList(testLink));
+        boltState.put(STATE_ID_DISCOVERY, links);
         bolt.initState(boltState);
 
         // set the state to WAIT_SYNC
@@ -114,8 +118,15 @@ public class OFELinkBoltTest extends AbstractStormTest {
 
         // then
         @SuppressWarnings("unchecked")
-        LinkedList<DiscoveryLink> stateAfterSync = (LinkedList<DiscoveryLink>) boltState.get(STATE_ID_DISCOVERY);
-        assertThat(stateAfterSync, contains(
+        Map<String, List<DiscoveryLink>> stateAfterSync =
+                (Map<String, List<DiscoveryLink>>) boltState.get(STATE_ID_DISCOVERY);
+
+        List<DiscoveryLink> linksAfterSync = stateAfterSync.values()
+                .stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+
+        assertThat(linksAfterSync, contains(
                 allOf(hasProperty("source", hasProperty("datapath", is("sw1"))),
                         hasProperty("destination", hasProperty("datapath", is("sw2"))),
                         hasProperty("active", is(true)))));

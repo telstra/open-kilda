@@ -37,7 +37,7 @@ public class ConfigurationProviderTest {
 
         context.addConfigParam(module, "bootstrap-servers", TEST_BOOTSTRAP_SERVERS);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, module);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, module);
         KafkaProducerConfig kafkaConfig = provider.getConfiguration(KafkaProducerConfig.class);
 
         assertEquals(TEST_BOOTSTRAP_SERVERS, kafkaConfig.getBootstrapServers());
@@ -50,7 +50,7 @@ public class ConfigurationProviderTest {
 
         context.addConfigParam(module, "environment-naming-prefix", TEST_PREFIX);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, module);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, module);
         EnvironmentFloodlightConfig environmentConfig = provider.getConfiguration(EnvironmentFloodlightConfig.class);
 
         assertEquals(TEST_PREFIX, environmentConfig.getNamingPrefix());
@@ -63,7 +63,7 @@ public class ConfigurationProviderTest {
 
         context.addConfigParam(module, "environment-naming-prefix", TEST_PREFIX);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, module);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, module);
         KafkaConsumerConfig kafkaConsumerConfig = provider.getConfiguration(KafkaConsumerConfig.class);
 
         assertEquals(TEST_PREFIX + "_floodlight", kafkaConsumerConfig.getGroupId());

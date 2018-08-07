@@ -36,7 +36,7 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
-    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
+    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth) {
         return new MockedAvailableNetwork();
     }
 
@@ -57,7 +57,8 @@ public class PathComputerMock implements PathComputer {
         }
 
         @Override
-        public void addIslsOccupiedByFlow(String flowId) {
+        public void addIslsOccupiedByFlow(String flowId, boolean ignoreBandwidth, long flowBandwidth) {
+
         }
     }
 }

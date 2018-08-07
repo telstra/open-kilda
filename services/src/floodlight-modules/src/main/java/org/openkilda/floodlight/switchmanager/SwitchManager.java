@@ -208,7 +208,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         restApiService = context.getServiceImpl(IRestApiService.class);
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
 

@@ -46,13 +46,13 @@ def api_v1_network():
     :return: the switches and links
     """
 
-    query = 'MATCH (n) return n'
+    query = 'MATCH (n:switch) return n'
     topology = []
-    for record in neo4j_connect.data(query):
+    for record in neo4j_connect.run(query).data():
         record = record['n']
         relations = [
             rel['dst_switch']
-            for rel in neo4j_connect.match(record, rel_type='isl')]
+            for rel in neo4j_connect.match(nodes=[record], r_type='isl')]
         relations.sort()
         topology.append({
             'name': record['name'],
@@ -82,10 +82,10 @@ class Link(object):
 @login_required
 def api_v1_topology_nodes():
     edges = []
-    for record in neo4j_connect.data('MATCH (n) return n'):
+    for record in neo4j_connect.run('MATCH (n:switch) return n').data():
         source = record['n']
 
-        for rel in neo4j_connect.match(source, rel_type='isl'):
+        for rel in neo4j_connect.match(nodes=[source], r_type='isl'):
             dest = rel.end_node()
 
             s = Link()
@@ -133,7 +133,7 @@ def topology_network():
 def api_v1_topology_flows():
     try:
         query = "MATCH (a:switch)-[r:flow]->(b:switch) RETURN r"
-        result = neo4j_connect.data(query)
+        result = neo4j_connect.run(query).data()
         flows = [format_flow(raw['r']) for raw in result]
         return json.dumps(flows)
     except Exception as e:
@@ -147,7 +147,7 @@ def api_v1_topology_get_flow(flow_id):
         "MATCH (a:switch)-[r:flow]->(b:switch)\n"
         "WHERE r.flowid = {flow_id}\n"
         "RETURN r")
-    result = neo4j_connect.data(query, flow_id=flow_id)
+    result = neo4j_connect.run(query, flow_id=flow_id).data()
     if not result:
         return http_errors.NotFound(
                 'There is no flow with flow_id={}'.format(flow_id))
@@ -238,7 +238,7 @@ def api_v1_topology_links():
     """
     try:
         query = "MATCH (a:switch)-[r:isl]->(b:switch) RETURN r"
-        result = neo4j_connect.data(query)
+        result = neo4j_connect.run(query).data()
 
         links = []
         for link in result:
@@ -260,7 +260,7 @@ def api_v1_topology_switches():
     """
     try:
         query = "MATCH (n:switch) RETURN n"
-        result = neo4j_connect.data(query)
+        result = neo4j_connect.run(query).data()
 
         switches = []
         for sw in result:
@@ -282,7 +282,7 @@ def api_v1_topology_link_bandwidth(src_switch, src_port):
         "WHERE r.src_switch = '{}' AND r.src_port = {} "
         "RETURN r.available_bandwidth").format(src_switch, int(src_port))
 
-    return neo4j_connect.data(query)[0]['r.available_bandwidth']
+    return neo4j_connect.run(query).data()[0]['r.available_bandwidth']
 
 
 @application.route('/api/v1/topology/routes/src/<src_switch>/dst/<dst_switch>')
@@ -298,7 +298,7 @@ def api_v1_routes_between_nodes(src_switch, dst_switch):
         "RETURN links"
     ).format(src_switch=src_switch, depth=depth, dst_switch=dst_switch)
 
-    result = neo4j_connect.data(query)
+    result = neo4j_connect.run(query).data()
 
     paths = []
     for links in result:

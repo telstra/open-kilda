@@ -303,7 +303,7 @@ public class NeoDriver implements PathComputer {
     }
 
     @Override
-    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
+    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth) {
         return new AvailableNetwork(driver, ignoreBandwidth, requestedBandwidth);
     }
 }

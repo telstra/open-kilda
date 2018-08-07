@@ -66,7 +66,7 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
      */
     @Override
     public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        ConfigurationProvider provider = new ConfigurationProvider(moduleContext, this);
+        ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
         KafkaProducerConfig producerConfig = provider.getConfiguration(KafkaProducerConfig.class);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
 

@@ -20,11 +20,6 @@ spring.datasource.validationQuery: SELECT 1
 logging.config=classpath:logback.xml
 
 spring.mvc.throw-exception-if-no-handler-found=true
- 
-#Topology-Engine Base URL
-tpe.base.url={{ topology_engine_endpoint }}:{{ topology_engine_rest_port }}/api/v1
-#FLOW TOPOLOGY URL
-GET_TOPOLOGY_FLOWS=${tpe.base.url}/topology/flows
 
 #Northbound Base URL
 nb.base.url={{ northbound_endpoint }}:{{ northbound_rest_port }}/api/v1
@@ -38,7 +33,7 @@ GET_SWITCH_RULES=${GET_SWITCHES}/{switch_id}/rules
 GET_LINKS=${nb.base.url}/links
 GET_LINK_PROPS=${nb.base.url}/link/props
 UPDATE_FLOW=${GET_FLOW}/{flow_id}
-
+GET_FLOW_PATH=${GET_FLOW}/{flow_id}/path
 
 #OPEN TSDB Base URL
 opentsdb.base.url={{ opentsdb_hosts }}

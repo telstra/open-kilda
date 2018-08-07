@@ -256,7 +256,7 @@ public class ReplaceInstallFlowTest {
         // construct kafka message
         ConsumerRecord<String, String> record = new ConsumerRecord<>("", 0, 0, "", value);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, collector);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, collector);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
 
         // create parser instance

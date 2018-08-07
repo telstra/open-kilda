@@ -37,7 +37,7 @@ public abstract class AbstractCommandTest extends EasyMockSupport {
         moduleContext.addService(ConfigService.class, configService);
 
         commandContextFactory.init(moduleContext);
-        configService.init(new ConfigurationProvider(moduleContext, new KafkaMessageCollector()));
+        configService.init(ConfigurationProvider.of(moduleContext, new KafkaMessageCollector()));
     }
 
     @After

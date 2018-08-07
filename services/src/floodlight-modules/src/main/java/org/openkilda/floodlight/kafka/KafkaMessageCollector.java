@@ -97,7 +97,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
     @Override
     public void init(FloodlightModuleContext moduleContext) {
-        configService.init(new ConfigurationProvider(moduleContext, this));
+        configService.init(ConfigurationProvider.of(moduleContext, this));
         commandContextFactory.init(moduleContext);
         inputService.init(moduleContext);
     }
