@@ -67,6 +67,9 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
             case INTERNAL_ERROR:
                 status = HttpStatus.INTERNAL_SERVER_ERROR;
                 break;
+            case CREATION_FAILURE:
+                status = HttpStatus.NOT_FOUND;
+                break;
             default:
                 status = HttpStatus.INTERNAL_SERVER_ERROR;
                 break;
