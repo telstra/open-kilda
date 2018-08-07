@@ -177,12 +177,12 @@ public class DiscoveryManager {
     public boolean handleDiscovered(String srcSwitch, int srcPort, String dstSwitch, int dstPort) {
         boolean stateChanged = false;
         NetworkEndpoint node = new NetworkEndpoint(srcSwitch, srcPort);
-        Optional<DiscoveryLink> optionalLink = findBySourceEndpoint(node);
+        Optional<DiscoveryLink> matchedLink = findBySourceEndpoint(node);
 
-        if (!optionalLink.isPresent()) {
+        if (!matchedLink.isPresent()) {
             logger.warn("Ignore \"AVAIL\" request for {}: node not found", node);
         } else {
-            DiscoveryLink link = optionalLink.get();
+            DiscoveryLink link = matchedLink.get();
             if (!link.isActive() || link.isDestinationChanged(dstSwitch, dstPort)) {
                 // we've found newly discovered or moved/replugged isl
                 link.activate(new NetworkEndpoint(dstSwitch, dstPort));
@@ -219,21 +219,21 @@ public class DiscoveryManager {
     public boolean handleFailed(String switchId, int portId) {
         boolean stateChanged = false;
         NetworkEndpoint endpoint = new NetworkEndpoint(switchId, portId);
-        Optional<DiscoveryLink> link = findBySourceEndpoint(endpoint);
+        Optional<DiscoveryLink> matchedLink = findBySourceEndpoint(endpoint);
 
-        if (!link.isPresent()) {
+        if (!matchedLink.isPresent()) {
             logger.warn("Ignoring \"FAILED\" request. There is no link found from {}", endpoint);
         } else {
-            DiscoveryLink matchedLink = link.get();
-            if (matchedLink.isActive() && matchedLink.getConsecutiveFailure() == 0) {
+            DiscoveryLink link = matchedLink.get();
+            if (link.isActive() && link.getConsecutiveFailure() == 0) {
                 // This is the first failure for an ISL. That is a state change.
                 // IF this isn't an ISL and we receive a failure, that isn't a state change.
                 stateChanged = true;
                 logger.info("ISL IS DOWN (GOT RESPONSE): {}", link);
             }
-            matchedLink.renew();
-            matchedLink.fail();
-            matchedLink.deactivate();
+            link.renew();
+            link.fail();
+            link.deactivate();
         }
         return stateChanged;
     }
