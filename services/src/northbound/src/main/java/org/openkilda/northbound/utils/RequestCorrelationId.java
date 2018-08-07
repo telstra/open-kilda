@@ -31,6 +31,13 @@ public final class RequestCorrelationId {
         return Optional.ofNullable(ID.get()).orElse(DEFAULT_CORRELATION_ID);
     }
 
+    /**
+     * Creates an instance of {@link RequestCorrelationClosable} that is used for deleting the correlation id during
+     * closing a context.
+     *
+     * @param correlationId the request correlation id.
+     * @return the instance of {@link RequestCorrelationClosable}.
+     */
     public static RequestCorrelationClosable create(String correlationId) {
         ID.set(correlationId);
 
@@ -46,5 +53,8 @@ public final class RequestCorrelationId {
         public void close() {
             ID.remove();
         }
+    }
+
+    private RequestCorrelationId() {
     }
 }
