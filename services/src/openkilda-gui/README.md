@@ -11,7 +11,7 @@ This project holds the OPEN KILDA GUI service for Open Kilda Controller.
 #### Configuration
 
 * The **_openkilda-gui_** feature must be installed in OPEN KILDA.
-* The GUI listens on port 8010
+* The GUI listens on port 8010 if we run it using docker-compose and/or make commands
 	+ These values can be changed in ```src/main/resources/application.properties``` file:
 		``` server.port = 1010```
 		
