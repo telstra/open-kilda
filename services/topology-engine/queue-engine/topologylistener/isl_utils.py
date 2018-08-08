@@ -229,6 +229,7 @@ def update_status(tx, isl, mtime=True):
 
     db.log_query('ISL update status', q, p)
     cursor = tx.run(q, p)
+    cursor.evaluate()  # to fetch first record
 
     stats = cursor.stats()
     if stats['properties_set'] != expected_update_properties_count:

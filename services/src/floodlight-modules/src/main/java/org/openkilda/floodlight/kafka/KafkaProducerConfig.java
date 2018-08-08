@@ -24,6 +24,9 @@ import com.sabre.oss.conf4j.annotation.Key;
 import java.util.Properties;
 import javax.validation.constraints.Min;
 
+/**
+ * WARNING! Do not use '.' in option's keys. FL will not collect such option from config.
+ */
 @Configuration
 public interface KafkaProducerConfig extends KafkaFloodlightConfig {
     @Key("testing-mode")
