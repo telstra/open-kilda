@@ -197,27 +197,6 @@ services:
          - hbase.pendev
 
 
-#  tools:
-#    build:
-#      context: services
-#      dockerfile:  tools/Dockerfile
-#    image: "kilda/tools:${full_build_number:-latest}"
-#    command: sleep 10d
-#    depends_on:
-#      - zookeeper
-#      - hbase
-#      - storm-nimbus
-#      - storm-supervisor
-#    links:
-#      - zookeeper:zookeeper.pendev
-#      - hbase:hbase.pendev
-#      - storm-nimbus:nimbus.pendev
-#      - storm-supervisor:supervisor.pendev
-#    ports:
-#      - "22:8022"
-#    container_name: "hadoop-tools"
-
-
   storm-nimbus:
     container_name: storm-nimbus
     hostname: nimbus.pendev
