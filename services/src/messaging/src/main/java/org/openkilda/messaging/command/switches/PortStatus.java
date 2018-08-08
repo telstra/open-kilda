@@ -18,19 +18,4 @@ package org.openkilda.messaging.command.switches;
 public enum PortStatus {
     UP,
     DOWN;
-
-    /**
-     * Return PortStatus. 
-     * 
-     * @param status representing port status
-     * @return PortStatus if status matches, null otherwise
-     */
-    public static PortStatus getPortStatus(String status) {
-        if ("UP".equalsIgnoreCase(status)) {
-            return PortStatus.UP;
-        } else if ("DOWN".equalsIgnoreCase(status)) {
-            return PortStatus.DOWN;
-        }
-        return null;
-    }
 }
