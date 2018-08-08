@@ -268,7 +268,6 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public PortDto configurePort(String switchId,  int port, PortConfigurationPayload config) {
-        logger.info("status {}, speed {}", config.getStatus(), config.getSpeed());
         String correlationId = RequestCorrelationId.getId();
 
         PortConfigurationRequest request = new PortConfigurationRequest(switchId, 

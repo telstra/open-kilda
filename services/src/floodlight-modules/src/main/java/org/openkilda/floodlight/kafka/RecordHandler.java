@@ -128,7 +128,6 @@ class RecordHandler implements Runnable {
 
     private void handleCommand(CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
-        logger.info("Request Received {}, {}, {}", message, replyToTopic, replyDestination);
         CommandData data = message.getData();
         CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
