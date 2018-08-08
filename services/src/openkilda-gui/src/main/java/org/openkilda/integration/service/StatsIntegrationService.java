@@ -126,9 +126,10 @@ public class StatsIntegrationService {
         if (statsType.equals(StatsType.SWITCH_PORT)
                 && Metrics.PEN_SWITCH_STATE.getDisplayTag().equals(metric)) {
             query.setRate(false);
-        }
-        if(validateDownSample(paramDownSample, query)) {
-            query.setDownsample(paramDownSample);
+        } else {
+	        if(validateDownSample(paramDownSample, query)) {
+	            query.setDownsample(paramDownSample);
+	        }
         }
         query.setMetric(metric);
         query.setFilters(filters);
