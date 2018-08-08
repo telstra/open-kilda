@@ -11,13 +11,13 @@ This project holds the OPEN KILDA GUI service for Open Kilda Controller.
 #### Configuration
 
 * The **_openkilda-gui_** feature must be installed in OPEN KILDA.
-* The GUI listens on port 1010
+* The GUI listens on port 8010
 	+ These values can be changed in ```src/main/resources/application.properties``` file:
 		``` server.port = 1010```
 		
 * The base application context is ```/openkilda```
 	+ for example, to access the GUI on _localhost_, use
-    `http://localhost:1010/openkilda` 
+    `http://localhost:8010/openkilda` 
 	
 * In Base url as VM_IP address where controller will be deployed.
 	+ Default as localhost (127.0.0.1) :

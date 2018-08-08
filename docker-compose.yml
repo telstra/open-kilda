@@ -374,15 +374,13 @@ services:
 
 
   gui:
-    container_name: openkilda-gui
+    container_name: gui
     build:
       context: services/src/openkilda-gui
     ports:
-      - "1010:1010"
+      - "8010:1010"
     depends_on:
       northbound:
-        condition: service_started
-      topology-engine-rest:
         condition: service_started
       opentsdb:
         condition: service_started
