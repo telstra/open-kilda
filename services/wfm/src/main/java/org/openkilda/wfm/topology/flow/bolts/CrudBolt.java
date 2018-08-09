@@ -733,7 +733,7 @@ public class CrudBolt
                     ErrorType.UPDATE_FAILURE, "Could not update flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not update flow", "Path was not found");
+                    ErrorType.NOT_FOUND, "Could not update flow", "Path was not found");
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
