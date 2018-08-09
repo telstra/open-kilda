@@ -19,11 +19,9 @@ import org.openkilda.messaging.command.CommandData;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
+@Data
 public class PortConfigurationRequest extends CommandData {
 
     private static final long serialVersionUID = 7393431355263735216L;

@@ -35,6 +35,7 @@ public class PortConfigurationPayload implements Serializable {
     @JsonProperty("status")
     private PortStatus status;
 
+    // TODO This property is to support port speed up-down 
     @JsonProperty("speed")
     private long speed;
 
