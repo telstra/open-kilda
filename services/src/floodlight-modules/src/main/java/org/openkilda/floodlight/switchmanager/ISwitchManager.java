@@ -161,7 +161,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid switch id
      * @return OF flow stats entries
      */
-    List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid);
+    List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid) throws SwitchNotFoundException;
 
     /**
      * Returns list of installed meters
