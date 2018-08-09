@@ -617,7 +617,7 @@ public class CrudBolt
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.CREATION_FAILURE, "Could not create flow", e.getMessage());
+                    ErrorType.ALREADY_EXISTS, "Could not create flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
