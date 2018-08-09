@@ -17,12 +17,12 @@ package org.openkilda.northbound.dto.flows;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-@JsonSerialize
+@NoArgsConstructor
 public class UniFlowVerificationOutput {
 
     @JsonProperty("ping_success")
@@ -33,9 +33,6 @@ public class UniFlowVerificationOutput {
 
     @JsonProperty("latency")
     private long latency;
-
-    // To satisfy mapstruct
-    public UniFlowVerificationOutput() { }
 
     @Builder
     @JsonCreator

@@ -15,15 +15,16 @@
 
 package org.openkilda.northbound.dto.switches;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
-import lombok.experimental.NonFinal;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Value
-@NonFinal
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class RulesValidationResult {
 
     @JsonProperty("missing_rules")
@@ -34,14 +35,4 @@ public class RulesValidationResult {
 
     @JsonProperty("excess_rules")
     private List<Long> excessRules;
-
-    @JsonCreator
-    public RulesValidationResult(
-            @JsonProperty("missing_rules") List<Long> missingRules,
-            @JsonProperty("proper_rules") List<Long> properRules,
-            @JsonProperty("excess_rules") List<Long> excessRules) {
-        this.missingRules = missingRules;
-        this.properRules = properRules;
-        this.excessRules = excessRules;
-    }
 }

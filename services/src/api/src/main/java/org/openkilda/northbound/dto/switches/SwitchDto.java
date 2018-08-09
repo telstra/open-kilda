@@ -16,9 +16,13 @@
 package org.openkilda.northbound.dto.switches;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class SwitchDto {
 
     @JsonProperty("switch_id")
@@ -35,14 +39,4 @@ public class SwitchDto {
 
     @JsonProperty("state")
     private String state;
-
-    public SwitchDto(@JsonProperty("switch_id") String switchId, @JsonProperty("address") String address,
-                     @JsonProperty("hostname") String hostname, @JsonProperty("description") String description,
-                     @JsonProperty("state") String state) {
-        this.switchId = switchId;
-        this.address = address;
-        this.hostname = hostname;
-        this.description = description;
-        this.state = state;
-    }
 }

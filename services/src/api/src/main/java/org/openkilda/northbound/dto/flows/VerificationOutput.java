@@ -19,8 +19,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class VerificationOutput {
     @JsonProperty("flow_id")
     private String flowId;
@@ -30,9 +32,6 @@ public class VerificationOutput {
 
     @JsonProperty("reverse")
     private UniFlowVerificationOutput reverse;
-
-    // To satisfy mapstruct
-    public VerificationOutput() { }
 
     @Builder
     @JsonCreator
