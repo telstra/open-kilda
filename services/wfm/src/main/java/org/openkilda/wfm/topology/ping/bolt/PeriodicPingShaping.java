@@ -56,7 +56,7 @@ public class PeriodicPingShaping extends Abstract {
 
         if (FlowFetcher.BOLT_ID.equals(source)) {
             handlePing(input);
-        } else if (MonotonicTick.BOLT_ID.equals(source)) {
+        } else if (TickDeduplicator.BOLT_ID.equals(source)) {
             handleMonotonicTick(input);
         } else {
             unhandledInput(input);

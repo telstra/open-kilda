@@ -68,7 +68,7 @@ public class FailReporter extends Abstract {
     protected void handleInput(Tuple input) throws AbstractException {
         String component = input.getSourceComponent();
 
-        if (MonotonicTick.BOLT_ID.equals(component)) {
+        if (TickDeduplicator.BOLT_ID.equals(component)) {
             handleTick(input);
         } else if (FlowFetcher.BOLT_ID.equals(component)) {
             handleCacheExpiration(input);

@@ -57,7 +57,7 @@ public class GroupCollector extends Abstract {
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         String component = input.getSourceComponent();
-        if (MonotonicTick.BOLT_ID.equals(component)) {
+        if (TickDeduplicator.BOLT_ID.equals(component)) {
             expire(input);
         } else if (OnDemandResultManager.BOLT_ID.equals(component)) {
             collect(input);

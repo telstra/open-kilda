@@ -69,7 +69,7 @@ public class TimeoutManager extends Abstract {
 
         if (PingRouter.BOLT_ID.equals(component)) {
             handleRouter(input);
-        } else if (MonotonicTick.BOLT_ID.equals(component)) {
+        } else if (TickDeduplicator.BOLT_ID.equals(component)) {
             handleTimeTick(input);
         } else {
             unhandledInput(input);

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.ping.bolt;
 
 public enum ComponentId {
     MONOTONIC_TICK("monotonic.tick"),
+    TICK_DEDUPLICATOR("deduplicator.tick"),
 
     INPUT("input"),
     INPUT_DECODER("input.decoder"),

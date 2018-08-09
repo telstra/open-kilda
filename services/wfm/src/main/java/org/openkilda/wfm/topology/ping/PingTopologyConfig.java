@@ -27,6 +27,10 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
     @IgnoreKey
     PingConfig getPingConfig();
 
+    default int getScaleFactor() {
+        return getPingConfig().getScaleFactor();
+    }
+
     default int getPingInterval() {
         return getPingConfig().getPingInterval();
     }
@@ -66,6 +70,10 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
     @Configuration
     @Key("flow.ping")
     interface PingConfig {
+        @Key("scale-factor")
+        @Default("2")
+        int getScaleFactor();
+
         @Key("interval")
         @Default("10")
         int getPingInterval();

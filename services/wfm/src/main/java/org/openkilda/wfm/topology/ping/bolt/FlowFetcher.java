@@ -68,7 +68,7 @@ public class FlowFetcher extends Abstract {
     protected void handleInput(Tuple input) throws AbstractException {
         String component = input.getSourceComponent();
 
-        if (MonotonicTick.BOLT_ID.equals(component)) {
+        if (TickDeduplicator.BOLT_ID.equals(component)) {
             handlePeriodicRequest(input);
         } else if (InputRouter.BOLT_ID.equals(component)) {
             handleOnDemandRequest(input);
