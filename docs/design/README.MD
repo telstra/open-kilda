@@ -4,6 +4,8 @@ This document describes OpenKilda design including main use cases, components de
 
 Overall components [interaction](https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/northbound-and-flow-topology.svg) among Northbound, Kafka, Flow topology, Cache topology and Topology engine.
 
+[Kilda Domain Model](domain-model/)
+
 ## Flow operations
 1. [Flow Management design document](https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud.md).
 The document describes main use cases for the flow operations create, delete, read, update and ping:
