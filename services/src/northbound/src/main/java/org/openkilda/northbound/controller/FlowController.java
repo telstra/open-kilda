@@ -114,7 +114,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow", response = FlowPayload.class)
     @RequestMapping(
-            value = "/flows/{flow-id}",
+            value = "/flows/{flow-id:.+}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> getFlow(@PathVariable(name = "flow-id") String flowId) {
@@ -131,7 +131,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Deletes flow", response = FlowPayload.class)
     @RequestMapping(
-            value = "/flows/{flow-id}",
+            value = "/flows/{flow-id:.+}",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> deleteFlow(@PathVariable(name = "flow-id") String flowId) {
@@ -149,7 +149,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Updates flow", response = FlowPayload.class)
     @RequestMapping(
-            value = "/flows/{flow-id}",
+            value = "/flows/{flow-id:.+}",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -213,7 +213,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
     @RequestMapping(
-            value = "/flows/status/{flow-id}",
+            value = "/flows/status/{flow-id:.+}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowIdStatusPayload> statusFlow(@PathVariable(name = "flow-id") String flowId) {
