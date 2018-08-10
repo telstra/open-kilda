@@ -1,0 +1,53 @@
+@startuml
+
+title Storm decouple proposal
+
+box "Transport Layer" #LightBlue
+    control Kafka
+    participant Spout
+    participant "Bolt A:IBolt" as BoltA
+    participant Translator
+    participant "Reply:IReply" as Reply
+    participant OutputCollectorBase
+    participant "Bolt B:IBolt" as BoltB
+end box
+
+
+box "Service Layer" #LightGreen
+    participant IReply
+    participant Service
+end box
+
+note over BoltA, Reply
+Translator and IRetry can be implemented
+as part of BoltA
+end note
+
+Kafka <- Spout
+Kafka --> Spout
+
+Spout -> BoltA : Tuple
+activate BoltA
+BoltA -> Translator : Tuple
+activate Translator
+Translator -> Translator : Transform Tuple \nto DTO\nor Domain Object
+BoltA <-- Translator : DTO
+deactivate Translator
+BoltA -> Service : DTO, IReply
+activate Service
+Service -> Service: Process DTO
+alt in case we neet to send messages to another Bolt
+Service -> IReply : return Result of process
+activate Reply
+IReply -> Reply
+Reply -> Reply : Transform Domain \nObject or DTO \nto Tuple
+OutputCollectorBase <- Reply : Emit Tuple
+OutputCollectorBase -> BoltB
+Reply --> Service
+deactivate Reply
+end
+Service --> BoltA
+deactivate Service
+deactivate BoltA
+
+@enduml
