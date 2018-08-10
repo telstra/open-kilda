@@ -706,18 +706,17 @@ class RecordHandler implements Runnable {
             final Destination replyDestination) {
         PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
         
+        logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
+                request.getPortNumber());
         try {
-            logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
-                    request.getPortNumber());
             ISwitchManager switchManager = context.getSwitchManager();
             PortConfigurationResponse response = switchManager.configurePort(request);
 
             InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
                     message.getCorrelationId());
             context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
-        } catch (Exception e) {
-            logger.error("Port configuration request failed. Switch '{}', Port '{}'", request.getSwitchId(), 
-                    request.getPortNumber());
+        } catch (SwitchOperationException e) {
+            logger.error("Port configuration request failed. " + e.getMessage(), e);
             ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), 
                     "Port configuration request failed");
             ErrorMessage error = new ErrorMessage(errorData,
