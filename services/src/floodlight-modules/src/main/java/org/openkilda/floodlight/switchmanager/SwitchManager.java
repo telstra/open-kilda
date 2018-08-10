@@ -1493,11 +1493,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         
         OFPortDesc ofPortDesc = getPort(sw, request.getPortNumber());
         
-        boolean result = true;
+        boolean result = false;
         if (request.getStatus() != null) {
             result = updatePortStatus(sw, ofPortDesc, request.getStatus());
         }
 
+        // TODO Update port speed code
         return new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber(), result);
     }
     
