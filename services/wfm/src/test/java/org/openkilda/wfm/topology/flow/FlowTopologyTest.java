@@ -238,7 +238,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(errorMessage);
 
         ErrorData errorData = errorMessage.getData();
-        assertEquals(ErrorType.CREATION_FAILURE, errorData.getErrorType());
+        assertEquals(ErrorType.ALREADY_EXISTS, errorData.getErrorType());
     }
 
     @Test
