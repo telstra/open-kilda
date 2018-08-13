@@ -11,9 +11,7 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
 import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Ignore
 
-@Ignore
 class BandwidthSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
@@ -50,24 +48,27 @@ class BandwidthSpec extends BaseSpecification {
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
 
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"
-        def originalIsls = pathHelper.getInvolvedIsls(currentPath)
-        alternativePaths.each { altPath ->
-            def uniqueIsl = (pathHelper.getInvolvedIsls(altPath) - originalIsls).first()
+        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
+        def changedIsls = alternativePaths.collect { altPath ->
+            def uniqueIsl = pathHelper.getInvolvedIsls(altPath).findAll { !currentIsls.contains(it) }.first()
             db.updateLinkProperty(uniqueIsl, "max_bandwidth", flow.maximumBandwidth - 1)
             db.updateLinkProperty(islUtils.reverseIsl(uniqueIsl), "max_bandwidth", flow.maximumBandwidth - 1)
+            db.updateLinkProperty(uniqueIsl, "available_bandwidth", flow.maximumBandwidth - 1)
+            db.updateLinkProperty(islUtils.reverseIsl(uniqueIsl), "available_bandwidth", flow.maximumBandwidth - 1)
+            uniqueIsl
         }
 
         and: "Init a reroute to a more preferable path"
         def rerouteResponse = northboundService.rerouteFlow(flow.id)
 
-        then: "Flow is NOT rerouted"
+        then: "Flow is NOT rerouted because of not enough bandwidth on alternative paths"
         !rerouteResponse.rerouted
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == currentPath
 
         and: "Remove flow"
         northboundService.deleteFlow(flow.id)
+        changedIsls.each { db.revertIslBandwidth(it) }
 
-        //TODO: revert max_bandwidth to be equal to 'speed' (match ()-[i:isl]->() set i.max_bandwidth=i.speed return i).
         //TODO: Revert costs (match ()-[i:isl]->() set i.cost=700)
     }
 }

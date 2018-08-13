@@ -38,18 +38,41 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
     }
 
     @Override
-    public void destroy() throws Exception {
+    public void destroy() {
         if (neo != null) {
             neo.close();
         }
     }
 
+    /**
+     * Updates certain property on a certain ISL.
+     *
+     * @return true if at least 1 ISL was affected
+     */
     @Override
     public boolean updateLinkProperty(Isl isl, String property, Object value) {
         String query = "MATCH ()-[link:isl {src_port:$srcPort, dst_port:$dstPort, src_switch:$srcSwitch, "
                 + "dst_switch:$dstSwitch}]->() SET link += {props}";
         Map<String, Object> params = getParams(isl);
         params.put("props", ImmutableMap.of(property, value));
+        StatementResult result;
+        try (Session session = neo.session()) {
+            result = session.run(query, params);
+        }
+        return result.summary().counters().propertiesSet() > 0;
+    }
+
+    /**
+     * Set ISL's max bandwidth to be equal to its speed (the default situation).
+     *
+     * @param isl ISL to be changed
+     * @return true if at least 1 ISL was affected
+     */
+    @Override
+    public boolean revertIslBandwidth(Isl isl) {
+        String query = "MATCH ()-[link:isl {src_port:$srcPort, dst_port:$dstPort, src_switch:$srcSwitch, "
+                + "dst_switch:$dstSwitch}]->() SET link.max_bandwidth=link.speed, link.available_bandwidth=link.speed";
+        Map<String, Object> params = getParams(isl);
         StatementResult result;
         try (Session session = neo.session()) {
             result = session.run(query, params);

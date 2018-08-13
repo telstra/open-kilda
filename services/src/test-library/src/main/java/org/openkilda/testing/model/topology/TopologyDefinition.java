@@ -27,7 +27,9 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.google.common.base.Preconditions;
-import lombok.EqualsAndHashCode;
+import com.google.common.collect.ImmutableRangeSet;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.NonFinal;
@@ -147,7 +149,6 @@ public class TopologyDefinition {
         private Status status;
         @NonNull
         private List<OutPort> outPorts;
-
         private Integer maxPorts;
 
         /**
@@ -193,7 +194,7 @@ public class TopologyDefinition {
 
         private int port;
         @NonNull
-        private List<Integer> vlanRange;
+        private RangeSet<Integer> vlanRange;
 
         @JsonCreator
         public static OutPort factory(
@@ -203,13 +204,13 @@ public class TopologyDefinition {
             return new OutPort(port, parseVlanRange(vlanRange));
         }
 
-        private static List<Integer> parseVlanRange(String vlanRangeAsStr) {
+        private static RangeSet<Integer> parseVlanRange(String vlanRangeAsStr) {
             String[] splitRanges = vlanRangeAsStr.split(",");
             if (splitRanges.length == 0) {
                 throw new IllegalArgumentException("Vlan range must be non-empty.");
             }
 
-            List<Integer> vlans = new ArrayList<>();
+            ImmutableRangeSet.Builder<Integer> resultVlanRange = ImmutableRangeSet.builder();
             for (String range : splitRanges) {
                 String[] boundaries = range.split("\\.\\.");
                 if (boundaries.length == 0 || boundaries.length > 2) {
@@ -217,22 +218,20 @@ public class TopologyDefinition {
                 }
 
                 int lowerBound = Integer.parseInt(boundaries[0].trim());
-                int upperBound = Integer.parseInt(boundaries[1].trim());
-                if (lowerBound > upperBound) {
-                    throw new IllegalArgumentException("Range " + range
-                            + " is not valid. Lower bound cannot be bigger than upper bound");
-                }
-                for (int i = lowerBound; i <= upperBound; i++) {
-                    vlans.add(i);
+                if (boundaries.length == 2) {
+                    int upperBound = Integer.parseInt(boundaries[1].trim());
+                    resultVlanRange.add(Range.closed(lowerBound, upperBound));
+                } else {
+                    resultVlanRange.add(Range.closed(lowerBound, lowerBound));
                 }
             }
-            return vlans;
+
+            return resultVlanRange.build();
         }
     }
 
     @Value
     @NonFinal
-    @EqualsAndHashCode
     public static class Isl {
 
         @NonNull
