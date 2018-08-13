@@ -271,7 +271,7 @@ public class SwitchServiceImpl implements SwitchService {
         String correlationId = RequestCorrelationId.getId();
 
         PortConfigurationRequest request = new PortConfigurationRequest(switchId, 
-                port, config.getStatus(), config.getSpeed());
+                port, config.getStatus());
         CommandWithReplyToMessage updateStatusCommand = new CommandWithReplyToMessage(
                 request, System.currentTimeMillis(), correlationId, 
                 Destination.CONTROLLER, northboundTopic);
