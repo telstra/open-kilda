@@ -4,6 +4,7 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
     <suppress files="src/main/java/org/openkilda/simulator/bolts/SimulatorCommandBolt.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/simulator/bolts/SimulatorCommandBolt.java" lines="10" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/simulator/bolts/SimulatorCommandBolt.java" lines="11" checks="CustomImportOrder"/>
@@ -626,7 +627,6 @@
     <suppress files="src/test/java/org/openkilda/simulator/classes/ISwitchImplTest.java" lines="48" checks="Indentation"/>
     <suppress files="src/test/java/org/openkilda/simulator/classes/ISwitchImplTest.java" lines="49" checks="Indentation"/>
     <suppress files="src/test/java/org/openkilda/simulator/classes/ISwitchImplTest.java" lines="50" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/simulator/classes/ISwitchImplTest.java" lines="73" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/simulator/classes/ISwitchImplTest.java" lines="97" checks="Indentation"/>
     <suppress files="src/test/java/org/openkilda/simulator/classes/ISwitchImplTest.java" lines="98" checks="Indentation"/>
     <suppress files="src/test/java/org/openkilda/simulator/classes/ISwitchImplTest.java" lines="100" checks="Indentation"/>
@@ -653,7 +653,6 @@
     <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryNodeTest.java" lines="7" checks="AvoidStarImport"/>
     <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryNodeTest.java" lines="11" checks="SummaryJavadoc"/>
     <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryNodeTest.java" lines="37" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/wfm/isl/DiscoveryNodeTest.java" lines="80" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/wfm/Neo4jFixture.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/wfm/Neo4jFixture.java" lines="12" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/wfm/Neo4jFixture.java" lines="12" checks="MemberName"/>
@@ -670,13 +669,10 @@
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="116" checks="LocalVariableName"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="118" checks="LocalVariableName"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="120" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="122" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="122" checks="LocalVariableName"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="124" checks="LocalVariableName"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="125" checks="LocalVariableName"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="192" checks="LocalVariableName"/>
-    <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="194" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="203" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="203" checks="LocalVariableName"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="247" checks="NoWhitespaceBefore"/>
     <suppress files="src/test/java/org/openkilda/wfm/OFEventWfmTest.java" lines="253" checks="NoWhitespaceBefore"/>
@@ -742,16 +738,6 @@
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltFloodTest.java" lines="101" checks="NeedBraces"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="56" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/event/OFELinkBoltTest.java" lines="31" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="259" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="325" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="421" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="457" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="587" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="645" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="674" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="734" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="755" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/flow/FlowTopologyTest.java" lines="775" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/PathComputerAuth.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/validation/FlowValidatorTest.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/flow/validation/FlowValidatorTest.java" lines="5" checks="CustomImportOrder"/>
