@@ -1498,7 +1498,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             result = updatePortStatus(sw, ofPortDesc, request.getStatus());
         }
 
-        // TODO Update port speed code
         return new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber(), result);
     }
     
