@@ -17,7 +17,7 @@ build-base:
 	docker build -t kilda/opentsdb:latest services/opentsdb
 	docker build -t kilda/logstash:latest services/logstash
 
-build-latest: build-base compile
+build-latest: update-props build-base compile
 	docker-compose build
 
 run-dev:
@@ -61,7 +61,7 @@ compile:
 	$(MAKE) -C services/mininet
 
 .PHONY: unit unit-java-common unit-java-storm unit-py-te
-unit: unit-java-common unit-java-storm unit-py-te
+unit: update-props unit-java-common unit-java-storm unit-py-te
 unit-java-common: build-base
 	$(MAKE) -C services/src
 unit-java-storm: avoid-port-conflicts
