@@ -35,17 +35,12 @@ public class PortConfigurationRequest extends CommandData {
     @JsonProperty("status")
     private PortStatus status;
 
-    @JsonProperty("speed")
-    private long speed;
-
     public PortConfigurationRequest(
             @JsonProperty("switch_id") String switchId, 
             @JsonProperty("port_no") int portNumber, 
-            @JsonProperty("status") PortStatus status, 
-            @JsonProperty("speed") long speed) {
+            @JsonProperty("status") PortStatus status) {
         this.switchId = switchId;
         this.portNumber = portNumber;
         this.status = status;
-        this.speed = speed;
     }
 }
