@@ -15,16 +15,11 @@
 
 FROM kilda/base-ubuntu
 
-RUN    apt update \
-    && apt install -y --no-install-recommends \
-        gpg-agent \
-    && wget -O - https://debian.neo4j.org/neotechnology.gpg.key | apt-key add - \
+RUN    wget -O - https://debian.neo4j.org/neotechnology.gpg.key | apt-key add - \
     && echo 'deb https://debian.neo4j.org/repo stable/' | tee /etc/apt/sources.list.d/neo4j.list \
-    && apt update \
+    && apt-get update \
     && apt install -y --no-install-recommends \
         neo4j=1:3.3.3 \
-    && apt purge -y \
-        gpg-agent \
     && apt autoremove -y \
     && pip install \
         cycli \
