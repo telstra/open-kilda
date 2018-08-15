@@ -2,12 +2,7 @@
 default: build-latest run-dev
 
 build-base:
-	base/hacks/kilda-bins.download.sh
 	base/hacks/shorm.requirements.download.sh
-	rsync -au kilda-bins/zookeeper* services/zookeeper/tar/
-	rsync -au kilda-bins/hbase* services/hbase/tar/
-	rsync -au kilda-bins/kafka* services/kafka/tar/
-	rsync -au kilda-bins/apache-storm* services/storm/tar/
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 	docker build -t kilda/zookeeper:latest services/zookeeper
 	docker build -t kilda/kafka:latest services/kafka
