@@ -17,7 +17,6 @@ import collections
 import logging
 import os
 import pprint
-import socket
 
 import py2neo
 
@@ -28,7 +27,7 @@ log = logging.getLogger(__name__)
 
 
 def create_p2n_driver():
-    graph = py2neo.Graph("http://{}:{}@{}:7474/db/data/".format(
+    graph = py2neo.Graph("bolt://{}:{}@{}:7687".format(
         os.environ.get('neo4juser') or config.get('neo4j', 'user'),
         os.environ.get('neo4jpass') or config.get('neo4j', 'pass'),
         os.environ.get('neo4jhost') or config.get('neo4j', 'host')))
@@ -57,7 +56,7 @@ def locate_changes(target, props):
 
 
 def neo_id(db_object):
-    return py2neo.remote(db_object)._id
+    return db_object.identity
 
 
 def format_set_fields(payload, field_prefix=''):
@@ -125,20 +124,3 @@ class ResponseIterator(collections.Iterator):
 
     def __iter__(self):
         return self
-
-
-# neo4j monkey patching staff
-
-dummy = object()
-
-
-def create_connection(address, timeout=dummy, source_address=None):
-    if timeout is dummy:
-        timeout = config.NEO4J_SOCKET_TIMEOUT
-    return socket.create_connection(
-        address, timeout, source_address=source_address)
-
-
-# Remove endless hang after Neo4j disconnect
-import py2neo.packages.neo4j.v1.bolt
-py2neo.packages.neo4j.v1.bolt.create_connection = create_connection

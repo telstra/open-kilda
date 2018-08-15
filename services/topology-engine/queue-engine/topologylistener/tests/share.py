@@ -13,12 +13,16 @@
 #   limitations under the License.
 #
 
+import functools
 import itertools
+import json
 import logging
+import os
 import sys
 import unittest
 import uuid
 
+from topologylistener import db
 from topologylistener import flow_utils
 from topologylistener import message_utils
 from topologylistener import messageclasses
@@ -31,10 +35,16 @@ dpid_protected_bits = 0xffffff0000000000
 dpid_test_marker = 0xfffe000000000000
 dpid_protected_bits = 0xffffff0000000000
 
+cookie_test_data_flag = 0x0010000000000000
 
-def exec_isl_discovery(isl, **fields):
+
+def feed_isl_discovery(isl, **fields):
     payload = isl_info_payload(isl, **fields)
-    return messageclasses.MessageItem(command(payload)).handle()
+    return feed_message(command(payload))
+
+
+def feed_message(message):
+    return messageclasses.MessageItem(message).handle()
 
 
 def link_props_request(link_props):
@@ -60,6 +70,13 @@ def link_props_drop_payload(request):
     return {
         'lookup_mask': request,
         'clazz': messageclasses.CD_LINK_PROPS_DROP}
+
+
+def feature_toggle_request(**fields):
+    payload = dict(fields)
+    payload['clazz'] = (
+        'org.openkilda.messaging.command.system.FeatureToggleRequest')
+    return payload
 
 
 def isl_info_payload(isl, **fields):
@@ -107,6 +124,7 @@ def make_datapath_id(number):
 
 
 def clean_neo4j_test_data(tx):
+    drop_db_flows(tx)
     drop_db_isls(tx)
     drop_db_switches(tx)
     drop_db_link_props(tx)
@@ -144,6 +162,33 @@ def drop_db_link_props(tx):
         tx.delete(node)
 
 
+def drop_db_flows(tx):
+    q_lookup = 'MATCH (:switch)-[a:flow]->(:switch) RETURN a'
+    q_delete = 'MATCH (:switch)-[a:flow]->(:switch) WHERE id(a)=$id DELETE a'
+    batch = (x['a'] for x in tx.run(q_lookup))
+    for relation in batch:
+        cookie = relation['cookie']
+        if cookie is None:
+            continue
+        try:
+            cookie = int(cookie)
+            if not (cookie & cookie_test_data_flag):
+                continue
+        except ValueError:
+            continue
+
+        drop_db_flow_segments(tx, relation['flowid'])
+        tx.run(q_delete, {'id': db.neo_id(relation)})
+
+
+def drop_db_flow_segments(tx, flow_id):
+    q = (
+        'MATCH (:switch)-[fs:flow_segment]->(:switch)\n'
+        'WHERE fs.flowid=$flow_id\n'
+        'DELETE fs')
+    tx.run(q, {'flow_id': flow_id})
+
+
 def is_test_dpid(dpid):
     dpid = dpid_as_long(dpid)
     return dpid & dpid_protected_bits == dpid_test_marker
@@ -172,6 +217,12 @@ class Environment(object):
 
         self.monkey_patch()
 
+    def kafka_producer_backlog(self):
+        return tuple(self.kafka_producer_stub.backlog)
+
+    def reset_kafka_producer(self):
+        self.kafka_producer_stub.backlog[:] = []
+
     def init_logging(self):
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
@@ -193,6 +244,8 @@ class Environment(object):
 
 
 class AbstractTest(unittest.TestCase):
+    path = functools.partial(os.path.join, os.path.dirname(__file__))
+
     def setUp(self):
         self.log_separator()
         self.drop_persistent_data()
@@ -204,6 +257,7 @@ class AbstractTest(unittest.TestCase):
             '', separator,
             '{} Run test {}'.format(prefix, self.id()),
             separator))
+        sys.stdout.flush()
         logging.info(message)
 
     def drop_persistent_data(self):
@@ -217,6 +271,10 @@ class AbstractTest(unittest.TestCase):
 
     def open_neo4j_session(self):
         return env.neo4j_connect.begin()
+
+    def load_data(self, name):
+        with open(self.path('data', name), 'rt') as stream:
+            return json.load(stream)
 
 
 class KafkaProducerStub(object):

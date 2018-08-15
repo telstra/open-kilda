@@ -373,10 +373,30 @@ services:
          - opentsdb.pendev
 
 
+  gui:
+    container_name: gui
+    build:
+      context: services/src/openkilda-gui
+    ports:
+      - "8010:1010"
+    depends_on:
+      northbound:
+        condition: service_started
+      opentsdb:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+         - openkilda-gui.pendev
+
+
   elasticsearch:
     container_name: elasticsearch
     image: elasticsearch:5.6.5
     hostname: elasticsearch.pendev
+    ports:
+      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9300:9300"
     networks:
       default:
         aliases:

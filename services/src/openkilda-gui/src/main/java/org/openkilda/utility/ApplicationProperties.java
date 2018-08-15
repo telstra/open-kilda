@@ -22,9 +22,6 @@ public class ApplicationProperties {
     @Value("${GET_SWITCH_RULES}")
     private String switchRules;
 
-    @Value("${tpe.base.url}")
-    private String tpeBaseUrl;
-
     @Value("${GET_LINKS}")
     private String links;
 
@@ -36,9 +33,6 @@ public class ApplicationProperties {
 
     @Value("${GET_FLOW}")
     private String flows;
-
-    @Value("${GET_TOPOLOGY_FLOWS}")
-    private String topologyFlows;
 
     @Value("${GET_PATH_FLOW}")
     private String pathFlow;
@@ -69,13 +63,12 @@ public class ApplicationProperties {
     
     @Value("${UPDATE_FLOW}")
     private String updateFlow;
+    
+    @Value("${GET_FLOW_PATH}")
+    private String flowPath;
 
     public String getSwitches() {
         return switches;
-    }
-
-    public String getTpeBaseUrl() {
-        return tpeBaseUrl;
     }
 
     public String getLinks() {
@@ -92,10 +85,6 @@ public class ApplicationProperties {
 
     public String getFlows() {
         return flows;
-    }
-
-    public String getTopologyFlows() {
-        return topologyFlows;
     }
 
     public String getPathFlow() {
@@ -142,4 +131,7 @@ public class ApplicationProperties {
 		return updateFlow;
 	}
 
+    public String getFlowPath() {
+        return flowPath;
+    }
 }

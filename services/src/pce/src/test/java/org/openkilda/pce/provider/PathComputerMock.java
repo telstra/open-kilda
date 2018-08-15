@@ -84,11 +84,11 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
-    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
+    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth) {
         return null;
     }
 
-    private PathInfoData path(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, int bandwidth) {
+    private PathInfoData path(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, long bandwidth) {
         System.out.println("Get Path By SimpleSwitch Instances " + bandwidth + ": " + srcSwitch + " - " + dstSwitch);
 
         List<PathNode> nodes = new ArrayList<>();
@@ -163,7 +163,7 @@ public class PathComputerMock implements PathComputer {
         return this;
     }
 
-    private void updatePathBandwidth(PathInfoData path, int bandwidth, LinkedList<IslInfoData> islInfoDataLinkedList) {
+    private void updatePathBandwidth(PathInfoData path, long bandwidth, LinkedList<IslInfoData> islInfoDataLinkedList) {
         System.out.println("Update Path Bandwidth " + bandwidth + ": " + path);
         islInfoDataLinkedList.forEach(isl -> isl.setAvailableBandwidth(isl.getAvailableBandwidth() - bandwidth));
     }

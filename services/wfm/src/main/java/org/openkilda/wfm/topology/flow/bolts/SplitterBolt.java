@@ -170,7 +170,7 @@ public class SplitterBolt extends BaseRichBolt {
                 outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
 
             } else if (data instanceof FlowRerouteRequest) {
-                String flowId = ((FlowRerouteRequest) data).getPayload().getFlowId();
+                String flowId = ((FlowRerouteRequest) data).getFlowId();
 
                 logger.info("Flow {} reroute message: values={}", flowId, values);
 

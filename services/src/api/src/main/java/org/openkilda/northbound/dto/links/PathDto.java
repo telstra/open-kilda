@@ -17,12 +17,14 @@ package org.openkilda.northbound.dto.links;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@JsonSerialize
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Value
 public class PathDto {
 
     @JsonProperty("switch_id")
@@ -36,12 +38,4 @@ public class PathDto {
 
     @JsonProperty("segment_latency")
     private Long segLatency;
-
-    public PathDto(@JsonProperty("switch_id") String switchId, @JsonProperty("port_no") int portNo,
-                   @JsonProperty("seq_id") int seqId, @JsonProperty("segment_latency") Long segLatency) {
-        this.switchId = switchId;
-        this.portNo = portNo;
-        this.seqId = seqId;
-        this.segLatency = segLatency;
-    }
 }

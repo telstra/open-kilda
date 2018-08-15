@@ -37,6 +37,8 @@ import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
+import org.neo4j.driver.v1.Value;
+import org.neo4j.driver.v1.Values;
 import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.TransientException;
 import org.slf4j.Logger;
@@ -176,18 +178,19 @@ public class NeoDriver implements PathComputer {
 
     @Override
     public List<Flow> getFlows(String flowId) {
-        String where = "WHERE f.flowid='" + flowId + "' ";
-        return loadFlows(where);
+        String where = "WHERE f.flowid= $flow_id ";
+        Value parameters = Values.parameters("flow_id", flowId);
+        return loadFlows(where, parameters);
     }
 
     @Override
     public List<Flow> getAllFlows() {
         String noWhere = " ";
-        return loadFlows(noWhere);
+        return loadFlows(noWhere, null);
     }
 
 
-    private List<Flow> loadFlows(String whereClause) {
+    private List<Flow> loadFlows(String whereClause, Value parameters) {
         String q =
                 "MATCH (:switch)-[f:flow]->(:switch) "
                         + whereClause
@@ -210,7 +213,7 @@ public class NeoDriver implements PathComputer {
         logger.debug("Executing getFlows Query: {}", q);
 
         try (Session session = driver.session(AccessMode.READ)) {
-            StatementResult queryResults = session.run(q);
+            StatementResult queryResults = session.run(q, parameters);
             List<Flow> results = new ArrayList<>();
             for (Record record : queryResults.list()) {
                 FlowAdapter adapter = new FlowAdapter(record);
@@ -312,7 +315,7 @@ public class NeoDriver implements PathComputer {
     }
 
     @Override
-    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, int requestedBandwidth) {
+    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth) {
         return new AvailableNetwork(driver, ignoreBandwidth, requestedBandwidth);
     }
 }

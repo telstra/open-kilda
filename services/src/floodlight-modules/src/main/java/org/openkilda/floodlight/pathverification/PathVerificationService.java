@@ -137,7 +137,7 @@ public class PathVerificationService implements IFloodlightModule, IOFMessageLis
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.debug("main pathverification service: " + this);
-        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
 

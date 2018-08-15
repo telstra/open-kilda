@@ -266,7 +266,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         CommandMessage message = objectMapper.readValue(record.value(), CommandMessage.class);
         Assert.assertNotNull(message);
         FlowRerouteRequest command = (FlowRerouteRequest) message.getData();
-        Assert.assertTrue(command.getPayload().getFlowId().equals(flowId));
+        Assert.assertEquals(command.getFlowId(), flowId);
     }
 
     private static <T extends Message> void sendMessage(T message, String topic) throws IOException {

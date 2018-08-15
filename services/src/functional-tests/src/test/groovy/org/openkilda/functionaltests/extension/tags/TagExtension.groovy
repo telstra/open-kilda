@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.extenstion.tags
+package org.openkilda.functionaltests.extension.tags
 
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension

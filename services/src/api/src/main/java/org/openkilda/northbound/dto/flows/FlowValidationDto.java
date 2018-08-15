@@ -1,16 +1,34 @@
-package org.openkilda.northbound.dto.flows;
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
 
+package org.openkilda.northbound.dto.flows;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 /**
  * The response for flow validation request.
  */
-@JsonSerialize
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class FlowValidationDto {
 
@@ -33,60 +51,4 @@ public class FlowValidationDto {
 
     @JsonProperty("switch_rules_total")
     private Integer switchRulesTotal;
-
-    public String getFlowId() {
-        return flowId;
-    }
-
-    public void setFlowId(String flowId) {
-        this.flowId = flowId;
-    }
-
-    public Boolean getAsExpected() {
-        return asExpected;
-    }
-
-    public void setAsExpected(Boolean asExpected) {
-        this.asExpected = asExpected;
-    }
-
-    public List<Long> getPktCounts() {
-        return pktCounts;
-    }
-
-    public void setPktCounts(List<Long> pktCounts) {
-        this.pktCounts = pktCounts;
-    }
-
-    public List<Long> getByteCounts() {
-        return byteCounts;
-    }
-
-    public void setByteCounts(List<Long> byteCounts) {
-        this.byteCounts = byteCounts;
-    }
-
-    public List<PathDiscrepancyDto> getDiscrepancies() {
-        return discrepancies;
-    }
-
-    public void setDiscrepancies(List<PathDiscrepancyDto> discrepancies) {
-        this.discrepancies = discrepancies;
-    }
-
-    public Integer getFlowRulesTotal() {
-        return flowRulesTotal;
-    }
-
-    public void setFlowRulesTotal(Integer flowRulesTotal) {
-        this.flowRulesTotal = flowRulesTotal;
-    }
-
-    public Integer getSwitchRulesTotal() {
-        return switchRulesTotal;
-    }
-
-    public void setSwitchRulesTotal(Integer switchRulesTotal) {
-        this.switchRulesTotal = switchRulesTotal;
-    }
 }
