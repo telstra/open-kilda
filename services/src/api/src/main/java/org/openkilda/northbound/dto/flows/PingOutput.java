@@ -23,7 +23,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class FlowPingOutput {
+public class PingOutput {
     @JsonProperty("flow_id")
     private String flowId;
 
@@ -38,7 +38,7 @@ public class FlowPingOutput {
 
     @Builder
     @JsonCreator
-    public FlowPingOutput(
+    public PingOutput(
             @JsonProperty("flow_id") String flowId,
             @JsonProperty("forward") UniFlowPingOutput forward,
             @JsonProperty("reverse") UniFlowPingOutput reverse,

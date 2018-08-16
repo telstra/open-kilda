@@ -24,6 +24,7 @@ import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.SwitchId;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -143,8 +144,8 @@ public class PingServiceTest extends EasyMockSupport {
         DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
         Ping ping = new Ping(
                 (short) 0x100,
-                new NetworkEndpoint(dpIdAlpha.toString(), 8),
-                new NetworkEndpoint(dpIdBeta.toString(), 9));
+                new NetworkEndpoint(new SwitchId(dpIdAlpha.getLong()), 8),
+                new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 9));
 
         byte[] payload = new byte[] {0, 1, 2, 3, 4};
         Ethernet wrapped = pingService.wrapData(ping, payload);

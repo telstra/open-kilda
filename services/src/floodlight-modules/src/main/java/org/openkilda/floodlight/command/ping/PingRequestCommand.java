@@ -22,6 +22,7 @@ import org.openkilda.floodlight.model.PingData;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
+import org.openkilda.messaging.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -69,7 +70,7 @@ public class PingRequestCommand extends Abstract {
     }
 
     private void checkDestination() throws PingImpossibleException {
-        final String destId = ping.getDest().getDatapath();
+        SwitchId destId = ping.getDest().getDatapath();
         IOFSwitch destSw = lookupSwitch(destId);
         if (destSw == null) {
             log.debug("Do not own ping\'s destination switch {}", destId);
@@ -81,7 +82,7 @@ public class PingRequestCommand extends Abstract {
     }
 
     private IOFSwitch checkSource() throws PingImpossibleException {
-        String swId = ping.getSource().getDatapath();
+        SwitchId swId = ping.getSource().getDatapath();
         IOFSwitch sw = lookupSwitch(swId);
         if (sw == null) {
             log.debug("Do not own ping's source switch {}", swId);
@@ -131,8 +132,8 @@ public class PingRequestCommand extends Abstract {
         }
     }
 
-    private IOFSwitch lookupSwitch(String switchId) {
-        DatapathId dpId = DatapathId.of(switchId);
+    private IOFSwitch lookupSwitch(SwitchId switchId) {
+        DatapathId dpId = DatapathId.of(switchId.toLong());
         return switchService.getActiveSwitch(dpId);
     }
 }

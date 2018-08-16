@@ -23,6 +23,7 @@ import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -96,7 +97,7 @@ abstract class PingRequestCommandAbstractTest extends AbstractTest {
     protected Ping makePing(IOFSwitch source, IOFSwitch dest) {
         return new Ping(
                 (short) 0x100,
-                new NetworkEndpoint(source.getId().toString(), 8),
-                new NetworkEndpoint(dest.getId().toString(), 9));
+                new NetworkEndpoint(new SwitchId(source.getId().getLong()), 8),
+                new NetworkEndpoint(new SwitchId(dest.getId().getLong()), 9));
     }
 }

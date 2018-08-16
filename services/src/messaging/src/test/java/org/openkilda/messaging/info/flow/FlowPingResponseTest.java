@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -28,8 +29,8 @@ import org.junit.Test;
 public class FlowPingResponseTest implements StringSerializer {
     @Test
     public void serializeLoop() throws Exception {
-        NetworkEndpoint endpointAlpha = new NetworkEndpoint("ff:fe:00:00:00:00:00:01", 8);
-        NetworkEndpoint endpointBeta = new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 10);
+        NetworkEndpoint endpointAlpha = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
+        NetworkEndpoint endpointBeta = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10);
         UniFlowPingResponse forward = new UniFlowPingResponse(
                 new Ping((short) 0x100, endpointAlpha, endpointBeta),
                 new PingMeters(1L, 2L, 3L),

@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,8 +30,8 @@ public class PingRequestTest implements StringSerializer {
     public void serializeLoop() throws Exception {
         Ping ping = new Ping(
                 (short) 100,
-                new NetworkEndpoint("ff:fe:00:00:00:00:00:01", 8),
-                new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 10));
+                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
+                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10));
         PingRequest origin = new PingRequest(ping);
         CommandMessage wrapper = new CommandMessage(origin, System.currentTimeMillis(), getClass().getSimpleName());
 

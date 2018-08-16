@@ -22,7 +22,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@JsonSerialize
 @NoArgsConstructor
 public class UniFlowPingOutput {
     @JsonProperty("ping_success")

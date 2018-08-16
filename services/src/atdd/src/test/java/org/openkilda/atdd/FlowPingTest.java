@@ -22,8 +22,8 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.northbound.dto.flows.FlowPingOutput;
 import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 
 import cucumber.api.java.en.Given;
@@ -34,7 +34,7 @@ import java.util.HashMap;
 
 public class FlowPingTest {
     private final HashMap<String, FlowPayload> ongoingFlows = new HashMap<>();
-    private final HashMap<String, FlowPingOutput> flowVerificationResults = new HashMap<>();
+    private final HashMap<String, PingOutput> flowVerificationResults = new HashMap<>();
 
     @Given("^flow ((?:[0-9a-f]{2})(?::[0-9a-f]{2}){7})\\((\\d+)\\) "
             + "and ((?:[0-9a-f]{2})(?::[0-9a-f]{2}){7})\\((\\d+)\\) with id=\"([^\"]+)\" is created$")
@@ -68,7 +68,7 @@ public class FlowPingTest {
                 "==> Send flow VERIFY request (%s <--> %s)", flow.getSource(), flow.getDestination()));
 
         PingInput payload = new PingInput(4 * 1000);
-        FlowPingOutput response = FlowUtils.verifyFlow(flow.getId(), payload);
+        PingOutput response = FlowUtils.verifyFlow(flow.getId(), payload);
         Assert.assertNotNull("Verification request failed", response);
 
         flowVerificationResults.put(flowId, response);
@@ -83,7 +83,7 @@ public class FlowPingTest {
     @Then("^flow verification for flow id=\"([^\"]*)\" is (ok|fail) (ok|fail)$")
     public void flowVerificationIsSuccessful(
             String flowId, String expectForward, String expectReverse) throws Throwable {
-        FlowPingOutput output = flowVerificationResults.get(flowId);
+        PingOutput output = flowVerificationResults.get(flowId);
 
         dumpVerificationOutput(output);
 
@@ -100,7 +100,7 @@ public class FlowPingTest {
                 "ok".equals(expectReverse), reverse.isPingSuccess());
     }
 
-    private void dumpVerificationOutput(FlowPingOutput output) {
+    private void dumpVerificationOutput(PingOutput output) {
         String flowId = output.getFlowId();
         UniFlowPingOutput forward = output.getForward();
         UniFlowPingOutput reverse = output.getReverse();

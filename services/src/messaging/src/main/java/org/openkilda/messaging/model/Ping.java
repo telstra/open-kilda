@@ -75,11 +75,11 @@ public class Ping implements Serializable {
 
     @Override
     public String toString() {
-        String sourceEndpoint = source.getSwitchDpId();
+        String sourceEndpoint = source.getDatapath().toString();
         if (sourceVlanId != null) {
             sourceEndpoint += String.format("-%d", sourceVlanId);
         }
 
-        return String.format("%s ===( ping{%s} )===> %s", sourceEndpoint, pingId, dest.getSwitchDpId());
+        return String.format("%s ===( ping{%s} )===> %s", sourceEndpoint, pingId, dest.getDatapath());
     }
 }

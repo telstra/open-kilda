@@ -25,8 +25,8 @@ public class PingTest implements ObjectSerializer {
     public void serializeLoop() throws Exception {
         Ping origin = new Ping(
                 (short) 0x100,
-                new NetworkEndpoint("ff:fe:00:00:00:00:00:01", 8),
-                new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 10));
+                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
+                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10));
 
         serialize(origin);
         Ping decoded = (Ping) deserialize();
@@ -39,8 +39,8 @@ public class PingTest implements ObjectSerializer {
 
     @Test
     public void sourceVlanValues() {
-        final NetworkEndpoint source = new NetworkEndpoint("ff:fe:00:00:00:00:00:01", 8);
-        final NetworkEndpoint dest = new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 10);
+        final NetworkEndpoint source = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
+        final NetworkEndpoint dest = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10);
         Ping ping;
 
         ping = new Ping(null, source, dest);

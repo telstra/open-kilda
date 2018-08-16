@@ -27,9 +27,9 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
-import org.openkilda.northbound.dto.flows.FlowPingOutput;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 
@@ -362,7 +362,7 @@ public class FlowController {
             value = "Verify flow - using special network packet that is being routed in the same way as client traffic")
     @RequestMapping(path = "/flows/{flow_id}/ping", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.OK)
-    public FlowPingOutput pingFlow(
+    public PingOutput pingFlow(
             @RequestBody PingInput payload,
             @PathVariable("flow_id") String flowId) {
         return flowService.pingFlow(flowId, payload);

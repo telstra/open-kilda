@@ -18,7 +18,7 @@ package org.openkilda.northbound.converter;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.Ping;
-import org.openkilda.northbound.dto.flows.FlowPingOutput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 
 import org.mapstruct.Mapper;
@@ -26,7 +26,7 @@ import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface FlowMapper {
-    FlowPingOutput toFlowPingOutput(FlowPingResponse response);
+    PingOutput toFlowPingOutput(FlowPingResponse response);
 
     @Mapping(source = "meters.networkLatency", target = "latency")
     UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);

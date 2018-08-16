@@ -55,10 +55,10 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.dto.BatchResults;
-import org.openkilda.northbound.dto.flows.FlowPingOutput;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
 import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.FlowService;
@@ -780,7 +780,7 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public FlowPingOutput pingFlow(String flowId, PingInput payload) {
+    public PingOutput pingFlow(String flowId, PingInput payload) {
         FlowPingRequest request = new FlowPingRequest(flowId, payload.getTimeoutMillis());
 
         final String correlationId = RequestCorrelationId.getId();

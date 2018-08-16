@@ -32,6 +32,7 @@ import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.SwitchId;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -55,13 +56,13 @@ import java.util.List;
 public class PingResponseCommandTest extends AbstractTest {
     private static final String PING_KAFKA_TOPIC = "ping.topic";
 
-    final DatapathId dpId = DatapathId.of(0xfffe000000000001L);
+    private final DatapathId dpId = DatapathId.of(0xfffe000000000001L);
 
     @Mock
     private PingService pingService;
 
     @Mock
-    IOFSwitch iofSwitch;
+    private IOFSwitch iofSwitch;
 
     @Override
     @Before
@@ -129,8 +130,8 @@ public class PingResponseCommandTest extends AbstractTest {
 
         final DatapathId dpIdBeta = DatapathId.of(0xfffe0000000002L);
         final Ping ping = new Ping((short) 0x100,
-                new NetworkEndpoint(dpIdBeta.toString(), 8),
-                new NetworkEndpoint(dpId.toString(), 9));
+                new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 8),
+                new NetworkEndpoint(new SwitchId(dpId.getLong()), 9));
         final PingData payload = PingData.of(ping);
 
         moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");
