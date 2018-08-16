@@ -5,6 +5,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoveryFilterEntity;
 import org.openkilda.messaging.command.discovery.DiscoveryFilterPopulateData;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.AbstractAction;
 import org.openkilda.wfm.IKildaBolt;
 import org.openkilda.wfm.error.MessageFormatException;
@@ -49,7 +50,7 @@ public class PopulateIslFilterAction extends AbstractAction {
         filter.clear();
         for (DiscoveryFilterEntity entity : payload.getFilter()) {
             logger.info("Add ISL filter record - switcID=\"{}\" portId=\"{}\"", entity.switchId, entity.portId);
-            filter.add(entity.switchId, entity.portId);
+            filter.add(new SwitchId(entity.switchId), entity.portId);
         }
     }
 

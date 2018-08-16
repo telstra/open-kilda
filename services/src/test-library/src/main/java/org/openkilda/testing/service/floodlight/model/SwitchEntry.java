@@ -15,6 +15,8 @@
 
 package org.openkilda.testing.service.floodlight.model;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -32,11 +34,11 @@ public class SwitchEntry implements Serializable {
     private String address;
     private String connectedSince;
     private String ofVersion;
-    private String switchId;
+    private SwitchId switchId;
 
     public SwitchEntry(
             @JsonProperty("inetAddress") String address, @JsonProperty("connectedSince") String connectedSince,
-            @JsonProperty("openFlowVersion") String ofVersion, @JsonProperty("switchDPID") String switchId) {
+            @JsonProperty("openFlowVersion") String ofVersion, @JsonProperty("switchDPID") SwitchId switchId) {
         this.address = address;
         this.connectedSince = connectedSince;
         this.ofVersion = ofVersion;

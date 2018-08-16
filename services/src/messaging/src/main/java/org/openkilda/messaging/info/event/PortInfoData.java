@@ -18,6 +18,7 @@ package org.openkilda.messaging.info.event;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -47,7 +48,7 @@ public class PortInfoData extends InfoData {
      * Switch id.
      */
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     /**
      * Port number.
@@ -90,7 +91,7 @@ public class PortInfoData extends InfoData {
      * @param portNo   port number
      * @param state    port state
      */
-    public PortInfoData(final String switchId, final int portNo, final PortChangeType state) {
+    public PortInfoData(final SwitchId switchId, final int portNo, final PortChangeType state) {
         this.switchId = switchId;
         this.portNo = portNo;
         this.state = state;
@@ -105,7 +106,7 @@ public class PortInfoData extends InfoData {
      * @param state       port state
      */
     @JsonCreator
-    public PortInfoData(@JsonProperty("switch_id") final String switchId,
+    public PortInfoData(@JsonProperty("switch_id") final SwitchId switchId,
                         @JsonProperty("port_no") final int portNo,
                         @JsonProperty("max_capacity") final Integer maxCapacity,
                         @JsonProperty("state") final PortChangeType state) {
@@ -120,7 +121,7 @@ public class PortInfoData extends InfoData {
      *
      * @return switch id
      */
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 
@@ -129,7 +130,7 @@ public class PortInfoData extends InfoData {
      *
      * @param switchId switch id to set
      */
-    public void setSwitchId(final String switchId) {
+    public void setSwitchId(final SwitchId switchId) {
         this.switchId = switchId;
     }
 

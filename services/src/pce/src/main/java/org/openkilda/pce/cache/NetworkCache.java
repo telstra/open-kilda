@@ -20,6 +20,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
@@ -53,7 +54,7 @@ public class NetworkCache extends Cache {
     /**
      * Switches pool.
      */
-    private final Map<String, SwitchInfoData> switchPool = new ConcurrentHashMap<>();
+    private final Map<SwitchId, SwitchInfoData> switchPool = new ConcurrentHashMap<>();
 
     /**
      * SimpleIsl pool.
@@ -81,7 +82,7 @@ public class NetworkCache extends Cache {
      * @return {@link Set} of {@link IslInfoData} instances
      * @throws CacheException if {@link SwitchInfoData} instance with specified id does not exists
      */
-    public Set<IslInfoData> getIslsBySource(String switchId) {
+    public Set<IslInfoData> getIslsBySource(SwitchId switchId) {
         logger.debug("Get all isls by source switch {}", switchId);
 
         SwitchInfoData startNode = getSwitch(switchId);
@@ -96,7 +97,7 @@ public class NetworkCache extends Cache {
      * @return {@link Set} of {@link IslInfoData} instances
      * @throws CacheException if {@link SwitchInfoData} instance with specified id does not exists
      */
-    public Set<IslInfoData> getIslsByDestination(String switchId) {
+    public Set<IslInfoData> getIslsByDestination(SwitchId switchId) {
         logger.debug("Get all isls by destination switch {}", switchId);
 
         SwitchInfoData endNode = getSwitch(switchId);
@@ -111,7 +112,7 @@ public class NetworkCache extends Cache {
      * @return {@link Set} of {@link IslInfoData} instances
      * @throws CacheException if {@link SwitchInfoData} instance with specified id does not exists
      */
-    public Set<IslInfoData> getIslsBySwitch(String switchId) throws CacheException {
+    public Set<IslInfoData> getIslsBySwitch(SwitchId switchId) throws CacheException {
         logger.debug("Get all isls incident switch {}", switchId);
 
         SwitchInfoData node = getSwitch(switchId);
@@ -154,7 +155,7 @@ public class NetworkCache extends Cache {
      * @return {@link Set} of {@link SwitchInfoData} instances
      * @throws CacheException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public Set<SwitchInfoData> getDirectlyConnectedSwitches(String switchId) throws CacheException {
+    public Set<SwitchInfoData> getDirectlyConnectedSwitches(SwitchId switchId) throws CacheException {
         logger.debug("Get all switches directly connected to {} switch ", switchId);
 
         SwitchInfoData node = getSwitch(switchId);
@@ -180,7 +181,7 @@ public class NetworkCache extends Cache {
      * @return {@link SwitchInfoData} instance with specified {@link SwitchInfoData} instance id
      * @throws CacheException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public SwitchInfoData getSwitch(String switchId) throws CacheException {
+    public SwitchInfoData getSwitch(SwitchId switchId) throws CacheException {
         logger.debug("Get {} switch", switchId);
 
         SwitchInfoData node = switchPool.get(switchId);
@@ -200,7 +201,7 @@ public class NetworkCache extends Cache {
      * @throws CacheException if {@link SwitchInfoData} instance with specified id already exists
      */
     public SwitchInfoData createSwitch(SwitchInfoData newSwitch) throws CacheException {
-        String switchId = newSwitch.getSwitchId();
+        SwitchId switchId = newSwitch.getSwitchId();
 
         logger.debug("Create {} switch with {} parameters", switchId, newSwitch);
 
@@ -226,7 +227,7 @@ public class NetworkCache extends Cache {
      * @throws CacheException if {@link SwitchInfoData} instance with specified id does not exist
      */
     public SwitchInfoData updateSwitch(SwitchInfoData newSwitch) throws CacheException {
-        String switchId = newSwitch.getSwitchId();
+        SwitchId switchId = newSwitch.getSwitchId();
         logger.debug("Update {} switch with {} parameters", switchId, newSwitch);
 
         SwitchInfoData oldSwitch = switchPool.remove(switchId);
@@ -273,7 +274,7 @@ public class NetworkCache extends Cache {
      * @return removed {@link SwitchInfoData} instance
      * @throws CacheException if {@link SwitchInfoData} instance with specified id does not exist
      */
-    public SwitchInfoData deleteSwitch(String switchId) throws CacheException {
+    public SwitchInfoData deleteSwitch(SwitchId switchId) throws CacheException {
         logger.debug("Delete {} switch", switchId);
 
         SwitchInfoData node = switchPool.remove(switchId);
@@ -304,7 +305,7 @@ public class NetworkCache extends Cache {
      * @param switchId {@link SwitchInfoData} instance id
      * @return true if switch pool contains {@link SwitchInfoData} instance
      */
-    public boolean cacheContainsSwitch(String switchId) {
+    public boolean cacheContainsSwitch(SwitchId switchId) {
         logger.debug("Is switch {} in cache", switchId);
 
         return switchPool.containsKey(switchId);
@@ -316,7 +317,7 @@ public class NetworkCache extends Cache {
      * @param switchId switch id
      * @return true if switch in operational state, otherwise false
      */
-    public boolean switchIsOperable(String switchId) {
+    public boolean switchIsOperable(SwitchId switchId) {
         if (cacheContainsSwitch(switchId)) {
             SwitchState switchState = switchPool.get(switchId).getState();
             if (SwitchState.ADDED == switchState || SwitchState.ACTIVATED == switchState) {
@@ -470,7 +471,7 @@ public class NetworkCache extends Cache {
      * @throws CacheException if {@link SwitchInfoData} instances for {@link IslInfoData} instance do not exist
      */
     private EndpointPair<SwitchInfoData> getIslSwitches(IslInfoData isl) throws CacheException {
-        String srcSwitch = isl.getPath().get(0).getSwitchId();
+        SwitchId srcSwitch = isl.getPath().get(0).getSwitchId();
         if (srcSwitch == null) {
             throw new CacheException(ErrorType.PARAMETERS_INVALID, "Can not get isl nodes",
                     "Source switch not specified");
@@ -478,7 +479,7 @@ public class NetworkCache extends Cache {
 
         SwitchInfoData startNode = getSwitch(srcSwitch);
 
-        String dstSwitch = isl.getPath().get(1).getSwitchId();
+        SwitchId dstSwitch = isl.getPath().get(1).getSwitchId();
         if (dstSwitch == null) {
             throw new CacheException(ErrorType.PARAMETERS_INVALID, "Can not get isl nodes",
                     "Destination switch not specified");

@@ -21,18 +21,19 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
-import static org.openkilda.wfm.topology.event.OFELinkBolt.STATE_ID_DISCOVERY;
+import static org.openkilda.wfm.topology.event.OfeLinkBolt.STATE_ID_DISCOVERY;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.OutputCollectorMock;
-import org.openkilda.wfm.topology.event.OFELinkBolt.State;
+import org.openkilda.wfm.topology.event.OfeLinkBolt.State;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,7 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class OFELinkBoltTest extends AbstractStormTest {
+public class OfeLinkBoltTest extends AbstractStormTest {
 
     private static final Integer TASK_ID_BOLT = 0;
     private static final String STREAM_ID_INPUT = "input";
@@ -61,22 +62,22 @@ public class OFELinkBoltTest extends AbstractStormTest {
     private ObjectMapper objectMapper = new ObjectMapper();
 
     private TopologyContext context;
-    private OFELinkBolt bolt;
+    private OfeLinkBolt bolt;
     private OutputCollectorMock outputDelegate;
     private OFEventWfmTopologyConfig config;
 
     @Before
     public void before() throws CmdLineException, ConfigurationException {
-        OFEventWFMTopology manager = new OFEventWFMTopology(
+        OfEventWfmTopology manager = new OfEventWfmTopology(
                 AbstractStormTest.makeLaunchEnvironment());
         config = manager.getConfig();
-        bolt = new OFELinkBolt(config);
+        bolt = new OfeLinkBolt(config);
 
         context = Mockito.mock(TopologyContext.class);
 
         Mockito.when(context.getComponentId(TASK_ID_BOLT))
-                .thenReturn(OFEventWFMTopology.DISCO_SPOUT_ID);
-        Mockito.when(context.getComponentOutputFields(OFEventWFMTopology.DISCO_SPOUT_ID, STREAM_ID_INPUT))
+                .thenReturn(OfEventWfmTopology.DISCO_SPOUT_ID);
+        Mockito.when(context.getComponentOutputFields(OfEventWfmTopology.DISCO_SPOUT_ID, STREAM_ID_INPUT))
                 .thenReturn(KafkaMessage.FORMAT);
 
         outputDelegate = Mockito.spy(new OutputCollectorMock());
@@ -98,10 +99,10 @@ public class OFELinkBoltTest extends AbstractStormTest {
     @Test
     public void shouldNotResetDiscoveryStatusOnSync() throws JsonProcessingException {
         // given
-        DiscoveryLink testLink = new DiscoveryLink("sw1", 2, "sw2", 2, 0, -1, true);
+        DiscoveryLink testLink = new DiscoveryLink(new SwitchId("ff:01"), 2, new SwitchId("ff:02"), 2, 0, -1, true);
 
         KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
-        Map<String, List<DiscoveryLink>> links =
+        Map<SwitchId, List<DiscoveryLink>> links =
                 Collections.singletonMap(testLink.getSource().getDatapath(), Collections.singletonList(testLink));
         boltState.put(STATE_ID_DISCOVERY, links);
         bolt.initState(boltState);
@@ -110,7 +111,7 @@ public class OFELinkBoltTest extends AbstractStormTest {
         bolt.state = State.SYNC_IN_PROGRESS;
 
         // when
-        PortInfoData dumpPortData = new PortInfoData("sw1", 2, PortChangeType.UP);
+        PortInfoData dumpPortData = new PortInfoData(new SwitchId("ff:01"), 2, PortChangeType.UP);
         InfoMessage dumpBeginMessage = new InfoMessage(dumpPortData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(dumpBeginMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);
@@ -127,8 +128,8 @@ public class OFELinkBoltTest extends AbstractStormTest {
                 .collect(Collectors.toList());
 
         assertThat(linksAfterSync, contains(
-                allOf(hasProperty("source", hasProperty("datapath", is("sw1"))),
-                        hasProperty("destination", hasProperty("datapath", is("sw2"))),
+                allOf(hasProperty("source", hasProperty("datapath", is(new SwitchId("ff:01")))),
+                        hasProperty("destination", hasProperty("datapath", is(new SwitchId("ff:02")))),
                         hasProperty("active", is(true)))));
     }
 }

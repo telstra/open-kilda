@@ -52,6 +52,7 @@ import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -910,7 +911,7 @@ public class CrudBolt
     }
 
     @Override
-    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
         // Not implemented
         return new CrudBoltState(new FlowDump(new HashSet<>()));
     }

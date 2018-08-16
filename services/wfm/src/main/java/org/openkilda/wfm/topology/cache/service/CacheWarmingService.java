@@ -1,7 +1,20 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.wfm.topology.cache.service;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.tuple.MutablePair;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -10,9 +23,12 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +48,13 @@ public class CacheWarmingService {
         this.networkCache = networkCache;
     }
 
-    public List<PortInfoData> getPortsForDiscovering(String switchId) {
+    /**
+     * Return list of ports for discovering.
+     *
+     * @param switchId switch id.
+     * @return list of ports for discovering.
+     */
+    public List<PortInfoData> getPortsForDiscovering(SwitchId switchId) {
         List<IslInfoData> links = getActiveLinks(switchId);
         return links.stream()
                 .map(IslInfoData::getPath)
@@ -46,7 +68,7 @@ public class CacheWarmingService {
      * @param switchId current switch id
      * @return links witch active switches
      */
-    private List<IslInfoData> getActiveLinks(String switchId) {
+    private List<IslInfoData> getActiveLinks(SwitchId switchId) {
         return networkCache.getIslsBySwitch(switchId).stream()
                 .filter(isl -> isLinkAvailable(isl.getPath(), switchId))
                 .collect(Collectors.toList());
@@ -58,13 +80,19 @@ public class CacheWarmingService {
      * @param currentSwitchId id of current switch
      * @return result of checking
      */
-    private boolean isLinkAvailable(List<PathNode> nodes, String currentSwitchId) {
+    private boolean isLinkAvailable(List<PathNode> nodes, SwitchId currentSwitchId) {
         return nodes.stream()
-                .allMatch(node -> networkCache.getSwitch(node.getSwitchId()).getState().isActive() ||
-                StringUtils.equals(currentSwitchId, node.getSwitchId()));
+                .allMatch(node -> networkCache.getSwitch(node.getSwitchId()).getState().isActive()
+                        || StringUtils.equals(currentSwitchId.toString(), node.getSwitchId().toString()));
     }
 
-    public List<CommandData> getFlowCommands(String switchId) {
+    /**
+     * Return list of commands in flow.
+     *
+     * @param switchId switch id.
+     * @return list of commands in flow.
+     */
+    public List<CommandData> getFlowCommands(SwitchId switchId) {
         List<CommandData> result = new ArrayList<>();
         predefinedFlows.stream()
                 .filter(flow -> switchId.equals(flow.getLeft().getSourceSwitch()))

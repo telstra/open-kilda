@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -146,7 +146,7 @@ public class TopologyEventsBasicTest {
         TimeUnit.SECONDS.sleep(1);
         List<SwitchDto> updatedSwitches = SwitchesUtils.dumpSwitches();
         SwitchDto deactivatedSwitch = updatedSwitches.stream()
-                .filter(sw -> sw.getSwitchId().equalsIgnoreCase(middleSwitch.getSwitchId()))
+                .filter(sw -> sw.getSwitchId().equals(middleSwitch.getSwitchId()))
                 .findFirst().orElseThrow(() -> new IllegalStateException("Switch should exist"));
         assertThat(deactivatedSwitch.getState(), is(SwitchState.DEACTIVATED));
     }
@@ -260,7 +260,7 @@ public class TopologyEventsBasicTest {
     }
 
     private String getSwitchName(String switchId) {
-        return switchId.replaceAll("[^\\d]", StringUtils.EMPTY);
+        return switchId.replaceAll("(\\A.*?:.*?:.*?:.*?:)|[:]", StringUtils.EMPTY);
     }
 
     private boolean isLinkBelongToSwitch(String switchId, LinkDto isl) {

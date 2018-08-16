@@ -20,6 +20,7 @@ import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.error.InsufficientCapabilitiesException;
 import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.info.flow.FlowVerificationErrorCode;
+import org.openkilda.messaging.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -95,8 +96,8 @@ public class VerificationDispatchCommand extends AbstractVerificationCommand {
         return Optional.of(new VerificationListenCommand(getContext(), verificationRequest));
     }
 
-    private boolean isOwnSwitch(String switchId) {
-        DatapathId dpId = DatapathId.of(switchId);
+    private boolean isOwnSwitch(SwitchId switchId) {
+        DatapathId dpId = DatapathId.of(switchId.toLong());
         IOFSwitch sw = switchService.getActiveSwitch(dpId);
 
         return sw != null;

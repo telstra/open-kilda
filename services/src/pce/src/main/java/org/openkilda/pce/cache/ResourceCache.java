@@ -17,6 +17,7 @@ package org.openkilda.pce.cache;
 
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.ResourcePool;
 
 import com.google.common.base.MoreObjects;
@@ -89,7 +90,7 @@ public class ResourceCache extends Cache {
     /**
      * Meter pool by switch.
      */
-    private final Map<String, ResourcePool> meterPool = new ConcurrentHashMap<>();
+    private final Map<SwitchId, ResourcePool> meterPool = new ConcurrentHashMap<>();
 
     /**
      * Cookie pool.
@@ -190,7 +191,7 @@ public class ResourceCache extends Cache {
      * @param switchId switch id
      * @return allocated meter id value
      */
-    public synchronized Integer allocateMeterId(String switchId) {
+    public synchronized Integer allocateMeterId(SwitchId switchId) {
         return meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID)).allocate();
     }
 
@@ -201,7 +202,7 @@ public class ResourceCache extends Cache {
      * @param meterId  meter id value
      * @return allocated meter id value
      */
-    public synchronized Integer allocateMeterId(String switchId, Integer meterId) {
+    public synchronized Integer allocateMeterId(SwitchId switchId, Integer meterId) {
         if (meterId == 0) {
             return meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID))
                     .allocate();
@@ -219,7 +220,7 @@ public class ResourceCache extends Cache {
      * @param meterId meter id value
      * @return deallocated meter id value or null if value was not allocated earlier
      */
-    public synchronized Integer deallocateMeterId(String switchId, Integer meterId) {
+    public synchronized Integer deallocateMeterId(SwitchId switchId, Integer meterId) {
         ResourcePool switchMeterPool = meterPool.get(switchId);
         return switchMeterPool != null ? switchMeterPool.deallocate(meterId) : null;
     }
@@ -230,7 +231,7 @@ public class ResourceCache extends Cache {
      * @param switchId switch id
      * @return deallocated meter id values
      */
-    public synchronized Set<Integer> deallocateMeterId(String switchId) {
+    public synchronized Set<Integer> deallocateMeterId(SwitchId switchId) {
         ResourcePool switchMeterPool = meterPool.remove(switchId);
         return switchMeterPool != null ? switchMeterPool.dumpPool() : null;
     }
@@ -259,11 +260,16 @@ public class ResourceCache extends Cache {
      * @param switchId switch id
      * @return all allocated meter id values
      */
-    public Set<Integer> getAllMeterIds(String switchId) {
+    public Set<Integer> getAllMeterIds(SwitchId switchId) {
         return meterPool.containsKey(switchId) ? meterPool.get(switchId).dumpPool() : Collections.emptySet();
     }
 
-    public Map<String, Set<Integer>> getAllMeterIds() {
+    /**
+     * Gets all allocated meter id values.
+     *
+     * @return all allocated meter id values
+     */
+    public Map<SwitchId, Set<Integer>> getAllMeterIds() {
         return meterPool.entrySet().stream()
                         .collect(Collectors.toMap(
                                 Entry::getKey,

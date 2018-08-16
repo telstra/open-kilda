@@ -29,6 +29,7 @@ import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.ctrl.state.visitor.DumpStateManager;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -56,7 +57,7 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 
 
-public class StormTopologyLCM {
+public class StormTopologyLcm {
 
     private static final String WFM_CONTAINER_NAME = "/wfm";
 
@@ -66,7 +67,7 @@ public class StormTopologyLCM {
     private DumpStateManager expectedStateDumpsFromBolts;
     private final String flowId = FlowUtils.getFlowName("simple-flow");
 
-    public StormTopologyLCM() throws Exception {
+    public StormTopologyLcm() throws Exception {
         dockerClient = DefaultDockerClient.fromEnv().build();
         wfmContainer = dockerClient.listContainers(ListContainersParam.allContainers())
                 .stream()
@@ -104,8 +105,8 @@ public class StormTopologyLCM {
 
         // Create and check flow
         FlowPayload flowPayload = new FlowPayload(flowId,
-                new FlowEndpointPayload("00:01:00:00:00:00:00:01", 1, 100),
-                new FlowEndpointPayload("00:01:00:00:00:00:00:02", 1, 100),
+                new FlowEndpointPayload(new SwitchId(1L), 1, 100),
+                new FlowEndpointPayload(new SwitchId(2L), 1, 100),
                 10000, false, flowId, null, FlowState.UP.getState());
 
         FlowPayload response = null;

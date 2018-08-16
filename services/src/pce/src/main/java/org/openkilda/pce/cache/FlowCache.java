@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.Utils;
 
@@ -125,7 +126,7 @@ public class FlowCache extends Cache {
      * @param switchId switch id
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(String switchId) {
+    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(SwitchId switchId) {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
@@ -171,7 +172,7 @@ public class FlowCache extends Cache {
      * @param switchId switch id
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(String switchId) {
+    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(SwitchId switchId) {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
@@ -214,13 +215,13 @@ public class FlowCache extends Cache {
      * @param switchId switch id
      * @return map of flow ids and endpoints
      */
-    public Map<String, String> getFlowsWithAffectedEndpoint(String switchId) {
+    public Map<String, String> getFlowsWithAffectedEndpoint(SwitchId switchId) {
         Map<String, String> response = new HashMap<>();
 
         for (ImmutablePair<Flow, Flow> flow : flowPool.values()) {
-            String endpoint = getFlowLinkedEndpoint(flow, switchId);
+            SwitchId endpoint = getFlowLinkedEndpoint(flow, switchId);
             if (endpoint != null) {
-                response.put(flow.getLeft().getFlowId(), endpoint);
+                response.put(flow.getLeft().getFlowId(), endpoint.toString());
             }
         }
 
@@ -476,10 +477,10 @@ public class FlowCache extends Cache {
      * @param switchId switch id
      * @return second endpoint if specified switch id one of the flows endpoint, otherwise null
      */
-    private String getFlowLinkedEndpoint(ImmutablePair<Flow, Flow> flow, String switchId) {
+    private SwitchId getFlowLinkedEndpoint(ImmutablePair<Flow, Flow> flow, SwitchId switchId) {
         Flow forward = flow.getLeft();
         Flow reverse = flow.getRight();
-        String linkedSwitch = null;
+        SwitchId linkedSwitch = null;
 
         if (forward.getSourceSwitch().equals(switchId) && reverse.getDestinationSwitch().equals(switchId)) {
             linkedSwitch = forward.getDestinationSwitch();
@@ -496,7 +497,7 @@ public class FlowCache extends Cache {
      * @param port the port
      * @return set of flows
      */
-    public Set<Flow> getFlowsForEndpoint(String switchId, int port) {
+    public Set<Flow> getFlowsForEndpoint(SwitchId switchId, int port) {
         return flowPool.values().stream()
                 .flatMap(pair -> Stream.of(pair.getLeft(), pair.getRight()))
                 .filter(flow -> flow.getSourceSwitch().equals(switchId) && flow.getSourcePort() == port
@@ -516,7 +517,7 @@ public class FlowCache extends Cache {
      * @param vlan the vlan
      * @return set of flows
      */
-    public Set<Flow> getFlowsForEndpoint(String switchId, int port, int vlan) {
+    public Set<Flow> getFlowsForEndpoint(SwitchId switchId, int port, int vlan) {
         return flowPool.values().stream()
                 .flatMap(pair -> Stream.of(pair.getLeft(), pair.getRight()))
                 .filter(flow -> flow.getSourceSwitch().equals(switchId) && flow.getSourcePort() == port
@@ -530,7 +531,7 @@ public class FlowCache extends Cache {
     /**
      * Gets flow pairs which have source or destination is on the switch.
      */
-    public Set<ImmutablePair<Flow, Flow>> getIngressAndEgressFlows(String switchId) {
+    public Set<ImmutablePair<Flow, Flow>> getIngressAndEgressFlows(SwitchId switchId) {
         return flowPool.values().stream()
                 .filter(flowPair -> Objects.nonNull(getFlowLinkedEndpoint(flowPair, switchId)))
                 .collect(Collectors.toSet());
@@ -545,7 +546,7 @@ public class FlowCache extends Cache {
         return resourceCache.getAllCookies();
     }
 
-    public Map<String, Set<Integer>> getAllocatedMeters() {
+    public Map<SwitchId, Set<Integer>> getAllocatedMeters() {
         return resourceCache.getAllMeterIds();
     }
 

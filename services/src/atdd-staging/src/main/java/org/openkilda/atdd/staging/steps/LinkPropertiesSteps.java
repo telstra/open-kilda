@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
@@ -58,9 +59,9 @@ public class LinkPropertiesSteps {
     public void createLinkPropertiesRequest(String islAlias) {
         linkPropsRequest = new LinkPropsDto();
         Isl theIsl = topologyUnderTest.getAliasedObject(islAlias);
-        linkPropsRequest.setSrcSwitch(theIsl.getSrcSwitch().getDpId());
+        linkPropsRequest.setSrcSwitch(theIsl.getSrcSwitch().getDpId().toString());
         linkPropsRequest.setSrcPort(theIsl.getSrcPort());
-        linkPropsRequest.setDstSwitch(theIsl.getDstSwitch().getDpId());
+        linkPropsRequest.setDstSwitch(theIsl.getDstSwitch().getDpId().toString());
         linkPropsRequest.setDstPort(theIsl.getDstPort());
     }
 
@@ -127,8 +128,9 @@ public class LinkPropertiesSteps {
 
     @And("^get link properties for defined request$")
     public void getLinkPropertiesForDefinedRequest() {
-        getLinkPropsResponse = northboundService.getLinkProps(linkPropsRequest.getSrcSwitch(),
-                linkPropsRequest.getSrcPort(), linkPropsRequest.getDstSwitch(), linkPropsRequest.getDstPort());
+        getLinkPropsResponse = northboundService.getLinkProps(
+                new SwitchId(linkPropsRequest.getSrcSwitch()), linkPropsRequest.getSrcPort(),
+                new SwitchId(linkPropsRequest.getDstSwitch()), linkPropsRequest.getDstPort());
     }
 
     @And("^delete all link properties$")

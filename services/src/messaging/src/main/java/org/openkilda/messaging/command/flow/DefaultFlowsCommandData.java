@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -41,7 +42,7 @@ public class DefaultFlowsCommandData extends CommandData {
      * Switch id for default flows installation.
      */
     @JsonProperty("switch_id")
-    protected String switchId;
+    protected SwitchId switchId;
 
     /**
      * Default constructor.
@@ -55,7 +56,7 @@ public class DefaultFlowsCommandData extends CommandData {
      * @param switchId switch id to install default flows on
      */
     @JsonCreator
-    public DefaultFlowsCommandData(@JsonProperty("switch_id") final String switchId) {
+    public DefaultFlowsCommandData(@JsonProperty("switch_id") final SwitchId switchId) {
         this.switchId = switchId;
     }
 
@@ -64,7 +65,7 @@ public class DefaultFlowsCommandData extends CommandData {
      *
      * @return switch id
      */
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 
@@ -73,7 +74,7 @@ public class DefaultFlowsCommandData extends CommandData {
      *
      * @param switchId switch id to set
      */
-    public void setSwitchId(final String switchId) {
+    public void setSwitchId(final SwitchId switchId) {
         this.switchId = switchId;
     }
 
@@ -82,6 +83,6 @@ public class DefaultFlowsCommandData extends CommandData {
      */
     @Override
     public String toString() {
-        return switchId;
+        return switchId.toString();
     }
 }

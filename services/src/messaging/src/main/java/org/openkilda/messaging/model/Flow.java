@@ -87,13 +87,13 @@ public class Flow implements Serializable {
      * Flow source switch.
      */
     @JsonProperty("src_switch")
-    private String sourceSwitch;
+    private SwitchId sourceSwitch;
 
     /**
      * Flow destination switch.
      */
     @JsonProperty("dst_switch")
-    private String destinationSwitch;
+    private SwitchId destinationSwitch;
 
     /**
      * Flow source port.
@@ -202,8 +202,8 @@ public class Flow implements Serializable {
                 @JsonProperty("cookie") final long cookie,
                 @JsonProperty("description") final String description,
                 @JsonProperty("last_updated") final String lastUpdated,
-                @JsonProperty("src_switch") final String sourceSwitch,
-                @JsonProperty("dst_switch") final String destinationSwitch,
+                @JsonProperty("src_switch") final SwitchId sourceSwitch,
+                @JsonProperty("dst_switch") final SwitchId destinationSwitch,
                 @JsonProperty("src_port") final int sourcePort,
                 @JsonProperty("dst_port") final int destinationPort,
                 @JsonProperty("src_vlan") final int sourceVlan,
@@ -245,8 +245,8 @@ public class Flow implements Serializable {
      * @param destinationVlan   destination vlan id
      */
     public Flow(String flowId, long bandwidth, boolean ignoreBandwidth, String description,
-            String sourceSwitch, int sourcePort, int sourceVlan,
-            String destinationSwitch, int destinationPort, int destinationVlan) {
+            SwitchId sourceSwitch, int sourcePort, int sourceVlan,
+            SwitchId destinationSwitch, int destinationPort, int destinationVlan) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -339,7 +339,7 @@ public class Flow implements Serializable {
      * @param switchId switch id
      * @return true if flow path contains specified switch
      */
-    public boolean containsSwitchInPath(String switchId) {
+    public boolean containsSwitchInPath(SwitchId switchId) {
         return flowPath.getPath().stream()
                 .anyMatch(node -> node.getSwitchId().equals(switchId));
     }

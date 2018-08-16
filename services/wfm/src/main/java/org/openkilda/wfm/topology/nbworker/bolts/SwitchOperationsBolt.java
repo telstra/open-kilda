@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.pce.provider.Auth;
@@ -66,7 +67,7 @@ public class SwitchOperationsBolt extends NeoOperationsBolt {
         List<SwitchInfoData> results = new ArrayList<>();
         for (Record record : result.list()) {
             SwitchInfoData sw = new SwitchInfoData();
-            sw.setSwitchId(record.get("name").asString());
+            sw.setSwitchId(new SwitchId(record.get("name").asString()));
             sw.setAddress(record.get("address").asString());
             sw.setController(record.get("controller").asString());
             sw.setDescription(record.get("description").asString());

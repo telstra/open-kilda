@@ -17,6 +17,7 @@ package org.openkilda.messaging.payload.flow;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -29,7 +30,7 @@ import java.util.Objects;
 
 /**
  * Flow endpoint representation class.
- *
+ * <p/>
  * TODO(surabujin): should be moved into org.openkilda.messaging.model package
  */
 @JsonSerialize
@@ -54,7 +55,7 @@ public class FlowEndpointPayload extends NetworkEndpoint {
      * @param vlanId   vlan id
      */
     @JsonCreator
-    public FlowEndpointPayload(@JsonProperty("switch-id") String switchId,
+    public FlowEndpointPayload(@JsonProperty("switch-id") SwitchId switchId,
                                @JsonProperty("port-id") Integer portId,
                                @JsonProperty("vlan-id") Integer vlanId) {
         super(switchId, portId);
@@ -90,8 +91,12 @@ public class FlowEndpointPayload extends NetworkEndpoint {
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
         FlowEndpointPayload that = (FlowEndpointPayload) obj;
         return new EqualsBuilder()
                 .appendSuper(super.equals(obj))

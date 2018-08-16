@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Port implements ITopoSlug {
 
-    /** The PortQueue.getId() is used as the key */
+    /** The PortQueue.getSwitchId() is used as the key */
 	private final Map<String, PortQueue> portQueues = new ConcurrentHashMap<String, PortQueue>(10);
     private final String id;
     private final Switch parent;

@@ -34,13 +34,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * OFEventWFMTopology creates the topology to manage these key aspects of OFEvents:
- * <p>
+ * OFEventWFMTopology creates the topology to manage these key aspects of OFEvents.
+ * <p/>
  * (1) Switch UP/DOWN
  * (2) Port UP/DOWN
  * (3) Link UP/DOWN (ISL) - and health manager
  */
-public class OFEventWFMTopology extends AbstractTopology<OFEventWfmTopologyConfig> {
+public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfig> {
     /*
      * Progress Tracker - Phase 1: Simple message flow, a little bit of state, re-wire spkr/tpe
      * (1) √ Switch UP - Simple pass through
@@ -52,30 +52,27 @@ public class OFEventWFMTopology extends AbstractTopology<OFEventWfmTopologyConfi
      * (7) ◊ Add simple pass through for verification (w/ speaker) & validation (w/ TPE)
      */
 
-    private static Logger logger = LoggerFactory.getLogger(OFEventWFMTopology.class);
+    private static Logger logger = LoggerFactory.getLogger(OfEventWfmTopology.class);
 
     @VisibleForTesting
     public static final String DISCO_SPOUT_ID = "disco-spout";
-    private static final String DISCO_BOLT_ID = OFELinkBolt.class.getSimpleName();
+    private static final String DISCO_BOLT_ID = OfeLinkBolt.class.getSimpleName();
     private static final String TOPO_ENG_BOLT_ID = "topo.eng-bolt";
     private static final String SPEAKER_BOLT_ID = "speaker-bolt";
 
-    public OFEventWFMTopology(LaunchEnvironment env) {
+    public OfEventWfmTopology(LaunchEnvironment env) {
         super(env, OFEventWfmTopologyConfig.class);
     }
 
     /**
      * The best place to look for detailed design information regarding this topologies
      * interactions is to look at docs/design/usecase/network-discovery.md
-     *
+     * <p/>
      * At a high level, it receives input from the speaker, and sends output to the
      * topology engine.
-     *
-     * @return
-     * @throws StreamNameCollisionException
      */
     public StormTopology createTopology() throws StreamNameCollisionException {
-        logger.info("Building OFEventWFMTopology - {}", topologyName);
+        logger.info("Building OfEventWfmTopology - {}", topologyName);
 
         String kafkaTopoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
         String kafkaTopoEngTopic = topologyConfig.getKafkaTopoEngTopic();
@@ -84,11 +81,10 @@ public class OFEventWFMTopology extends AbstractTopology<OFEventWfmTopologyConfi
         checkAndCreateTopic(kafkaTopoEngTopic);
 
         TopologyBuilder builder = new TopologyBuilder();
-        List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
 
         builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
 
-        IStatefulBolt bolt = new OFELinkBolt(topologyConfig);
+        IStatefulBolt bolt = new OfeLinkBolt(topologyConfig);
 
         // TODO: resolve the comments below; are there any state issues?
         // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
@@ -99,10 +95,11 @@ public class OFEventWFMTopology extends AbstractTopology<OFEventWfmTopologyConfi
                 .shuffleGrouping(DISCO_SPOUT_ID);
 
         builder.setBolt(TOPO_ENG_BOLT_ID, createKafkaBolt(kafkaTopoEngTopic),
-                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OFELinkBolt.TOPO_ENG_STREAM);
+                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.TOPO_ENG_STREAM);
         builder.setBolt(SPEAKER_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerTopic()),
-                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OFELinkBolt.SPEAKER_STREAM);
+                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.SPEAKER_STREAM);
 
+        List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         // TODO: verify this ctrlTarget after refactoring.
         ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, (ICtrlBolt) bolt, bd));
         createCtrlBranch(builder, ctrlTargets);
@@ -121,10 +118,14 @@ public class OFEventWFMTopology extends AbstractTopology<OFEventWfmTopologyConfi
      * (4) ◊ - See if flapping happens .. define window and if there are greater than 4 up/downs?
      */
 
+    /**
+     * Main function.
+     * @param args args.
+     */
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
-            (new OFEventWFMTopology(env)).setup();
+            (new OfEventWfmTopology(env)).setup();
         } catch (Exception e) {
             System.exit(handleLaunchException(e));
         }

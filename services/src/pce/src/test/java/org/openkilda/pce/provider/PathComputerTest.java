@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.algo.SimpleGetShortestPath;
 import org.openkilda.pce.model.AvailableNetwork;
@@ -51,8 +52,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * The primary goals of this test package are to emulate the Acceptance Tests in the ATDD module.
- * Those tests can be found in services/src/atdd/src/test/java/org/openkilda/atdd/PathComputationTest.java
+ * The primary goals of this test package are to emulate the Acceptance Tests in the ATDD module. Those tests can be
+ * found in services/src/atdd/src/test/java/org/openkilda/atdd/PathComputationTest.java
  */
 public class PathComputerTest {
 
@@ -97,9 +98,11 @@ public class PathComputerTest {
     @Test
     public void testGetFlowInfo() {
         try (Transaction tx = graphDb.beginTx()) {
-            Node node1 = graphDb.createNode(Label.label("switch"));
+            Node node1;
+            node1 = graphDb.createNode(Label.label("switch"));
             node1.setProperty("name", "00:03");
-            Node node2 = graphDb.createNode(Label.label("switch"));
+            Node node2;
+            node2 = graphDb.createNode(Label.label("switch"));
             node2.setProperty("name", "00:04");
             Relationship rel1 = node1.createRelationshipTo(node2, RelationshipType.withName("flow"));
             rel1.setProperty("flowid", "f1");
@@ -212,7 +215,7 @@ public class PathComputerTest {
         }
     }
 
-    private void connectDiamonds(String switchA, String switchB, String status, int cost, int port) {
+    private void connectDiamonds(SwitchId switchA, SwitchId switchB, String status, int cost, int port) {
         try (Transaction tx = graphDb.beginTx()) {
             // A - B - D
             //   + C +
@@ -228,8 +231,8 @@ public class PathComputerTest {
         createTriangleTopo(pathABstatus, pathABcost, pathCcost, "00:", 1);
     }
 
-    private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost, String switchStart,
-                                    int startIndex) {
+    private void createTriangleTopo(String pathABstatus, int pathABcost, int pathCcost,
+                                    String switchStart, int startIndex) {
         try (Transaction tx = graphDb.beginTx()) {
             // A - B
             // + C +
@@ -243,8 +246,8 @@ public class PathComputerTest {
             addRel(nodeB, nodeA, pathABstatus, pathABstatus, pathABcost, 1000, 5);
             addRel(nodeA, nodeC, "active", "active", pathCcost, 1000, 6);
             addRel(nodeC, nodeA, "active", "active", pathCcost, 1000, 6);
-            addRel(nodeC, nodeB,  "active", "active", pathCcost, 1000, 7);
-            addRel(nodeB, nodeC,  "active", "active", pathCcost, 1000, 7);
+            addRel(nodeC, nodeB, "active", "active", pathCcost, 1000, 7);
+            addRel(nodeB, nodeC, "active", "active", pathCcost, 1000, 7);
             tx.success();
         }
     }
@@ -256,32 +259,32 @@ public class PathComputerTest {
          */
         createDiamond("active", "active", 10, 20);
         Flow f = new Flow();
-        f.setSourceSwitch("00:01");
-        f.setDestinationSwitch("00:04");
+        f.setSourceSwitch(new SwitchId("00:01"));
+        f.setDestinationSwitch(new SwitchId("00:04"));
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         //System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
-        Assert.assertEquals("00:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertEquals(new SwitchId("00:02"), path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
 
     @Test
-    public void testGetPathByCostActiveAsStr() throws UnroutablePathException, RecoverableException {
+    public void testGetPathByCostActive_AsStr() throws UnroutablePathException, RecoverableException {
         /*
          * simple happy path test .. everything has cost
          */
         createDiamondAsString("active", "active", "10", "20", "FF:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("FF:01");
-        f.setDestinationSwitch("FF:04");
+        f.setSourceSwitch(new SwitchId("FF:01"));
+        f.setDestinationSwitch(new SwitchId("FF:04"));
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         //System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
-        Assert.assertEquals("FF:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertEquals(new SwitchId("FF:02"), path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
 
@@ -292,8 +295,8 @@ public class PathComputerTest {
          */
         createDiamond("inactive", "active", 10, 20, "01:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("01:01");
-        f.setDestinationSwitch("01:04");
+        f.setSourceSwitch(new SwitchId("01:01"));
+        f.setDestinationSwitch(new SwitchId("01:04"));
         f.setBandwidth(100);
 
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
@@ -301,7 +304,7 @@ public class PathComputerTest {
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
         // ====> only difference is it should now have C as first hop .. since B is inactive
-        Assert.assertEquals("01:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertEquals(new SwitchId("01:03"), path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
     @Test
@@ -311,8 +314,8 @@ public class PathComputerTest {
          */
         createTriangleTopo("inactive", 5, 20, "02:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("02:01");
-        f.setDestinationSwitch("02:02");
+        f.setSourceSwitch(new SwitchId("02:01"));
+        f.setDestinationSwitch(new SwitchId("02:02"));
         f.setBandwidth(100);
 
         AvailableNetwork network = nd.getAvailableNetwork(false, 100);
@@ -321,7 +324,7 @@ public class PathComputerTest {
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
         // ====> only difference is it should now have C as first hop .. since B is inactive
-        Assert.assertEquals("02:03", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertEquals(new SwitchId("02:03"), path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
     @Test
@@ -329,10 +332,10 @@ public class PathComputerTest {
         /*
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
-        createDiamond("active", "active",  -1, 2000, "03:", 1);
+        createDiamond("active", "active", -1, 2000, "03:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("03:01");
-        f.setDestinationSwitch("03:04");
+        f.setSourceSwitch(new SwitchId("03:01"));
+        f.setDestinationSwitch(new SwitchId("03:04"));
         f.setBandwidth(100);
 
         AvailableNetwork network = nd.getAvailableNetwork(false, 100);
@@ -341,7 +344,7 @@ public class PathComputerTest {
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
         // ====> Should choose B .. because default cost (700) cheaper than 2000
-        Assert.assertEquals("03:02", path.left.getPath().get(1).getSwitchId()); // chooses path B
+        Assert.assertEquals(new SwitchId("03:02"), path.left.getPath().get(1).getSwitchId()); // chooses path B
     }
 
 
@@ -352,8 +355,8 @@ public class PathComputerTest {
          */
         createDiamond("inactive", "inactive", 10, 30, "04:", 1);
         Flow f = new Flow();
-        f.setSourceSwitch("04:01");
-        f.setDestinationSwitch("04:04");
+        f.setSourceSwitch(new SwitchId("04:01"));
+        f.setDestinationSwitch(new SwitchId("04:04"));
         f.setBandwidth(100);
         ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
     }
@@ -386,30 +389,31 @@ public class PathComputerTest {
         SimpleSwitch[] switches = new SimpleSwitch[network.getSwitches().values().size()];
         Arrays.sort(network.getSwitches().values().toArray(switches));
         Assert.assertEquals(4, switches.length);
-        Assert.assertEquals("05:01", switches[0].dpid);
-        Assert.assertEquals("05:04", switches[3].dpid);
+        Assert.assertEquals(new SwitchId("05:01"), switches[0].dpid);
+        Assert.assertEquals(new SwitchId("05:04"), switches[3].dpid);
         Assert.assertEquals(2, switches[0].outbound.size());
-        Assert.assertEquals(1, switches[0].outbound.get("05:02").size());
-        Assert.assertEquals(10, switches[0].outbound.get("05:02").iterator().next().getCost());
-        Assert.assertEquals(1, switches[0].outbound.get("05:03").size());
-        Assert.assertEquals(20, switches[0].outbound.get("05:03").iterator().next().getCost());
+        Assert.assertEquals(1, switches[0].outbound.get(new SwitchId("05:02")).size());
+        Assert.assertEquals(10, switches[0].outbound.get(new SwitchId("05:02")).iterator().next().getCost());
+        Assert.assertEquals(1, switches[0].outbound.get(new SwitchId("05:03")).size());
+        Assert.assertEquals(20, switches[0].outbound.get(new SwitchId("05:03")).iterator().next().getCost());
 
         time = System.currentTimeMillis();
-        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "05:01", "05:03", 35);
+        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, new SwitchId("05:01"),
+                new SwitchId("05:03"), 35);
         LinkedList<SimpleIsl> result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("result = " + result);
 
         time = System.currentTimeMillis();
-        sgsp = new SimpleGetShortestPath(network, "05:01", "05:04", 35);
+        sgsp = new SimpleGetShortestPath(network, new SwitchId("05:01"), new SwitchId("05:04"), 35);
         result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("result = " + result);
     }
 
     /**
-     * Create a couple of islands .. try to find a path between them .. validate no path is
-     * returned, and that the function completes in reasonable time ( < 10ms);
+     * Create a couple of islands .. try to find a path between them .. validate no path is returned, and that the
+     * function completes in reasonable time ( < 10ms);
      */
     @Test
     public void getPathTest_Islands() {
@@ -422,22 +426,23 @@ public class PathComputerTest {
 
         // THIS ONE SHOULD WORK
         long time = System.currentTimeMillis();
-        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "06:01", "06:03", 35);
+        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, new SwitchId("06:01"),
+                new SwitchId("06:03"), 35);
         LinkedList<SimpleIsl> result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("result = " + result);
 
         // THIS ONE SHOULD FAIL
         time = System.currentTimeMillis();
-        sgsp = new SimpleGetShortestPath(network, "06:01", "07:04", 35);
+        sgsp = new SimpleGetShortestPath(network, new SwitchId("06:01"), new SwitchId("07:04"), 35);
         result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("result = " + result);
     }
 
     /**
-     * See how it works with a large network.
-     * It takes a while to create the network .. therefore @Ignore so that it doesn't slow down unit tests.
+     * See how it works with a large network. It takes a while to create the network .. therefore @Ignore so that it
+     * doesn't slow down unit tests.
      */
     @Ignore
     @Test
@@ -453,15 +458,15 @@ public class PathComputerTest {
         for (int i = 0; i < 49; i++) {
             String prev = String.format("%02X", 4 * i + 4);
             String next = String.format("%02X", 4 * i + 5);
-            connectDiamonds("10:" + prev, "10:" + next, "active", 20, 50);
-            connectDiamonds("11:" + prev, "11:" + next, "active", 20, 50);
-            connectDiamonds("12:" + prev, "12:" + next, "active", 20, 50);
-            connectDiamonds("13:" + prev, "13:" + next, "active", 20, 50);
+            connectDiamonds(new SwitchId("10:" + prev), new SwitchId("10:" + next), "active", 20, 50);
+            connectDiamonds(new SwitchId("11:" + prev), new SwitchId("11:" + next), "active", 20, 50);
+            connectDiamonds(new SwitchId("12:" + prev), new SwitchId("12:" + next), "active", 20, 50);
+            connectDiamonds(new SwitchId("13:" + prev), new SwitchId("13:" + next), "active", 20, 50);
         }
-        connectDiamonds("10:99", "11:22", "active", 20, 50);
-        connectDiamonds("11:99", "12:22", "active", 20, 50);
-        connectDiamonds("12:99", "13:22", "active", 20, 50);
-        connectDiamonds("13:99", "10:22", "active", 20, 50);
+        connectDiamonds(new SwitchId("10:99"), new SwitchId("11:22"), "active", 20, 50);
+        connectDiamonds(new SwitchId("11:99"), new SwitchId("12:22"), "active", 20, 50);
+        connectDiamonds(new SwitchId("12:99"), new SwitchId("13:22"), "active", 20, 50);
+        connectDiamonds(new SwitchId("13:99"), new SwitchId("10:22"), "active", 20, 50);
 
         boolean ignoreBw = false;
 
@@ -471,14 +476,15 @@ public class PathComputerTest {
 
         // THIS ONE SHOULD WORK
         long time = System.currentTimeMillis();
-        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, "10:01", "11:03", 200);
+        SimpleGetShortestPath sgsp = new SimpleGetShortestPath(network, new SwitchId("10:01"),
+                new SwitchId("11:03"), 200);
         LinkedList<SimpleIsl> result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("Path Length = " + result.size());
 
         // THIS ONE SHOULD FAIL
         time = System.currentTimeMillis();
-        sgsp = new SimpleGetShortestPath(network, "08:01", "11:04", 100);
+        sgsp = new SimpleGetShortestPath(network, new SwitchId("08:01"), new SwitchId("11:04"), 100);
         result = sgsp.getPath();
         System.out.println("TIME: SimpleGetShortestPath.getPath -> " + (System.currentTimeMillis() - time));
         System.out.println("Path Length = " + result.size());
@@ -486,16 +492,15 @@ public class PathComputerTest {
 
 
     /**
-     * This verifies that the getPath in NeoDriver returns what we expect.
-     * Essentially, this tests the additional logic wrt taking the results of the algo and convert
-     * to something installable.
+     * This verifies that the getPath in NeoDriver returns what we expect. Essentially, this tests the additional logic
+     * wrt taking the results of the algo and convert to something installable.
      */
     @Test
     public void verifyConversionToPair() throws UnroutablePathException, RecoverableException {
         createDiamond("active", "active", 10, 20, "09:", 1);
         Flow flow = new Flow();
-        String start = "09:01";
-        String end = "09:04";
+        SwitchId start = new SwitchId("09:01");
+        SwitchId end = new SwitchId("09:04");
         flow.setSourceSwitch(start);      // getPath will find an isl port
         flow.setDestinationSwitch(end);
         flow.setIgnoreBandwidth(false);
@@ -519,8 +524,8 @@ public class PathComputerTest {
 
         Flow flow = new Flow();
         flow.setBandwidth(flowBandwidth);
-        flow.setSourceSwitch("A1:01");      // getPath will find an isl port
-        flow.setDestinationSwitch("A1:03");
+        flow.setSourceSwitch(new SwitchId("A1:01"));      // getPath will find an isl port
+        flow.setDestinationSwitch(new SwitchId("A1:03"));
         flow.setIgnoreBandwidth(false);
         flow.setFlowId("flow-A1:01-A1:03");
 
@@ -543,8 +548,8 @@ public class PathComputerTest {
 
         Flow flow = new Flow();
         flow.setBandwidth(originFlowBandwidth);
-        flow.setSourceSwitch("A1:01");
-        flow.setDestinationSwitch("A1:03");
+        flow.setSourceSwitch(new SwitchId("A1:01"));
+        flow.setDestinationSwitch(new SwitchId("A1:03"));
         flow.setIgnoreBandwidth(false);
         flow.setFlowId("flow-A1:01-A1:03");
 

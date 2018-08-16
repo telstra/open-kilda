@@ -17,6 +17,7 @@ package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
@@ -36,4 +37,8 @@ public interface SwitchMapper {
     }
 
     RulesValidationResult toRulesValidationResult(SyncRulesResponse response);
+
+    default String toSwithId(SwitchId switchId) {
+        return switchId.toString();
+    }
 }

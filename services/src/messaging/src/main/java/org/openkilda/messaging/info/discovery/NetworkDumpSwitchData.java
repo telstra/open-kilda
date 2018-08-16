@@ -19,6 +19,7 @@ import static java.util.Objects.requireNonNull;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -36,10 +37,10 @@ import lombok.Value;
 public class NetworkDumpSwitchData extends InfoData {
     private static final long serialVersionUID = 1L;
 
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonCreator
-    public NetworkDumpSwitchData(@JsonProperty("switch_id") String switchId) {
+    public NetworkDumpSwitchData(@JsonProperty("switch_id") SwitchId switchId) {
         this.switchId = requireNonNull(switchId);
     }
 }

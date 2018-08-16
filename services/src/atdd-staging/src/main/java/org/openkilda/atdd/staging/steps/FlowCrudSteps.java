@@ -44,6 +44,7 @@ import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -349,7 +350,7 @@ public class FlowCrudSteps implements En {
         }
     }
 
-    private int getAllowedVlan(Set<FlowPayload> flows, String switchDpId) {
+    private int getAllowedVlan(Set<FlowPayload> flows, SwitchId switchDpId) {
         RangeSet<Integer> allocatedVlans = TreeRangeSet.create();
         flows.forEach(f -> {
             allocatedVlans.add(Range.singleton(f.getSource().getVlanId()));
@@ -393,7 +394,7 @@ public class FlowCrudSteps implements En {
 
     @And("^all active switches have no excessive meters installed$")
     public void noExcessiveMetersInstalledOnActiveSwitches() {
-        ListValuedMap<String, Integer> switchMeters = new ArrayListValuedHashMap<>();
+        ListValuedMap<SwitchId, Integer> switchMeters = new ArrayListValuedHashMap<>();
         for (FlowPayload flow : flows) {
             ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
             if (flowPair != null) {

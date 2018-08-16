@@ -13,21 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.converter;
+package org.openkilda.messaging.error;
 
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.northbound.dto.links.LinkDto;
+public class SwitchIdFormatException extends IllegalArgumentException {
 
-import org.mapstruct.Mapper;
+    private static final long serialVersionUID = 1L;
 
-@Mapper(componentModel = "spring")
-public interface LinkMapper {
-
-    LinkDto toLinkDto(IslInfoData data);
-
-
-    default String toSwithId(SwitchId switchId) {
-        return switchId.toString();
+    /**
+     * Instance constructor.
+     */
+    public SwitchIdFormatException() {
+        super();
     }
+
+    /**
+     * Constructs a new exception with the specified detail message.
+     *
+     * @param message message.
+     */
+    public SwitchIdFormatException(String message) {
+        super(message);
+    }
+
 }

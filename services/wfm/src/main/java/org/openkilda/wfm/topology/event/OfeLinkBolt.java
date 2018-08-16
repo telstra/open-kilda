@@ -44,7 +44,8 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.wfm.OFEMessageUtils;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.wfm.OfeMessageUtils;
 import org.openkilda.wfm.WatchDog;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
@@ -80,27 +81,26 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * This class is the main class for tracking network topology. The most complicated part of
- * the network topology is links and generating health checks.
+ * This class is the main class for tracking network topology. The most complicated part of the network topology is
+ * links and generating health checks.
  *
  * <p>Because this class / topology acts as a regulator / throttler for what the topology engine
- * receives, it is responsible for passing along changes in the network to the topology engine.
- * In other words, this class acts as a buffer for what the topology engine receives. As such, it
- * needs to send Switch / Port / Link up/down status messages.
+ * receives, it is responsible for passing along changes in the network to the topology engine. In other words, this
+ * class acts as a buffer for what the topology engine receives. As such, it needs to send Switch / Port / Link up/down
+ * status messages.
  *
  * <p>Regarding Storm's KeyValueState .. it
  * doesn't have a keys() feature .. so there is at this stage only one object in it, which holds hashmaps, etc.
  *
  * <p>Cache warming:
- * For update code in Storm, we need to kill and load the new topology, and bolt loses all
- * internal state. For restore data in bolt we send a message to FL and wait till callback message
- * with network data arrive. We don't process common messages and mark it as fail before that.
- * UML Diagram is here https://github.com/telstra/open-kilda/issues/213
-\ */
-public class OFELinkBolt
+ * For update code in Storm, we need to kill and load the new topology, and bolt loses all internal state. For restore
+ * data in bolt we send a message to FL and wait till callback message with network data arrive. We don't process common
+ * messages and mark it as fail before that. UML Diagram is here https://github.com/telstra/open-kilda/issues/213 \
+ */
+public class OfeLinkBolt
         extends AbstractTickStatefulBolt<KeyValueState<String, Object>>
         implements ICtrlBolt {
-    private static final Logger logger = LoggerFactory.getLogger(OFELinkBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(OfeLinkBolt.class);
     private static final int BOLT_TICK_INTERVAL = 1;
 
     private static final String STREAM_ID_CTRL = "ctrl";
@@ -122,7 +122,7 @@ public class OFELinkBolt
 
     private DummyIIslFilter islFilter;
     private DiscoveryManager discovery;
-    private Map<String, List<DiscoveryLink>> linksBySwitch;
+    private Map<SwitchId, List<DiscoveryLink>> linksBySwitch;
 
     private String dumpRequestCorrelationId = null;
     private float dumpRequestTimeout;
@@ -133,7 +133,7 @@ public class OFELinkBolt
     /**
      * Default constructor .. default health check frequency
      */
-    public OFELinkBolt(OFEventWfmTopologyConfig config) {
+    public OfeLinkBolt(OFEventWfmTopologyConfig config) {
         super(BOLT_TICK_INTERVAL);
 
         DiscoveryConfig discoveryConfig = config.getDiscoveryConfig();
@@ -172,7 +172,7 @@ public class OFELinkBolt
             payload = linksBySwitch = new HashMap<>();
             state.put(islDiscoveryTopic, payload);
         } else {
-            linksBySwitch = (Map<String, List<DiscoveryLink>>) payload;
+            linksBySwitch = (Map<SwitchId, List<DiscoveryLink>>) payload;
         }
 
         // DiscoveryManager counts failures as failed attempts,
@@ -224,7 +224,7 @@ public class OFELinkBolt
                 processDiscoveryPlan(tuple, correlationId);
                 break;
             default:
-                logger.error("Illegal state of OFELinkBolt: {}", state);
+                logger.error("Illegal state of OfeLinkBolt: {}", state);
         }
     }
 
@@ -296,7 +296,7 @@ public class OFELinkBolt
         //         * Check whether ISL Filter needs to be engaged.
         //         */
         //        String source = tuple.getSourceComponent();
-        //        if (source.equals(OFEventWFMTopology.SPOUT_ID_INPUT)) {
+        //        if (source.equals(OfEventWfmTopology.SPOUT_ID_INPUT)) {
         //            PopulateIslFilterAction action = new PopulateIslFilterAction(this, tuple, islFilter);
         //            action.run();
         //            return;
@@ -432,7 +432,7 @@ public class OFELinkBolt
     }
 
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {
-        String switchId = switchData.getSwitchId();
+        SwitchId switchId = switchData.getSwitchId();
         String state = switchData.getState().toString();
         logger.info("DISCO: Switch Event: switch={} state={}", switchId, state);
 
@@ -471,14 +471,14 @@ public class OFELinkBolt
     }
 
     private void handlePortEvent(Tuple tuple, PortInfoData portData) {
-        final String switchId = portData.getSwitchId();
+        final SwitchId switchId = portData.getSwitchId();
         final int portId = portData.getPortNo();
         String updown = portData.getState().toString();
         logger.info("DISCO: Port Event: switch={} port={} state={}", switchId, portId, updown);
 
         if (isPortUpOrCached(updown)) {
             discovery.handlePortUp(switchId, portId);
-        } else if (updown.equals(OFEMessageUtils.PORT_DOWN)) {
+        } else if (updown.equals(OfeMessageUtils.PORT_DOWN)) {
             discovery.handlePortDown(switchId, portId);
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
@@ -488,11 +488,11 @@ public class OFELinkBolt
 
     private void handleIslEvent(Tuple tuple, IslInfoData discoveredIsl, String correlationId) {
         PathNode srcNode = discoveredIsl.getPath().get(0);
-        final String srcSwitch = srcNode.getSwitchId();
+        final SwitchId srcSwitch = srcNode.getSwitchId();
         final int srcPort = srcNode.getPortNo();
 
         PathNode dstNode = discoveredIsl.getPath().get(1);
-        final String dstSwitch = dstNode.getSwitchId();
+        final SwitchId dstSwitch = dstNode.getSwitchId();
         final int dstPort = dstNode.getPortNo();
 
         IslChangeType state = discoveredIsl.getState();
@@ -534,10 +534,10 @@ public class OFELinkBolt
     //          - services/src/topology .. service/impl/IslServiceImpl .. service/IslService
     //          - services/src/topology .. messaging/kafka/KafkaMessageConsumer
     //          - services/src/pce .. NetworkCache .. FlowCache ..
-    private void sendDiscoveryFailed(String switchId, int portId, Tuple tuple, String correlationId)
+    private void sendDiscoveryFailed(SwitchId switchId, int portId, Tuple tuple, String correlationId)
             throws IOException {
-        String discoFail = OFEMessageUtils.createIslFail(switchId, portId, correlationId);
-        //        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OFEMessageUtils.LINK_DOWN);
+        String discoFail = OfeMessageUtils.createIslFail(switchId, portId, correlationId);
+        //        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OfeMessageUtils.LINK_DOWN);
         //        collector.emit(topoEngTopic, tuple, dataVal);
         collector.emit(TOPO_ENG_STREAM, tuple, new Values(PAYLOAD, discoFail));
         discovery.handleFailed(switchId, portId);
@@ -545,7 +545,7 @@ public class OFELinkBolt
     }
 
     private boolean isPortUpOrCached(String state) {
-        return OFEMessageUtils.PORT_UP.equals(state) || OFEMessageUtils.PORT_ADD.equals(state)
+        return OfeMessageUtils.PORT_UP.equals(state) || OfeMessageUtils.PORT_ADD.equals(state)
                 || PortChangeType.CACHED.getType().equals(state);
     }
 
@@ -554,8 +554,8 @@ public class OFELinkBolt
         dumpRequestTimer = new Timer(expireDelay, expireDelay, TimeUnit.MILLISECONDS);
     }
 
-    private void handleMovedIsl(Tuple tuple, String srcSwitch, int srcPort, String dstSwitch, int dstPort,
-            String correlationId) {
+    private void handleMovedIsl(Tuple tuple, SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
+                                String correlationId) {
         NetworkEndpoint dstEndpoint = discovery.getLinkDestination(srcSwitch, srcPort);
         logger.info("Link is moved from {}_{} - {}_{} to endpoint {}_{}", srcSwitch, srcPort,
                 dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), dstSwitch, dstPort);
@@ -611,7 +611,7 @@ public class OFELinkBolt
     }
 
     @Override
-    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
 
         List<DiscoveryLink> filteredDiscoveryList = linksBySwitch.get(switchId);
 

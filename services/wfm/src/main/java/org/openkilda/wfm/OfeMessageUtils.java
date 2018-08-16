@@ -18,14 +18,15 @@ package org.openkilda.wfm;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -34,9 +35,9 @@ import java.util.Collections;
 import java.util.Map;
 
 /**
- * OFEMessageUtils - A utility class that will help with the messages on kilda.speaker and
+ * OfeMessageUtils - A utility class that will help with the messages on kilda.speaker and
  * speaker.**.*
- * <p>
+ * <p/>
  * Example OpenFlow Messages:
  * {
  * "clazz": "org.openkilda.messaging.info.InfoMessage",
@@ -47,7 +48,7 @@ import java.util.Map;
  * "state": "ACTIVATED | ADDED | CHANGE | DEACTIVATED | REMOVED"
  * }
  * }
- * <p>
+ * <p/>
  * {
  * "clazz": "org.openkilda.messaging.info.InfoMessage",
  * "timestamp": 1489980143,
@@ -59,14 +60,15 @@ import java.util.Map;
  * "max_capacity": LONG
  * }
  * }
- * <p>
+ * <p/>
  * {"clazz": "org.openkilda.messaging.info.InfoMessage",
  * "payload": {
  * "clazz": "org.openkilda.messaging.info.event.SwitchInfoData",
  * "switch_id": "0x0000000000000001",
  * "state": "ACTIVATED"}}
  */
-public class OFEMessageUtils {
+
+public final class OfeMessageUtils {
 
     public static final String FIELD_SWITCH_ID = "switch_id";
     public static final String FIELD_PORT_ID = "port_no";
@@ -89,30 +91,49 @@ public class OFEMessageUtils {
     // ==============  ==============  ==============  ==============  ==============
     private static final ObjectMapper _mapper = new ObjectMapper();
 
+    private OfeMessageUtils() {
+        throw new UnsupportedOperationException();
+    }
+
     /**
+     * Return switch info message.
+     *
+     * @param switchId switch id.
      * @param state - ACTIVATED | ADDED | CHANGE | DEACTIVATED | REMOVED
+     * @return switch info message.
      */
-    public static String createSwitchInfoMessage(String switchID, String state) {
-        return createInfoMessage(true, switchID, null, state);
+    public static String createSwitchInfoMessage(String switchId, String state) {
+        return createInfoMessage(true, switchId, null, state);
     }
 
     /**
+     * Return port info message.
+     *
+     * @param switchId switch id.
+     * @param portId port id.
      * @param state - ADD | OTHER_UPDATE | DELETE | UP | DOWN
+     * @return port info message.
      */
-    public static String createPortInfoMessage(String switchID, String portID, String state) {
-        return createInfoMessage(false, switchID, portID, state);
+    public static String createPortInfoMessage(String switchId, String portId, String state) {
+        return createInfoMessage(false, switchId, portId, state);
     }
 
     /**
-     * @param isSwitch - it is either a switch or port at this stage.
+     * Return info message.
+     *
+     * @param isSwitch it is either a switch or port at this stage.
+     * @param switchId switch id.
+     * @param portId port id.
+     * @param state state.
+     * @return info message.
      */
-    public static String createInfoMessage(boolean isSwitch, String switchID, String portID, String
+    public static String createInfoMessage(boolean isSwitch, String switchId, String portId, String
             state) {
         // TODO: we don't use "type" anymore .. rewrite and leverage proper message class
         StringBuffer sb = new StringBuffer("{'type': 'INFO', ");
         sb.append("'timestamp': ").append(System.currentTimeMillis()).append(", ");
         String type = (isSwitch) ? MT_SWITCH : MT_PORT;
-        sb.append("'payload': ").append(createDataMessage(type, state, switchID, portID));
+        sb.append("'payload': ").append(createDataMessage(type, state, switchId, portId));
         sb.append("}");
         return sb.toString().replace("'", "\"");
     }
@@ -126,7 +147,9 @@ public class OFEMessageUtils {
     }
 
     /**
-     * @return the {"payload":{}} portion of a Kilda message type
+     * Return the {"payload":{}} portion of a Kilda message type.
+     *
+     * @return the {"payload":{}} portion of a Kilda message type.
      */
     public static String createDataMessage(String type, String state, String switchId, String
             portId) {
@@ -149,15 +172,31 @@ public class OFEMessageUtils {
         return _mapper.writeValueAsString(map);
     }
 
+    /**
+     * Return data from json.
+     *
+     * @param json JSON.
+     * @return data from json.
+     * @throws IOException error getting root from json.
+     */
     public static Map<String, ?> getData(String json) throws IOException {
-        Map<String, ?> root = OFEMessageUtils.fromJson(json);
+        Map<String, ?> root = OfeMessageUtils.fromJson(json);
         if (root.containsKey("type")) {
             root = (Map<String, ?>) root.get(PAYLOAD);
         }
         return root;
     }
 
-    public static String createIslFail(String switchId, int portId, String correlationId) throws IOException {
+    /**
+     * Return ISL discovery failure message.
+     *
+     * @param switchId switch id.
+     * @param portId port id.
+     * @param correlationId correlation id.
+     * @return isl discovery failure message.
+     * @throws IOException error writing message as string.
+     */
+    public static String createIslFail(SwitchId switchId, int portId, String correlationId) throws IOException {
         PathNode node = new PathNode(switchId, portId, 0, 0L);
         InfoData data = new IslInfoData(0L, Collections.singletonList(node), 0L, IslChangeType.FAILED, 0L);
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
@@ -169,9 +208,11 @@ public class OFEMessageUtils {
     // ==============  ==============  ==============  ==============  ==============
 
     /**
+     * Return a JSON string that can be used to for link event.
+     *
      * @return a JSON string that can be used to for link event
      */
-    public static String createIslDiscovery(String switchId, int portId, String correlationId) throws IOException {
+    public static String createIslDiscovery(SwitchId switchId, int portId, String correlationId) throws IOException {
         CommandMessage message = new CommandMessage(
                 new DiscoverIslCommandData(switchId, Integer.valueOf(portId)), // Payload
                 System.currentTimeMillis(),

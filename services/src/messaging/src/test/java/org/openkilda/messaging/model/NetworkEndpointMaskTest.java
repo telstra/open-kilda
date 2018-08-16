@@ -27,8 +27,8 @@ public class NetworkEndpointMaskTest implements StringSerializer {
     @Test
     public void serializeLoop() throws Exception {
         NetworkEndpointMask[] batch = new NetworkEndpointMask[] {
-                new NetworkEndpointMask("ff:fe:00:00:00:00:00:01", 8),
-                new NetworkEndpointMask("ff:fe:00:00:00:00:00:02", null),
+                new NetworkEndpointMask(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
+                new NetworkEndpointMask(new SwitchId("ff:fe:00:00:00:00:00:02"), null),
                 new NetworkEndpointMask(null, 9),
                 new NetworkEndpointMask(null, null)};
 

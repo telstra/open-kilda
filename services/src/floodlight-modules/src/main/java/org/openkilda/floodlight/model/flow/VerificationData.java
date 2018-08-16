@@ -66,8 +66,8 @@ public class VerificationData {
      * Build {@link VerificationData} from {@link UniFlowVerificationRequest} instance.
      */
     public static VerificationData of(UniFlowVerificationRequest verificationRequest) {
-        DatapathId source = DatapathId.of(verificationRequest.getSourceSwitchId());
-        DatapathId dest = DatapathId.of(verificationRequest.getDestSwitchId());
+        DatapathId source = DatapathId.of(verificationRequest.getSourceSwitchId().toLong());
+        DatapathId dest = DatapathId.of(verificationRequest.getDestSwitchId().toLong());
         return new VerificationData(source, dest, verificationRequest.getPacketId());
     }
 

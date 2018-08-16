@@ -106,7 +106,7 @@ public class HealthCheckImpl implements HealthCheckService {
         Map<String, String> status = healthCheckMessageConsumer.poll(correlationId);
 
         Arrays.stream(ServiceType.values())
-                .forEach(service -> status.putIfAbsent(service.getId(), Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS));
+           .forEach(service -> status.putIfAbsent(service.getSwitchId(), Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS));
         */
 
         // FIXME(surabujin): hack to restore "operational" despite actual state of services

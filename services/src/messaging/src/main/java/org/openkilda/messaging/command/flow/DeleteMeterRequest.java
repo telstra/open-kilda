@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,13 +26,13 @@ import lombok.Value;
 public class DeleteMeterRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("meter_id")
     private long meterId;
 
     @JsonCreator
-    public DeleteMeterRequest(@JsonProperty("switch_id") String switchId,
+    public DeleteMeterRequest(@JsonProperty("switch_id") SwitchId switchId,
                               @JsonProperty("meter_id") long meterId) {
         this.switchId = switchId;
         this.meterId = meterId;
