@@ -19,12 +19,16 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.wfm.topology.event.OfeLinkBolt.STATE_ID_DISCOVERY;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
@@ -37,6 +41,7 @@ import org.openkilda.wfm.topology.event.OfeLinkBolt.State;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -131,5 +136,29 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 allOf(hasProperty("source", hasProperty("datapath", is(new SwitchId("ff:01")))),
                         hasProperty("destination", hasProperty("datapath", is(new SwitchId("ff:02")))),
                         hasProperty("active", is(true)))));
+    }
+
+    @Test
+    public void shouldNotProcessLoopedIsl() throws JsonProcessingException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final int port = 1;
+        DiscoveryLink discoveryLink = new DiscoveryLink(switchId, port, switchId, port, 0, -1, false);
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        Map<SwitchId, List<DiscoveryLink>> links =
+                Collections.singletonMap(
+                        discoveryLink.getSource().getDatapath(), Collections.singletonList(discoveryLink));
+        boltState.put(STATE_ID_DISCOVERY, links);
+        bolt.initState(boltState);
+        bolt.state = State.MAIN;
+
+        PathNode source = new PathNode(switchId, port, 0);
+        PathNode destination = new PathNode(switchId, port, 1);
+        IslInfoData isl = new IslInfoData(Lists.newArrayList(source, destination), IslChangeType.DISCOVERED);
+        InfoMessage inputMessage = new InfoMessage(isl, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.doWork(tuple);
+
+        assertFalse(discoveryLink.isActive());
     }
 }
