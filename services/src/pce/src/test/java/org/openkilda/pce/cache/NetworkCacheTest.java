@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.NetworkTopologyConstants;
 
 import org.junit.After;
@@ -61,7 +62,7 @@ public class NetworkCacheTest {
 
     @Test
     public void updateSwitch() throws Exception {
-        String swId = "sw7";
+        SwitchId swId = new SwitchId("ff:07");
         SwitchInfoData sw7 = new SwitchInfoData(swId, SwitchState.ACTIVATED, "", "", "", "");
         networkCache.createSwitch(sw7);
         assertEquals(sw7, networkCache.getSwitch(swId));
@@ -140,7 +141,8 @@ public class NetworkCacheTest {
         networkCache.createOrUpdateIsl(NetworkTopologyConstants.isl32);
 
         directlyConnected = networkCache.getDirectlyConnectedSwitches(NetworkTopologyConstants.sw2.getSwitchId());
-        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.sw1, NetworkTopologyConstants.sw3)), directlyConnected);
+        assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.sw1, NetworkTopologyConstants.sw3)),
+                directlyConnected);
     }
 
     @Test

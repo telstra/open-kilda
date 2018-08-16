@@ -15,6 +15,8 @@
 
 package org.openkilda.pce.model;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -33,15 +35,15 @@ public class SimpleIsl {
     /** If another default is desired, you can control that at object creation. */
     private static final int DEFAULT_COST = 700;
 
-    private String srcDpid;
-    private String dstDpid;
+    private SwitchId srcDpid;
+    private SwitchId dstDpid;
     private int srcPort;
     private int dstPort;
     private int cost;
     private int latency;
 
 
-    public SimpleIsl(String srcDpid, String dstDpid, int srcPort, int dstPort, int cost, int latency) {
+    public SimpleIsl(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int cost, int latency) {
         this.srcDpid = srcDpid;
         this.dstDpid = dstDpid;
         this.srcPort = srcPort;

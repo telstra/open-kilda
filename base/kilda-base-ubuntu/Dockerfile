@@ -54,7 +54,6 @@ RUN apt-get update \
                -e 's|J_DIR=jdk1.8.0_171|J_DIR=jdk1.8.0_181|' \
                /var/lib/dpkg/info/oracle-java8-installer.config /var/lib/dpkg/info/oracle-java8-installer.postinst; \
            apt-get install -y) \
-
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN chmod +x /usr/local/bin/ansible*

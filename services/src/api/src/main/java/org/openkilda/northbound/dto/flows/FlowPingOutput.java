@@ -19,8 +19,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class FlowPingOutput {
     @JsonProperty("flow_id")
     private String flowId;
@@ -33,9 +35,6 @@ public class FlowPingOutput {
 
     @JsonProperty("error")
     private String error;
-
-    // To satisfy mapstruct
-    public FlowPingOutput() { }
 
     @Builder
     @JsonCreator

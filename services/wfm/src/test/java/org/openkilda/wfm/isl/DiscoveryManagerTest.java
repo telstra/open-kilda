@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -71,12 +72,12 @@ public class DiscoveryManagerTest {
      * Creates three endpoints(switch and port) and activates such ports.
      */
     private void setupThreeLinks() {
-        srcNode1 = new NetworkEndpoint("sw1", 1);
-        dstNode1 = new NetworkEndpoint("sw3", 1);
-        srcNode2 = new NetworkEndpoint("sw1", 2);
-        dstNode2 = new NetworkEndpoint("sw3", 2);
-        srcNode3 = new NetworkEndpoint("sw2", 1);
-        dstNode3 = new NetworkEndpoint("sw3", 3);
+        srcNode1 = new NetworkEndpoint(new SwitchId("ff:01"), 1);
+        dstNode1 = new NetworkEndpoint(new SwitchId("ff:03"), 1);
+        srcNode2 = new NetworkEndpoint(new SwitchId("ff:01"), 2);
+        dstNode2 = new NetworkEndpoint(new SwitchId("ff:03"), 2);
+        srcNode3 = new NetworkEndpoint(new SwitchId("ff:02"), 1);
+        dstNode3 = new NetworkEndpoint(new SwitchId("ff:03"), 3);
 
         dm.handlePortUp(srcNode1.getDatapath(), srcNode1.getPortNumber());
         dm.handlePortUp(srcNode2.getDatapath(), srcNode2.getPortNumber());
@@ -128,7 +129,7 @@ public class DiscoveryManagerTest {
 
     @Test
     public void shouldBreakDiscoveredLinkCorrectly() {
-        DiscoveryLink link = new DiscoveryLink("sw1", 1, "sw2", 2,
+        DiscoveryLink link = new DiscoveryLink(new SwitchId("ff:01"), 1, new SwitchId("ff:02"), 2,
                 islHealthCheckInterval, islHealthFailureLimit, false);
         NetworkEndpoint srcNode = link.getSource();
         dm.handlePortUp(srcNode.getDatapath(), srcNode.getPortNumber());
@@ -388,7 +389,7 @@ public class DiscoveryManagerTest {
         // verify that adding an existing one doesn't crash it.
 
         // Put in 1 node and verify it is there.
-        DiscoveryLink link = new DiscoveryLink("sw1", 1, islHealthCheckInterval, islHealthFailureLimit);
+        DiscoveryLink link = new DiscoveryLink(new SwitchId("ff:01"), 1, islHealthCheckInterval, islHealthFailureLimit);
         NetworkEndpoint srcNode = link.getSource();
         dm.handlePortUp(srcNode.getSwitchDpId(), srcNode.getPortId());
         Optional<DiscoveryLink> discoveryLink =
@@ -409,7 +410,7 @@ public class DiscoveryManagerTest {
         // verify remove one that doesn't exist doesn't crash it
 
         // Put in 1 node and then remove it. The handlePortUp test ensures the Port Up works.
-        DiscoveryLink link = new DiscoveryLink("sw1", 1, islHealthCheckInterval, islHealthFailureLimit);
+        DiscoveryLink link = new DiscoveryLink(new SwitchId("ff:01"), 1, islHealthCheckInterval, islHealthFailureLimit);
         NetworkEndpoint srcNode = link.getSource();
         dm.handlePortUp(srcNode.getSwitchDpId(), srcNode.getPortId());
         dm.handlePortDown(srcNode.getSwitchDpId(), srcNode.getPortId());
@@ -442,13 +443,13 @@ public class DiscoveryManagerTest {
 
     @Test
     public void shouldReturnFalseWhenDiscoPacketsAreNotSendingFromEndpoint() {
-        NetworkEndpoint source = new NetworkEndpoint("sw1", 1);
+        NetworkEndpoint source = new NetworkEndpoint(new SwitchId("ff:01"), 1);
         assertFalse(dm.isInDiscoveryPlan(source.getDatapath(), source.getPortNumber()));
     }
 
     @Test
     public void shouldEndpointBeRemovedFromDiscoveryPlanAfterFailures() {
-        NetworkEndpoint source = new NetworkEndpoint("sw1", 1);
+        NetworkEndpoint source = new NetworkEndpoint(new SwitchId("ff:01"), 1);
         dm.handlePortUp(source.getDatapath(), source.getPortNumber());
 
         // 1st attempt to discover
@@ -474,14 +475,14 @@ public class DiscoveryManagerTest {
 
     @Test
     public void shouldReturnTrueWhenEndpointIsSendingDisco() {
-        NetworkEndpoint source = new NetworkEndpoint("sw1", 1);
+        NetworkEndpoint source = new NetworkEndpoint(new SwitchId("ff:01"), 1);
         dm.handlePortUp(source.getDatapath(), source.getPortNumber());
         assertTrue(dm.isInDiscoveryPlan(source.getDatapath(), source.getPortNumber()));
     }
 
     @Test
     public void shouldIncreaseAcknowledgedAttempts() {
-        NetworkEndpoint source = new NetworkEndpoint("sw1", 1);
+        NetworkEndpoint source = new NetworkEndpoint(new SwitchId("ff:01"), 1);
         dm.handlePortUp(source.getDatapath(), source.getPortNumber());
 
         // originally all counters should be 0.
@@ -532,7 +533,7 @@ public class DiscoveryManagerTest {
         // given
         setupThreeLinks();
 
-        NetworkEndpoint srcNode4 = new NetworkEndpoint("sw2", 2);
+        NetworkEndpoint srcNode4 = new NetworkEndpoint(new SwitchId("ff:02"), 2);
 
         Optional<DiscoveryLink> foundAsLink4Before = dm.findBySourceEndpoint(srcNode4);
         assertFalse(foundAsLink4Before.isPresent());

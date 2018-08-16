@@ -52,6 +52,7 @@ import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -599,10 +600,11 @@ public class CrudBolt
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.CREATION_FAILURE, "Could not create flow", e.getMessage());
+                    ErrorType.ALREADY_EXISTS, "Could not create flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
+                    ErrorType.NOT_FOUND, "Could not create flow",
+                    "Not enough bandwidth found or path not found");
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
@@ -712,10 +714,10 @@ public class CrudBolt
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not update flow", e.getMessage());
+                    ErrorType.ALREADY_EXISTS, "Could not update flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not update flow", "Path was not found");
+                    ErrorType.NOT_FOUND, "Could not update flow", "Path was not found");
         }
 
         ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
@@ -892,7 +894,7 @@ public class CrudBolt
     }
 
     @Override
-    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
         // Not implemented
         return new CrudBoltState(new FlowDump(new HashSet<>()));
     }

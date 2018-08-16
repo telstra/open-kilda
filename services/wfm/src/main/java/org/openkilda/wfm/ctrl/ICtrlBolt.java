@@ -1,8 +1,10 @@
 package org.openkilda.wfm.ctrl;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.IKildaBolt;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.util.Optional;
 
@@ -12,12 +14,12 @@ public interface ICtrlBolt extends IKildaBolt {
     String getCtrlStreamId();
 
     @VisibleForTesting
-    default void clearState() { }
+    default void clearState() {
+    }
 
-    AbstractDumpState dumpStateBySwitchId(String switchId);
+    AbstractDumpState dumpStateBySwitchId(SwitchId switchId);
 
-    default Optional<AbstractDumpState> dumpResorceCacheState()
-    {
+    default Optional<AbstractDumpState> dumpResorceCacheState() {
         return Optional.empty();
     }
 }

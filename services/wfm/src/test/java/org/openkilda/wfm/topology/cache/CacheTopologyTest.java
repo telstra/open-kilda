@@ -39,6 +39,7 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -72,17 +73,21 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static final String firstFlowId = "first-flow";
     private static final String secondFlowId = "second-flow";
     private static final String thirdFlowId = "third-flow";
-    private static final SwitchInfoData sw = new SwitchInfoData("sw",
+    private static final SwitchInfoData sw = new SwitchInfoData(new SwitchId("ff:03"),
             SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda");
     private static final ImmutablePair<Flow, Flow> firstFlow = new ImmutablePair<>(
             new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
             new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
     private static final ImmutablePair<Flow, Flow> secondFlow = new ImmutablePair<>(
-            new Flow(secondFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2),
-            new Flow(secondFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2));
+            new Flow(secondFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+                    new SwitchId("ff:00"), 1, 2),
+            new Flow(secondFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+                    new SwitchId("ff:00"), 1, 2));
     private static final ImmutablePair<Flow, Flow> thirdFlow = new ImmutablePair<>(
-            new Flow(thirdFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2),
-            new Flow(thirdFlowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2));
+            new Flow(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+                    new SwitchId("ff:00"), 1, 2),
+            new Flow(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+                    new SwitchId("ff:00"), 1, 2));
     private static final Set<ImmutablePair<Flow, Flow>> flows = new HashSet<>();
     private static final NetworkInfoData dump = new NetworkInfoData(
             "test", Collections.singleton(sw), Collections.emptySet(), Collections.emptySet(), flows);
@@ -237,7 +242,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     @Ignore
     @Test
     public void flowShouldBeReroutedWhenIslDies() throws Exception {
-        final String destSwitchId = "destSwitch";
+        final SwitchId destSwitchId = new SwitchId("ff:02");
         final String flowId = "flowId";
         sendData(sw);
 
@@ -324,7 +329,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         return cacheState.getNetwork();
     }
 
-    private FlowInfoData buildFlowInfoData(String flowId, String srcSwitch, String dstSwitch, List<PathNode> path) {
+    private FlowInfoData buildFlowInfoData(String flowId, SwitchId srcSwitch, SwitchId dstSwitch, List<PathNode> path) {
         Flow flow = new Flow();
         flow.setFlowId(flowId);
         flow.setSourceSwitch(srcSwitch);

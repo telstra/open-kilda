@@ -18,16 +18,17 @@ package org.openkilda.wfm.topology.stats.metrics;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
-import com.google.common.collect.ImmutableMap;
-import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.MeterConfigReply;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
-import org.openkilda.wfm.topology.utils.StatsUtil;
+
+import com.google.common.collect.ImmutableMap;
+import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,12 +48,13 @@ public class MeterConfigMetricGenBolt extends MetricGenBolt {
         }
 
         LOGGER.debug("Meter config stats message: {}={}, component={}, stream={}",
-                CORRELATION_ID, message.getCorrelationId(), componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
+                CORRELATION_ID, message.getCorrelationId(), componentId,
+                StatsStreamType.valueOf(input.getSourceStreamId()));
         MeterConfigStatsData data = (MeterConfigStatsData) message.getData();
         long timestamp = message.getTimestamp();
 
         try {
-            String switchId = StatsUtil.formatSwitchId(data.getSwitchId());
+            SwitchId switchId = data.getSwitchId();
             for (MeterConfigReply reply : data.getStats()) {
                 for (Long meterId : reply.getMeterIds()) {
                     emit(timestamp, meterId, switchId);
@@ -63,10 +65,10 @@ public class MeterConfigMetricGenBolt extends MetricGenBolt {
         }
     }
 
-    private void emit(long timestamp, Long meterId, String switchId) {
+    private void emit(long timestamp, Long meterId, SwitchId switchId) {
         try {
             Map<String, String> tags = ImmutableMap.of(
-                    "switchid", switchId,
+                    "switchid", switchId.toOtsdFormat(),
                     "meterId", meterId.toString()
             );
             collector.emit(tuple("pen.switch.meters", timestamp, meterId, tags));

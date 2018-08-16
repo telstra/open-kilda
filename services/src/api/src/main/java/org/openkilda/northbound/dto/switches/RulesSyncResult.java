@@ -15,19 +15,21 @@
 
 package org.openkilda.northbound.dto.switches;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Value
+@Data
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class RulesSyncResult extends RulesValidationResult {
 
     @JsonProperty("installed_rules")
     private List<Long> installedRules;
 
-    @JsonCreator
     public RulesSyncResult(
             @JsonProperty("missing_rules") List<Long> missingRules,
             @JsonProperty("proper_rules") List<Long> properRules,

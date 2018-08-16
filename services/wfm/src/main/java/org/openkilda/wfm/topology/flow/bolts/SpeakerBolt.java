@@ -25,6 +25,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
@@ -78,7 +79,7 @@ public class SpeakerBolt extends BaseRichBolt {
 
                 if (data instanceof BaseInstallFlow) {
                     Long transactionId = ((BaseInstallFlow) data).getTransactionId();
-                    String switchId = ((BaseInstallFlow) data).getSwitchId();
+                    SwitchId switchId = ((BaseInstallFlow) data).getSwitchId();
                     String flowId = ((BaseInstallFlow) data).getId();
 
                     logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
@@ -93,7 +94,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 } else if (data instanceof RemoveFlow) {
 
                     Long transactionId = ((RemoveFlow) data).getTransactionId();
-                    String switchId = ((RemoveFlow) data).getSwitchId();
+                    SwitchId switchId = ((RemoveFlow) data).getSwitchId();
                     String flowId = ((RemoveFlow) data).getId();
 
                     logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",

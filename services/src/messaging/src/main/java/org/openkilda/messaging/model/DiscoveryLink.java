@@ -78,7 +78,7 @@ public class DiscoveryLink implements Serializable {
     /**
      * Constructor with non-defined destination of the ISL.
      */
-    public DiscoveryLink(String srcSwitch, int srcPort, int checkInterval, int consecutiveFailureLimit) {
+    public DiscoveryLink(SwitchId srcSwitch, int srcPort, int checkInterval, int consecutiveFailureLimit) {
         this.source = new NetworkEndpoint(srcSwitch, srcPort);
         this.destination = null;
         this.timeCounter = 0;
@@ -91,7 +91,7 @@ public class DiscoveryLink implements Serializable {
     /**
      * Constructor with defined destination of the ISL.
      */
-    public DiscoveryLink(String srcSwitch, int srcPort, String dstSwitch, int dstPort,
+    public DiscoveryLink(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
             int checkInterval, int consecutiveFailureLimit, boolean active) {
         this.source = new NetworkEndpoint(srcSwitch, srcPort);
         this.destination = new NetworkEndpoint(dstSwitch, dstPort);
@@ -234,7 +234,7 @@ public class DiscoveryLink implements Serializable {
      * @param dstPort destination port.
      * @return true if destination changed.
      */
-    public boolean isDestinationChanged(String dstSwitch, int dstPort) {
+    public boolean isDestinationChanged(SwitchId dstSwitch, int dstPort) {
         // check if the link was previously not discovered
         if (this.destination == null) {
             return false;

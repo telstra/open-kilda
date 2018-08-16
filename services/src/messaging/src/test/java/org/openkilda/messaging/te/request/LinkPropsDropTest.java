@@ -19,6 +19,7 @@ import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,7 +42,7 @@ public class LinkPropsDropTest implements StringSerializer {
      */
     public static LinkPropsDrop makeRequest() {
         LinkPropsMask mask = new LinkPropsMask(
-                new NetworkEndpointMask("ff:fe:00:00:00:00:00:01", 8),
+                new NetworkEndpointMask(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
                 new NetworkEndpointMask(null, null));
         return new LinkPropsDrop(mask);
     }

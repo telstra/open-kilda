@@ -1,8 +1,0 @@
-
-# eliminate unnecessary and large directories from the build context.
-src/tools/maxinet/vagrant
-src/tools/mininet/vagrant
-src/*/*/.git
-src/*/*/target
-src/projectfloodlight/floodlight/lib
-src/projectfloodlight/loxigen/loxi_output

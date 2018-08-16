@@ -15,11 +15,13 @@
 
 package org.openkilda.messaging.info.rule;
 
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
-import org.openkilda.messaging.info.InfoData;
 
 import java.util.List;
 
@@ -28,13 +30,13 @@ import java.util.List;
 public class SwitchFlowEntries extends InfoData {
 
     @JsonProperty(value = "switch_id")
-    private String switchId;
+    private SwitchId switchId;
     @JsonProperty(value = "flows")
     private List<FlowEntry> flowEntries;
 
     @JsonCreator
     public SwitchFlowEntries(
-            @JsonProperty(value = "switch_id") String switchId,
+            @JsonProperty(value = "switch_id") SwitchId switchId,
             @JsonProperty(value = "flows") List<FlowEntry> flowEntries) {
         this.switchId = switchId;
         this.flowEntries = flowEntries;

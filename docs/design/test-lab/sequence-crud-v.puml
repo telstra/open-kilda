@@ -1,0 +1,38 @@
+@startuml
+
+title Create/Delete Virtual Lab
+
+group Create virtual environment
+    User -> API: Create virtual env
+    API -> Docker: Up new instance with topology
+    Docker -> Lab: Push topology
+    note right: topology format from atdd-staging
+
+    loop create all OF switches
+        Lab -> OVS: Create bridge
+    end
+    loop create all links
+        Lab -> iproute2: Create veth-pair
+    end
+    loop comuttate all bridges
+        Lab -> OVS : Create port with pair
+    end
+
+    loop Run all traffgens
+        Lab -> Lab : Run traffgen
+    end
+
+    Lab -> Lab : Run lock-keeper
+
+    Lab -> Docker: Done
+    Docker --> API: Done
+    API --> User: Done
+end
+
+group Delete virtual environment
+    User -> API: Delete request
+    API -> Docker: Stop and delete instance
+    Docker -> API: Done
+    API -> User: Done
+end
+@enduml

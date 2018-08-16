@@ -32,6 +32,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -131,10 +132,10 @@ public class RecordHandlerTest extends EasyMockSupport {
         // of mocking code so I replaced it with mock on kafkaMessageCollector.buildSwitchInfoData
         handler.overrideNetworkDumpSwitchData(
                 DatapathId.of(1),
-                new NetworkDumpSwitchData("sw1"));
+                new NetworkDumpSwitchData(new SwitchId("ff:01")));
         handler.overrideNetworkDumpSwitchData(
                 DatapathId.of(2),
-                new NetworkDumpSwitchData("sw2"));
+                new NetworkDumpSwitchData(new SwitchId("ff:02")));
 
         // setup hook for verify that we create new message for producer
         producer.postMessage(eq(consumerContext.getKafkaTopoDiscoTopic()), anyObject(InfoMessage.class));
@@ -171,7 +172,7 @@ public class RecordHandlerTest extends EasyMockSupport {
     //        Map<DatapathId, IOFSwitch> switches = ImmutableMap.of(
     //                DatapathId.of(1), iofSwitch1);
     //        expect(switchManager.getAllSwitchMap()).andReturn(switches);
-    //        expect(iofSwitch1.getId()).andReturn(dpid).anyTimes();
+    //        expect(iofSwitch1.getSwitchId()).andReturn(dpid).anyTimes();
     //
     //        OFPortDesc ofPortDesc1 = mock(OFPortDesc.class);
     //        OFPortDesc ofPortDesc2 = mock(OFPortDesc.class);
@@ -181,9 +182,9 @@ public class RecordHandlerTest extends EasyMockSupport {
     //
     //        expect(iofSwitch1.getPorts()).andReturn(ImmutableList.of(
     //                ofPortDesc1, ofPortDesc2));
-    //        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1));
+    //        expect(ofPortDesc1.getPortNumber()).andReturn(OFPort.ofInt(1));
     //        expect(ofPortDesc1.getState()).andReturn(portStateUp);
-    //        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2));
+    //        expect(ofPortDesc2.getPortNumber()).andReturn(OFPort.ofInt(2));
     //        expect(ofPortDesc2.getState()).andReturn(portStateUp);
     //
     //        long timestamp = System.currentTimeMillis();

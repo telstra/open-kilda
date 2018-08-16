@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
@@ -71,8 +72,8 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * A factory for stub implementations of services.
- * This is used by unit tests to imitate correct behaviour of Kilda components.
+ * A factory for stub implementations of services. This is used by unit tests to imitate correct behaviour of Kilda
+ * components.
  */
 public class StubServiceFactory {
 
@@ -112,7 +113,7 @@ public class StubServiceFactory {
 
         when(serviceMock.getFlows(any()))
                 .thenAnswer(invocation -> {
-                    String switchId = (String) invocation.getArguments()[0];
+                    SwitchId switchId = (SwitchId) invocation.getArguments()[0];
                     String switchVersion = topologyDefinition.getActiveSwitches().stream()
                             .filter(sw -> sw.getDpId().equals(switchId))
                             .map(Switch::getOfVersion)
@@ -124,7 +125,7 @@ public class StubServiceFactory {
 
         when(serviceMock.getMeters(any()))
                 .then((Answer<MetersEntriesMap>) invocation -> {
-                    String switchId = (String) invocation.getArguments()[0];
+                    SwitchId switchId = (SwitchId) invocation.getArguments()[0];
 
                     MetersEntriesMap result = new MetersEntriesMap();
                     flows.values().forEach(flowPair -> {
@@ -166,7 +167,7 @@ public class StubServiceFactory {
         return serviceMock;
     }
 
-    private FlowEntriesMap buildFlowEntries(String switchId, String switchVersion) {
+    private FlowEntriesMap buildFlowEntries(SwitchId switchId, String switchVersion) {
         FlowEntriesMap result = new FlowEntriesMap();
 
         //broadcast verification flow (for all OF versions)
@@ -174,7 +175,8 @@ public class StubServiceFactory {
                 FlowMatchField.builder().ethDst("08:ed:02:ef:ff:ff").build(),
                 FlowInstructions.builder().applyActions(
                         FlowApplyActions.builder()
-                                .flowOutput("controller").field(switchId + "->eth_dst").build()
+                                .flowOutput("controller")
+                                .field(switchId.toMacAddress() + "->eth_dst").build()
                 ).build()
         );
         result.put(flowEntry.getCookie(), flowEntry);
@@ -190,11 +192,11 @@ public class StubServiceFactory {
         if ("OF_13".equals(switchVersion)) {
             //non-broadcast flow for versions 13 and later
             FlowEntry flowFor13Version = buildFlowEntry("flow-0x8000000000000003",
-                    FlowMatchField.builder().ethDst(switchId).build(),
+                    FlowMatchField.builder().ethDst(switchId.toMacAddress()).build(),
                     FlowInstructions.builder().applyActions(
                             FlowApplyActions.builder()
                                     .flowOutput("controller")
-                                    .field(switchId + "->eth_dst")
+                                    .field(switchId.toMacAddress() + "->eth_dst")
                                     .build()
                     ).build()
             );
@@ -220,19 +222,24 @@ public class StubServiceFactory {
 
         when(serviceMock.getActiveSwitches())
                 .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
-                        .map(sw -> new SwitchInfoData(sw.getDpId(), SwitchState.ACTIVATED, "", "", "", ""))
+                        .map(sw -> new SwitchInfoData(sw.getDpId(),
+                                SwitchState.ACTIVATED, "", "", "", ""))
                         .collect(toList()));
 
         when(serviceMock.getActiveLinks())
                 .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
                         .flatMap(link -> Stream.of(
                                 new IslInfoData(0,
-                                        asList(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0),
-                                                new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1)),
+                                        asList(new PathNode(link.getSrcSwitch().getDpId(),
+                                                        link.getSrcPort(), 0),
+                                                new PathNode(link.getDstSwitch().getDpId(),
+                                                        link.getDstPort(), 1)),
                                         link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0),
                                 new IslInfoData(0,
-                                        asList(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0),
-                                                new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1)),
+                                        asList(new PathNode(link.getDstSwitch().getDpId(),
+                                                        link.getDstPort(), 0),
+                                                new PathNode(link.getSrcSwitch().getDpId(),
+                                                        link.getSrcPort(), 1)),
                                         link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0)
                         ))
                         .collect(toList()));

@@ -18,12 +18,14 @@ package org.openkilda.messaging.command.flow;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Value;
-import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 
 /**
  * Class represents flow deletion info.
@@ -60,7 +62,7 @@ public class RemoveFlow extends BaseFlow {
     public RemoveFlow(@JsonProperty(TRANSACTION_ID) Long transactionId,
             @JsonProperty(FLOW_ID) String flowId,
             @JsonProperty("cookie") Long cookie,
-            @JsonProperty("switch_id") final String switchId,
+            @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("meter_id") Long meterId,
             @JsonProperty("criteria") DeleteRulesCriteria criteria) {
         super(transactionId, flowId, cookie, switchId);

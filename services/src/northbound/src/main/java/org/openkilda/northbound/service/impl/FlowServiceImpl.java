@@ -45,6 +45,7 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -449,7 +450,7 @@ public class FlowServiceImpl implements FlowService {
         BatchResults result = new BatchResults(
                 flowFailure + teFailure,
                 flowSuccess + teSuccess,
-                msgs.stream().toArray(String[]::new));
+                msgs);
 
         LOGGER.debug("Returned: ", result);
         return result;
@@ -469,7 +470,7 @@ public class FlowServiceImpl implements FlowService {
     }
 
     private static final class SimpleSwitchRule {
-        private String switchId; // so we don't get lost
+        private SwitchId switchId; // so we don't get lost
         private long cookie;
         private int inPort;
         private int outPort;
@@ -706,7 +707,7 @@ public class FlowServiceImpl implements FlowService {
          * Since we are getting switch rules, we can use a set.
          */
         List<List<SimpleSwitchRule>> simpleFlowRules = new ArrayList<>();
-        Set<String> switches = new HashSet<>();
+        Set<SwitchId> switches = new HashSet<>();
         for (Flow flow : flows) {
             if (flow.getFlowPath() != null) {
                 simpleFlowRules.add(SimpleSwitchRule.convertFlow(flow));
@@ -735,11 +736,11 @@ public class FlowServiceImpl implements FlowService {
         /*)
          * Now Walk the list, getting the switch rules, so we can process the comparisons.
          */
-        final Map<String, SwitchFlowEntries> rules = new HashMap<>();
-        final Map<String, List<SimpleSwitchRule>> simpleRules = new HashMap<>();
+        final Map<SwitchId, SwitchFlowEntries> rules = new HashMap<>();
+        final Map<SwitchId, List<SimpleSwitchRule>> simpleRules = new HashMap<>();
         int totalSwitchRules = 0;
         int index = 1;
-        for (String switchId : switches) {
+        for (SwitchId switchId : switches) {
             String requestId = correlationId + "-" + index++;
             SwitchFlowEntries sfe = switchService.getRules(switchId, IGNORE_COOKIE_FILTER, requestId);
             rules.put(switchId, sfe);

@@ -68,8 +68,8 @@ public class PingData implements ISignPayload {
      * Build {@link PingData} from {@link Ping} instance.
      */
     public static PingData of(Ping ping) {
-        DatapathId source = DatapathId.of(ping.getSource().getDatapath());
-        DatapathId dest = DatapathId.of(ping.getDest().getDatapath());
+        DatapathId source = DatapathId.of(ping.getSource().getDatapath().toLong());
+        DatapathId dest = DatapathId.of(ping.getDest().getDatapath().toLong());
         return new PingData(ping.getSourceVlanId(), source, dest, ping.getPingId());
     }
 

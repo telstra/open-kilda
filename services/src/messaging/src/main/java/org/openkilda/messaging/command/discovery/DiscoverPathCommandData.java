@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.discovery;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -41,7 +42,7 @@ public class DiscoverPathCommandData extends CommandData {
      * Source switch id.
      */
     @JsonProperty("source_switch_id")
-    private String srcSwitchId;
+    private SwitchId srcSwitchId;
 
     /**
      * Source port number.
@@ -53,7 +54,7 @@ public class DiscoverPathCommandData extends CommandData {
      * Destination switch id.
      */
     @JsonProperty("destination_switch_id")
-    private String dstSwitchId;
+    private SwitchId dstSwitchId;
 
     /**
      * Default constructor.
@@ -69,9 +70,9 @@ public class DiscoverPathCommandData extends CommandData {
      * @param dstSwitchId destination switch id
      */
     @JsonCreator
-    public DiscoverPathCommandData(@JsonProperty("source_switch_id") final String srcSwitchId,
+    public DiscoverPathCommandData(@JsonProperty("source_switch_id") final SwitchId srcSwitchId,
                                    @JsonProperty("source_port_no") final int srcPortNo,
-                                   @JsonProperty("destination_switch_id") final String dstSwitchId) {
+                                   @JsonProperty("destination_switch_id") final SwitchId dstSwitchId) {
         this.srcSwitchId = srcSwitchId;
         this.srcPortNo = srcPortNo;
         this.dstSwitchId = dstSwitchId;
@@ -82,7 +83,7 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @return source switch id
      */
-    public String getSrcSwitchId() {
+    public SwitchId getSrcSwitchId() {
         return srcSwitchId;
     }
 
@@ -91,7 +92,7 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @param switchId source switch id to set
      */
-    public void setSrcSwitchId(String switchId) {
+    public void setSrcSwitchId(SwitchId switchId) {
         this.srcSwitchId = switchId;
     }
 
@@ -118,7 +119,7 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @return switch id
      */
-    public String getDstSwitchId() {
+    public SwitchId getDstSwitchId() {
         return dstSwitchId;
     }
 
@@ -127,7 +128,7 @@ public class DiscoverPathCommandData extends CommandData {
      *
      * @param switchId destination switch id to set
      */
-    public void setDstSwitchId(String switchId) {
+    public void setDstSwitchId(SwitchId switchId) {
         this.dstSwitchId = switchId;
     }
 

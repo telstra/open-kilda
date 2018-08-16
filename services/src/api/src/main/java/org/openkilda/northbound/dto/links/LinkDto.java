@@ -17,12 +17,16 @@ package org.openkilda.northbound.dto.links;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Value
 public class LinkDto {
 
     @JsonProperty("speed")
@@ -36,12 +40,4 @@ public class LinkDto {
 
     @JsonProperty("path")
     private List<PathDto> path;
-
-    public LinkDto(@JsonProperty("speed") long speed, @JsonProperty("available_bandwidth") long availableBandwidth,
-                   @JsonProperty("state") LinkStatus state, @JsonProperty("path") List<PathDto> path) {
-        this.speed = speed;
-        this.availableBandwidth = availableBandwidth;
-        this.state = state;
-        this.path = path;
-    }
 }

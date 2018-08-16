@@ -22,6 +22,28 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
+import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.stats.FlowStatsData;
+import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.messaging.info.stats.FlowStatsReply;
+import org.openkilda.messaging.info.stats.MeterConfigReply;
+import org.openkilda.messaging.info.stats.MeterConfigStatsData;
+import org.openkilda.messaging.info.stats.PortStatsData;
+import org.openkilda.messaging.info.stats.PortStatsEntry;
+import org.openkilda.messaging.info.stats.PortStatsReply;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.Neo4jFixture;
+import org.openkilda.wfm.StableAbstractStormTest;
+import org.openkilda.wfm.topology.TestingKafkaBolt;
+import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
+
 import org.apache.storm.Testing;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -40,27 +62,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
-import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.stats.FlowStatsData;
-import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
-import org.openkilda.messaging.info.stats.MeterConfigReply;
-import org.openkilda.messaging.info.stats.MeterConfigStatsData;
-import org.openkilda.messaging.info.stats.PortStatsData;
-import org.openkilda.messaging.info.stats.PortStatsEntry;
-import org.openkilda.messaging.info.stats.PortStatsReply;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
-import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.Neo4jFixture;
-import org.openkilda.wfm.StableAbstractStormTest;
-import org.openkilda.wfm.topology.TestingKafkaBolt;
-import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
-import org.openkilda.wfm.topology.utils.StatsUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -76,7 +77,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();
 
-    private final String switchId = "00:00:00:00:00:00:00:01";
+    private final SwitchId switchId = new SwitchId(1L);
     private final long cookie = 0x4000000000000001L;
     private final String flowId = "f253423454343";
 
@@ -105,7 +106,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     @Ignore
     @Test
     public void portStatsTest() throws Exception {
-        final String switchId = "00:00:00:00:00:00:00:01";
+        final SwitchId switchId = new SwitchId(1L);
         final List<PortStatsEntry> entries = IntStream.range(1, 53).boxed().map(port -> {
             int baseCount = port * 20;
             return new PortStatsEntry(port, baseCount, baseCount + 1, baseCount + 2, baseCount + 3,
@@ -123,7 +124,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         completeTopologyParam.setMockedSources(sources);
 
         //execute topology
-        Testing.withTrackedCluster(clusterParam, (cluster) ->  {
+        Testing.withTrackedCluster(clusterParam, (cluster) -> {
             StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
             StormTopology stormTopology = topology.createTopology();
 
@@ -135,7 +136,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
             tuples.stream()
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
-                        assertThat(datapoint.getTags().get("switchId"), is(switchId.replaceAll(":", "")));
+                        assertThat(datapoint.getTags().get("switchId"), is(switchId.toString().replaceAll(":", "")));
                         assertThat(datapoint.getTime(), is(timestamp));
                         assertThat(datapoint.getMetric(), startsWith("pen.switch"));
                     });
@@ -144,8 +145,9 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
     @Test
     public void meterConfigStatsTest() throws Exception {
-        final String switchId = "00:00:00:00:00:00:00:01";
-        final List<MeterConfigReply> stats = Collections.singletonList(new MeterConfigReply(2, Arrays.asList(1L, 2L, 3L)));
+        final SwitchId switchId = new SwitchId(1L);
+        final List<MeterConfigReply> stats =
+                Collections.singletonList(new MeterConfigReply(2, Arrays.asList(1L, 2L, 3L)));
         InfoMessage message = new InfoMessage(new MeterConfigStatsData(switchId, stats), timestamp, CORRELATION_ID,
                 Destination.WFM_STATS);
 
@@ -160,7 +162,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         completeTopologyParam.setMockedSources(sources);
 
         //execute topology
-        Testing.withTrackedCluster(clusterParam, (cluster) ->  {
+        Testing.withTrackedCluster(clusterParam, (cluster) -> {
             StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
             StormTopology stormTopology = topology.createTopology();
 
@@ -172,7 +174,8 @@ public class StatsTopologyTest extends StableAbstractStormTest {
             tuples.stream()
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
-                        assertThat(datapoint.getTags().get("switchid"), is(StatsUtil.formatSwitchId(switchId)));
+                        assertThat(datapoint.getTags().get("switchid"),
+                                is(switchId.toOtsdFormat()));
                         assertThat(datapoint.getTime(), is(timestamp));
                         assertThat(datapoint.getMetric(), is("pen.switch.meters"));
                     });
@@ -186,25 +189,25 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         GraphDatabaseService graphDatabaseService = fakeNeo4jDb.getGraphDatabaseService();
 
-        try ( Transaction tx = graphDatabaseService.beginTx() ) {
+        try (Transaction tx = graphDatabaseService.beginTx()) {
             Node node1 = graphDatabaseService.createNode(Label.label("switch"));
-            node1.setProperty("name", switchId);
+            node1.setProperty("name", switchId.toString());
             Relationship rel1 = node1.createRelationshipTo(node1, RelationshipType.withName("flow"));
-            rel1.setProperty("flowid",flowId);
+            rel1.setProperty("flowid", flowId);
             rel1.setProperty("cookie", cookie);
             rel1.setProperty("meter_id", 2);
             rel1.setProperty("transit_vlan", 1);
-            rel1.setProperty("src_switch", switchId);
-            rel1.setProperty("dst_switch", switchId);
-            rel1.setProperty("src_port",1);
-            rel1.setProperty("dst_port",2);
-            rel1.setProperty("src_vlan",5);
-            rel1.setProperty("dst_vlan",5);
-            rel1.setProperty("path","\"{\"path\": [], \"latency_ns\": 0, \"timestamp\": 1522528031909}\"");
-            rel1.setProperty("bandwidth",200);
+            rel1.setProperty("src_switch", switchId.toString());
+            rel1.setProperty("dst_switch", switchId.toString());
+            rel1.setProperty("src_port", 1);
+            rel1.setProperty("dst_port", 2);
+            rel1.setProperty("src_vlan", 5);
+            rel1.setProperty("dst_vlan", 5);
+            rel1.setProperty("path", "\"{\"path\": [], \"latency_ns\": 0, \"timestamp\": 1522528031909}\"");
+            rel1.setProperty("bandwidth", 200);
             rel1.setProperty("ignore_bandwidth", true);
-            rel1.setProperty("description","description");
-            rel1.setProperty("last_updated","last_updated");
+            rel1.setProperty("description", "description");
+            rel1.setProperty("last_updated", "last_updated");
             tx.success();
         }
 
@@ -224,7 +227,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         completeTopologyParam.setMockedSources(sources);
 
         //execute topology
-        Testing.withTrackedCluster(clusterParam, (cluster) ->  {
+        Testing.withTrackedCluster(clusterParam, (cluster) -> {
             StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
             StormTopology stormTopology = topology.createTopology();
 
@@ -248,10 +251,12 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
     @Test
     public void cacheSyncSingleSwitchFlowAdd() throws Exception {
-        final String switchId = "00:00:00:00:00:00:00:01";
+        final SwitchId switchId = new SwitchId(1L);
         final String flowId = "sync-test-add-ssf";
-        final InstallOneSwitchFlow payload = new InstallOneSwitchFlow(
-                0L, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127, OutputVlanType.PUSH, 1000L, 0L);
+        final InstallOneSwitchFlow payload =
+                new InstallOneSwitchFlow(
+                        0L, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127,
+                        OutputVlanType.PUSH, 1000L, 0L);
         final CommandMessage message = new CommandMessage(payload, timestamp, flowId, Destination.WFM_STATS);
         final String json = MAPPER.writeValueAsString(message);
 

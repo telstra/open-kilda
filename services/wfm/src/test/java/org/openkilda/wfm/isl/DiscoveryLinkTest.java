@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -26,7 +27,7 @@ import org.junit.Test;
 public class DiscoveryLinkTest {
 
     private DiscoveryLink dn;
-    private static final String switchName = "sw1";
+    private static final SwitchId switchName = new SwitchId("ff:01");
     private static final int portNumber = 1;
 
     @Before
@@ -45,7 +46,7 @@ public class DiscoveryLinkTest {
 
     @Test
     public void shouldLinkBeDiscoveredWhenDestinationIsSet() {
-        dn.activate(new NetworkEndpoint("sw2", 2));
+        dn.activate(new NetworkEndpoint(new SwitchId("ff:02"), 2));
         assertEquals(true, dn.isActive());
     }
 
@@ -55,7 +56,7 @@ public class DiscoveryLinkTest {
     @Test
     public void forlorn() {
         int threshhold = 2;
-        dn = new DiscoveryLink("sw1", 2, 0, threshhold);
+        dn = new DiscoveryLink(new SwitchId("ff:01"), 2, 0, threshhold);
         assertEquals("A DN starts out as not excluded", true, dn.isNewAttemptAllowed());
         dn.fail();
         dn.fail();

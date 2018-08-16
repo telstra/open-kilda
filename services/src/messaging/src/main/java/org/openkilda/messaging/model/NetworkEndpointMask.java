@@ -18,7 +18,6 @@ package org.openkilda.messaging.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * The aim of this object is to define fuzzy definition of network endpoint. If field is not defined(equal to null),
@@ -29,9 +28,9 @@ public class NetworkEndpointMask extends AbstractNetworkEndpoint {
 
     @JsonCreator
     public NetworkEndpointMask(
-            @JsonProperty("switch-id") String datapath,
+            @JsonProperty("switch-id") SwitchId datapath,
             @JsonProperty("port-id") Integer portNumber) {
-        super(StringUtils.isEmpty(datapath) ? null : datapath, portNumber);
+        super(datapath == null ? null : datapath, portNumber);
 
         if (datapath != null) {
             validateDatapath();

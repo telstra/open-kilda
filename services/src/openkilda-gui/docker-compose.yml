@@ -3,4 +3,4 @@ services:
   openkilda_gui:
     build: .
     ports:
-      - "1010:1010"
+      - "8010:1010"

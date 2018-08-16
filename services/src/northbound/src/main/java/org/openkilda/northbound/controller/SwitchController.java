@@ -25,10 +25,11 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.switches.SwitchDto;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -101,7 +102,7 @@ public class SwitchController {
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public SwitchFlowEntries getSwitchRules(
-            @PathVariable("switch-id") String switchId,
+            @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "Results will be filtered based on matching the cookie.",
                     required = false)
             @RequestParam(value = "cookie", required = false) Optional<Long> cookie) {
@@ -128,7 +129,7 @@ public class SwitchController {
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> deleteSwitchRules(
-            @PathVariable("switch-id") String switchId,
+            @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: "
                     + "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS,"
                     + "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
@@ -182,7 +183,7 @@ public class SwitchController {
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> installSwitchRules(
-            @PathVariable("switch-id") String switchId,
+            @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
                     + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
                     required = false)
@@ -222,7 +223,7 @@ public class SwitchController {
     @ApiOperation(value = "Validate the rules installed on the switch", response = RulesValidationResult.class)
     @GetMapping(path = "/switches/{switch_id}/rules/validate")
     @ResponseStatus(HttpStatus.OK)
-    public RulesValidationResult validateRules(@PathVariable(name = "switch_id") String switchId) {
+    public RulesValidationResult validateRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.validateRules(switchId);
     }
 
@@ -234,7 +235,7 @@ public class SwitchController {
     @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
     @GetMapping(path = "/switches/{switch_id}/rules/synchronize")
     @ResponseStatus(HttpStatus.OK)
-    public RulesSyncResult syncRules(@PathVariable(name = "switch_id") String switchId) {
+    public RulesSyncResult syncRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.syncRules(switchId);
     }
 
@@ -247,7 +248,7 @@ public class SwitchController {
     @ApiOperation(value = "Delete meter from the switch", response = DeleteMeterResult.class)
     @DeleteMapping(path = "/switches/{switch_id}/meter/{meter_id}")
     @ResponseStatus(HttpStatus.OK)
-    public DeleteMeterResult deleteMeter(@PathVariable(name = "switch_id") String switchId,
+    public DeleteMeterResult deleteMeter(@PathVariable(name = "switch_id") SwitchId switchId,
                                          @PathVariable(name = "meter_id") long meterId) {
         return switchService.deleteMeter(switchId, meterId);
     }

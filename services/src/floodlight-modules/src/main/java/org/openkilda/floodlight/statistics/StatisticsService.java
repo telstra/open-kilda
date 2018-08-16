@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -125,7 +126,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     @NewCorrelationContextRequired
     private void gatherPortStats(IOFSwitch iofSwitch) {
         OFFactory factory = iofSwitch.getOFFactory();
-        final String switchId = iofSwitch.getId().toString();
+        SwitchId switchId = new SwitchId(iofSwitch.getId().toString());
 
         OFPortStatsRequest portStatsRequest = factory
                 .buildPortStatsRequest()
@@ -140,8 +141,10 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                         List<PortStatsEntry> entries = reply.getEntries().stream()
                                 .map(entry -> {
                                     if (entry.getVersion().compareTo(OFVersion.OF_13) > 0) {
-                                        long rxFrameErr, rxOverErr, rxCrcErr, collisions;
-                                        rxFrameErr = rxOverErr = rxCrcErr = collisions = 0;
+                                        long rxFrameErr = 0L;
+                                        long rxOverErr = 0L;
+                                        long rxCrcErr = 0L;
+                                        long collisions = 0L;
 
                                         for (OFPortStatsProp property : entry.getProperties()) {
                                             if (property.getType() == 0x0) {
@@ -195,7 +198,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     @NewCorrelationContextRequired
     private void gatherFlowStats(IOFSwitch iofSwitch) {
         OFFactory factory = iofSwitch.getOFFactory();
-        final String switchId = iofSwitch.getId().toString();
+        final SwitchId switchId = new SwitchId(iofSwitch.getId().toString());
 
         OFFlowStatsRequest flowStatsRequest = factory
                 .buildFlowStatsRequest()

@@ -24,7 +24,7 @@ public class NetworkEndpoint extends AbstractNetworkEndpoint {
     @Builder
     @JsonCreator
     public NetworkEndpoint(
-            @JsonProperty("switch-id") String datapath,
+            @JsonProperty("switch-id") SwitchId datapath,
             @JsonProperty("port-id") Integer portNumber) {
         super(datapath, portNumber);
 
@@ -38,7 +38,7 @@ public class NetworkEndpoint extends AbstractNetworkEndpoint {
 
     @JsonIgnore
     @Deprecated
-    public String getSwitchDpId() {
+    public SwitchId getSwitchDpId() {
         return getDatapath();
     }
 

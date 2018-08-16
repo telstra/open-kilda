@@ -1,12 +1,15 @@
 package org.openkilda.messaging.ctrl.state;
 
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.state.visitor.DumpStateVisitor;
+
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.messaging.ctrl.AbstractDumpState;
-import org.openkilda.messaging.ctrl.state.visitor.DumpStateVisitor;
 
 import java.util.Map;
 import java.util.Set;
@@ -17,7 +20,7 @@ import java.util.Set;
 public class ResorceCacheBoltState extends AbstractDumpState {
 
     @JsonProperty("meters")
-    Map<String, Set<Integer>> meters;
+    Map<SwitchId, Set<Integer>> meters;
 
     @JsonProperty("vlans")
     Set<Integer> vlans;
@@ -27,7 +30,7 @@ public class ResorceCacheBoltState extends AbstractDumpState {
 
     @JsonCreator
     public ResorceCacheBoltState(
-            @JsonProperty("meters") Map<String, Set<Integer>> meters,
+            @JsonProperty("meters") Map<SwitchId, Set<Integer>> meters,
             @JsonProperty("vlans") Set<Integer> vlans,
             @JsonProperty("cookies") Set<Integer> cookies) {
         this.meters = meters;

@@ -17,6 +17,7 @@ package org.openkilda.testing.service.floodlight;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.model.controller.CoreFlowEntry;
 import org.openkilda.testing.model.controller.DpIdEntriesList;
 import org.openkilda.testing.model.controller.StaticFlowEntry;
@@ -56,14 +57,14 @@ public class FloodlightServiceImpl implements FloodlightService {
     }
 
     @Override
-    public List<CoreFlowEntry> getCoreFlows(String dpId) {
+    public List<CoreFlowEntry> getCoreFlows(SwitchId dpId) {
         CoreFlowEntry[] coreFlows = restTemplate.getForObject("/wm/core/switch/{dp_id}/flow/json",
                 CoreFlowEntry[].class, dpId);
         return Arrays.asList(coreFlows);
     }
 
     @Override
-    public DpIdEntriesList getStaticEntries(String dpId) {
+    public DpIdEntriesList getStaticEntries(SwitchId dpId) {
         return restTemplate.getForObject("/wm/staticentrypusher/list/{dp_id}/json",
                 DpIdEntriesList.class, dpId);
     }
@@ -75,18 +76,20 @@ public class FloodlightServiceImpl implements FloodlightService {
     }
 
     @Override
-    public FlowEntriesMap getFlows(String dpid) {
+    public FlowEntriesMap getFlows(SwitchId dpid) {
         return restTemplate.getForObject("/wm/kilda/flows/switch_id/{switch_id}", FlowEntriesMap.class, dpid);
     }
 
     @Override
-    public MetersEntriesMap getMeters(String dpid) {
+    public MetersEntriesMap getMeters(SwitchId dpid) {
         try {
             return restTemplate.getForObject("/wm/kilda/meters/switch_id/{switch_id}", MetersEntriesMap.class, dpid);
         } catch (HttpServerErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.NOT_IMPLEMENTED) {
-                throw new UnsupportedOperationException(format("Switch %s doesn't support dumping of meters.", dpid),
-                        ex);
+                throw
+                        new UnsupportedOperationException(
+                                format("Switch %s doesn't support dumping of meters.", dpid),
+                                ex);
             }
 
             throw ex;

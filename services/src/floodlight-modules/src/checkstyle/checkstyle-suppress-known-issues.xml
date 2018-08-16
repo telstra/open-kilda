@@ -4,13 +4,6 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="5" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="6" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="7" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="8" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="18" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/IOFSwitchConverter.java" lines="29" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/floodlight/converter/OFFlowStatsConverter.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/converter/OFFlowStatsConverter.java" lines="48" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/Consumer.java" lines="1" checks="RegexpHeader"/>
@@ -74,7 +67,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathDiscover.java" lines="40" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathVerificationServiceWebRoutable.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathVerificationServiceWebRoutable.java" lines="31" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/statistics/StatisticsService.java" lines="143" checks="MultipleVariableDeclarations"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="22" checks="CustomImportOrder"/>
@@ -88,10 +80,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="220" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="234" checks="NonEmptyAtclauseDescription"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="242" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="33" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="48" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="62" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="72" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="6" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="7" checks="MutableException"/>
@@ -167,10 +155,6 @@
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketSignTest.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketSignTest.java" lines="61" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketSignTest.java" lines="66" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="41" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="42" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="10" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="11" checks="CustomImportOrder"/>

@@ -2,7 +2,7 @@
 
 TOPOLOGY := wfm flow stats cache islstats opentsdb portstate nbworker ping
 
-ENTRY_wfm := org.openkilda.wfm.topology.event.OFEventWFMTopology
+ENTRY_wfm := org.openkilda.wfm.topology.event.OfEventWfmTopology
 ENTRY_flow := org.openkilda.wfm.topology.flow.FlowTopology
 ENTRY_stats := org.openkilda.wfm.topology.stats.StatsTopology
 ENTRY_cache := org.openkilda.wfm.topology.cache.CacheTopology

@@ -17,6 +17,8 @@ package org.openkilda.messaging.info.event;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -38,7 +40,7 @@ public class PathNode implements Serializable {
      * Switch id.
      */
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     /**
      * Port number.
@@ -91,13 +93,13 @@ public class PathNode implements Serializable {
      * @param portNo   port number
      * @param seqId    sequence id
      */
-    public PathNode(final String switchId, final int portNo, final int seqId) {
+    public PathNode(final SwitchId switchId, final int portNo, final int seqId) {
         this.switchId = switchId;
         this.portNo = portNo;
         this.seqId = seqId;
     }
 
-    public PathNode(final String switchId, final int portNo, final int seqId, final Long segmentLatency) {
+    public PathNode(final SwitchId switchId, final int portNo, final int seqId, final Long segmentLatency) {
         this.switchId = switchId;
         this.portNo = portNo;
         this.seqId = seqId;
@@ -114,7 +116,7 @@ public class PathNode implements Serializable {
      * @param segmentLatency segment latency
      */
     @JsonCreator
-    public PathNode(@JsonProperty("switch_id") final String switchId,
+    public PathNode(@JsonProperty("switch_id") final SwitchId switchId,
                     @JsonProperty("port_no") final int portNo,
                     @JsonProperty("seq_id") final int seqId,
                     @JsonProperty("cookie") final Long cookie,
@@ -132,7 +134,7 @@ public class PathNode implements Serializable {
      * @return switch id
      */
     @JsonProperty("switch_id")
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 
@@ -142,7 +144,7 @@ public class PathNode implements Serializable {
      * @param switchId switch id to set
      */
     @JsonProperty("switch_id")
-    public void setSwitchId(final String switchId) {
+    public void setSwitchId(final SwitchId switchId) {
         this.switchId = switchId;
     }
 
