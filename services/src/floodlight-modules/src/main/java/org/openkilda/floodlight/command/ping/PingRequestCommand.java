@@ -37,7 +37,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class PingRequestCommand extends Abstract {
@@ -115,8 +115,9 @@ public class PingRequestCommand extends Abstract {
 
         pktOut.setData(data);
 
-        List<OFAction> actions = new ArrayList<>(2);
-        actions.add(ofFactory.actions().buildOutput().setPort(OFPort.TABLE).build());
+        List<OFAction> actions = Collections.singletonList(ofFactory.actions().buildOutput()
+                .setPort(OFPort.TABLE)
+                .build());
         pktOut.setActions(actions);
 
         OFMessageUtils.setInPort(pktOut, OFPort.of(ping.getSource().getPortNumber()));

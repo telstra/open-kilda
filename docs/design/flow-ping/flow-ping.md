@@ -1,6 +1,6 @@
 # Flow pings
 ## The idea
-Use our link validation mechanism to validate whole flow. We can inject 
+Use our link validation mechanism to validate the whole flow. We can inject
 validation packet on edge switch, it will be "routed" using flow rules on all 
 intermediate switches and cached on the edge switch on other side of flow
 ("packet out" message must specify special out port called "TABLE" to pass
