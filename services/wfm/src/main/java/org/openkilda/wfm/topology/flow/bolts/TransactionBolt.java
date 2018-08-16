@@ -59,7 +59,7 @@ public class TransactionBolt
      */
     private static final Logger logger = LoggerFactory.getLogger(TransactionBolt.class);
 
-    public final String streamIdCtrl = "ctrl";
+    public static final String STREAM_ID_CTRL = "ctrl";
 
     /**
      * Transaction ids state.
@@ -210,7 +210,7 @@ public class TransactionBolt
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatus);
         // FIXME(dbogun): use proper tuple format
-        outputFieldsDeclarer.declareStream(streamIdCtrl, AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
     /**
@@ -233,7 +233,7 @@ public class TransactionBolt
 
     @Override
     public String getCtrlStreamId() {
-        return streamIdCtrl;
+        return STREAM_ID_CTRL;
     }
 
     @Override
