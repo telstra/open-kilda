@@ -20,7 +20,9 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
@@ -109,4 +111,19 @@ public interface SwitchService extends BasicService {
      * @param meterId meter to be deleted.
      */
     DeleteMeterResult deleteMeter(String switchId, long meterId);
+    
+    /**
+     * Configure switch port. <br>
+     * Configurations
+     * <ul>
+     * <li> UP/DOWN port </li>
+     * <li> Change port speed </li>
+     * </ul>
+     *  
+     * @param switchId switch whose port is to configure
+     * @param port port to configure
+     * @param portConfig port configuration that needs to apply on port 
+     * @return portDto 
+     */
+    PortDto configurePort(String switchId,  int port, PortConfigurationPayload portConfig);
 }

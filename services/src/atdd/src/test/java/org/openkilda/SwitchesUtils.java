@@ -10,9 +10,11 @@ import static org.openkilda.DefaultParameters.trafficEndpoint;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
@@ -292,6 +294,35 @@ public final class SwitchesUtils {
         } else {
             System.out.println(format("====> Error: Northbound Synchronize Switch Rules = %s",
                     response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+    
+    /**
+     * Update port status.
+     */
+    public static PortDto changeSwitchPortStatus(String switchName, int port, PortStatus status) {
+        System.out.println("\n==> Revive port on switch");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client.target(northboundEndpoint)
+                .path("/api/v1/switches/{switch-id}/port/{port-no}/config")
+                .resolveTemplate("switch-id", switchName)
+                .resolveTemplate("port-no", port)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .put(Entity.json(format("{\"status\": \"%s\"}", status)));
+
+        System.out.println(format("===> Response = %s", result.toString()));
+
+        int responseCode = result.getStatus();
+        if (responseCode == 200) {
+            PortDto portDto = result.readEntity(PortDto.class);
+            System.out.println(format("====> Success" + " = %s", portDto));
+            return portDto;
+        } else {
+            System.out.println(format("====> Error = %s", result.readEntity(MessageError.class)));
             return null;
         }
     }

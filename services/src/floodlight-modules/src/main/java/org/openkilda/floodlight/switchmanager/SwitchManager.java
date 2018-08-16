@@ -34,12 +34,16 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.PortConfigurationRequest;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -72,6 +76,9 @@ import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFPortConfig;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortMod;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
@@ -109,7 +116,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 
 /**
  * Created by jonv on 29/3/17.
@@ -1474,7 +1480,52 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 }
             }
         }
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public PortConfigurationResponse configurePort(final PortConfigurationRequest request) 
+            throws SwitchOperationException {
+        DatapathId dpId = DatapathId.of(request.getSwitchId());
+        IOFSwitch sw = lookupSwitch(dpId);
+        
+        OFPortDesc ofPortDesc = getPort(sw, request.getPortNumber());
+        
+        boolean result = false;
+        if (request.getStatus() != null) {
+            result = updatePortStatus(sw, ofPortDesc, request.getStatus());
+        }
 
+        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber(), result);
+    }
+    
+    private boolean updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus) {
+        Set<OFPortConfig> configs = portStatus == PortStatus.UP ? configs = ImmutableSet.of() : 
+                ImmutableSet.of(OFPortConfig.PORT_DOWN);
+        
+        Set<OFPortConfig> portMask = ImmutableSet.of(OFPortConfig.PORT_DOWN);
+        
+        OFPortMod ofPortMod = sw.getOFFactory().buildPortMod().setConfig(configs)
+                .setPortNo(ofPortDesc.getPortNo())
+                .setHwAddr(ofPortDesc.getHwAddr())
+                .setMask(portMask)
+                .build();
+
+        logger.debug("oFPortMod request {}", ofPortMod);
+
+        boolean result = sw.write(ofPortMod);
+        logger.debug("Update port status call result: {}", result);
+        return result;
     }
 
+    private OFPortDesc getPort(final IOFSwitch sw, final int portNo) throws SwitchOperationException {
+        OFPortDesc ofPortDesc = sw.getPort(sw.getPort(OFPort.of(portNo)).getName());
+                
+        if (ofPortDesc == null) {
+            throw new SwitchOperationException(sw.getId(), String.format("Port %s was not found", portNo));
+        }
+        return ofPortDesc;
+    }
 }
