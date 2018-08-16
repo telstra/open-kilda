@@ -27,11 +27,10 @@ class PathHelper {
      */
     void makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
-        def islsToAvoid = getInvolvedIsls(lessPreferablePath).findAll { !morePreferableIsls.contains(it) }
-        if (islsToAvoid.empty) {
+        def islToAvoid = getInvolvedIsls(lessPreferablePath).find { !morePreferableIsls.contains(it) }
+        if (!islToAvoid) {
             throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
         }
-        def islToAvoid = islsToAvoid.first()
         northbound.updateLinkProps([
                 new LinkPropsDto(islToAvoid.srcSwitch.dpId.toString(), islToAvoid.srcPort,
                         islToAvoid.dstSwitch.dpId.toString(), islToAvoid.dstPort, ["cost": UNPREFERABLE_COST]),
