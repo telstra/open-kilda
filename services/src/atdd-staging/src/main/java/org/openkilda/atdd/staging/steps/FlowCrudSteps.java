@@ -576,7 +576,7 @@ public class FlowCrudSteps implements En {
     }
 
     @Then("^response flow has bandwidth equal to (\\d+)$")
-    public void responseFlowHasBandwidth(int expectedBw) {
+    public void responseFlowHasBandwidth(long expectedBw) {
         assertThat(flowResponse.getMaximumBandwidth(), equalTo(expectedBw));
     }
 
