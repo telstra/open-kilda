@@ -4,7 +4,7 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="163" checks="VariableDeclarationUsageDistance"/>
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
     <suppress files="src/main/java/org/openkilda/topo/Topology.java" lines="28" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="18" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="33" checks="JavadocMethod"/>
@@ -273,8 +273,6 @@
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="67" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="68" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="68" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="70" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="71" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="73" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="73" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="74" checks="WhitespaceAfter"/>
@@ -816,7 +814,6 @@
     <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="139" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="155" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="156" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="160" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="180" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="202" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="242" checks="LineLength"/>

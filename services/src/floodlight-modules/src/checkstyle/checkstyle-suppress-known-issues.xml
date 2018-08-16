@@ -4,6 +4,7 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
     <suppress files="src/main/java/org/openkilda/floodlight/converter/OFFlowStatsConverter.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/converter/OFFlowStatsConverter.java" lines="48" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/Consumer.java" lines="1" checks="RegexpHeader"/>
@@ -160,10 +161,10 @@
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="50" checks="EmptyLineSeparator"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="50" checks="MultipleVariableDeclarations"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="60" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="98" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketSignTest.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketSignTest.java" lines="61" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketSignTest.java" lines="66" checks="VariableDeclarationUsageDistance"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="10" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="11" checks="CustomImportOrder"/>
@@ -194,16 +195,6 @@
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="63" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="66" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="97" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="328" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="361" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="394" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="430" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="466" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="505" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="541" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="583" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="620" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="645" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="0" checks="NewlineAtEndOfFile"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="9" checks="CustomImportOrder"/>
@@ -252,7 +243,6 @@
     <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="331" checks="NonEmptyAtclauseDescription"/>
     <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="332" checks="NonEmptyAtclauseDescription"/>
     <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="360" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="363" checks="VariableDeclarationUsageDistance"/>
     <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="399" checks="ParameterName"/>
     <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="418" checks="CommentsIndentation"/>
     <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="419" checks="Indentation"/>
