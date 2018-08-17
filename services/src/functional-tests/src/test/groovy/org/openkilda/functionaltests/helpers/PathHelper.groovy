@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class PathHelper {
-    static final String unpreferableCost = "99999999"
+    static final String UNPREFERABLE_COST = "99999999"
 
     @Autowired
     TopologyDefinition topology
@@ -33,10 +33,10 @@ class PathHelper {
         }
         def islToAvoid = islsToAvoid.first()
         northbound.updateLinkProps([
-                new LinkPropsDto(islToAvoid.srcSwitch.dpId, islToAvoid.srcPort,
-                        islToAvoid.dstSwitch.dpId, islToAvoid.dstPort, ["cost": unpreferableCost]),
-                new LinkPropsDto(islToAvoid.dstSwitch.dpId, islToAvoid.dstPort,
-                        islToAvoid.srcSwitch.dpId, islToAvoid.srcPort, ["cost": unpreferableCost])])
+                new LinkPropsDto(islToAvoid.srcSwitch.dpId.toString(), islToAvoid.srcPort,
+                        islToAvoid.dstSwitch.dpId.toString(), islToAvoid.dstPort, ["cost": UNPREFERABLE_COST]),
+                new LinkPropsDto(islToAvoid.dstSwitch.dpId.toString(), islToAvoid.dstPort,
+                        islToAvoid.srcSwitch.dpId.toString(), islToAvoid.srcPort, ["cost": UNPREFERABLE_COST])])
     }
 
     /**

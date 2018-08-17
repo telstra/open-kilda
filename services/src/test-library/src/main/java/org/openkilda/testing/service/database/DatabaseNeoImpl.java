@@ -81,7 +81,7 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
     }
 
     private Map<String, Object> getParams(Isl isl) {
-        Map<String, Object> params = new HashMap<>();
+        Map<String, Object> params = new HashMap<>(4);
         params.put("srcPort", isl.getSrcPort());
         params.put("dstPort", isl.getDstPort());
         params.put("srcSwitch", isl.getSrcSwitch().getDpId());

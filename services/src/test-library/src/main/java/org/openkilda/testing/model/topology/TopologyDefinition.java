@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Defines a topology with switches, links and traffgens.
@@ -140,6 +141,8 @@ public class TopologyDefinition {
     @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
     public static class Switch {
 
+        private static int DEFAULT_MAX_PORT = 20;
+
         private String name;
         @NonNull
         private SwitchId dpId;
@@ -149,7 +152,7 @@ public class TopologyDefinition {
         private Status status;
         @NonNull
         private List<OutPort> outPorts;
-        private Integer maxPorts;
+        private Integer maxPort;
 
         /**
          * Create a Switch instance.
@@ -161,15 +164,15 @@ public class TopologyDefinition {
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
                 @JsonProperty("out_ports") List<OutPort> outPorts,
-                @JsonProperty("max_ports") Integer maxPorts) {
+                @JsonProperty("max_port") Integer maxPort) {
             if (outPorts == null) {
                 outPorts = emptyList();
             }
-            if (maxPorts == null) {
-                maxPorts = 20;
+            if (maxPort == null) {
+                maxPort = DEFAULT_MAX_PORT;
             }
 
-            return new Switch(name, dpId, ofVersion, status, outPorts, maxPorts);
+            return new Switch(name, dpId, ofVersion, status, outPorts, maxPort);
         }
 
         public boolean isActive() {
@@ -180,11 +183,7 @@ public class TopologyDefinition {
          * Get list of all available ports on this switch.
          */
         public List<Integer> getAllPorts() {
-            List<Integer> allPorts = new ArrayList<>();
-            for (int i = 1; i <= maxPorts; i++) {
-                allPorts.add(i);
-            }
-            return allPorts;
+            return IntStream.rangeClosed(1, maxPort).boxed().collect(toList());
         }
     }
 

@@ -12,12 +12,11 @@ class FlowHelper {
     @Autowired
     TopologyDefinition topology
 
-    def timestamp = new Date().format("ddMMMHHmmss")
     def random = new Random()
     def allowedVlans = 101..4095
 
     FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch) {
-        new FlowPayload(timestamp, getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
+        new FlowPayload(new Date().format("ddMMMHHmmss"), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
                 false, "autotest flow", null, null)
     }
 
