@@ -30,14 +30,9 @@ public class PortDto {
     @JsonProperty("port_no")
     private int portNumber;
 
-    @JsonProperty("success")
-    private Boolean success;
-
-    public PortDto(@JsonProperty("switch_id") String switchId, 
-            @JsonProperty("port_id") int portNumber, 
-            @JsonProperty("success") Boolean success) {
+    public PortDto(@JsonProperty("switch_id") String switchId,
+            @JsonProperty("port_id") int portNumber) {
         this.switchId = switchId;
         this.portNumber = portNumber;
-        this.success = success;
     }
 }

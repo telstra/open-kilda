@@ -282,7 +282,6 @@ public class SwitchServiceImpl implements SwitchService {
         PortConfigurationResponse switchPortResponse = (PortConfigurationResponse) validateInfoMessage(
                 updateStatusCommand, response, correlationId);
 
-        return new PortDto(switchPortResponse.getSwitchId(), switchPortResponse.getPortNo(), 
-                switchPortResponse.isSuccesss());
+        return new PortDto(switchPortResponse.getSwitchId(), switchPortResponse.getPortNo());
     }
 }

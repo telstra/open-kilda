@@ -1492,13 +1492,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpId);
         
         OFPortDesc ofPortDesc = getPort(sw, request.getPortNumber());
-        
-        boolean result = false;
+
         if (request.getStatus() != null) {
-            result = updatePortStatus(sw, ofPortDesc, request.getStatus());
+            updatePortStatus(sw, ofPortDesc, request.getStatus());
         }
 
-        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber(), result);
+        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber());
     }
     
     private boolean updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus) {

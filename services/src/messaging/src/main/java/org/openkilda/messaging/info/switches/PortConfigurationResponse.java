@@ -22,9 +22,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class PortConfigurationResponse extends InfoData {
 
     private static final long serialVersionUID = 7332950619136252164L;
@@ -35,14 +37,10 @@ public class PortConfigurationResponse extends InfoData {
     @JsonProperty("port_no")
     private int portNo;
 
-    @JsonProperty("successs")
-    private boolean successs;
-
     @JsonCreator
     public PortConfigurationResponse(@JsonProperty("switch_id") String switchId, 
-            @JsonProperty("port_no") int portNo, @JsonProperty("successs") boolean successs) {
+            @JsonProperty("port_no") int portNo) {
         this.switchId = switchId;
         this.portNo = portNo;
-        this.successs = successs;
     }
 }
