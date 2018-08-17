@@ -45,6 +45,7 @@ public final class SwitchesUtils {
 
     /**
      * Turns off switch.
+     *
      * @param switchName switch name.
      * @return true if result is success.
      */
@@ -65,6 +66,7 @@ public final class SwitchesUtils {
 
     /**
      * Turns on switch.
+     *
      * @param switchName switch name.
      * @return true if result is success.
      */
@@ -121,6 +123,7 @@ public final class SwitchesUtils {
 
     /**
      * Adds new switch into mininet topology.
+     *
      * @param switchName switch name.
      * @param dpid data path id.
      * @return true if switch was added successfully, otherwise - false.
@@ -156,7 +159,7 @@ public final class SwitchesUtils {
      * Delete switch rules through Northbound service.
      */
     public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction deleteAction,
-            Integer inPort, Integer inVlan, Integer outPort) {
+                                               Integer inPort, Integer inVlan, Integer outPort) {
         System.out.println("\n==> Northbound Delete Switch Rules");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
@@ -192,7 +195,8 @@ public final class SwitchesUtils {
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
-            List<Long> cookies = response.readEntity(new GenericType<List<Long>>() {});
+            List<Long> cookies = response.readEntity(new GenericType<List<Long>>() {
+            });
             System.out.println(format("====> Northbound Delete Switch Rules = %d", cookies.size()));
             return cookies;
         } else {
@@ -297,12 +301,12 @@ public final class SwitchesUtils {
             return null;
         }
     }
-    
+
     /**
      * Update port status.
      */
     public static PortDto changeSwitchPortStatus(String switchName, int port, PortStatus status) {
-        System.out.println("\n==> Revive port on switch");
+        System.out.println("\n==> Change port state");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response result = client.target(northboundEndpoint)

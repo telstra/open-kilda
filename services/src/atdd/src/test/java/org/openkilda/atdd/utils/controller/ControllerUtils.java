@@ -138,7 +138,7 @@ public class ControllerUtils {
     /**
      * Returns switch port informations.
      */
-    public SwitchEntry getSwitchPorts(String switchId) throws JsonProcessingException, FloodlightQueryException {
+    public SwitchEntry getSwitchPorts(String switchId) throws FloodlightQueryException {
         Response response;
         try {
             response = restClient.target(DefaultParameters.FLOODLIGHT_ENDPOINT)

@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.SwitchesUtils;
@@ -24,45 +25,40 @@ import org.openkilda.atdd.utils.controller.SwitchEntry;
 import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.northbound.dto.switches.PortDto;
 
-import cucumber.api.java.en.And;
 import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
 
 import java.util.Optional;
 
 public class SwitchConfigurationTest {
 
     private final ControllerUtils controllerUtils;
-    
+
     public SwitchConfigurationTest() throws Exception {
         controllerUtils = new ControllerUtils();
     }
-    
-    @Then("^switch \"([^\"]*)\" with port number as \"([^\"]*)\" status from down to up and verify the state$")
-    public void changePortStatusDownToUp(String switchName, int portNumber) throws Throwable {
-        PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portNumber, PortStatus.UP);
-        assertTrue(portDto != null);
 
-        Thread.sleep(1000L);
-        assertTrue(isPortEnable(switchName, portNumber));
+    @When("^change port status to '(.*)' for switch \"([^\"]*)\" port \"([^\"]*)\"$")
+    public void changePortStatus(String switchName, int portNumber, String portStatus) {
+        PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portNumber,
+                PortStatus.valueOf(portStatus.toUpperCase()));
+        assertTrue(portDto.getSuccess());
     }
 
-    @And("^switch \"([^\"]*)\" with port number as \"([^\"]*)\" status from up to down and verify the state$")
-    public void changePortStatusUpToDown(String switchName, int portNumber) throws Throwable {
-        PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portNumber, PortStatus.DOWN);
-        assertTrue(portDto != null);
-
-        Thread.sleep(1000L);
-        assertTrue(!isPortEnable(switchName, portNumber));
+    @Then("port status for switch \"(.*)\" port \"(\\d+)\" is '(.*)'")
+    public void checkPortStatus(String switchName, int portNumber, String portStatus) throws Exception {
+        assertEquals(isPortEnable(switchName, portNumber),
+                (PortStatus.valueOf(portStatus.toUpperCase()) == PortStatus.UP));
     }
-    
+
     private boolean isPortEnable(String switchName, int portNumber) throws Exception {
         SwitchEntry switchEntry = controllerUtils.getSwitchPorts(switchName);
         Optional<PortEntry> portEntires = switchEntry.getPortEntries().stream()
                 .filter((port) -> port.getPortNumber().equalsIgnoreCase(String.valueOf(portNumber))).findFirst();
-        
+
         if (portEntires.isPresent()) {
-            return !portEntires.get().getConfig().stream()
-                    .anyMatch((value) -> value.equalsIgnoreCase("PORT_DOWN"));
+            return portEntires.get().getConfig().stream()
+                    .noneMatch((value) -> value.equalsIgnoreCase("PORT_DOWN"));
         } else {
             throw new Exception("Port Not Found");
         }

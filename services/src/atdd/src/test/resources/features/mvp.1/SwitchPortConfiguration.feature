@@ -1,24 +1,15 @@
-@FCRUD
+@MVP1 @FCRUD
 Feature: Configure switch port
-    
-  @MVP1 @CRUD_UPDATE
-  Scenario Outline: Change port status to down
-    
+
+  Background:
     Given a clean controller
-    And a nonrandom linear topology of 7 switches
-    Then switch "<switch>" with port number as "<port_no>" status from up to down and verify the state
+    And created simple topology from two switches
+    And port status for switch "00:01:00:00:00:00:00:01" port "2" is 'Up'
 
-    Examples: 
-      | switch                  | port_no     |
-      | de:ad:be:ef:00:00:00:02 | 2           |
+  Scenario: Change port status
+    When change port status to 'Down' for switch "00:01:00:00:00:00:00:01" port "2"
+    Then port status for switch "00:01:00:00:00:00:00:01" port "2" is 'Down'
 
-  @MVP1 @CRUD_UPDATE
-  Scenario Outline: Change port status to up
-  
-    Given a clean controller
-    And a nonrandom linear topology of 7 switches
-    Then switch "<switch>" with port number as "<port_no>" status from down to up and verify the state
+    When change port status to 'Up' for switch "00:01:00:00:00:00:00:01" port "2"
+    Then port status for switch "00:01:00:00:00:00:00:01" port "2" is 'Up'
 
-    Examples: 
-      | switch                  | port_no     |
-      | de:ad:be:ef:00:00:00:02 | 2           |
