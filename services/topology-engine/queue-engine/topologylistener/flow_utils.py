@@ -154,11 +154,20 @@ def remove_flow(flow, parent_tx=None):
     logger.info('Remove flow: %s', flow['flowid'])
     tx = parent_tx if parent_tx else graph.begin()
     delete_flow_segments(flow, tx)
-    query = "MATCH (:switch)-[f:flow {{ flowid: '{}', cookie: {} }}]->(:switch) DELETE f".format(flow['flowid'], flow['cookie'])
-    result = tx.run(query).data()
+    query = (
+        "MATCH (:switch) - [f:flow {"
+        " flowid: $flowid, "
+        " cookie: $cookie "
+        "}] -> (:switch) "
+        "DELETE f")
+    params = {
+        'flowid': flow['flowid'],
+        'cookie': flow['cookie']
+    }
+    db.log_query('Remove flow', query, params)
+    tx.run(query, params).data()
     if not parent_tx:
         tx.commit()
-    return result
 
 
 def merge_flow_relationship(flow_data, tx=None):
@@ -166,37 +175,36 @@ def merge_flow_relationship(flow_data, tx=None):
     This function focuses on just creating the starting/ending switch relationship for a flow.
     """
     query = (
-        "MERGE "                                # MERGE .. create if doesn't exist .. being cautious
-        " (src:switch {{name:'{src_switch}'}}) "
-        " ON CREATE SET src.state = 'inactive' "
-        "MERGE "
-        " (dst:switch {{name:'{dst_switch}'}}) "
-        " ON CREATE SET dst.state = 'inactive' "
-        "MERGE (src)-[f:flow {{"                # Should only use the relationship primary keys in a match
-        " flowid:'{flowid}', "
-        " cookie: {cookie} }} ]->(dst)  "
+        "MERGE (src:switch {name: $src_switch}) "
+        " ON CREATE SET src.state='inactive' "
+        "MERGE (dst:switch {name: $dst_switch}) "
+        "ON CREATE SET dst.state='inactive' "
+        "MERGE (src) - [f:flow {"
+        " flowid: $flowid, "
+        " cookie: $cookie "
+        "}]->(dst)  "
         "SET "
-        " f.meter_id = {meter_id}, "
-        " f.bandwidth = {bandwidth}, "
-        " f.ignore_bandwidth = {ignore_bandwidth}, "
-        " f.src_port = {src_port}, "
-        " f.dst_port = {dst_port}, "
-        " f.src_switch = '{src_switch}', "
-        " f.dst_switch = '{dst_switch}', "
-        " f.src_vlan = {src_vlan}, "
-        " f.dst_vlan = {dst_vlan}, "
-        " f.transit_vlan = {transit_vlan}, "
-        " f.description = '{description}', "
-        " f.last_updated = '{last_updated}', "
-        " f.flowpath = '{flowpath}' "
-    )
+        " f.meter_id=$meter_id, "
+        " f.bandwidth=$bandwidth, "
+        " f.ignore_bandwidth=$ignore_bandwidth, "
+        " f.src_port=$src_port, "
+        " f.dst_port=$dst_port, "
+        " f.src_switch=$src_switch, "
+        " f.dst_switch=$dst_switch, "
+        " f.src_vlan=$src_vlan, "
+        " f.dst_vlan=$dst_vlan, "
+        " f.transit_vlan=$transit_vlan, "
+        " f.description=$description, "
+        " f.last_updated=$last_updated, "
+        " f.flowpath=$flowpath ")
     flow_data['flowpath'].pop('clazz', None) # don't store the clazz info, if it is there.
-    flow_data['last_updated'] = calendar.timegm(time.gmtime())
+    flow_data['last_updated'] = str(calendar.timegm(time.gmtime()))
     flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
+    db.log_query('Merge flow relationship', query, flow_data)
     if tx:
-        tx.run(query.format(**flow_data))
+        tx.run(query, flow_data)
     else:
-        graph.run(query.format(**flow_data))
+        graph.run(query, flow_data)
 
 
 def merge_flow_segments(_flow, tx=None):
@@ -209,25 +217,26 @@ def merge_flow_segments(_flow, tx=None):
     """
     flow = copy.deepcopy(_flow)
     create_segment_query = (
-        "MERGE "                                # MERGE .. create if doesn't exist .. being cautious
-        "(src:switch {{name:'{src_switch}'}}) "
-        "ON CREATE SET src.state = 'inactive' "
         "MERGE "
-        "(dst:switch {{name:'{dst_switch}'}}) "
-        "ON CREATE SET dst.state = 'inactive' "
+        " (src:switch {name: $src_switch}) "
+        "ON CREATE SET src.state='inactive' "
         "MERGE "
-        "(src)-[fs:flow_segment {{flowid: '{flowid}', parent_cookie: {parent_cookie} }}]->(dst) "
+        " (dst:switch {name: $dst_switch}) "
+        "ON CREATE SET dst.state='inactive' "
+        "MERGE (src) - [fs:flow_segment {"
+        " flowid: $flowid, "
+        " parent_cookie: $parent_cookie "
+        "}] -> (dst) "
         "SET "
-        "fs.cookie = {cookie}, "
-        "fs.src_switch = '{src_switch}', "
-        "fs.src_port = {src_port}, "
-        "fs.dst_switch = '{dst_switch}', "
-        "fs.dst_port = {dst_port}, "
-        "fs.seq_id = {seq_id}, "
-        "fs.segment_latency = {segment_latency}, "
-        "fs.bandwidth = {bandwidth}, "
-        "fs.ignore_bandwidth = {ignore_bandwidth} "
-    )
+        " fs.cookie=$cookie, "
+        " fs.src_switch=$src_switch, "
+        " fs.src_port=$src_port, "
+        " fs.dst_switch=$dst_switch, "
+        " fs.dst_port=$dst_port, "
+        " fs.seq_id=$seq_id, "
+        " fs.segment_latency=$segment_latency, "
+        " fs.bandwidth=$bandwidth, "
+        " fs.ignore_bandwidth=$ignore_bandwidth ")
 
     flow_path = get_flow_path(flow)
     flow_cookie = flow['cookie']
@@ -250,12 +259,13 @@ def merge_flow_segments(_flow, tx=None):
         # NB: use the "dst cookie" .. since for flow segments, the delete rule will use the dst switch
         flow['cookie'] = dst.get('cookie', flow_cookie)
 
+        db.log_query('Merge flow segment', create_segment_query, flow)
         # TODO: Preference for transaction around the entire delete
         # TODO: Preference for batch command
         if tx:
-            tx.run(create_segment_query.format(**flow))
+            tx.run(create_segment_query, flow)
         else:
-            graph.run(create_segment_query.format(**flow))
+            graph.run(create_segment_query, flow)
 
     update_flow_segment_available_bw(flow, tx)
 
@@ -285,12 +295,20 @@ def delete_flow_segments(flow, tx=None):
     parent_cookie = flow['cookie']
     logger.debug('DELETE Flow Segments : flowid: %s parent_cookie: 0x%x [path: %s]', flowid, parent_cookie, flow_path)
     delete_segment_query = (
-        "MATCH (:switch)-[fs:flow_segment {{ flowid: '{}', parent_cookie: {} }}]->(:switch) DELETE fs"
-    )
+        "MATCH (:switch) - [fs:flow_segment { "
+        " flowid: $flowid, "
+        " parent_cookie: $parent_cookie "
+        "}] -> (:switch) "
+        "DELETE fs")
+    params = {
+        'flowid': flowid,
+        'parent_cookie': parent_cookie
+    }
+    db.log_query('Delete flow segments', delete_segment_query, params)
     if tx:
-        tx.run(delete_segment_query.format(flowid, parent_cookie))
+        tx.run(delete_segment_query, params)
     else:
-        graph.run(delete_segment_query.format(flowid, parent_cookie))
+        graph.run(delete_segment_query, params)
     update_flow_segment_available_bw(flow, tx)
 
 
@@ -301,10 +319,19 @@ def fetch_flow_segments(flowid, parent_cookie):
     :return: array of segments
     """
     fetch_query = (
-        "MATCH (:switch)-[fs:flow_segment {{ flowid: '{}',parent_cookie: {} }}]->(:switch) RETURN fs ORDER BY fs.seq_id"
-    )
+        "MATCH (:switch) - [fs:flow_segment { "
+        " flowid: $flowid,"
+        " parent_cookie: $parent_cookie "
+        "}] -> (:switch) "
+        "RETURN fs "
+        "ORDER BY fs.seq_id")
+    params = {
+        'flowid': flowid,
+        'parent_cookie': parent_cookie
+    }
+    db.log_query('Fetch flow segments', fetch_query, params)
     # This query returns type py2neo.types.Relationship .. it has a dict method to return the properties
-    result = graph.run(fetch_query.format(flowid, parent_cookie)).data()
+    result = graph.run(fetch_query, params).data()
     return [dict(x['fs']) for x in result]
 
 
@@ -328,12 +355,22 @@ def update_isl_bandwidth(src_switch, src_port, dst_switch, dst_port, tx=None):
     # print('Update ISL Bandwidth from %s:%d --> %s:%d' % (src_switch, src_port, dst_switch, dst_port))
 
     available_bw_query = (
-        "MATCH (src:switch {{name:'{src_switch}'}}), (dst:switch {{name:'{dst_switch}'}}) WITH src,dst "
-        " MATCH (src)-[i:isl {{ src_port:{src_port}, dst_port: {dst_port}}}]->(dst) WITH src,dst,i "
-        " OPTIONAL MATCH (src)-[fs:flow_segment {{ src_port:{src_port}, dst_port: {dst_port}, ignore_bandwidth: false }}]->(dst) "
-        " WITH sum(fs.bandwidth) AS used_bandwidth, i as i "
-        " SET i.available_bandwidth = i.max_bandwidth - used_bandwidth "
-    )
+        "MATCH "
+        " (src:switch {name: $src_switch}), "
+        " (dst:switch {name: $dst_switch}) "
+        "WITH src,dst "
+        "MATCH (src) - [i:isl { "
+        " src_port: $src_port, "
+        " dst_port: $dst_port "
+        "}] -> (dst) "
+        "WITH src,dst,i "
+        "OPTIONAL MATCH (src) - [fs:flow_segment { "
+        " src_port: $src_port, "
+        " dst_port: $dst_port, "
+        " ignore_bandwidth: false "
+        "}] -> (dst) "
+        "WITH sum(fs.bandwidth) AS used_bandwidth, i as i "
+        "SET i.available_bandwidth = i.max_bandwidth - used_bandwidth ")
 
     logger.debug('Update ISL Bandwidth from %s:%d --> %s:%d' % (src_switch, src_port, dst_switch, dst_port))
     params = {
@@ -342,11 +379,11 @@ def update_isl_bandwidth(src_switch, src_port, dst_switch, dst_port, tx=None):
         'dst_switch': dst_switch,
         'dst_port': dst_port,
     }
-    query = available_bw_query.format(**params)
+    db.log_query('Update ISL bandwidth', available_bw_query, params)
     if tx:
-        tx.run(query)
+        tx.run(available_bw_query, params)
     else:
-        graph.run(query)
+        graph.run(available_bw_query, params)
 
 
 def store_flow(flow, tx=None):
@@ -384,11 +421,17 @@ def hydrate_flow(one_row):
 
 def get_old_flow(new_flow):
     query = (
-        "MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) " 
-        " WHERE r.cookie <> {} RETURN r "
-    )
-    old_flows = graph.run(query.format(
-        new_flow['flowid'], int(new_flow['cookie']))).data()
+        "MATCH (a:switch) - [r:flow {"
+        " flowid: $flowid "
+        "}] -> (b:switch) "
+        "WHERE r.cookie <> $cookie "
+        "RETURN r ")
+    params = {
+        'flowid': new_flow['flowid'],
+        'cookie': int(new_flow['cookie'])
+    }
+    db.log_query('Get old flow', query, params)
+    old_flows = graph.run(query, params).data()
 
     if not old_flows:
         message = 'Flow {} not found'.format(new_flow['flowid'])
@@ -442,19 +485,27 @@ def precreate_switches(tx, *nodes):
     switches.sort()
 
     for dpid in switches:
-        q = (
-            "MERGE (sw:switch {{name:'{}'}}) "
-            "ON CREATE SET sw.state = 'inactive' "
-            "ON MATCH SET sw.tx_override_workaround = 'dummy'").format(dpid)
-        logger.info('neo4j-query: %s', q)
-        tx.run(q)
+        query = (
+            "MERGE (sw:switch {name: $dpid}) "
+            "ON CREATE SET sw.state='inactive' "
+            "ON MATCH SET sw.tx_override_workaround='dummy'")
+        params = {
+            'dpid': dpid
+        }
+        db.log_query('Precreate switches', query, params)
+        tx.run(query, params)
 
 
 def get_flow_segments_by_dst_switch(switch_id):
-    query = "MATCH p = (:switch)-[fs:flow_segment]->(sw:switch) " \
-            "WHERE sw.name='{}' " \
-            "RETURN fs"
-    result = graph.run(query.format(switch_id)).data()
+    query = (
+        "MATCH p = (:switch)-[fs:flow_segment]->(sw:switch) "
+        "WHERE sw.name=$switch_id "
+        "RETURN fs")
+    params = {
+        'switch_id': switch_id
+    }
+    db.log_query('Get flow segments by dst switch', query, params)
+    result = graph.run(query, params).data()
 
     # group flow_segments by parent cookie, it is helpful for building
     # transit switch rules
@@ -468,9 +519,14 @@ def get_flow_segments_by_dst_switch(switch_id):
 
 
 def get_flows_by_src_switch(switch_id):
-    query = "MATCH (sw:switch)-[r:flow]->(:switch) " \
-            "WHERE sw.name='{}' RETURN r"
-    result = graph.run(query.format(switch_id)).data()
+    query = (
+        "MATCH (sw:switch)-[r:flow]->(:switch) "
+        "WHERE sw.name=$switch_id RETURN r")
+    params = {
+        'switch_id': switch_id
+    }
+    db.log_query('Get flows by src switch', query, params)
+    result = graph.run(query, params).data()
 
     flows = []
     for item in result:
@@ -617,9 +673,15 @@ def build_install_command_from_segment(segment):
 
 
 def get_flow_by_id_and_cookie(flow_id, cookie):
-    query = "MATCH ()-[r:flow]->() WHERE r.flowid='{}' " \
-            "and r.cookie={} RETURN r"
-    result = graph.run(query.format(flow_id, cookie)).data()
+    query = (
+        "MATCH ()-[r:flow]->() WHERE r.flowid=$flow_id "
+        "and r.cookie=$cookie RETURN r")
+    params = {
+        'flow_id': flow_id,
+        'cookie': cookie
+    }
+    db.log_query('Get flow by id and cookie', query, params)
+    result = graph.run(query, params).data()
     if not result:
         return
 
@@ -629,10 +691,16 @@ def get_flow_by_id_and_cookie(flow_id, cookie):
 
 
 def get_flow_segment_by_src_switch_and_cookie(switch_id, parent_cookie):
-    query = "MATCH p = (sw:switch)-[fs:flow_segment]->(:switch) " \
-            "WHERE sw.name='{}' AND fs.parent_cookie={} " \
-            "RETURN fs"
-    result = graph.run(query.format(switch_id, parent_cookie)).data()
+    query = (
+        "MATCH p = (sw:switch)-[fs:flow_segment]->(:switch) "
+        "WHERE sw.name=$switch_id AND fs.parent_cookie=$parent_cookie "
+        "RETURN fs")
+    params = {
+        'switch_id': switch_id,
+        'parent_cookie': parent_cookie
+    }
+    db.log_query('Get flow segment by src switch and cookie', query, params)
+    result = graph.run(query, params).data()
     if not result:
         return
 
