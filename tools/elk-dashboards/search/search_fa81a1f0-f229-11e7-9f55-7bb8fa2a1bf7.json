@@ -1,0 +1,18 @@
+{
+      "title": "KILDA-Brief-view",
+      "description": "",
+      "hits": 0,
+      "columns": [
+        "app_id",
+        "level",
+        "message"
+      ],
+      "sort": [
+        "@timestamp",
+        "desc"
+      ],
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"AWUfJAj0duClWTXkEj7q\",\"highlightAll\":true,\"version\":true,\"query\":{\"match_all\":{}},\"filter\":[]}"
+      }
+}

@@ -1,0 +1,13 @@
+{
+      "title": "Kilda-HW SwitchPort actions",
+      "hits": 0,
+      "description": "",
+      "panelsJSON": "[{\"col\":1,\"id\":\"d2499a10-3bd2-11e8-ac01-c9e1811c182f\",\"panelIndex\":1,\"row\":1,\"size_x\":12,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"bdff5b80-3bd2-11e8-ac01-c9e1811c182f\",\"panelIndex\":2,\"row\":3,\"size_x\":12,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"d0175150-3c41-11e8-9edc-9b7acf4657b4\",\"panelIndex\":4,\"row\":5,\"size_x\":12,\"size_y\":2,\"type\":\"visualization\"},{\"size_x\":12,\"size_y\":6,\"panelIndex\":5,\"type\":\"search\",\"id\":\"8dd0d860-3bd4-11e8-ae99-81188e3024ba\",\"col\":1,\"row\":7,\"columns\":[\"level\",\"message\"],\"sort\":[\"@timestamp\",\"desc\"]}]",
+      "optionsJSON": "{\"darkTheme\":false}",
+      "uiStateJSON": "{}",
+      "version": 1,
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"match_all\":{}}}],\"highlightAll\":true,\"version\":true}"
+      }
+}

@@ -14,9 +14,21 @@
 #
 
 FROM kilda/base-ubuntu
-# tar should be pre-populated with the tarball; see the top level Makefile (build-base:)
-ADD tar /src
-ADD ansible /ansible
-RUN ansible-playbook -s /ansible/deploy.yml
-ADD kafka-conf/server.properties /opt/kafka/config/server.properties
-ADD kafka-conf/run_and_configure.sh /opt/kafka/bin/
+
+ENV PACKAGE kafka_2.12-0.10.2.1
+
+WORKDIR /tmp/
+
+RUN    wget https://archive.apache.org/dist/kafka/0.10.2.1/$PACKAGE.tgz \
+    && wget https://archive.apache.org/dist/kafka/0.10.2.1/$PACKAGE.tgz.md5 \
+    && sed 's/\ //g' $PACKAGE.tgz.md5 > $PACKAGE.tmp.md5 \
+    && awk -F ":" '{print $2 " " $1}' $PACKAGE.tmp.md5 > $PACKAGE.tgz.md5 \
+    && md5sum -c $PACKAGE.tgz.md5 \
+    && tar -xzf $PACKAGE.tgz --directory /opt/ \
+    && ln -s /opt/$PACKAGE /opt/kafka \
+    && rm -rfv /tmp/*
+
+WORKDIR /opt/kafka/
+
+COPY kafka-conf/server.properties /opt/kafka/config/server.properties
+COPY kafka-conf/run_and_configure.sh /opt/kafka/bin/

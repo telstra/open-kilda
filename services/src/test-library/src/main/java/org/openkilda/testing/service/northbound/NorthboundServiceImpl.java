@@ -28,6 +28,7 @@ import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.links.LinkDto;
@@ -173,6 +174,12 @@ public class NorthboundServiceImpl implements NorthboundService {
         FlowValidationDto[] flowValidations = restTemplate.exchange("/api/v1/flows/{flow_id}/validate", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowValidationDto[].class, flowId).getBody();
         return Arrays.asList(flowValidations);
+    }
+
+    @Override
+    public FlowReroutePayload rerouteFlow(String flowId) {
+        return restTemplate.exchange("/api/v1/flows/{flowId}/reroute", HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowReroutePayload.class, flowId).getBody();
     }
 
     @Override

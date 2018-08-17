@@ -88,7 +88,10 @@ public class IslUtils {
      * @param isl isl to reverse
      */
     public Isl reverseIsl(Isl isl) {
-        ASwitch reversedAsw = ASwitch.factory(isl.getAswitch().getOutPort(), isl.getAswitch().getInPort());
+        ASwitch reversedAsw = null;
+        if (isl.getAswitch() != null) {
+            reversedAsw = ASwitch.factory(isl.getAswitch().getOutPort(), isl.getAswitch().getInPort());
+        }
         return Isl.factory(isl.getDstSwitch(), isl.getDstPort(), isl.getSrcSwitch(),
                 isl.getSrcPort(), isl.getMaxBandwidth(), reversedAsw);
     }
