@@ -20,15 +20,17 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.SwitchesUtils;
 import org.openkilda.atdd.utils.controller.ControllerUtils;
+import org.openkilda.atdd.utils.controller.FloodlightQueryException;
 import org.openkilda.atdd.utils.controller.PortEntry;
-import org.openkilda.atdd.utils.controller.SwitchEntry;
 import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.northbound.dto.switches.PortDto;
 
+import cucumber.api.java.en.And;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.List;
 
 public class SwitchConfigurationTest {
 
@@ -39,7 +41,7 @@ public class SwitchConfigurationTest {
     }
 
     @When("^change port status to '(.*)' for switch \"([^\"]*)\" port \"([^\"]*)\"$")
-    public void changePortStatus(String switchName, int portNumber, String portStatus) {
+    public void changePortStatus(String portStatus, String switchName, int portNumber) {
         PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portNumber,
                 PortStatus.valueOf(portStatus.toUpperCase()));
         assertTrue(portDto.getSuccess());
@@ -47,20 +49,31 @@ public class SwitchConfigurationTest {
 
     @Then("port status for switch \"(.*)\" port \"(\\d+)\" is '(.*)'")
     public void checkPortStatus(String switchName, int portNumber, String portStatus) throws Exception {
-        assertEquals(isPortEnable(switchName, portNumber),
-                (PortStatus.valueOf(portStatus.toUpperCase()) == PortStatus.UP));
+        assertEquals(getPortStatuses(switchName).get(portNumber), PortStatus.valueOf(portStatus.toUpperCase()));
     }
 
-    private boolean isPortEnable(String switchName, int portNumber) throws Exception {
-        SwitchEntry switchEntry = controllerUtils.getSwitchPorts(switchName);
-        Optional<PortEntry> portEntires = switchEntry.getPortEntries().stream()
-                .filter((port) -> port.getPortNumber().equalsIgnoreCase(String.valueOf(portNumber))).findFirst();
+    private HashMap<Integer, PortStatus> getPortStatuses(String switchName) throws FloodlightQueryException {
+        List<PortEntry> portEntries = controllerUtils.getSwitchPorts(switchName).getPortEntries();
+        HashMap<Integer, PortStatus> results = new HashMap<>();
+        portEntries.forEach(portEntry -> {
+            if (!portEntry.getPortNumber().equals("local")) {
+                Integer portNumber = Integer.parseInt(portEntry.getPortNumber());
+                PortStatus status = portEntry.getConfig().contains("PORT_DOWN") ? PortStatus.DOWN : PortStatus.UP;
+                results.put(portNumber, status);
+            }
+        });
+        return results;
+    }
 
-        if (portEntires.isPresent()) {
-            return portEntires.get().getConfig().stream()
-                    .noneMatch((value) -> value.equalsIgnoreCase("PORT_DOWN"));
-        } else {
-            throw new Exception("Port Not Found");
-        }
+    @And("^all port statuses for switch \"([^\"]*)\" are '(.*)'$")
+    public void allPortStatusesForSwitchAreUp(String switchName, String portStatus) throws FloodlightQueryException {
+        assertTrue(getPortStatuses(switchName).values().stream()
+                .allMatch(status -> status.equals(PortStatus.valueOf(portStatus.toUpperCase()))));
+    }
+
+    @And("^all port statuses for switch \"([^\"]*)\" except for port \"([^\"]*)\" are '(.*)'$")
+    public void allPortStatusesForSwitchExceptForPortAreUp(String switchName, int portNumber, String portStatus) throws Throwable {
+        assertTrue(getPortStatuses(switchName).entrySet().stream().filter(entry -> entry.getKey() != portNumber)
+                .allMatch(entry -> entry.getValue().equals(PortStatus.valueOf(portStatus.toUpperCase()))));
     }
 }

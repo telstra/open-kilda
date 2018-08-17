@@ -103,13 +103,15 @@ public class ControllerUtils {
         String json = response.readEntity(String.class);
         LOGGER.debug("FloodLight switch \"{}\" list flows response: {}", dpId, json);
         try {
-            Map<String, Object> keyChecker = Utils.MAPPER.readValue(json, new TypeReference<Map<String, Object>>(){});
-            if (! keyChecker.containsKey(flowsKey)) {
+            Map<String, Object> keyChecker = Utils.MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
+            if (!keyChecker.containsKey(flowsKey)) {
                 throw new DpIdNotFoundException();
             }
 
             Map<String, List<CoreFlowEntry>> wrapper = Utils.MAPPER.readValue(
-                    json, new TypeReference<Map<String, List<CoreFlowEntry>>>(){});
+                    json, new TypeReference<Map<String, List<CoreFlowEntry>>>() {
+                    });
             return wrapper.get(flowsKey);
         } catch (IOException e) {
             throw new FloodlightQueryException("Can't parse FloodLight response", e);
