@@ -16,18 +16,22 @@
 package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class PortConfigurationRequest extends CommandData {
 
     private static final long serialVersionUID = 7393431355263735216L;
 
+    @NonNull
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("port_no")
     private int portNumber;
@@ -36,7 +40,7 @@ public class PortConfigurationRequest extends CommandData {
     private PortStatus status;
 
     public PortConfigurationRequest(
-            @JsonProperty("switch_id") String switchId, 
+            @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("port_no") int portNumber, 
             @JsonProperty("status") PortStatus status) {
         this.switchId = switchId;

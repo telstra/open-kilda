@@ -17,8 +17,7 @@ package org.openkilda.floodlight.switchmanager;
 
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.command.switches.PortConfigurationRequest;
-import org.openkilda.messaging.info.switches.PortConfigurationResponse;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -29,6 +28,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * Created by jonv on 29/3/17.
@@ -259,10 +259,11 @@ public interface ISwitchManager extends IFloodlightService {
      * <li> UP/DOWN port </li>
      * <li> Change port speed </li>
      * </ul>
-     * 
-     * @param request configuration request with switch and port information
-     * @return PortConfigurationResponse with status of operation
+     *
+     * @param dpId datapath ID of the switch.
+     * @param portNumber the port to configure.
+     * @param status the port status to be applied.
      * @throws SwitchOperationException Switch not found or Port not found
      */
-    PortConfigurationResponse configurePort(final PortConfigurationRequest request) throws SwitchOperationException;
+    void configurePort(DatapathId dpId, int portNumber, PortStatus status) throws SwitchOperationException;
 }

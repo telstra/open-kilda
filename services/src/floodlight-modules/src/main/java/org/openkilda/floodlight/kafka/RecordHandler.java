@@ -715,9 +715,13 @@ class RecordHandler implements Runnable {
                 request.getPortNumber());
         try {
             ISwitchManager switchManager = context.getSwitchManager();
-            PortConfigurationResponse response = switchManager.configurePort(request);
 
-            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
+            DatapathId dpId = DatapathId.of(request.getSwitchId().toLong());
+            switchManager.configurePort(dpId, request.getPortNumber(), request.getStatus());
+
+            InfoMessage infoMessage = new InfoMessage(
+                    new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber()),
+                    message.getTimestamp(),
                     message.getCorrelationId());
             context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
         } catch (SwitchOperationException e) {

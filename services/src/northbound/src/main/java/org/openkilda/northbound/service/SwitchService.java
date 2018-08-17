@@ -126,5 +126,5 @@ public interface SwitchService extends BasicService {
      * @param portConfig port configuration that needs to apply on port 
      * @return portDto 
      */
-    PortDto configurePort(String switchId,  int port, PortConfigurationPayload portConfig);
+    PortDto configurePort(SwitchId switchId,  int port, PortConfigurationPayload portConfig);
 }

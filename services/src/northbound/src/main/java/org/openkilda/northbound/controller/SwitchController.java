@@ -269,7 +269,7 @@ public class SwitchController {
     @PutMapping(value = "/switches/{switch_id}/port/{port_no}/config",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public PortDto configurePort(
-            @PathVariable(name = "switch_id") String switchId, 
+            @PathVariable(name = "switch_id") SwitchId switchId,
             @PathVariable(name = "port_no") int portNo,
             @RequestBody PortConfigurationPayload portConfig) {
         LOGGER.info("Port Configuration '{}' request for port {} of switch {}", portConfig, portNo, switchId);

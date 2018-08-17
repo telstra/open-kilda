@@ -16,13 +16,14 @@
 package org.openkilda.messaging.info.switches;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
@@ -31,14 +32,15 @@ public class PortConfigurationResponse extends InfoData {
 
     private static final long serialVersionUID = 7332950619136252164L;
 
+    @NonNull
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("port_no")
     private int portNo;
 
     @JsonCreator
-    public PortConfigurationResponse(@JsonProperty("switch_id") String switchId, 
+    public PortConfigurationResponse(@JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("port_no") int portNo) {
         this.switchId = switchId;
         this.portNo = portNo;

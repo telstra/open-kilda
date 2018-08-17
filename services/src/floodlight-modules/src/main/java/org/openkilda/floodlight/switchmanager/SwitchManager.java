@@ -34,13 +34,11 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import com.google.common.collect.ImmutableSet;
@@ -1486,21 +1484,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public PortConfigurationResponse configurePort(final PortConfigurationRequest request) 
+    public void configurePort(DatapathId dpId, int portNumber, PortStatus status)
             throws SwitchOperationException {
-        DatapathId dpId = DatapathId.of(request.getSwitchId());
         IOFSwitch sw = lookupSwitch(dpId);
-        
-        OFPortDesc ofPortDesc = getPort(sw, request.getPortNumber());
+        OFPortDesc ofPortDesc = getPort(sw, portNumber);
 
-        if (request.getStatus() != null) {
-            updatePortStatus(sw, ofPortDesc, request.getStatus());
+        if (status != null) {
+            updatePortStatus(sw, ofPortDesc, status);
         }
-
-        return new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber());
     }
     
-    private boolean updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus) {
+    private void updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus)
+            throws SwitchOperationException {
         Set<OFPortConfig> configs = portStatus == PortStatus.UP ? configs = ImmutableSet.of() : 
                 ImmutableSet.of(OFPortConfig.PORT_DOWN);
         
@@ -1512,11 +1507,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMask(portMask)
                 .build();
 
-        logger.debug("oFPortMod request {}", ofPortMod);
+        if (!sw.write(ofPortMod)) {
+            throw new SwitchOperationException(sw.getId(),
+                    String.format("Unable to update port configuration: %s", ofPortMod));
+        }
 
-        boolean result = sw.write(ofPortMod);
-        logger.debug("Update port status call result: {}", result);
-        return result;
+        logger.debug("Successfully updated port status {}", ofPortMod);
     }
 
     private OFPortDesc getPort(final IOFSwitch sw, final int portNo) throws SwitchOperationException {

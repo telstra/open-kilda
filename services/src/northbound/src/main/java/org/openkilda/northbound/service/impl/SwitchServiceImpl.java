@@ -268,7 +268,7 @@ public class SwitchServiceImpl implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public PortDto configurePort(String switchId,  int port, PortConfigurationPayload config) {
+    public PortDto configurePort(SwitchId switchId,  int port, PortConfigurationPayload config) {
         String correlationId = RequestCorrelationId.getId();
 
         PortConfigurationRequest request = new PortConfigurationRequest(switchId, 
@@ -282,6 +282,6 @@ public class SwitchServiceImpl implements SwitchService {
         PortConfigurationResponse switchPortResponse = (PortConfigurationResponse) validateInfoMessage(
                 updateStatusCommand, response, correlationId);
 
-        return new PortDto(switchPortResponse.getSwitchId(), switchPortResponse.getPortNo());
+        return new PortDto(switchPortResponse.getSwitchId().toString(), switchPortResponse.getPortNo());
     }
 }
