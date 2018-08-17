@@ -26,6 +26,7 @@ import org.openkilda.atdd.staging.helpers.TopologyChecker.IslMatcher;
 import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchMatcher;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
@@ -69,7 +70,7 @@ public class TopologyVerificationSteps implements En {
 
     @Given("^the reference topology$")
     public void checkTheTopology() {
-        Set<String> skippedSwitches = topologyDefinition.getSkippedSwitchIds();
+        Set<SwitchId> skippedSwitches = topologyDefinition.getSkippedSwitchIds();
 
         referenceSwitches = topologyDefinition.getActiveSwitches();
         actualSwitches = northboundService.getActiveSwitches().stream()
@@ -117,7 +118,7 @@ public class TopologyVerificationSteps implements En {
     @And("^all active switches have correct rules installed per Northbound validation")
     public void validateSwitchRules() {
         actualSwitches.forEach(sw -> {
-            String switchId = sw.getSwitchId();
+            SwitchId switchId = sw.getSwitchId();
             RulesValidationResult validationResult = northboundService.validateSwitchRules(switchId);
             assertTrue(format("The switch '%s' is missing rules: %s", switchId, validationResult.getMissingRules()),
                     validationResult.getMissingRules().isEmpty());

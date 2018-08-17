@@ -12,9 +12,12 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.pce.model;
 
 import static org.openkilda.pce.Utils.safeAsInt;
+
+import org.openkilda.messaging.model.SwitchId;
 
 import org.neo4j.driver.v1.AccessMode;
 import org.neo4j.driver.v1.Driver;
@@ -35,7 +38,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
 /**
  * Semantically, this class represents an "available network".  That means everything in it is
  * active, and the available bandwidth of the isl links matches the criteria specified.
@@ -46,7 +48,7 @@ public class AvailableNetwork {
 
     private static final Logger logger = LoggerFactory.getLogger(AvailableNetwork.class);
 
-    private HashMap<String, SimpleSwitch> switches = new HashMap<>();  // key = DPID
+    private HashMap<SwitchId, SimpleSwitch> switches = new HashMap<>();  // key = DPID
 
     private final Driver driver;
 
@@ -72,7 +74,7 @@ public class AvailableNetwork {
      *
      * @param dpid the primary key of the switch, ie dpid
      */
-    private SimpleSwitch addSwitch(String dpid) {
+    private SimpleSwitch initSwitch(SwitchId dpid) {
         SimpleSwitch result = switches.get(dpid);
         if (result == null) {
             result = new SimpleSwitch(dpid);
@@ -84,9 +86,9 @@ public class AvailableNetwork {
     /**
      * Creates switches (if they are not created yet) and ISL between them.
      */
-    public AvailableNetwork addLink(String srcDpid, String dstDpid, int srcPort, int dstPort,
-                                    int cost, int latency) {
-        SimpleSwitch srcSwitch = addSwitch(srcDpid);
+    public AvailableNetwork addLink(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
+                                         int cost, int latency) {
+        SimpleSwitch srcSwitch = initSwitch(srcDpid);
         SimpleIsl isl = new SimpleIsl(srcDpid, dstDpid, srcPort, dstPort, cost, latency);
         srcSwitch.addOutbound(isl);
         if (cost == 0) {
@@ -95,11 +97,11 @@ public class AvailableNetwork {
         return this;
     }
 
-    public Map<String, SimpleSwitch> getSwitches() {
+    public Map<SwitchId, SimpleSwitch> getSwitches() {
         return switches;
     }
 
-    public SimpleSwitch getSimpleSwitch(String dpid) {
+    public SimpleSwitch getSimpleSwitch(SwitchId dpid) {
         return switches.get(dpid);
     }
 
@@ -157,7 +159,7 @@ public class AvailableNetwork {
                 logger.warn("AvailableNetwork: Switch {} has NO OUTBOUND isls", sw.dpid);
                 continue;
             }
-            for (Entry<String, Set<SimpleIsl>> linksEntry : sw.outbound.entrySet()) {     // 2: each neighbor
+            for (Entry<SwitchId, Set<SimpleIsl>> linksEntry : sw.outbound.entrySet()) {     // 2: each neighbor
                 Set<SimpleIsl> links = linksEntry.getValue();
                 if (links.size() <= 1) {
                     continue;  // already at 1 or less
@@ -252,8 +254,8 @@ public class AvailableNetwork {
 
     private void addLinksFromRelationships(List<Relationship> links) {
         links.forEach(isl ->
-                addLink(isl.get("src_switch").asString(),
-                        isl.get("dst_switch").asString(),
+                addLink(new SwitchId(isl.get("src_switch").asString()),
+                        new SwitchId(isl.get("dst_switch").asString()),
                         safeAsInt(isl.get("src_port")),
                         safeAsInt(isl.get("dst_port")),
                         safeAsInt(isl.get("cost")),

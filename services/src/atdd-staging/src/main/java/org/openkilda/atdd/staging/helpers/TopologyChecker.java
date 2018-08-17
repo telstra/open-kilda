@@ -42,9 +42,9 @@ public final class TopologyChecker {
     public static boolean isIslEqual(TopologyDefinition.Isl linkDef, IslInfoData islInfoData) {
         PathNode discoveredSrcNode = islInfoData.getPath().get(0);
         PathNode discoveredDstNode = islInfoData.getPath().get(1);
-        return discoveredSrcNode.getSwitchId().equalsIgnoreCase(linkDef.getSrcSwitch().getDpId())
+        return discoveredSrcNode.getSwitchId().equals(linkDef.getSrcSwitch().getDpId())
                 && discoveredSrcNode.getPortNo() == linkDef.getSrcPort()
-                && discoveredDstNode.getSwitchId().equalsIgnoreCase(linkDef.getDstSwitch().getDpId())
+                && discoveredDstNode.getSwitchId().equals(linkDef.getDstSwitch().getDpId())
                 && discoveredDstNode.getPortNo() == linkDef.getDstPort();
     }
 

@@ -71,6 +71,7 @@ import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -181,9 +182,9 @@ class RecordHandler implements Runnable {
 
     private void doDiscoverIslCommand(CommandMessage message) {
         DiscoverIslCommandData command = (DiscoverIslCommandData) message.getData();
-        String switchId = command.getSwitchId();
+        SwitchId switchId = command.getSwitchId();
         context.getPathVerificationService().sendDiscoveryMessage(
-                DatapathId.of(switchId), OFPort.of(command.getPortNumber()));
+                DatapathId.of(switchId.toLong()), OFPort.of(command.getPortNumber()));
 
         DiscoPacketSendingConfirmation confirmation = new DiscoPacketSendingConfirmation(
                 new NetworkEndpoint(command.getSwitchId(), command.getPortNumber()));
@@ -228,7 +229,7 @@ class RecordHandler implements Runnable {
                     command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
             context.getSwitchManager().installMeter(
-                    DatapathId.of(command.getSwitchId()),
+                    DatapathId.of(command.getSwitchId().toLong()),
                     command.getBandwidth(), 1024, meterId);
         } else {
             logger.debug("Installing unmetered ingress flow. Switch: {}, cookie: {}",
@@ -236,7 +237,7 @@ class RecordHandler implements Runnable {
         }
 
         context.getSwitchManager().installIngressFlow(
-                DatapathId.of(command.getSwitchId()),
+                DatapathId.of(command.getSwitchId().toLong()),
                 command.getId(),
                 command.getCookie(),
                 command.getInputPort(),
@@ -274,7 +275,7 @@ class RecordHandler implements Runnable {
         logger.debug("Creating an egress flow: {}", command);
 
         context.getSwitchManager().installEgressFlow(
-                DatapathId.of(command.getSwitchId()),
+                DatapathId.of(command.getSwitchId().toLong()),
                 command.getId(),
                 command.getCookie(),
                 command.getInputPort(),
@@ -311,7 +312,7 @@ class RecordHandler implements Runnable {
         logger.debug("Creating a transit flow: {}", command);
 
         context.getSwitchManager().installTransitFlow(
-                DatapathId.of(command.getSwitchId()),
+                DatapathId.of(command.getSwitchId().toLong()),
                 command.getId(),
                 command.getCookie(),
                 command.getInputPort(),
@@ -350,7 +351,7 @@ class RecordHandler implements Runnable {
                     command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
             context.getSwitchManager().installMeter(
-                    DatapathId.of(command.getSwitchId()),
+                    DatapathId.of(command.getSwitchId().toLong()),
                     command.getBandwidth(), 1024, meterId);
         } else {
             logger.debug("Installing unmetered one switch flow. Switch: {}, cookie: {}",
@@ -359,7 +360,7 @@ class RecordHandler implements Runnable {
 
         OutputVlanType directOutputVlanType = command.getOutputVlanType();
         context.getSwitchManager().installOneSwitchFlow(
-                DatapathId.of(command.getSwitchId()),
+                DatapathId.of(command.getSwitchId().toLong()),
                 command.getId(),
                 command.getCookie(),
                 command.getInputPort(),
@@ -380,7 +381,7 @@ class RecordHandler implements Runnable {
         RemoveFlow command = (RemoveFlow) message.getData();
         logger.debug("deleting a flow: {}", command);
 
-        DatapathId dpid = DatapathId.of(command.getSwitchId());
+        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
         ISwitchManager switchManager = context.getSwitchManager();
         try {
             logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
@@ -455,14 +456,14 @@ class RecordHandler implements Runnable {
      * Builds {@link NetworkDumpSwitchData} representation of {@link IOFSwitch}.
      */
     protected NetworkDumpSwitchData buildNetworkDumpSwitchData(IOFSwitch sw) {
-        return new NetworkDumpSwitchData(sw.getId().toString());
+        return new NetworkDumpSwitchData(new SwitchId(sw.getId().getLong()));
     }
 
     /**
      * Builds {@link NetworkDumpPortData} representation of {@link OFPortDesc}.
      */
     private NetworkDumpPortData buildNetworkDumpPortData(IOFSwitch sw, OFPortDesc port) {
-        return new NetworkDumpPortData(sw.getId().toString(), port.getPortNo().getPortNumber());
+        return new NetworkDumpPortData(new SwitchId(sw.getId().getLong()), port.getPortNo().getPortNumber());
     }
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
@@ -470,7 +471,7 @@ class RecordHandler implements Runnable {
         logger.debug("Installing rules on '{}' switch: action={}",
                 request.getSwitchId(), request.getInstallRulesAction());
 
-        DatapathId dpid = DatapathId.of(request.getSwitchId());
+        DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
         ISwitchManager switchManager = context.getSwitchManager();
         InstallRulesAction installAction = request.getInstallRulesAction();
         List<Long> installedRules = new ArrayList<>();
@@ -491,7 +492,7 @@ class RecordHandler implements Runnable {
                         ISwitchManager.DROP_RULE_COOKIE,
                         ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE,
                         ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE
-                        ));
+                ));
             }
 
             SwitchRulesResponse response = new SwitchRulesResponse(installedRules);
@@ -500,7 +501,8 @@ class RecordHandler implements Runnable {
             context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
 
         } catch (SwitchOperationException e) {
-            ErrorData errorData = new ErrorData(ErrorType.CREATION_FAILURE, e.getMessage(), request.getSwitchId());
+            ErrorData errorData = new ErrorData(ErrorType.CREATION_FAILURE, e.getMessage(),
+                    request.getSwitchId().toString());
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
@@ -512,7 +514,7 @@ class RecordHandler implements Runnable {
         logger.debug("Deleting rules from '{}' switch: action={}, criteria={}", request.getSwitchId(),
                 request.getDeleteRulesAction(), request.getCriteria());
 
-        DatapathId dpid = DatapathId.of(request.getSwitchId());
+        DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
         DeleteRulesAction deleteAction = request.getDeleteRulesAction();
         DeleteRulesCriteria criteria = request.getCriteria();
 
@@ -565,7 +567,8 @@ class RecordHandler implements Runnable {
             context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
 
         } catch (SwitchOperationException e) {
-            ErrorData errorData = new ErrorData(ErrorType.DELETION_FAILURE, e.getMessage(), request.getSwitchId());
+            ErrorData errorData = new ErrorData(ErrorType.DELETION_FAILURE, e.getMessage(),
+                    request.getSwitchId().toString());
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
@@ -586,17 +589,18 @@ class RecordHandler implements Runnable {
         logger.debug("CONNECT MODE is now '{}'", result);
         ConnectModeResponse response = new ConnectModeResponse(result);
         InfoMessage infoMessage = new InfoMessage(response,
-                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+                System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
         context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
 
     }
 
-    private void doDumpRulesRequest(final CommandMessage message,  String replyToTopic) {
+    private void doDumpRulesRequest(final CommandMessage message, String replyToTopic) {
         DumpRulesRequest request = (DumpRulesRequest) message.getData();
-        final String switchId = request.getSwitchId();
+        SwitchId switchId = request.getSwitchId();
         logger.debug("Loading installed rules for switch {}", switchId);
 
-        List<OFFlowStatsEntry> flowEntries = context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId));
+        List<OFFlowStatsEntry> flowEntries =
+                context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
         List<FlowEntry> flows = flowEntries.stream()
                 .map(OFFlowStatsConverter::toFlowEntry)
                 .collect(Collectors.toList());
@@ -644,9 +648,9 @@ class RecordHandler implements Runnable {
     private void doPortsCommandDataRequest(CommandMessage message) {
         try {
             PortsCommandData request = (PortsCommandData) message.getData();
-            Map<DatapathId, IOFSwitch>  allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+            Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
             for (Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
-                String switchId = entry.getKey().toString();
+                SwitchId switchId = new SwitchId(entry.getKey().toString());
                 try {
                     IOFSwitch sw = entry.getValue();
                     Collection<OFPort> enabledPortNumbers = sw.getEnabledPortNumbers();
@@ -686,7 +690,7 @@ class RecordHandler implements Runnable {
     private void doDeleteMeter(CommandMessage message, String replyToTopic, Destination replyDestination) {
         DeleteMeterRequest request = (DeleteMeterRequest) message.getData();
         try {
-            DatapathId dpid = DatapathId.of(request.getSwitchId());
+            DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
             long txId = context.getSwitchManager().deleteMeter(dpid, request.getMeterId());
 
             DeleteMeterResponse response = new DeleteMeterResponse(txId != 0L);
@@ -695,7 +699,8 @@ class RecordHandler implements Runnable {
             context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
         } catch (SwitchOperationException e) {
             logger.info("Meter deletion is unsuccessful. Switch {} not found", request.getSwitchId());
-            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), request.getSwitchId());
+            ErrorData errorData =
+                    new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), request.getSwitchId().toString());
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
@@ -725,7 +730,7 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private long allocateMeterId(Long meterId, String switchId, String flowId, Long cookie) {
+    private long allocateMeterId(Long meterId, SwitchId switchId, String flowId, Long cookie) {
         long allocatedId;
 
         if (meterId == null) {

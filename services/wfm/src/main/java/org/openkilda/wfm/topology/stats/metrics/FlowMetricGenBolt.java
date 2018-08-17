@@ -19,22 +19,23 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.CACHE_FIELD;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.tuple.Tuple;
-import org.neo4j.driver.v1.exceptions.ServiceUnavailableException;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.error.JsonEncodeException;
+import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
-import org.openkilda.wfm.topology.stats.CacheFlowEntry;
-import org.openkilda.wfm.topology.utils.StatsUtil;
+
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.tuple.Tuple;
+import org.neo4j.driver.v1.exceptions.ServiceUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,30 +73,31 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         }
 
         LOGGER.debug("Flow stats message: {}={}, component={}, stream={}",
-                CORRELATION_ID, message.getCorrelationId(), componentId, StatsStreamType.valueOf(input.getSourceStreamId()));
+                CORRELATION_ID, message.getCorrelationId(), componentId,
+                StatsStreamType.valueOf(input.getSourceStreamId()));
         FlowStatsData data = (FlowStatsData) message.getData();
         long timestamp = message.getTimestamp();
-        String switchId = StatsUtil.formatSwitchId(data.getSwitchId());
+        SwitchId switchId = data.getSwitchId();
 
         try {
             for (FlowStatsReply reply : data.getStats()) {
                 for (FlowStatsEntry entry : reply.getEntries()) {
-                    @Nullable  CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
+                    @Nullable CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
                     emit(entry, timestamp, switchId, flowEntry);
                 }
             }
             collector.ack(input);
         } catch (ServiceUnavailableException e) {
             LOGGER.error("Error process: {}", input.toString(), e);
-            collector.ack(input); // If we can't connect to Neo then don't know if valid input, but if NEO is down puts a loop to
-                                  // kafka, so fail the request.
+            collector.ack(input); // If we can't connect to Neo then don't know if valid input,
+            // but if NEO is down puts a loop to kafka, so fail the request.
         } catch (Exception e) {
             collector.ack(input); // We tried, no need to try again
         }
     }
 
-    private void emit(FlowStatsEntry entry, long timestamp, @Nonnull String switchId,
-            @Nullable CacheFlowEntry flowEntry) throws Exception {
+    private void emit(FlowStatsEntry entry, long timestamp, @Nonnull SwitchId switchId,
+                      @Nullable CacheFlowEntry flowEntry) throws Exception {
         String flowId = "unknown";
         if (flowEntry != null) {
             flowId = flowEntry.getFlowId();
@@ -109,27 +111,27 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             Map<String, String> flowTags = makeFlowTags(entry, flowEntry.getFlowId());
 
             boolean isMatch = false;
-            if (switchId.equals(flowEntry.getIngressSwitch())) {
+            if (switchId.toOtsdFormat().equals(flowEntry.getIngressSwitch())) {
                 emitIngressMetrics(entry, timestamp, flowTags);
                 isMatch = true;
             }
-            if (switchId.equals(flowEntry.getEgressSwitch())) {
+            if (switchId.toOtsdFormat().equals(flowEntry.getEgressSwitch())) {
                 emitEgressMetrics(entry, timestamp, flowTags);
                 isMatch = true;
             }
 
             if (!isMatch && LOGGER.isDebugEnabled()) {
                 LOGGER.debug("FlowStatsEntry with cookie {} and flow {} is not ingress not egress bc switch {} "
-                        + "is not any of {}, {}", entry.getCookie(), flowId, switchId,
+                                + "is not any of {}, {}", entry.getCookie(), flowId, switchId,
                         flowEntry.getIngressSwitch(), flowEntry.getEgressSwitch());
             }
         }
     }
 
-    private void emitAnySwitchMetrics(FlowStatsEntry entry, long timestamp, String switchId, String flowId)
+    private void emitAnySwitchMetrics(FlowStatsEntry entry, long timestamp, SwitchId switchId, String flowId)
             throws JsonEncodeException {
         Map<String, String> tags = new HashMap<>();
-        tags.put("switchid", switchId);
+        tags.put("switchid", switchId.toOtsdFormat());
         tags.put("cookie", String.valueOf(entry.getCookie()));
         tags.put("tableid", String.valueOf(entry.getTableId()));
         tags.put("flowid", flowId);

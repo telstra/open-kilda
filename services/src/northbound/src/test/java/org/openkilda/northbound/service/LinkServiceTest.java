@@ -32,6 +32,7 @@ import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.te.request.LinkPropsDrop;
 import org.openkilda.messaging.te.request.LinkPropsPut;
@@ -92,7 +93,7 @@ public class LinkServiceTest {
     @Test
     public void shouldGetLinksList() {
         String correlationId = "links-list";
-        String switchId = "00:00:00:00:00:00:00:01";
+        SwitchId switchId = new SwitchId(1L);
 
         IslInfoData islInfoData = new IslInfoData(
                 Collections.singletonList(new PathNode(switchId, 1, 0)),
@@ -111,7 +112,7 @@ public class LinkServiceTest {
 
         assertFalse(link.getPath().isEmpty());
         PathDto path = link.getPath().get(0);
-        assertEquals(switchId, path.getSwitchId());
+        assertEquals(switchId.toString(), path.getSwitchId());
         assertEquals(1, (int) path.getPortNo());
     }
 
@@ -130,9 +131,10 @@ public class LinkServiceTest {
     public void shouldGetPropsList() {
         final String correlationId = "non-empty-link-props";
 
-        LinkProps linkProps = new LinkProps(new NetworkEndpoint("00:00:00:00:00:00:00:01", 1),
-                new NetworkEndpoint("00:00:00:00:00:00:00:02", 2),
-                Collections.singletonMap("cost", "2"));
+        LinkProps linkProps = new LinkProps(
+                        new NetworkEndpoint(new SwitchId("00:00:00:00:00:00:00:01"), 1),
+                        new NetworkEndpoint(new SwitchId("00:00:00:00:00:00:00:02"), 2),
+                        Collections.singletonMap("cost", "2"));
         LinkPropsData linkPropsData = new LinkPropsData(linkProps);
         Message message = new ChunkedInfoMessage(linkPropsData, 0, correlationId, null);
         messageExchanger.mockResponse(message);
@@ -142,9 +144,9 @@ public class LinkServiceTest {
         assertFalse("List of link props shouldn't be empty", result.isEmpty());
 
         LinkPropsDto dto = result.get(0);
-        assertThat(dto.getSrcSwitch(), is(linkPropsData.getLinkProps().getSource().getDatapath()));
+        assertThat(dto.getSrcSwitch(), is(linkPropsData.getLinkProps().getSource().getDatapath().toString()));
         assertThat(dto.getSrcPort(), is(linkPropsData.getLinkProps().getSource().getPortNumber()));
-        assertThat(dto.getDstSwitch(), is(linkPropsData.getLinkProps().getDest().getDatapath()));
+        assertThat(dto.getDstSwitch(), is(linkPropsData.getLinkProps().getDest().getDatapath().toString()));
         assertThat(dto.getDstPort(), is(linkPropsData.getLinkProps().getDest().getPortNumber()));
     }
 
@@ -155,9 +157,9 @@ public class LinkServiceTest {
         HashMap<String, String> requestProps = new HashMap<>();
         requestProps.put("test", "value");
         LinkProps linkProps = new LinkProps(
-                new NetworkEndpoint("ff:fe:00:00:00:00:00:01", 8),
-                new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 9),
-                requestProps);
+                    new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
+                    new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 9),
+                    requestProps);
         LinkPropsRequest request = new LinkPropsPut(linkProps);
 
         LinkPropsResponse payload = new LinkPropsResponse(request, linkProps, null);
@@ -165,8 +167,8 @@ public class LinkServiceTest {
         messageExchanger.mockResponse(new InfoMessage(payload, System.currentTimeMillis(), subCorrelationId));
 
         LinkPropsDto inputItem = new LinkPropsDto(
-                linkProps.getSource().getDatapath(), linkProps.getSource().getPortNumber(),
-                linkProps.getDest().getDatapath(), linkProps.getDest().getPortNumber(),
+                linkProps.getSource().getDatapath().toString(), linkProps.getSource().getPortNumber(),
+                linkProps.getDest().getDatapath().toString(), linkProps.getDest().getPortNumber(),
                 requestProps);
 
         RequestCorrelationId.create(correlationId);
@@ -181,16 +183,16 @@ public class LinkServiceTest {
     public void dropLinkProps() throws Exception {
         final String correlationId = getClass().getCanonicalName();
 
-        LinkPropsDto input = new LinkPropsDto(
-                "ff:fe:00:00:00:00:00:01", 8, null, null, null);
+        LinkPropsDto input =  new LinkPropsDto("ff:fe:00:00:00:00:00:01", 8,
+                "ff:fe:00:00:00:00:00:05", null, null);
 
         LinkPropsDrop request = new LinkPropsDrop(new LinkPropsMask(
-                new NetworkEndpointMask(input.getSrcSwitch(), input.getSrcPort()),
-                new NetworkEndpointMask(input.getDstSwitch(), input.getDstPort())));
+                new NetworkEndpointMask(new SwitchId(input.getSrcSwitch()), input.getSrcPort()),
+                new NetworkEndpointMask(new SwitchId(input.getDstSwitch()), input.getDstPort())));
 
         LinkProps linkProps = new LinkProps(
-                new NetworkEndpoint(input.getSrcSwitch(), input.getSrcPort()),
-                new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 9),
+                new NetworkEndpoint(new SwitchId(input.getSrcSwitch()), input.getSrcPort()),
+                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 9),
                 new HashMap<>());
 
         LinkPropsResponse payload = new LinkPropsResponse(request, linkProps, null);

@@ -15,11 +15,13 @@
 
 package org.openkilda.messaging.info.stats;
 
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
-import org.openkilda.messaging.info.InfoData;
 
 import java.util.Set;
 
@@ -28,7 +30,7 @@ import java.util.Set;
 public class SwitchPortStatusData extends InfoData {
 
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("ports")
     private Set<PortStatus> ports;
@@ -39,7 +41,7 @@ public class SwitchPortStatusData extends InfoData {
 
     @JsonCreator
     public SwitchPortStatusData(
-            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("ports") Set<PortStatus> ports,
             @JsonProperty("requester") String requester) {
         this.switchId = switchId;

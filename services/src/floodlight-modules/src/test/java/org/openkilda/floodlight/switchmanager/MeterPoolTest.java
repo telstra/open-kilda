@@ -17,15 +17,17 @@ package org.openkilda.floodlight.switchmanager;
 
 import static org.junit.Assert.assertEquals;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import org.junit.Test;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class MeterPoolTest {
-    private static final String SWITCH_1_ID = "first-switch";
-    private static final String SWITCH_2_ID = "second-switch";
-    private static final String SWITCH_3_ID = "third-switch";
+    private static final SwitchId SWITCH_1_ID = new SwitchId("ff:01");
+    private static final SwitchId SWITCH_2_ID = new SwitchId("ff:02");
+    private static final SwitchId SWITCH_3_ID = new SwitchId("ff:03");
     private static final String FLOW_1_ID = "first-flow";
     private static final String FLOW_2_ID = "second-flow";
     private static final String FLOW_3_ID = "third-flow";
@@ -38,14 +40,14 @@ public class MeterPoolTest {
 
         int m1 = meterPool.allocate(SWITCH_1_ID, FLOW_1_ID);
         int m2 = meterPool.allocate(SWITCH_2_ID, FLOW_1_ID);
-        int m3 = meterPool.allocate(SWITCH_1_ID, FLOW_2_ID);
-        int m4 = meterPool.allocate(SWITCH_2_ID, FLOW_2_ID);
 
         expected.add(m1);
         expected.add(m2);
         assertEquals(expected, meterPool.getMetersByFlow(FLOW_1_ID));
         expected.clear();
 
+        int m3 = meterPool.allocate(SWITCH_1_ID, FLOW_2_ID);
+        int m4 = meterPool.allocate(SWITCH_2_ID, FLOW_2_ID);
         expected.add(m3);
         expected.add(m4);
         assertEquals(expected, meterPool.getMetersByFlow(FLOW_2_ID));
@@ -77,6 +79,6 @@ public class MeterPoolTest {
         assertEquals(expected, meterPool.getMetersBySwitch(SWITCH_1_ID));
         expected.clear();
 
-        assertEquals(m1+2, m5);
+        assertEquals(m1 + 2, m5);
     }
 }

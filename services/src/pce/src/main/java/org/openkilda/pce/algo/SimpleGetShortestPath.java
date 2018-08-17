@@ -12,8 +12,10 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.pce.algo;
 
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 import org.openkilda.pce.model.SimpleSwitch;
@@ -23,11 +25,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-
 
 /**
  * This algorithm is optimized for finding a bidirectional path between the start and end nodes.
@@ -65,7 +67,7 @@ public class SimpleGetShortestPath {
     private int bestCost = Integer.MAX_VALUE;
     private SearchNode bestPath = null;
 
-    public SimpleGetShortestPath(AvailableNetwork network, String srcDpid, String dstDpid, int allowedDepth) {
+    public SimpleGetShortestPath(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int allowedDepth) {
         this.network = network;
         this.start = network.getSwitches().get(srcDpid);
         this.end = network.getSwitches().get(dstDpid);
@@ -80,7 +82,7 @@ public class SimpleGetShortestPath {
 
 
     /**
-     * Call this method to find a path from start to end (src_dpid to dst_dpid), particularly if you
+     * Call this method to find a path from start to end (srcDpid to dstDpid), particularly if you
      * have no idea if the path exists or what the best path is.
      *
      * @return An ordered list that represents the path from start to end, or an empty list
@@ -187,7 +189,9 @@ public class SimpleGetShortestPath {
         return getPath();
     }
 
-    /** This helper function is used with getPath(hint) and will swap the src and dst of each isl in the list. */
+    /**
+     * This helper function is used with getPath(hint) and will swap the src and dst of each isl in the list.
+     */
     private List<SimpleIsl> swapSrcDst(List<SimpleIsl> originalIsls) {
         List<SimpleIsl> mirrorIsls = new ArrayList<>();
         for (SimpleIsl original : originalIsls) {
@@ -198,7 +202,19 @@ public class SimpleGetShortestPath {
         return mirrorIsls;
     }
 
-    /** This helper function is used with getPath(hint) to confirm the hint path exists. */
+    /**
+     * Return other if it exists, Empty Set otherwise.
+     *
+     * @param other called from confirmIsls .. ensure we don't return null for dst switch.
+     * @return other if it exists, Empty Set otherwise.
+     */
+    private static final Set<SimpleIsl> safeSet(Set<SimpleIsl> other) {
+        return other == null ? Collections.EMPTY_SET : other;
+    }
+
+    /**
+     * This helper function is used with getPath(hint) to confirm the hint path exists.
+     */
     private SearchNode confirmIsls(List<SimpleIsl> srcIsls) {
         int totalCost = 0;
         LinkedList<SimpleIsl> confirmedIsls = new LinkedList<>();
@@ -208,7 +224,10 @@ public class SimpleGetShortestPath {
             boolean foundThisOne = false;
             SimpleSwitch srcSwitch =  network.getSimpleSwitch(i.getSrcDpid());
             if (srcSwitch != null) {
-                Set<SimpleIsl> pathsToDst = srcSwitch.outbound.get(i.getDstDpid());
+                Set<SimpleIsl> pathsToDst = safeSet(srcSwitch.outbound.get(i.getDstDpid()));
+                if (pathsToDst.equals(Collections.EMPTY_SET)) {
+                    logger.debug("No ISLS from {} to {}", i.getSrcDpid(), i.getDstDpid());
+                }
                 for (SimpleIsl orig : pathsToDst) {
                     if (i.equals(orig)) {
                         foundThisOne = true;
@@ -239,25 +258,25 @@ public class SimpleGetShortestPath {
      * necessary for tracking search data per search node.
      */
     private class SearchNode implements Cloneable {
-        private SimpleSwitch dstSw;
-        private int allowedDepth;
-        private int parentCost;
+        SimpleSwitch dstSw;
+        int allowedDepth;
+        int parentCost;
         LinkedList<SimpleIsl> parentPath;
         // NB: We could consider tracking the child path as well .. to facilitate
         //     re-calc if we find a better parentPath.
 
-        SearchNode(int allowedDepth, int parentCost, SimpleSwitch dstSw) {
+        public SearchNode(int allowedDepth, int parentCost, SimpleSwitch dstSw) {
             this(allowedDepth, parentCost, dstSw, new LinkedList<SimpleIsl>());
         }
 
-        SearchNode(int allowedDepth, int parentCost, SimpleSwitch dstSw, LinkedList<SimpleIsl> parentPath) {
+        public SearchNode(int allowedDepth, int parentCost, SimpleSwitch dstSw, LinkedList<SimpleIsl> parentPath) {
             this.dstSw = dstSw;
             this.allowedDepth = allowedDepth;
             this.parentCost = parentCost;
             this.parentPath = parentPath;
         }
 
-        SearchNode addNode(SimpleIsl nextIsl) {
+        public SearchNode addNode(SimpleIsl nextIsl) {
             SearchNode newNode = this.clone();
             newNode.parentPath.add(nextIsl);
             newNode.dstSw = network.getSimpleSwitch(nextIsl.getDstDpid());

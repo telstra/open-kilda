@@ -41,6 +41,7 @@ import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.northbound.converter.SwitchMapper;
@@ -116,7 +117,7 @@ public class SwitchServiceImpl implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public SwitchFlowEntries getRules(String switchId, Long cookie, String correlationId) {
+    public SwitchFlowEntries getRules(SwitchId switchId, Long cookie, String correlationId) {
         DumpRulesRequest request = new DumpRulesRequest(switchId);
         CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER, northboundTopic);
@@ -137,12 +138,12 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
     @Override
-    public SwitchFlowEntries getRules(String switchId, Long cookie) {
+    public SwitchFlowEntries getRules(SwitchId switchId, Long cookie) {
         return getRules(switchId, cookie, RequestCorrelationId.getId());
     }
 
     @Override
-    public List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction) {
+    public List<Long> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Delete switch rules request received: deleteAction={}", deleteAction);
 
@@ -157,7 +158,7 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
     @Override
-    public List<Long> deleteRules(String switchId, DeleteRulesCriteria criteria) {
+    public List<Long> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Delete switch rules request received: criteria={}", criteria);
 
@@ -176,7 +177,7 @@ public class SwitchServiceImpl implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public List<Long> installRules(String switchId, InstallRulesAction installAction) {
+    public List<Long> installRules(SwitchId switchId, InstallRulesAction installAction) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Install switch rules request received");
 
@@ -210,7 +211,7 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
     @Override
-    public RulesValidationResult validateRules(String switchId) {
+    public RulesValidationResult validateRules(SwitchId switchId) {
         final String correlationId = RequestCorrelationId.getId();
 
         CommandWithReplyToMessage validateCommandMessage = new CommandWithReplyToMessage(
@@ -226,7 +227,7 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
     @Override
-    public RulesSyncResult syncRules(String switchId) {
+    public RulesSyncResult syncRules(SwitchId switchId) {
         RulesValidationResult validationResult = validateRules(switchId);
         List<Long> missingRules = validationResult.getMissingRules();
 
@@ -251,7 +252,7 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
     @Override
-    public DeleteMeterResult deleteMeter(String switchId, long meterId) {
+    public DeleteMeterResult deleteMeter(SwitchId switchId, long meterId) {
         String requestId = RequestCorrelationId.getId();
         CommandWithReplyToMessage deleteCommand = new CommandWithReplyToMessage(
                 new DeleteMeterRequest(switchId, meterId),

@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.service.floodlight;
 
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.model.controller.CoreFlowEntry;
 import org.openkilda.testing.model.controller.DpIdEntriesList;
 import org.openkilda.testing.model.controller.StaticFlowEntry;
@@ -30,13 +31,13 @@ public interface FloodlightService {
 
     String getAliveStatus();
 
-    List<CoreFlowEntry> getCoreFlows(String dpId);
+    List<CoreFlowEntry> getCoreFlows(SwitchId dpId);
 
-    DpIdEntriesList getStaticEntries(String dpId);
+    DpIdEntriesList getStaticEntries(SwitchId dpId);
 
     List<SwitchEntry> getSwitches();
 
-    FlowEntriesMap getFlows(String dpid);
+    FlowEntriesMap getFlows(SwitchId dpid);
 
-    MetersEntriesMap getMeters(String dpid);
+    MetersEntriesMap getMeters(SwitchId dpid);
 }

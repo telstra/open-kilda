@@ -15,22 +15,24 @@
 
 package org.openkilda.messaging.command.switches;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.openkilda.messaging.Utils.TIMESTAMP;
+
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandData;
 
 import java.util.Objects;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.openkilda.messaging.Utils.TIMESTAMP;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SwitchRulesInstallRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("install_rules")
     private InstallRulesAction installRulesAction;
@@ -43,7 +45,7 @@ public class SwitchRulesInstallRequest extends CommandData {
      */
     @JsonCreator
     public SwitchRulesInstallRequest(
-            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("install_rules") InstallRulesAction installRulesAction
     ) {
         this.switchId = Objects.requireNonNull(switchId, "switch_id must not be null");
@@ -54,7 +56,7 @@ public class SwitchRulesInstallRequest extends CommandData {
         this.installRulesAction = Objects.requireNonNull(installRulesAction);
     }
 
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 

@@ -17,6 +17,7 @@ package org.openkilda.atdd;
 
 import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -40,8 +41,8 @@ public class FlowVerificationTest {
     public void flowIsCreated(String sourceId, int sourcePort, String destId, int destPort, String flowId)
             throws Throwable {
         String randomFlowId = FlowUtils.getFlowName(flowId);
-        FlowEndpointPayload sourcePoint = new FlowEndpointPayload(sourceId, sourcePort, 96);
-        FlowEndpointPayload destPoint = new FlowEndpointPayload(destId, destPort, 112);
+        FlowEndpointPayload sourcePoint = new FlowEndpointPayload(new SwitchId(sourceId), sourcePort, 96);
+        FlowEndpointPayload destPoint = new FlowEndpointPayload(new SwitchId(destId), destPort, 112);
         FlowPayload requestPayload = new FlowPayload(
                 randomFlowId, sourcePoint, destPoint, 1000, false, "ATDD flow", null,
                 FlowState.UP.getState());

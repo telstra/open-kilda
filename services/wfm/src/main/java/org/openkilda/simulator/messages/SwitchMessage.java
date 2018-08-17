@@ -1,5 +1,9 @@
 package org.openkilda.simulator.messages;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -7,8 +11,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.Serializable;
 import java.util.List;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -19,7 +21,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class SwitchMessage implements Serializable {
     @JsonProperty("dpid")
-    private String dpid;
+    private SwitchId dpid;
 
     @JsonProperty("num_of_ports")
     private int numOfPorts;
@@ -27,7 +29,7 @@ public class SwitchMessage implements Serializable {
     @JsonProperty("links")
     private List<LinkMessage> links;
 
-    public SwitchMessage(@JsonProperty("dpid") String dpid,
+    public SwitchMessage(@JsonProperty("dpid") SwitchId dpid,
                          @JsonProperty("num_of_ports") int numOfPorts,
                          @JsonProperty("links") List<LinkMessage> links) {
         this.dpid = dpid;
@@ -43,7 +45,7 @@ public class SwitchMessage implements Serializable {
                 .toString();
     }
 
-    public String getDpid() {
+    public SwitchId getDpid() {
         return dpid;
     }
 
@@ -51,5 +53,7 @@ public class SwitchMessage implements Serializable {
         return numOfPorts;
     }
 
-    public List<LinkMessage> getLinks() { return links; }
+    public List<LinkMessage> getLinks() {
+        return links;
+    }
 }

@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -151,7 +152,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<Long> deleteSwitchRules(String switchId) {
+    public List<Long> deleteSwitchRules(SwitchId switchId) {
         HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
         httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
 
@@ -162,7 +163,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public RulesSyncResult synchronizeSwitchRules(String switchId) {
+    public RulesSyncResult synchronizeSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/synchronize", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesSyncResult.class, switchId).getBody();
     }
@@ -175,13 +176,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public SwitchFlowEntries getSwitchRules(String switchId) {
+    public SwitchFlowEntries getSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchFlowEntries.class, switchId).getBody();
     }
 
     @Override
-    public RulesValidationResult validateSwitchRules(String switchId) {
+    public RulesValidationResult validateSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/validate", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesValidationResult.class, switchId).getBody();
     }
@@ -202,7 +203,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort) {
+    public List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/link/props");
         if (srcSwitch != null) {
             uriBuilder.queryParam("src_switch", srcSwitch);
@@ -258,7 +259,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public DeleteMeterResult deleteMeter(String switchId, Integer meterId) {
+    public DeleteMeterResult deleteMeter(SwitchId switchId, Integer meterId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/meter/{meter_id}", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), DeleteMeterResult.class, switchId, meterId).getBody();
     }
@@ -271,7 +272,10 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     private IslInfoData convertToIslInfoData(LinkDto dto) {
         List<PathNode> path = dto.getPath().stream()
-                .map(pathDto -> new PathNode(pathDto.getSwitchId(), pathDto.getPortNo(), pathDto.getSeqId(),
+                .map(pathDto -> new PathNode(
+                        new SwitchId(pathDto.getSwitchId()),
+                        pathDto.getPortNo(),
+                        pathDto.getSeqId(),
                         pathDto.getSegLatency()))
                 .collect(Collectors.toList());
         return new IslInfoData(0, path, dto.getSpeed(), IslChangeType.from(dto.getState().toString()),
@@ -279,7 +283,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
-        return new SwitchInfoData(dto.getSwitchId(), SwitchState.from(dto.getState()), dto.getAddress(),
-                dto.getHostname(), dto.getDescription(), KILDA_CONTROLLER);
+        return new SwitchInfoData(
+                new SwitchId(dto.getSwitchId()),
+                SwitchState.from(dto.getState()),
+                dto.getAddress(),
+                dto.getHostname(),
+                dto.getDescription(),
+                KILDA_CONTROLLER);
     }
 }

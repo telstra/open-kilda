@@ -18,6 +18,7 @@ package org.openkilda.testing.service.topology;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ public class TopologyEngineServiceImpl implements TopologyEngineService {
     private RestTemplate restTemplate;
 
     @Override
-    public Integer getLinkBandwidth(String srcSwitch, String srcPort) {
+    public Integer getLinkBandwidth(SwitchId srcSwitch, SwitchId srcPort) {
         return restTemplate.getForObject("/api/v1/topology/links/bandwidth/{src_switch}/{src_port}", Integer.class,
                 srcSwitch, srcPort);
     }
@@ -80,7 +81,7 @@ public class TopologyEngineServiceImpl implements TopologyEngineService {
     }
 
     @Override
-    public List<PathInfoData> getPaths(String srcSwitch, String dstSwitch) {
+    public List<PathInfoData> getPaths(SwitchId srcSwitch, SwitchId dstSwitch) {
         PathInfoData[] paths = restTemplate
                 .getForObject("/api/v1/topology/routes/src/{src_switch}/dst/{dst_switch}",
                         PathInfoData[].class, srcSwitch, dstSwitch);

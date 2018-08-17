@@ -56,6 +56,7 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -238,7 +239,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(errorMessage);
 
         ErrorData errorData = errorMessage.getData();
-        assertEquals(ErrorType.CREATION_FAILURE, errorData.getErrorType());
+        assertEquals(ErrorType.ALREADY_EXISTS, errorData.getErrorType());
     }
 
     @Test
@@ -1153,7 +1154,9 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow createFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Create flow");
-        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload =
+                new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+                        new SwitchId("ff:00"), 1, 2);
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
         //sendNorthboundMessage(message);
@@ -1163,7 +1166,9 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow updateFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Update flow");
-        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload =
+                new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+                        new SwitchId("ff:00"), 1, 2);
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
         //sendNorthboundMessage(message);
@@ -1218,7 +1223,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private InstallOneSwitchFlow baseInstallFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Install flow");
         InstallOneSwitchFlow commandData = new InstallOneSwitchFlow(0L, flowId,
-                COOKIE, "switch-id", 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L);
+                COOKIE, new SwitchId("ff:04"), 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L);
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "install-flow", Destination.WFM);
         //sendTopologyEngineMessage(commandMessage);
         //sendSpeakerMessage(commandMessage);
@@ -1228,7 +1233,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private RemoveFlow removeFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Remove flow");
-        RemoveFlow commandData = new RemoveFlow(0L, flowId, COOKIE, "switch-id", 0L,
+        RemoveFlow commandData = new RemoveFlow(0L, flowId, COOKIE, new SwitchId("ff:04"), 0L,
                 DeleteRulesCriteria.builder().cookie(COOKIE).build());
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "remove-flow", Destination.WFM);
         //sendTopologyEngineMessage(commandMessage);
@@ -1238,7 +1243,9 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow getFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flow");
-        Flow flowPayload = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flowPayload =
+                new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+                        new SwitchId("ff:00"), 1, 2);
         FlowResponse infoData = new FlowResponse(flowPayload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "get-flow", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
@@ -1247,7 +1254,9 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private List<String> dumpFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flows");
-        Flow flow = new Flow(flowId, 10000, false, "", "test-switch", 1, 2, "test-switch", 1, 2);
+        Flow flow =
+                new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+                        new SwitchId("ff:00"), 1, 2);
         List<String> payload = Collections.singletonList(flow.getFlowId());
         FlowsResponse infoData = new FlowsResponse(payload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "dump-flows", Destination.WFM);
@@ -1258,7 +1267,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private PathInfoData pathFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Path flow");
         PathInfoData pathInfoData = new PathInfoData(
-                0L, Collections.singletonList(new PathNode("test-switch", 1, 0, null)));
+                0L, Collections.singletonList(new PathNode(new SwitchId("ff:00"), 1, 0, null)));
         Flow flow = Flow.builder().flowPath(pathInfoData).build();
         BidirectionalFlowResponse infoData = new BidirectionalFlowResponse(new BidirectionalFlow(flow, flow));
         InfoMessage infoMessage =

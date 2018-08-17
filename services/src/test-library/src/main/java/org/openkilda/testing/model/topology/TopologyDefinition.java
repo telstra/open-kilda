@@ -20,6 +20,8 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -38,6 +40,7 @@ import java.util.stream.Collectors;
 
 /**
  * Defines a topology with switches, links and traffgens.
+ * <p/>
  * Topology definition objects are immutable and can't be changed after creation.
  */
 @Value
@@ -91,7 +94,7 @@ public class TopologyDefinition {
     /**
      * Get all switches that are marked as skipped in config.
      */
-    public Set<String> getSkippedSwitchIds() {
+    public Set<SwitchId> getSkippedSwitchIds() {
         return switches.stream()
                 .filter(sw -> sw.getStatus() == Status.Skip)
                 .map(Switch::getDpId)
@@ -126,7 +129,7 @@ public class TopologyDefinition {
 
         private String name;
         @NonNull
-        private String dpId;
+        private SwitchId dpId;
         @NonNull
         private String ofVersion;
         @NonNull
@@ -140,7 +143,7 @@ public class TopologyDefinition {
         @JsonCreator
         public static Switch factory(
                 @JsonProperty("name") String name,
-                @JsonProperty("dp_id") String dpId,
+                @JsonProperty("dp_id") SwitchId dpId,
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
                 @JsonProperty("out_ports") List<OutPort> outPorts) {

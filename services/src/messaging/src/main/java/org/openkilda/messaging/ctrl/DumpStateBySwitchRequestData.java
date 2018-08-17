@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,13 +15,15 @@
 
 package org.openkilda.messaging.ctrl;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
- * Defines the payload of a Message representing Dump data from discovery bolt
+ * Defines the payload of a Message representing Dump data from discovery bolt.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -32,10 +34,10 @@ public class DumpStateBySwitchRequestData extends RequestData {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Switch Id
+     * Switch Id.
      */
     @JsonProperty("switch_id")
-    private final String switchId;
+    private final SwitchId switchId;
 
 
     /**
@@ -47,12 +49,12 @@ public class DumpStateBySwitchRequestData extends RequestData {
     @JsonCreator
     public DumpStateBySwitchRequestData(
             @JsonProperty("action") final String action,
-            @JsonProperty("switch_id") final String switchId) {
+            @JsonProperty("switch_id") final SwitchId switchId) {
         super(action);
         this.switchId = switchId;
     }
 
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 }

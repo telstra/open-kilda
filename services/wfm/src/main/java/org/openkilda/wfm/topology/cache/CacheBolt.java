@@ -40,6 +40,7 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
@@ -542,7 +543,7 @@ public class CacheBolt
     }
 
     @Override
-    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
         // Not implemented
         NetworkDump networkDump = new NetworkDump(
                 new HashSet<>(),

@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.discovery;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -35,7 +36,7 @@ public class DiscoverIslCommandData extends CommandData {
      * Switch id.
      */
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     /**
      * Port number.
@@ -50,7 +51,7 @@ public class DiscoverIslCommandData extends CommandData {
      * @param portNumber   port number
      */
     @JsonCreator
-    public DiscoverIslCommandData(@JsonProperty("switch_id") final String switchId,
+    public DiscoverIslCommandData(@JsonProperty("switch_id") final SwitchId switchId,
                                   @JsonProperty("port_number") final int portNumber) {
         this.switchId = switchId;
         this.portNumber = portNumber;

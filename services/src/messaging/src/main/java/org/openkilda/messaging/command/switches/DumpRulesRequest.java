@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -26,9 +27,9 @@ import lombok.Value;
 public class DumpRulesRequest extends CommandData {
 
     @JsonProperty("switchId")
-    private String switchId;
+    private SwitchId switchId;
 
-    public DumpRulesRequest(@JsonProperty(value = "switch_id") String switchId) {
+    public DumpRulesRequest(@JsonProperty("switchId") SwitchId switchId) {
         this.switchId = switchId;
     }
 }

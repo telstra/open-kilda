@@ -18,12 +18,13 @@ package org.openkilda.testing.service.topology;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 
 import java.util.List;
 
 public interface TopologyEngineService {
 
-    Integer getLinkBandwidth(String srcSwitch, String srcPort);
+    Integer getLinkBandwidth(SwitchId srcSwitch, SwitchId srcPort);
 
     List<Flow> getAllFlows();
 
@@ -33,6 +34,6 @@ public interface TopologyEngineService {
 
     String clearTopology();
 
-    List<PathInfoData> getPaths(String srcSwitch, String dstSwitch);
+    List<PathInfoData> getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
 
 }

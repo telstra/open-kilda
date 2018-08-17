@@ -17,6 +17,7 @@ package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -43,13 +44,13 @@ public class UniFlowVerificationRequest extends CommandData {
     private FlowDirection direction;
 
     @JsonProperty("source_switch")
-    private String sourceSwitchId;
+    private SwitchId sourceSwitchId;
 
     @JsonProperty("source_port")
     private int sourcePort;
 
     @JsonProperty("dest_switch")
-    private String destSwitchId;
+    private SwitchId destSwitchId;
 
     @JsonProperty("vlan")
     private int vlanId;
@@ -60,9 +61,9 @@ public class UniFlowVerificationRequest extends CommandData {
             @JsonProperty("timeout") int timeout,
             @JsonProperty("flow_id") String flowId,
             @JsonProperty("direction") FlowDirection direction,
-            @JsonProperty("source_switch") String sourceSwitchId,
+            @JsonProperty("source_switch") SwitchId sourceSwitchId,
             @JsonProperty("source_port") int sourcePort,
-            @JsonProperty("dest_switch") String destSwitchId,
+            @JsonProperty("dest_switch") SwitchId destSwitchId,
             @JsonProperty("vlan") int vlanId) {
         if (packetId == null) {
             packetId = UUID.randomUUID();

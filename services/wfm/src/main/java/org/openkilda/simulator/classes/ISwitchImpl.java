@@ -2,8 +2,10 @@ package org.openkilda.simulator.classes;
 
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.simulator.interfaces.IFlow;
 import org.openkilda.simulator.interfaces.ISwitch;
+
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.ArrayList;
@@ -16,18 +18,18 @@ public class ISwitchImpl implements ISwitch {
     private List<IPortImpl> ports = new ArrayList<>();
     private Map<Long, IFlow> flows = new HashMap<>();
     private int controlPlaneLatency = 0;
-    private SwitchState state= SwitchState.DEACTIVATED;
+    private SwitchState state = SwitchState.DEACTIVATED;
     private int maxPorts = 0;
 
     public ISwitchImpl() throws SimulatorException {
-        this("");
+        this(new SwitchId("00"));
     }
 
-    public ISwitchImpl(String dpid) throws SimulatorException  {
+    public ISwitchImpl(SwitchId dpid) throws SimulatorException {
         this(dpid, 0, PortStateType.DOWN);
     }
 
-    public ISwitchImpl(String dpid, int numOfPorts, PortStateType portState) throws SimulatorException {
+    public ISwitchImpl(SwitchId dpid, int numOfPorts, PortStateType portState) throws SimulatorException {
         setDpid(dpid);
         maxPorts = numOfPorts;
         int count = 0;
@@ -55,7 +57,7 @@ public class ISwitchImpl implements ISwitch {
             case CHANGED:
                 throw new SimulatorException("Received modState of CHANGED, no idea why");
             default:
-               throw new SimulatorException(String.format("Unknown state %s", state));
+                throw new SimulatorException(String.format("Unknown state %s", state));
         }
     }
 
@@ -100,8 +102,8 @@ public class ISwitchImpl implements ISwitch {
     }
 
     @Override
-    public void setDpid(String dpid) {
-        this.dpid = DatapathId.of(dpid);
+    public void setDpid(SwitchId dpid) {
+        this.dpid = DatapathId.of(dpid.toString());
     }
 
     @Override
@@ -114,7 +116,7 @@ public class ISwitchImpl implements ISwitch {
         try {
             return ports.get(portNum);
         } catch (IndexOutOfBoundsException e) {
-            throw new SimulatorException(String.format("Port %d is not defined on %s",portNum, getDpidAsString()));
+            throw new SimulatorException(String.format("Port %d is not defined on %s", portNum, getDpidAsString()));
         }
     }
 
@@ -123,8 +125,8 @@ public class ISwitchImpl implements ISwitch {
         if (ports.size() < maxPorts) {
             ports.add(port);
         } else {
-            throw new SimulatorException(String.format("Switch already has reached maxPorts of %d" +
-                    "", maxPorts));
+            throw new SimulatorException(String.format("Switch already has reached maxPorts of %d"
+                    + "", maxPorts));
         }
         return port.getNumber();
     }
@@ -156,7 +158,7 @@ public class ISwitchImpl implements ISwitch {
     @Override
     public void addFlow(IFlow flow) throws SimulatorException {
         if (flows.containsKey(flow.getCookie())) {
-            throw new SimulatorException(String.format("Flow %s already exists.",flow.toString()));
+            throw new SimulatorException(String.format("Flow %s already exists.", flow.toString()));
         }
         flows.put(flow.getCookie(), flow);
     }
