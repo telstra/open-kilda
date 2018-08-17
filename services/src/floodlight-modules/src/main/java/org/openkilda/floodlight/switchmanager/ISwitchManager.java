@@ -17,7 +17,6 @@ package org.openkilda.floodlight.switchmanager;
 
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -262,8 +261,8 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpId datapath ID of the switch.
      * @param portNumber the port to configure.
-     * @param status the port status to be applied.
+     * @param portAdminDown the port status to be applied.
      * @throws SwitchOperationException Switch not found or Port not found
      */
-    void configurePort(DatapathId dpId, int portNumber, PortStatus status) throws SwitchOperationException;
+    void configurePort(DatapathId dpId, int portNumber, Boolean portAdminDown) throws SwitchOperationException;
 }

@@ -19,11 +19,11 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
+import lombok.Value;
 
-@Data
+@Value
 @EqualsAndHashCode(callSuper = true)
 public class PortConfigurationRequest extends CommandData {
 
@@ -36,15 +36,15 @@ public class PortConfigurationRequest extends CommandData {
     @JsonProperty("port_no")
     private int portNumber;
 
-    @JsonProperty("status")
-    private PortStatus status;
+    @JsonProperty("admin_down")
+    private Boolean adminDown;
 
     public PortConfigurationRequest(
             @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("port_no") int portNumber, 
-            @JsonProperty("status") PortStatus status) {
+            @JsonProperty("admin_down") Boolean adminDown) {
         this.switchId = switchId;
         this.portNumber = portNumber;
-        this.status = status;
+        this.adminDown = adminDown;
     }
 }

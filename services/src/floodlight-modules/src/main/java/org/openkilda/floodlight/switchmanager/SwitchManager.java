@@ -34,7 +34,6 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -1479,31 +1478,37 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
         }
     }
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void configurePort(DatapathId dpId, int portNumber, PortStatus status)
-            throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpId);
-        OFPortDesc ofPortDesc = getPort(sw, portNumber);
 
-        if (status != null) {
-            updatePortStatus(sw, ofPortDesc, status);
+    // TODO(surabujin): this method can/should be moved to the RecordHandler level
+    @Override
+    public void configurePort(DatapathId dpId, int portNumber, Boolean portAdminDown) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpId);
+
+        boolean makeChanges = false;
+        if (portAdminDown != null) {
+            makeChanges = true;
+            updatePortStatus(sw, portNumber, portAdminDown);
+        }
+
+        if (makeChanges) {
+            sendBarrierRequest(sw);
         }
     }
     
-    private void updatePortStatus(final IOFSwitch sw, final OFPortDesc ofPortDesc, final PortStatus portStatus)
-            throws SwitchOperationException {
-        Set<OFPortConfig> configs = portStatus == PortStatus.UP ? configs = ImmutableSet.of() : 
-                ImmutableSet.of(OFPortConfig.PORT_DOWN);
-        
+    private void updatePortStatus(IOFSwitch sw, int portNumber, boolean isAdminDown) throws SwitchOperationException {
+        Set<OFPortConfig> config = new HashSet<>(1);
+        if (isAdminDown) {
+            config.add(OFPortConfig.PORT_DOWN);
+        }
+
         Set<OFPortConfig> portMask = ImmutableSet.of(OFPortConfig.PORT_DOWN);
-        
-        OFPortMod ofPortMod = sw.getOFFactory().buildPortMod().setConfig(configs)
-                .setPortNo(ofPortDesc.getPortNo())
-                .setHwAddr(ofPortDesc.getHwAddr())
+
+        final OFFactory ofFactory = sw.getOFFactory();
+        OFPortMod ofPortMod = ofFactory.buildPortMod()
+                .setPortNo(OFPort.of(portNumber))
+                // switch can argue against empty HWAddress (BAD_HW_ADDR) :(
+                .setHwAddr(getPortHwAddress(sw, portNumber))
+                .setConfig(config)
                 .setMask(portMask)
                 .build();
 
@@ -1515,12 +1520,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         logger.debug("Successfully updated port status {}", ofPortMod);
     }
 
-    private OFPortDesc getPort(final IOFSwitch sw, final int portNo) throws SwitchOperationException {
-        OFPortDesc ofPortDesc = sw.getPort(sw.getPort(OFPort.of(portNo)).getName());
-                
-        if (ofPortDesc == null) {
-            throw new SwitchOperationException(sw.getId(), String.format("Port %s was not found", portNo));
-        }
-        return ofPortDesc;
+    private MacAddress getPortHwAddress(IOFSwitch sw, int portNumber) {
+        OFPortDesc portDesc = sw.getPort(OFPort.of(portNumber));
+        return portDesc.getHwAddr();
     }
 }

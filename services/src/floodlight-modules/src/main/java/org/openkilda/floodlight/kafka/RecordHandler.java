@@ -717,7 +717,7 @@ class RecordHandler implements Runnable {
             ISwitchManager switchManager = context.getSwitchManager();
 
             DatapathId dpId = DatapathId.of(request.getSwitchId().toLong());
-            switchManager.configurePort(dpId, request.getPortNumber(), request.getStatus());
+            switchManager.configurePort(dpId, request.getPortNumber(), request.getAdminDown());
 
             InfoMessage infoMessage = new InfoMessage(
                     new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber()),

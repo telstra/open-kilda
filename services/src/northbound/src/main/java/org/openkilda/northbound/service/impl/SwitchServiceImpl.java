@@ -29,6 +29,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
@@ -272,7 +273,7 @@ public class SwitchServiceImpl implements SwitchService {
         String correlationId = RequestCorrelationId.getId();
 
         PortConfigurationRequest request = new PortConfigurationRequest(switchId, 
-                port, config.getStatus());
+                port, toPortAdminDown(config.getStatus()));
         CommandWithReplyToMessage updateStatusCommand = new CommandWithReplyToMessage(
                 request, System.currentTimeMillis(), correlationId, 
                 Destination.CONTROLLER, northboundTopic);
@@ -283,5 +284,25 @@ public class SwitchServiceImpl implements SwitchService {
                 updateStatusCommand, response, correlationId);
 
         return new PortDto(switchPortResponse.getSwitchId().toString(), switchPortResponse.getPortNo());
+    }
+
+    private Boolean toPortAdminDown(PortStatus status) {
+        if (status == null) {
+            return  null;
+        }
+
+        boolean adminDownState;
+        switch (status) {
+            case UP:
+                adminDownState = false;
+                break;
+            case DOWN:
+                adminDownState = true;
+                break;
+            default:
+                throw new IllegalArgumentException(String.format(
+                        "Unsupported enum %s value: %s", PortStatus.class.getName(), status));
+        }
+        return adminDownState;
     }
 }
