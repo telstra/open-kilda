@@ -10,6 +10,9 @@ jobs:
         - make update-props-dryrun
     - stage: unit
       language: java
+      before_install:
+        - sudo pip install --upgrade pip
+        - sudo pip install ansible
       script:
         - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
         - make unit
