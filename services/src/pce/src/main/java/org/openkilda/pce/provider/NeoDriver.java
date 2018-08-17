@@ -50,7 +50,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class NeoDriver implements PathComputer {
-
     private static final Logger logger = LoggerFactory.getLogger(NeoDriver.class);
 
     private final Driver driver;
@@ -189,24 +188,26 @@ public class NeoDriver implements PathComputer {
 
 
     private List<Flow> loadFlows(String whereClause, Value parameters) {
-        String q =
-                "MATCH (:switch)-[f:flow]->(:switch) "
-                        + whereClause
-                        + "RETURN f.flowid as flowid, "
-                        + "f.bandwidth as bandwidth, "
-                        + "f.ignore_bandwidth as ignore_bandwidth, "
-                        + "f.cookie as cookie, "
-                        + "f.description as description, "
-                        + "f.last_updated as last_updated, "
-                        + "f.src_switch as src_switch, "
-                        + "f.dst_switch as dst_switch, "
-                        + "f.src_port as src_port, "
-                        + "f.dst_port as dst_port, "
-                        + "f.src_vlan as src_vlan, "
-                        + "f.dst_vlan as dst_vlan, "
-                        + "f.flowpath as path, "
-                        + "f.meter_id as meter_id, "
-                        + "f.transit_vlan as transit_vlan";
+        // FIXME(surabujin): remove cypher(graphQL) injection breach
+        String q = ""
+                + "MATCH (:switch)-[f:flow]->(:switch)"
+                + "\n" + whereClause + "\n"
+                + "RETURN f.flowid as flowid,\n"
+                + "       f.bandwidth as bandwidth,\n"
+                + "       f.ignore_bandwidth as ignore_bandwidth,\n"
+                + "       f.periodic_pings as periodic_pings,\n"
+                + "       f.cookie as cookie,\n"
+                + "       f.description as description,\n"
+                + "       f.last_updated as last_updated,\n"
+                + "       f.src_switch as src_switch,\n"
+                + "       f.dst_switch as dst_switch,\n"
+                + "       f.src_port as src_port,\n"
+                + "       f.dst_port as dst_port,\n"
+                + "       f.src_vlan as src_vlan,\n"
+                + "       f.dst_vlan as dst_vlan,\n"
+                + "       f.flowpath as path,\n"
+                + "       f.meter_id as meter_id,\n"
+                + "       f.transit_vlan as transit_vlan";
 
         logger.debug("Executing getFlows Query: {}", q);
 

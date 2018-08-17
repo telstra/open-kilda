@@ -44,7 +44,7 @@ public class FlowPingTest {
         FlowEndpointPayload sourcePoint = new FlowEndpointPayload(new SwitchId(sourceId), sourcePort, 96);
         FlowEndpointPayload destPoint = new FlowEndpointPayload(new SwitchId(destId), destPort, 112);
         FlowPayload requestPayload = new FlowPayload(
-                randomFlowId, sourcePoint, destPoint, 1000, false, "ATDD flow", null,
+                randomFlowId, sourcePoint, destPoint, 1000, false, false, "ATDD flow", null,
                 FlowState.UP.getState());
 
         System.out.println(String.format("==> Send flow CREATE request (%s <--> %s)", sourcePoint, destPoint));

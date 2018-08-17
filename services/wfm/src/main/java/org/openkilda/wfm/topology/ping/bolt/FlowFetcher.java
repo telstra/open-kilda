@@ -84,6 +84,11 @@ public class FlowFetcher extends Abstract {
         final CommandContext commandContext = pullContext(input);
         final FlowsHeap heap = new FlowsHeap();
         for (BidirectionalFlow flow : fetcher.getFlows()) {
+            if (!flow.isPeriodicPings()) {
+                log.debug("Skip flow {} due to isPeriodicPings == false", flow.getFlowId());
+                continue;
+            }
+
             PingContext pingContext = new PingContext(Kinds.PERIODIC, flow);
             emit(input, pingContext, commandContext);
 

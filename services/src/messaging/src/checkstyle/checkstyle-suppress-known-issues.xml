@@ -464,9 +464,6 @@
     <suppress files="src/main/java/org/openkilda/messaging/payload/FeatureTogglePayload.java" lines="92" checks="FileTabCharacter"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/FeatureTogglePayload.java" lines="93" checks="Indentation"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/FeatureTogglePayload.java" lines="93" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowPayload.java" lines="73" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowPayload.java" lines="210" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowPayload.java" lines="218" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowCacheSyncResults.java" lines="22" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowCacheSyncResults.java" lines="28" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowCacheSyncResults.java" lines="39" checks="WhitespaceAfter"/>
@@ -533,7 +530,4 @@
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="24" checks="RedundantImport"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="28" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/messaging/ObjectSerializer.java" lines="34" checks="VariableDeclarationUsageDistance"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="53" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="64" checks="JavadocMethod"/>
 </suppressions>

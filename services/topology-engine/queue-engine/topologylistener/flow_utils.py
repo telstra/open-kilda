@@ -13,16 +13,14 @@
 #   limitations under the License.
 #
 
-import os
-import json
-import db
 import copy
-import calendar
-import time
-import collections
-
-import message_utils
+import json
 import logging
+import time
+
+from topologylistener import db
+from topologylistener import message_utils
+from topologylistener import model
 
 
 __all__ = ['graph']
@@ -161,42 +159,43 @@ def remove_flow(flow, parent_tx=None):
     return result
 
 
-def merge_flow_relationship(flow_data, tx=None):
-    """
-    This function focuses on just creating the starting/ending switch relationship for a flow.
-    """
-    query = (
-        "MERGE "                                # MERGE .. create if doesn't exist .. being cautious
-        " (src:switch {{name:'{src_switch}'}}) "
-        " ON CREATE SET src.state = 'inactive' "
-        "MERGE "
-        " (dst:switch {{name:'{dst_switch}'}}) "
-        " ON CREATE SET dst.state = 'inactive' "
-        "MERGE (src)-[f:flow {{"                # Should only use the relationship primary keys in a match
-        " flowid:'{flowid}', "
-        " cookie: {cookie} }} ]->(dst)  "
-        "SET "
-        " f.meter_id = {meter_id}, "
-        " f.bandwidth = {bandwidth}, "
-        " f.ignore_bandwidth = {ignore_bandwidth}, "
-        " f.src_port = {src_port}, "
-        " f.dst_port = {dst_port}, "
-        " f.src_switch = '{src_switch}', "
-        " f.dst_switch = '{dst_switch}', "
-        " f.src_vlan = {src_vlan}, "
-        " f.dst_vlan = {dst_vlan}, "
-        " f.transit_vlan = {transit_vlan}, "
-        " f.description = '{description}', "
-        " f.last_updated = '{last_updated}', "
-        " f.flowpath = '{flowpath}' "
+def merge_flow_relationship(flow, tx):
+    q = (
+        "MERGE (src:switch {name: $src_switch})\n"
+        "   ON CREATE SET src.state = 'inactive'\n"
+        "MERGE (dst:switch {name: $dst_switch})\n"
+        "   ON CREATE SET dst.state = 'inactive'\n"
+        "MERGE (src)-[f:flow {\n"
+        "      flowid: $flowid,\n"
+        "      cookie: $cookie } ]->(dst)\n"
+        "SET f.src_switch = src.name,\n"
+        "    f.src_port = $src_port,\n"
+        "    f.src_vlan = $src_vlan,\n"
+        "    f.dst_switch = dst.name,\n"
+        "    f.dst_port = $dst_port,\n"
+        "    f.dst_vlan = $dst_vlan,\n"
+        "    f.meter_id = $meter_id,\n"
+        "    f.bandwidth = $bandwidth,\n"
+        "    f.ignore_bandwidth = $ignore_bandwidth,\n"
+        "    f.periodic_pings = $periodic_pings,\n"
+        "    f.transit_vlan = $transit_vlan,\n"
+        "    f.description = $description,\n"
+        "    f.last_updated = $last_updated,\n"
+        "    f.flowpath = $flowpath"
     )
-    flow_data['flowpath'].pop('clazz', None) # don't store the clazz info, if it is there.
-    flow_data['last_updated'] = calendar.timegm(time.gmtime())
-    flow_data['flowpath'] = json.dumps(flow_data['flowpath'])
-    if tx:
-        tx.run(query.format(**flow_data))
-    else:
-        graph.run(query.format(**flow_data))
+
+    p = model.dash_to_underscore(flow)
+    # FIXME(surabujin): do we really want to keep this time representation?
+    # FIXME(surabujin): format datetime as '1532609693'(don 't match with
+    #                   format used in PCE/resource cache)
+    p['last_updated'] = str(int(time.time()))
+
+    path = p['flowpath'].copy()
+    path.pop('clazz', None)
+    p['flowpath'] = json.dumps(path)
+
+    db.log_query('Save(update) flow', q, p)
+    tx.run(q, p)
 
 
 def merge_flow_segments(_flow, tx=None):
@@ -349,7 +348,7 @@ def update_isl_bandwidth(src_switch, src_port, dst_switch, dst_port, tx=None):
         graph.run(query)
 
 
-def store_flow(flow, tx=None):
+def store_flow(flow, tx):
     """
     Create a :flow relationship between the starting and ending switch, as well as
     create :flow_segment relationships between every switch in the path.
@@ -364,21 +363,18 @@ def store_flow(flow, tx=None):
 
     logger.debug('STORE Flow : %s', flow['flowid'])
     delete_flow_segments(flow, tx)
-    merge_flow_relationship(copy.deepcopy(flow), tx)
+    merge_flow_relationship(flow, tx)
     merge_flow_segments(flow, tx)
 
 
-def hydrate_flow(one_row):
-    """
-    :param one_row: The typical result from query - ie  MATCH (a:switch)-[r:flow]->(b:switch) RETURN r
-    :return: a fully dict'd object
-    """
-    path = json.loads(one_row['r']['flowpath'])
-    flow = json.loads(json.dumps(one_row['r'],
-                                 default=lambda o: o.__dict__,
-                                 sort_keys=True))
-    path.setdefault('clazz', 'org.openkilda.messaging.info.event.PathInfoData')
+def hydrate_flow(db_flow):
+    flow = db_flow.copy()
+    flow['periodic-pings'] = flow.pop('periodic_pings', False)
+
+    path = json.loads(flow['flowpath'])
+    path['clazz'] = 'org.openkilda.messaging.info.event.PathInfoData'
     flow['flowpath'] = path
+
     return flow
 
 
@@ -399,7 +395,7 @@ def get_old_flow(new_flow):
         logger.info('Flows were found: %s', old_flows)
 
     for data in old_flows:
-        old_flow = hydrate_flow(data)
+        old_flow = hydrate_flow(data['r'])
         logger.info('check cookies: %s ? %s',
                     new_flow['cookie'], old_flow['cookie'])
         if is_same_direction(new_flow['cookie'], old_flow['cookie']):
@@ -421,7 +417,7 @@ def get_flows():
         result = graph.run(query).data()
 
         for data in result:
-            flow = hydrate_flow(data)
+            flow = hydrate_flow(data['r'])
             flow['state'] = 'CACHED'
             flow_pair = flows.get(flow['flowid'], {})
             if is_forward_cookie(flow['cookie']):
@@ -474,7 +470,7 @@ def get_flows_by_src_switch(switch_id):
 
     flows = []
     for item in result:
-        flows.append(hydrate_flow(item))
+        flows.append(hydrate_flow(item['r']))
 
     logger.debug('Found flows for switch %s: %s', switch_id, flows)
 
@@ -623,7 +619,7 @@ def get_flow_by_id_and_cookie(flow_id, cookie):
     if not result:
         return
 
-    flow = hydrate_flow(result[0])
+    flow = hydrate_flow(result[0]['r'])
     logger.debug('Found flow for id %s and cookie %s: %s', flow_id, cookie, flow)
     return flow
 

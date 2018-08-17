@@ -1,17 +1,16 @@
-/*
- * Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
  */
 
 package org.openkilda.messaging.model;
@@ -36,8 +35,12 @@ public class BidirectionalFlow implements Serializable {
 
     @JsonProperty("bandwidth")
     private long bandwidth;
+
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
+
+    @JsonProperty("periodic-pings")
+    private boolean periodicPings;
 
     @JsonProperty("cookie")
     private long cookie;
@@ -56,14 +59,13 @@ public class BidirectionalFlow implements Serializable {
     }
 
     public BidirectionalFlow(Flow forward, Flow reverse) {
-        flowId = forward.getFlowId();
-        bandwidth = forward.getBandwidth();
-        ignoreBandwidth = forward.isIgnoreBandwidth();
-        cookie = forward.getFlagglessCookie();
-        description = forward.getDescription();
-
-        this.forward = forward;
-        this.reverse = reverse;
+        this(forward.getFlowId(),
+                forward.getBandwidth(),
+                forward.isIgnoreBandwidth(),
+                forward.isPeriodicPings(),
+                forward.getFlagglessCookie(),
+                forward.getDescription(),
+                forward, reverse);
     }
 
     @Builder
@@ -72,6 +74,7 @@ public class BidirectionalFlow implements Serializable {
             @JsonProperty("flow_id")  String flowId,
             @JsonProperty("bandwidth") long bandwidth,
             @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
+            @JsonProperty("periodic-pings") boolean periodicPings,
             @JsonProperty("cookie") long cookie,
             @JsonProperty("description") String description,
             @JsonProperty("forward") Flow forward,
@@ -79,6 +82,7 @@ public class BidirectionalFlow implements Serializable {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
+        this.periodicPings = periodicPings;
         this.cookie = cookie;
         this.description = description;
         this.forward = forward;

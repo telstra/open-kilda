@@ -252,7 +252,7 @@ public class FlowSet {
             FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort, destVlan);
 
             return new FlowPayload(flowId, srcEndpoint, destEndpoint,
-                    1, false, flowId, null, FlowState.UP.getState());
+                    1, false, false, flowId, null, FlowState.UP.getState());
         }
     }
 }

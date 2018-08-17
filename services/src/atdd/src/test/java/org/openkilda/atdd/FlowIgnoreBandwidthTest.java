@@ -71,7 +71,7 @@ public class FlowIgnoreBandwidthTest {
         FlowEndpointPayload sourcePoint = new FlowEndpointPayload(new SwitchId(source), 1, 0);
         FlowEndpointPayload destPoint = new FlowEndpointPayload(new SwitchId(dest), 2, 0);
         FlowPayload requestPayload = new FlowPayload(
-                flowId, sourcePoint, destPoint, bandwidth, true, "Flow that ignore ISL bandwidth", null,
+                flowId, sourcePoint, destPoint, bandwidth, true, false, "Flow that ignore ISL bandwidth", null,
                 FlowState.UP.getState());
 
         System.out.println(String.format("==> Send flow CREATE request (%s <--> %s)", source, dest));

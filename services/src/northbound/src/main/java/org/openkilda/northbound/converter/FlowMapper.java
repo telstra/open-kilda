@@ -17,19 +17,37 @@ package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
+import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", imports = FlowEndpointPayload.class)
 public interface FlowMapper {
-    PingOutput toFlowPingOutput(FlowPingResponse response);
+    @Mapping(target = "id", source = "flowId")
+    @Mapping(target = "source",
+            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+    @Mapping(target = "destination",
+            expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
+                    + "f.getDestinationVlan()))")
+    @Mapping(target = "maximumBandwidth", source = "bandwidth")
+    @Mapping(target = "status", source = "state")
+    FlowPayload toFlowOutput(Flow f);
 
-    @Mapping(source = "meters.networkLatency", target = "latency")
+    PingOutput toPingOutput(FlowPingResponse response);
+
+    @Mapping(target = "latency", source = "meters.networkLatency")
     UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
+
+    default String encodeFlowState(FlowState state) {
+        return state.getState();
+    }
 
     /**
      * Translate Java's error code(enum) into human readable string.
