@@ -8,8 +8,34 @@ jobs:
       script:
         - pip install ansible
         - make update-props-dryrun
+
+    - stage: sonar
+      language: java
+      sudo: false
+      install: true
+      jdk: oraclejdk8
+
+      addons:
+        sonarcloud:
+          organization: "open-kilda"
+          token:
+            secure: "ekznTpLDEd2x5SMcxPE609zYDv+dDMbgyQOWGjYdRsMrjeAqJvlRPz3NFqqLK0+RXzGYO+TOfZf1rUpv5B47n4j1U8O5wDoXw5ZXAXM8hHNbz4qqMZdfXAOyTGMsqrBHLC0omFxWNfTc9QMQtdWbqgSU3KzGDg/0J3pypQoCAP52e5bSzSBchVXR5xmInaFYlGHZfsZpKuSavRki3hvwlM1N6F3abQQgQq3XVH05KHerhv/3AQ9gjHv4O0K1oRt0CJo1TztMIlRB70MY4JMv8Bpf09PzteP/fjZBlB7vIKZ1TQOph9mMYJ8guXatTvZ7Ym2Lkihq2/KvG6p650oeQxTE0b4j6aqbZPN+C3o9INMnA80chZzBySGjYleNOBPXl5bDouW94HKfvBdQFfFRFuHS280fVrYvO11IYdkglcxnk3YhMcJO/iJuH7IiUeWLQ6vpVOPJzDBt7QQqhTFWySidEnmQdnlotQigXpgZ9h98qyHR3fXVFAArWX1bcSA9WAIZHAFJwjVSimVCq5SJDPhgkcyyzauInNiFb1fPMjDscYfCXpK7ws9ydzMTVV+kQ+2x8JO9jJwDOzUkGHV83zheO3TzSCfuANBhP1GwkcSVvgEcrc5A5eosbC3DDcQpK7KRX7QHKsnSetqovh8MoFeNG4nYObOC4oyPZT6AXf4="
+
+      script:
+        # JaCoCo is used to have code coverage, the agent has to be activated
+        - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+        - make -C services/src
+        - cd services/src
+        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent package sonar:sonar
+
+      cache:
+        directories:
+          - '$HOME/.m2/repository'
+          - '$HOME/.sonar/cache'
+
     - stage: unit
       language: java
+      jdk: oraclejdk8
       script:
         - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
         - make unit
