@@ -1,0 +1,17 @@
+{
+      "title": "Kilda-CrudBolt-Rerouted",
+      "description": "",
+      "hits": 0,
+      "columns": [
+        "level",
+        "message"
+      ],
+      "sort": [
+        "@timestamp",
+        "desc"
+      ],
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"AWUfJAj0duClWTXkEj7q\",\"highlightAll\":true,\"version\":true,\"query\":{\"query_string\":{\"query\":\"(\\\"rerouted\\\" AND \\\"with path\\\") OR unsuccessful\",\"analyze_wildcard\":true}},\"filter\":[{\"query\":{\"match\":{\"loggerName\":{\"query\":\"org.openkilda.wfm.topology.flow.bolts.CrudBolt\",\"type\":\"phrase\"}}},\"meta\":{\"index\":\"kilda-*\",\"disabled\":false,\"alias\":null,\"type\":\"phrase\",\"key\":\"loggerName\",\"value\":\"org.openkilda.wfm.topology.flow.bolts.CrudBolt\",\"negate\":false},\"$state\":{\"store\":\"appState\"}}]}"
+      }
+}

@@ -62,7 +62,9 @@ net.floodlightcontroller.statistics.StatisticsCollector.collectionIntervalPortSt
 net.floodlightcontroller.topology.TopologyManager.pathMetric=latency
 net.floodlightcontroller.topology.TopologyManager.maxPathsToCompute=3
 org.openkilda.floodlight.kafka.KafkaMessageCollector.environment-naming-prefix={{ environment_naming_prefix }}
-org.openkilda.floodlight.kafka.KafkaMessageCollector.testing-mode=NO
+{% if environment_role in ['devel', 'test'] %}
+org.openkilda.floodlight.kafka.KafkaMessageCollector.testing-mode=YES
+{% endif %}
 org.openkilda.floodlight.kafka.KafkaMessageCollector.bootstrap-servers={{ kafka_hosts }}
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors=10
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-auto-commit-interval=1000
@@ -71,7 +73,9 @@ org.openkilda.floodlight.kafka.KafkaMessageCollector.bootstrap-servers={{ kafka_
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.command-processor-deferred-requests-limit = 8
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.command-processor-idle-workers-keep-alive-seconds = 300
 org.openkilda.floodlight.kafka.KafkaMessageProducer.environment-naming-prefix={{ environment_naming_prefix }}
-org.openkilda.floodlight.kafka.KafkaMessageProducer.testing-mode=NO
+{% if environment_role in ['devel', 'test'] %}
+org.openkilda.floodlight.kafka.KafkaMessageProducer.testing-mode=YES
+{% endif %}
 org.openkilda.floodlight.kafka.KafkaMessageProducer.heart-beat-interval=2
 org.openkilda.floodlight.kafka.KafkaMessageProducer.bootstrap-servers={{ kafka_hosts }}
 org.openkilda.floodlight.pathverification.PathVerificationService.environment-naming-prefix={{ environment_naming_prefix }}

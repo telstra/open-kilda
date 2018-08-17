@@ -1,0 +1,74 @@
+package org.openkilda.functionaltests.spec
+
+import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.helpers.FlowHelper
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.topology.TopologyEngineService
+import org.openkilda.testing.tools.IslUtils
+import org.springframework.beans.factory.annotation.Autowired
+
+class BandwidthSpec extends BaseSpecification {
+    @Autowired
+    TopologyDefinition topology
+    @Autowired
+    TopologyEngineService topologyEngineService
+    @Autowired
+    FlowHelper flowHelper
+    @Autowired
+    PathHelper pathHelper
+    @Autowired
+    NorthboundService northboundService
+    @Autowired
+    Database db
+    @Autowired
+    IslUtils islUtils
+
+    def "Should not be able to reroute to a path with not enough bandwidth available"() {
+        given: "Flow with alternate paths available"
+        def switches = topology.getActiveSwitches()
+        List<List<PathNode>> allPaths = []
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+            allPaths.size() > 1
+        }
+        assert srcSwitch
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = 10000
+        northboundService.addFlow(flow)
+        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+
+        when: "Make current path less preferable than alternatives"
+        def alternativePaths = allPaths.findAll { it != currentPath }
+        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+
+        and: "Make all alternative paths to have not enough bandwidth to handle the flow"
+        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
+        def changedIsls = alternativePaths.collect { altPath ->
+            def uniqueIsl = pathHelper.getInvolvedIsls(altPath).findAll { !currentIsls.contains(it) }.first()
+            db.updateLinkProperty(uniqueIsl, "max_bandwidth", flow.maximumBandwidth - 1)
+            db.updateLinkProperty(islUtils.reverseIsl(uniqueIsl), "max_bandwidth", flow.maximumBandwidth - 1)
+            db.updateLinkProperty(uniqueIsl, "available_bandwidth", flow.maximumBandwidth - 1)
+            db.updateLinkProperty(islUtils.reverseIsl(uniqueIsl), "available_bandwidth", flow.maximumBandwidth - 1)
+            uniqueIsl
+        }
+
+        and: "Init a reroute to a more preferable path"
+        def rerouteResponse = northboundService.rerouteFlow(flow.id)
+
+        then: "Flow is NOT rerouted because of not enough bandwidth on alternative paths"
+        !rerouteResponse.rerouted
+        PathHelper.convert(northboundService.getFlowPath(flow.id)) == currentPath
+
+        and: "Remove flow"
+        northboundService.deleteFlow(flow.id)
+        changedIsls.each { db.revertIslBandwidth(it) }
+
+        //TODO: Revert costs (match ()-[i:isl]->() set i.cost=700)
+    }
+}
