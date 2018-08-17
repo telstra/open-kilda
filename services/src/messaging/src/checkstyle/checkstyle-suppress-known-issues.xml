@@ -4,6 +4,7 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
     <suppress files="src/main/java/org/openkilda/messaging/info/InfoMessage.java" lines="121" checks="NeedBraces"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/InfoMessage.java" lines="122" checks="NeedBraces"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/InfoMessage.java" lines="124" checks="OperatorWrap"/>
@@ -504,7 +505,7 @@
     <suppress files="src/test/java/org/openkilda/messaging/info/flow/FlowStatusResponseTest.java" lines="41" checks="OperatorWrap"/>
     <suppress files="src/test/java/org/openkilda/messaging/info/flow/FlowStatusResponseTest.java" lines="50" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/messaging/info/flow/FlowStatusResponseTest.java" lines="50" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/messaging/ByteArraySerializer.java" lines="32" checks="VariableDeclarationUsageDistance"/>
+    <suppress files="src/test/java/org/openkilda/messaging/command/Constants.java" lines="20" checks="HideUtilityClassConstructor"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/flow/FlowInfoDataTest.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/flow/FlowInfoDataTest.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/flow/InstallEgressFlowTest.java" lines="25" checks="CustomImportOrder"/>
@@ -529,5 +530,4 @@
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="24" checks="RedundantImport"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="28" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/messaging/ObjectSerializer.java" lines="34" checks="VariableDeclarationUsageDistance"/>
 </suppressions>

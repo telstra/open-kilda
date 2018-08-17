@@ -4,6 +4,7 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
     <suppress files="src/main/java/org/openkilda/neo/OkNode.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/neo/OkNode.java" lines="3" checks="AvoidStarImport"/>
     <suppress files="src/main/java/org/openkilda/neo/OkNode.java" lines="14" checks="MemberName"/>
