@@ -16,6 +16,7 @@
 package org.openkilda.atdd;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.SwitchesUtils;
@@ -44,7 +45,7 @@ public class SwitchConfigurationTest {
     public void changePortStatus(String portStatus, String switchName, int portNumber) {
         PortDto portDto = SwitchesUtils.changeSwitchPortStatus(switchName, portNumber,
                 PortStatus.valueOf(portStatus.toUpperCase()));
-        assertTrue(portDto.getSuccess());
+        assertNotNull(portDto);
     }
 
     @Then("port status for switch \"(.*)\" port \"(\\d+)\" is '(.*)'")
@@ -72,7 +73,8 @@ public class SwitchConfigurationTest {
     }
 
     @And("^all port statuses for switch \"([^\"]*)\" except for port \"([^\"]*)\" are '(.*)'$")
-    public void allPortStatusesForSwitchExceptForPortAreUp(String switchName, int portNumber, String portStatus) throws Throwable {
+    public void allPortStatusesForSwitchExceptForPortAreUp(String switchName, int portNumber, String portStatus)
+            throws Throwable {
         assertTrue(getPortStatuses(switchName).entrySet().stream().filter(entry -> entry.getKey() != portNumber)
                 .allMatch(entry -> entry.getValue().equals(PortStatus.valueOf(portStatus.toUpperCase()))));
     }
