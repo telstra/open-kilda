@@ -31,6 +31,7 @@ up-test-mode:
 	@echo
 	OK_TESTS="DISABLE_LOGIN" docker-compose up -d
 	docker-compose logs -f wfm
+	$(MAKE) -C tools/elk-dashboards
 
 up-log-mode: up-test-mode
 	docker-compose logs -f
