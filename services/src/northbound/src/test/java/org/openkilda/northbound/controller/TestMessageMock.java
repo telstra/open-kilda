@@ -34,6 +34,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
@@ -80,11 +82,13 @@ public class TestMessageMock implements MessagingChannel {
             SWITCH_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP);
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
-    private static final FlowReadResponse FLOW_RESPONSE =
+    static final FlowReadResponse FLOW_RESPONSE =
             new FlowReadResponse(new BidirectionalFlow(flowModel, flowModel));
     private static final SwitchRulesResponse switchRulesResponse =
             new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
+    static final SwitchInfoData SWITCH_INFO_DATA =
+            new SwitchInfoData(SWITCH_ID, SwitchState.ACTIVATED, "", "", "", "");
 
     /**
      * Chooses response by request.

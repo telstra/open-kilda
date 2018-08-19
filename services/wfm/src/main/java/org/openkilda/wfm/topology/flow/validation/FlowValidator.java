@@ -17,11 +17,15 @@ package org.openkilda.wfm.topology.flow.validation;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.cache.FlowCache;
+import org.openkilda.pce.provider.PathComputer;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -32,8 +36,11 @@ public class FlowValidator {
 
     private final FlowCache flowCache;
 
-    public FlowValidator(FlowCache flowCache) {
+    private PathComputer pathComputer;
+
+    public FlowValidator(FlowCache flowCache, PathComputer pathComputer) {
         this.flowCache = flowCache;
+        this.pathComputer = pathComputer;
     }
 
     /**
@@ -42,9 +49,10 @@ public class FlowValidator {
      * @param flow a flow to be validated.
      * @throws FlowValidationException is thrown if a violation is found.
      */
-    public void validate(Flow flow) throws FlowValidationException {
+    public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
         checkBandwidth(flow);
         checkFlowForEndpointConflicts(flow);
+        checkSwitchesExists(flow);
     }
 
     @VisibleForTesting
@@ -53,7 +61,8 @@ public class FlowValidator {
             throw new FlowValidationException(
                     format("The flow '%s' has invalid bandwidth %d provided.",
                             flow.getFlowId(),
-                            flow.getBandwidth()));
+                            flow.getBandwidth()),
+                    ErrorType.DATA_INVALID);
         }
     }
 
@@ -86,7 +95,8 @@ public class FlowValidator {
                     format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
                             requestedFlow.getSourcePort(),
                             requestedFlow.getSourceSwitch(),
-                            conflictedFlow.get().getFlowId()));
+                            conflictedFlow.get().getFlowId()),
+                    ErrorType.ALREADY_EXISTS);
         }
 
         // Check the destination
@@ -110,7 +120,42 @@ public class FlowValidator {
                     format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
                             requestedFlow.getDestinationPort(),
                             requestedFlow.getDestinationSwitch(),
-                            conflictedFlow.get().getFlowId()));
+                            conflictedFlow.get().getFlowId()),
+                    ErrorType.ALREADY_EXISTS);
+        }
+    }
+
+    /**
+     * Ensure switches are exists.
+     *
+     * @param requestedFlow a flow to be validated.
+     * @throws SwitchValidationException if switch not found.
+     */
+    @VisibleForTesting
+    void checkSwitchesExists(Flow requestedFlow) throws SwitchValidationException {
+        final SwitchId sourceId = requestedFlow.getSourceSwitch();
+        final SwitchId destinationId = requestedFlow.getDestinationSwitch();
+
+        boolean source;
+        boolean destination;
+
+        if (Objects.equals(sourceId, destinationId)) {
+            source = destination = pathComputer.getSwitchById(sourceId).isPresent();
+        } else {
+            source = pathComputer.getSwitchById(sourceId).isPresent();
+            destination = pathComputer.getSwitchById(destinationId).isPresent();
+        }
+
+        if (!source && !destination) {
+            throw new SwitchValidationException(
+                    String.format("Source switch %s and Destination switch %s are not connected to the controller",
+                            sourceId, destinationId));
+        } else if (!source) {
+            throw new SwitchValidationException(
+                    String.format("Source switch %s is not connected to the controller", sourceId));
+        } else if (!destination) {
+            throw new SwitchValidationException(
+                    String.format("Destination switch %s is not connected to the controller", destinationId));
         }
     }
 }
