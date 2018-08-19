@@ -16,6 +16,8 @@
 package org.openkilda.northbound.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
@@ -36,8 +38,10 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.ResponseCollector;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -76,6 +80,9 @@ public class FlowControllerTest extends NorthboundBaseTest {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
+    @Autowired
+    private ResponseCollector responseCollector;
+
     @Before
     public void setUp() throws Exception {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
@@ -85,6 +92,8 @@ public class FlowControllerTest extends NorthboundBaseTest {
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void createFlow() throws Exception {
+        when(responseCollector.getResult(anyString())).thenReturn(
+                ImmutableList.of(TestMessageMock.SWITCH_INFO_DATA, TestMessageMock.SWITCH_INFO_DATA));
         MvcResult result = mockMvc.perform(put("/flows")
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE)
@@ -126,6 +135,8 @@ public class FlowControllerTest extends NorthboundBaseTest {
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void deleteFlows() throws Exception {
+        when(responseCollector.getResult(anyString()))
+                .thenReturn(ImmutableList.of(TestMessageMock.FLOW_RESPONSE));
         MvcResult result = mockMvc.perform(delete("/flows")
                 .header(CORRELATION_ID, testCorrelationId())
                 .header(EXTRA_AUTH, System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(119))
@@ -163,6 +174,8 @@ public class FlowControllerTest extends NorthboundBaseTest {
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
     public void getFlows() throws Exception {
+        when(responseCollector.getResult(anyString()))
+                .thenReturn(ImmutableList.of(TestMessageMock.FLOW_RESPONSE));
         MvcResult result = mockMvc.perform(get("/flows", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE))

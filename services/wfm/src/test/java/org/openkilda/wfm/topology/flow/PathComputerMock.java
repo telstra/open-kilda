@@ -16,15 +16,24 @@
 package org.openkilda.wfm.topology.flow;
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.provider.PathComputer;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 public class PathComputerMock implements PathComputer {
+
+    private static final SwitchId FAIL_SRC_SWITCH = new SwitchId("00:00:00:00:00:00:00:03");
+    private static final SwitchId FAIL_DST_SWITCH = new SwitchId("00:00:00:00:00:00:00:04");
+
     @Override
     public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
         return emptyPath();
@@ -60,5 +69,15 @@ public class PathComputerMock implements PathComputer {
         public void addIslsOccupiedByFlow(String flowId, boolean ignoreBandwidth, long flowBandwidth) {
 
         }
+    }
+
+    @Override
+    public Optional<SwitchInfoData> getSwitchById(SwitchId id) {
+        if (Objects.equals(id, FAIL_SRC_SWITCH) || Objects.equals(id, FAIL_DST_SWITCH)) {
+            return Optional.empty();
+        }
+        return Optional.of(new SwitchInfoData(id, SwitchState.ACTIVATED, "172.19.0.7:56484",
+                "mininet.openkilda_default", "Nicira, Inc. OF_13 2.5.4",
+                "mininet.openkilda_default"));
     }
 }

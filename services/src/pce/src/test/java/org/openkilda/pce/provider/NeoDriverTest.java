@@ -40,6 +40,7 @@ import org.neo4j.kernel.configuration.BoltConnector;
 
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
 
 public class NeoDriverTest {
 
@@ -151,7 +152,7 @@ public class NeoDriverTest {
     public void getAllSwitches() {
         try (Transaction tx = graphDb.beginTx()) {
             Node node1 = graphDb.createNode(Label.label("switch"));
-            node1.setProperty("name", "00:01");
+            node1.setProperty("name", "00:00:00:00:00:00:00:01");
             node1.setProperty("address", "1");
             node1.setProperty("hostname", "2");
             node1.setProperty("description", "3");
@@ -159,7 +160,7 @@ public class NeoDriverTest {
             node1.setProperty("state", "active");
 
             Node node2 = graphDb.createNode(Label.label("switch"));
-            node2.setProperty("name", "00:02");
+            node2.setProperty("name", "00:00:00:00:00:00:00:02");
             node2.setProperty("address", "5");
             node2.setProperty("hostname", "6");
             node2.setProperty("description", "7");
@@ -171,13 +172,37 @@ public class NeoDriverTest {
 
         List<SwitchInfoData> switches = target.getSwitches();
         SwitchInfoData switch1 = switches.get(0);
-        Assert.assertEquals(new SwitchId("00:01"), switch1.getSwitchId());
+        Assert.assertEquals(new SwitchId("00:00:00:00:00:00:00:01"), switch1.getSwitchId());
         Assert.assertEquals(SwitchState.ACTIVATED, switch1.getState());
 
         SwitchInfoData switch2 = switches.get(1);
-        Assert.assertEquals(new SwitchId("00:02"), switch2.getSwitchId());
+        Assert.assertEquals(new SwitchId("00:00:00:00:00:00:00:02"), switch2.getSwitchId());
         Assert.assertNotEquals(SwitchState.ACTIVATED, switch2.getState());
     }
 
+    @Test
+    public void getSwitchById() {
+        try (Transaction tx = graphDb.beginTx()) {
+            Node node1 = graphDb.createNode(Label.label("switch"));
+            node1.setProperty("name", "00:00:00:00:00:00:00:03");
+            node1.setProperty("address", "1");
+            node1.setProperty("hostname", "2");
+            node1.setProperty("description", "3");
+            node1.setProperty("controller", "4");
+            node1.setProperty("state", "active");
 
+            tx.success();
+        }
+        SwitchId expectedSwitchId = new SwitchId("00:00:00:00:00:00:00:03");
+        Optional<SwitchInfoData> result = target.getSwitchById(expectedSwitchId);
+        Assert.assertTrue(result.isPresent());
+        Assert.assertEquals(expectedSwitchId, result.get().getSwitchId());
+    }
+
+    @Test
+    public void getSwitchByIdNotFound() {
+        SwitchId expectedSwitchId = new SwitchId("00:00:00:00:00:00:00:01");
+        Optional<SwitchInfoData> result = target.getSwitchById(expectedSwitchId);
+        Assert.assertFalse(result.isPresent());
+    }
 }

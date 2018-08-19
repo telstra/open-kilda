@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -76,6 +76,7 @@ import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
+import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
@@ -165,7 +166,7 @@ public class CrudBolt
         }
         initFlowCache();
 
-        flowValidator = new FlowValidator(flowCache);
+        flowValidator = new FlowValidator(flowCache, pathComputerAuth.getPathComputer());
     }
 
     /**
@@ -581,19 +582,22 @@ public class CrudBolt
         Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
 
         FlowPair<PathInfoData, PathInfoData> path;
+        final String errorType = "Could not create flow";
         try {
             flowValidator.validate(requestedFlow);
 
             path = pathComputer.getPath(requestedFlow, Strategy.COST);
             logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), path,
                     message.getCorrelationId());
-
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.ALREADY_EXISTS, "Could not create flow", e.getMessage());
+                    e.getType(), errorType, e.getMessage());
+        } catch (SwitchValidationException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.DATA_INVALID, errorType, e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, "Could not create flow",
+                    ErrorType.NOT_FOUND, errorType,
                     "Not enough bandwidth found or path not found");
         }
 
@@ -692,6 +696,7 @@ public class CrudBolt
         String correlationId = message.getCorrelationId();
 
         FlowPair<PathInfoData, PathInfoData> path;
+        final String errorType = "Could not update flow";
         try {
             flowValidator.validate(requestedFlow);
 
@@ -704,10 +709,13 @@ public class CrudBolt
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.ALREADY_EXISTS, "Could not update flow", e.getMessage());
+                    ErrorType.ALREADY_EXISTS, errorType, e.getMessage());
+        } catch (SwitchValidationException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.DATA_INVALID, errorType, e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, "Could not update flow", "Path was not found");
+                    ErrorType.NOT_FOUND, errorType, "Path was not found");
         }
 
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);

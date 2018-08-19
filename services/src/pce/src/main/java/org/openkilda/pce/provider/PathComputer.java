@@ -15,17 +15,19 @@
 
 package org.openkilda.pce.provider;
 
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.model.AvailableNetwork;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * PathComputation interface represent operations on flow path.
@@ -100,19 +102,24 @@ public interface PathComputer extends Serializable {
      * @return all flows (forward and reverse) by id, if exist.
      */
     default List<Flow> getFlows(String flowId) {
-        return null;
+        return new ArrayList<>();
     }
 
     default List<SwitchInfoData> getSwitches() {
-        return null;
+        return new ArrayList<>();
+    }
+
+    default Optional<SwitchInfoData> getSwitchById(SwitchId id) {
+        return Optional.empty();
     }
 
     default List<IslInfoData> getIsls() {
-        return null;
+        return new ArrayList<>();
     }
 
     /**
      * Loads network and ignores all ISLs with not enough available bandwidth if ignoreBandwidth is false.
+     *
      * @param ignoreBandwidth defines if available bandwidth of links should be taken into account for calculations.
      * @param requestedBandwidth links in path should have enough amount of available bandwidth.
      * @return built network.
