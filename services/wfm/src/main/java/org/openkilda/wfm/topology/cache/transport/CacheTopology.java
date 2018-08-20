@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache;
+package org.openkilda.wfm.topology.cache.transport;
 
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.pce.provider.Auth;
@@ -23,6 +23,7 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.cache.StreamType;
 
 import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
@@ -44,7 +45,7 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
     private static final String BOLT_ID_TOPOLOGY_OUTPUT = "topology.out";
     static final String BOLT_ID_CACHE = "cache";
     private static final String SPOUT_ID_COMMON = "generic";
-//    static final String SPOUT_ID_TOPOLOGY = "topology";
+    //static final String SPOUT_ID_TOPOLOGY = "topology";
 
     public CacheTopology(LaunchEnvironment env) {
         super(env, CacheTopologyConfig.class);
@@ -70,12 +71,12 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
         KafkaSpout kafkaSpout = createKafkaSpout(topologyConfig.getKafkaTopoCacheTopic(), SPOUT_ID_COMMON);
         builder.setSpout(SPOUT_ID_COMMON, kafkaSpout, parallelism);
 
-// (carmine) - as part of 0.8 refactor, merged inputs to one topic, so this isn't neccessary
-//        /*
-//         * Receives cache updates from WFM topology.
-//         */
-//        kafkaSpout = createKafkaSpout(config.getKafkaTopoCacheTopic(), SPOUT_ID_TOPOLOGY);
-//        builder.setSpout(SPOUT_ID_TOPOLOGY, kafkaSpout, parallelism);
+        //        (carmine) - as part of 0.8 refactor, merged inputs to one topic, so this isn't neccessary
+        //        /*
+        //         * Receives cache updates from WFM topology.
+        //         */
+        //        kafkaSpout = createKafkaSpout(config.getKafkaTopoCacheTopic(), SPOUT_ID_TOPOLOGY);
+        //        builder.setSpout(SPOUT_ID_TOPOLOGY, kafkaSpout, parallelism);
 
         /*
          * Stores network cache.
@@ -86,10 +87,9 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
         CacheBolt cacheBolt = new CacheBolt(pathComputerAuth);
         ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
         BoltDeclarer boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
-                .shuffleGrouping(SPOUT_ID_COMMON)
-// (carmine) as per above comment, only a single input streamt
-//                .shuffleGrouping(SPOUT_ID_TOPOLOGY)
-        ;
+                .shuffleGrouping(SPOUT_ID_COMMON);
+        // (carmine) as per above comment, only a single input streamt
+        //                .shuffleGrouping(SPOUT_ID_TOPOLOGY)
         ctrlTargets.add(new CtrlBoltRef(BOLT_ID_CACHE, cacheBolt, boltSetup));
 
         /*
@@ -126,6 +126,11 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
         checkAndCreateTopic(topologyConfig.getKafkaTopoCacheTopic());
     }
 
+    /**
+     * Starts cache topology.
+     *
+     * @param args the args
+     */
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
