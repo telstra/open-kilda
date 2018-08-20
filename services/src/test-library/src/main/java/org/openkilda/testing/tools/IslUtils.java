@@ -66,13 +66,7 @@ public class IslUtils {
                         .anyMatch(state -> !state.equals(expectedIslState))))
                 .get(() -> {
                     List<IslInfoData> allLinks = northbound.getAllLinks();
-                    return isls.stream().flatMap(isl -> allLinks.stream().filter(link -> {
-                        PathNode src = link.getPath().get(0);
-                        PathNode dst = link.getPath().get(1);
-                        return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort()
-                                && src.getSwitchId().equals(isl.getSrcSwitch().getDpId())
-                                && dst.getSwitchId().equals(isl.getDstSwitch().getDpId());
-                    })).collect(Collectors.toList());
+                    return isls.stream().map(isl -> getIslInfo(allLinks, isl)).collect(Collectors.toList());
                 });
 
         assertThat(actualIsl, everyItem(hasProperty("state", equalTo(expectedIslState))));
@@ -80,6 +74,34 @@ public class IslUtils {
 
     public void waitForIslStatus(List<Isl> isls, String expectedStatus) {
         waitForIslStatus(isls, expectedStatus, retryPolicy());
+    }
+
+    /**
+     * Gets actual Northbound represenation of the certain ISL.
+     *
+     * @param isl isl to search in 'getAllLinks' results
+     * @return found isl. Throw otherwise.
+     */
+    public IslInfoData getIslInfo(Isl isl) {
+        return getIslInfo(northbound.getAllLinks(), isl);
+    }
+
+    /**
+     * Finds certain ISL in list of 'IslInfoData' objects. Passed ISL is our internal ISL representation, while
+     * IslInfoData is returned from NB.
+     *
+     * @param islsInfo list where to search certain ISL
+     * @param isl what isl to look for
+     * @return IslInfoData object that matches passed Isl. Throw if no results.
+     */
+    public IslInfoData getIslInfo(List<IslInfoData> islsInfo, Isl isl) {
+        return islsInfo.stream().filter(link -> {
+            PathNode src = link.getPath().get(0);
+            PathNode dst = link.getPath().get(1);
+            return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort()
+                    && src.getSwitchId().equals(isl.getSrcSwitch().getDpId())
+                    && dst.getSwitchId().equals(isl.getDstSwitch().getDpId());
+        }).findFirst().get();
     }
 
     /**
