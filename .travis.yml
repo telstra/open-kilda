@@ -9,7 +9,8 @@ jobs:
         - pip install ansible
         - make update-props-dryrun
 
-    - stage: sonar
+    - stage: tests
+      name: "Sonar"
       language: java
       sudo: false
       install: true
@@ -33,7 +34,8 @@ jobs:
           - '$HOME/.m2/repository'
           - '$HOME/.sonar/cache'
 
-    - stage: unit
+    - stage: tests
+      name: "Unit"
       language: java
       jdk: oraclejdk8
 
