@@ -17,13 +17,19 @@ virtualenv --python=python2 .venv
 pip install tox
 ```
 
+Also, don't forget to install ansible. This tool is used for creating config/properties files from templates. To install it execute the following command:
+
+```
+pip install ansible
+```
+
 ### How to Build Kilda Controller
 
-From the base directory run these commands:
+From the base directory run the following command:
 
-1. ```make build-base```
-2. ```make compile```
-3. ```docker-compose build```
+```
+make build-latest
+```
 
 ### How to run Kilda
 
@@ -47,7 +53,6 @@ Steps:
 3. Update your /etc/hosts file. Replace ```127.0.0.1 localhost``` to 
    ```127.0.0.1    localhost kafka.pendev```
 4. Run ATDD using ```make atdd``` command.
-5. Profit?!? :)
 
 ### How to run floodlight-modules locally
 
