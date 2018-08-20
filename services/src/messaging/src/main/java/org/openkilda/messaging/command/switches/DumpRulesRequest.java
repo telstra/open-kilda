@@ -26,10 +26,10 @@ import lombok.Value;
 @Builder
 public class DumpRulesRequest extends CommandData {
 
-    @JsonProperty("switchId")
+    @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    public DumpRulesRequest(@JsonProperty("switchId") SwitchId switchId) {
+    public DumpRulesRequest(@JsonProperty("switch_id") SwitchId switchId) {
         this.switchId = switchId;
     }
 }
