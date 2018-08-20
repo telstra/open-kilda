@@ -30,14 +30,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
-abstract class Abstract extends Command {
+abstract class PingCommand extends Command {
     protected static Logger logPing = LoggerFactory.getLogger("open-kilda.flows.PING");
 
     private final KafkaMessageProducer kafkaProducer;
     private final ConfigService configService;
     private final PingService pingService;
 
-    Abstract(CommandContext context) {
+    PingCommand(CommandContext context) {
         super(context);
 
         FloodlightModuleContext moduleContext = getContext().getModuleContext();

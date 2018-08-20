@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.List;
 
-public class PingRequestCommand extends Abstract {
+public class PingRequestCommand extends PingCommand {
     private static Logger log = LoggerFactory.getLogger(PingRequestCommand.class);
 
     private final Ping ping;

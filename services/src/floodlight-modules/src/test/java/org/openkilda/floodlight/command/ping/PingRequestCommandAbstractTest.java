@@ -37,7 +37,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.List;
 
-abstract class PingRequestCommandAbstractTest extends AbstractTest {
+abstract class PingRequestCommandAbstractTest extends PingCommandTest {
     @Mock
     protected IOFSwitchService switchService;
 

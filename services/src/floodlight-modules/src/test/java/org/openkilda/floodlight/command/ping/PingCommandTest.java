@@ -30,7 +30,7 @@ import org.easymock.CaptureType;
 import org.easymock.Mock;
 import org.junit.Before;
 
-public abstract class AbstractTest extends AbstractCommandTest {
+public abstract class PingCommandTest extends AbstractCommandTest {
     protected Capture<Message> kafkaMessageCatcher = newCapture(CaptureType.ALL);
 
     @Mock

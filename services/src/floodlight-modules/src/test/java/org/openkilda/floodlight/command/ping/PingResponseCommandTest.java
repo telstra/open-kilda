@@ -53,7 +53,7 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
 
-public class PingResponseCommandTest extends AbstractTest {
+public class PingResponseCommandTest extends PingCommandTest {
     private static final String PING_KAFKA_TOPIC = "ping.topic";
 
     private final DatapathId dpId = DatapathId.of(0xfffe000000000001L);

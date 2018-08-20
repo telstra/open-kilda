@@ -29,7 +29,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PingResponseCommand extends Abstract {
+public class PingResponseCommand extends PingCommand {
     private static final Logger log = LoggerFactory.getLogger(PingResponseCommand.class);
 
     private final OfInput input;

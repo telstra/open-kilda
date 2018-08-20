@@ -49,11 +49,6 @@ public class PendingCommandSubmitter extends Command {
                 lookupAndSubmit(tasks);
                 log.trace("iteration {} - tasks in:{} completed:{}", iteration++, count, count - tasks.size());
             } while (0 < tasks.size() && count != tasks.size());
-        } catch (InterruptedException e) {
-            Thread thread = Thread.currentThread();
-            thread.interrupt();
-
-            log.warn("{} in thread {} have been interrupted", getClass(), thread.getName());
         } finally {
             verifyBatch.close();
         }
