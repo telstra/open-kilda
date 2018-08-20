@@ -25,14 +25,14 @@ public enum StreamType {
     CREATE,
 
     /**
-     * Get flow(s) topology stream.
+     * Get flow topology stream.
      */
     READ,
 
     /**
-     * Get bidirectional flow topology stream.
+     * Dump flows stream.
      */
-    READ_BIDIRECTIONAL,
+    DUMP,
 
     /**
      * Update flow topology stream.

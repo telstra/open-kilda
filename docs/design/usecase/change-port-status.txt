@@ -1,0 +1,33 @@
+@startuml
+title Change Switch port status Up/Down
+
+participant NB
+
+control kilda.northbound
+control kilda.speaker
+
+participant Floodlight
+participant Switch
+
+activate NB
+NB -> kilda.speaker: CommandWithReplyToMessage \nPortConfigurationRequest
+
+kilda.speaker -> Floodlight: CommandWithReplyToMessage \nPortConfigurationRequest
+
+alt switch does not exist
+    Floodlight -> kilda.northbound: ErrorMessage
+end
+
+alt port does not exist
+    Floodlight -> kilda.northbound: ErrorMessage
+end
+
+alt normal flow
+    Floodlight -> Switch: OFPortMod with port configuration(UP/DOWN) 
+    note right of Switch: port status(UP/DOWN) 
+    Switch -> Floodlight: transaction id
+    Floodlight -> kilda.northbound: Info Message\nPortConfigurationResponse
+end
+
+kilda.northbound -> NB: InfoMessage\nPortConfigurationResponse
+@enduml

@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.model;
 
+import org.openkilda.messaging.payload.flow.FlowState;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -48,6 +50,9 @@ public class BidirectionalFlow implements Serializable {
     @JsonProperty("description")
     private String description;
 
+    @JsonProperty("state")
+    private FlowState state;
+
     @JsonProperty("forward")
     private Flow forward;
 
@@ -65,6 +70,7 @@ public class BidirectionalFlow implements Serializable {
                 forward.isPeriodicPings(),
                 forward.getFlagglessCookie(),
                 forward.getDescription(),
+                forward.getState(),
                 forward, reverse);
     }
 
@@ -77,6 +83,7 @@ public class BidirectionalFlow implements Serializable {
             @JsonProperty("periodic-pings") boolean periodicPings,
             @JsonProperty("cookie") long cookie,
             @JsonProperty("description") String description,
+            @JsonProperty("state") FlowState state,
             @JsonProperty("forward") Flow forward,
             @JsonProperty("reverse") Flow reverse) {
         this.flowId = flowId;
@@ -85,6 +92,7 @@ public class BidirectionalFlow implements Serializable {
         this.periodicPings = periodicPings;
         this.cookie = cookie;
         this.description = description;
+        this.state = state;
         this.forward = forward;
         this.reverse = reverse;
     }

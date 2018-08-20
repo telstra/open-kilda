@@ -13,27 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.northbound.dto.switches;
 
-import org.openkilda.messaging.command.CommandData;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
 
-/**
- * Represents get bidirectional flow northbound request.
- */
-@Value
-public class BidirectionalFlowRequest extends CommandData {
+import lombok.Data;
 
-    private static final long serialVersionUID = 1L;
+@Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class PortDto {
 
-    @JsonProperty("flowid")
-    protected String flowId;
+    @JsonProperty("switch_id")
+    private String switchId;
 
-    @JsonCreator
-    public BidirectionalFlowRequest(@JsonProperty("flowid") String flowId) {
-        this.flowId = flowId;
+    @JsonProperty("port_no")
+    private int portNumber;
+
+    public PortDto(@JsonProperty("switch_id") String switchId,
+            @JsonProperty("port_id") int portNumber) {
+        this.switchId = switchId;
+        this.portNumber = portNumber;
     }
 }

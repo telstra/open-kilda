@@ -13,42 +13,39 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.flow;
-
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.BidirectionalFlow;
+package org.openkilda.atdd.utils.controller;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Value;
 
-/**
- * Represents a bidirectional flow northbound response.
- */
+import java.io.Serializable;
+import java.util.List;
+
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Value
-public class BidirectionalFlowResponse extends InfoData {
-    /**
-     * Serialization version number constant.
-     */
-    private static final long serialVersionUID = 1L;
+public class SwitchEntry implements Serializable {
 
-    /**
-     * The response payload.
-     */
-    @JsonProperty("payload")
-    protected BidirectionalFlow payload;
+    @JsonProperty("version")
+    private String version;
 
-    /**
-     * Instance constructor.
-     *
-     * @param payload response payload
-     */
+    @JsonProperty("port_desc")
+    private List<PortEntry> portEntries;
+
     @JsonCreator
-    public BidirectionalFlowResponse(@JsonProperty("payload") BidirectionalFlow payload) {
-        this.payload = payload;
+    public SwitchEntry(
+            @JsonProperty("version") String version,
+            @JsonProperty("port_desc") List<PortEntry> portEntries) {
+        this.version = version;
+        this.portEntries = portEntries;
+    }
+    
+    public String getVersion() {
+        return version;
+    }
+    
+    public List<PortEntry> getPortEntries() {
+        return portEntries;
     }
 }

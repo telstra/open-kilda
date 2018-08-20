@@ -799,7 +799,7 @@
     <suppress files="src/test/java/org/openkilda/atdd/utils/controller/ControllerUtils.java" lines="40" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/utils/controller/ControllerUtils.java" lines="58" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/utils/controller/ControllerUtils.java" lines="86" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/utils/controller/ControllerUtils.java" lines="119" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/atdd/utils/controller/ControllerUtils.java" lines="121" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/utils/controller/FloodlightQueryException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/atdd/utils/controller/DpIdNotFoundException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/KafkaUtils.java" lines="19" checks="CustomImportOrder"/>

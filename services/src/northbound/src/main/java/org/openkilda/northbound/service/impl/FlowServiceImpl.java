@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,27 +16,27 @@
 package org.openkilda.northbound.service.impl;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.BidirectionalFlowRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
-import org.openkilda.messaging.command.flow.FlowGetRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
+import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
+import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -44,13 +44,13 @@ import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.converter.FlowMapper;
@@ -174,7 +174,7 @@ public class FlowServiceImpl implements FlowService {
     private RestTemplate restTemplate;
 
     @Autowired
-    private ResponseCollector<FlowResponse> flowsCollector;
+    private ResponseCollector<FlowReadResponse> flowsCollector;
 
 
     @PostConstruct
@@ -189,7 +189,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public FlowPayload createFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Create flow: {}={}", CORRELATION_ID, correlationId);
+        LOGGER.debug("Create flow: {}", input);
 
         FlowCreateRequest payload = new FlowCreateRequest(new Flow(input));
         CommandMessage request = new CommandMessage(
@@ -207,9 +207,8 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public FlowPayload deleteFlow(final String id) {
+        logger.debug("Delete flow: {}={}", FLOW_ID, id);
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Delete flow: {}={}", CORRELATION_ID, correlationId);
-        messageConsumer.clear();
         CommandMessage request = sendDeleteFlow(id, correlationId);
         return deleteFlowResponse(correlationId, request);
     }
@@ -238,24 +237,15 @@ public class FlowServiceImpl implements FlowService {
         return flowMapper.toFlowOutput(response.getPayload());
     }
 
-
     /**
      * {@inheritDoc}
      */
     @Override
     public FlowPayload getFlow(final String id) {
-        final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Get flow: {}={}", CORRELATION_ID, correlationId);
-        FlowGetRequest data = new FlowGetRequest(new FlowIdStatusPayload(id, null));
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
-        messageProducer.send(topic, request);
-        Message message = (Message) messageConsumer.poll(correlationId);
-        FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-
-        return flowMapper.toFlowOutput(response.getPayload());
+        logger.debug("Get flow: {}={}", FLOW_ID, id);
+        BidirectionalFlow flow = getBidirectionalFlow(id, RequestCorrelationId.getId());
+        return flowMapper.toFlowOutput(flow.getForward());
     }
-
 
     /**
      * {@inheritDoc}
@@ -263,7 +253,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public FlowPayload updateFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Update flow: {}={}", CORRELATION_ID, correlationId);
+        logger.debug("Update flow: {}={}", FLOW_ID, input.getId());
 
         FlowUpdateRequest payload = new FlowUpdateRequest(new Flow(input));
         CommandMessage request = new CommandMessage(
@@ -283,14 +273,15 @@ public class FlowServiceImpl implements FlowService {
     public List<FlowPayload> getFlows() {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Get flows request processing");
-        FlowGetRequest data = new FlowGetRequest();
+        FlowsDumpRequest data = new FlowsDumpRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageProducer.send(topic, request);
-        List<FlowResponse> result = flowsCollector.getResult(correlationId);
+        List<FlowReadResponse> result = flowsCollector.getResult(correlationId);
         logger.debug("Received {} flows", result.size());
 
         return result.stream()
-                .map(FlowResponse::getPayload)
+                .map(FlowReadResponse::getPayload)
+                .map(BidirectionalFlow::getForward)
                 .map(flowMapper::toFlowOutput)
                 .collect(Collectors.toList());
     }
@@ -301,12 +292,10 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public List<FlowPayload> deleteFlows() {
         String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("\n\nDELETE ALL FLOWS: ENTER {}={}\n", CORRELATION_ID, correlationId);
+        LOGGER.debug("DELETE ALL FLOWS");
         ArrayList<FlowPayload> result = new ArrayList<>();
         // TODO: Need a getFlowIDs .. since that is all we need
         List<FlowPayload> flows = this.getFlows();
-
-        messageConsumer.clear();
 
         // Send all the requests first
         ArrayList<CommandMessage> requests = new ArrayList<>();
@@ -330,15 +319,9 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public FlowIdStatusPayload statusFlow(final String id) {
-        final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Flow status: {}={}", CORRELATION_ID, correlationId);
-        FlowStatusRequest data = new FlowStatusRequest(new FlowIdStatusPayload(id, null));
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
-        messageProducer.send(topic, request);
-        Message message = (Message) messageConsumer.poll(correlationId);
-        FlowStatusResponse response = (FlowStatusResponse) validateInfoMessage(request, message, correlationId);
-        return response.getPayload();
+        logger.debug("Flow status: {}={}", FLOW_ID, id);
+        BidirectionalFlow flow = getBidirectionalFlow(id, RequestCorrelationId.getId());
+        return flowMapper.toFlowIdStatusPayload(flow);
     }
 
     /**
@@ -346,16 +329,9 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public FlowPathPayload pathFlow(final String id) {
-        final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Flow path: {}={}", CORRELATION_ID, correlationId);
-        BidirectionalFlowRequest data = new BidirectionalFlowRequest(id);
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
-        messageProducer.send(topic, request);
-        Message message = (Message) messageConsumer.poll(correlationId);
-        BidirectionalFlowResponse response =
-                (BidirectionalFlowResponse) validateInfoMessage(request, message, correlationId);
-        return FlowPayloadToFlowConverter.buildFlowPathPayload(response.getPayload());
+        LOGGER.debug("Flow path: {}={}", FLOW_ID, id);
+        BidirectionalFlow flow = getBidirectionalFlow(id, RequestCorrelationId.getId());
+        return flowMapper.toFlowPathPayload(flow);
     }
 
     /**
@@ -379,15 +355,27 @@ public class FlowServiceImpl implements FlowService {
     }
 
     /**
+     * Reads {@link BidirectionalFlow} flow representation from the Storm.
+     * @return the bidirectional flow.
+     */
+    private BidirectionalFlow getBidirectionalFlow(String flowId, String correlationId) {
+        FlowReadRequest data = new FlowReadRequest(flowId);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        messageProducer.send(topic, request);
+        Message message = (Message) messageConsumer.poll(correlationId);
+        return ((FlowReadResponse) validateInfoMessage(request, message, correlationId)).getPayload();
+    }
+
+    /**
      * There are only minor differences between push and unpush .. this utility function helps
      */
     private BatchResults flowPushUnpush(List<FlowInfoData> externalFlows, FlowOperation op) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Flow {}: {}={}", op, CORRELATION_ID, correlationId);
+        LOGGER.debug("Flow {}: id: {}",
+                op, externalFlows.stream().map(FlowInfoData::getFlowId).collect(Collectors.joining()));
         LOGGER.debug("Size of list: {}", externalFlows.size());
         // First, send them all, then wait for all the responses.
         // Send the command to both Flow Topology and to TE
-        messageConsumer.clear();
         ArrayList<InfoMessage> flowRequests = new ArrayList<>();    // used for error reporting, if needed
         ArrayList<InfoMessage> teRequests = new ArrayList<>();      // used for error reporting, if needed
         for (int i = 0; i < externalFlows.size(); i++) {
@@ -439,7 +427,7 @@ public class FlowServiceImpl implements FlowService {
                 // TODO: this code block is mostly the same as the previous: consolidate.
                 Message teMessage = (Message) messageConsumer.poll(teCorrelation);
                 FlowStatusResponse response =
-                        (FlowStatusResponse) validateInfoMessage(flowRequests.get(i), teMessage, correlationId);
+                        (FlowStatusResponse) validateInfoMessage(teRequests.get(i), teMessage, correlationId);
                 FlowIdStatusPayload status =  response.getPayload();
                 if (status.getStatus() == expectedState) {
                     teSuccess++;
@@ -646,7 +634,6 @@ public class FlowServiceImpl implements FlowService {
                         .filter(rule -> rule.outPort == expected.outPort && rule.outVlan == expected.outVlan)
                         .findFirst()
                         .orElse(null);
-
             }
 
             /*
@@ -809,10 +796,9 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public FlowCacheSyncResults syncFlowCache(SynchronizeCacheAction syncCacheAction) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Flow cache sync: {}={}", CORRELATION_ID, correlationId);
+        LOGGER.debug("Flow cache sync. Action: {}", syncCacheAction);
         FlowCacheSyncRequest data = new FlowCacheSyncRequest(syncCacheAction);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageConsumer.clear();
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowCacheSyncResponse response = (FlowCacheSyncResponse) validateInfoMessage(request, message, correlationId);
@@ -820,6 +806,7 @@ public class FlowServiceImpl implements FlowService {
     }
 
     private FlowReroutePayload reroute(String flowId, boolean forced) {
+        logger.debug("Reroute flow: {}={}, forced={}", FLOW_ID, flowId, forced);
         String correlationId = RequestCorrelationId.getId();
         FlowRerouteRequest payload = new FlowRerouteRequest(flowId, forced);
         CommandMessage command = new CommandMessage(
@@ -830,6 +817,6 @@ public class FlowServiceImpl implements FlowService {
 
         logger.debug("Got reroute response {}", message);
         FlowRerouteResponse response = (FlowRerouteResponse) validateInfoMessage(command, message, correlationId);
-        return FlowPayloadToFlowConverter.buildReroutePayload(flowId, response.getPayload(), response.isRerouted());
+        return flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted());
     }
 }

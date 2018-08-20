@@ -42,10 +42,10 @@ import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
+import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -246,24 +246,17 @@ public class CrudBolt
                         case UNPUSH:
                             handleUnpushRequest(flowId, imsg, tuple);
                             break;
-                        case READ_BIDIRECTIONAL:
-                            handleReadBidirectionalRequest(flowId, cmsg, tuple);
-                            break;
                         case REROUTE:
                             handleRerouteRequest(cmsg, tuple);
-                            break;
-                        case STATUS:
-                            handleStatusRequest(flowId, cmsg, tuple);
                             break;
                         case CACHE_SYNC:
                             handleCacheSyncRequest(cmsg, tuple);
                             break;
                         case READ:
-                            if (flowId != null) {
-                                handleReadRequest(flowId, cmsg, tuple);
-                            } else {
-                                handleDumpRequest(cmsg, tuple);
-                            }
+                            handleReadRequest(flowId, cmsg, tuple);
+                            break;
+                        case DUMP:
+                            handleDumpRequest(cmsg, tuple);
                             break;
                         default:
 
@@ -442,8 +435,7 @@ public class CrudBolt
         }
 
         FlowCacheSyncResults results = new FlowCacheSyncResults(
-                droppedFlows.toArray(new String[0]), addedFlows.toArray(new String[0]),
-                modifiedFlowChanges.toArray(new String[0]), unchangedFlows.toArray(new String[0]));
+                droppedFlows, addedFlows, modifiedFlowChanges, unchangedFlows);
         Values northbound = new Values(new InfoMessage(new FlowCacheSyncResponse(results),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
@@ -553,8 +545,6 @@ public class CrudBolt
 
     private void handleUnpushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
         logger.info("UNPUSH flow: {} :: {}", flowId, message);
-        FlowInfoData fid = (FlowInfoData) message.getData();
-
 
         ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
@@ -735,8 +725,8 @@ public class CrudBolt
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<Flow> flows = flowCache.dumpFlows().stream()
-                .map(ImmutablePair::getLeft)
+        List<BidirectionalFlow> flows = flowCache.dumpFlows().stream()
+                .map(BidirectionalFlow::new)
                 .collect(Collectors.toList());
 
         logger.debug("Dump flows: found {} items", flows.size());
@@ -746,13 +736,13 @@ public class CrudBolt
             Message response = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, null);
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
         } else {
-            Iterator<Flow> iterator = flows.iterator();
+            Iterator<BidirectionalFlow> iterator = flows.iterator();
             do {
-                Flow flow = iterator.next();
+                BidirectionalFlow flow = iterator.next();
                 String nextRequestId = iterator.hasNext() ? UUID.randomUUID().toString() : null;
 
-                Message response = new ChunkedInfoMessage(new FlowResponse(flow), System.currentTimeMillis(),
-                        requestId, nextRequestId);
+                Message response = new ChunkedInfoMessage(
+                        new FlowReadResponse(flow), System.currentTimeMillis(), requestId, nextRequestId);
                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
                 requestId = nextRequestId;
             } while (iterator.hasNext());
@@ -760,34 +750,16 @@ public class CrudBolt
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
-
-        logger.info("Got flow: {}, correlationId: {}", flow, message.getCorrelationId());
-
-        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
-    }
-
-    private void handleReadBidirectionalRequest(String flowId, CommandMessage message, Tuple tuple) {
-        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
+        BidirectionalFlow flow = new BidirectionalFlow(flowCache.getFlow(flowId));
 
         logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
         Values northbound = new Values(
-                new InfoMessage(new BidirectionalFlowResponse(new BidirectionalFlow(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
-    }
-
-    private void handleStatusRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
-        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
-        FlowState status = flow.getLeft().getState();
-
-        logger.debug("Status flow: {}={}", flowId, status);
-
-        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, status)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                new InfoMessage(
+                        new FlowReadResponse(flow),
+                        message.getTimestamp(),
+                        message.getCorrelationId(),
+                        Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 

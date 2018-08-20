@@ -38,8 +38,8 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
 import org.openkilda.messaging.info.flow.FlowOperation;
+import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -82,7 +82,6 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final SwitchState SWITCH_EVENT = SwitchState.CHANGED;
     private static final Destination DESTINATION = null;
 
-    private static final FlowIdStatusPayload flowIdStatusRequest = new FlowIdStatusPayload(FLOW_NAME);
     private static final FlowIdStatusPayload flowIdStatusResponse = new FlowIdStatusPayload(FLOW_NAME, FLOW_STATUS);
 
     private static final String requester = "requester-id";
@@ -260,50 +259,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     }
 
     @Test
-    public void flowGetRequestTest() throws IOException, ClassNotFoundException {
-        FlowGetRequest data = new FlowGetRequest(flowIdStatusRequest);
-        System.out.println(data);
-
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
-        serialize(command);
-
-        Message message = (Message) deserialize();
-        assertTrue(message instanceof CommandMessage);
-
-        CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() instanceof FlowGetRequest);
-
-        FlowGetRequest resultData = (FlowGetRequest) resultCommand.getData();
-        System.out.println(resultData);
-        assertEquals(data, resultData);
-        assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
-    }
-
-    @Test
-    public void flowStatusRequestTest() throws IOException, ClassNotFoundException {
-        FlowStatusRequest data = new FlowStatusRequest(flowIdStatusRequest);
-        System.out.println(data);
-
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
-        serialize(command);
-
-        Message message = (Message) deserialize();
-        assertTrue(message instanceof CommandMessage);
-
-        CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() instanceof FlowStatusRequest);
-
-        FlowStatusRequest resultData = (FlowStatusRequest) resultCommand.getData();
-        System.out.println(resultData);
-        assertEquals(data, resultData);
-        assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
-    }
-
-    @Test
     public void flowGetBidirectionalRequestTest() throws IOException, ClassNotFoundException {
-        BidirectionalFlowRequest data = new BidirectionalFlowRequest(FLOW_NAME);
+        FlowReadRequest data = new FlowReadRequest(FLOW_NAME);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -313,9 +270,9 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(message instanceof CommandMessage);
 
         CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() instanceof BidirectionalFlowRequest);
+        assertTrue(resultCommand.getData() instanceof FlowReadRequest);
 
-        BidirectionalFlowRequest resultData = (BidirectionalFlowRequest) resultCommand.getData();
+        FlowReadRequest resultData = (FlowReadRequest) resultCommand.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
@@ -326,7 +283,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void flowGetBidirectionalResponseTest() throws IOException, ClassNotFoundException {
         Flow flow = Flow.builder().flowPath(path).build();
         BidirectionalFlow bidirectionalFlow = BidirectionalFlow.builder().forward(flow).reverse(flow).build();
-        BidirectionalFlowResponse data = new BidirectionalFlowResponse(bidirectionalFlow);
+        FlowReadResponse data = new FlowReadResponse(bidirectionalFlow);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -336,9 +293,9 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(message instanceof InfoMessage);
 
         InfoMessage resultInfo = (InfoMessage) message;
-        assertTrue(resultInfo.getData() instanceof BidirectionalFlowResponse);
+        assertTrue(resultInfo.getData() instanceof FlowReadResponse);
 
-        BidirectionalFlowResponse resultData = (BidirectionalFlowResponse) resultInfo.getData();
+        FlowReadResponse resultData = (FlowReadResponse) resultInfo.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());

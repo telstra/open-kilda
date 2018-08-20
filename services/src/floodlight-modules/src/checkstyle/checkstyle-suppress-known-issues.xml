@@ -68,19 +68,11 @@
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathDiscover.java" lines="40" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathVerificationServiceWebRoutable.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathVerificationServiceWebRoutable.java" lines="31" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="40" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="62" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="84" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="158" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="166" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="202" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="211" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="220" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="234" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/ISwitchManager.java" lines="242" checks="NonEmptyAtclauseDescription"/>
+    <suppress files="src/main/java/org/openkilda/floodlight/statistics/StatisticsService.java" lines="143" checks="MultipleVariableDeclarations"/>
+    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="33" checks="LineLength"/>
+    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="48" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="62" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="72" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="6" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/OFInstallException.java" lines="7" checks="MutableException"/>
@@ -308,3 +300,4 @@
     <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="118" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="118" checks="JavadocMethod"/>
 </suppressions>
+

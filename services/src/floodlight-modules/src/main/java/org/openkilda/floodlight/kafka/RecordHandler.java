@@ -49,6 +49,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -68,6 +69,7 @@ import org.openkilda.messaging.info.stats.PortStatus;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
+import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.SwitchId;
@@ -132,7 +134,6 @@ class RecordHandler implements Runnable {
 
     private void handleCommand(CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
-
         CommandData data = message.getData();
         CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
@@ -168,6 +169,8 @@ class RecordHandler implements Runnable {
             doPortsCommandDataRequest(message);
         } else if (data instanceof DeleteMeterRequest) {
             doDeleteMeter(message, replyToTopic, replyDestination);
+        } else if (data instanceof PortConfigurationRequest) {
+            doConfigurePort(message, replyToTopic, replyDestination);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -703,6 +706,33 @@ class RecordHandler implements Runnable {
             logger.info("Meter deletion is unsuccessful. Switch {} not found", request.getSwitchId());
             ErrorData errorData =
                     new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), request.getSwitchId().toString());
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
+    }
+
+    private void doConfigurePort(final CommandMessage message, final String replyToTopic, 
+            final Destination replyDestination) {
+        PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
+        
+        logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
+                request.getPortNumber());
+        try {
+            ISwitchManager switchManager = context.getSwitchManager();
+
+            DatapathId dpId = DatapathId.of(request.getSwitchId().toLong());
+            switchManager.configurePort(dpId, request.getPortNumber(), request.getAdminDown());
+
+            InfoMessage infoMessage = new InfoMessage(
+                    new PortConfigurationResponse(request.getSwitchId(), request.getPortNumber()),
+                    message.getTimestamp(),
+                    message.getCorrelationId());
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.error("Port configuration request failed. " + e.getMessage(), e);
+            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), 
+                    "Port configuration request failed");
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
