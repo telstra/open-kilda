@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache;
+package org.openkilda.wfm.topology.cache.transport;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;

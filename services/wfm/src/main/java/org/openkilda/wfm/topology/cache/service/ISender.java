@@ -13,18 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache;
+package org.openkilda.wfm.topology.cache.service;
 
-public enum StormNodeId {
-    ;
+import org.openkilda.messaging.info.InfoData;
 
-    private final String id;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
-    StormNodeId(String id) {
-        this.id = id;
-    }
+public interface ISender {
 
-    public String getId() {
-        return id;
-    }
+    void sendInfoToTopologyEngine(InfoData data, String correlationId) throws JsonProcessingException;
+
+    void sendInfoToWfmReroute(InfoData data, String correlationId) throws JsonProcessingException;
+
+    void sendCommandToWfmReroute(String flowId, String correlationId);
 }
