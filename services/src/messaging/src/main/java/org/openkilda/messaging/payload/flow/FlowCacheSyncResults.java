@@ -15,7 +15,11 @@
 
 package org.openkilda.messaging.payload.flow;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
+
+import java.util.List;
 
 /**
  * FlowCacheSyncResults encapsulates the response from a FlowCacheSync call.
@@ -28,53 +32,43 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
  *
  * The String arrays are the FlowIDs.  For Modified Flows, there is extra information wrt changes.
  */
-@JsonSerialize
+@Value
 public class FlowCacheSyncResults {
-    private String[] droppedFlows;
-    private String[] addedFlows;
-    private String[] modifiedFlows;
-    private String[] unchangedFlows;
-
-    public FlowCacheSyncResults() {
-        this(null,null,null,null);
-    }
-
-    public FlowCacheSyncResults(String[] droppedFlows, String[] addedFlows, String[] modifiedFlows, String[] unchangedFlows) {
-        this.droppedFlows   = sanitizeArray(droppedFlows);
-        this.addedFlows     = sanitizeArray(addedFlows);
-        this.modifiedFlows  = sanitizeArray(modifiedFlows);
-        this.unchangedFlows = sanitizeArray(unchangedFlows);
-    }
-
-    private String[] sanitizeArray(String[] strings){
-        return (strings != null) ? strings : new String[0];
-    }
 
     /**
-     * @return array of FlowIDs for dropped flows
+     * List of FlowIDs for dropped flows.
      */
-    public String[] getDroppedFlows() {
-        return droppedFlows;
-    }
+    @JsonProperty("dropped_flows")
+    private List<String> droppedFlows;
 
     /**
-     * @return array of FlowIDs for added flows
+     * List of FlowIDs for added flows.
      */
-    public String[] getAddedFlows() {
-        return addedFlows;
-    }
+    @JsonProperty("added_flows")
+    private List<String> addedFlows;
 
     /**
-     * @return array of FlowIDs:{field:oldvalue->newvalue} for modified flows
+     * List of FlowIDs:{field:oldvalue->newvalue} for modified flows.
      */
-    public String[] getModifiedFlows() {
-        return modifiedFlows;
-    }
+    @JsonProperty("modified_flows")
+    private List<String> modifiedFlows;
 
     /**
-     * @return array of FlowIDs for unchanged flows
+     * List of FlowIDs for unchanged flows.
      */
-    public String[] getUnchangedFlows() {
-        return unchangedFlows;
+    @JsonProperty("unchanged_flows")
+    private List<String> unchangedFlows;
+
+    @JsonCreator
+    public FlowCacheSyncResults(
+            @JsonProperty("dropped_flows") List<String> droppedFlows,
+            @JsonProperty("added_flows") List<String> addedFlows,
+            @JsonProperty("modified_flows") List<String> modifiedFlows,
+            @JsonProperty("unchanged_flows") List<String> unchangedFlows) {
+        this.droppedFlows = droppedFlows;
+        this.addedFlows = addedFlows;
+        this.modifiedFlows = modifiedFlows;
+        this.unchangedFlows = unchangedFlows;
     }
 }
+

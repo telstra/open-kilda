@@ -22,20 +22,18 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.BidirectionalFlowRequest;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
-import org.openkilda.messaging.command.flow.FlowGetRequest;
+import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.FlowStatusRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowVerificationRequest;
+import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
@@ -49,7 +47,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Northbound Request Bolt. Handles northbound requests.
@@ -177,32 +174,19 @@ public class SplitterBolt extends BaseRichBolt {
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.REROUTE.toString(), tuple, values);
 
-            } else if (data instanceof FlowStatusRequest) {
-                String flowId = ((FlowStatusRequest) data).getPayload().getId();
+            } else if (data instanceof FlowReadRequest) {
+                String flowId = ((FlowReadRequest) data).getFlowId();
 
-                logger.info("Flow {} status message: values={}", flowId, values);
-
-                values = new Values(message, flowId);
-                outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
-
-            } else if (data instanceof FlowGetRequest) {
-                String flowId = Optional.ofNullable(((FlowGetRequest) data).getPayload())
-                        .map(FlowIdStatusPayload::getId)
-                        .orElse(null);
-
-                logger.info("Flow {} get message: values={}", flowId, values);
+                logger.info("Flow {} read message: values={}", flowId, values);
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
-            } else if (data instanceof BidirectionalFlowRequest) {
-                String flowId = ((BidirectionalFlowRequest) data).getFlowId();
+            } else if (data instanceof FlowsDumpRequest) {
+                logger.info("Flows dump message: values={}", values);
 
-                logger.info("Flow {} get bidirectional message: values={}", flowId, values);
-
-                values = new Values(message, flowId);
-                outputCollector.emit(StreamType.READ_BIDIRECTIONAL.toString(), tuple, values);
-
+                values = new Values(message, null);
+                outputCollector.emit(StreamType.DUMP.toString(), tuple, values);
             } else if (data instanceof FlowCacheSyncRequest) {
                 logger.info("FlowCacheSyncRequest: values={}", values);
 
@@ -235,12 +219,11 @@ public class SplitterBolt extends BaseRichBolt {
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.READ.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.DUMP.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.PUSH.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.UNPUSH.toString(), FlowTopology.fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.READ_BIDIRECTIONAL.toString(), FlowTopology.fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.VERIFICATION.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.REROUTE.toString(), FlowTopology.fieldsMessageFlowId);
