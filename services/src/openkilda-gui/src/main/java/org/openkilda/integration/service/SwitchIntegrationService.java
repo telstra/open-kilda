@@ -26,6 +26,9 @@ import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
+import org.openkilda.integration.model.Flow;
+import org.openkilda.integration.model.PortConfiguration;
+import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
@@ -290,5 +293,30 @@ public class SwitchIntegrationService {
             LOGGER.error("Inside updateIslLinkProps  Exception :", e);
             throw new IntegrationException(e);
         }
+    }
+    
+    /**
+     * Configure port.
+     *
+     * @param switchId the switch id
+     * @param port the port
+     * @param configuration the configuration
+     * @return the configured port
+     */
+    public ConfiguredPort configurePort(String switchId, String port, PortConfiguration configuration) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getConfigSwitchPort().replace("{switch_id}", switchId).replace("{port_no}",
+                            port),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(configuration), "application/json",
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, ConfiguredPort.class);
+            }
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Inside configurePort  Exception :", e);
+            throw new IntegrationException(e);
+        }
+        return null;
     }
 }

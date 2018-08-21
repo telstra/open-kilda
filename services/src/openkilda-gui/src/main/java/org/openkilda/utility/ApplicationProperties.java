@@ -66,6 +66,9 @@ public class ApplicationProperties {
     
     @Value("${GET_FLOW_PATH}")
     private String flowPath;
+    
+    @Value("${CONFIG_SWITCH_PORT}")
+    private String configSwitchPort;
 
     public String getSwitches() {
         return switches;
@@ -133,5 +136,9 @@ public class ApplicationProperties {
 
     public String getFlowPath() {
         return flowPath;
+    }
+
+    public String getConfigSwitchPort() {
+        return configSwitchPort;
     }
 }
