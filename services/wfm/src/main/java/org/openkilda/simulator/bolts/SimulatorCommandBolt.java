@@ -1,4 +1,30 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.simulator.bolts;
+
+import org.openkilda.messaging.Utils;
+import org.openkilda.simulator.SimulatorTopology;
+import org.openkilda.simulator.classes.SimulatorCommands;
+import org.openkilda.simulator.messages.SwitchMessage;
+import org.openkilda.simulator.messages.simulator.SimulatorMessage;
+import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;
+import org.openkilda.simulator.messages.simulator.command.AddSwitchCommand;
+import org.openkilda.simulator.messages.simulator.command.PortModMessage;
+import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
+import org.openkilda.simulator.messages.simulator.command.TopologyMessage;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -7,12 +33,6 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.openkilda.messaging.Utils;
-import org.openkilda.simulator.SimulatorTopology;
-import org.openkilda.simulator.classes.SimulatorCommands;
-import org.openkilda.simulator.messages.SwitchMessage;
-import org.openkilda.simulator.messages.simulator.SimulatorMessage;
-import org.openkilda.simulator.messages.simulator.command.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 
 public class SimulatorCommandBolt extends BaseRichBolt {
-    private static final Logger logger =LoggerFactory.getLogger(SimulatorCommandBolt.class);
+    private static final Logger logger = LoggerFactory.getLogger(SimulatorCommandBolt.class);
     private OutputCollector collector;
 
     protected String getJson(Tuple tuple) {
@@ -50,7 +70,7 @@ public class SimulatorCommandBolt extends BaseRichBolt {
         } else if (message instanceof AddSwitchCommand) {
             stream = SimulatorTopology.SIMULATOR_COMMAND_STREAM;
             values.add(new Values(((AddSwitchCommand) message).getDpid(), message, SimulatorCommands.DO_ADD_SWITCH));
-        }else {
+        } else {
             logger.error("Unknown simulator command received: {}\n{}",
                     message.getClass().getName(), tuple.toString());
         }
@@ -82,7 +102,7 @@ public class SimulatorCommandBolt extends BaseRichBolt {
         List<Values> values = new ArrayList<>();
         for (SwitchMessage sw : switches) {
             // Need to pre-pend 00:00 as DPID as returned by OpenflowJ has 8 octets
-            values.add(new Values(String.format("00:00:%s",sw.getDpid()).toLowerCase(), sw,
+            values.add(new Values(String.format("00:00:%s", sw.getDpid()).toLowerCase(), sw,
                     SimulatorCommands.DO_ADD_SWITCH));
             logger.info("Add Switch: {}", sw.getDpid());
         }
@@ -114,8 +134,8 @@ public class SimulatorCommandBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-//        outputFieldsDeclarer.declareStream(SimulatorTopology.SIMULATOR_COMMAND_STREAM,
-//                new Fields("dpid", "data"));
+        //        outputFieldsDeclarer.declareStream(SimulatorTopology.SIMULATOR_COMMAND_STREAM,
+        //                new Fields("dpid", "data"));
         outputFieldsDeclarer.declareStream(SimulatorTopology.SIMULATOR_COMMAND_STREAM,
                 new Fields("dpid", "data", "command"));
     }

@@ -38,6 +38,10 @@ public class OutputCollectorMock implements IOutputCollector {
         return null;
     }
 
+    public List<Integer> emit(String streamId, Tuple anchor, List<Object> tuple) {
+        return emit(streamId, Arrays.asList(anchor), tuple);
+    }
+
     @Override
     public void emitDirect(int taskId, String streamId, Collection<Tuple> anchors, List<Object> tuple) {
 
@@ -65,9 +69,5 @@ public class OutputCollectorMock implements IOutputCollector {
 
     public int getMessagesCount(String streamId) {
         return messages.get(streamId).get();
-    }
-
-    public List<Integer> emit(String streamId, Tuple anchor, List<Object> tuple) {
-        return emit(streamId, Arrays.asList(anchor), tuple);
     }
 }

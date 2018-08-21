@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.utils;
 
-
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.kafka.spout.RecordTranslator;
 import org.apache.storm.tuple.Fields;
@@ -23,9 +22,10 @@ import org.apache.storm.tuple.Values;
 
 import java.util.List;
 
-public class KafkaRecordTranslator <K, V> implements RecordTranslator<K, V> {
+public class KafkaRecordTranslator<K, V> implements RecordTranslator<K, V> {
     private static final long serialVersionUID = 1L;
     public static final Fields FIELDS = new Fields("message");
+
     @Override
     public List<Object> apply(ConsumerRecord<K, V> record) {
         return new Values(record.value());
