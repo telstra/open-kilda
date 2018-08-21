@@ -17,13 +17,13 @@ package org.openkilda.wfm.topology.utils;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +37,7 @@ public class FilerBolt extends BaseRichBolt {
     private static Logger logger = LoggerFactory.getLogger(FilerBolt.class);
     public File dir = Files.createTempDir();
     public String fileName = "utils.log";
-    private OutputCollector _collector;
+    private OutputCollector outputCollector;
     private File file;
 
     public FilerBolt withDir(File dir) {
@@ -60,7 +60,7 @@ public class FilerBolt extends BaseRichBolt {
 
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
-        _collector = collector;
+        outputCollector = collector;
     }
 
     @Override
@@ -76,7 +76,7 @@ public class FilerBolt extends BaseRichBolt {
             logger.error("FILER: couldn't append to file: {}. Exception: {}. Cause: {}",
                     file.getAbsolutePath(), e.getMessage(), e.getCause());
         }
-        _collector.ack(tuple);
+        outputCollector.ack(tuple);
     }
 
     @Override

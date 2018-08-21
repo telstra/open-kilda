@@ -44,11 +44,11 @@ public class WhateverTest {
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
         String topic = "speaker.info.switch.updown";
         consumer.subscribe(Arrays.asList(topic));
-//        System.out.println("partitions = " + consumer.partitionsFor(topic).size());
-//        PartitionInfo info = consumer.partitionsFor(topic).get(0);
-//        TopicPartition part = new TopicPartition(topic,info.partition());
-//        System.out.println("looking at " + info.topic() + " part " + info.partition());
-//        consumer.seekToBeginning(Arrays.asList(part));
+        //        System.out.println("partitions = " + consumer.partitionsFor(topic).size());
+        //        PartitionInfo info = consumer.partitionsFor(topic).get(0);
+        //        TopicPartition part = new TopicPartition(topic,info.partition());
+        //        System.out.println("looking at " + info.topic() + " part " + info.partition());
+        //        consumer.seekToBeginning(Arrays.asList(part));
         System.out.println("consumer.listTopics() = " + consumer.listTopics());
 
         System.out.println("");
