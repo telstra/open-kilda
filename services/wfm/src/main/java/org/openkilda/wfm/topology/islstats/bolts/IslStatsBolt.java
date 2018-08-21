@@ -15,11 +15,6 @@
 
 package org.openkilda.wfm.topology.islstats.bolts;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
@@ -29,6 +24,11 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.wfm.topology.AbstractTopology;
 
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseRichBolt;
+import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +44,7 @@ public class IslStatsBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
 
     private static List<Object> tsdbTuple(String metric, long timestamp, Number value, Map<String, String> tag)
-            throws IOException{
+            throws IOException {
         Datapoint datapoint = new Datapoint(metric, timestamp, tag, value);
         return Collections.singletonList(Utils.MAPPER.writeValueAsString(datapoint));
     }
@@ -98,9 +98,9 @@ public class IslStatsBolt extends BaseRichBolt {
             List<Object> results = buildTsdbTuple(data, message.getTimestamp());
             logger.debug("emit: " + results);
             collector.emit(results);
-        } catch(IOException e) {
+        } catch (IOException e) {
             logger.error("Could not deserialize message={}", json, e);
-        } catch(Exception e) {
+        } catch (Exception e) {
             // TODO: has to be a cleaner way to do this?
         } finally {
             collector.ack(tuple);
