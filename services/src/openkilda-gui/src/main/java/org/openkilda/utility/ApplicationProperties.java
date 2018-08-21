@@ -1,5 +1,7 @@
 package org.openkilda.utility;
 
+import lombok.Getter;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Component;
  *
  */
 @Component
+@Getter
 public class ApplicationProperties {
 
     /** The application properties. */
@@ -69,76 +72,4 @@ public class ApplicationProperties {
     
     @Value("${CONFIG_SWITCH_PORT}")
     private String configSwitchPort;
-
-    public String getSwitches() {
-        return switches;
-    }
-
-    public String getLinks() {
-        return links;
-    }
-
-    public String getLinkProps() {
-        return linkProps;
-    }
-
-    public String getNbBaseUrl() {
-        return nbBaseUrl;
-    }
-
-    public String getFlows() {
-        return flows;
-    }
-
-    public String getPathFlow() {
-        return pathFlow;
-    }
-
-    public String getFlowStatus() {
-        return flowStatus;
-    }
-
-    public String getOpenTsdbBaseUrl() {
-        return openTsdbBaseUrl;
-    }
-
-    public String getOpenTsdbQuery() {
-        return openTsdbQuery;
-    }
-
-    public String getKildaUsername() {
-        return kildaUsername;
-    }
-
-    public String getKildaPassword() {
-        return kildaPassword;
-    }
-
-    public String getSwitchDataFilePath() {
-        return switchDataFilePath;
-    }
-
-    public String getFlowReroute() {
-        return flowReroute;
-    }
-
-    public String getFlowValidate() {
-        return flowValidate;
-    }
-
-    public String getSwitchRules() {
-        return switchRules;
-    }
-
-	public String getUpdateFlow() {
-		return updateFlow;
-	}
-
-    public String getFlowPath() {
-        return flowPath;
-    }
-
-    public String getConfigSwitchPort() {
-        return configSwitchPort;
-    }
 }

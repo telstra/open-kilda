@@ -26,7 +26,6 @@ import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
-import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.PortConfiguration;
 import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.model.response.IslLink;
@@ -314,7 +313,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, ConfiguredPort.class);
             }
         } catch (JsonProcessingException e) {
-            LOGGER.error("Inside configurePort  Exception :", e);
+            LOGGER.error("Error occurred while converting configration to string. Exception: " + e.getMessage(), e);
             throw new IntegrationException(e);
         }
         return null;
