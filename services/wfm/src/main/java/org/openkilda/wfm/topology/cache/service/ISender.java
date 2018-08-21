@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,36 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache;
+package org.openkilda.wfm.topology.cache.service;
 
-import org.openkilda.wfm.topology.cache.transport.CacheTopology;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.info.InfoData;
 
-/**
- * Represents stream used in {@link CacheTopology}.
- */
-public enum StreamType {
-    /**
-     * State update.
-     */
-    WFM_UPDATE,
+import com.fasterxml.jackson.core.JsonProcessingException;
 
-    /**
-     * Dump cache.
-     */
-    WFM_DUMP,
+public interface ISender {
 
-    /**
-     * Network storage update.
-     */
-    TPE,
+    void sendInfoToTopologyEngine(InfoData data, String correlationId) throws JsonProcessingException;
 
-    /**
-     * Request cache dump.
-     */
-    CACHE_WFM,
+    void sendInfoToWfmDump(InfoData data, String correlationId) throws JsonProcessingException;
 
-    /**
-     * OFE stream.
-     */
-    OFE
+    void sendCommandToWfmDump(CommandData data, String correlationId) throws JsonProcessingException;
 }

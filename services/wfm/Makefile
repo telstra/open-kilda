@@ -48,7 +48,7 @@ kill-stats:
 
 deploy-cache:
 	storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-        org.openkilda.wfm.topology.cache.CacheTopology \
+        org.openkilda.wfm.topology.cache.transport.CacheTopology \
         --name=cache ${config}
 
 kill-cache:
