@@ -18,13 +18,11 @@ FROM kilda/base-ubuntu
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update \
-    && apt-get install -y \
-        python-pip \
+    && apt install -y --no-install-recommends \
+        build-essential \
         supervisor \
         nginx \
-        vim \
         sqlite \
-    && pip install --upgrade pip \
     && pip install \
         neo4j-driver \
         kafka \

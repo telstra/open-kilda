@@ -874,22 +874,7 @@
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="204" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="206" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/stats/StatsTopologyTest.java" lines="207" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="46" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="57" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="90" checks="OverloadMethodsDeclarationOrder"/>
-    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="104" checks="NeedBraces"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaProducer.java" lines="37" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaProducer.java" lines="55" checks="LeftCurly"/>
     <suppress files="src/test/java/org/openkilda/wfm/WhateverTest.java" lines="31" checks="HideUtilityClassConstructor"/>

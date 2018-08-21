@@ -25,6 +25,7 @@ import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
@@ -58,6 +59,8 @@ public interface NorthboundService {
     List<FlowPayload> getAllFlows();
 
     List<FlowValidationDto> validateFlow(String flowId);
+
+    FlowReroutePayload rerouteFlow(String flowId);
 
     //switches
 

@@ -1,0 +1,17 @@
+{
+      "title": "KILDA-tpe ERRORS",
+      "description": "",
+      "hits": 0,
+      "columns": [
+        "tags",
+        "message"
+      ],
+      "sort": [
+        "@timestamp",
+        "desc"
+      ],
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"AWUfJAj0duClWTXkEj7q\",\"highlightAll\":true,\"version\":true,\"query\":{\"query_string\":{\"query\":\"tags: \\\"kilda-tpe\\\" AND level: ERROR\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+}

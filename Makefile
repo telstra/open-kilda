@@ -2,12 +2,7 @@
 default: build-latest run-dev
 
 build-base:
-	base/hacks/kilda-bins.download.sh
 	base/hacks/shorm.requirements.download.sh
-	rsync -au kilda-bins/zookeeper* services/zookeeper/tar/
-	rsync -au kilda-bins/hbase* services/hbase/tar/
-	rsync -au kilda-bins/kafka* services/kafka/tar/
-	rsync -au kilda-bins/apache-storm* services/storm/tar/
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 	docker build -t kilda/zookeeper:latest services/zookeeper
 	docker build -t kilda/kafka:latest services/kafka
@@ -17,7 +12,7 @@ build-base:
 	docker build -t kilda/opentsdb:latest services/opentsdb
 	docker build -t kilda/logstash:latest services/logstash
 
-build-latest: build-base compile
+build-latest: update-props build-base compile
 	docker-compose build
 
 run-dev:
@@ -31,6 +26,7 @@ up-test-mode:
 	@echo
 	OK_TESTS="DISABLE_LOGIN" docker-compose up -d
 	docker-compose logs -f wfm
+	$(MAKE) -C tools/elk-dashboards
 
 up-log-mode: up-test-mode
 	docker-compose logs -f
@@ -61,7 +57,7 @@ compile:
 	$(MAKE) -C services/mininet
 
 .PHONY: unit unit-java-common unit-java-storm unit-py-te
-unit: unit-java-common unit-java-storm unit-py-te
+unit: update-props unit-java-common unit-java-storm unit-py-te
 unit-java-common: build-base
 	$(MAKE) -C services/src
 unit-java-storm: avoid-port-conflicts

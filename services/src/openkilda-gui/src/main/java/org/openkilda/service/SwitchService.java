@@ -3,6 +3,8 @@ package org.openkilda.service;
 import java.util.List;
 
 import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.model.PortConfiguration;
+import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
@@ -71,5 +73,17 @@ public class SwitchService {
      */
     public String getSwitchRules(String switchId) {
         return switchIntegrationService.getSwitchRules(switchId);
+    }
+    
+    /**
+     * Configure port.
+     *
+     * @param switchId the switch id
+     * @param port the port
+     * @param configuration the configuration
+     * @return the configuredPort
+     */
+    public ConfiguredPort configurePort(String switchId, String port, PortConfiguration configuration) {
+        return switchIntegrationService.configurePort(switchId, port, configuration);
     }
 }

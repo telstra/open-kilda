@@ -5,7 +5,6 @@
 
 <suppressions>
     <suppress files="src/main/java/org/openkilda/northbound/Application.java" lines="27" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/main/java/org/openkilda/northbound/config/AppConfig.java" lines="23" checks="UnusedImports"/>
     <suppress files="src/main/java/org/openkilda/northbound/config/WebConfig.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/config/WebConfig.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/FeatureTogglesController.java" lines="21" checks="CustomImportOrder"/>
@@ -48,15 +47,6 @@
     <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="27" checks="FileTabCharacter"/>
     <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="28" checks="Indentation"/>
     <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="28" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/SwitchMapper.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/SwitchMapper.java" lines="4" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/SwitchMapper.java" lines="5" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/SwitchMapper.java" lines="6" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/SwitchMapper.java" lines="7" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/SwitchMapper.java" lines="8" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/dto/LinksDto.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/northbound/dto/LinksDto.java" lines="4" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/dto/LinksDto.java" lines="9" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaHealthCheckMessageConsumer.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaHealthCheckMessageConsumer.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaHealthCheckMessageConsumer.java" lines="24" checks="CustomImportOrder"/>
@@ -67,50 +57,10 @@
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/BasicService.java" lines="27" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="31" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="41" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="41" checks="MemberName"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/LinkPropsResult.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/LinkPropsResult.java" lines="21" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/LinkPropsResult.java" lines="21" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/LinkPropsResult.java" lines="24" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/LinkPropsResult.java" lines="27" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/LinkPropsResult.java" lines="29" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationFilter.java" lines="36" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationId.java" lines="26" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/main/java/org/openkilda/northbound/utils/RequestCorrelationId.java" lines="34" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="15" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="18" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="65" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="76" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="77" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="78" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="79" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="82" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="83" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="84" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="85" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="86" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="87" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="88" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="91" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="92" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="93" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="94" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="95" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="96" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="97" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="98" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/LinkPropsTest.java" lines="99" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/northbound/service/impl/HealthCheckImpl.java" lines="29" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="14" checks="JavadocParagraph"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="17" checks="HideUtilityClassConstructor"/>
@@ -128,50 +78,6 @@
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="35" checks="ParenPad"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="35" checks="ParenPad"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="38" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestConfig.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestLinkPropsConfig.java" lines="20" checks="UnusedImports"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestLinkPropsConfig.java" lines="21" checks="UnusedImports"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestLinkPropsConfig.java" lines="22" checks="UnusedImports"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestLinkPropsConfig.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestLinkPropsConfig.java" lines="23" checks="AvoidStarImport"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestLinkPropsConfig.java" lines="27" checks="UnusedImports"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestLinkPropsConfig.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestLinkPropsConfig.java" lines="29" checks="UnusedImports"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="0" checks="NewlineAtEndOfFile"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="8" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="9" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="9" checks="AvoidStarImport"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="13" checks="JavadocParagraph"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="18" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="19" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="20" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="21" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="22" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="23" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="24" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="25" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="26" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="27" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="28" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="29" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="30" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="31" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="34" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="35" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="36" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="37" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="38" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="39" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="40" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="41" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="42" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="43" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="44" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="45" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="46" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="47" checks="OperatorWrap"/>
-    <suppress files="src/test/java/org/openkilda/northbound/dto/LinksDtoTest.java" lines="48" checks="OperatorWrap"/>
     <suppress files="src/test/java/org/openkilda/northbound/utils/RequestCorrelationIdTest.java" lines="0" checks="NewlineAtEndOfFile"/>
     <suppress files="src/test/java/org/openkilda/northbound/utils/RequestCorrelationIdTest.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/northbound/utils/RequestCorrelationIdTest.java" lines="24" checks="CustomImportOrder"/>

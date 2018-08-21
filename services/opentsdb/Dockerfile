@@ -14,8 +14,18 @@
 #
 
 FROM kilda/hbase
-ADD ansible /ansible
-RUN ansible-playbook -v -s /ansible/deploy.yml
-ADD conf/opentsdb.conf /etc/opentsdb/opentsdb.conf
-ADD app /app
-RUN chmod 777 /app/*
+
+WORKDIR /tmp/
+
+COPY app /app
+
+RUN    wget https://github.com/OpenTSDB/opentsdb/releases/download/v2.3.0/opentsdb-2.3.0_all.deb \
+    && apt update \
+    && apt install -y --no-install-recommends \
+        gnuplot \
+        python-happybase \
+    && dpkg -i opentsdb-2.3.0_all.deb \
+    && chmod 777 /app/* \
+    && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY conf/opentsdb.conf /etc/opentsdb/opentsdb.conf

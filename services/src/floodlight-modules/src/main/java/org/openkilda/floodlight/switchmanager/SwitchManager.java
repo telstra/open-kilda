@@ -40,6 +40,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -72,6 +73,9 @@ import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFPortConfig;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortMod;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
@@ -109,7 +113,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 
 /**
  * Created by jonv on 29/3/17.
@@ -1474,7 +1477,51 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 }
             }
         }
-
     }
 
+    // TODO(surabujin): this method can/should be moved to the RecordHandler level
+    @Override
+    public void configurePort(DatapathId dpId, int portNumber, Boolean portAdminDown) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpId);
+
+        boolean makeChanges = false;
+        if (portAdminDown != null) {
+            makeChanges = true;
+            updatePortStatus(sw, portNumber, portAdminDown);
+        }
+
+        if (makeChanges) {
+            sendBarrierRequest(sw);
+        }
+    }
+    
+    private void updatePortStatus(IOFSwitch sw, int portNumber, boolean isAdminDown) throws SwitchOperationException {
+        Set<OFPortConfig> config = new HashSet<>(1);
+        if (isAdminDown) {
+            config.add(OFPortConfig.PORT_DOWN);
+        }
+
+        Set<OFPortConfig> portMask = ImmutableSet.of(OFPortConfig.PORT_DOWN);
+
+        final OFFactory ofFactory = sw.getOFFactory();
+        OFPortMod ofPortMod = ofFactory.buildPortMod()
+                .setPortNo(OFPort.of(portNumber))
+                // switch can argue against empty HWAddress (BAD_HW_ADDR) :(
+                .setHwAddr(getPortHwAddress(sw, portNumber))
+                .setConfig(config)
+                .setMask(portMask)
+                .build();
+
+        if (!sw.write(ofPortMod)) {
+            throw new SwitchOperationException(sw.getId(),
+                    String.format("Unable to update port configuration: %s", ofPortMod));
+        }
+
+        logger.debug("Successfully updated port status {}", ofPortMod);
+    }
+
+    private MacAddress getPortHwAddress(IOFSwitch sw, int portNumber) {
+        OFPortDesc portDesc = sw.getPort(OFPort.of(portNumber));
+        return portDesc.getHwAddr();
+    }
 }
