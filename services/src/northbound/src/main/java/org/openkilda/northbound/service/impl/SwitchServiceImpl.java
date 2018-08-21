@@ -28,6 +28,8 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.command.switches.PortConfigurationRequest;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
@@ -37,12 +39,15 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
+import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
@@ -258,5 +263,46 @@ public class SwitchServiceImpl implements SwitchService {
         Message response = messageConsumer.poll(requestId);
         DeleteMeterResponse result = (DeleteMeterResponse) validateInfoMessage(deleteCommand, response, requestId);
         return new DeleteMeterResult(result.isDeleted());
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public PortDto configurePort(SwitchId switchId,  int port, PortConfigurationPayload config) {
+        String correlationId = RequestCorrelationId.getId();
+
+        PortConfigurationRequest request = new PortConfigurationRequest(switchId, 
+                port, toPortAdminDown(config.getStatus()));
+        CommandWithReplyToMessage updateStatusCommand = new CommandWithReplyToMessage(
+                request, System.currentTimeMillis(), correlationId, 
+                Destination.CONTROLLER, northboundTopic);
+        messageProducer.send(floodlightTopic, updateStatusCommand);
+
+        Message response = messageConsumer.poll(correlationId);
+        PortConfigurationResponse switchPortResponse = (PortConfigurationResponse) validateInfoMessage(
+                updateStatusCommand, response, correlationId);
+
+        return new PortDto(switchPortResponse.getSwitchId().toString(), switchPortResponse.getPortNo());
+    }
+
+    private Boolean toPortAdminDown(PortStatus status) {
+        if (status == null) {
+            return  null;
+        }
+
+        boolean adminDownState;
+        switch (status) {
+            case UP:
+                adminDownState = false;
+                break;
+            case DOWN:
+                adminDownState = true;
+                break;
+            default:
+                throw new IllegalArgumentException(String.format(
+                        "Unsupported enum %s value: %s", PortStatus.class.getName(), status));
+        }
+        return adminDownState;
     }
 }

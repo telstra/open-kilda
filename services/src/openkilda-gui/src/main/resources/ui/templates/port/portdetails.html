@@ -31,9 +31,20 @@
 
 
 		<div class="container-fluid">
-
+			<div id="port_detail_loading" class="bg_load" style="display:none;">
+							<div class="loader"></div>
+							<span class="load-text">Updating port detail
+									<span class="loader__dot">.</span>
+			  			  			<span class="loader__dot">.</span>
+			  			 			<span class="loader__dot">.</span>
+			  			   </span> 
+						</div>
 			<div id="switchdetails_div">
 				<h5 class='modal-title'>PORT DETAILS</h5>
+				<button class="btn kilda_btn pull-right hidePermission" id="configure_port" style="margin-top:-40px;" onClick="portObj.configureConfirmation()" permission="sw_port_config">Configure</button>
+				<button class="btn kilda_btn pull-right" id="cancel_configure_port" style="margin-top:-40px; margin-right:65px; display:none;" onClick="portObj.cancelConfigurePort()">Cancel</button>
+				<button class="btn kilda_btn pull-right" id="save_configure_port" style="margin-top:-40px; display:none;" onClick="portObj.confirmConfigurePort()">Save</button>
+				
 				<div class='form-wrapper'>
 					<div class='form-group row'>
 						<label class='col-sm-4 col-form-label'>Switch ID:</label>
@@ -55,6 +66,11 @@
 					<div class='form-group row'>
 						<label class='col-sm-4 col-form-label'>Status:</label>
 						<p class='col-sm-8 port_details_div_status'></p>
+						<select id="edit_port_status" style="display:none;">
+						<option value="UP">UP</option>
+						<option value="DOWN">DOWN</option>
+						</select>
+						
 					</div>
 				</div>
 			</div>
@@ -173,9 +189,77 @@
 
 
 	<div th:replace="common/footer :: footer" ></div>
+	 <!-- Confirmation modal-->
+		<!-- Configure confirmation -->
+	<div class="modal confirm_modal fade" id="configure_confirm_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Confirmation</h4>
+				</div>
+				<div class="modal-body">Are you sure you want to configure the port?</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal" onClick="portObj.cancelConfigure()">No</button>
+					<button type="button" class="btn kilda_btn" onClick="portObj.confirmConfigure()">Yes</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<div class="modal confirm_modal fade" id="final_configure_confirm_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Confirmation</h4>
+				</div>
+				<div class="modal-body row">
+				
+				<div class="col-md-12">
+				<div class="col-md-4">
+							<div class="col-md-12" style="margin-bottom:10px;">&nbsp;</div>
+							<div class="col-md-10">
+								 <label>Status</label>
+						 	</div>
+					</div>
+					<div class="col-md-4">
+							<div class="col-md-12" style="margin-bottom:10px; font-weight:bold;">Current State</div>
+							<div class="col-md-10">
+								<span id="old_status_val"></span>
+							</div>		
+					</div>
+					<div class="col-md-4">
+							<div class="col-md-12" style="margin-bottom:10px; font-weight:bold;">Requested State</div>
+							<div class="col-md-10">
+								<span id="new_status_val"></span>
+						 	</div>
+					</div>
+				</div>
+				
+				<h3 class="col-md-12" style="padding-left:15px; margin-top:30px;">Are you sure you want to configure this port with requested state?</h3>
+				
+				
+				
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal" onClick="portObj.cancelConfirmConfigurePort()">No</button>
+					<button type="button" class="btn kilda_btn" onClick="portObj.configurePort()">Yes</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	
+	
 	<script th:inline="javascript" th:src="@{../ui/js/ports/portdetails.js}"></script>
 	<script th:inline="javascript" th:src="@{../ui/js/common.js}"></script>
 	<script th:inline="javascript" th:src="@{../ui/js/ports/port-graph.js}"></script>
+	<script th:inline="javascript" th:src="@{../ui/js/ports/portobject.js}"></script>
 	
 <script>
  

@@ -6,6 +6,6 @@
                       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
     <!-- This configuration file lets Cucumber know about Spring context to be initialized. -->
 
-    <context:component-scan base-package="org.openkilda.testing.config"/>
+    <context:component-scan base-package="org.openkilda.testing.config, org.openkilda.functionaltests.config"/>
     <bean id="applicationContextProvder" class="org.openkilda.functionaltests.extension.spring.SpringContextExtension"/>
 </beans>

@@ -103,13 +103,15 @@ public class ControllerUtils {
         String json = response.readEntity(String.class);
         LOGGER.debug("FloodLight switch \"{}\" list flows response: {}", dpId, json);
         try {
-            Map<String, Object> keyChecker = Utils.MAPPER.readValue(json, new TypeReference<Map<String, Object>>(){});
-            if (! keyChecker.containsKey(flowsKey)) {
+            Map<String, Object> keyChecker = Utils.MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
+            if (!keyChecker.containsKey(flowsKey)) {
                 throw new DpIdNotFoundException();
             }
 
             Map<String, List<CoreFlowEntry>> wrapper = Utils.MAPPER.readValue(
-                    json, new TypeReference<Map<String, List<CoreFlowEntry>>>(){});
+                    json, new TypeReference<Map<String, List<CoreFlowEntry>>>() {
+                    });
             return wrapper.get(flowsKey);
         } catch (IOException e) {
             throw new FloodlightQueryException("Can't parse FloodLight response", e);
@@ -133,5 +135,32 @@ public class ControllerUtils {
             LOGGER.info("floodlight available");
         }
         return alive;
+    }
+
+    /**
+     * Returns switch port informations.
+     */
+    public SwitchEntry getSwitchPorts(String switchId) throws FloodlightQueryException {
+        Response response;
+        try {
+            response = restClient.target(DefaultParameters.FLOODLIGHT_ENDPOINT)
+                    .path(String.format("wm/core/switch/%s/port-desc/json", switchId))
+                    .request()
+                    .accept(MediaType.APPLICATION_JSON)
+                    .get();
+        } catch (ProcessingException e) {
+            throw new FloodlightQueryException(e);
+        }
+
+        if (response.getStatus() != 200) {
+            throw new FloodlightQueryException(200, response.getStatus());
+        }
+
+        String json = response.readEntity(String.class);
+        try {
+            return Utils.MAPPER.readValue(json, SwitchEntry.class);
+        } catch (IOException e) {
+            throw new FloodlightQueryException("Can't parse FloodLight response", e);
+        }
     }
 }

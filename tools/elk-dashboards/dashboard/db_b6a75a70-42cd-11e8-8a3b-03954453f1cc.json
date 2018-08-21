@@ -1,0 +1,13 @@
+{
+      "title": "Kilda Flow operations",
+      "hits": 0,
+      "description": "",
+      "panelsJSON": "[{\"col\":1,\"id\":\"b9dbc3c0-42c8-11e8-a33d-e7df8e48ccb6\",\"panelIndex\":1,\"row\":1,\"size_x\":12,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"378dcee0-42be-11e8-a33d-e7df8e48ccb6\",\"panelIndex\":2,\"row\":3,\"size_x\":12,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"id\":\"03da69c0-42cb-11e8-a33d-e7df8e48ccb6\",\"panelIndex\":3,\"row\":5,\"size_x\":12,\"size_y\":2,\"type\":\"visualization\"},{\"col\":1,\"columns\":[\"level\",\"message\"],\"id\":\"88dffe30-42cd-11e8-8a3b-03954453f1cc\",\"panelIndex\":4,\"row\":7,\"size_x\":12,\"size_y\":7,\"sort\":[\"@timestamp\",\"desc\"],\"type\":\"search\"}]",
+      "optionsJSON": "{\"darkTheme\":false}",
+      "uiStateJSON": "{}",
+      "version": 1,
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"match_all\":{}}}],\"highlightAll\":true,\"version\":true}"
+      }
+}

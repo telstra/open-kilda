@@ -16,7 +16,6 @@
 package org.openkilda.northbound.controller;
 
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
-import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.error.MessageError;
@@ -118,7 +117,6 @@ public class FlowController {
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> getFlow(@PathVariable(name = "flow-id") String flowId) {
-        logger.debug("Get flow: {}={}", FLOW_ID, flowId);
         FlowPayload response = flowService.getFlow(flowId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -135,7 +133,6 @@ public class FlowController {
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> deleteFlow(@PathVariable(name = "flow-id") String flowId) {
-        logger.debug("Delete flow: {}={}", FLOW_ID, flowId);
         FlowPayload response = flowService.deleteFlow(flowId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -303,7 +300,6 @@ public class FlowController {
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
     public FlowReroutePayload rerouteFlow(@PathVariable("flow_id") String flowId) {
-        logger.debug("Received reroute request for flow {}", flowId);
         return flowService.rerouteFlow(flowId);
     }
 
@@ -320,7 +316,6 @@ public class FlowController {
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
     public FlowReroutePayload syncFlow(@PathVariable("flow_id") String flowId) {
-        logger.debug("Received sync flow request for flow {}", flowId);
         return flowService.syncFlow(flowId);
     }
 
@@ -382,8 +377,6 @@ public class FlowController {
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults syncFlowCache() {
-
-        logger.debug("Received sync FlowCache");
         return flowService.syncFlowCache(SynchronizeCacheAction.NONE);
     }
 
@@ -396,7 +389,6 @@ public class FlowController {
     @DeleteMapping(path = "/flows/cache")
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults invalidateFlowCache() {
-        logger.debug("Received Invalidate FlowCache");
         return flowService.syncFlowCache(SynchronizeCacheAction.INVALIDATE_CACHE);
     }
 
@@ -409,7 +401,6 @@ public class FlowController {
     @PatchMapping(path = "/flows/cache")
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults refreshFlowCache() {
-        logger.debug("Received Refresh FlowCache");
         return flowService.syncFlowCache(SynchronizeCacheAction.SYNCHRONIZE_CACHE);
     }
 

@@ -1,0 +1,13 @@
+{
+      "title": "KILDA-Dashboard-light",
+      "hits": 0,
+      "description": "Light version of Kilda dashboard without logs.",
+      "panelsJSON": "[{\"col\":1,\"id\":\"0dbf2e70-f209-11e7-9052-7bb5aee88040\",\"panelIndex\":1,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":7,\"id\":\"bd994530-f16c-11e7-a202-e79f0134df49\",\"panelIndex\":2,\"row\":1,\"size_x\":6,\"size_y\":3,\"type\":\"visualization\"},{\"col\":1,\"id\":\"2489ab10-f210-11e7-9052-7bb5aee88040\",\"panelIndex\":3,\"row\":4,\"size_x\":12,\"size_y\":3,\"type\":\"visualization\"}]",
+      "optionsJSON": "{\"darkTheme\":false}",
+      "uiStateJSON": "{\"P-2\":{\"vis\":{\"params\":{\"sort\":{\"columnIndex\":null,\"direction\":null}}}}}",
+      "version": 1,
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"filter\":[{\"query\":{\"match_all\":{}}}],\"highlightAll\":true,\"version\":true}"
+      }
+}

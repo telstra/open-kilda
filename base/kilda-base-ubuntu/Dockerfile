@@ -18,19 +18,19 @@ FROM ubuntu:xenial
 ENV DEBIAN_FRONTEND noninteractive
 
 ###############################################
-# Install Ansible and Java8 in base container #
+# Install pip and Java8 in base container     #
 ###############################################
 
-RUN echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
 ENV JAVA_VER 8
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
-RUN echo "export JAVA_HOME=/usr/lib/jvm/java-8-oracle" >> ~/.bashrc
 
-RUN apt-get update \
-    && apt-get autoremove \
-    && apt-get install -y \
-        build-essential \
-        apt-utils \
+COPY app /app
+
+RUN chmod 777 /app/* \
+    && echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections \
+    && echo debconf shared/accepted-oracle-license-v1-1 seen true | debconf-set-selections \
+    && apt -o Acquire::CompressionTypes::Order=bz2 update \
+    && apt install -y --no-install-recommends \
         libffi-dev \
         libssl-dev \
         software-properties-common \
@@ -40,25 +40,15 @@ RUN apt-get update \
         python \
         python-dev \
         python-pip \
+        make \
+        apt-transport-https \
     && pip install --upgrade pip \
-    && python -m pip install \
-        ansible \
+    && python -m pip install setuptools \
     && add-apt-repository ppa:webupd8team/java \
-    && apt-get update \
-    && apt-get install -y \
-        oracle-java8-installer || ( \
-           sed -i \
-               -e 's|JAVA_VERSION=8u171|JAVA_VERSION=8u181|' \
-               -e 's|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u171-b11/512cd62ec5174c3487ac17c61aaa89e8/|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u181-b13/96a7b8442fe848ef90c96a2fad6ed6d1/|' \
-               -e 's|SHA256SUM_TGZ="b6dd2837efaaec4109b36cfbb94a774db100029f98b0d78be68c27bec0275982"|SHA256SUM_TGZ="1845567095bfbfebd42ed0d09397939796d05456290fb20a83c476ba09f991d3"|' \
-               -e 's|J_DIR=jdk1.8.0_171|J_DIR=jdk1.8.0_181|' \
-               /var/lib/dpkg/info/oracle-java8-installer.config /var/lib/dpkg/info/oracle-java8-installer.postinst; \
-           apt-get install -y) \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-RUN chmod +x /usr/local/bin/ansible*
-RUN mkdir /etc/ansible
-#Sets the default context of Ansible to be the local container
-ADD config/hosts /etc/ansible/hosts
-ADD app /app
-RUN chmod 777 /app/*
+    && apt update \
+    && apt install -y --no-install-recommends \
+        oracle-java8-installer \
+        oracle-java8-set-default \
+    && update-java-alternatives -s java-8-oracle \
+    && echo "export JAVA_HOME=/usr/lib/jvm/java-8-oracle" >> ~/.bashrc \
+    && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/* /var/cache/oracle-jdk8-installer

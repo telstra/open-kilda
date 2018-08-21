@@ -17,6 +17,8 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
+import org.openkilda.integration.model.PortConfiguration;
+import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.IslLinkInfo;
@@ -166,5 +168,22 @@ public class SwitchController extends BaseController {
     public @ResponseBody String getSwitchRules(@PathVariable final String switchId) {
         activityLogger.log(ActivityType.SWITCH_RULES, switchId);
         return serviceSwitch.getSwitchRules(switchId);
+    }
+    
+    /**
+     * Configure switch port.
+     *
+     * @param configuration the configuration
+     * @param switchId the switch id
+     * @param port the port
+     * @return the configuredPort
+     */
+    @RequestMapping(path = "/{switchId}/{port}/config", method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.SW_PORT_CONFIG})
+    public @ResponseBody ConfiguredPort configureSwitchPort(@RequestBody final PortConfiguration configuration,
+            @PathVariable final String switchId, @PathVariable final String port) {
+        activityLogger.log(ActivityType.CONFIGURE_SWITCH_PORT, "SW_" + switchId + ", P_" + port);
+        return serviceSwitch.configurePort(switchId, port, configuration);
     }
 }
