@@ -135,8 +135,14 @@ topology_schema = {
           "node1": {
             "type": "string"
           },
+          "node1_port": {
+            "type": "integer"
+          },
           "node2": {
             "type": "string"
+          },
+          "node2_port": {
+            "type": "integer"
           }
         },
         "required": [
@@ -341,7 +347,7 @@ def new_topology():
         node1 = link['node1']
         node2 = link['node2']
         logger.info("===> adding link {} -> {}".format(node1, node2))
-        net.addLink( node1, node2 )
+        net.addLink( node1, node2, port1 = link.get('node1_port'), port2 = link.get('node2_port') )
 
     logger.info( "" )
     logger.info( "*** Creating hosts\n" )
