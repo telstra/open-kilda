@@ -38,6 +38,7 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -57,22 +58,20 @@ public class IslUtils {
      * @param isls which isls should have the specified status
      * @param expectedStatus which status to wait on specified isls
      */
-    public void waitForIslStatus(List<Isl> isls, String expectedStatus, RetryPolicy retryPolicy) {
-        IslChangeType expectedIslState = IslChangeType.valueOf(expectedStatus);
-
+    public void waitForIslStatus(List<Isl> isls, IslChangeType expectedStatus, RetryPolicy retryPolicy) {
         List<IslInfoData> actualIsl = Failsafe.with(retryPolicy
                 .retryIf(states -> ((List<IslInfoData>) states).stream()
                         .map(IslInfoData::getState)
-                        .anyMatch(state -> !state.equals(expectedIslState))))
+                        .anyMatch(state -> !state.equals(expectedStatus))))
                 .get(() -> {
                     List<IslInfoData> allLinks = northbound.getAllLinks();
-                    return isls.stream().map(isl -> getIslInfo(allLinks, isl)).collect(Collectors.toList());
+                    return isls.stream().map(isl -> getIslInfo(allLinks, isl).get()).collect(Collectors.toList());
                 });
 
-        assertThat(actualIsl, everyItem(hasProperty("state", equalTo(expectedIslState))));
+        assertThat(actualIsl, everyItem(hasProperty("state", equalTo(expectedStatus))));
     }
 
-    public void waitForIslStatus(List<Isl> isls, String expectedStatus) {
+    public void waitForIslStatus(List<Isl> isls, IslChangeType expectedStatus) {
         waitForIslStatus(isls, expectedStatus, retryPolicy());
     }
 
@@ -80,9 +79,8 @@ public class IslUtils {
      * Gets actual Northbound represenation of the certain ISL.
      *
      * @param isl isl to search in 'getAllLinks' results
-     * @return found isl. Throw otherwise.
      */
-    public IslInfoData getIslInfo(Isl isl) {
+    public Optional<IslInfoData> getIslInfo(Isl isl) {
         return getIslInfo(northbound.getAllLinks(), isl);
     }
 
@@ -92,16 +90,15 @@ public class IslUtils {
      *
      * @param islsInfo list where to search certain ISL
      * @param isl what isl to look for
-     * @return IslInfoData object that matches passed Isl. Throw if no results.
      */
-    public IslInfoData getIslInfo(List<IslInfoData> islsInfo, Isl isl) {
+    public Optional<IslInfoData> getIslInfo(List<IslInfoData> islsInfo, Isl isl) {
         return islsInfo.stream().filter(link -> {
             PathNode src = link.getPath().get(0);
             PathNode dst = link.getPath().get(1);
             return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort()
                     && src.getSwitchId().equals(isl.getSrcSwitch().getDpId())
                     && dst.getSwitchId().equals(isl.getDstSwitch().getDpId());
-        }).findFirst().get();
+        }).findFirst();
     }
 
     /**
