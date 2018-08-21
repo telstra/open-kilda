@@ -1520,8 +1520,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         logger.debug("Successfully updated port status {}", ofPortMod);
     }
 
-    private MacAddress getPortHwAddress(IOFSwitch sw, int portNumber) {
+    private MacAddress getPortHwAddress(IOFSwitch sw, int portNumber) throws SwitchOperationException {
         OFPortDesc portDesc = sw.getPort(OFPort.of(portNumber));
+        if (portDesc == null) {
+            throw new SwitchOperationException(sw.getId(),
+                    String.format("Unable to get port by number %d on the switch %s",
+                            portNumber, sw.getId()));
+        }
         return portDesc.getHwAddr();
     }
 }
