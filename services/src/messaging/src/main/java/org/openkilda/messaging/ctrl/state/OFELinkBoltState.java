@@ -1,15 +1,15 @@
 package org.openkilda.messaging.ctrl.state;
 
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.state.visitor.DumpStateVisitor;
+import org.openkilda.messaging.model.DiscoveryLink;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.messaging.ctrl.AbstractDumpState;
-import org.openkilda.messaging.ctrl.state.visitor.DumpStateVisitor;
-import org.openkilda.messaging.model.DiscoveryLink;
 
-import java.util.List;
 import java.util.Set;
 
 @JsonSerialize
@@ -18,15 +18,15 @@ import java.util.Set;
 public class OFELinkBoltState extends AbstractDumpState {
 
     @JsonProperty("discovery")
-    private final List<DiscoveryLink> discovery;
+    private final Set<DiscoveryLink> discovery;
 
     @JsonProperty("filtered")
-    private final Set<?> filtered;
+    private final Set<DiscoveryLink> filtered;
 
     @JsonCreator
     public OFELinkBoltState(
-            @JsonProperty("state") List<DiscoveryLink> discovery,
-            @JsonProperty("filtered") Set<?> filtered) {
+            @JsonProperty("state") Set<DiscoveryLink> discovery,
+            @JsonProperty("filtered") Set<DiscoveryLink> filtered) {
         this.discovery = discovery;
         this.filtered = filtered;
     }
@@ -35,11 +35,11 @@ public class OFELinkBoltState extends AbstractDumpState {
         visitor.visit(this);
     }
 
-    public List<?> getDiscovery() {
+    public Set<DiscoveryLink> getDiscovery() {
         return discovery;
     }
 
-    public Set<?> getFiltered() {
+    public Set<DiscoveryLink> getFiltered() {
         return filtered;
     }
 }

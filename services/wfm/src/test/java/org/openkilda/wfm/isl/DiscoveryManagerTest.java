@@ -15,8 +15,12 @@
 
 package org.openkilda.wfm.isl;
 
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.model.DiscoveryLink;
@@ -29,6 +33,7 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 
 /**
@@ -337,20 +342,17 @@ public class DiscoveryManagerTest {
         dm.handleDiscovered(srcNode3.getDatapath(), srcNode3.getPortNumber(),
                 dstNode3.getDatapath(), dstNode3.getPortNumber());
 
-        List<DiscoveryLink> links;
-        links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertEquals(true, links.get(0).isActive());
-        assertEquals(true, links.get(1).isActive());
+        Set<DiscoveryLink> links = dm.findAllBySwitch(srcNode1.getDatapath());
+        assertThat(links, everyItem(hasProperty("active", is(true))));
         links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertEquals(true, links.get(0).isActive());
+        assertThat(links, everyItem(hasProperty("active", is(true))));
 
         // now send SwitchUp and confirm sw1 all go back to not found, sw2 unchanged
         dm.handleSwitchUp(srcNode1.getDatapath());
         links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertEquals(false, links.get(0).isActive());
-        assertEquals(false, links.get(1).isActive());
+        assertThat(links, everyItem(hasProperty("active", is(false))));
         links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertEquals(true, links.get(0).isActive());
+        assertThat(links, everyItem(hasProperty("active", is(true))));
 
         // now confirm they go back to found upon next Discovery.
         dm.handleDiscovered(srcNode1.getDatapath(), srcNode1.getPortNumber(),
@@ -358,10 +360,9 @@ public class DiscoveryManagerTest {
         dm.handleDiscovered(srcNode2.getDatapath(), srcNode2.getPortNumber(),
                 dstNode2.getDatapath(), dstNode2.getPortNumber());
         links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertEquals(true, links.get(0).isActive());
-        assertEquals(true, links.get(1).isActive());
+        assertThat(links, everyItem(hasProperty("active", is(true))));
         links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertEquals(true, links.get(0).isActive());
+        assertThat(links, everyItem(hasProperty("active", is(true))));
     }
 
     @Test
@@ -370,7 +371,7 @@ public class DiscoveryManagerTest {
 
         setupThreeLinks();
         // 3 nodes - 2 in sw1, one in sw2; verify dropping sw1 drops 2 nodes (1 remaining)
-        List<DiscoveryLink> links = dm.findAllBySwitch(srcNode1.getDatapath());
+        Set<DiscoveryLink> links = dm.findAllBySwitch(srcNode1.getDatapath());
         assertEquals(2, links.size());
         links = dm.findAllBySwitch(srcNode3.getDatapath());
         assertEquals(1, links.size());

@@ -25,13 +25,14 @@ import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -65,7 +66,7 @@ public class DiscoveryManager {
     private final int islConsecutiveFailureLimit;
     private final int maxAttempts;
 
-    private final Map<SwitchId, List<DiscoveryLink>> linksBySwitch;
+    private final Map<SwitchId, Set<DiscoveryLink>> linksBySwitch;
 
     /**
      * We need to have some kind of "history" of deactivated links in order to recognize if a link is moved
@@ -81,7 +82,7 @@ public class DiscoveryManager {
      * @param islConsecutiveFailureLimit - the threshold for sending ISL down, if it is an ISL
      * @param maxAttempts - the limit for stopping all checks.
      */
-    public DiscoveryManager(Map<SwitchId, List<DiscoveryLink>> linksBySwitch,
+    public DiscoveryManager(Map<SwitchId, Set<DiscoveryLink>> linksBySwitch,
                             int islHealthCheckInterval, int islConsecutiveFailureLimit,
                             int maxAttempts, Integer minutesKeepRemovedIsl) {
         this.islHealthCheckInterval = islHealthCheckInterval;
@@ -110,7 +111,7 @@ public class DiscoveryManager {
 
         List<DiscoveryLink> links = linksBySwitch.values()
                 .stream()
-                .flatMap(List::stream)
+                .flatMap(Set::stream)
                 .collect(Collectors.toList());
 
         for (DiscoveryLink link : links) {
@@ -269,10 +270,9 @@ public class DiscoveryManager {
          * If a switch comes up, clear any "isFoundIsl" flags, in case something has changed,
          * and/or if the TE has cleared it's state .. this will pass along the ISL.
          */
-        NetworkEndpoint node = new NetworkEndpoint(switchId, 0);
-        List<DiscoveryLink> subjectList = findAllBySwitch(switchId);
+        Set<DiscoveryLink> subjectList = findAllBySwitch(switchId);
 
-        if (subjectList.size() > 0) {
+        if (!subjectList.isEmpty()) {
             logger.info("Received SWITCH UP (id:{}) with EXISTING NODES.  Clearing isFoundISL flags", switchId);
             for (DiscoveryLink subject : subjectList) {
                 subject.deactivate();
@@ -318,14 +318,16 @@ public class DiscoveryManager {
     public DiscoveryLink registerPort(SwitchId switchId, int portId) {
         NetworkEndpoint node = new NetworkEndpoint(switchId, portId);
         return findBySourceEndpoint(node)
-                .orElse(registerDiscoveryLink(node));
+                .orElseGet(() -> registerDiscoveryLink(node));
     }
 
     private DiscoveryLink registerDiscoveryLink(NetworkEndpoint node) {
         DiscoveryLink link = new DiscoveryLink(node.getDatapath(), node.getPortNumber(),
                 this.islHealthCheckInterval, this.maxAttempts);
-        linksBySwitch.computeIfAbsent(node.getDatapath(), key -> new ArrayList<>())
+        linksBySwitch.computeIfAbsent(node.getDatapath(), key -> new HashSet<>())
                 .add(link);
+
+        logger.info("The link has been registered for discovery: {}", link);
 
         return link;
     }
@@ -352,8 +354,8 @@ public class DiscoveryManager {
      * @return list of {@link DiscoveryLink}.
      */
     @VisibleForTesting
-    List<DiscoveryLink> findAllBySwitch(SwitchId dpid) {
-        return linksBySwitch.getOrDefault(dpid, Collections.emptyList());
+    Set<DiscoveryLink> findAllBySwitch(SwitchId dpid) {
+        return linksBySwitch.getOrDefault(dpid, Collections.emptySet());
     }
 
     /**
@@ -364,7 +366,7 @@ public class DiscoveryManager {
      */
     @VisibleForTesting
     Optional<DiscoveryLink> findBySourceEndpoint(NetworkEndpoint endpoint) {
-        List<DiscoveryLink> links = linksBySwitch.getOrDefault(endpoint.getDatapath(), Collections.emptyList());
+        Set<DiscoveryLink> links = linksBySwitch.getOrDefault(endpoint.getDatapath(), Collections.emptySet());
 
         return links.stream()
                 .filter(link -> endpoint.equals(link.getSource()))
@@ -379,7 +381,7 @@ public class DiscoveryManager {
      */
     private void removeFromDiscovery(NetworkEndpoint endpoint) {
         if (endpoint.getPortNumber() == 0) {
-            List<DiscoveryLink> links = linksBySwitch.remove(endpoint.getDatapath());
+            Set<DiscoveryLink> links = linksBySwitch.remove(endpoint.getDatapath());
             if (!CollectionUtils.isEmpty(links)) {
                 Map<NetworkEndpoint, DiscoveryLink> removedLinks = links.stream()
                         .collect(Collectors.toMap(DiscoveryLink::getSource, Function.identity()));
@@ -388,7 +390,7 @@ public class DiscoveryManager {
                 logger.info("Removed switch {} from discovery", endpoint.getDatapath());
             }
         } else {
-            List<DiscoveryLink> links = linksBySwitch.get(endpoint.getDatapath());
+            Set<DiscoveryLink> links = linksBySwitch.get(endpoint.getDatapath());
 
             Optional<DiscoveryLink> matchedLink = links.stream()
                     .filter(discoveryLink -> endpoint.equals(discoveryLink.getSource()))
@@ -397,7 +399,8 @@ public class DiscoveryManager {
             matchedLink.ifPresent(link -> {
                 links.remove(link);
                 removedFromDiscovery.put(endpoint, link);
-                logger.info("Removed {} from discovery", endpoint);
+
+                logger.info("The link has been removed from discovery: {}", link);
             });
         }
     }
@@ -408,7 +411,7 @@ public class DiscoveryManager {
     public boolean isIslMoved(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort) {
         NetworkEndpoint endpoint = new NetworkEndpoint(srcSwitch, srcPort);
         DiscoveryLink link = findBySourceEndpoint(endpoint)
-                .orElse(removedFromDiscovery.get(endpoint));
+                .orElseGet(() -> removedFromDiscovery.get(endpoint));
 
         if (link != null && link.isDestinationChanged(dstSwitch, dstPort)) {
             logger.info("ISL Event: the link has been moved: {} to {}_{}", link, dstSwitch, dstPort);
@@ -424,7 +427,7 @@ public class DiscoveryManager {
     public NetworkEndpoint getLinkDestination(SwitchId srcSwitch, int srcPort) {
         NetworkEndpoint srcEndpoint = new NetworkEndpoint(srcSwitch, srcPort);
         DiscoveryLink link = findBySourceEndpoint(srcEndpoint)
-                .orElse(removedFromDiscovery.get(srcEndpoint));
+                .orElseGet(() -> removedFromDiscovery.get(srcEndpoint));
 
         if (link != null && link.getDestination() != null) {
             return link.getDestination();
@@ -439,9 +442,11 @@ public class DiscoveryManager {
      */
     public void deactivateLinkFromEndpoint(NetworkEndpoint endpoint) {
         DiscoveryLink link = findBySourceEndpoint(endpoint)
-                .orElse(removedFromDiscovery.remove(endpoint));
+                .orElseGet(() -> removedFromDiscovery.remove(endpoint));
         if (link != null) {
             link.deactivate();
+
+            logger.info("The link has been deactivated: {}", link);
         }
     }
 
