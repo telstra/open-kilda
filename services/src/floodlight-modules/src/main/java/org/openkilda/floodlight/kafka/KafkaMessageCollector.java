@@ -93,7 +93,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 consumer = new TestAwareConsumer(context,
                         consumerConfig, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
             }
-            Executors.newSingleThreadExecutor().execute(consumer);
+            Executors.newSingleThreadScheduledExecutor()
+                    .scheduleWithFixedDelay(consumer, 0, 1, TimeUnit.MILLISECONDS);
         } catch (Exception exception) {
             logger.error("error", exception);
         }
