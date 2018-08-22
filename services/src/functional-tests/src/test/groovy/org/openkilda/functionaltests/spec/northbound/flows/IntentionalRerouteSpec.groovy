@@ -33,7 +33,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
             allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 1
         }
@@ -77,7 +77,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
             allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 1
         }
