@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
@@ -36,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends NeoOperationsBolt {
@@ -87,9 +89,15 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
                 + "RETURN props";
 
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("src_switch", request.getSource().getDatapath());
+        String srcSwitch = Optional.ofNullable(request.getSource().getDatapath())
+                .map(SwitchId::toString)
+                .orElse(null);
+        parameters.put("src_switch", srcSwitch);
         parameters.put("src_port", request.getSource().getPortNumber());
-        parameters.put("dst_switch", request.getDestination().getDatapath());
+        String dstSwitch = Optional.ofNullable(request.getDestination().getDatapath())
+                .map(SwitchId::toString)
+                .orElse(null);
+        parameters.put("dst_switch", dstSwitch);
         parameters.put("dst_port", request.getDestination().getPortNumber());
 
         StatementResult queryResults = session.run(q, parameters);

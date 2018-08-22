@@ -30,7 +30,7 @@ public class NetworkEndpointMask extends AbstractNetworkEndpoint {
     public NetworkEndpointMask(
             @JsonProperty("switch-id") SwitchId datapath,
             @JsonProperty("port-id") Integer portNumber) {
-        super(datapath == null ? null : datapath, portNumber);
+        super(datapath, portNumber);
 
         if (datapath != null) {
             validateDatapath();
