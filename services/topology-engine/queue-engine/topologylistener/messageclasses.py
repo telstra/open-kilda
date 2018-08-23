@@ -239,7 +239,7 @@ class MessageItem(model.JsonSerializable):
             else:
                 raise exc.NotImplementedError(
                     'link props request {}'.format(self.get_message_type()))
-        except exc.Error as e:
+        except Exception as e:
             payload = message_utils.make_link_props_response(
                 self.payload, None, error=str(e))
             message_utils.send_link_props_response(
