@@ -80,6 +80,26 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
         return result.summary().counters().propertiesSet() > 0;
     }
 
+    @Override
+    public boolean removeInactiveIsls() {
+        String query = "MATCH ()-[i:isl]->() WHERE i.status<>'active' DELETE i";
+        StatementResult result;
+        try (Session session = neo.session()) {
+            result = session.run(query);
+        }
+        return result.summary().counters().relationshipsDeleted() > 0;
+    }
+
+    @Override
+    public boolean removeInactiveSwitches() {
+        String query = "MATCH (s:switch) WHERE s.state<>'active' DETACH DELETE s";
+        StatementResult result;
+        try (Session session = neo.session()) {
+            result = session.run(query);
+        }
+        return result.summary().counters().nodesDeleted() > 0;
+    }
+
     private Map<String, Object> getParams(Isl isl) {
         Map<String, Object> params = new HashMap<>(4);
         params.put("srcPort", isl.getSrcPort());

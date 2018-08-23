@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests
 
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import spock.lang.Specification
 

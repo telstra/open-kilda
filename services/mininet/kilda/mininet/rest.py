@@ -16,6 +16,8 @@
 
 from __future__ import absolute_import
 
+import os
+
 from bottle import get, post, request, run, Bottle, response, request, install
 from mininet.net import Mininet
 from mininet.node import RemoteController, OVSKernelSwitch, Host, OVSSwitch
@@ -795,18 +797,29 @@ def add_egress_flow(p):
 
 
 @get("/add_transit_flow")
-@required_parameters("switch","inport","vlan","outport","priority")
+@required_parameters("switch","inport","outport")
 def add_transit_flow(p):
     switch = p['switch']
     inport = p['inport']
-    vlan = p['vlan']
     outport = p['outport']
-    priority = p['priority']
 
-    cmd1 = "%s %s idle_timeout=0,priority=%s,in_port=%s,dl_vlan=%s,actions=output:%s" % \
-           (ofctl_start, switch,priority,inport,vlan,outport)
+    cmd1 = "%s %s in_port=%s,actions=output=%s" % \
+           (ofctl_start, switch,inport,outport)
     result1 = os.system(cmd1)
     return {'result1': result1}
+
+
+@get("/remove_transit_flow")
+@required_parameters("switch","inport")
+def add_transit_flow(p):
+    switch = p['switch']
+    inport = p['inport']
+
+    cmd1 = "ovs-ofctl -O OpenFlow13 del-flows %s in_port=%s" % \
+           (switch,inport)
+    result1 = os.system(cmd1)
+    return {'result1': result1}
+
 
 # Declare the variables before the init
 def init():

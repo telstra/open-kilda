@@ -23,7 +23,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
@@ -41,7 +40,6 @@ import java.io.IOException;
 import java.util.List;
 
 @Configuration
-@Profile("default")
 @PropertySource("file:${kilda.config.file:kilda.properties}")
 @ComponentScan(basePackages = {"org.openkilda.testing.service", "org.openkilda.testing.tools"})
 public class DefaultServiceConfig {
@@ -79,6 +77,16 @@ public class DefaultServiceConfig {
 
     @Bean(name = "aSwitchRestTemplate")
     public RestTemplate aswitchRestTemplate(@Value("${aswitch.endpoint}") String endpoint) {
+        return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean(name = "mininetRestTemplate")
+    public RestTemplate mininetRestTemplate(@Value("${mininet.endpoint}") String endpoint) {
+        return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean(name = "mininetFlowToolRestTemplate")
+    public RestTemplate mininetFlowToolRestTemplate(@Value("${mininet-flowtool.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 
