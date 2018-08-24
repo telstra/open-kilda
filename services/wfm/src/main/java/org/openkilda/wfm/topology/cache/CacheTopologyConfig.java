@@ -18,9 +18,16 @@ package org.openkilda.wfm.topology.cache;
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface CacheTopologyConfig extends AbstractTopologyConfig {
+
+    @Key("reroute.throttling.delay.min")
+    long getRerouteThrottlingMinDelay();
+
+    @Key("reroute.throttling.delay.max")
+    long getRerouteThrottlingMaxDelay();
 
     default String getKafkaFlowTopic() {
         return getKafkaTopics().getFlowTopic();

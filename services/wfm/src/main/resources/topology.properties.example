@@ -7,6 +7,9 @@ kafka.hosts = kafka.pendev:9092
 kafka.partitions.default = 1
 kafka.replication.default = 3
 
+reroute.throttling.delay.min = 10
+reroute.throttling.delay.max = 600
+
 opentsdb.hosts = http://opentsdb.pendev:4242
 opentsdb.timeout = 30
 opentsdb.num.spouts = 1
