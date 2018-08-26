@@ -1105,7 +1105,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         fmb.setPriority(priority);
 
         // TODO: this is required for ingress flow only. Consider moving it to installIngressFlow when refactor
-        fmb.setFlags(Collections.singleton(OFFlowModFlags.RESET_COUNTS))
+        fmb.setFlags(Collections.singleton(OFFlowModFlags.RESET_COUNTS));
 
         List<OFInstruction> instructions = new ArrayList<>(2);
 
