@@ -60,6 +60,7 @@ import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
@@ -1102,6 +1103,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         fmb.setBufferId(OFBufferId.NO_BUFFER);
         fmb.setCookie(U64.of(cookie));
         fmb.setPriority(priority);
+
+        // TODO: this is required for ingress flow only. Consider moving it to installIngressFlow when refactor
+        fmb.setFlags(Collections.singleton(OFFlowModFlags.RESET_COUNTS))
+
         List<OFInstruction> instructions = new ArrayList<>(2);
 
         // If no meter then no bandwidth limit
