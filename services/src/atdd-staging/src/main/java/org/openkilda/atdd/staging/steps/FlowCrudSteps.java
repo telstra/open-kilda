@@ -601,6 +601,6 @@ public class FlowCrudSteps implements En {
     }
 
     private String getTimestamp() {
-        return new SimpleDateFormat("ddMMMHHmm").format(new Date());
+        return new SimpleDateFormat("ddMMMHHmm", Locale.US).format(new Date());
     }
 }

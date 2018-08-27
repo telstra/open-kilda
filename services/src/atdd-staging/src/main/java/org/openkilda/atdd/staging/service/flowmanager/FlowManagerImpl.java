@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class FlowManagerImpl implements FlowManager {
-    private static final SimpleDateFormat sdf = new SimpleDateFormat("ddMMMHHmm");
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("ddMMMHHmm", Locale.US);
 
     @Autowired
     private NorthboundService northboundService;
