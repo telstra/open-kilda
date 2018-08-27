@@ -22,7 +22,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.NetworkTopologyConstants;
@@ -187,8 +187,8 @@ public class ResourceCacheTest {
 
     @Test
     public void allocateFlow() throws Exception {
-        resourceCache.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
-        resourceCache.allocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.allocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.allocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
 
         Set<Integer> allocatedCookies = resourceCache.getAllCookies();
         Set<Integer> allocatedMeterIds = new HashSet<>();
@@ -219,8 +219,8 @@ public class ResourceCacheTest {
     @Test
     public void deallocateFlow() throws Exception {
         allocateFlow();
-        resourceCache.deallocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
-        resourceCache.deallocateFlow(new ImmutablePair<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.deallocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.deallocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
 
         Set<Integer> allocatedCookies = resourceCache.getAllCookies();
         Set<Integer> allocatedVlanIds = resourceCache.getAllVlanIds();

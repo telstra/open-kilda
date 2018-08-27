@@ -46,7 +46,7 @@ import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -562,7 +562,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
                 new HashSet<>(Arrays.asList(sw1, sw2)),
                 new HashSet<>(),
                 Collections.singleton(isl),
-                Collections.singleton(new ImmutablePair<>(flowModel, flowModel)));
+                Collections.singleton(new FlowPair<>(flowModel, flowModel)));
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

@@ -36,7 +36,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.Cache;
@@ -229,7 +229,7 @@ public class CacheBolt
 
     private void handleSwitchEvent(SwitchInfoData sw, Tuple tuple, String correlationId) throws IOException {
         logger.debug("State update switch {} message {}", sw.getSwitchId(), sw.getState());
-        Set<ImmutablePair<Flow, Flow>> affectedFlows;
+        Set<FlowPair<Flow, Flow>> affectedFlows;
 
         switch (sw.getState()) {
 
@@ -269,7 +269,7 @@ public class CacheBolt
 
     private void handleIslEvent(IslInfoData isl, Tuple tuple, String correlationId) {
         logger.debug("State update isl {} message cached {}", isl.getId(), isl.getState());
-        Set<ImmutablePair<Flow, Flow>> affectedFlows;
+        Set<FlowPair<Flow, Flow>> affectedFlows;
 
         switch (isl.getState()) {
             case DISCOVERED:
@@ -316,7 +316,7 @@ public class CacheBolt
         switch (port.getState()) {
             case DOWN:
             case DELETE:
-                Set<ImmutablePair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
+                Set<FlowPair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
                 String reason = String.format("port %s_%s is %s",
                         port.getSwitchId(), port.getPortNo(), port.getState());
                 emitRerouteCommands(tuple, affectedFlows, correlationId, reason);
@@ -337,7 +337,7 @@ public class CacheBolt
     }
 
     private void handleNetworkTopologyChange(NetworkTopologyChange topologyChange, Tuple tuple, String correlationId) {
-        Set<ImmutablePair<Flow, Flow>> affectedFlows;
+        Set<FlowPair<Flow, Flow>> affectedFlows;
 
         switch (topologyChange.getType()) {
             case ENDPOINT_DROP:
@@ -365,9 +365,9 @@ public class CacheBolt
         logger.debug("Flow command message sent");
     }
 
-    private void emitRerouteCommands(Tuple input, Set<ImmutablePair<Flow, Flow>> flows,
+    private void emitRerouteCommands(Tuple input, Set<FlowPair<Flow, Flow>> flows,
                                      String initialCorrelationId, String reason) {
-        for (ImmutablePair<Flow, Flow> flow : flows) {
+        for (FlowPair<Flow, Flow> flow : flows) {
             final String flowId = flow.getLeft().getFlowId();
 
             String correlationId = format("%s-%s", initialCorrelationId, flowId);
@@ -458,8 +458,8 @@ public class CacheBolt
         }
     }
 
-    private Set<ImmutablePair<Flow, Flow>> getFlowsForRerouting() {
-        Set<ImmutablePair<Flow, Flow>> inactiveFlows = flowCache.dumpFlows().stream()
+    private Set<FlowPair<Flow, Flow>> getFlowsForRerouting() {
+        Set<FlowPair<Flow, Flow>> inactiveFlows = flowCache.dumpFlows().stream()
                 .filter(flow -> FlowState.DOWN.equals(flow.getLeft().getState()))
                 .collect(Collectors.toSet());
 
@@ -502,7 +502,7 @@ public class CacheBolt
         PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
-            ImmutablePair<Flow, Flow> flowPair = new ImmutablePair<>(
+            FlowPair<Flow, Flow> flowPair = new FlowPair<>(
                     bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
             flowCache.pushFlow(flowPair);
         }

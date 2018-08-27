@@ -18,7 +18,7 @@ package org.openkilda.pce.provider;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.algo.SimpleGetShortestPath;
@@ -262,7 +262,7 @@ public class PathComputerTest {
         f.setSourceSwitch(new SwitchId("00:01"));
         f.setDestinationSwitch(new SwitchId("00:04"));
         f.setBandwidth(100);
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         //System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -280,7 +280,7 @@ public class PathComputerTest {
         f.setSourceSwitch(new SwitchId("FF:01"));
         f.setDestinationSwitch(new SwitchId("FF:04"));
         f.setBandwidth(100);
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         //System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -299,7 +299,7 @@ public class PathComputerTest {
         f.setDestinationSwitch(new SwitchId("01:04"));
         f.setBandwidth(100);
 
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
 
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -319,7 +319,7 @@ public class PathComputerTest {
         f.setBandwidth(100);
 
         AvailableNetwork network = nd.getAvailableNetwork(false, 100);
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
+        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
         System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -339,7 +339,7 @@ public class PathComputerTest {
         f.setBandwidth(100);
 
         AvailableNetwork network = nd.getAvailableNetwork(false, 100);
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
+        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
         // System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -358,7 +358,7 @@ public class PathComputerTest {
         f.setSourceSwitch(new SwitchId("04:01"));
         f.setDestinationSwitch(new SwitchId("04:04"));
         f.setBandwidth(100);
-        ImmutablePair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
     }
 
 
@@ -505,7 +505,7 @@ public class PathComputerTest {
         flow.setDestinationSwitch(end);
         flow.setIgnoreBandwidth(false);
         flow.setBandwidth(10);
-        ImmutablePair<PathInfoData, PathInfoData> result = nd.getPath(flow, PathComputer.Strategy.COST);
+        FlowPair<PathInfoData, PathInfoData> result = nd.getPath(flow, PathComputer.Strategy.COST);
         // ensure start/end switches match
         List<PathNode> left = result.left.getPath();
         Assert.assertEquals(start, left.get(0).getSwitchId());
@@ -533,7 +533,7 @@ public class PathComputerTest {
         createLinearTopoWithFlowSegments(10, "A1:", 1, availableBandwidth, flow.getFlowId(), flow.getBandwidth());
         AvailableNetwork network = nd.getAvailableNetwork(flow.isIgnoreBandwidth(), flow.getBandwidth());
         network.addIslsOccupiedByFlow(flow.getFlowId(), flow.isIgnoreBandwidth(), flow.getBandwidth());
-        ImmutablePair<PathInfoData, PathInfoData> result = nd.getPath(flow, network, Strategy.COST);
+        FlowPair<PathInfoData, PathInfoData> result = nd.getPath(flow, network, Strategy.COST);
 
         Assert.assertEquals(4, result.getLeft().getPath().size());
         Assert.assertEquals(4, result.getRight().getPath().size());

@@ -22,7 +22,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.pce.model.AvailableNetwork;
 
 import com.google.common.graph.MutableNetwork;
@@ -52,8 +52,8 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork currentNetwork,
-                                                             Strategy strategy) {
+    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork currentNetwork,
+                                                        Strategy strategy) {
         /*
          * TODO: Implement other strategies? Default is HOPS ...
          * TODO: Is PathComputerMock necessary, since we can embed Neo4J?
@@ -72,13 +72,13 @@ public class PathComputerMock implements PathComputer {
                     String.format("Error: No node found destination=%s", flow.getDestinationSwitch()));
         }
 
-        return new ImmutablePair<>(
+        return new FlowPair<>(
                 path(source, destination, flow.getBandwidth()),
                 path(destination, source, flow.getBandwidth()));
     }
 
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
+    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
         return getPath(flow, null, strategy);
     }
 
@@ -104,7 +104,7 @@ public class PathComputerMock implements PathComputer {
 
         Set<SwitchInfoData> nodesToProcess = new HashSet<>(network.nodes());
         Set<SwitchInfoData> nodesWereProcess = new HashSet<>();
-        Map<SwitchInfoData, ImmutablePair<SwitchInfoData, IslInfoData>> predecessors = new HashMap<>();
+        Map<SwitchInfoData, FlowPair<SwitchInfoData, IslInfoData>> predecessors = new HashMap<>();
 
         Map<SwitchInfoData, Long> distances = network.nodes().stream()
                 .collect(Collectors.toMap(k -> k, v -> Long.MAX_VALUE));
@@ -131,13 +131,13 @@ public class PathComputerMock implements PathComputer {
                     if (distances.get(target) >= distance) {
                         distances.put(target, distance);
                         nodesToProcess.add(target);
-                        predecessors.put(target, new ImmutablePair<>(source, edge));
+                        predecessors.put(target, new FlowPair<>(source, edge));
                     }
                 }
             }
         }
 
-        ImmutablePair<SwitchInfoData, IslInfoData> nextHop = predecessors.get(dstSwitch);
+        FlowPair<SwitchInfoData, IslInfoData> nextHop = predecessors.get(dstSwitch);
         if (nextHop == null) {
             return null;
         }

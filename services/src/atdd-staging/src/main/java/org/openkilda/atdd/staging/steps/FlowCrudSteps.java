@@ -43,7 +43,7 @@ import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -217,7 +217,7 @@ public class FlowCrudSteps implements En {
                 .collect(toList());
 
         for (Flow expectedFlow : expextedFlows) {
-            ImmutablePair<Flow, Flow> flowPair = Failsafe.with(retryPolicy()
+            FlowPair<Flow, Flow> flowPair = Failsafe.with(retryPolicy()
                     .retryWhen(null))
                     .get(() -> topologyEngineService.getFlow(expectedFlow.getFlowId()));
 
@@ -370,7 +370,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow has meters installed with (\\d+) max bandwidth$")
     public void eachFlowHasMetersInstalledWithBandwidth(long bandwidth) {
         for (FlowPayload flow : flows) {
-            ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+            FlowPair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
 
             try {
                 MetersEntriesMap forwardSwitchMeters = floodlightService
@@ -397,7 +397,7 @@ public class FlowCrudSteps implements En {
     public void noExcessiveMetersInstalledOnActiveSwitches() {
         ListValuedMap<SwitchId, Integer> switchMeters = new ArrayListValuedHashMap<>();
         for (FlowPayload flow : flows) {
-            ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+            FlowPair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
             if (flowPair != null) {
                 switchMeters.put(flowPair.getLeft().getSourceSwitch(), flowPair.getLeft().getMeterId());
                 switchMeters.put(flowPair.getRight().getSourceSwitch(), flowPair.getRight().getMeterId());
@@ -454,7 +454,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow can not be read from TopologyEngine$")
     public void eachFlowCanNotBeReadFromTopologyEngine() {
         for (FlowPayload flow : flows) {
-            ImmutablePair<Flow, Flow> result = Failsafe.with(retryPolicy()
+            FlowPair<Flow, Flow> result = Failsafe.with(retryPolicy()
                     .abortWhen(null)
                     .retryIf(Objects::nonNull))
                     .get(() -> topologyEngineService.getFlow(flow.getId()));
