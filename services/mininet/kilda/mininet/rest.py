@@ -811,7 +811,7 @@ def add_transit_flow(p):
 
 @get("/remove_transit_flow")
 @required_parameters("switch","inport")
-def add_transit_flow(p):
+def remove_transit_flow(p):
     switch = p['switch']
     inport = p['inport']
 

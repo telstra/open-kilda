@@ -13,23 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.mininet;
+package org.openkilda.testing;
 
-import java.util.Map;
+public final class Constants {
+    public static final String ASWITCH_NAME = "aswitch";
 
-public interface Mininet {
-
-    Map createTopology(Object topology);
-
-    void deleteTopology();
-
-    void knockoutSwitch(String switchName);
-
-    void addFlow(String switchName, Integer inPort, Integer outPort);
-
-    void removeFlow(String switchName, Integer inPort);
-
-    void portUp(String switchName, Integer port);
-
-    void portDown(String switchName, Integer port);
+    private Constants() {
+        throw new UnsupportedOperationException();
+    }
 }

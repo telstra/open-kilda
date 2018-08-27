@@ -15,7 +15,7 @@
 
 package org.openkilda.testing.service.aswitch;
 
-import static org.openkilda.testing.service.mininet.Mininet.ASWITCH_NAME;
+import static org.openkilda.testing.Constants.ASWITCH_NAME;
 
 import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
 import org.openkilda.testing.service.mininet.Mininet;
@@ -53,7 +53,7 @@ public class ASwitchVirtualImpl implements ASwitchService {
 
     @Override
     public List<ASwitchFlow> getAllFlows() {
-        throw new RuntimeException("getAllFlows operation for a-switch is not available on virtual env");
+        throw new UnsupportedOperationException("getAllFlows operation for a-switch is not available on virtual env");
     }
 
     @Override

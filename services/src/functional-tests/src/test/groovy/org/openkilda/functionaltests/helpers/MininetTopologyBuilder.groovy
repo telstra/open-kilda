@@ -10,6 +10,8 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
+import static org.openkilda.testing.Constants.ASWITCH_NAME
+
 @Component
 class MininetTopologyBuilder {
     @Autowired
@@ -29,7 +31,7 @@ class MininetTopologyBuilder {
         mininet.createTopology(mininetTopology)
 
         //make correct a-switch
-        mininet.knockoutSwitch(Mininet.ASWITCH_NAME)
+        mininet.knockoutSwitch(ASWITCH_NAME)
         topologyDefinition.islsForActiveSwitches.each { isl ->
             if (isl.aswitch) {
                 aswitch.addFlows([new ASwitchFlow(isl.aswitch.inPort, isl.aswitch.outPort),
@@ -54,15 +56,15 @@ class MininetTopologyBuilder {
      */
     def buildTopology() {
         def topology = new ObjectMapper().readValue(getClass().getResource('/mininet_topology_template.json'), Map)
-        topology.switches << [dpid: "0000000000000000", name: Mininet.ASWITCH_NAME]
+        topology.switches << [dpid: "0000000000000000", name: ASWITCH_NAME]
         topologyDefinition.activeSwitches.each {
             topology.switches << [dpid: it.dpId.toString().replaceAll(":", ""), name: it.name]
         }
         topologyDefinition.islsForActiveSwitches.each { isl ->
             if (isl.aswitch) {
                 topology.links << [node1: isl.srcSwitch.name, node1_port: isl.srcPort,
-                                   node2: Mininet.ASWITCH_NAME, node2_port: isl.aswitch.inPort]
-                topology.links << [node1: Mininet.ASWITCH_NAME, node1_port: isl.aswitch.outPort,
+                                   node2: ASWITCH_NAME, node2_port: isl.aswitch.inPort]
+                topology.links << [node1: ASWITCH_NAME, node1_port: isl.aswitch.outPort,
                                    node2: isl.dstSwitch.name, node2_port: isl.dstPort]
             } else {
                 topology.links << [node1: isl.srcSwitch.name, node1_port: isl.srcPort,
@@ -71,7 +73,7 @@ class MininetTopologyBuilder {
         }
         topologyDefinition.notConnectedIsls.each { isl ->
             topology.links << [node1: isl.srcSwitch.name, node1_port: isl.srcPort,
-                               node2: Mininet.ASWITCH_NAME, node2_port: isl.aswitch.inPort]
+                               node2: ASWITCH_NAME, node2_port: isl.aswitch.inPort]
         }
         return topology
     }
