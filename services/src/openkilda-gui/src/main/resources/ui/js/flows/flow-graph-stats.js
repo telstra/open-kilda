@@ -166,9 +166,13 @@ function loadForwardGraph(fromDate, toDate){
 			if(timezone == 'UTC'){
 				var startDate = moment(fromDate).utc().format("YYYY-MM-DD-HH:mm:ss"); 
 				var endDate = moment(toDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).utc().format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).utc().format("YYYY/MM/DD HH:mm:ss"); 
 			}else{
 				var startDate = moment(fromDate).format("YYYY-MM-DD-HH:mm:ss"); 
 				var endDate = moment(toDate).format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).format("YYYY/MM/DD HH:mm:ss"); 
 			}
 		}else{
 			if(timezone == 'UTC'){
@@ -214,7 +218,7 @@ function loadForwardGraph(fromDate, toDate){
 						type : "POST",
 						data:JSON.stringify(postData)
 					}).then(function(response){
-					loadPathGraph(response,startDate,endDate,'forward',timezone);
+					loadPathGraph(response,fromStartDate,toEndDate,'forward',timezone);
 				},function(error){
 					$('#waitforward').hide();
 				})
@@ -241,15 +245,28 @@ function getColorCode(j,arr){
 		return getColorCode(j,arr);
 	}
 }
-function computeGraphData(data){
+function computeGraphData(data,startDate,endDate,type,timezone){
 	var graphData = [];
 	var labels =["Date"];
 	var color = [];
+	if(typeof(startDate)!=='undefined' && startDate!=null){
+		var dat = new Date(startDate);
+		var startTime = dat.getTime();
+		var usedDate = new Date();
+		if(typeof(timezone) !== 'undefined' && timezone=='UTC'){
+			startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+		}
+		var arr = [new Date(startTime)];
+		for(var j = 0; j < data.length; j++){
+			arr.push(null);
+		}
+		graphData.push(arr);
+	}
 	  if(data){
 		  if(data.length == 0){
 			  graphData = []; 
 		  }else{ 
-			   for(var j = 0; j < data.length; j++){
+			   for(var j = 0; j < data.length; j++){ 
 				   var dataValues = (typeof(data[j]) !=='undefined') ? data[j].dps : 0;
 				   var metric = (typeof(data[j]) !=='undefined') ? data[j].metric : '';
 				   if(metric !== 'pen.flow.packets'){
@@ -309,15 +326,27 @@ function computeGraphData(data){
 			   }
 			}
 	  } 
+	  if(typeof(endDate)!=='undefined' && endDate!=null){ 
+			var dat = new Date(endDate);
+			var lastTime = dat.getTime();
+			var usedDate = (graphData && graphData.length) ? new Date(graphData[graphData.length-1][0]): new Date();
+			if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+				lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+			}
+			var arr = [new Date(lastTime)];
+			for(var j = 0; j < data.length; j++){
+				arr.push(null);
+			}
+			graphData.push(arr);
+		}
 	  return {labels:labels,data:graphData,color:color};
 }
 function loadPathGraph(data,startDate,endDate,type,timezone){
-   var graph_data = computeGraphData(data);
+   var graph_data = computeGraphData(data,startDate,endDate,type,timezone);
   var graphData = graph_data['data'];
   var labels = graph_data['labels'];
   var series = {};
   var colors = graph_data['color'];
-  console.log('colors',colors);
   if(labels && labels.length){
 	  for(var k = 0; k < labels.length; k++){
 		  if(k!=0){
@@ -395,9 +424,13 @@ function loadReverseGraph(fromDate,toDate){
 			if(timezone == 'UTC'){
 				var startDate = moment(fromDate).utc().format("YYYY-MM-DD-HH:mm:ss"); 
 				var endDate = moment(toDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).utc().format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).utc().format("YYYY/MM/DD HH:mm:ss"); 
 			}else{
 				var startDate = moment(fromDate).format("YYYY-MM-DD-HH:mm:ss");
 				var endDate = moment(toDate).format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).format("YYYY/MM/DD HH:mm:ss");
 			}
 			
 			
@@ -433,10 +466,10 @@ function loadReverseGraph(fromDate,toDate){
 			var postData ={
 							"flowid":flowid,
 							"switches":switches,
-						"startdate":startDate,
+							"startdate":startDate,
 							"enddate":endDate,
-						"downsample":downsampling,
-						"direction":'reverse',
+							"downsample":downsampling,
+							"direction":'reverse',
 						  }
 			$('#waitreverse').show();
 			setTimeout(function(){
@@ -447,7 +480,7 @@ function loadReverseGraph(fromDate,toDate){
 						type : "POST",
 						data:JSON.stringify(postData)
 					}).then(function(response){
-					loadPathGraph(response,startDate,endDate,'reverse',timezone);
+					loadPathGraph(response,fromStartDate,toEndDate,'reverse',timezone);
 				},function(error){
 					$('#waitreverse').hide();
 				})
