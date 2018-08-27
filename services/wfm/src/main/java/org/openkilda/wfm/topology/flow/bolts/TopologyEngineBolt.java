@@ -26,17 +26,18 @@ import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
@@ -78,7 +79,7 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     BaseInstallFlow installData = (BaseInstallFlow) data;
                     Long transactionId = UUID.randomUUID().getLeastSignificantBits();
                     installData.setTransactionId(transactionId);
-                    String switchId = installData.getSwitchId();
+                    SwitchId switchId = installData.getSwitchId();
                     String flowId = installData.getId();
 
                     logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
@@ -94,7 +95,7 @@ public class TopologyEngineBolt extends BaseRichBolt {
                     RemoveFlow removeData = (RemoveFlow) data;
                     Long transactionId = UUID.randomUUID().getLeastSignificantBits();
                     removeData.setTransactionId(transactionId);
-                    String switchId = removeData.getSwitchId();
+                    SwitchId switchId = removeData.getSwitchId();
                     String flowId = removeData.getId();
 
                     logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",
@@ -147,10 +148,22 @@ public class TopologyEngineBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), FlowTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(
+                StreamType.CREATE.toString(),
+                FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId
+        );
+        outputFieldsDeclarer.declareStream(
+                StreamType.DELETE.toString(),
+                FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId
+        );
+        outputFieldsDeclarer.declareStream(
+                StreamType.RESPONSE.toString(),
+                FlowTopology.fieldMessage
+        );
+        outputFieldsDeclarer.declareStream(
+                StreamType.STATUS.toString(),
+                FlowTopology.fieldsMessageFlowId
+        );
     }
 
     /**

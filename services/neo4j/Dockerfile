@@ -15,30 +15,27 @@
 
 FROM kilda/base-ubuntu
 
-ADD ansible /ansible
-RUN ansible-playbook -s /ansible/deploy.yml
+RUN    wget -O - https://debian.neo4j.org/neotechnology.gpg.key | apt-key add - \
+    && echo 'deb https://debian.neo4j.org/repo stable/' | tee /etc/apt/sources.list.d/neo4j.list \
+    && apt-get update \
+    && apt install -y --no-install-recommends \
+        neo4j=1:3.3.3 \
+    && apt autoremove -y \
+    && pip install \
+        cycli \
+    && wget \
+        https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/3.3.0.1/apoc-3.3.0.1-all.jar \
+        -O /var/lib/neo4j/plugins/apoc-3.3.0.1-all.jar \
+    && wget \
+        https://github.com/neo4j-contrib/neo4j-graph-algorithms/releases/download/3.3.2.0/graph-algorithms-algo-3.3.2.0.jar \
+        -O /var/lib/neo4j/plugins/graph-algorithms-algo-3.3.2.0.jar \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-#
-# https://github.com/neo4j-contrib/neo4j-apoc-procedures#version-compatibility-matrix
-#
-# This means that care must be taken to match the version of apoc with the version of neo4j.
-#
-# Regarding use:
-#   - Do this in neo4j browser page: CALL apoc.help("dijkstra")
-#   - Reference: https://neo4j-contrib.github.io/neo4j-apoc-procedures/
-#
-RUN wget \
-  https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/3.3.0.1/apoc-3.3.0.1-all.jar \
-   -O /var/lib/neo4j/plugins/apoc-3.3.0.1-all.jar
+WORKDIR /var/lib/neo4j
 
-RUN wget \
-  https://github.com/neo4j-contrib/neo4j-graph-algorithms/releases/download/3.3.2.0/graph-algorithms-algo-3.3.2.0.jar \
-   -O /var/lib/neo4j/plugins/graph-algorithms-algo-3.3.2.0.jar
-
-ADD neo4j-config/neo4j.conf /etc/neo4j/neo4j.conf
-ADD neo4j-config/auth /var/lib/neo4j/data/dbms/auth
-ADD init/neo4j-queries.cql /app/neo4j-queries.cql
-ADD init/init.sh /app/init.sh
-RUN pip install cycli
+COPY neo4j-config/neo4j.conf /etc/neo4j/neo4j.conf
+COPY neo4j-config/auth /var/lib/neo4j/data/dbms/auth
+COPY init/neo4j-queries.cql /app/neo4j-queries.cql
+COPY init/init.sh /app/init.sh
 
 CMD /app/init.sh

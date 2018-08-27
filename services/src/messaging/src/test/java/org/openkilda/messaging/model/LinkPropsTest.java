@@ -38,8 +38,8 @@ public class LinkPropsTest implements StringSerializer {
      * Produce {@link LinkProps} object with predefined data.
      */
     public static LinkProps makeSubject() {
-        NetworkEndpoint source = new NetworkEndpoint("ff:fe:00:00:00:00:00:01", 8);
-        NetworkEndpoint dest = new NetworkEndpoint("ff:fe:00:00:00:00:00:02", 9);
+        NetworkEndpoint source = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
+        NetworkEndpoint dest = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 9);
 
         HashMap<String, String> props = new HashMap<>();
         props.put("cost", "10");

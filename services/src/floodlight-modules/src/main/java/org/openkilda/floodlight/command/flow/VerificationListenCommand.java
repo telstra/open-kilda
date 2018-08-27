@@ -92,7 +92,7 @@ public class VerificationListenCommand extends AbstractVerificationCommand {
     }
 
     private void checkCapabilities(SwitchUtils switchUtils) throws InsufficientCapabilitiesException {
-        DatapathId switchId = DatapathId.of(getVerificationRequest().getDestSwitchId());
+        DatapathId switchId = DatapathId.of(getVerificationRequest().getDestSwitchId().toLong());
         IOFSwitch sw = switchUtils.lookupSwitch(switchId);
 
         if (0 < OFVersion.OF_13.compareTo(sw.getOFFactory().getVersion())) {

@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.atdd.staging.helpers.DefaultFlowsChecker;
 import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchEntryMatcher;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
@@ -75,7 +76,7 @@ public class DiscoveryMechanismSteps implements En {
     }
 
     private List<SwitchEntry> fetchFloodlightSwitches() {
-        Set<String> skippedSwitches = topologyDefinition.getSkippedSwitchIds();
+        Set<SwitchId> skippedSwitches = topologyDefinition.getSkippedSwitchIds();
 
         return floodlightService.getSwitches().stream()
                 .filter(sw -> !skippedSwitches.contains(sw.getSwitchId()))

@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.UnroutablePathException;
@@ -61,42 +62,42 @@ public class FlowPathTest {
             new ImmutablePair<>("00:00:00:00:00:00:00:06", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:07", "3"));
     static final ImmutablePair<PathInfoData, PathInfoData> expectedShortestPath = new ImmutablePair<>(
             new PathInfoData(0L, Arrays.asList(
-                    new PathNode("00:00:00:00:00:00:00:02", 2, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:03", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:03", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:07", 1, 3, 0L))),
+                    new PathNode(new SwitchId(2L), 2, 0, 0L),
+                    new PathNode(new SwitchId(3L), 1, 1, 0L),
+                    new PathNode(new SwitchId(3L), 2, 2, 0L),
+                    new PathNode(new SwitchId(7L), 1, 3, 0L))),
             new PathInfoData(0L, Arrays.asList(
-                    new PathNode("00:00:00:00:00:00:00:07", 1, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:03", 2, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:03", 1, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:02", 2, 3, 0L))));
+                    new PathNode(new SwitchId(7L), 1, 0, 0L),
+                    new PathNode(new SwitchId(3L), 2, 1, 0L),
+                    new PathNode(new SwitchId(3L), 1, 2, 0L),
+                    new PathNode(new SwitchId(2L), 2, 3, 0L))));
     static final ImmutablePair<PathInfoData, PathInfoData> expectedAlternatePath = new ImmutablePair<>(
             new PathInfoData(0L, Arrays.asList(
-                    new PathNode("00:00:00:00:00:00:00:02", 3, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:04", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:04", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:05", 1, 3, 0L),
-                    new PathNode("00:00:00:00:00:00:00:05", 2, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:06", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:06", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:07", 3, 3, 0L))),
+                    new PathNode(new SwitchId(2L), 3, 0, 0L),
+                    new PathNode(new SwitchId(4L), 1, 1, 0L),
+                    new PathNode(new SwitchId(4L), 2, 2, 0L),
+                    new PathNode(new SwitchId(5L), 1, 3, 0L),
+                    new PathNode(new SwitchId(5L), 2, 0, 0L),
+                    new PathNode(new SwitchId(6L), 1, 1, 0L),
+                    new PathNode(new SwitchId(6L), 2, 2, 0L),
+                    new PathNode(new SwitchId(7L), 3, 3, 0L))),
             new PathInfoData(0L, Arrays.asList(
-                    new PathNode("00:00:00:00:00:00:00:07", 3, 3, 0L),
-                    new PathNode("00:00:00:00:00:00:00:06", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:06", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:05", 2, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:05", 1, 3, 0L),
-                    new PathNode("00:00:00:00:00:00:00:04", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:04", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:02", 3, 0, 0L))));
+                    new PathNode(new SwitchId(7L), 3, 3, 0L),
+                    new PathNode(new SwitchId(6L), 2, 2, 0L),
+                    new PathNode(new SwitchId(6L), 1, 1, 0L),
+                    new PathNode(new SwitchId(5L), 2, 0, 0L),
+                    new PathNode(new SwitchId(5L), 1, 3, 0L),
+                    new PathNode(new SwitchId(4L), 2, 2, 0L),
+                    new PathNode(new SwitchId(4L), 1, 1, 0L),
+                    new PathNode(new SwitchId(2L), 3, 0, 0L))));
 
     private String previousLastUpdated;
     private String actualFlowName;
-    private long pre_start;
+    private long preStart;
     private long start;
 
     @Given("^a multi-path topology$")
-    public void a_multi_path_topology()  {
+    public void multiPathTopology() {
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(classLoader.getResource(fileName).getFile());
         String json;
@@ -107,7 +108,7 @@ public class FlowPathTest {
             throw new TopologyProcessingException(format("Unable to read the topology file '%s'.", fileName), ex);
         }
 
-        pre_start = System.currentTimeMillis();
+        preStart = System.currentTimeMillis();
         assertTrue(TopologyHelp.CreateMininetTopology(json));
         start = System.currentTimeMillis();
     }
@@ -117,7 +118,7 @@ public class FlowPathTest {
         List<LinkDto> links = LinksUtils.dumpLinks();
         for (LinkDto link : links) {
             long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
-                    link.getPath().get(0).getSwitchId(),
+                    new SwitchId(link.getPath().get(0).getSwitchId()),
                     String.valueOf(link.getPath().get(0).getPortNo()));
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
@@ -128,7 +129,7 @@ public class FlowPathTest {
             throws InterruptedException {
         for (ImmutablePair<String, String> expectedLink : shortestPathLinks) {
             long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
-                    expectedLink.getLeft(), expectedLink.getRight());
+                    new SwitchId(expectedLink.getLeft()), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
     }
@@ -138,27 +139,29 @@ public class FlowPathTest {
             throws InterruptedException {
         for (ImmutablePair<String, String> expectedLink : alternativePathLinks) {
             long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
-                    expectedLink.getLeft(), expectedLink.getRight());
+                    new SwitchId(expectedLink.getLeft()), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
     }
 
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) path correct$")
     public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
-            String destinationSwitch, int destinationPort, int destinationVlan, long bandwidth)
+                                String destinationSwitch, int destinationPort, int destinationVlan, long bandwidth)
             throws UnroutablePathException, InterruptedException, RecoverableException {
-        Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId, sourceSwitch,
-                sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
+        Flow flow =
+                new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId,
+                        new SwitchId(sourceSwitch), sourcePort, sourceVlan, new SwitchId(destinationSwitch),
+                        destinationPort, destinationVlan);
         ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
         System.out.println(path);
         assertEquals(expectedShortestPath, path);
     }
 
-    private long getBandwidth(long expectedBandwidth, String src_switch, String src_port) throws InterruptedException {
-        long actualBandwidth = getLinkBandwidth(src_switch, src_port);
+    private long getBandwidth(long expectedBandwidth, SwitchId srcSwitch, String srcPort) throws InterruptedException {
+        long actualBandwidth = getLinkBandwidth(srcSwitch, srcPort);
         if (actualBandwidth != expectedBandwidth) {
             TimeUnit.SECONDS.sleep(2);
-            actualBandwidth = getLinkBandwidth(src_switch, src_port);
+            actualBandwidth = getLinkBandwidth(srcSwitch, srcPort);
         }
         return actualBandwidth;
     }

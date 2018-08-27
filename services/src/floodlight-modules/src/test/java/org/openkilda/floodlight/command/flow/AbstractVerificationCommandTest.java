@@ -26,6 +26,7 @@ import org.openkilda.messaging.command.flow.FlowDirection;
 import org.openkilda.messaging.command.flow.FlowVerificationRequest;
 import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -81,8 +82,8 @@ public abstract class AbstractVerificationCommandTest {
         String flowId = "junit-flow";
         Flow flow = new Flow(
                 flowId, 1000, false, "unit test flow",
-                sourceSwitchId.toString(), sourcePort, 0x100,
-                destSwitchId.toString(), destPort, 0x101);
+                new SwitchId(sourceSwitchId.toString()), sourcePort, 0x100,
+                new SwitchId(destSwitchId.toString()), destPort, 0x101);
         FlowVerificationRequest request = new FlowVerificationRequest(flowId, 1000);
         return new UniFlowVerificationRequest(request, flow, FlowDirection.FORWARD);
     }

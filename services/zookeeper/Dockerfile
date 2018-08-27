@@ -14,14 +14,18 @@
 #
 
 FROM kilda/base-ubuntu
-ADD ansible /ansible
-# tar should be pre-populated with the tarball; see the top level Makefile (build-base:)
-ADD tar/ /src
-RUN ansible-playbook -s /ansible/deploy.yml
-ADD zookeeper-conf/zoo.cfg /opt/zookeeper/conf/zoo.cfg
-ADD zookeeper-conf/log4j.properties /opt/zookeeper/conf/log4j.properties
 
-EXPOSE 2181 2888 3888
+ENV PACKAGE zookeeper-3.4.9
 
-WORKDIR /opt/zookeeper
+WORKDIR /tmp/
 
+RUN    wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz \
+    && wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz.md5 \
+    && md5sum -c $PACKAGE.tar.gz.md5 \
+    && tar -xzf $PACKAGE.tar.gz --directory /opt/ \
+    && ln -s /opt/$PACKAGE /opt/zookeeper \
+    && rm -rfv /tmp/*
+
+WORKDIR /opt/zookeeper/
+
+COPY zookeeper-conf/zoo.cfg zookeeper-conf/log4j.properties /opt/zookeeper/conf/

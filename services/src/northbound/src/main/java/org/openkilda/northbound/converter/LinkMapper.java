@@ -16,6 +16,7 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkDto;
 
 import org.mapstruct.Mapper;
@@ -24,4 +25,9 @@ import org.mapstruct.Mapper;
 public interface LinkMapper {
 
     LinkDto toLinkDto(IslInfoData data);
+
+
+    default String toSwithId(SwitchId switchId) {
+        return switchId.toString();
+    }
 }

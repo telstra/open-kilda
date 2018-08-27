@@ -1,11 +1,28 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.simulator.classes;
 
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.simulator.interfaces.IPort;
 import org.openkilda.simulator.messages.simulator.command.PortModMessage;
+
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.io.IOException;
@@ -50,11 +67,16 @@ public class IPortImpl implements IPort {
         number = portNumber;
     }
 
+    /**
+     * Return.
+     * @return info message
+     * @throws IOException ex
+     */
     public InfoMessage makePorChangetMessage() throws IOException {
         PortChangeType type = isActive ? PortChangeType.UP : PortChangeType.DOWN;
 
         PortInfoData data = new PortInfoData(
-                sw.getDpid().toString(),
+                new SwitchId(sw.getDpid().toString()),
                 number,
                 type
         );

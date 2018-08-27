@@ -12,7 +12,7 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.utils.StatsUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,9 +93,9 @@ public class ParsePortInfoBolt extends BaseRichBolt {
         Map<String, String> tag = tagsTable.get(data.getSwitchId(), data.getPortNo());
         if (tag == null) {
             tag = new HashMap<>();
-            tag.put("switchid", StatsUtil.formatSwitchId(data.getSwitchId()));
+            tag.put("switchid", data.getSwitchId().toOtsdFormat());
             tag.put("port", String.valueOf(data.getPortNo()));
-            tagsTable.put(data.getSwitchId(), data.getPortNo(), tag);
+            tagsTable.put(data.getSwitchId().toString(), data.getPortNo(), tag);
         }
         return tag;
     }

@@ -18,17 +18,18 @@ package org.openkilda.wfm.topology.stats.metrics;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
-import com.google.common.collect.ImmutableMap;
-import org.apache.storm.tuple.Tuple;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
-import org.openkilda.wfm.topology.utils.StatsUtil;
+
+import com.google.common.collect.ImmutableMap;
+import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +39,7 @@ import java.util.Map;
 public class PortMetricGenBolt extends MetricGenBolt {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortMetricGenBolt.class);
 
-    private Map<String, String> switchNameCache = new HashMap<>();
+    private Map<SwitchId, SwitchId> switchNameCache = new HashMap<>();
 
     @Override
     public void execute(Tuple input) {
@@ -56,9 +57,9 @@ public class PortMetricGenBolt extends MetricGenBolt {
         long timestamp = message.getTimestamp();
 
         try {
-            String switchId = switchNameCache.get(data.getSwitchId());
+            SwitchId switchId = switchNameCache.get(data.getSwitchId());
             if (switchId == null) {
-                switchId = StatsUtil.formatSwitchId(data.getSwitchId());
+                switchId = data.getSwitchId();
                 switchNameCache.put(data.getSwitchId(), switchId);
             }
 
@@ -72,19 +73,19 @@ public class PortMetricGenBolt extends MetricGenBolt {
         }
     }
 
-    private void emit(PortStatsEntry entry, long timestamp, String switchId) {
+    private void emit(PortStatsEntry entry, long timestamp, SwitchId switchId) {
         try {
             Map<String, String> tags = ImmutableMap.of(
-                    "switchid", switchId,
+                    "switchid", switchId.toOtsdFormat(),
                     "port", String.valueOf(entry.getPortNo())
             );
 
             collector.emit(tuple("pen.switch.rx-packets", timestamp, entry.getRxPackets(), tags));
             collector.emit(tuple("pen.switch.tx-packets", timestamp, entry.getTxPackets(), tags));
             collector.emit(tuple("pen.switch.rx-bytes", timestamp, entry.getRxBytes(), tags));
-            collector.emit(tuple("pen.switch.rx-bits", timestamp, entry.getRxBytes()*8, tags));
+            collector.emit(tuple("pen.switch.rx-bits", timestamp, entry.getRxBytes() * 8, tags));
             collector.emit(tuple("pen.switch.tx-bytes", timestamp, entry.getTxBytes(), tags));
-            collector.emit(tuple("pen.switch.tx-bits", timestamp, entry.getTxBytes()*8, tags));
+            collector.emit(tuple("pen.switch.tx-bits", timestamp, entry.getTxBytes() * 8, tags));
             collector.emit(tuple("pen.switch.rx-dropped", timestamp, entry.getRxDropped(), tags));
             collector.emit(tuple("pen.switch.tx-dropped", timestamp, entry.getTxDropped(), tags));
             collector.emit(tuple("pen.switch.rx-errors", timestamp, entry.getRxErrors(), tags));

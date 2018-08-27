@@ -15,12 +15,13 @@
 
 package org.openkilda.messaging.command.flow;
 
-
+import static org.junit.Assert.assertEquals;
 import static org.openkilda.messaging.command.Constants.flowName;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.outputPort;
 import static org.openkilda.messaging.command.Constants.switchId;
-import static org.junit.Assert.assertEquals;
+
+import org.openkilda.messaging.model.SwitchId;
 
 import org.junit.Test;
 
@@ -83,7 +84,7 @@ public class BaseInstallFlowTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void setIncorrectSwitchId() throws Exception {
-        flow.setSwitchId("");
+        flow.setSwitchId(new SwitchId(""));
     }
 
     @Test(expected = IllegalArgumentException.class)

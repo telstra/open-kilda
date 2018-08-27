@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.bolts;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.TransactionBoltState;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
@@ -26,8 +27,6 @@ import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.shade.org.eclipse.jetty.util.ConcurrentHashSet;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -36,6 +35,8 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,28 +45,28 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Transaction Bolt. Tracks OpenFlow Speaker commands transactions.
- *
+ * <p/>
  * ALGORITHM NOTES:
- *
- * 1. The TOPOLOGY_ENGINE_BOLT should send the flow rules first, otherwise the
- *      SPEAKER_BOLT logic won't have anything to clear.
+ * <p/>
+ * 1. The TOPOLOGY_ENGINE_BOLT should send the flow rules first, otherwise the SPEAKER_BOLT logic won't have anything to
+ * clear.
  */
 public class TransactionBolt
-        extends BaseStatefulBolt<InMemoryKeyValueState<String, Map<String, Set<Long>>>>
+        extends BaseStatefulBolt<InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>>>
         implements ICtrlBolt {
     /**
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(TransactionBolt.class);
 
-    public final String STREAM_ID_CTRL = "ctrl";
+    public static final String STREAM_ID_CTRL = "ctrl";
 
     /**
      * Transaction ids state.
-     *
+     * <p/>
      * FIXME(surabujin) in memory status lead to disaster when system restarts during any transition
      */
-    private InMemoryKeyValueState<String, Map<String, Set<Long>>> transactions;
+    private InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>> transactions;
 
     private TopologyContext context;
     private OutputCollector outputCollector;
@@ -73,15 +74,16 @@ public class TransactionBolt
     @Override
     public void execute(Tuple tuple) {
 
-        if (CtrlAction.boltHandlerEntrance(this, tuple))
+        if (CtrlAction.boltHandlerEntrance(this, tuple)) {
             return;
+        }
 
         logger.trace("States before: {}", transactions);
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         Long transactionId = (Long) tuple.getValueByField(Utils.TRANSACTION_ID);
-        String switchId = (String) tuple.getValueByField(FlowTopology.SWITCH_ID_FIELD);
+        SwitchId switchId = (SwitchId) tuple.getValueByField(FlowTopology.SWITCH_ID_FIELD);
         String flowId = (String) tuple.getValueByField(Utils.FLOW_ID);
         Object message = tuple.getValueByField(FlowTopology.MESSAGE_FIELD);
         Map<String, Set<Long>> flowTransactions;
@@ -143,8 +145,8 @@ public class TransactionBolt
                                     // can now be considered "UP"
                                     //
                                     logger.info(
-                                            "Flow transaction completed for one switch " +
-                                            "(switch: {}, flow: {}, stream: {})", switchId, flowId, streamId);
+                                            "Flow transaction completed for one switch "
+                                                    + "(switch: {}, flow: {}, stream: {})", switchId, flowId, streamId);
 
                                     values = new Values(flowId, FlowState.UP);
                                     outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
@@ -195,7 +197,7 @@ public class TransactionBolt
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<String, Map<String, Set<Long>>> state) {
+    public void initState(InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>> state) {
         transactions = state;
     }
 
@@ -222,8 +224,8 @@ public class TransactionBolt
 
     @Override
     public AbstractDumpState dumpState() {
-        Map<String, Map<String, Set<Long>>> dump = new HashMap<>();
-        for (Map.Entry<String, Map<String, Set<Long>>> item : transactions) {
+        Map<SwitchId, Map<String, Set<Long>>> dump = new HashMap<>();
+        for (Map.Entry<SwitchId, Map<String, Set<Long>>> item : transactions) {
             dump.put(item.getKey(), item.getValue());
         }
         return new TransactionBoltState(dump);
@@ -235,7 +237,7 @@ public class TransactionBolt
     }
 
     @Override
-    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
         // Not implemented
         return new TransactionBoltState(new HashMap<>());
     }

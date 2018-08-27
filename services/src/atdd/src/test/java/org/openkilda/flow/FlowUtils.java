@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -474,7 +475,7 @@ public final class FlowUtils {
      *
      * @return The JSON document of all flows
      */
-    public static Integer getLinkBandwidth(final String srcSwitch, final String srcPort) {
+    public static Integer getLinkBandwidth(final SwitchId srcSwitch, final String srcPort) {
         System.out.println("\n==> Topology-Engine Link Bandwidth");
 
         long current = System.currentTimeMillis();

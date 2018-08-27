@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.service;
 
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
@@ -38,7 +39,7 @@ public interface LinkService extends BasicService {
      * @param dstPort destination port number.
      * @return one or more link properties from the static link_props table.
      */
-    List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort);
+    List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
     /**
      * All linkPropsList link properties will be created/updated, and pushed to ISL links if they exit.

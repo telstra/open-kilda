@@ -17,12 +17,13 @@ package org.openkilda.wfm.topology;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -83,12 +84,12 @@ public class TestKafkaConsumer extends Thread {
         return pollMessage(KAFKA_MESSAGE_POLL_TIMEOUT);
     }
 
-    public String pollMessageValue() throws InterruptedException {
-        return Optional.ofNullable(pollMessage()).map(ConsumerRecord::value).orElse(null);
-    }
-
     public ConsumerRecord<String, String> pollMessage(final long timeout) throws InterruptedException {
         return records.poll(timeout, TimeUnit.MILLISECONDS);
+    }
+
+    public String pollMessageValue() throws InterruptedException {
+        return Optional.ofNullable(pollMessage()).map(ConsumerRecord::value).orElse(null);
     }
 
     public void clear() {
@@ -101,8 +102,9 @@ public class TestKafkaConsumer extends Thread {
 
     private boolean checkDestination(final String recordValue) {
 
-        if (!checkDestination)
+        if (!checkDestination) {
             return true;
+        }
 
         boolean result = false;
         try {

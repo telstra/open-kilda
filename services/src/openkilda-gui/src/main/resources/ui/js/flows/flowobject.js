@@ -15,7 +15,7 @@ class Flow {
 	getPorts (id) {
 		 var switch_id = common.toggleSwitchID($("#" + id).val());
 		 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
-		 var startDate = moment().utc().subtract(15,'minutes').format("YYYY-MM-DD-HH:mm:ss");
+		 var startDate = moment().utc().subtract(30,'minutes').format("YYYY-MM-DD-HH:mm:ss");
 		 var downSample = "30s";
 		 return common.getData('/stats/switchports/' + switch_id + '/'+ startDate +'/' + endDate + '/'+ downSample);
 	}

@@ -15,20 +15,20 @@
 
 package org.openkilda.messaging.command.switches;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.Value;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 
 @Value
 public class SwitchRulesValidateRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
-    public SwitchRulesValidateRequest(
-        @JsonProperty("switch_id") String switchId) {
-       this.switchId = switchId;
+    public SwitchRulesValidateRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
     }
 }
 

@@ -5,7 +5,6 @@
 
 <suppressions>
     <suppress files="src/main/java/org/openkilda/northbound/Application.java" lines="27" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/main/java/org/openkilda/northbound/config/AppConfig.java" lines="23" checks="UnusedImports"/>
     <suppress files="src/main/java/org/openkilda/northbound/config/WebConfig.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/config/WebConfig.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/controller/FeatureTogglesController.java" lines="21" checks="CustomImportOrder"/>
@@ -58,7 +57,6 @@
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaMessageProducer.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/service/BasicService.java" lines="27" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="31" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="41" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/northbound/service/impl/FeatureTogglesServiceImpl.java" lines="41" checks="MemberName"/>
@@ -80,8 +78,6 @@
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="35" checks="ParenPad"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="35" checks="ParenPad"/>
     <suppress files="src/test/java/org/openkilda/northbound/controller/NorthboundBaseTest.java" lines="38" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestConfig.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/northbound/controller/TestMessageMock.java" lines="84" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/northbound/utils/RequestCorrelationIdTest.java" lines="0" checks="NewlineAtEndOfFile"/>
     <suppress files="src/test/java/org/openkilda/northbound/utils/RequestCorrelationIdTest.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/northbound/utils/RequestCorrelationIdTest.java" lines="24" checks="CustomImportOrder"/>

@@ -38,8 +38,8 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
 import org.openkilda.messaging.info.flow.FlowOperation;
+import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -47,6 +47,7 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
@@ -64,7 +65,7 @@ import java.util.UUID;
 @Ignore
 public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final String FLOW_NAME = "test_flow";
-    private static final String SWITCH_ID = "00:00:00:00:00:00:00:00";
+    private static final SwitchId SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:00");
     private static final String CORRELATION_ID = UUID.randomUUID().toString();
     private static final long TIMESTAMP = System.currentTimeMillis();
     private static final int INPUT_PORT = 1;
@@ -81,21 +82,20 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final SwitchState SWITCH_EVENT = SwitchState.CHANGED;
     private static final Destination DESTINATION = null;
 
-    private static final FlowIdStatusPayload flowIdStatusRequest = new FlowIdStatusPayload(FLOW_NAME);
     private static final FlowIdStatusPayload flowIdStatusResponse = new FlowIdStatusPayload(FLOW_NAME, FLOW_STATUS);
 
     private static final String requester = "requester-id";
-    private static final SwitchInfoData sw1 = new SwitchInfoData("sw1",
-            SwitchState.ACTIVATED, "1.1.1.1", "sw1", "switch-1", "kilda");
-    private static final SwitchInfoData sw2 = new SwitchInfoData("sw2",
-            SwitchState.ACTIVATED, "2.2.2.2", "sw2", "switch-2", "kilda");
+    private static final SwitchInfoData sw1 = new SwitchInfoData(new SwitchId("ff:01"),
+            SwitchState.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda");
+    private static final SwitchInfoData sw2 = new SwitchInfoData(new SwitchId("ff:02"),
+            SwitchState.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda");
     private static final List<PathNode> nodes = Arrays.asList(
-            new PathNode("sw1", 1, 0, 0L),
-            new PathNode("sw2", 2, 1, 0L));
+            new PathNode(new SwitchId("ff:01"), 1, 0, 0L),
+            new PathNode(new SwitchId("ff:02"), 2, 1, 0L));
     private static final IslInfoData isl = new IslInfoData(0L, nodes, 1000L, IslChangeType.DISCOVERED, 900L);
     private static final PathInfoData path = new PathInfoData(0L, nodes);
     private static final Flow flowModel = new Flow(FLOW_NAME, 1000, false, COOKIE, FLOW_NAME, String.valueOf(TIMESTAMP),
-            "sw1", "sw2", 10, 20, 100, 200, 1, 1024, path, FLOW_STATUS);
+            new SwitchId("ff:01"), new SwitchId("ff:02"), 10, 20, 100, 200, 1, 1024, path, FLOW_STATUS);
 
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
@@ -247,50 +247,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     }
 
     @Test
-    public void flowGetRequestTest() throws IOException, ClassNotFoundException {
-        FlowGetRequest data = new FlowGetRequest(flowIdStatusRequest);
-        System.out.println(data);
-
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
-        serialize(command);
-
-        Message message = (Message) deserialize();
-        assertTrue(message instanceof CommandMessage);
-
-        CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() instanceof FlowGetRequest);
-
-        FlowGetRequest resultData = (FlowGetRequest) resultCommand.getData();
-        System.out.println(resultData);
-        assertEquals(data, resultData);
-        assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
-    }
-
-    @Test
-    public void flowStatusRequestTest() throws IOException, ClassNotFoundException {
-        FlowStatusRequest data = new FlowStatusRequest(flowIdStatusRequest);
-        System.out.println(data);
-
-        CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
-        serialize(command);
-
-        Message message = (Message) deserialize();
-        assertTrue(message instanceof CommandMessage);
-
-        CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() instanceof FlowStatusRequest);
-
-        FlowStatusRequest resultData = (FlowStatusRequest) resultCommand.getData();
-        System.out.println(resultData);
-        assertEquals(data, resultData);
-        assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(flowIdStatusRequest.hashCode(), resultData.getPayload().hashCode());
-    }
-
-    @Test
     public void flowGetBidirectionalRequestTest() throws IOException, ClassNotFoundException {
-        BidirectionalFlowRequest data = new BidirectionalFlowRequest(FLOW_NAME);
+        FlowReadRequest data = new FlowReadRequest(FLOW_NAME);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -300,9 +258,9 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(message instanceof CommandMessage);
 
         CommandMessage resultCommand = (CommandMessage) message;
-        assertTrue(resultCommand.getData() instanceof BidirectionalFlowRequest);
+        assertTrue(resultCommand.getData() instanceof FlowReadRequest);
 
-        BidirectionalFlowRequest resultData = (BidirectionalFlowRequest) resultCommand.getData();
+        FlowReadRequest resultData = (FlowReadRequest) resultCommand.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
@@ -313,7 +271,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void flowGetBidirectionalResponseTest() throws IOException, ClassNotFoundException {
         Flow flow = Flow.builder().flowPath(path).build();
         BidirectionalFlow bidirectionalFlow = BidirectionalFlow.builder().forward(flow).reverse(flow).build();
-        BidirectionalFlowResponse data = new BidirectionalFlowResponse(bidirectionalFlow);
+        FlowReadResponse data = new FlowReadResponse(bidirectionalFlow);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -323,9 +281,9 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(message instanceof InfoMessage);
 
         InfoMessage resultInfo = (InfoMessage) message;
-        assertTrue(resultInfo.getData() instanceof BidirectionalFlowResponse);
+        assertTrue(resultInfo.getData() instanceof FlowReadResponse);
 
-        BidirectionalFlowResponse resultData = (BidirectionalFlowResponse) resultInfo.getData();
+        FlowReadResponse resultData = (FlowReadResponse) resultInfo.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());

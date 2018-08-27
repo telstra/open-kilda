@@ -22,8 +22,8 @@ import org.openkilda.messaging.Utils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -31,15 +31,10 @@ import java.util.Objects;
 /**
  * Flow representation class.
  */
+// TODO move into api module
+@NoArgsConstructor
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        Utils.FLOW_ID,
-        "source",
-        "destination",
-        "maximum-bandwidth",
-        "description",
-        "last-updated"})
 public class FlowPayload implements Serializable {
     /**
      * The constant serialVersionUID.
@@ -71,7 +66,7 @@ public class FlowPayload implements Serializable {
     private long maximumBandwidth;
 
     /**
-     * If SET ignore bandwidth in path computation
+     * If SET ignore bandwidth in path computation.
      */
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth = false;

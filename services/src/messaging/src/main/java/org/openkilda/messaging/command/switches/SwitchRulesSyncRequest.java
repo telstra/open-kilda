@@ -15,9 +15,11 @@
 
 package org.openkilda.messaging.command.switches;
 
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
-import org.openkilda.messaging.command.CommandData;
 
 import java.util.List;
 
@@ -25,16 +27,16 @@ import java.util.List;
 public class SwitchRulesSyncRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("rules")
     private List<Long> rules;
 
     public SwitchRulesSyncRequest(
-        @JsonProperty("switch_id") String switchId,
-        @JsonProperty("rules") List<Long> rules) {
-       this.switchId = switchId;
-       this.rules = rules;
+            @JsonProperty("switch_id") SwitchId switchId,
+            @JsonProperty("rules") List<Long> rules) {
+        this.switchId = switchId;
+        this.rules = rules;
     }
 }
 

@@ -20,6 +20,8 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -32,12 +34,15 @@ import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Defines a topology with switches, links and traffgens.
+ * <p/>
  * Topology definition objects are immutable and can't be changed after creation.
  */
 @Value
@@ -91,7 +96,7 @@ public class TopologyDefinition {
     /**
      * Get all switches that are marked as skipped in config.
      */
-    public Set<String> getSkippedSwitchIds() {
+    public Set<SwitchId> getSkippedSwitchIds() {
         return switches.stream()
                 .filter(sw -> sw.getStatus() == Status.Skip)
                 .map(Switch::getDpId)
@@ -119,20 +124,35 @@ public class TopologyDefinition {
                 .collect(toList());
     }
 
+    /**
+     * Get list of switch ports excluding the ports which are busy with ISLs.
+     */
+    public List<Integer> getAllowedPortsForSwitch(Switch sw) {
+        List<Integer> allPorts = new ArrayList<>(sw.getAllPorts());
+        allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
+                isl.getSrcSwitch().getDpId().equals(sw.getDpId())).map(Isl::getSrcPort).collect(Collectors.toList()));
+        allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
+                isl.getDstSwitch().getDpId().equals(sw.getDpId())).map(Isl::getDstPort).collect(Collectors.toList()));
+        return allPorts;
+    }
+
     @Value
     @NonFinal
     @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
     public static class Switch {
 
+        private static int DEFAULT_MAX_PORT = 20;
+
         private String name;
         @NonNull
-        private String dpId;
+        private SwitchId dpId;
         @NonNull
         private String ofVersion;
         @NonNull
         private Status status;
         @NonNull
         private List<OutPort> outPorts;
+        private Integer maxPort;
 
         /**
          * Create a Switch instance.
@@ -140,19 +160,30 @@ public class TopologyDefinition {
         @JsonCreator
         public static Switch factory(
                 @JsonProperty("name") String name,
-                @JsonProperty("dp_id") String dpId,
+                @JsonProperty("dp_id") SwitchId dpId,
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
-                @JsonProperty("out_ports") List<OutPort> outPorts) {
+                @JsonProperty("out_ports") List<OutPort> outPorts,
+                @JsonProperty("max_port") Integer maxPort) {
             if (outPorts == null) {
                 outPorts = emptyList();
             }
+            if (maxPort == null) {
+                maxPort = DEFAULT_MAX_PORT;
+            }
 
-            return new Switch(name, dpId, ofVersion, status, outPorts);
+            return new Switch(name, dpId, ofVersion, status, outPorts, maxPort);
         }
 
         public boolean isActive() {
             return status == Status.Active;
+        }
+
+        /**
+         * Get list of all available ports on this switch.
+         */
+        public List<Integer> getAllPorts() {
+            return IntStream.rangeClosed(1, maxPort).boxed().collect(toList());
         }
     }
 

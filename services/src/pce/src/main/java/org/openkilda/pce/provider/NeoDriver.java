@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.algo.SimpleGetShortestPath;
 import org.openkilda.pce.api.FlowAdapter;
@@ -79,7 +80,7 @@ public class NeoDriver implements PathComputer {
         List<PathNode> forwardNodes = new LinkedList<>();
         List<PathNode> reverseNodes = new LinkedList<>();
 
-        if (! flow.isOneSwitchFlow()) {
+        if (!flow.isOneSwitchFlow()) {
             try {
                 Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> biPath = getPathFromNetwork(flow, network, strategy);
                 if (biPath.getLeft().size() == 0 || biPath.getRight().size() == 0) {
@@ -102,7 +103,7 @@ public class NeoDriver implements PathComputer {
                             seqId++, (long) isl.getLatency()));
                     reverseNodes.add(new PathNode(isl.getDstDpid(), isl.getDstPort(), seqId++, 0L));
                 }
-            // FIXME(surabujin): Need to catch and trace exact exception thrown in recoverable places.
+                // FIXME(surabujin): Need to catch and trace exact exception thrown in recoverable places.
             } catch (TransientException e) {
                 throw new RecoverableException("TransientError from neo4j", e);
             } catch (ClientException e) {
@@ -158,11 +159,11 @@ public class NeoDriver implements PathComputer {
 
             for (Record record : result.list()) {
                 flows.add(new FlowInfo()
-                            .setFlowId(record.get("flow_id").asString())
-                            .setSrcSwitchId(record.get("src_switch").asString())
-                            .setCookie(record.get("cookie").asLong())
-                            .setMeterId(safeAsInt(record.get("meter_id")))
-                            .setTransitVlanId(safeAsInt(record.get("transit_vlan")))
+                        .setFlowId(record.get("flow_id").asString())
+                        .setSrcSwitchId(record.get("src_switch").asString())
+                        .setCookie(record.get("cookie").asLong())
+                        .setMeterId(safeAsInt(record.get("meter_id")))
+                        .setTransitVlanId(safeAsInt(record.get("transit_vlan")))
                 );
             }
 
@@ -224,7 +225,7 @@ public class NeoDriver implements PathComputer {
     }
 
     @Override
-    public  List<SwitchInfoData> getSwitches() {
+    public List<SwitchInfoData> getSwitches() {
         String q =
                 "MATCH (sw:switch) "
                         + "RETURN "
@@ -251,7 +252,7 @@ public class NeoDriver implements PathComputer {
                 SwitchState st = ("active".equals(status)) ? SwitchState.ACTIVATED : SwitchState.CACHED;
                 sw.setState(st);
 
-                sw.setSwitchId(record.get("name").asString());
+                sw.setSwitchId(new SwitchId(record.get("name").asString()));
                 results.add(sw);
             }
         }
@@ -283,7 +284,7 @@ public class NeoDriver implements PathComputer {
             for (Record record : queryResults.list()) {
                 // max_bandwidth not used in IslInfoData
                 PathNode src = new PathNode();
-                src.setSwitchId(record.get("src_switch").asString());
+                src.setSwitchId(new SwitchId(record.get("src_switch").asString()));
                 src.setPortNo(safeAsInt(record.get("src_port")));
                 src.setSegLatency(safeAsInt(record.get("latency")));
 
@@ -291,7 +292,7 @@ public class NeoDriver implements PathComputer {
                 pathNodes.add(src);
 
                 PathNode dst = new PathNode();
-                dst.setSwitchId(record.get("dst_switch").asString());
+                dst.setSwitchId(new SwitchId(record.get("dst_switch").asString()));
                 dst.setPortNo(safeAsInt(record.get("dst_port")));
                 dst.setSegLatency(safeAsInt(record.get("latency")));
                 pathNodes.add(dst);

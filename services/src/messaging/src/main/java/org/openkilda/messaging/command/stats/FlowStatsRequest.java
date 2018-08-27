@@ -17,6 +17,7 @@ package org.openkilda.messaging.command.stats;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -28,7 +29,7 @@ public class FlowStatsRequest extends CommandData {
      * The flow id to request stats for. It is a mandatory parameter.
      */
     @JsonProperty("switch_id")
-    protected String flowId;
+    protected SwitchId flowId;
 
     /**
      * Constructs statistics request.
@@ -36,7 +37,7 @@ public class FlowStatsRequest extends CommandData {
      * @param flowId switch id
      */
     @JsonCreator
-    public FlowStatsRequest(@JsonProperty("switch_id") final String flowId) {
+    public FlowStatsRequest(@JsonProperty("switch_id") final SwitchId flowId) {
         setFlowId(flowId);
     }
 
@@ -45,7 +46,7 @@ public class FlowStatsRequest extends CommandData {
      *
      * @return switch id
      */
-    public String getFlowId() {
+    public SwitchId getFlowId() {
         return flowId;
     }
 
@@ -54,7 +55,7 @@ public class FlowStatsRequest extends CommandData {
      *
      * @param flowId switch id
      */
-    public void setFlowId(String flowId) {
+    public void setFlowId(SwitchId flowId) {
         if (flowId == null) {
             throw new IllegalArgumentException("need to set a switch_id");
         } else if (!Utils.validateSwitchId(flowId)) {

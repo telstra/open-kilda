@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.northbound.NorthboundService;
@@ -83,9 +84,13 @@ public class FlowManagerTest {
     @Test
     public void shouldDefineFlowsOver2Switches() {
         // given
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:02")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(1L)),
+                eq(new SwitchId(2L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:02"), eq("00:00:00:00:00:01")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(2L)),
+                eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
 
         // when
@@ -95,11 +100,11 @@ public class FlowManagerTest {
         assertEquals(1, flows.size());
         assertThat(flows, hasItem(allOf(
                 hasProperty("source", allOf(
-                        hasProperty("switchDpId", equalTo("00:00:00:00:00:01")),
+                        hasProperty("switchDpId", equalTo(new SwitchId(1L))),
                         hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1)))),
                 hasProperty("destination", allOf(
-                        hasProperty("switchDpId", equalTo("00:00:00:00:00:02")),
+                        hasProperty("switchDpId", equalTo(new SwitchId(2L))),
                         hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1))))
         )));
@@ -108,13 +113,21 @@ public class FlowManagerTest {
     @Test
     public void shouldDefineFlowsOver3Switches() {
         // given
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:02")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(1L)),
+                eq(new SwitchId(2L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:02"), eq("00:00:00:00:00:01")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(2L)),
+                eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:02"), eq("00:00:00:00:00:03")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(2L)),
+                eq(new SwitchId(3L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:03"), eq("00:00:00:00:00:02")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(3L)),
+                eq(new SwitchId(2L))))
                 .thenReturn(singletonList(new PathInfoData()));
 
         // when
@@ -126,21 +139,21 @@ public class FlowManagerTest {
         assertThat(flows, hasItems(
                 allOf(
                         hasProperty("source", allOf(
-                                hasProperty("switchDpId", equalTo("00:00:00:00:00:01")),
+                                hasProperty("switchDpId", equalTo(new SwitchId(1L))),
                                 hasProperty("portId", equalTo(10)),
                                 hasProperty("vlanId", equalTo(1)))),
                         hasProperty("destination", allOf(
-                                hasProperty("switchDpId", equalTo("00:00:00:00:00:02")),
+                                hasProperty("switchDpId", equalTo(new SwitchId(2L))),
                                 hasProperty("portId", equalTo(10)),
                                 hasProperty("vlanId", equalTo(1))))
                 ),
                 allOf(
                         hasProperty("source", allOf(
-                                hasProperty("switchDpId", equalTo("00:00:00:00:00:02")),
+                                hasProperty("switchDpId", equalTo(new SwitchId(2L))),
                                 hasProperty("portId", equalTo(10)),
                                 hasProperty("vlanId", equalTo(2)))),
                         hasProperty("destination", allOf(
-                                hasProperty("switchDpId", equalTo("00:00:00:00:00:03")),
+                                hasProperty("switchDpId", equalTo(new SwitchId(3L))),
                                 hasProperty("portId", equalTo(10)),
                                 hasProperty("vlanId", equalTo(2))))
                 )
@@ -150,7 +163,9 @@ public class FlowManagerTest {
     @Test
     public void shouldSkipFlowsOverTheSameSwitches() {
         // given
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:01")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(1L)),
+                eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
 
         // when
@@ -163,9 +178,13 @@ public class FlowManagerTest {
     @Test
     public void shouldDefineFlowCrossVlan() {
         // given
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:04")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(1L)),
+                eq(new SwitchId(4L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:04"), eq("00:00:00:00:00:01")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(4L)),
+                eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
 
         // when
@@ -187,13 +206,21 @@ public class FlowManagerTest {
     @Test
     public void failIfNoVlanAvailable() {
         // given
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:04"), eq("00:00:00:00:00:02")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(4L)),
+                eq(new SwitchId(2L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:04"), eq("00:00:00:00:00:01")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(4L)),
+                eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:02"), eq("00:00:00:00:00:04")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(2L)),
+                eq(new SwitchId(4L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(eq("00:00:00:00:00:01"), eq("00:00:00:00:00:04")))
+        when(topologyEngineService.getPaths(
+                eq(new SwitchId(1L)),
+                eq(new SwitchId(4L))))
                 .thenReturn(singletonList(new PathInfoData()));
 
         expectedException.expect(IllegalStateException.class);
@@ -210,8 +237,9 @@ public class FlowManagerTest {
         // given
         final List<TopologyDefinition.TraffGen> activeTraffGens = topologyDefinition.getTraffGens().stream()
                 .filter(traffGen -> {
-                    String dpId = traffGen.getSwitchConnected().getDpId();
-                    return dpId.equals("00:00:00:00:00:01") || dpId.equals("00:00:00:00:00:02");
+                    SwitchId dpId = traffGen.getSwitchConnected().getDpId();
+                    return dpId.equals(new SwitchId(1L))
+                            || dpId.equals(new SwitchId(2L));
                 })
                 .collect(Collectors.toList());
         when(topologyDefinition.getActiveTraffGens()).thenReturn(activeTraffGens);
@@ -223,11 +251,11 @@ public class FlowManagerTest {
         assertEquals(1, flows.size());
         assertThat(flows, hasItem(allOf(
                 hasProperty("source", allOf(
-                        hasProperty("switchDpId", equalTo("00:00:00:00:00:01")),
+                        hasProperty("switchDpId", equalTo(new SwitchId(1L))),
                         hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1)))),
                 hasProperty("destination", allOf(
-                        hasProperty("switchDpId", equalTo("00:00:00:00:00:02")),
+                        hasProperty("switchDpId", equalTo(new SwitchId(2L))),
                         hasProperty("portId", equalTo(10)),
                         hasProperty("vlanId", equalTo(1))))
         )));
@@ -246,16 +274,22 @@ public class FlowManagerTest {
         assertEquals(3, flows.size());
         assertThat(flows, hasItems(
                 allOf(
-                        hasProperty("source", hasProperty("switchDpId", equalTo("00:00:00:00:00:01"))),
-                        hasProperty("destination", hasProperty("switchDpId", equalTo("00:00:00:00:00:02")))
+                        hasProperty("source",
+                                hasProperty("switchDpId", equalTo(new SwitchId(1L)))),
+                        hasProperty("destination",
+                                hasProperty("switchDpId", equalTo(new SwitchId(2L))))
                 ),
                 allOf(
-                        hasProperty("source", hasProperty("switchDpId", equalTo("00:00:00:00:00:01"))),
-                        hasProperty("destination", hasProperty("switchDpId", equalTo("00:00:00:00:00:03")))
+                        hasProperty("source",
+                                hasProperty("switchDpId", equalTo(new SwitchId(1L)))),
+                        hasProperty("destination",
+                                hasProperty("switchDpId", equalTo(new SwitchId(3L))))
                 ),
                 allOf(
-                        hasProperty("source", hasProperty("switchDpId", equalTo("00:00:00:00:00:02"))),
-                        hasProperty("destination", hasProperty("switchDpId", equalTo("00:00:00:00:00:03")))
+                        hasProperty("source",
+                                hasProperty("switchDpId", equalTo(new SwitchId(2L)))),
+                        hasProperty("destination",
+                                hasProperty("switchDpId", equalTo(new SwitchId(3L))))
                 )
         ));
     }

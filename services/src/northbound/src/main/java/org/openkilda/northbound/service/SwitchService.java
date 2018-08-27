@@ -20,7 +20,10 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
@@ -38,7 +41,7 @@ public interface SwitchService extends BasicService {
      * @param cookie if > 0, then filter the results based on that cookie
      * @return the list of rules
      */
-    SwitchFlowEntries getRules(String switchId, Long cookie);
+    SwitchFlowEntries getRules(SwitchId switchId, Long cookie);
 
     /**
      * Get all rules from the switch. If cookie is specified, then return just that cookie rule.
@@ -48,7 +51,7 @@ public interface SwitchService extends BasicService {
      * @param correlationId passed correlation id
      * @return the list of rules
      */
-    SwitchFlowEntries getRules(String switchId, Long cookie, String correlationId);
+    SwitchFlowEntries getRules(SwitchId switchId, Long cookie, String correlationId);
 
     /**
      * Deletes rules from the switch. The flag (@code deleteAction) defines which rules to delete.
@@ -57,7 +60,7 @@ public interface SwitchService extends BasicService {
      * @param deleteAction defines which rules to delete.
      * @return the list of cookies of removed rules.
      */
-    List<Long> deleteRules(String switchId, DeleteRulesAction deleteAction);
+    List<Long> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction);
 
     /**
      * Deletes rules from the switch.
@@ -66,7 +69,7 @@ public interface SwitchService extends BasicService {
      * @param criteria defines criteria for rules to delete.
      * @return the list of cookies of removed rules.
      */
-    List<Long> deleteRules(String switchId, DeleteRulesCriteria criteria);
+    List<Long> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria);
 
     /**
      * Install default rules on the switch. The flag (@code installAction) defines what to do about the default rules.
@@ -75,7 +78,7 @@ public interface SwitchService extends BasicService {
      * @param installAction defines what to do about the default rules
      * @return the list of cookies for installed rules
      */
-    List<Long> installRules(String switchId, InstallRulesAction installAction);
+    List<Long> installRules(SwitchId switchId, InstallRulesAction installAction);
 
 
     /**
@@ -93,7 +96,7 @@ public interface SwitchService extends BasicService {
      * @param switchId switch to validate rules on.
      * @return the validation details.
      */
-    RulesValidationResult validateRules(String switchId);
+    RulesValidationResult validateRules(SwitchId switchId);
 
     /**
      * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
@@ -101,12 +104,27 @@ public interface SwitchService extends BasicService {
      * @param switchId switch to synchronize rules on.
      * @return the synchronization result.
      */
-    RulesSyncResult syncRules(String switchId);
+    RulesSyncResult syncRules(SwitchId switchId);
 
     /**
      * Removes meter from the switch.
      * @param switchId switch datapath id.
      * @param meterId meter to be deleted.
      */
-    DeleteMeterResult deleteMeter(String switchId, long meterId);
+    DeleteMeterResult deleteMeter(SwitchId switchId, long meterId);
+    
+    /**
+     * Configure switch port. <br>
+     * Configurations
+     * <ul>
+     * <li> UP/DOWN port </li>
+     * <li> Change port speed </li>
+     * </ul>
+     *  
+     * @param switchId switch whose port is to configure
+     * @param port port to configure
+     * @param portConfig port configuration that needs to apply on port 
+     * @return portDto 
+     */
+    PortDto configurePort(SwitchId switchId,  int port, PortConfigurationPayload portConfig);
 }

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,12 +23,11 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.BidirectionalFlowRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
-import org.openkilda.messaging.command.flow.FlowGetRequest;
-import org.openkilda.messaging.command.flow.FlowStatusRequest;
+import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -37,12 +36,12 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.flow.BidirectionalFlowResponse;
+import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
-import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -66,25 +65,26 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 public class TestMessageMock implements MessageProducer, MessageConsumer {
-    static final String FLOW_ID = "test-flow";
+    static final String FLOW_ID = "ff:00";
+    static final SwitchId SWITCH_ID = new SwitchId(FLOW_ID);
     static final String ERROR_FLOW_ID = "error-flow";
-    static final String TEST_SWITCH_ID = "test-switch";
+    static final String TEST_SWITCH_ID = "ff:01";
     static final long TEST_SWITCH_RULE_COOKIE = 1L;
-    static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(FLOW_ID, 1, 1);
-    static final FlowPayload flow = new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000, false, FLOW_ID, null,
+    static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(SWITCH_ID, 1, 1);
+    static final FlowPayload flow =
+            new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000, false, FLOW_ID, null,
             FlowState.UP.getState());
-    static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.IN_PROGRESS);
+    static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.UP);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
     static final List<PathNodePayload> pathPayloadsList =
-            Collections.singletonList(new PathNodePayload(FLOW_ID, 1, 1));
+            Collections.singletonList(new PathNodePayload(SWITCH_ID, 1, 1));
     static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList);
-    static final Flow flowModel = new Flow(FLOW_ID, 10000L, false, 0L, FLOW_ID, null, FLOW_ID,
-            FLOW_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP);
+    static final Flow flowModel = new Flow(FLOW_ID, 10000, false, 0L, FLOW_ID, null, SWITCH_ID,
+            SWITCH_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP);
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
-    private static final BidirectionalFlowResponse BIDIRECTIONAL_FLOW_RESPONSE =
-            new BidirectionalFlowResponse(new BidirectionalFlow(flowModel, flowModel));
-    private static final FlowStatusResponse flowStatusResponse = new FlowStatusResponse(flowStatus);
+    private static final FlowReadResponse FLOW_RESPONSE =
+            new FlowReadResponse(new BidirectionalFlow(flowModel, flowModel));
     private static final SwitchRulesResponse switchRulesResponse =
             new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
@@ -102,13 +102,10 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
             return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
         } else if (data instanceof FlowUpdateRequest) {
             return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
-        } else if (data instanceof FlowGetRequest) {
-            FlowIdStatusPayload request = ((FlowGetRequest) data).getPayload();
-            return getFlowResponse(request, correlationId);
-        } else if (data instanceof FlowStatusRequest) {
-            return new InfoMessage(flowStatusResponse, 0, correlationId, Destination.NORTHBOUND);
-        } else if (data instanceof BidirectionalFlowRequest) {
-            return new InfoMessage(BIDIRECTIONAL_FLOW_RESPONSE, 0, correlationId, Destination.NORTHBOUND);
+        } else if (data instanceof FlowReadRequest) {
+            return getReadFlowResponse(((FlowReadRequest) data).getFlowId(), correlationId);
+        } else if (data instanceof FlowsDumpRequest) {
+            return new ChunkedInfoMessage(FLOW_RESPONSE, 0, correlationId, null);
         } else if (data instanceof SwitchRulesDeleteRequest) {
             return new InfoMessage(switchRulesResponse, 0, correlationId, Destination.NORTHBOUND);
         } else {
@@ -143,16 +140,12 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
         }
     }
 
-    private Message getFlowResponse(FlowIdStatusPayload request, String correlationId) {
-        if (request != null) {
-            if (ERROR_FLOW_ID.equals((request.getId()))) {
-                return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, "Flow was not found", ERROR_FLOW_ID),
-                        0, correlationId, Destination.NORTHBOUND);
-            } else {
-                return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
-            }
+    private Message getReadFlowResponse(String flowId, String correlationId) {
+        if (ERROR_FLOW_ID.equals(flowId)) {
+            return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, "Flow was not found", ERROR_FLOW_ID),
+                    0, correlationId, Destination.NORTHBOUND);
         } else {
-            return new ChunkedInfoMessage(flowResponse, 0, correlationId, null);
+            return new InfoMessage(FLOW_RESPONSE, 0, correlationId, Destination.NORTHBOUND);
         }
     }
 }

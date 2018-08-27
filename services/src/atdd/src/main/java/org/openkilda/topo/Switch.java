@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Switch implements ITopoSlug {
 
-    /** The Port.getId() is used as the key */
+    /** The Port.getSwitchId() is used as the key */
     @JsonIgnore
     private final Map<String, Port> ports = new ConcurrentHashMap<String, Port>(48);
     private final String id;

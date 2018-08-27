@@ -20,10 +20,12 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
@@ -58,19 +60,21 @@ public interface NorthboundService {
 
     List<FlowValidationDto> validateFlow(String flowId);
 
+    FlowReroutePayload rerouteFlow(String flowId);
+
     //switches
 
-    SwitchFlowEntries getSwitchRules(String switchId);
+    SwitchFlowEntries getSwitchRules(SwitchId switchId);
 
-    List<Long> deleteSwitchRules(String switchId);
+    List<Long> deleteSwitchRules(SwitchId switchId);
 
-    RulesSyncResult synchronizeSwitchRules(String switchId);
+    RulesSyncResult synchronizeSwitchRules(SwitchId switchId);
 
-    RulesValidationResult validateSwitchRules(String switchId);
+    RulesValidationResult validateSwitchRules(SwitchId switchId);
 
     List<SwitchInfoData> getAllSwitches();
 
-    DeleteMeterResult deleteMeter(String switchId, Integer meterId);
+    DeleteMeterResult deleteMeter(SwitchId switchId, Integer meterId);
 
     //links
 
@@ -78,7 +82,7 @@ public interface NorthboundService {
 
     List<LinkPropsDto> getAllLinkProps();
 
-    List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort);
+    List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
     BatchResults updateLinkProps(List<LinkPropsDto> keys);
 

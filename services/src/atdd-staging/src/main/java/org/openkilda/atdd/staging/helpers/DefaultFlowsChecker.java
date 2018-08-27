@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd.staging.helpers;
 
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.service.floodlight.model.FlowApplyActions;
 import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
 import org.openkilda.testing.service.floodlight.model.FlowEntry;
@@ -53,7 +54,7 @@ public final class DefaultFlowsChecker {
         return result;
     }
 
-    private static boolean isValidDropRule(FlowEntry flow, String switchId, Scenario scenario) {
+    private static boolean isValidDropRule(FlowEntry flow, SwitchId switchId, Scenario scenario) {
         boolean valid = true;
         if (Objects.isNull(flow)) {
             scenario.write(String.format("Switch %s doesn't contain %s flow", switchId, DROP_FLOW));
@@ -75,7 +76,7 @@ public final class DefaultFlowsChecker {
         return valid;
     }
 
-    private static boolean isValidDefaultFlow(String flowId, FlowEntry flow, String switchId, Scenario scenario) {
+    private static boolean isValidDefaultFlow(String flowId, FlowEntry flow, SwitchId switchId, Scenario scenario) {
         boolean valid = true;
         if (Objects.isNull(flow)) {
             scenario.write(String.format("Switch %s doesn't contain %s flow", switchId, flowId));
@@ -105,7 +106,7 @@ public final class DefaultFlowsChecker {
                 valid = false;
             }
         } else if (NON_BROADCAST_FLOW.equals(flow.getCookie())) {
-            if (!dpidToMacAddress(switchId).equals(flowMatch.getEthDst())) {
+            if (!switchId.toMacAddress().equals(flowMatch.getEthDst())) {
                 scenario.write(String.format("Switch %s contains incorrect eth_dst: %s",
                         switchId, flowMatch.getEthDst()));
                 valid = false;
@@ -114,16 +115,8 @@ public final class DefaultFlowsChecker {
         return valid;
     }
 
-    private static boolean isValidSetFieldProperty(String value, String switchId) {
-        return StringUtils.startsWith(value, dpidToMacAddress(switchId));
-    }
-
-    private static String dpidToMacAddress(String dpid) {
-        if (dpid.length() == DPID_LENGTH) {
-            //skip first two octets to get mac address
-            return dpid.substring(6);
-        }
-        return dpid;
+    private static boolean isValidSetFieldProperty(String value, SwitchId switchId) {
+        return StringUtils.startsWith(value, switchId.toMacAddress());
     }
 
     private DefaultFlowsChecker() {

@@ -17,6 +17,7 @@ package org.openkilda.messaging.command.stats;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -28,7 +29,7 @@ public class PortStatsRequest extends CommandData {
      * The switch id to request stats from. It is a mandatory parameter.
      */
     @JsonProperty("switch_id")
-    protected String switchId;
+    protected SwitchId switchId;
 
     /**
      * Constructs port statistics request.
@@ -36,7 +37,7 @@ public class PortStatsRequest extends CommandData {
      * @param switchId switch id
      */
     @JsonCreator
-    public PortStatsRequest(@JsonProperty("switch_id") final String switchId) {
+    public PortStatsRequest(@JsonProperty("switch_id") SwitchId switchId) {
         setSwitchId(switchId);
     }
 
@@ -45,7 +46,7 @@ public class PortStatsRequest extends CommandData {
      *
      * @return switch id
      */
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 
@@ -54,7 +55,7 @@ public class PortStatsRequest extends CommandData {
      *
      * @param switchId switch id
      */
-    public void setSwitchId(String switchId) {
+    public void setSwitchId(SwitchId switchId) {
         if (switchId == null) {
             throw new IllegalArgumentException("need to set a switch_id");
         } else if (!Utils.validateSwitchId(switchId)) {

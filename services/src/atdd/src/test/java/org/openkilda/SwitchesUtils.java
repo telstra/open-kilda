@@ -10,9 +10,11 @@ import static org.openkilda.DefaultParameters.trafficEndpoint;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
@@ -43,6 +45,7 @@ public final class SwitchesUtils {
 
     /**
      * Turns off switch.
+     *
      * @param switchName switch name.
      * @return true if result is success.
      */
@@ -63,6 +66,7 @@ public final class SwitchesUtils {
 
     /**
      * Turns on switch.
+     *
      * @param switchName switch name.
      * @return true if result is success.
      */
@@ -119,6 +123,7 @@ public final class SwitchesUtils {
 
     /**
      * Adds new switch into mininet topology.
+     *
      * @param switchName switch name.
      * @param dpid data path id.
      * @return true if switch was added successfully, otherwise - false.
@@ -154,7 +159,7 @@ public final class SwitchesUtils {
      * Delete switch rules through Northbound service.
      */
     public static List<Long> deleteSwitchRules(String switchId, DeleteRulesAction deleteAction,
-            Integer inPort, Integer inVlan, Integer outPort) {
+                                               Integer inPort, Integer inVlan, Integer outPort) {
         System.out.println("\n==> Northbound Delete Switch Rules");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
@@ -190,7 +195,8 @@ public final class SwitchesUtils {
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
-            List<Long> cookies = response.readEntity(new GenericType<List<Long>>() {});
+            List<Long> cookies = response.readEntity(new GenericType<List<Long>>() {
+            });
             System.out.println(format("====> Northbound Delete Switch Rules = %d", cookies.size()));
             return cookies;
         } else {
@@ -292,6 +298,35 @@ public final class SwitchesUtils {
         } else {
             System.out.println(format("====> Error: Northbound Synchronize Switch Rules = %s",
                     response.readEntity(MessageError.class)));
+            return null;
+        }
+    }
+
+    /**
+     * Update port status.
+     */
+    public static PortDto changeSwitchPortStatus(String switchName, int port, PortStatus status) {
+        System.out.println("\n==> Change port state");
+
+        Client client = ClientBuilder.newClient(new ClientConfig());
+        Response result = client.target(northboundEndpoint)
+                .path("/api/v1/switches/{switch-id}/port/{port-no}/config")
+                .resolveTemplate("switch-id", switchName)
+                .resolveTemplate("port-no", port)
+                .request(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
+                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
+                .put(Entity.json(format("{\"status\": \"%s\"}", status)));
+
+        System.out.println(format("===> Response = %s", result.toString()));
+
+        int responseCode = result.getStatus();
+        if (responseCode == 200) {
+            PortDto portDto = result.readEntity(PortDto.class);
+            System.out.println(format("====> Success" + " = %s", portDto));
+            return portDto;
+        } else {
+            System.out.println(format("====> Error = %s", result.readEntity(MessageError.class)));
             return null;
         }
     }
