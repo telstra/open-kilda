@@ -1,6 +1,19 @@
-package org.openkilda.integration.model.response;
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
 
-import java.io.Serializable;
+package org.openkilda.integration.model.response;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -8,40 +21,46 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+
 /**
  * The Class Path.
  *
  * @author Gaurav Chugh
  */
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"switch_id", "switch_name", "input_port", "output_port", })
 public class FlowPathNode implements Serializable {
 
-    private final static long serialVersionUID = -4515006227265225751L;
+    private static final long serialVersionUID = -4515006227265225751L;
     
-    /** The switch id. */
     @JsonProperty("switch_id")
     private String switchId;
 
-    /** The switch id. */
     @JsonProperty("switch_name")
     private String switchName;
 
-    /** The in port no. */
     @JsonProperty("input_port")
     private Integer inputPort;
 
-    /** The out port no. */
     @JsonProperty("output_port")
     private Integer outputPort;
-
 
     @JsonCreator
     public FlowPathNode() {
 
     }
 
+    /**
+     * Instantiates a new flow path node.
+     *
+     * @param inputPort the input port
+     * @param outputPort the output port
+     * @param switchId the switch id
+     * @param switchName the switch name
+     */
     @JsonCreator
     public FlowPathNode(@JsonProperty("input_port") Integer inputPort,
             @JsonProperty("output_port") Integer outputPort,
@@ -72,7 +91,7 @@ public class FlowPathNode implements Serializable {
     }
 
     /**
-     * Gets the inputPort
+     * Gets the inputPort.
      *
      * @return the inputPort
      */
@@ -81,7 +100,7 @@ public class FlowPathNode implements Serializable {
     }
 
     /**
-     * Sets the input port
+     * Sets the input port.
      *
      * @param inputPort the new input port
      */
@@ -90,7 +109,7 @@ public class FlowPathNode implements Serializable {
     }
 
     /**
-     * Gets the output port 
+     * Gets the output port .
      *
      * @return the output port 
      */
@@ -99,7 +118,7 @@ public class FlowPathNode implements Serializable {
     }
 
     /**
-     * Sets the output port 
+     * Sets the output port .
      *
      * @param outputPort the new output port 
      */
@@ -107,10 +126,20 @@ public class FlowPathNode implements Serializable {
         this.outputPort = outputPort;
     }
 
+    /**
+     * Gets the switch name.
+     *
+     * @return the switch name
+     */
     public String getSwitchName() {
         return switchName;
     }
 
+    /**
+     * Sets the switch name.
+     *
+     * @param switchName the new switch name
+     */
     public void setSwitchName(String switchName) {
         this.switchName = switchName;
     }

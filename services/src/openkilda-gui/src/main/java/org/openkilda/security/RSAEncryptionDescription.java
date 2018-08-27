@@ -1,4 +1,21 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.security;
+
+import org.apache.log4j.Logger;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -12,17 +29,18 @@ import java.security.spec.RSAPublicKeySpec;
 
 import javax.crypto.Cipher;
 
-import org.apache.log4j.Logger;
-
-
 /**
- * The Class RSAEncryptionDescription.
+ * The Class RsaEncryptionDescription.
  */
-public class RSAEncryptionDescription {
+
+public final class RsaEncryptionDescription {
 
     /** The Constant _log. */
-    private static final Logger _log = Logger.getLogger(RSAEncryptionDescription.class);
-
+    private static final Logger _log = Logger.getLogger(RsaEncryptionDescription.class);
+    
+    private RsaEncryptionDescription() {
+        
+    }
 
     /**
      * Read key from file.
@@ -68,20 +86,20 @@ public class RSAEncryptionDescription {
      * Rsa decrypt.
      *
      * @param text the text
-     * @param file_des the file_des
+     * @param fileDes the fileDes
      * @return the string
      * @throws Exception the exception
      */
     // Use this PublicKey object to initialize a Cipher and encrypt some data
     @SuppressWarnings("restriction")
-    public static String rsaEncrypt(final byte[] text, final String file_des) throws Exception {
+    public static String rsaEncrypt(final byte[] text, final String fileDes) throws Exception {
         Key pubKey = readKeyFromFile("public.key");
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, pubKey);
         byte[] data = cipher.doFinal(text);
         /*
-         * StringBuilder sb = new StringBuilder(); for (byte b : data) { sb.append((char)b); }
-         * return sb.toString();
+         * StringBuilder sb = new StringBuilder(); for (byte b : data) {
+         * sb.append((char)b); } return sb.toString();
          */
         // return new sun.misc.BASE64Encoder().encode(data);
         return new sun.misc.BASE64Encoder().encode(data);
@@ -92,12 +110,12 @@ public class RSAEncryptionDescription {
      * Rsa decrypt.
      *
      * @param text the text
-     * @param file_des the file_des
+     * @param fileDes the file_des
      * @return the string
      * @throws Exception the exception
      */
     // Use this PublicKey object to initialize a Cipher and decrypt some data
-    public static String rsaDecrypt(final String text, final String file_des) throws Exception {
+    public static String rsaDecrypt(final String text, final String fileDes) throws Exception {
         Key priKey = readKeyFromFile("private.key");
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.DECRYPT_MODE, priKey);
@@ -106,4 +124,3 @@ public class RSAEncryptionDescription {
         return new String(data, "UTF8");
     }
 }
-
