@@ -1,5 +1,6 @@
 package org.openkilda.floodlight.switchmanager;
 
+import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createMock;
@@ -20,6 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -64,6 +66,7 @@ public class SwitchManagerOF12Test {
         OFFlowMod expected = referenceOfFactory.buildFlowAdd()
                 .setCookie(U64.of(commonFlowCookie).applyMask(U64.of(SwitchManager.FLOW_COOKIE_MASK)))
                 .setPriority(DEFAULT_RULE_PRIORITY)
+                .setFlags(singleton(OFFlowModFlags.RESET_COUNTS))
                 .setMatch(referenceOfFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setMasked(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlanId), OFVlanVidMatch.ofRawVid(
