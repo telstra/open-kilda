@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class FlowManagerImpl implements FlowManager {
-    private static final SimpleDateFormat sdf = new SimpleDateFormat("ddMMMHHmm", Locale.US);
+    private final SimpleDateFormat sdf;
 
     @Autowired
     private NorthboundService northboundService;
@@ -57,6 +57,10 @@ public class FlowManagerImpl implements FlowManager {
 
     @Autowired
     private TopologyEngineService topologyEngineService;
+
+    public FlowManagerImpl() {
+        this.sdf = new SimpleDateFormat("ddMMMHHmm", Locale.US);
+    }
 
     /**
      * Creates a number of flows with given number of alternate paths and at least 1 a-switch ISL. a-switch ISL
