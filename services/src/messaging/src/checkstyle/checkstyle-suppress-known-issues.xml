@@ -153,7 +153,6 @@
     <suppress files="src/main/java/org/openkilda/messaging/info/event/NetworkTopologyChange.java" lines="18" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/event/NetworkTopologyChangeType.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/event/PortChangeType.java" lines="94" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/SwitchState.java" lines="99" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="22" checks="CustomImportOrder"/>
