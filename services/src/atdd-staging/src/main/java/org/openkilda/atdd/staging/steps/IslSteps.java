@@ -171,6 +171,24 @@ public class IslSteps {
         topologyUnderTest.addAlias(islAlias, theIsl);
     }
 
+    @Given("^select a random ISL with A-Switch, which doesn't overlap with '(.*)' and alias it as '(.*)'$")
+    public void selectARandomIslWithASwitch(String aliasIslToAvoid, String islAlias) {
+        Isl islToAvoid = topologyUnderTest.getAliasedObject(aliasIslToAvoid);
+
+        List<Isl> isls = getUnaliasedIsls().stream()
+                .filter(isl -> isl.getAswitch() != null && isl.getAswitch().getInPort() != null
+                        && isl.getAswitch().getOutPort() != null)
+                .filter(isl -> !isl.getSrcSwitch().equals(islToAvoid.getSrcSwitch())
+                        && !isl.getSrcSwitch().equals(islToAvoid.getDstSwitch())
+                        && !isl.getDstSwitch().equals(islToAvoid.getSrcSwitch())
+                        && !isl.getDstSwitch().equals(islToAvoid.getDstSwitch()))
+                .collect(Collectors.toList());
+        Random r = new Random();
+        Isl theIsl = isls.get(r.nextInt(isls.size()));
+        log.info("Selected random isl with A-switch: {}", theIsl.toString());
+        topologyUnderTest.addAlias(islAlias, theIsl);
+    }
+
     @And("^select a reverse path ISL for '(.*)' and alias it as '(.*)'$")
     public void selectAReversePathIsl(String islAlias, String newIslAlias) {
         Isl theIsl = topologyUnderTest.getAliasedObject(islAlias);

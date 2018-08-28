@@ -61,9 +61,9 @@ public class IslUtils {
         IslChangeType expectedIslState = IslChangeType.valueOf(expectedStatus);
 
         List<IslInfoData> actualIsl = Failsafe.with(retryPolicy
-                .retryIf(states -> ((List<IslInfoData>) states).stream()
+                .retryIf(states -> states != null && ((List<IslInfoData>) states).stream()
                         .map(IslInfoData::getState)
-                        .anyMatch(state -> !state.equals(expectedIslState))))
+                        .anyMatch(state -> !expectedIslState.equals(state))))
                 .get(() -> {
                     List<IslInfoData> allLinks = northbound.getAllLinks();
                     return isls.stream().map(isl -> getIslInfo(allLinks, isl)).collect(Collectors.toList());
