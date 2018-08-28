@@ -26,7 +26,18 @@ $(function() {
 		$("#downsampling,#menulist,#autoreload,#directionlist").on("change",function(event) {
 				getGraphData();	
 		});
-		
+		$('#reverseFromdatepicker,#reverseTodatepicker,#timezoneReverse').on('change',function(event){
+			var fromDateVal = $('#reverseFromdatepicker').val();
+			var fromDate =new Date(fromDateVal);
+			var toDateval = $('#reverseTodatepicker').val();
+			var toDate = new Date(toDateval);
+			loadReverseGraph(fromDate,toDate);
+		})
+		$('#forwardFromdatepicker,#forwardTodatepicker,#timezoneForward').on('change',function(event){
+			var fromDate = new Date($('#forwardFromdatepicker').val());
+			var toDate = new Date($('#forwardTodatepicker').val());
+			loadForwardGraph(fromDate,toDate);
+		})
 		$('#timezone').on('change',function(){
 			var timezone = $('#timezone option:selected').val();
 			var dat2 = new Date();
@@ -98,6 +109,19 @@ $(document).ready(function() {
 	$('#datetimepicker8').datetimepicker({
 		  format:'Y/m/d H:i:s',
 	});
+	$('#forwardFromdatepicker').datetimepicker({
+		  format:'Y/m/d H:i:s',
+	});
+	$('#forwardTodatepicker').datetimepicker({
+		  format:'Y/m/d H:i:s',
+	});
+	$('#reverseFromdatepicker').datetimepicker({
+		  format:'Y/m/d H:i:s',
+	});
+	$('#reverseTodatepicker').datetimepicker({
+		  format:'Y/m/d H:i:s',
+	});
+	
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'});
 	
 	var selMetric="packets";
@@ -125,7 +149,349 @@ function fetchAndLoadGraphData(flowid,convertedStartDate,convertedEndDate,downsa
 		showStatsGraph.showStatsData([],selMetric,null,null,yesterday,EndDate,timezone); 
 	})
 }
+function loadForwardGraph(fromDate, toDate){
+	$('#forward_path_graph').html('');
+	var isGraphLoaded = $('#forward_path_graph').css('display') == 'block';
+	var timezone = $('#timezoneForward option:selected').val();
+	if(typeof(fromDate) == 'undefined' && typeof(toDate) == 'undefined') {
+		$('#reverse_path_graph').hide();
+		$('#reverse_graph').hide();
+		$('#forward_graph').slideToggle();
+		$('#forward_path_graph').slideToggle('slow');
+		toggleOpenCloseClass("forward_graph_icon","glyphicon-plus","glyphicon-minus");	
+	}
+	if(!isGraphLoaded || (typeof(fromDate) !==' undefined' && typeof(toDate) !== 'undefined')){
+		$('#reverse_graph_icon').removeClass('glyphicon-minus').addClass('glyphicon-plus');
+		if(typeof(fromDate) !==' undefined' && typeof(toDate) !== 'undefined') {
+			if(timezone == 'UTC'){
+				var startDate = moment(fromDate).utc().format("YYYY-MM-DD-HH:mm:ss"); 
+				var endDate = moment(toDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).utc().format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).utc().format("YYYY/MM/DD HH:mm:ss"); 
+			}else{
+				var startDate = moment(fromDate).format("YYYY-MM-DD-HH:mm:ss"); 
+				var endDate = moment(toDate).format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).format("YYYY/MM/DD HH:mm:ss"); 
+			}
+		}else{
+			if(timezone == 'UTC'){
+				var startDate = moment().subtract(4,'hour').utc().format("YYYY-MM-DD-HH:mm:ss"); 
+				var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate = moment().subtract(4,'hour').utc().format("YYYY/MM/DD HH:mm:ss");
+				var toEndDate = moment().utc().format("YYYY/MM/DD HH:mm:ss");
+				$('#forwardFromdatepicker').val(fromStartDate);
+				$('#forwardTodatepicker').val(toEndDate);
+			}else{
+				var startDate = moment().subtract(4,'hour').format("YYYY-MM-DD-HH:mm:ss");
+				var endDate = moment().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate = moment().subtract(4,'hour').format("YYYY/MM/DD HH:mm:ss");
+				var toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
+				$('#forwardFromdatepicker').val(fromStartDate);
+				$('#forwardTodatepicker').val(toEndDate);
+			}
+			
+		}
+		var downsampling ='30s';
+		var flowPathData = flowObj.getFlowPathObj(); 
+		var flowid = (typeof(flowPathData) !== 'undefined' && flowPathData) ? flowPathData.flowid : null;
+		var forwardPathData = (flowPathData && flowPathData.flowpath_forward && flowPathData.flowpath_forward.length)? flowPathData.flowpath_forward : null;
+		if(forwardPathData && flowid){
+			var switches = forwardPathData.map(function(d){
+				return common.toggleSwitchID(d.switch_id);
+			});
+			var url = '/stats/flowpath';
+			var postData ={
+							"flowid":flowid,
+							"switches":switches,
+							"startdate":startDate,
+							"enddate":endDate,
+							"downsample":downsampling,
+							"direction":'forward',
+						  }
+			$('#waitforward').show();
+			setTimeout(function(){
+				$.ajax({
+						url : APP_CONTEXT+url,
+						contentType:'application/json',
+						dataType : "json",
+						type : "POST",
+						data:JSON.stringify(postData)
+					}).then(function(response){
+					loadPathGraph(response,fromStartDate,toEndDate,'forward',timezone);
+				},function(error){
+					$('#waitforward').hide();
+				})
+				
+			},500);
+			
+		}else{
+			common.infoMessage('No Flow Path data found','warning');
+		}
+		
+	}
+}
 
+function getColorCode(j,arr){
+	var chars = '0123456789ABCDE'.split('');
+    var hex = '#';
+    for (var i = 0; i < 6; i++) {
+        hex += chars[Math.floor(Math.random() * 16)];
+    }
+    var colorCode = hex;
+	if(arr.indexOf(colorCode) < 0 ){
+		return colorCode;
+	}else{
+		return getColorCode(j,arr);
+	}
+}
+function computeGraphData(data,startDate,endDate,type,timezone){
+	var graphData = [];
+	var labels =["Date"];
+	var color = [];
+	if(typeof(startDate)!=='undefined' && startDate!=null){
+		var dat = new Date(startDate);
+		var startTime = dat.getTime();
+		var usedDate = new Date();
+		if(typeof(timezone) !== 'undefined' && timezone=='UTC'){
+			startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+		}
+		var arr = [new Date(startTime)];
+		for(var j = 0; j < data.length; j++){
+			arr.push(null);
+		}
+		graphData.push(arr);
+	}
+	  if(data){
+		  if(data.length == 0){
+			  graphData = []; 
+		  }else{ 
+			   for(var j = 0; j < data.length; j++){ 
+				   var dataValues = (typeof(data[j]) !=='undefined') ? data[j].dps : 0;
+				   var metric = (typeof(data[j]) !=='undefined') ? data[j].metric : '';
+				   if(metric !== 'pen.flow.packets'){
+					   metric = metric + "("+data[j].tags.switchid+")";
+					   labels.push(metric);
+					   var colorCode = getColorCode(j,color);
+			            color.push(colorCode);
+					   var k = 0;
+					   for(i in dataValues) {
+
+				            if(dataValues[i]<0){
+				            	dataValues[i] = 0;
+				            }    
+				             
+				             if(j == 0){
+				            	 	var temparr = [];
+				            	 	temparr[0] = new Date(Number(i*1000)); 
+							      	temparr[1] = dataValues[i];
+							      	graphData[k] = temparr;
+							      	
+				             }else{
+				            	 var temparr = graphData[k];
+				            	 temparr.push(dataValues[i]);
+				            	 graphData[k] = temparr;
+				             }
+						    k++;  	
+						 }
+				   }else if(metric === 'pen.flow.packets'){
+					   metric = metric + "("+data[j].tags.flowid+")";
+					   labels.push(metric);
+					   var colorCode = getColorCode(j,color);
+			            color.push("#aad200");
+					   var k = 0;
+					   for(i in dataValues) {
+
+				            if(dataValues[i]<0){
+				            	dataValues[i] = 0;
+				            }    
+				             
+				             if(j == 0){
+				            	 	var temparr = [];
+				            	 	temparr[0] = new Date(Number(i*1000)); 
+							      	temparr[1] = dataValues[i];
+							      	graphData[k] = temparr;
+							      	
+				             }else{
+				            	 var temparr = graphData[k];
+				            	 temparr.push(dataValues[i]);
+				            	 graphData[k] = temparr;
+				             }
+						    k++;  	
+						 }
+					  
+				   }else{
+					   continue;
+				   }
+			   }
+			}
+	  } 
+	  if(typeof(endDate)!=='undefined' && endDate!=null){ 
+			var dat = new Date(endDate);
+			var lastTime = dat.getTime();
+			var usedDate = (graphData && graphData.length) ? new Date(graphData[graphData.length-1][0]): new Date();
+			if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
+				lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+			}
+			var arr = [new Date(lastTime)];
+			for(var j = 0; j < data.length; j++){
+				arr.push(null);
+			}
+			graphData.push(arr);
+		}
+	  return {labels:labels,data:graphData,color:color};
+}
+function loadPathGraph(data,startDate,endDate,type,timezone){
+   var graph_data = computeGraphData(data,startDate,endDate,type,timezone);
+  var graphData = graph_data['data'];
+  var labels = graph_data['labels'];
+  var series = {};
+  var colors = graph_data['color'];
+  if(labels && labels.length){
+	  for(var k = 0; k < labels.length; k++){
+		  if(k!=0){
+			  series[labels[k]] = {color:colors[k-1]};
+		  }
+	  }
+	
+  }
+  if(timezone == 'UTC'){
+	  if(type == 'forward'){
+		  var g = new Dygraph(
+			        document.getElementById("forward_path_graph"),graphData,
+			        {
+			        	  labels: labels,	
+			        	  labelsUTC:true,
+			        	  series:series, 
+			        }
+			    );
+			  $('#waitforward').hide();
+	  }else if(type=='reverse'){
+		  var g = new Dygraph(
+			        document.getElementById("reverse_path_graph"),graphData,
+			        {
+			        	  labels: labels,		      
+			        	  series:series,									 			 
+			 		      labelsUTC:true,
+			         }
+			    );
+		  $('#waitreverse').hide();
+	  }
+  }else{
+	  if(type == 'forward'){
+		  var g = new Dygraph(
+			        document.getElementById("forward_path_graph"),graphData,
+			        {
+			        	  labels: labels,
+			        	  series:series, 
+			        }
+			    );
+			  $('#waitforward').hide();
+	  }else if(type=='reverse'){
+		  var g = new Dygraph(
+			        document.getElementById("reverse_path_graph"),graphData,
+			        {
+			        	  labels: labels,		      
+			        	  series:series,	
+			         }
+			    );
+		  $('#waitreverse').hide();
+	  }
+  }  
+  
+}
+function toggleOpenCloseClass(ID,closeClass,OpenClass){
+	if($('#'+ID).hasClass(closeClass)){
+		$('#'+ID).removeClass(closeClass).addClass(OpenClass);
+	}else{
+		$('#'+ID).removeClass(OpenClass).addClass(closeClass);
+	}
+}
+function loadReverseGraph(fromDate,toDate){
+	$('#reverse_path_graph').html('');
+	var isGraphLoaded = $('#reverse_path_graph').css('display') == 'block';
+	var timezone = $('#timezoneReverse option:selected').val();
+	if(typeof(fromDate) =='undefined' && typeof(toDate) == 'undefined'){
+		$('#forward_path_graph').hide();
+		$('#forward_graph').hide();
+		$('#reverse_graph').slideToggle('slow');
+		$('#reverse_path_graph').slideToggle('slow');
+		toggleOpenCloseClass("reverse_graph_icon","glyphicon-plus","glyphicon-minus");
+	}
+	if(!isGraphLoaded || (typeof(fromDate) !=='undefined' && typeof(toDate) !== 'undefined') ){
+		$('#forward_graph_icon').removeClass('glyphicon-minus').addClass('glyphicon-plus');
+		if(typeof(fromDate) !==' undefined' && typeof(toDate) !== 'undefined') {
+			if(timezone == 'UTC'){
+				var startDate = moment(fromDate).utc().format("YYYY-MM-DD-HH:mm:ss"); 
+				var endDate = moment(toDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).utc().format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).utc().format("YYYY/MM/DD HH:mm:ss"); 
+			}else{
+				var startDate = moment(fromDate).format("YYYY-MM-DD-HH:mm:ss");
+				var endDate = moment(toDate).format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).format("YYYY/MM/DD HH:mm:ss");
+			}
+			
+			
+		}else{
+			if(timezone == 'UTC'){
+				var startDate = moment().subtract(4,'hour').utc().format("YYYY-MM-DD-HH:mm:ss"); 
+				var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate = moment().subtract(4,'hour').utc().format("YYYY/MM/DD HH:mm:ss");
+				var toEndDate = moment().utc().format("YYYY/MM/DD HH:mm:ss");
+				$('#reverseFromdatepicker').val(fromStartDate);
+				$('#reverseTodatepicker').val(toEndDate);
+			}else{
+				var startDate = moment().subtract(4,'hour').format("YYYY-MM-DD-HH:mm:ss"); // To do change the value 4 to 2 to change time difference to 2 hours in subtract function
+				var endDate = moment().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate = moment().subtract(4,'hour').format("YYYY/MM/DD HH:mm:ss");
+				var toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
+				$('#reverseFromdatepicker').val(fromStartDate);
+				$('#reverseTodatepicker').val(toEndDate);
+			}
+			
+		}
+		
+		var downsampling ='30s';
+		var url = '/stats/flowpath';
+		var flowPathData = flowObj.getFlowPathObj();
+		var flowid = (typeof(flowPathData) !== 'undefined' && flowPathData) ? flowPathData.flowid : null;
+		var reversePathData = (flowPathData && flowPathData.flowpath_reverse && flowPathData.flowpath_reverse.length) ? flowPathData.flowpath_reverse:null;
+		if(reversePathData && flowid){
+			var switches = reversePathData.map(function(d){
+				return common.toggleSwitchID(d.switch_id);
+			});
+			
+			var postData ={
+							"flowid":flowid,
+							"switches":switches,
+							"startdate":startDate,
+							"enddate":endDate,
+							"downsample":downsampling,
+							"direction":'reverse',
+						  }
+			$('#waitreverse').show();
+			setTimeout(function(){
+				$.ajax({
+						url : APP_CONTEXT+url,
+						contentType:'application/json',
+						dataType : "json",
+						type : "POST",
+						data:JSON.stringify(postData)
+					}).then(function(response){
+					loadPathGraph(response,fromStartDate,toEndDate,'reverse',timezone);
+				},function(error){
+					$('#waitreverse').hide();
+				})
+			},500);
+			
+		}else{
+			common.infoMessage('No Flow Path data found','warning');
+		}
+	}
+	
+}
 /**
 * Execute this function to  show stats data whenever user filters data in the
 * html page.
