@@ -35,6 +35,9 @@ public interface AbstractTopologyConfig {
     @Key("parallelism")
     int getParallelism();
 
+    @Key("parallelism.new")
+    int getNewParallelism();
+
     @Key("workers")
     int getWorkers();
 

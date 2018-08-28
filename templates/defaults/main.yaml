@@ -57,6 +57,8 @@ opentsdb_workers_datapointparserbolt: 1
 opentsdb_batch_size: 50
 opentsdb_flush_interval: 1
 opentsdb_workers: 1
+reroute_throttling_delay_min: 10
+reroute_throttling_delay_max: 600
 
 logging:
   # method can be file of logstash

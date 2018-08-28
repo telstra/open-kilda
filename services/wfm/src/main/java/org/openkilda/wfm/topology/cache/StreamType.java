@@ -27,7 +27,7 @@ public enum StreamType {
     /**
      * Dump cache.
      */
-    WFM_DUMP,
+    WFM_REROUTE,
 
     /**
      * Network storage update.
