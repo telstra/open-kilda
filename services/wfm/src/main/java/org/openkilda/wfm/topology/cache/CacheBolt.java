@@ -21,9 +21,6 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.FlowDump;
@@ -53,13 +50,13 @@ import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
@@ -76,6 +73,8 @@ public class CacheBolt
         extends BaseStatefulBolt<InMemoryKeyValueState<String, Cache>>
         implements ICtrlBolt {
     public static final String STREAM_ID_CTRL = "ctrl";
+    public static final String FLOW_ID_FIELD = "flowId";
+    public static final String CORRELATION_ID_FIELD = "correlationId";
 
     /**
      * Network cache key.
@@ -222,7 +221,7 @@ public class CacheBolt
     @Override
     public void declareOutputFields(OutputFieldsDeclarer output) {
         output.declareStream(StreamType.TPE.toString(), AbstractTopology.fieldMessage);
-        output.declareStream(StreamType.WFM_DUMP.toString(), AbstractTopology.fieldMessage);
+        output.declareStream(StreamType.WFM_REROUTE.toString(), new Fields(FLOW_ID_FIELD, CORRELATION_ID_FIELD));
         output.declareStream(StreamType.OFE.toString(), AbstractTopology.fieldMessage);
         // FIXME(dbogun): use proper tuple format
         output.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
@@ -366,32 +365,15 @@ public class CacheBolt
         logger.debug("Flow command message sent");
     }
 
-    private void emitFlowCrudMessage(InfoData data, Tuple tuple, String correlationId) throws IOException {
-        Message message = new InfoMessage(data, System.currentTimeMillis(),
-                correlationId, Destination.WFM);
-        outputCollector.emit(StreamType.WFM_DUMP.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
-        logger.debug("Flow command message sent");
-    }
-
     private void emitRerouteCommands(Tuple input, Set<ImmutablePair<Flow, Flow>> flows,
                                      String initialCorrelationId, String reason) {
         for (ImmutablePair<Flow, Flow> flow : flows) {
             final String flowId = flow.getLeft().getFlowId();
-            FlowRerouteRequest request = new FlowRerouteRequest(flowId);
 
             String correlationId = format("%s-%s", initialCorrelationId, flowId);
 
-            String json;
-            try {
-                json = Utils.MAPPER.writeValueAsString(new CommandMessage(
-                        request, System.currentTimeMillis(), correlationId, Destination.WFM));
-            } catch (JsonProcessingException exception) {
-                logger.error("Could not format flow reroute request by flow={}", flow, exception);
-                return;
-            }
-
-            Values values = new Values(json);
-            outputCollector.emit(StreamType.WFM_DUMP.toString(), input, values);
+            Values values = new Values(flowId, correlationId);
+            outputCollector.emit(StreamType.WFM_REROUTE.toString(), input, values);
 
             flow.getLeft().setState(FlowState.DOWN);
             flow.getRight().setState(FlowState.DOWN);

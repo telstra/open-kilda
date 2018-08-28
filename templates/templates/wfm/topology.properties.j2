@@ -1,11 +1,15 @@
 environment.naming.prefix = {{ environment_naming_prefix }}
 
+parallelism.new = 2
 parallelism = 1
 workers = 1
 
 kafka.hosts = {{ kafka_hosts }}
 kafka.partitions.default = 1
 kafka.replication.default = 3
+
+reroute.throttling.delay.min = {{ reroute_throttling_delay_min }}
+reroute.throttling.delay.max = {{ reroute_throttling_delay_max }}
 
 opentsdb.hosts = {{ opentsdb_hosts }}
 opentsdb.timeout = {{ opentsdb_timeout }}
