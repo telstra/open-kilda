@@ -292,7 +292,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
         return new SwitchInfoData(
                 new SwitchId(dto.getSwitchId()),
-                SwitchState.from(dto.getState()),
+                SwitchState.valueOf(dto.getState()),
                 dto.getAddress(),
                 dto.getHostname(),
                 dto.getDescription(),

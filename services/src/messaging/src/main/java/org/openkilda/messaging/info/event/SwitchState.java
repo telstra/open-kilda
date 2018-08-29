@@ -20,8 +20,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
-import java.util.Arrays;
-
 /**
  * Enum represents switch event message types.
  */
@@ -96,18 +94,7 @@ public enum SwitchState {
         return type;
     }
 
-    public static SwitchState from(String state) {
-        return Arrays.stream(SwitchState.values())
-                .filter(item -> item.type.equalsIgnoreCase(state))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(String.format("Incorrect switch state: %s", state)));
-    }
-
     public boolean isActive() {
         return this == ADDED || this == ACTIVATED;
-    }
-
-    public boolean isInactive() {
-        return this == REMOVED || this == DEACTIVATED;
     }
 }

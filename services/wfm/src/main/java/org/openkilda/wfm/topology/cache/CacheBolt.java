@@ -21,6 +21,9 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.switches.SwitchDeleteRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.FlowDump;
@@ -197,6 +200,16 @@ public class CacheBolt
                     handleNetworkTopologyChange(topologyChange, tuple, message.getCorrelationId());
                 } else {
                     logger.warn("Skip undefined info data type {}", json);
+                }
+            } else if (bm instanceof CommandMessage) {
+                CommandMessage message = (CommandMessage) bm;
+                CommandData data = message.getData();
+
+                if (data instanceof SwitchDeleteRequest) {
+                    SwitchDeleteRequest request = (SwitchDeleteRequest) data;
+                    networkCache.deleteSwitch(request.getSwitchId());
+                } else {
+                    logger.warn("Skip undefined command data type {}", json);
                 }
             } else {
                 logger.warn("Skip undefined message type {}", json);
