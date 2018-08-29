@@ -3,9 +3,18 @@ class Port {
 	}
 	
 	getPortDetailObj() {
-		var portData = localStorage.getItem("portDetails");
+		var switchname = window.location.href.split("#")[1]	;
+		var port_number = window.location.href.split("#")[2];
+		var portData = localStorage.getItem('port_'+common.toggleSwitchID(switchname)+"_"+port_number);
 		return JSON.parse(portData);
 	}
+	
+	
+	setPortDetails(portData) {
+		var switchname = window.location.href.split("#")[1]	;
+		var port_number = window.location.href.split("#")[2];
+		localStorage.setItem('port_'+common.toggleSwitchID(switchname)+"_"+port_number,JSON.stringify(portData));
+	 }
 	
 	configurePort() {
 		var portData = this.getPortDetailObj();
@@ -17,9 +26,9 @@ class Port {
 		$('#port_detail_loading').show();
 		
 		common.saveData(url, 'PUT', {status:newStatus}).then( function(data) {
-			common.infoMessage("Port configuration updated successfully", 'success');
+			common.infoMessage("Port configuration updated requested successfully", 'success');
 			portData.status = newStatus;
-			localStorage.setItem("portDetails",JSON.stringify(portData));
+			portObj.setPortDetails(portData);
 			$('#port_detail_loading').hide();
 			portObj.closeConfigurationPort(newStatus);
 		}).fail(function(error) {
@@ -54,7 +63,8 @@ class Port {
 	
 	confirmConfigure() {
 			var portData = this.getPortDetailObj();
-			$('#edit_port_status').val(portData.status);
+			var port_status = (portData && portData.status) ? portData.status: '';
+			$('#edit_port_status').val(port_status);
 			$('.port_details_div_status').hide();
 			$('#edit_port_status').show();
 			$('#configure_confirm_modal').modal('hide');

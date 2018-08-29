@@ -88,6 +88,7 @@ $(document).ready(function() {
 		  format:'Y/m/d H:i:s',
 	});
 	$('#datetimepicker_dark').datetimepicker({theme:'dark'})
+	$('#wait1').show();
 	var loadUrl = "/stats/isl/"+source+"/"+sourcePort+"/"+target+"/"+targetPort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric;
 	var reverseLoadUrl = "/stats/isl/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/30s/"+selMetric;
 	setTimeout(function(){
@@ -183,19 +184,17 @@ function getGraphData(changeFlag) {
 	  		loadUrl ="/stats/isl/losspackets/"+target+"/"+targetPort+"/"+source+"/"+sourcePort+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
 	  	} 
 	  	fetchGraphData(loadUrl, reverseLoadUrl, selMetric);
-	  	
-		
-				try {
-					clearInterval(graphInterval);
-				} catch(err) {
-	
-				}
-				
-				if(autoreload){
-					graphInterval = setInterval(function(){
-						callIntervalData(loadUrl, reverseLoadUrl, selMetric);
-					}, 1000*autoreload);
-				}
+	  	try {
+				clearInterval(graphInterval);
+			} catch(err) {
+
+			}
+			
+			if(autoreload){
+				graphInterval = setInterval(function(){
+					callIntervalData(loadUrl, reverseLoadUrl, selMetric);
+				}, 1000*autoreload);
+			}
 		}	
 }
 		
@@ -237,6 +236,8 @@ function fetchGraphData(loadUrl, reverseLoadUrl, metric,timezone){
 				$("#wait1").css("display", "none");
 				$('body').css('pointer-events', 'all');
 				showStatsGraph.showStatsData(response, metric, null, null, startDate, endDate, timezone); 
+			},function(error){
+				showStatsGraph.showStatsData(response, metric, null, null, startDate, endDate, timezone); 
 			})
 		}else{
 			$("#wait1").css("display", "none");
@@ -244,7 +245,8 @@ function fetchGraphData(loadUrl, reverseLoadUrl, metric,timezone){
 			showStatsGraph.showStatsData(response, metric, null, null, startDate, endDate, timezone); 
 		}
 		
-	},function(error){
+	},function(error){ 
+		$("#wait1").css("display", "none");
 		showStatsGraph.showStatsData([], metric, null, null, startDate, endDate, timezone); 
 	})
 }
