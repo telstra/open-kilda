@@ -10,12 +10,13 @@
  */
 
 
-var portData = localStorage.getItem("portDetails");
+
+var switchname = window.location.href.split("#")[1];
+var port_number = window.location.href.split("#")[2];
+var sourceswitch = common.toggleSwitchID(switchname);
+var portData = localStorage.getItem("port_"+common.toggleSwitchID(switchname)+"_"+port_number);
 var portObj = JSON.parse(portData)
 var portNum = portObj.port_number;
-var switchname = window.location.href.split("#")[1];
-var sourceswitch = common.toggleSwitchID(switchname);
-
 
 var graphInterval;
 
