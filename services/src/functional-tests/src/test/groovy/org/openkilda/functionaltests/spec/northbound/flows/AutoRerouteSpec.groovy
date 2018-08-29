@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
@@ -13,7 +13,7 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
 import org.springframework.beans.factory.annotation.Autowired
 
-class AutoReroutesSpec extends BaseSpecification {
+class AutoRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
