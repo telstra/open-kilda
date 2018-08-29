@@ -15,23 +15,31 @@
 
 package org.openkilda.floodlight.command;
 
-import org.openkilda.floodlight.service.batch.OfPendingMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.concurrent.Callable;
 
-public abstract class Command implements Runnable {
+public abstract class Command implements Callable<Command> {
+    private static final Logger log = LoggerFactory.getLogger(Command.class);
+
     private final CommandContext context;
 
     public Command(CommandContext context) {
         this.context = context;
     }
 
-    public void ioComplete(List<OfPendingMessage> payload, boolean isError) {
-        throw new IllegalArgumentException("Can't handle IO response, because don't send any IO requests");
+    public Command exceptional(Throwable e) {
+        log.error(String.format("Unhandled exception into %s: %s", getClass().getName(), e.getMessage()), e);
+        return null;
     }
 
-    protected void startSubCommand(Command command) {
-        command.run();
+    /**
+     * If true - this command will not produce subcommand and can be processed in simplified way by
+     * command processor.
+     */
+    public boolean isOneShot() {
+        return true;
     }
 
     protected CommandContext getContext() {

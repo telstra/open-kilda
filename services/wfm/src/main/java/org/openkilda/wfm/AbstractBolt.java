@@ -16,6 +16,7 @@
 package org.openkilda.wfm;
 
 import org.openkilda.wfm.error.AbstractException;
+import org.openkilda.wfm.error.PipelineException;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.task.OutputCollector;
@@ -27,10 +28,15 @@ import java.util.Map;
 
 @Slf4j
 public abstract class AbstractBolt extends BaseRichBolt {
+    public static final String FIELD_ID_CONTEXT = "context";
+
     private OutputCollector output;
 
     @Override
     public void execute(Tuple input) {
+        log.debug(
+                "{} input tuple from {}:{} size {}",
+                getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), input.size());
         try {
             handleInput(input);
         } catch (Exception e) {
@@ -51,6 +57,35 @@ public abstract class AbstractBolt extends BaseRichBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.output = collector;
+
+        init();
+    }
+
+    protected void init() { }
+
+    protected CommandContext pullContext(Tuple input) throws PipelineException {
+        CommandContext value;
+        try {
+            Object raw = input.getValueByField(FIELD_ID_CONTEXT);
+            if (raw instanceof String) {
+                value = new CommandContext((String) raw);
+            } else {
+                value = (CommandContext) raw;
+            }
+        } catch (ClassCastException e) {
+            throw new PipelineException(this, input, FIELD_ID_CONTEXT, e.toString());
+        }
+        return value;
+    }
+
+    protected <T> T pullValue(Tuple input, String field, Class<T> klass) throws PipelineException {
+        T value;
+        try {
+            value = klass.cast(input.getValueByField(field));
+        } catch (ClassCastException e) {
+            throw new PipelineException(this, input, field, e.toString());
+        }
+        return value;
     }
 
     protected OutputCollector getOutput() {

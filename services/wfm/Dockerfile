@@ -21,11 +21,9 @@ RUN pip install kafka
 RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
 WORKDIR /app
-ADD app/deploy_topos_and_monitor.sh /app/
-RUN chmod 777 /app/deploy_topos_and_monitor.sh
-ADD Makefile /app/
+ADD app /app
 ADD src/main/resources/topology.properties /app/
-CMD ["/app/deploy_topos_and_monitor.sh", "topology.properties"]
+CMD /app/entry-point.sh
 
 ADD target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar /app/target/
 

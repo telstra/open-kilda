@@ -154,7 +154,6 @@ services:
     container_name: wfm
     build:
       context: services/wfm
-    image: "kilda/wfm:${full_build_number:-latest}"
     depends_on:
       kafka:
         condition: service_healthy

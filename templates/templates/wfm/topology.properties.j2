@@ -7,6 +7,20 @@ workers = 1
 kafka.hosts = {{ kafka_hosts }}
 kafka.partitions.default = 1
 kafka.replication.default = 3
+kafka.topic.ctrl = {{ kafka_topic_ctrl }}
+kafka.topic.flow = {{ kafka_topic_flow }}
+kafka.topic.flow.status = {{ kafka_topic_flow_status }}
+kafka.topic.ping = {{ kafka_topic_ping }}
+kafka.topic.health.check = {{ kafka_topic_health_check }}
+kafka.topic.northbound = {{ kafka_topic_northbound }}
+kafka.topic.opentsdb = {{ kafka_topic_opentsdb }}
+kafka.topic.simulator = {{ kafka_topic_simulator }}
+kafka.topic.speaker = {{ kafka_topic_speaker }}
+kafka.topic.stats = {{ kafka_topic_stats }}
+kafka.topic.topo.cache = {{ kafka_topic_topo_cache }}
+kafka.topic.topo.disco = {{ kafka_topic_topo_disco }}
+kafka.topic.topo.eng = {{ kafka_topic_topo_eng }}
+kafka.topic.topo.nbworker = {{ kafka_topic_topo_nb }}
 
 reroute.throttling.delay.min = {{ reroute_throttling_delay_min }}
 reroute.throttling.delay.max = {{ reroute_throttling_delay_max }}
@@ -48,6 +62,13 @@ discovery.limit = {{ discovery_limit }}
 discovery.speaker-failure-timeout = 5
 discovery.dump-request-timeout-seconds=60
 discovery.keep.removed.isl = {{ discovery_keep_removed_isl }}
+
+# all following ping intervals are in seconds
+#flow.ping.scale-factor = 2
+#flow.ping.interval = 10
+#flow.ping.timeout = 2
+#flow.ping.fail.delay = 45
+#flow.ping.fail.reset = 1800
 
 local = no
 local.execution.time = 300

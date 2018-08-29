@@ -22,6 +22,7 @@ import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.provider.PathComputer;
 
 import java.util.Collections;
+import java.util.List;
 
 public class PathComputerMock implements PathComputer {
     @Override
@@ -43,6 +44,11 @@ public class PathComputerMock implements PathComputer {
         return new ImmutablePair<>(
                 new PathInfoData(0L, Collections.emptyList()),
                 new PathInfoData(0L, Collections.emptyList()));
+    }
+
+    @Override
+    public List<Flow> getFlow(String flowId) {
+        return Collections.emptyList();
     }
 
     private class MockedAvailableNetwork extends AvailableNetwork {

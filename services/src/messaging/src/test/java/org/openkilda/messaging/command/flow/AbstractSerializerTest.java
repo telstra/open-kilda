@@ -94,8 +94,20 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
             new PathNode(new SwitchId("ff:02"), 2, 1, 0L));
     private static final IslInfoData isl = new IslInfoData(0L, nodes, 1000L, IslChangeType.DISCOVERED, 900L);
     private static final PathInfoData path = new PathInfoData(0L, nodes);
-    private static final Flow flowModel = new Flow(FLOW_NAME, 1000, false, COOKIE, FLOW_NAME, String.valueOf(TIMESTAMP),
-            new SwitchId("ff:01"), new SwitchId("ff:02"), 10, 20, 100, 200, 1, 1024, path, FLOW_STATUS);
+    private static final Flow flowModel = Flow.builder()
+            .flowId(FLOW_NAME)
+            .bandwidth(1000)
+            .ignoreBandwidth(false)
+            .periodicPings(false)
+            .cookie(COOKIE)
+            .lastUpdated(String.valueOf(TIMESTAMP))
+            .sourceSwitch(new SwitchId("ff:01")).sourcePort(10).sourcePort(100)
+            .destinationSwitch(new SwitchId("ff:02")).destinationPort(20).destinationVlan(200)
+            .meterId(1)
+            .transitVlan(1024)
+            .state(FLOW_STATUS)
+            .flowPath(path)
+            .build();
 
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {

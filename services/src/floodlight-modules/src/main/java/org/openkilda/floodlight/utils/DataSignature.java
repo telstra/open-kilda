@@ -17,6 +17,7 @@ package org.openkilda.floodlight.utils;
 
 import org.openkilda.floodlight.error.CorruptedNetworkDataException;
 import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
+import org.openkilda.floodlight.model.ISignPayload;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
@@ -41,9 +42,9 @@ public class DataSignature {
         }
     }
 
-    public byte[] sign(JWTCreator.Builder token) {
-        String payload = token.sign(signAlgorithm);
-        return payload.getBytes(Charset.forName("UTF-8"));
+    public byte[] sign(ISignPayload payload) {
+        JWTCreator.Builder token = payload.toSign(JWT.create());
+        return token.sign(signAlgorithm).getBytes(Charset.forName("UTF-8"));
     }
 
     /**

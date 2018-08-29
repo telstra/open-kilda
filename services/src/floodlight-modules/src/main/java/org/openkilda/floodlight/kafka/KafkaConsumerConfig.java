@@ -49,6 +49,22 @@ public interface KafkaConsumerConfig extends KafkaFloodlightConfig, KafkaConsume
     @Min(1)
     long getAutoCommitInterval();
 
+    @Key("command-processor-workers-count")
+    @Default("4")
+    int getCommandPersistentWorkersCount();
+
+    @Key("command-processor-workers-limit")
+    @Default("32")
+    int getCommandWorkersLimit();
+
+    @Key("command-processor-deferred-requests-limit")
+    @Default("8")
+    int getCommandDeferredRequestsLimit();
+
+    @Key("command-processor-idle-workers-keep-alive-seconds")
+    @Default("300")
+    long getCommandIdleWorkersKeepAliveSeconds();
+
     default boolean isTestingMode() {
         return "YES".equals(getTestingMode());
     }

@@ -31,7 +31,7 @@ public class FlowCollector {
 
         boolean isForward = flow.isForward();
         if (isForward) {
-            current = this.forward;
+            current = forward;
         } else {
             current = reverse;
         }

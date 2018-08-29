@@ -44,6 +44,13 @@ def convert_integer(raw, limit=sys.maxint):
     return value
 
 
+def dash_to_underscore(source):
+    result = {}
+    for key in source:
+        result[key.replace('-', '_')] = source[key]
+    return result
+
+
 def grab_fields(data, fields_mapping):
     return {
         y: data[x]

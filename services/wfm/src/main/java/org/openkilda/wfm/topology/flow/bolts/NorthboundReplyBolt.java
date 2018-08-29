@@ -65,7 +65,6 @@ public class NorthboundReplyBolt extends BaseRichBolt {
 
             switch (componentId) {
 
-                case VERIFICATION_JOINT_BOLT:
                 case CRUD_BOLT:
                 case ERROR_BOLT:
                     logger.debug("Flow response: {}={}, component={}, stream={}, message={}",

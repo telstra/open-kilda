@@ -15,18 +15,17 @@
 
 package org.openkilda.floodlight.pathverification;
 
-
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
-import static org.junit.Assert.assertEquals;
+
+import org.openkilda.floodlight.model.OfInput;
 
 import junit.framework.AssertionFailedError;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.packet.Ethernet;
@@ -60,10 +59,9 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
 
     @Before
     public void setUp() throws Exception {
-
         super.setUp();
 
-        OFPacketOut packetOut = pvs.generateVerificationPacket(sw1, OFPort.of(1));
+        final OFPacketOut packetOut = pvs.generateVerificationPacket(sw1, OFPort.of(1));
 
         ofPacketIn = EasyMock.createMock(OFPacketIn.class);
 
@@ -72,6 +70,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
         expect(ofPacketIn.getType()).andReturn(OFType.PACKET_IN).anyTimes();
         expect(ofPacketIn.getXid()).andReturn(0L).anyTimes();
         expect(ofPacketIn.getVersion()).andReturn(packetOut.getVersion()).anyTimes();
+        expect(ofPacketIn.getCookie()).andReturn(PathVerificationService.OF_CATCH_RULE_COOKIE);
 
         Match match = EasyMock.createMock(Match.class);
         expect(match.get(MatchField.IN_PORT)).andReturn(OFPort.of(1)).anyTimes();
@@ -95,10 +94,10 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     }
 
     @Test
-    public void testSignPacketPositive() throws PacketParsingException, FloodlightModuleException {
+    public void testSignPacketPositive() throws Exception {
         expect(producer.send(anyObject())).andReturn(null).once();
         replay(producer);
-        assertEquals(Command.STOP, pvs.receive(sw2, ofPacketIn, context));
+        pvs.handlePacketIn(new OfInput(sw2, ofPacketIn, context));
         verify(producer);
     }
 
@@ -110,7 +109,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
         context.getStorage().put(IFloodlightProviderService.CONTEXT_PI_PAYLOAD, noSignPacketData);
         expect(producer.send(anyObject())).andThrow(new AssertionFailedError()).anyTimes();
         replay(producer);
-        assertEquals(Command.STOP, pvs.receive(sw2, ofPacketIn, context));
+        pvs.handlePacketIn(new OfInput(sw2, ofPacketIn, context));
         verify(producer);
     }
 
@@ -119,7 +118,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
         expect(producer.send(anyObject())).andThrow(new AssertionFailedError()).anyTimes();
         replay(producer);
         pvs.initAlgorithm("secret2");
-        assertEquals(Command.STOP, pvs.receive(sw2, ofPacketIn, context));
+        pvs.handlePacketIn(new OfInput(sw2, ofPacketIn, context));
         verify(producer);
     }
 }

@@ -59,7 +59,7 @@ import org.projectfloodlight.openflow.types.U64;
 import java.net.InetSocketAddress;
 
 /**
- * This class gets a handle on the application context which is used to
+ * This class gets a input on the application context which is used to
  * retrieve Spring beans from during tests
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)

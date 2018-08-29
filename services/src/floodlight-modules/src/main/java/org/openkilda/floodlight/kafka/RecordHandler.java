@@ -19,8 +19,9 @@ import static java.util.Arrays.asList;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.command.flow.VerificationDispatchCommand;
+import org.openkilda.floodlight.command.ping.PingRequestCommand;
 import org.openkilda.floodlight.converter.OFFlowStatsConverter;
+import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
@@ -44,7 +45,6 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.command.flow.UniFlowVerificationRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -56,6 +56,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
@@ -99,11 +100,15 @@ class RecordHandler implements Runnable {
     private final ConsumerRecord<String, String> record;
     private final MeterPool meterPool;
 
+    private final CommandProcessorService commandProcessor;
+
     public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record,
                          MeterPool meterPool) {
         this.context = context;
         this.record = record;
         this.meterPool = meterPool;
+
+        this.commandProcessor = context.getModuleContext().getServiceImpl(CommandProcessorService.class);
     }
 
     protected void doControllerMsg(CommandMessage message) {
@@ -124,7 +129,7 @@ class RecordHandler implements Runnable {
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
         } catch (Exception e) {
-            logger.error("Unhandled exception: {}", e);
+            logger.error("Unhandled exception", e);
         }
     }
 
@@ -135,6 +140,8 @@ class RecordHandler implements Runnable {
 
         if (data instanceof DiscoverIslCommandData) {
             doDiscoverIslCommand(message);
+        } else if (data instanceof PingRequest) {
+            doPingRequest(context, (PingRequest) data);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
@@ -161,8 +168,6 @@ class RecordHandler implements Runnable {
             doBatchInstall(message);
         } else if (data instanceof PortsCommandData) {
             doPortsCommandDataRequest(message);
-        } else if (data instanceof UniFlowVerificationRequest) {
-            doFlowVerificationRequest(context, (UniFlowVerificationRequest) data);
         } else if (data instanceof DeleteMeterRequest) {
             doDeleteMeter(message, replyToTopic, replyDestination);
         } else if (data instanceof PortConfigurationRequest) {
@@ -191,6 +196,11 @@ class RecordHandler implements Runnable {
                 new NetworkEndpoint(command.getSwitchId(), command.getPortNumber()));
         context.getKafkaProducer().postMessage(context.getKafkaTopoDiscoTopic(),
                 new InfoMessage(confirmation, System.currentTimeMillis(), message.getCorrelationId()));
+    }
+
+    private void doPingRequest(CommandContext context, PingRequest request) {
+        PingRequestCommand command = new PingRequestCommand(context, request.getPing());
+        commandProcessor.process(command);
     }
 
     private void doDiscoverPathCommand(CommandData data) {
@@ -697,11 +707,6 @@ class RecordHandler implements Runnable {
         } catch (Exception e) {
             logger.error("Could not get port data for stats {}", e.getMessage(), e);
         }
-    }
-
-    private void doFlowVerificationRequest(CommandContext context, UniFlowVerificationRequest request) {
-        VerificationDispatchCommand verification = new VerificationDispatchCommand(context, request);
-        verification.run();
     }
 
     private void doDeleteMeter(CommandMessage message, String replyToTopic, Destination replyDestination) {
