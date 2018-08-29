@@ -29,10 +29,13 @@ import java.util.Properties;
 
 /**
  * Utility classes to facilitate testing.
- * <p>
- * Key Utilities:
+ *
+ * <p>Key Utilities:</p>
  */
-public class TestUtils {
+public final class TestUtils {
+
+    private TestUtils() {}
+
     public static Properties serverProperties(ZookeeperConfig config) {
         Properties props = new Properties();
         props.setProperty("zookeeper.connect", config.getHosts());

@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.wfm.topology.flow.bolts;
 
 import org.openkilda.messaging.Destination;
@@ -41,7 +56,7 @@ public class LcmFlowCacheSyncBolt extends BaseRichBolt {
     private final Map<String, LcmSyncTrace> pendingSyncRequests = new HashMap<>();
     private final List<String> managedSpouts;
 
-    public LcmFlowCacheSyncBolt(String ... managedSpouts) {
+    public LcmFlowCacheSyncBolt(String... managedSpouts) {
         this.managedSpouts = Arrays.asList(managedSpouts);
     }
 
@@ -103,7 +118,7 @@ public class LcmFlowCacheSyncBolt extends BaseRichBolt {
             try {
                 json = input.getString(0);
                 raw = Utils.MAPPER.readValue(json, Message.class);
-            } catch (IndexOutOfBoundsException|IOException e) {
+            } catch (IndexOutOfBoundsException | IOException e) {
                 logger.debug("Skip non deserializable record {}: {}", input, e);
                 return;
             }
@@ -136,14 +151,14 @@ public class LcmFlowCacheSyncBolt extends BaseRichBolt {
     private LcmSyncTrace popPendingSyncRequest(UUID correlationId) {
         LcmSyncTrace match = null;
 
-        for (String componentID : pendingSyncRequests.keySet()) {
-            LcmSyncTrace trace = pendingSyncRequests.get(componentID);
+        for (String componentId : pendingSyncRequests.keySet()) {
+            LcmSyncTrace trace = pendingSyncRequests.get(componentId);
             if (!correlationId.equals(trace.getCorrelationId())) {
                 continue;
             }
 
             match = trace;
-            pendingSyncRequests.remove(componentID);
+            pendingSyncRequests.remove(componentId);
             break;
         }
 
