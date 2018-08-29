@@ -30,6 +30,7 @@ import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
@@ -76,6 +77,12 @@ public interface NorthboundService {
 
     DeleteMeterResult deleteMeter(SwitchId switchId, Integer meterId);
 
+    PortDto configurePort(SwitchId switchId, Integer portNo, Object config);
+
+    PortDto portDown(SwitchId switchId, Integer portNo);
+
+    PortDto portUp(SwitchId switchId, Integer portNo);
+
     //links
 
     List<IslInfoData> getAllLinks();
@@ -95,7 +102,7 @@ public interface NorthboundService {
     FeatureTogglePayload toggleFeature(FeatureTogglePayload request);
 
     /**
-     *  Returns all active links.
+     * Returns all active links.
      */
     default List<IslInfoData> getActiveLinks() {
         return getAllLinks().stream()
@@ -104,7 +111,7 @@ public interface NorthboundService {
     }
 
     /**
-     *  Returns all active switches.
+     * Returns all active switches.
      */
     default List<SwitchInfoData> getActiveSwitches() {
         return getAllSwitches().stream()
