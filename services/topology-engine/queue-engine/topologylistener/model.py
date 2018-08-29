@@ -358,7 +358,8 @@ class LinkProps(TimestampMixin, AbstractLink):
         'time_create', 'time_modify',
         'latency', 'speed', 'available_bandwidth', 'actual', 'status'))
     props_converters = {
-        'cost': convert_integer}
+        'cost': convert_integer,
+        'max_bandwidth': convert_integer}
 
     props = Default(dict, produce=True)
     filtered = Default(set, produce=True)
