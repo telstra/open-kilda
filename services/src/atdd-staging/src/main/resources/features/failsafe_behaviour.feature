@@ -10,9 +10,10 @@ Feature: Failsafe Suite
     Given Create 1 flow with A Switch used and at least 1 alternate path between source and destination switch and 500 bandwidth
 
     When ISL between switches loses connectivity
-    And remains in this state for 30 seconds
+    And remains in this state for 240 seconds
     Then ISL status is DISCOVERED
     And ISL status changes to FAILED
+    And remains in this state for 15 seconds
     And flow is in UP state
     And flow path is changed
     And flow is valid per Northbound validation
