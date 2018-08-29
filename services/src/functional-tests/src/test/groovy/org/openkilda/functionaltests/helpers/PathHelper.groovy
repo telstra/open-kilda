@@ -58,10 +58,10 @@ class PathHelper {
             def src = path[i - 1]
             def dst = path[i]
             def involvedIsl = topology.isls.find {
-                (it.srcSwitch.dpId == src.switchId && it.srcPort == src.portNo && it.dstPort == dst.portNo &&
-                        it.dstSwitch.dpId == dst.switchId) ||
-                        (it.dstSwitch.dpId == src.switchId && it.dstPort == src.portNo && it.srcPort == dst.portNo &&
-                                it.srcSwitch.dpId == dst.switchId)
+                (it.srcSwitch?.dpId == src.switchId && it?.srcPort == src.portNo &&
+                        it.dstPort == dst.portNo && it.dstSwitch.dpId == dst.switchId) ||
+                        (it.dstSwitch?.dpId == src.switchId && it?.dstPort == src.portNo &&
+                                it.srcPort == dst.portNo && it.srcSwitch.dpId == dst.switchId)
             } ?: Isl.factory(topology.switches.find { it.dpId == src.switchId },
                     src.portNo, topology.switches.find { it.dpId == dst.switchId }, dst.portNo, 0, null)
             involvedIsls << involvedIsl
