@@ -107,7 +107,7 @@ function openswitchDetail(switch_id){
 	})	
 }
 function showFlowPathData(response ,isloader) {
-
+	flowObj.setFlowPathObj(response);
 	var tmp_length = 0;
 	for(var t in response) {
 	    ++tmp_length;
@@ -160,7 +160,8 @@ function showFlowPathData(response ,isloader) {
 				$('#ForwardRow').append(path_html);		
 			} else {
 				var switchId = "'"+obj[i].switch_id+"'";
-				var path_html = '<div class="path"><div class="number" data-balloon="' 
+				var path_html = '';
+				path_html = '<div class="path"><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].input_port + '</div><div class="line"></div><div class="text cursor-pointer" id ="switch-name" onclick="openswitchDetail('+switchId+')">' 
 					+ obj[i].switch_name + '</div><div class="line"></div><div class="number" data-balloon="' 
@@ -200,7 +201,8 @@ function showFlowPathData(response ,isloader) {
 
 				$('#ReversePath').append(path_html);		
 			} else {
-				var path_html = '<div class="path"><div class="number" data-balloon="' 
+				var path_html = '';
+				path_html = path_html + '<div class="path"><div class="number" data-balloon="' 
 					+ obj[i].switch_name + '" data-balloon-pos="up" id="port-number-a">'
 					+ obj[i].input_port + '</div><div class="line"></div><div class="text" id ="switch-name">' 
 					+ obj[i].switch_name + '</div><div class="line"></div><div class="number" data-balloon="' 

@@ -79,11 +79,6 @@
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchNotFoundException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/SwitchOperationException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/FlowResource.java" lines="44" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/FlowsResource.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/FlowsResource.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/FlowsResource.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/FlowsResource.java" lines="75" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/FlowsResource.java" lines="138" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/MetersResource.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/MetersResource.java" lines="43" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/MetersResource.java" lines="70" checks="WhitespaceAround"/>

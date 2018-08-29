@@ -21,6 +21,9 @@ kafka.topic.topo.disco = kilda.topo.disco
 kafka.topic.topo.eng = kilda.topo.eng
 kafka.topic.topo.nbworker = kilda.topo.nb
 
+reroute.throttling.delay.min = 10
+reroute.throttling.delay.max = 600
+
 opentsdb.hosts = http://opentsdb.pendev:4242
 opentsdb.timeout = 30
 opentsdb.num.spouts = 1

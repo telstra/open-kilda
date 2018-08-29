@@ -27,11 +27,10 @@ class PathHelper {
      */
     void makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
-        def islsToAvoid = getInvolvedIsls(lessPreferablePath).findAll { !morePreferableIsls.contains(it) }
-        if (islsToAvoid.empty) {
+        def islToAvoid = getInvolvedIsls(lessPreferablePath).find { !morePreferableIsls.contains(it) }
+        if (!islToAvoid) {
             throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
         }
-        def islToAvoid = islsToAvoid.first()
         northbound.updateLinkProps([
                 new LinkPropsDto(islToAvoid.srcSwitch.dpId.toString(), islToAvoid.srcPort,
                         islToAvoid.dstSwitch.dpId.toString(), islToAvoid.dstPort, ["cost": UNPREFERABLE_COST]),
@@ -59,10 +58,10 @@ class PathHelper {
             def src = path[i - 1]
             def dst = path[i]
             def involvedIsl = topology.isls.find {
-                (it.srcSwitch.dpId == src.switchId && it.srcPort == src.portNo && it.dstPort == dst.portNo &&
-                        it.dstSwitch.dpId == dst.switchId) ||
-                        (it.dstSwitch.dpId == src.switchId && it.dstPort == src.portNo && it.srcPort == dst.portNo &&
-                                it.srcSwitch.dpId == dst.switchId)
+                (it.srcSwitch?.dpId == src.switchId && it?.srcPort == src.portNo &&
+                        it.dstPort == dst.portNo && it.dstSwitch.dpId == dst.switchId) ||
+                        (it.dstSwitch?.dpId == src.switchId && it?.dstPort == src.portNo &&
+                                it.srcPort == dst.portNo && it.srcSwitch.dpId == dst.switchId)
             } ?: Isl.factory(topology.switches.find { it.dpId == src.switchId },
                     src.portNo, topology.switches.find { it.dpId == dst.switchId }, dst.portNo, 0, null)
             involvedIsls << involvedIsl

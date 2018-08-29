@@ -1,5 +1,6 @@
 environment.naming.prefix = {{ environment_naming_prefix }}
 
+parallelism.new = 2
 parallelism = 1
 workers = 1
 
@@ -20,6 +21,9 @@ kafka.topic.topo.cache = {{ kafka_topic_topo_cache }}
 kafka.topic.topo.disco = {{ kafka_topic_topo_disco }}
 kafka.topic.topo.eng = {{ kafka_topic_topo_eng }}
 kafka.topic.topo.nbworker = {{ kafka_topic_topo_nb }}
+
+reroute.throttling.delay.min = {{ reroute_throttling_delay_min }}
+reroute.throttling.delay.max = {{ reroute_throttling_delay_max }}
 
 opentsdb.hosts = {{ opentsdb_hosts }}
 opentsdb.timeout = {{ opentsdb_timeout }}

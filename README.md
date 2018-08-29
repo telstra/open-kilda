@@ -1,6 +1,7 @@
 ---
 KILDA CONTROLLER
 ---
+[![Build Status](https://travis-ci.org/telstra/open-kilda.svg?branch=develop)](https://travis-ci.org/telstra/open-kilda)[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=org.openkilda%3Akilda-parent&metric=alert_status)](https://sonarcloud.io/dashboard?id=org.openkilda%3Akilda-parent)
 
 ## Introduction
 
@@ -17,15 +18,29 @@ virtualenv --python=python2 .venv
 pip install tox
 ```
 
-### How to Build Kilda Controller
+Also, don't forget to install ansible. This tool is used for creating config/properties files from templates. To install it execute the following command:
 
-From the base directory run these commands:
+```
+pip install ansible
+```
 
-1. ```make build-base```
-2. ```make compile```
-3. ```docker-compose build```
+### How to build Kilda Controller
 
-### How to run Kilda
+From the base directory run the following command:
+
+```
+make build-latest
+```
+
+### How to clean Kilda Controller
+
+From the base directory run the following command:
+
+```
+make clean
+```
+
+### How to run Kilda Controller
 
 __NB: To run Kilda, you should have built it already (ie the previous section).__
 This is particularly important because docker-compose will expect some of the
@@ -47,7 +62,6 @@ Steps:
 3. Update your /etc/hosts file. Replace ```127.0.0.1 localhost``` to 
    ```127.0.0.1    localhost kafka.pendev```
 4. Run ATDD using ```make atdd``` command.
-5. Profit?!? :)
 
 ### How to run floodlight-modules locally
 

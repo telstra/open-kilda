@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.northbound
+package org.openkilda.functionaltests.spec.northbound.links
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.fixture.TestFixture

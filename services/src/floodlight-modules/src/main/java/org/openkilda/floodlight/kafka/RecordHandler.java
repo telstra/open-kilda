@@ -25,6 +25,7 @@ import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
+import org.openkilda.floodlight.switchmanager.SwitchNotFoundException;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
@@ -162,7 +163,7 @@ class RecordHandler implements Runnable {
         } else if (data instanceof ConnectModeRequest) {
             doConnectMode(message, replyToTopic, replyDestination);
         } else if (data instanceof DumpRulesRequest) {
-            doDumpRulesRequest(message, replyToTopic);
+            doDumpRulesRequest(message, replyToTopic, replyDestination);
         } else if (data instanceof BatchInstallRequest) {
             doBatchInstall(message);
         } else if (data instanceof PortsCommandData) {
@@ -576,6 +577,13 @@ class RecordHandler implements Runnable {
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
 
+        } catch (SwitchNotFoundException e) {
+            logger.info("Deleting switch rules is unsuccessful. Switch {} not found", request.getSwitchId());
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, e.getMessage(),
+                    request.getSwitchId().toString());
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
         } catch (SwitchOperationException e) {
             ErrorData errorData = new ErrorData(ErrorType.DELETION_FAILURE, e.getMessage(),
                     request.getSwitchId().toString());
@@ -604,24 +612,33 @@ class RecordHandler implements Runnable {
 
     }
 
-    private void doDumpRulesRequest(final CommandMessage message, String replyToTopic) {
+    private void doDumpRulesRequest(final CommandMessage message,  String replyToTopic, Destination replyDestination) {
         DumpRulesRequest request = (DumpRulesRequest) message.getData();
-        SwitchId switchId = request.getSwitchId();
-        logger.debug("Loading installed rules for switch {}", switchId);
+        try {
+            SwitchId switchId = request.getSwitchId();
+            logger.debug("Loading installed rules for switch {}", switchId);
 
-        List<OFFlowStatsEntry> flowEntries =
-                context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
-        List<FlowEntry> flows = flowEntries.stream()
-                .map(OFFlowStatsConverter::toFlowEntry)
-                .collect(Collectors.toList());
+            List<OFFlowStatsEntry> flowEntries =
+                    context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
+            List<FlowEntry> flows = flowEntries.stream()
+                    .map(OFFlowStatsConverter::toFlowEntry)
+                    .collect(Collectors.toList());
 
-        SwitchFlowEntries response = SwitchFlowEntries.builder()
-                .switchId(switchId)
-                .flowEntries(flows)
-                .build();
-        InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
-                message.getCorrelationId());
-        context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+            SwitchFlowEntries response = SwitchFlowEntries.builder()
+                    .switchId(switchId)
+                    .flowEntries(flows)
+                    .build();
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
+                    message.getCorrelationId());
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.info("Dump rules is unsuccessful. Switch {} not found", request.getSwitchId());
+            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(),
+                    request.getSwitchId().toString());
+            ErrorMessage error = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
     }
 
     /**

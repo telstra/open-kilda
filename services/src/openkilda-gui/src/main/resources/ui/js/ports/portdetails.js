@@ -32,9 +32,9 @@ $(document).ready(function() {
  */
 function showSwitchData(obj,switchname) {
 	
-
 	$(".graph_div").show();
 	$(".port_details_div_status").html(obj.status);
+	$('#edit_port_status').val(obj.status);
 	$(".switchdetails_div_number").html(obj.port_number);
 	$(".switchdetails_div_interface").html(obj.interfacetype);
 	$(".switchportdetails_div_switch_id").html(switchname);

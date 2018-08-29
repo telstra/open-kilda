@@ -128,9 +128,17 @@ public class LinkPropertiesSteps {
 
     @And("^get link properties for defined request$")
     public void getLinkPropertiesForDefinedRequest() {
+        SwitchId srcSwitch = null;
+        SwitchId dstSwitch = null;
+        if (linkPropsRequest.getSrcSwitch() != null) {
+            srcSwitch = new SwitchId(linkPropsRequest.getSrcSwitch());
+        }
+        if (linkPropsRequest.getDstSwitch() != null) {
+            dstSwitch = new SwitchId(linkPropsRequest.getDstSwitch());
+        }
         getLinkPropsResponse = northboundService.getLinkProps(
-                new SwitchId(linkPropsRequest.getSrcSwitch()), linkPropsRequest.getSrcPort(),
-                new SwitchId(linkPropsRequest.getDstSwitch()), linkPropsRequest.getDstPort());
+                srcSwitch, linkPropsRequest.getSrcPort(),
+                dstSwitch, linkPropsRequest.getDstPort());
     }
 
     @And("^delete all link properties$")

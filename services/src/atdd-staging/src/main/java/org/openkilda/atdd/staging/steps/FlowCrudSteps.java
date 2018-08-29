@@ -90,6 +90,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -601,6 +602,6 @@ public class FlowCrudSteps implements En {
     }
 
     private String getTimestamp() {
-        return new SimpleDateFormat("ddMMMHHmm").format(new Date());
+        return new SimpleDateFormat("ddMMMHHmm", Locale.US).format(new Date());
     }
 }

@@ -29,37 +29,31 @@ of flow commands to the openflow speaker (floodlight) to install the flow rules 
  a response is sent to the NB API.
 
 #### Sequence Diagram
+High Level Flow Creation:
+![High level Flow Creation](./flow-crud-create.png "Flow Creation")
 
-![Flow Creation](./flow-crud-create.png "Flow Creation")
-![Flow Creation](./flow-crud-create-full.png "Flow Creation (full)")
+Detailed Flow Creation:
+![Detailed Flow Creation](./flow-crud-create-full.png "Flow Creation (full)")
+
+#### Diagram Text
+
+This text can be used at https://www.websequencediagrams.com/
+
+Diagram source file can be found [here](https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-create-full.txt)
+ 
+### Flow Deletion
 ![Flow Delete](./flow-crud-delete-full.png "Flow Delete (full)")
 
 #### Diagram Text
 
 This text can be used at https://www.websequencediagrams.com/
 
-```
-title Flow Creation
-
-User->NB API: createFlow (src,dst)
-NB API->FlowTopology: kafka.flow
-FlowTopology->PathComputationEngine: getPath
-loop install rules
-    FlowTopology->Speaker: kafka.speaker
-end
-alt success
-    FlowTopology->Neo4j: commit path
-end
-alt failure
-    FlowTopology->Neo4j: rollback path
-end
-NB API->User: result
-```     
- 
-### Flow Deletion
+Diagram source file can be found [here](https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-delete-full.txt)
 
 ### Flow Update
+TBD
 
 ### Flow Read
+TBD
 
    

@@ -464,11 +464,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid) {
+    public List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid) throws SwitchNotFoundException {
         List<OFFlowStatsEntry> entries = new ArrayList<>();
         IOFSwitch sw = ofSwitchService.getSwitch(dpid);
         if (sw == null) {
-            throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
+            throw new SwitchNotFoundException(dpid);
         }
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -1223,10 +1223,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @return open flow switch descriptor
      * @throws SwitchOperationException switch operation exception
      */
-    private IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchOperationException {
+    private IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchNotFoundException {
         IOFSwitch swInfo = ofSwitchService.getSwitch(dpId);
         if (swInfo == null) {
-            throw new SwitchOperationException(dpId, String.format("Switch %s was not found", dpId));
+            throw new SwitchNotFoundException(dpId);
         }
         return swInfo;
     }
@@ -1520,8 +1520,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         logger.debug("Successfully updated port status {}", ofPortMod);
     }
 
-    private MacAddress getPortHwAddress(IOFSwitch sw, int portNumber) {
+    private MacAddress getPortHwAddress(IOFSwitch sw, int portNumber) throws SwitchOperationException {
         OFPortDesc portDesc = sw.getPort(OFPort.of(portNumber));
+        if (portDesc == null) {
+            throw new SwitchOperationException(sw.getId(),
+                    String.format("Unable to get port by number %d on the switch %s",
+                            portNumber, sw.getId()));
+        }
         return portDesc.getHwAddr();
     }
 }
