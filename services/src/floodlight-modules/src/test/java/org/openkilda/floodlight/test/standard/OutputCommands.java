@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.test.standard;
 
+import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
@@ -23,10 +24,13 @@ import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
 import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 
-import net.floodlightcontroller.util.FlowModUtils;
 import org.openkilda.floodlight.OFFactoryMock;
+
+import net.floodlightcontroller.util.FlowModUtils;
+
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
@@ -73,6 +77,14 @@ public interface OutputCommands {
         return ingressMatchVlanIdFlowMod(inputPort, outputPort, inputVlan, transitVlan, meterId, cookie);
     }
 
+    /**
+     * Builds a FlowMod command for transit rule.
+     *
+     * @param inputPort     Input Port for Match section
+     * @param outputPort    Output Port for Instructions section
+     * @param transitVlan   Transit Vlan for Match section
+     * @param cookie        Cookie
+     */
     default OFFlowAdd transitFlowMod(int inputPort, int outputPort, int transitVlan, long cookie) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
@@ -80,6 +92,7 @@ public interface OutputCommands {
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(DEFAULT_RULE_PRIORITY)
+                .setFlags(singleton(OFFlowModFlags.RESET_COUNTS))
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlan))
@@ -96,6 +109,16 @@ public interface OutputCommands {
                 .build();
     }
 
+    /**
+     * Builds a FlowMod command for a Single Switch flow with Vlans.
+     *
+     * @param inputPort     Input Port for Match section
+     * @param outputPort    Output Port for Instructions section
+     * @param inputVlan     Ingress Vlan for Match section
+     * @param outputVlan    Egress Vlan for Instructions section
+     * @param meterId       Meter ID
+     * @param cookie        Cookie
+     */
     default OFFlowAdd oneSwitchReplaceFlowMod(int inputPort, int outputPort, int inputVlan, int outputVlan,
                                               long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
@@ -104,6 +127,7 @@ public interface OutputCommands {
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(DEFAULT_RULE_PRIORITY)
+                .setFlags(singleton(OFFlowModFlags.RESET_COUNTS))
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(inputVlan))
@@ -126,6 +150,14 @@ public interface OutputCommands {
                 .build();
     }
 
+    /**
+     * Builds a FlowMod command for a Single Switch flow (full-port to full-port).
+     *
+     * @param inputPort     Input Port for Match section
+     * @param outputPort    Output Port for Instructions section
+     * @param meterId       Meter ID
+     * @param cookie        Cookie
+     */
     default OFFlowAdd oneSwitchNoneFlowMod(int inputPort, int outputPort, long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
@@ -133,6 +165,7 @@ public interface OutputCommands {
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(DEFAULT_RULE_PRIORITY)
+                .setFlags(singleton(OFFlowModFlags.RESET_COUNTS))
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .build())
@@ -149,6 +182,15 @@ public interface OutputCommands {
                 .build();
     }
 
+    /**
+     * Builds a FlowMod command for a Single Switch flow with Vlan in ingress side only.
+     *
+     * @param inputPort     Input Port for Match section
+     * @param outputPort    Output Port for Instructions section
+     * @param inputVlan     Ingress Vlan for Match section
+     * @param meterId       Meter ID
+     * @param cookie        Cookie
+     */
     default OFFlowAdd oneSwitchPopFlowMod(int inputPort, int outputPort, int inputVlan, long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
@@ -156,6 +198,7 @@ public interface OutputCommands {
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(DEFAULT_RULE_PRIORITY)
+                .setFlags(singleton(OFFlowModFlags.RESET_COUNTS))
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(inputVlan))
@@ -174,6 +217,15 @@ public interface OutputCommands {
                 .build();
     }
 
+    /**
+     * Builds a FlowMod command for a Single Switch flow with Vlan in egress side only.
+     *
+     * @param inputPort     Input Port for Match section
+     * @param outputPort    Output Port for Instructions section
+     * @param outputVlan    Egress Vlan for Instructions section
+     * @param meterId       Meter ID
+     * @param cookie        Cookie
+     */
     default OFFlowAdd oneSwitchPushFlowMod(int inputPort, int outputPort, int outputVlan, long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
@@ -181,6 +233,7 @@ public interface OutputCommands {
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(DEFAULT_RULE_PRIORITY)
+                .setFlags(singleton(OFFlowModFlags.RESET_COUNTS))
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .build())
@@ -205,6 +258,13 @@ public interface OutputCommands {
                 .build();
     }
 
+    /**
+     * Builds a MeterMod command.
+     *
+     * @param bandwidth    Maximum allowed Bandwidth for flow
+     * @param burstSize    Burst size for a meter
+     * @param meterId      Meter ID
+     */
     default OFMeterMod installMeter(long bandwidth, long burstSize, long meterId) {
         return ofFactory.buildMeterMod()
                 .setMeterId(meterId)

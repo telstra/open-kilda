@@ -17,6 +17,7 @@ package org.openkilda.floodlight.switchmanager;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
@@ -60,6 +61,7 @@ import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
@@ -1102,6 +1104,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         fmb.setBufferId(OFBufferId.NO_BUFFER);
         fmb.setCookie(U64.of(cookie));
         fmb.setPriority(priority);
+
+        // TODO: this is required for ingress flow only. Consider moving it to installIngressFlow when refactor
+        fmb.setFlags(singleton(OFFlowModFlags.RESET_COUNTS));
+
         List<OFInstruction> instructions = new ArrayList<>(2);
 
         // If no meter then no bandwidth limit
