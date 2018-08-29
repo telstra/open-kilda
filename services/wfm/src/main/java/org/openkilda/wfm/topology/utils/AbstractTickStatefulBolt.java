@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.Config;
 import org.apache.storm.Constants;
 import org.apache.storm.state.State;
@@ -24,6 +22,8 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -33,22 +33,24 @@ import java.util.Map;
 public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStatefulBolt<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractTickStatefulBolt.class);
-    protected OutputCollector _collector;
-    /** emitFrequency is in seconds */
+    protected OutputCollector outputCollector;
+    /** emitFrequency is in seconds. */
     private Integer emitFrequency;
-    /** default is 1 second frequency */
+    /** default is 1 second frequency. */
     private static final int DEFAULT_FREQUENCY = 1;
 
     public AbstractTickStatefulBolt() {
         emitFrequency = DEFAULT_FREQUENCY;
     }
 
-    /** @param frequency is in seconds */
+    /**
+     * @param frequency is in seconds
+     */
     public AbstractTickStatefulBolt(Integer frequency) {
         emitFrequency = frequency;
     }
 
-    public AbstractTickStatefulBolt withFrequency(Integer frequency){
+    public AbstractTickStatefulBolt withFrequency(Integer frequency) {
         this.emitFrequency = frequency;
         return this;
     }
@@ -71,7 +73,7 @@ public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStat
 
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
-        _collector = collector;
+        outputCollector = collector;
     }
 
     //execute is called to process tuples

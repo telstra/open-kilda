@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.wfm.topology.portstate.spout;
 
 import static java.lang.String.format;
@@ -28,7 +43,7 @@ public class SwitchPortsSpout extends BaseRichSpout {
     private static final Logger logger = LoggerFactory.getLogger(SwitchPortsSpout.class);
     private static final String CRON_TUPLE = "cron.tuple";
     private static final int DEFAULT_FREQUENCY = 600;
-    private final String REQUESTER = this.getClass().getSimpleName();
+    private static final String REQUESTER = SwitchPortsSpout.class.getSimpleName();
     private final int frequency;
     private SpoutOutputCollector collector;
     final String speakerTopic;

@@ -162,7 +162,7 @@ function setPortData(switchname,domObj){
 		}
 	}
 	if(portData){
-		localStorage.setItem('portDetails',JSON.stringify(portData));
+		localStorage.setItem('port_'+common.toggleSwitchID(switchname)+"_"+portData.port_number,JSON.stringify(portData));
 		url = "portdetails#" + switchname +"#" +portData.port_number;
 		window.location = url;
 	}
@@ -189,7 +189,7 @@ function callSwitchRules(switch_id){
 
 
 $('#switch_rules_btn').click(function(e){
-		e.preventDefault();
-		callSwitchRules(common.toggleSwitchID(obj.switch_id));
+		e.preventDefault(); 
+		callSwitchRules(obj.switch_id);
 	});
 /* ]]> */

@@ -34,7 +34,8 @@ public class LoggerContextInitializer {
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggerContextInitializer.class);
 
     @Around("execution(* org.apache.storm.topology.IRichBolt+.execute(org.apache.storm.tuple.Tuple)) && args(input)"
-            + "|| execution(* org.apache.storm.topology.IStatefulBolt+.execute(org.apache.storm.tuple.Tuple)) && args(input)")
+            + "|| execution(* org.apache.storm.topology.IStatefulBolt+.execute(org.apache.storm.tuple.Tuple)) "
+            + "&& args(input)")
     public Object aroundAdvice(ProceedingJoinPoint joinPoint, Tuple input) throws Throwable {
         String correlationId = CorrelationContext.extractFrom(input)
                 .map(CorrelationContext::getId)
