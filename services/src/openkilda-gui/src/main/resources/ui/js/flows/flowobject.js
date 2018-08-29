@@ -12,6 +12,14 @@ class Flow {
 		this.flow = flow;
 	}
 	
+	getFlowPathObj(){
+		return this.flowpathObj;
+	}
+	
+	setFlowPathObj(obj){
+		this.flowpathObj = obj;
+	}
+	
 	getPorts (id) {
 		 var switch_id = common.toggleSwitchID($("#" + id).val());
 		 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");

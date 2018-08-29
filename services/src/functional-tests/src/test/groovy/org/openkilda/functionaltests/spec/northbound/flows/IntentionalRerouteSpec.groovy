@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
@@ -12,7 +12,7 @@ import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
 import org.springframework.beans.factory.annotation.Autowired
 
-class BandwidthSpec extends BaseSpecification {
+class IntentionalRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
@@ -33,7 +33,7 @@ class BandwidthSpec extends BaseSpecification {
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
             allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 1
         }
@@ -77,7 +77,7 @@ class BandwidthSpec extends BaseSpecification {
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
             allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 1
         }

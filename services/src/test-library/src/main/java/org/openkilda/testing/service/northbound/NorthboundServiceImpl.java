@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -34,12 +35,13 @@ import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.google.common.collect.ImmutableMap;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
@@ -57,9 +59,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
+@Slf4j
 public class NorthboundServiceImpl implements NorthboundService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(NorthboundServiceImpl.class);
 
     private static final String KILDA_CONTROLLER = "kilda";
 
@@ -269,6 +270,25 @@ public class NorthboundServiceImpl implements NorthboundService {
     public DeleteMeterResult deleteMeter(SwitchId switchId, Integer meterId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/meter/{meter_id}", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), DeleteMeterResult.class, switchId, meterId).getBody();
+    }
+
+    @Override
+    public PortDto configurePort(SwitchId switchId, Integer portNo, Object config) {
+        HttpEntity<Object> httpEntity = new HttpEntity<>(config, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/port/{port_id}/config", HttpMethod.PUT,
+                httpEntity, PortDto.class, switchId, portNo).getBody();
+    }
+
+    @Override
+    public PortDto portUp(SwitchId switchId, Integer portNo) {
+        log.info("Bringing port up for switch {}, port {}", switchId, portNo);
+        return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.UP));
+    }
+
+    @Override
+    public PortDto portDown(SwitchId switchId, Integer portNo) {
+        log.info("Bringing port down for switch {}, port {}", switchId, portNo);
+        return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.DOWN));
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

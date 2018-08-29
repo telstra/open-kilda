@@ -826,6 +826,13 @@ footer {
 	width: 100%!important;
 	margin-left: -20px;
 }
+#forward_path_graph,#reverse_path_graph ,#forward_path_graph_lines,#reverse_path_graph_lines {
+	margin-bottom: 15px;
+    margin-top: 35px;
+	height: 450px;
+	width: 95%!important;
+	/* margin-left: 180px; */
+}
 
 .tab-content #graphdiv {
 	margin-bottom: 0;
@@ -2783,5 +2790,8 @@ div#portsTable_info {
 #portsTable .subPortTable span:last-child{
     border-left:1px solid #dddddd;
 }
-
+#reverse_graph label ,#forward_graph label {
+    padding: 10px 5px;
+    font-size: 12px;
+}
 

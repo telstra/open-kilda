@@ -73,7 +73,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -122,7 +121,7 @@ public class OfeLinkBolt
 
     private DummyIIslFilter islFilter;
     private DiscoveryManager discovery;
-    private Map<SwitchId, List<DiscoveryLink>> linksBySwitch;
+    private Map<SwitchId, Set<DiscoveryLink>> linksBySwitch;
 
     private String dumpRequestCorrelationId = null;
     private float dumpRequestTimeout;
@@ -172,7 +171,7 @@ public class OfeLinkBolt
             payload = linksBySwitch = new HashMap<>();
             state.put(islDiscoveryTopic, payload);
         } else {
-            linksBySwitch = (Map<SwitchId, List<DiscoveryLink>>) payload;
+            linksBySwitch = (Map<SwitchId, Set<DiscoveryLink>>) payload;
         }
 
         // DiscoveryManager counts failures as failed attempts,
@@ -597,10 +596,10 @@ public class OfeLinkBolt
 
     @Override
     public AbstractDumpState dumpState() {
-        List<DiscoveryLink> links = linksBySwitch.values()
+        Set<DiscoveryLink> links = linksBySwitch.values()
                 .stream()
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
+                .flatMap(Set::stream)
+                .collect(Collectors.toSet());
 
         return new OFELinkBoltState(links, islFilter.getMatchSet());
     }
@@ -619,7 +618,7 @@ public class OfeLinkBolt
     @Override
     public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
 
-        List<DiscoveryLink> filteredDiscoveryList = linksBySwitch.get(switchId);
+        Set<DiscoveryLink> filteredDiscoveryList = linksBySwitch.get(switchId);
 
         Set<DiscoveryLink> filterdIslFilter = islFilter.getMatchSet().stream()
                 .filter(node -> node.getSource().getSwitchDpId().equals(switchId))
