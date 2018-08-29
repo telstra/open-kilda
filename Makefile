@@ -75,10 +75,10 @@ clean-test:
 	docker volume list -q | grep kilda | xargs docker volume rm
 
 update-props:
-	ansible-playbook -D -s config.yml
+	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only
 
 update-props-dryrun:
-	ansible-playbook -D -C -v -s config.yml
+	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only -noop
 
 # NB: To override the default (localhost) kilda location, you can make a call like this:
 #		cd services/src/atdd && \

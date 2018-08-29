@@ -1,0 +1,53 @@
+environment.naming.prefix = {{ getv "/kilda_environment_naming_prefix" }}
+
+parallelism.new = 2
+parallelism = 1
+workers = 1
+
+kafka.hosts = {{ getv "/kilda_kafka_hosts" }}
+kafka.partitions.default = 1
+kafka.replication.default = 3
+
+reroute.throttling.delay.min = {{ getv "/kilda_reroute_throttling_delay_min" }}
+reroute.throttling.delay.max = {{ getv "/kilda_reroute_throttling_delay_max" }}
+
+opentsdb.hosts = http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
+opentsdb.timeout = {{ getv "/kilda_opentsdb_timeout" }}
+opentsdb.num.spouts = {{ getv "/kilda_opentsdb_num_spouts" }}
+opentsdb.num.opentsdbfilterbolt = {{ getv "/kilda_opentsdb_num_opentsdbfilterbolt" }}
+opentsdb.num.opentsdbbolt = {{ getv "/kilda_opentsdb_num_opentsdbbolt" }}
+opentsdb.workers.opentsdbolt = {{ getv "/kilda_opentsdb_workers_opentsdbolt" }}
+opentsdb.num.datapointparserbolt = {{ getv "/kilda_opentsdb_num_datapointparserbolt" }}
+opentsdb.workers.datapointparserbolt = {{ getv "/kilda_opentsdb_workers_datapointparserbolt" }}
+opentsdb.batch.size = {{ getv "/kilda_opentsdb_batch_size" }}
+opentsdb.flush.interval = {{ getv "/kilda_opentsdb_flush_interval" }}
+opentsdb.workers = {{ getv "/kilda_opentsdb_workers" }}
+opentsdb.client.chunked-requests.enabled = true
+
+neo4j.hosts = {{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
+neo4j.user = {{ getv "/kilda_neo4j_user" }}
+neo4j.pswd = {{ getv "/kilda_neo4j_password" }}
+
+filter.directory =
+logger.level = INFO
+logger.watermark =
+
+#######
+# Discovery
+# - discovery.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0
+# - discovery.timeout = at which point do we send an ISL Failure (if it is an ISL)
+#       - NB: the number is in "ticks", not "attempts" .. attempts = timeout/interval
+# - discovery.limit = at what point do we stop sending? -1 means never ..
+# - discovery.speaker-failure-timeout - after this amount of seconds without a
+#   message from speaker it will be marked as unavailable
+# - discovery.keep.removed.isl - how long should we store/remember in minutes isl endpoints.
+#   it is mainly used for defining whether isl is moved or not
+discovery.interval = {{ getv "/kilda_discovery_interval" }}
+discovery.timeout = {{ getv "/kilda_discovery_timeout" }}
+discovery.limit = {{ getv "/kilda_discovery_limit" }}
+discovery.speaker-failure-timeout = 5
+discovery.dump-request-timeout-seconds=60
+discovery.keep.removed.isl = {{ getv "/kilda_discovery_keep_removed_isl" }}
+
+local = no
+local.execution.time = 300

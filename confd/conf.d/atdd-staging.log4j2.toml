@@ -1,0 +1,5 @@
+[template]
+src = "atdd-staging/log4j2.xml.tmpl"
+dest = "services/src/atdd-staging/log4j2.xml"
+keys = [ "/" ]
+mode = "0644"
