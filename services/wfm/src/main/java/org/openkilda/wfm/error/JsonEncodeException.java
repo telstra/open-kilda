@@ -27,6 +27,6 @@ public class JsonEncodeException extends AbstractException {
     }
 
     private static String formatMessage(Object subject, Throwable cause) {
-        return String.format("Can't encode %s object into json: %s", subject.getClass().getName(), cause);
+        return String.format("Can't encode %s object into JSON: %s", subject.getClass().getName(), cause);
     }
 }

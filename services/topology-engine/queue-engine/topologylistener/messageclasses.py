@@ -565,12 +565,9 @@ class MessageItem(model.JsonSerializable):
         try:
             old_flow = flow_utils.get_old_flow(flow)
 
-            #
-            # Start the transaction to govern the create/delete
-            #
             logger.info('Flow rules were built: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
             rules = flow_utils.build_rules(flow)
-            # TODO: add tx to store_flow
+
             flow_utils.store_flow(flow, tx)
             logger.info('Flow was stored: correlation_id=%s, flow_id=%s', correlation_id, flow_id)
             message_utils.send_install_commands(rules, correlation_id)
@@ -681,7 +678,6 @@ class MessageItem(model.JsonSerializable):
         except Exception:
             if tx is not None:
                 tx.rollback()
-            # flow_sem.release()
             raise
 
         finally:

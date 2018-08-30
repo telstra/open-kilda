@@ -794,58 +794,6 @@
     <suppress files="src/test/java/org/openkilda/atdd/floodlight/HeartBeatTest.java" lines="41" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/atdd/floodlight/AvailabilityCtrl.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/atdd/floodlight/KafkaBreakException.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="34" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="36" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="66" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="67" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="76" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="92" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="106" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="119" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="139" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="155" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="156" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="180" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="202" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="242" checks="LineLength"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="259" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="259" checks="ParenPad"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="260" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="260" checks="ParenPad"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="266" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="266" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="266" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="267" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="267" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="267" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="310" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="310" checks="ParenPad"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="311" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="311" checks="ParenPad"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="317" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="317" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="317" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="318" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="318" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="318" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="338" checks="NeedBraces"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="340" checks="NeedBraces"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="353" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="362" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="374" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="383" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="398" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="435" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/atdd/FlowCrudBasicRunTest.java" lines="438" checks="NonEmptyAtclauseDescription"/>
     <suppress files="src/test/java/org/openkilda/atdd/utils/RestQueryException.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/atdd/utils/controller/ControllerUtils.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/atdd/utils/controller/ControllerUtils.java" lines="40" checks="JavadocMethod"/>

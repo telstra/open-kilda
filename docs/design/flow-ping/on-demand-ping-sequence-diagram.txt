@@ -1,0 +1,72 @@
+@startuml
+title ON DEMAND flow pings
+
+participant NB
+
+control kilda.ping
+
+participant InputDecoder
+participant InputRouter
+
+participant FlowFetcher
+participant Neo4j
+
+participant PING
+participant ResultDispatcher
+participant OnDemandResultManager
+participant GroupCollector
+
+participant NorthboundEncoder
+
+control kilda.northbound
+
+NB -> kilda.ping: json{FlowPingRequest}
+kilda.ping -> InputDecoder: json{FlowPingRequest}
+
+activate InputDecoder
+InputDecoder -> InputRouter: FlowPingRequest
+deactivate InputDecoder
+
+activate InputRouter
+InputRouter -> FlowFetcher: FlowPingRequest
+deactivate InputRouter
+
+activate FlowFetcher
+FlowFetcher -> Neo4j: fetch flow\nby flowId
+activate Neo4j
+Neo4j -> FlowFetcher: BidirectionalFlow
+deactivate Neo4j
+
+note right of FlowFetcher: make PingContext(kind=ON_DEMAND)
+FlowFetcher -> PING: PingContext
+deactivate FlowFetcher
+
+activate PING
+note right of PING: see details\nin "The Ping" diagram
+PING -> ResultDispatcher: PingContext
+deactivate PING
+
+activate ResultDispatcher
+ResultDispatcher -> OnDemandResultManager: PingContext
+deactivate ResultDispatcher
+
+activate OnDemandResultManager
+OnDemandResultManager -> GroupCollector: PingContext (groupId grouping)
+deactivate OnDemandResultManager
+
+activate GroupCollector
+alt when ping group is completed
+    GroupCollector -> OnDemandResultManager: Group
+end
+deactivate GroupCollector
+
+activate OnDemandResultManager
+note right of OnDemandResultManager: make FlowPingResponse
+OnDemandResultManager -> NorthboundEncoder: FlowPingResponse
+deactivate OnDemandResultManager
+
+activate NorthboundEncoder
+NorthboundEncoder -> kilda.northbound: json{FlowPingResponse}
+deactivate NorthboundEncoder
+
+@enduml

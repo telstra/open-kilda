@@ -51,7 +51,7 @@ public class TickBoltTest {
         public FileUtil tickFile = new FileUtil().withFileName("tick.log");
         public FileUtil workFile = new FileUtil().withFileName("work.log");
 
-        protected SimpleStatefulTick(){
+        protected SimpleStatefulTick() {
             super(2);
         }
 
@@ -75,7 +75,7 @@ public class TickBoltTest {
     }
 
     @Test
-    public void BasicTickTest() throws IOException {
+    public void basicTickTest() throws IOException {
         System.out.println("==> Starting BasicTickTest");
 
         String spoutId = "feeder.spout";

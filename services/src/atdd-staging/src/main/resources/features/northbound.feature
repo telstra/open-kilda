@@ -83,14 +83,14 @@ Feature: Northbound endpoints
   Scenario: Search link properties
     Given select a random isl and alias it as 'isl1'
     And create link properties request for ISL 'isl1'
-    And update request: change src_switch to 'link search test'
+    And update request: change src_switch to '00:00:b0:d2:f5:00:5a:b3'
     And update request: change src_port to '888'
     And send update link properties request
     And update request: change src_port to '999'
     And send update link properties request
 
     When create empty link properties request
-    And update request: change src_switch to 'link search test'
+    And update request: change src_switch to '00:00:b0:d2:f5:00:5a:b3'
     And get link properties for defined request
     Then link props response has 2 results
 
@@ -100,7 +100,7 @@ Feature: Northbound endpoints
     Then link props response has 1 result
 
     When create empty link properties request
-    And update request: change src_switch to 'link search test'
+    And update request: change src_switch to '00:00:b0:d2:f5:00:5a:b3'
     And update request: change src_port to '999'
     And get link properties for defined request
     Then link props response has 1 result

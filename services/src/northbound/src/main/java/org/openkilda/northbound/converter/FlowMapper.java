@@ -17,17 +17,20 @@ package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.info.flow.FlowVerificationErrorCode;
-import org.openkilda.messaging.info.flow.FlowVerificationResponse;
+import org.openkilda.messaging.info.flow.FlowPingResponse;
+import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.northbound.dto.flows.VerificationOutput;
+import org.openkilda.northbound.dto.flows.PingOutput;
+import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -36,10 +39,20 @@ import org.mapstruct.Mappings;
 import java.util.ArrayList;
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", imports = FlowEndpointPayload.class)
 public interface FlowMapper {
+    @Mapping(target = "id", source = "flowId")
+    @Mapping(target = "source",
+            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+    @Mapping(target = "destination",
+            expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
+                    + "f.getDestinationVlan()))")
+    @Mapping(target = "maximumBandwidth", source = "bandwidth")
+    @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
+    @Mapping(target = "status", source = "state")
+    FlowPayload toFlowOutput(Flow f);
 
-    VerificationOutput toVerificationOutput(FlowVerificationResponse response);
+    PingOutput toPingOutput(FlowPingResponse response);
 
     @Mappings({
             @Mapping(source = "flowId", target = "id"),
@@ -61,25 +74,11 @@ public interface FlowMapper {
     })
     FlowPathPayload toFlowPathPayload(BidirectionalFlow flow);
 
-    /**
-     * Converts {@link Flow} to {@link FlowPayload}.
-     */
-    default FlowPayload toFlowPayload(Flow flow) {
-        return new FlowPayload(
-                flow.getFlowId(),
-                new FlowEndpointPayload(
-                        flow.getSourceSwitch(),
-                        flow.getSourcePort(),
-                        flow.getSourceVlan()),
-                new FlowEndpointPayload(
-                        flow.getDestinationSwitch(),
-                        flow.getDestinationPort(),
-                        flow.getDestinationVlan()),
-                flow.getBandwidth(),
-                flow.isIgnoreBandwidth(),
-                flow.getDescription(),
-                flow.getLastUpdated(),
-                flow.getState().getState());
+    @Mapping(target = "latency", source = "meters.networkLatency")
+    UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
+
+    default String encodeFlowState(FlowState state) {
+        return state.getState();
     }
 
     /**
@@ -109,7 +108,7 @@ public interface FlowMapper {
     /**
      * Translate Java's error code(enum) into human readable string.
      */
-    default String getVerificationError(FlowVerificationErrorCode error) {
+    default String getPingError(Ping.Errors error) {
         if (error == null) {
             return null;
         }
@@ -123,7 +122,11 @@ public interface FlowMapper {
                 message = "Can't send ping";
                 break;
             case NOT_CAPABLE:
-                message = "Unable to perform flow verification due to unsupported switch (at least one)";
+                message = "Can't ping - at least one of endpoints are not capable to catch pings.";
+                break;
+            case SOURCE_NOT_AVAILABLE:
+            case DEST_NOT_AVAILABLE:
+                message = "Can't ping - at least one of endpoints are unavailable";
                 break;
             default:
                 message = error.toString();

@@ -7,6 +7,8 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
+import java.text.SimpleDateFormat
+
 @Component
 class FlowHelper {
     @Autowired
@@ -14,9 +16,9 @@ class FlowHelper {
 
     def random = new Random()
     def allowedVlans = 101..4095
-
+    def sdf = new SimpleDateFormat("ddMMMHHmmss", Locale.US)
     FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch) {
-        new FlowPayload(new Date().format("ddMMMHHmmss"), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
+        new FlowPayload(sdf.format(new Date()), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
                 false, "autotest flow", null, null)
     }
 

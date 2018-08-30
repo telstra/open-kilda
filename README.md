@@ -24,7 +24,7 @@ Also, don't forget to install ansible. This tool is used for creating config/pro
 pip install ansible
 ```
 
-### How to Build Kilda Controller
+### How to build Kilda Controller
 
 From the base directory run the following command:
 
@@ -32,7 +32,15 @@ From the base directory run the following command:
 make build-latest
 ```
 
-### How to run Kilda
+### How to clean Kilda Controller
+
+From the base directory run the following command:
+
+```
+make clean
+```
+
+### How to run Kilda Controller
 
 __NB: To run Kilda, you should have built it already (ie the previous section).__
 This is particularly important because docker-compose will expect some of the

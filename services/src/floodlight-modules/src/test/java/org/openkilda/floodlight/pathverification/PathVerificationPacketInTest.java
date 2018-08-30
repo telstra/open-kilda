@@ -22,6 +22,9 @@ import static org.junit.Assert.assertArrayEquals;
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.utils.CommandContextFactory;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -55,13 +58,20 @@ import java.net.InetSocketAddress;
 
 public class PathVerificationPacketInTest extends FloodlightTestCase {
 
+    protected CommandContextFactory commandContextFactory = new CommandContextFactory();
+
     protected FloodlightContext cntx;
     protected OFDescStatsReply swDescription;
     protected PathVerificationService pvs;
-    protected String sw1HwAddrTarget, sw2HwAddrTarget;
-    protected IOFSwitch sw1, sw2;
+    protected InputService inputService = new InputService(commandContextFactory);
+
+    protected String sw1HwAddrTarget;
+    protected String sw2HwAddrTarget;
+    protected IOFSwitch sw1;
+    protected IOFSwitch sw2;
     protected OFPacketIn pktIn;
-    protected InetSocketAddress srcIpTarget, dstIpTarget;
+    protected InetSocketAddress srcIpTarget;
+    protected InetSocketAddress dstIpTarget;
     protected InetSocketAddress swIp = new InetSocketAddress("192.168.10.1", 200);
 
     private byte[] pkt = {(byte) 0xAA, (byte) 0xBB, (byte) 0xCC, (byte) 0xDD, (byte) 0xEE, (byte) 0xFF, // src mac
@@ -138,7 +148,10 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
+        fmc.addService(InputService.class, inputService);
+        fmc.addService(CommandProcessorService.class, new CommandProcessorService(commandContextFactory));
 
+        inputService.init(fmc);
 
         OFPacketIn.Builder packetInBuilder = factory.buildPacketIn();
         packetInBuilder
@@ -195,8 +208,4 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         IPacket expected = getPacket();
         assertArrayEquals(expected.serialize(), ethernet.serialize());
     }
-
-
-
-
 }

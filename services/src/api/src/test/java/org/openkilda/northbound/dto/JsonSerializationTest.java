@@ -20,9 +20,9 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
-import org.openkilda.northbound.dto.flows.UniFlowVerificationOutput;
-import org.openkilda.northbound.dto.flows.VerificationInput;
-import org.openkilda.northbound.dto.flows.VerificationOutput;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
+import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkStatus;
@@ -64,22 +64,22 @@ public class JsonSerializationTest {
     }
 
     @Test
-    public void uniFlowVerificationOutputTest() throws IOException {
-        UniFlowVerificationOutput dto = new UniFlowVerificationOutput(true, "err-test", 10);
-        assertEquals(dto, pass(dto, UniFlowVerificationOutput.class));
+    public void uniFlowPingOutputTest() throws IOException {
+        UniFlowPingOutput dto = new UniFlowPingOutput(true, "err-test", 10);
+        assertEquals(dto, pass(dto, UniFlowPingOutput.class));
     }
 
     @Test
     public void verificationInputTest() throws IOException {
-        VerificationInput dto = new VerificationInput(10);
-        assertEquals(dto, pass(dto, VerificationInput.class));
+        PingInput dto = new PingInput(10);
+        assertEquals(dto, pass(dto, PingInput.class));
     }
 
     @Test
     public void verificationOutputTest() throws IOException {
-        UniFlowVerificationOutput verification = new UniFlowVerificationOutput(true, "err-test", 10);
-        VerificationOutput dto = new VerificationOutput(FLOW_ID, verification, verification);
-        assertEquals(dto, pass(dto, VerificationOutput.class));
+        UniFlowPingOutput verification = new UniFlowPingOutput(true, "err-test", 10);
+        PingOutput dto = new PingOutput(FLOW_ID, verification, verification, "error");
+        assertEquals(dto, pass(dto, PingOutput.class));
     }
 
 

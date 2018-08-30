@@ -94,9 +94,7 @@ public interface PathComputer extends Serializable {
      *
      * @return the Flow if it exists, null otherwise.
      */
-    default List<Flow> getFlow(String flowId) {
-        return null;
-    }
+    List<Flow> getFlow(String flowId);
 
     /*
      * @return all flows (forward and reverse) by id, if exist.

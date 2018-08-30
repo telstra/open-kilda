@@ -34,7 +34,7 @@ public class LoggerBolt extends BaseRichBolt {
     private static Logger logger = LoggerFactory.getLogger(LoggerBolt.class);
     public Level level = Level.DEBUG;
     public String watermark = "";
-    private OutputCollector _collector;
+    private OutputCollector outputCollector;
 
     private void log(Level level, String format, Object[] argArray) {
         switch (level) {
@@ -69,7 +69,7 @@ public class LoggerBolt extends BaseRichBolt {
 
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
-        _collector = collector;
+        outputCollector = collector;
     }
 
     @Override
@@ -83,7 +83,7 @@ public class LoggerBolt extends BaseRichBolt {
         log(level, "\n{}: fields: {} :: values: {}",
                 new Object[] {watermark, tuple.getFields(), tuple.getValues()});
 
-        _collector.ack(tuple);
+        outputCollector.ack(tuple);
     }
 
     @Override

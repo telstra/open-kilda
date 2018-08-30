@@ -24,10 +24,10 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
+import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.openkilda.messaging.command.flow.FlowVerificationRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.InfoMessage;
@@ -35,11 +35,11 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
+import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
-import org.openkilda.messaging.info.flow.FlowVerificationResponse;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
@@ -51,15 +51,14 @@ import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
-import org.openkilda.northbound.dto.flows.VerificationInput;
-import org.openkilda.northbound.dto.flows.VerificationOutput;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.FlowService;
@@ -120,6 +119,12 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
+
+    /**
+     * The kafka topic for `ping` topology.
+     */
+    @Value("#{kafkaTopicsConfig.getPingTopic()}")
+    private String pingTopic;
 
     @Value("${neo4j.hosts}")
     private String neoHost;
@@ -182,15 +187,19 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public FlowPayload createFlow(final FlowPayload flow) {
+    public FlowPayload createFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Create flow: {}", flow);
-        FlowCreateRequest data = new FlowCreateRequest(FlowPayloadToFlowConverter.buildFlowByFlowPayload(flow));
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        LOGGER.debug("Create flow: {}", input);
+
+        FlowCreateRequest payload = new FlowCreateRequest(new Flow(input));
+        CommandMessage request = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
+
         messageProducer.send(topic, request);
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return flowMapper.toFlowPayload(response.getPayload());
+
+        return flowMapper.toFlowOutput(response.getPayload());
     }
 
     /**
@@ -224,7 +233,8 @@ public class FlowServiceImpl implements FlowService {
     private FlowPayload deleteFlowResponse(final String correlationId, CommandMessage request) {
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return flowMapper.toFlowPayload(response.getPayload());
+
+        return flowMapper.toFlowOutput(response.getPayload());
     }
 
     /**
@@ -234,22 +244,26 @@ public class FlowServiceImpl implements FlowService {
     public FlowPayload getFlow(final String id) {
         logger.debug("Get flow: {}={}", FLOW_ID, id);
         BidirectionalFlow flow = getBidirectionalFlow(id, RequestCorrelationId.getId());
-        return flowMapper.toFlowPayload(flow.getForward());
+        return flowMapper.toFlowOutput(flow.getForward());
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public FlowPayload updateFlow(final FlowPayload flow) {
+    public FlowPayload updateFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Update flow: {}={}", FLOW_ID, flow.getId());
-        FlowUpdateRequest data = new FlowUpdateRequest(FlowPayloadToFlowConverter.buildFlowByFlowPayload(flow));
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        logger.debug("Update flow: {}={}", FLOW_ID, input.getId());
+
+        FlowUpdateRequest payload = new FlowUpdateRequest(new Flow(input));
+        CommandMessage request = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
         messageProducer.send(topic, request);
+
         Message message = (Message) messageConsumer.poll(correlationId);
         FlowResponse response = (FlowResponse) validateInfoMessage(request, message, correlationId);
-        return flowMapper.toFlowPayload(response.getPayload());
+
+        return flowMapper.toFlowOutput(response.getPayload());
     }
 
     /**
@@ -268,7 +282,7 @@ public class FlowServiceImpl implements FlowService {
         return result.stream()
                 .map(FlowReadResponse::getPayload)
                 .map(BidirectionalFlow::getForward)
-                .map(flowMapper::toFlowPayload)
+                .map(flowMapper::toFlowOutput)
                 .collect(Collectors.toList());
     }
 
@@ -679,11 +693,10 @@ public class FlowServiceImpl implements FlowService {
          */
 
         List<Flow> flows = pathComputer.getFlow(flowId);
-        if (flows == null) {
+        logger.debug("VALIDATE FLOW: Found Flows: count = {}", flows.size());
+        if (flows.size() == 0) {
             return null;
         }
-
-        logger.debug("VALIDATE FLOW: Found Flows: count = {}", flows.size());
 
         /*
          * Since we are getting switch rules, we can use a set.
@@ -762,18 +775,19 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public VerificationOutput verifyFlow(String flowId, VerificationInput payload) {
-        FlowVerificationRequest query = new FlowVerificationRequest(flowId, payload.getTimeoutMillis());
+    public PingOutput pingFlow(String flowId, PingInput payload) {
+        FlowPingRequest request = new FlowPingRequest(flowId, payload.getTimeoutMillis());
 
         final String correlationId = RequestCorrelationId.getId();
-        CommandMessage request = new CommandMessage(query, System.currentTimeMillis(), correlationId, Destination.WFM);
-        messageProducer.send(topic, request);
+        CommandMessage message = new CommandMessage(
+                request, System.currentTimeMillis(), correlationId, Destination.WFM);
+        messageProducer.send(pingTopic, message);
 
-        Message message = (Message) messageConsumer.poll(correlationId);
-        FlowVerificationResponse response = (FlowVerificationResponse) validateInfoMessage(
-                request, message, correlationId);
+        Message rawResponse = (Message) messageConsumer.poll(correlationId);
+        FlowPingResponse response = (FlowPingResponse) validateInfoMessage(
+                message, rawResponse, correlationId);
 
-        return flowMapper.toVerificationOutput(response);
+        return flowMapper.toPingOutput(response);
     }
 
     /**

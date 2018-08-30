@@ -421,7 +421,4 @@
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="24" checks="RedundantImport"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="28" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="53" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="64" checks="JavadocMethod"/>
 </suppressions>

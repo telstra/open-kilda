@@ -15,14 +15,14 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.Config;
 import org.apache.storm.Constants;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -32,7 +32,7 @@ import java.util.Map;
 public abstract class AbstractTickRichBolt extends BaseRichBolt {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractTickRichBolt.class);
-    protected OutputCollector _collector;
+    protected OutputCollector outputCollector;
     private Integer emitFrequency;
 
     public AbstractTickRichBolt() {
@@ -61,7 +61,7 @@ public abstract class AbstractTickRichBolt extends BaseRichBolt {
 
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
-        _collector = collector;
+        outputCollector = collector;
     }
 
     //execute is called to process tuples
