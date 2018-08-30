@@ -1,0 +1,36 @@
+@startuml
+title Get ports description of the switch
+
+participant Client
+
+participant Northbound
+
+control kilda.northbound
+control kilda.speaker
+
+participant Floodlight
+
+participant Switch
+
+Client -> Northbound : GET /switches/{switch-id}/port_desc
+
+activate Northbound
+Northbound -> kilda.speaker: CommandMessage\nDumpSwitchPortsDescriptionRequest
+
+kilda.speaker -> Floodlight: CommandMessage\nDumpSwitchPortsDescriptionRequest
+activate Floodlight
+Floodlight -> Switch: Get switch information
+Switch -> Floodlight: IOFSwitch
+alt normal flow
+    Floodlight -> kilda.northbound: InfoData\nSwitchPortsDescription
+    kilda.northbound -> Northbound: InfoData\nSwitchPortsDescription
+    Northbound -> Client: HTTP200-JSON
+    else switch does not exist
+    Floodlight -> kilda.northbound: ErrorMessage
+    deactivate Floodlight
+    kilda.northbound -> Northbound: ErrorMessage
+    Northbound -> Client: HTTP404
+    deactivate Northbound
+end
+
+@enduml

@@ -20,6 +20,8 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.switches.PortDescription;
+import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
@@ -127,4 +129,21 @@ public interface SwitchService extends BasicService {
      * @return portDto 
      */
     PortDto configurePort(SwitchId switchId,  int port, PortConfigurationPayload portConfig);
+
+    /**
+     * Get a description of the switch ports.
+     *
+     * @param switchId the switch id.
+     * @return the list of port descriptions.
+     */
+    SwitchPortsDescription getSwitchPortsDescription(SwitchId switchId);
+
+    /**
+     * Get a description of the switch port.
+     *
+     * @param switchId the switch id.
+     * @param port the port of switch.
+     * @return the port description.
+     */
+    PortDescription getPortDescription(SwitchId switchId, int port);
 }
