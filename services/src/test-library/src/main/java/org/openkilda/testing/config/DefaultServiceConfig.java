@@ -17,27 +17,19 @@ package org.openkilda.testing.config;
 
 import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
-import org.springframework.web.client.DefaultResponseErrorHandler;
-import org.springframework.web.client.ResponseErrorHandler;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 
-import java.io.IOException;
 import java.util.List;
 
 @Configuration
@@ -72,9 +64,7 @@ public class DefaultServiceConfig {
 
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
-        RestTemplate restTemplate = buildLoggingRestTemplate();
-        restTemplate.setErrorHandler(buildErrorHandler());
-        return restTemplate;
+        return buildLoggingRestTemplate();
     }
 
     @Bean(name = "aSwitchRestTemplate")
@@ -93,7 +83,6 @@ public class DefaultServiceConfig {
                 new HttpComponentsClientHttpRequestFactory()));
         List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
         interceptors.add(new LoggingRequestInterceptor());
-        restTemplate.setErrorHandler(buildErrorHandler());
         return restTemplate;
     }
 
@@ -101,24 +90,5 @@ public class DefaultServiceConfig {
         RestTemplate restTemplate = buildLoggingRestTemplate(endpoint);
         restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
         return restTemplate;
-    }
-
-    private ResponseErrorHandler buildErrorHandler() {
-        return new DefaultResponseErrorHandler() {
-            private final Logger logger = LoggerFactory.getLogger(ResponseErrorHandler.class);
-
-            @Override
-            public void handleError(ClientHttpResponse clientHttpResponse) throws IOException {
-                try {
-                    super.handleError(clientHttpResponse);
-                } catch (RestClientResponseException e) {
-                    if (e.getRawStatusCode() != HttpStatus.NOT_FOUND.value()) {
-                        logger.error("HTTP response with status {} and body '{}'", e.getRawStatusCode(),
-                                e.getResponseBodyAsString());
-                    }
-                    throw e;
-                }
-            }
-        };
     }
 }
