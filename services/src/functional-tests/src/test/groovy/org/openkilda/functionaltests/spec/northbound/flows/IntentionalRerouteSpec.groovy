@@ -66,7 +66,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         !rerouteResponse.rerouted
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == currentPath
 
-        and: "Remove flow"
+        and: "Remove flow, restore bw, remove costs"
         northboundService.deleteFlow(flow.id)
         changedIsls.each { db.revertIslBandwidth(it) }
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
@@ -98,6 +98,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(thinIsl, "available_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "available_bandwidth", flow.maximumBandwidth)
+        sleep(200)
 
         and: "Init a reroute to a more preferable path"
         def rerouteResponse = northboundService.rerouteFlow(flow.id)
