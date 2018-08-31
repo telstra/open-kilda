@@ -1,12 +1,19 @@
-package org.usermanagement.service;
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+package org.usermanagement.service;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.exception.InvalidOtpException;
@@ -16,8 +23,10 @@ import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.security.TwoFactorUtility;
 import org.openkilda.utility.StringUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,6 +35,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
 import org.usermanagement.conversion.RoleConversionUtil;
 import org.usermanagement.conversion.UserConversionUtil;
 import org.usermanagement.dao.entity.RoleEntity;
@@ -43,15 +53,23 @@ import org.usermanagement.util.MessageUtils;
 import org.usermanagement.util.ValidatorUtil;
 import org.usermanagement.validator.UserValidator;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 /**
  * The Class ServiceUserImpl.
  *
  * @author Gaurav Chugh
  */
+
 @Service
 public class UserService implements UserDetailsService {
 
-    /** The Constant LOG. */
     private static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
 
     @Autowired
@@ -74,16 +92,16 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     private MailUtils mailUtils;
-    
+
     @Autowired
     private UserSettingRepository userSettingRepository;
-    
+
     @Autowired
     private ActivityLogger activityLogger;
 
     @Autowired
     MessageCodeUtil messageCodeUtil;
-    
+
     /*
      * (non-Javadoc)
      *
@@ -100,8 +118,7 @@ public class UserService implements UserDetailsService {
             throw new UsernameNotFoundException(username);
         }
 
-        return new org.springframework.security.core.userdetails.User(username, user.getPassword(),
-                authorities);
+        return new org.springframework.security.core.userdetails.User(username, user.getPassword(), authorities);
     }
 
     /**
@@ -122,9 +139,9 @@ public class UserService implements UserDetailsService {
         userEntity.setIs2FaEnabled(true);
         userEntity = userRepository.save(userEntity);
         LOGGER.info("User with username '" + userEntity.getUsername() + "' created successfully.");
-        
+
         activityLogger.log(ActivityType.CREATE_USER, userRequest.getUsername());
-        
+
         if (userEntity.getUserId() != null) {
             Map<String, Object> map = new HashMap<String, Object>();
             map.put("name", userEntity.getName());
@@ -134,12 +151,11 @@ public class UserService implements UserDetailsService {
                     TemplateService.Template.ACCOUNT_USERNAME, map);
             mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountPassword(),
                     TemplateService.Template.ACCOUNT_PASSWORD, map);
-            LOGGER.info("Username and password email sent successfully to user(username: "
-                    + userEntity.getUsername() + ").");
+            LOGGER.info("Username and password email sent successfully to user(username: " + userEntity.getUsername()
+                    + ").");
         }
         return UserConversionUtil.toUserInfo(userEntity);
     }
-
 
     /**
      * Update user.
@@ -160,13 +176,12 @@ public class UserService implements UserDetailsService {
 
         UserConversionUtil.toUpateUserEntity(userInfo, userEntity);
         userEntity = userRepository.save(userEntity);
-        
+
         activityLogger.log(ActivityType.UPDATE_USER, userEntity.getUsername());
         LOGGER.info("User updated successfully (id: " + userId + ")");
 
         return UserConversionUtil.toUserInfo(userEntity);
     }
-
 
     /**
      * Gets the all users.
@@ -179,7 +194,6 @@ public class UserService implements UserDetailsService {
         return UserConversionUtil.toAllUsers(userEntities);
     }
 
-
     /**
      * Gets the user by id.
      *
@@ -191,7 +205,6 @@ public class UserService implements UserDetailsService {
         UserEntity userEntity = userValidator.validateUserId(userId);
         return UserConversionUtil.toUserInfo(userEntity);
     }
-
 
     /**
      * Gets the user by username.
@@ -211,7 +224,7 @@ public class UserService implements UserDetailsService {
      * @param secretKey the secret key
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public void updateUser2FAKey(final String userName, final String secretKey) {
+    public void updateUser2FaKey(final String userName, final String secretKey) {
         UserEntity userEntity = userRepository.findByUsername(userName);
         userEntity.setTwoFaKey(secretKey);
         userRepository.save(userEntity);
@@ -227,10 +240,9 @@ public class UserService implements UserDetailsService {
     public void updateLoginDetail(final String userName) {
         UserEntity userEntity = userRepository.findByUsername(userName);
         if (ValidatorUtil.isNull(userEntity)) {
-        	LOGGER.error("User with username '" + userName + "' not found. Error: "
-					+ messageUtil.getAttributeInvalid("username", userName + ""));
-            throw new RequestValidationException(
-                    messageUtil.getAttributeInvalid("username", userName + ""));
+            LOGGER.error("User with username '" + userName + "' not found. Error: "
+                    + messageUtil.getAttributeInvalid("username", userName + ""));
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("username", userName + ""));
         }
         userEntity.setLoginTime(Calendar.getInstance().getTime());
         userEntity.setIs2FaConfigured(true);
@@ -247,14 +259,13 @@ public class UserService implements UserDetailsService {
     public void deleteUserById(final Long userId) {
         UserEntity userEntity = userRepository.findByUserId(userId);
         if (ValidatorUtil.isNull(userEntity)) {
-        	LOGGER.error("User with user id '" + userId + "' not found. Error: "
-					+ messageUtil.getAttributeInvalid("user_id", userId + ""));
-            throw new RequestValidationException(
-                    messageUtil.getAttributeInvalid("user_id", userId + ""));
+            LOGGER.error("User with user id '" + userId + "' not found. Error: "
+                    + messageUtil.getAttributeInvalid("user_id", userId + ""));
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
 
         userRepository.delete(userEntity);
-        
+
         activityLogger.log(ActivityType.DELETE_USER, userEntity.getUsername());
         LOGGER.info("User deleted successfully (userId: " + userId + ")");
     }
@@ -271,10 +282,9 @@ public class UserService implements UserDetailsService {
 
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
         if (ValidatorUtil.isNull(roleEntity)) {
-        	LOGGER.error("Role with role id '" + roleId + "' not found. Error: "
-					+ messageUtil.getAttributeInvalid("role_id", roleId + ""));
-            throw new RequestValidationException(
-                    messageUtil.getAttributeInvalid("role_id", roleId + ""));
+            LOGGER.error("Role with role id '" + roleId + "' not found. Error: "
+                    + messageUtil.getAttributeInvalid("role_id", roleId + ""));
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("role_id", roleId + ""));
         }
         roleEntity.getUsers().clear();
         if (role.getUserInfo() != null) {
@@ -284,7 +294,7 @@ public class UserService implements UserDetailsService {
             }
         }
         roleEntity = roleRepository.save(roleEntity);
-        
+
         activityLogger.log(ActivityType.ASSIGN_USERS_BY_ROLE, roleEntity.getName());
         LOGGER.info("Users assigned with role successfully (role id: " + roleId + ")");
         return RoleConversionUtil.toRole(roleEntity, false, true);
@@ -304,8 +314,7 @@ public class UserService implements UserDetailsService {
         UserEntity userEntity = userRepository.findByUserId(userId);
         if (ValidatorUtil.isNull(userEntity)) {
             LOGGER.error("User Entity not found for user(id: " + userId + ")");
-            throw new RequestValidationException(
-                    messageUtil.getAttributeInvalid("user_id", userId + ""));
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
 
         if (!StringUtil.matches(userInfo.getPassword(), userEntity.getPassword())) {
@@ -313,7 +322,7 @@ public class UserService implements UserDetailsService {
                     + messageUtil.getAttributePasswordInvalid());
             throw new RequestValidationException(messageUtil.getAttributePasswordInvalid());
         }
-        
+
         if (userEntity.getIs2FaEnabled()) {
             if (!userEntity.getIs2FaConfigured()) {
                 LOGGER.error("2FA key is not configured for user(id: " + userId + "). Error: "
@@ -324,12 +333,10 @@ public class UserService implements UserDetailsService {
                     LOGGER.error("OTP code is madatory as 2FA is configured for user (id: " + userId + "). Error: "
                             + messageUtil.getAttributeNotNull("OTP"));
                     throw new OtpRequiredException(messageUtil.getAttributeNotNull("OTP"));
-                } else if (!TwoFactorUtility.validateOtp(userInfo.getCode(),
-                        userEntity.getTwoFaKey())) {
+                } else if (!TwoFactorUtility.validateOtp(userInfo.getCode(), userEntity.getTwoFaKey())) {
                     LOGGER.error("Invalid OTP for user (id: " + userId + "). Error: "
                             + messageUtil.getAttributeNotvalid("OTP"));
-                    throw new InvalidOtpException(
-                            messageUtil.getAttributeNotvalid("OTP"));
+                    throw new InvalidOtpException(messageUtil.getAttributeNotvalid("OTP"));
                 }
             }
         }
@@ -337,7 +344,7 @@ public class UserService implements UserDetailsService {
         userEntity.setPassword(StringUtil.encodeString(userInfo.getNewPassword()));
         userEntity.setUpdatedDate(new Date());
         userEntity = userRepository.save(userEntity);
-        
+
         activityLogger.log(ActivityType.CHANGE_PASSWORD, userEntity.getUsername());
         LOGGER.info("User(userId: " + userId + ") password changed successfully.");
 
@@ -365,9 +372,8 @@ public class UserService implements UserDetailsService {
         UserEntity userEntity = userRepository.findByUserId(userId);
 
         if (ValidatorUtil.isNull(userEntity)) {
-        	LOGGER.error("User Entity not found for user(id: " + userId + ")");
-            throw new RequestValidationException(
-                    messageUtil.getAttributeInvalid("user_id", userId + ""));
+            LOGGER.error("User Entity not found for user(id: " + userId + ")");
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
         String randomPassword = ValidatorUtil.randomAlphaNumeric(16);
         userEntity = UserConversionUtil.toResetPwdUserEntity(userEntity, randomPassword);
@@ -377,12 +383,12 @@ public class UserService implements UserDetailsService {
         }
         userEntity = userRepository.save(userEntity);
         if (adminFlag) {
-        	activityLogger.log(ActivityType.ADMIN_RESET_PASSWORD, userEntity.getUsername());
+            activityLogger.log(ActivityType.ADMIN_RESET_PASSWORD, userEntity.getUsername());
         } else {
-        	activityLogger.log(ActivityType.RESET_PASSWORD, userEntity.getUsername());
+            activityLogger.log(ActivityType.RESET_PASSWORD, userEntity.getUsername());
         }
-        
-		LOGGER.info("Password reset successfully for user(userId: " + userId + ").");
+
+        LOGGER.info("Password reset successfully for user(userId: " + userId + ").");
         if (!adminFlag) {
             Map<String, Object> context = new HashMap<>();
             context.put("name", userEntity.getName());
@@ -405,88 +411,105 @@ public class UserService implements UserDetailsService {
         UserEntity userEntity = userRepository.findByUserId(userId);
 
         if (ValidatorUtil.isNull(userEntity)) {
-        	LOGGER.error("User Entity not found for user(user_id: " + userId + ")");
-            throw new RequestValidationException(
-                    messageUtil.getAttributeInvalid("user_id", userId + ""));
+            LOGGER.error("User Entity not found for user(user_id: " + userId + ")");
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
         userEntity.setIs2FaConfigured(false);
         userEntity.setTwoFaKey(null);
         userEntity = userRepository.save(userEntity);
-        
+
         activityLogger.log(ActivityType.RESET_2FA, userEntity.getUsername());
         LOGGER.info("2FA reset successfully for user(user_id: " + userId + ").");
         if (!userEntity.getIs2FaConfigured()) {
             Map<String, Object> context = new HashMap<>();
             context.put("name", userEntity.getName());
 
-            mailService.send(userEntity.getEmail(), mailUtils.getSubjectReset2fa(),
-                    TemplateService.Template.RESET_2FA, context);
+            mailService.send(userEntity.getEmail(), mailUtils.getSubjectReset2fa(), TemplateService.Template.RESET_2FA,
+                    context);
             LOGGER.info("Reset 2FA mail sent successfully for user(user_id: " + userId + ").");
         }
     }
-    
-	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-	public UserInfo saveOrUpdateSettings(UserInfo userInfo) {
 
-		if (ValidatorUtil.isNull(userInfo.getUserId())) {
-			LOGGER.error("Validation failed for user (id: " + userInfo.getUserId() + "). Error: "
-					+ messageUtil.getAttributeInvalid("user_id", userInfo.getUserId() + ""));
-			throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userInfo.getUserId() + ""));
-		}
+    /**
+     * Save or update settings.
+     *
+     * @param userInfo the user info
+     * @return the user info
+     */
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+    public UserInfo saveOrUpdateSettings(UserInfo userInfo) {
 
-		UserSettingEntity userSettingEntity = userSettingRepository.findOneByUserId(userInfo.getUserId());
-		if (userSettingEntity == null) {
-			userSettingEntity = new UserSettingEntity();
-			userSettingEntity.setUserId(userInfo.getUserId());
-		}
-		userSettingEntity.setSettings(IConstants.SETTINGS.TOPOLOGY_SETTING);
-		userSettingEntity.setData(userInfo.getData());
-		userSettingEntity = userSettingRepository.save(userSettingEntity);
-		
-		//activityLogger.log(ActivityType.UPDATE_USER_SETTINGS, userInfo.getUserId() + "");
-		LOGGER.info("User Settings saved successfully for user(user_id: " + userInfo.getUserId() + ").");
-		return userInfo;
-	}
+        if (ValidatorUtil.isNull(userInfo.getUserId())) {
+            LOGGER.error("Validation failed for user (id: " + userInfo.getUserId() + "). Error: "
+                    + messageUtil.getAttributeInvalid("user_id", userInfo.getUserId() + ""));
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userInfo.getUserId() + ""));
+        }
 
-	@Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-	public String getUserSettings(final long userId) {
+        UserSettingEntity userSettingEntity = userSettingRepository.findOneByUserId(userInfo.getUserId());
+        if (userSettingEntity == null) {
+            userSettingEntity = new UserSettingEntity();
+            userSettingEntity.setUserId(userInfo.getUserId());
+        }
+        userSettingEntity.setSettings(IConstants.Settings.TOPOLOGY_SETTING);
+        userSettingEntity.setData(userInfo.getData());
+        userSettingEntity = userSettingRepository.save(userSettingEntity);
 
-		if (ValidatorUtil.isNull(userId)) {
-			LOGGER.error("Validation failed for user (id: " + userId + "). Error: "
-					+ messageUtil.getAttributeInvalid("user_id", userId + ""));
-			throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
-		}
+        // activityLogger.log(ActivityType.UPDATE_USER_SETTINGS,
+        // userInfo.getUserId() + "");
+        LOGGER.info("User Settings saved successfully for user(user_id: " + userInfo.getUserId() + ").");
+        return userInfo;
+    }
 
-		UserSettingEntity userSettingEntity = userSettingRepository.findOneByUserId(userId);
-		if (userSettingEntity == null) {
-			LOGGER.error("User settings not found for user(user_id: " + userId + ")" + messageCodeUtil.getAttributeNotFoundCode());
-			throw new RequestValidationException(messageCodeUtil.getAttributeNotFoundCode(),
-					messageUtil.getAttributeNotFound("User settings"));
-		}
-		return userSettingEntity.getData();
-	}
-	
-    public boolean validateOTP(final long userId, final String otp) {
+    /**
+     * Gets the user settings.
+     *
+     * @param userId the user id
+     * @return the user settings
+     */
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+    public String getUserSettings(final long userId) {
+
+        if (ValidatorUtil.isNull(userId)) {
+            LOGGER.error("Validation failed for user (id: " + userId + "). Error: "
+                    + messageUtil.getAttributeInvalid("user_id", userId + ""));
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
+        }
+
+        UserSettingEntity userSettingEntity = userSettingRepository.findOneByUserId(userId);
+        if (userSettingEntity == null) {
+            LOGGER.error("User settings not found for user(user_id: " + userId + ")"
+                    + messageCodeUtil.getAttributeNotFoundCode());
+            throw new RequestValidationException(messageCodeUtil.getAttributeNotFoundCode(),
+                    messageUtil.getAttributeNotFound("User settings"));
+        }
+        return userSettingEntity.getData();
+    }
+
+    /**
+     * Validate OTP.
+     *
+     * @param userId the user id
+     * @param otp the otp
+     * @return true, if successful
+     */
+    public boolean validateOtp(final long userId, final String otp) {
         UserEntity userEntity = userRepository.findByUserId(userId);
         if (ValidatorUtil.isNull(userEntity)) {
             LOGGER.error("User Entity not found for user(id: " + userId + ")");
-            throw new RequestValidationException(
-                    messageUtil.getAttributeInvalid("user_id", userId + ""));
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
 
         if (userEntity.getIs2FaEnabled()) {
             if (!userEntity.getIs2FaConfigured()) {
-                LOGGER.error("2FA key is not configured for user(id: " + userId
-                        + "). Error: " + messageUtil.getAttribute2faNotConfiured());
+                LOGGER.error("2FA key is not configured for user(id: " + userId + "). Error: "
+                        + messageUtil.getAttribute2faNotConfiured());
                 throw new TwoFaKeyNotSetException(messageUtil.getAttribute2faNotConfiured());
             } else {
                 if (otp == null || otp.isEmpty()) {
-                    LOGGER.error("OTP code is madatory as 2FA is configured for user (id: "
-                            + userId + "). Error: "
+                    LOGGER.error("OTP code is madatory as 2FA is configured for user (id: " + userId + "). Error: "
                             + messageUtil.getAttributeNotNull("OTP"));
                     throw new OtpRequiredException(messageUtil.getAttributeNotNull("OTP"));
-                } else if (!TwoFactorUtility.validateOtp(otp,
-                        userEntity.getTwoFaKey())) {
+                } else if (!TwoFactorUtility.validateOtp(otp, userEntity.getTwoFaKey())) {
                     LOGGER.error("Invalid OTP for user (id: " + userId + "). Error: "
                             + messageUtil.getAttributeNotvalid("OTP"));
                     throw new InvalidOtpException(messageUtil.getAttributeNotvalid("OTP"));
@@ -500,4 +523,3 @@ public class UserService implements UserDetailsService {
         return true;
     }
 }
-

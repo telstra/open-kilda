@@ -13,25 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.integration.exception;
+package org.openkilda.constants;
 
-public class ContentNotFoundException extends RuntimeException {
+/**
+ * The entity OPENTSDB Interface.
+ *
+ * @author Gaurav Chugh
+ *
+ */
+public abstract class OpenTsDb {
 
-    private static final long serialVersionUID = 9177586156625415602L;
+    public static final String GROUP_BY = "true";
+    public static final String TYPE = "literal_or";
+    public static final String TYPE_WILDCARD = "wildcard";
+    public static final String RATE = "true";
+    public static final String AGGREGATOR = "sum";
 
-    public ContentNotFoundException() {
-        super();
+    public enum StatsType {
+        SWITCH, PORT, FLOW, ISL, ISL_LOSS_PACKET, 
+        FLOW_LOSS_PACKET, FLOW_RAW_PACKET, SWITCH_PORT
     }
 
-    public ContentNotFoundException(final String errorMessage) {
-        super(errorMessage);
-    }
-
-    public ContentNotFoundException(final String errorMessage, final Throwable e) {
-        super(errorMessage, e);
-    }
-
-    public ContentNotFoundException(final Throwable e) {
-        super(e);
-    }
 }

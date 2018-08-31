@@ -1,4 +1,21 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.usermanagement.dao.entity;
+
+import org.openkilda.entity.BaseEntity;
 
 import java.io.Serializable;
 import java.util.HashSet;
@@ -15,8 +32,6 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-
-import org.openkilda.entity.BaseEntity;
 
 @Entity
 @Table(name = "kilda_permission")
@@ -44,11 +59,11 @@ public class PermissionEntity extends BaseEntity implements Serializable {
     @ManyToOne
     @JoinColumn(name = "status_id", nullable = false)
     private StatusEntity statusEntity;
-    
+
     /** The roles. */
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "role_permission", joinColumns = {@JoinColumn(name = "permission_id")},
-            inverseJoinColumns = {@JoinColumn(name = "role_id")})
+    @JoinTable(name = "role_permission", joinColumns = { @JoinColumn(name = "permission_id") }, inverseJoinColumns = {
+            @JoinColumn(name = "role_id") })
     private Set<RoleEntity> roles = new HashSet<RoleEntity>();
 
     public Long getPermissionId() {
@@ -67,7 +82,6 @@ public class PermissionEntity extends BaseEntity implements Serializable {
         this.name = name;
     }
 
-
     public StatusEntity getStatusEntity() {
         return statusEntity;
     }
@@ -75,7 +89,6 @@ public class PermissionEntity extends BaseEntity implements Serializable {
     public void setStatusEntity(final StatusEntity statusEntity) {
         this.statusEntity = statusEntity;
     }
-
 
     public String getDescription() {
         return description;
@@ -102,14 +115,14 @@ public class PermissionEntity extends BaseEntity implements Serializable {
     }
 
     public Set<RoleEntity> getRoles() {
-		return roles;
-	}
+        return roles;
+    }
 
-	public void setRoles(Set<RoleEntity> roles) {
-		this.roles = roles;
-	}
+    public void setRoles(Set<RoleEntity> roles) {
+        this.roles = roles;
+    }
 
-	@Override
+    @Override
     public String toString() {
         return "PermissionEntity [permissionId=" + permissionId + ", name=" + name + ", description=" + description
                 + ", statusEntity=" + statusEntity + "]";

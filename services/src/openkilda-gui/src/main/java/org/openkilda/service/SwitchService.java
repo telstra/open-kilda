@@ -1,6 +1,19 @@
-package org.openkilda.service;
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
 
-import java.util.List;
+package org.openkilda.service;
 
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.PortConfiguration;
@@ -9,8 +22,11 @@ import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchInfo;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * The Class ServiceSwitchImpl.
@@ -26,8 +42,8 @@ public class SwitchService {
     /**
      * get All SwitchList.
      *
-     * @return SwitchRelationData
-     * @throws IntegrationException
+     * @return SwitchRelationData the switch info
+     * @throws IntegrationException the integration exception
      */
     public List<SwitchInfo> getSwitches() throws IntegrationException {
         return switchIntegrationService.getSwitches();
@@ -36,8 +52,8 @@ public class SwitchService {
     /**
      * get All Links.
      *
-     * @return SwitchRelationData
-     * @throws IntegrationException
+     * @return SwitchRelationData the isl link info
+     * @throws IntegrationException the integration exception
      */
     public List<IslLinkInfo> getIslLinks() {
         return switchIntegrationService.getIslLinks();
@@ -47,8 +63,8 @@ public class SwitchService {
     /**
      * Get link props.
      * 
-     * @param keys
-     * @return
+     * @param keys the link properties
+     * @return the link properties
      */
     public LinkProps getLinkProps(LinkProps keys) {
         List<LinkProps> linkPropsList = switchIntegrationService.getIslLinkProps(keys);
@@ -58,8 +74,8 @@ public class SwitchService {
     /**
      * Update link props.
      * 
-     * @param keys
-     * @return
+     * @param keys the link properties
+     * @return the link properties
      */
     public String updateLinkProps(List<LinkProps> keys) {
         return switchIntegrationService.updateIslLinkProps(keys);
@@ -68,8 +84,8 @@ public class SwitchService {
     /**
      * Get Switch Rules.
      * 
-     * @param switchId
-     * @return
+     * @param switchId the switch id
+     * @return the switch rules
      */
     public String getSwitchRules(String switchId) {
         return switchIntegrationService.getSwitchRules(switchId);
