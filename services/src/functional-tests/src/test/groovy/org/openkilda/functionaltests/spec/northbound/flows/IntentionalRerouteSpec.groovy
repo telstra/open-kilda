@@ -109,7 +109,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         pathHelper.getInvolvedIsls(newPath).contains(thinIsl)
 
         and: "'Thin' ISL has 0 available bandwidth left"
-        islUtils.getIslInfo(thinIsl).availableBandwidth == 0
+        islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0
 
         and: "Remove flow, restore bw, remove costs"
         northboundService.deleteFlow(flow.id)

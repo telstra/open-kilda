@@ -2,8 +2,11 @@ package org.openkilda.functionaltests.spec
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 import org.springframework.beans.factory.annotation.Autowired
+
+import static org.openkilda.messaging.info.event.IslChangeType.*
 
 class IslMovingSpec extends BaseSpecification {
     @Autowired
@@ -11,6 +14,9 @@ class IslMovingSpec extends BaseSpecification {
 
     @Autowired
     IslUtils islUtils
+
+    @Autowired
+    NorthboundService northbound
 
     def "ISL status changes to MOVED when replugging"() {
         given: "A connected a-switch link"
@@ -26,22 +32,22 @@ class IslMovingSpec extends BaseSpecification {
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
 
         then: "New ISL becomes Discovered"
-        islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], "DISCOVERED")
+        islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], DISCOVERED)
 
         and: "Replugged ISL status changes to MOVED"
-        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], "MOVED")
+        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], MOVED)
 
         when: "Replug the link back where it was"
         islUtils.replug(newIsl, true, isl, false)
 
         then: "Original ISL becomes Discovered again"
-        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], "DISCOVERED")
+        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], DISCOVERED)
 
         and: "Replugged ISL status changes to MOVED"
-        islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], "MOVED")
+        islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], MOVED)
     }
 
-    def "ISL status changes to MOVED when replugging (self-loop case)"() {
+    def "New ISL is not getting discovered when replugging into a self-loop (same port)"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find {
             it.getAswitch()?.inPort && it.getAswitch()?.outPort
@@ -51,19 +57,18 @@ class IslMovingSpec extends BaseSpecification {
         when: "Replug one end of link into 'itself'"
         def loopedIsl = islUtils.replug(isl, false, isl, true)
 
-        then: "New self-looped ISL becomes Discovered"
-        islUtils.waitForIslStatus([loopedIsl, islUtils.reverseIsl(loopedIsl)], "DISCOVERED")
+        then: "Replugged ISL status changes to FAILED"
+        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], FAILED)
 
-        and: "Replugged ISL status changes to MOVED"
-        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], "MOVED")
+        and: "The potential self-loop ISL is not present in list of isls"
+        def allLinks = northbound.getAllLinks()
+        !islUtils.getIslInfo(allLinks, loopedIsl).present
+        !islUtils.getIslInfo(allLinks, islUtils.reverseIsl(loopedIsl)).present
 
         when: "Replug the link back where it was"
         islUtils.replug(loopedIsl, true, isl, false)
 
         then: "Original ISL becomes Discovered again"
-        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], "DISCOVERED")
-
-        and: "self-looped ISL status changes to MOVED"
-        islUtils.waitForIslStatus([loopedIsl, islUtils.reverseIsl(loopedIsl)], "MOVED")
+        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], DISCOVERED)
     }
 }
