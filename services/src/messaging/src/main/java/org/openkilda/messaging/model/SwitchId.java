@@ -19,6 +19,7 @@ import org.openkilda.messaging.error.SwitchIdFormatException;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -31,14 +32,16 @@ public class SwitchId implements Serializable, Comparable<SwitchId> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Switch switchId.
+     * Switch id numerical representation.
      */
-    private final long switchId;
+    private final long switchIdNum;
 
     /**
      * Construct an instance based on the colon separated representation of a switch id.
      */
     public SwitchId(String switchId) {
+        Preconditions.checkArgument(Objects.nonNull(switchId), "Switch id must not be null");
+
         long value;
         try {
             value = Long.parseUnsignedLong(switchId.replaceAll("[-:]", ""), 16);
@@ -46,14 +49,14 @@ public class SwitchId implements Serializable, Comparable<SwitchId> {
             throw new SwitchIdFormatException(String.format("Can not parse input string: \"%s\"", switchId));
         }
 
-        this.switchId = value;
+        this.switchIdNum = value;
     }
 
     /**
      * Construct an instance based on the long value representation of a switch id.
      */
     public SwitchId(long switchId) {
-        this.switchId = switchId;
+        this.switchIdNum = switchId;
     }
 
     /**
@@ -62,7 +65,7 @@ public class SwitchId implements Serializable, Comparable<SwitchId> {
      * @return the switch id in long.
      */
     public long toLong() {
-        return switchId;
+        return switchIdNum;
     }
 
     /**
@@ -114,7 +117,7 @@ public class SwitchId implements Serializable, Comparable<SwitchId> {
     }
 
     private char[] toHexArray() {
-        String hexString = String.format("%016x", switchId);
+        String hexString = String.format("%016x", switchIdNum);
         return hexString.toCharArray();
     }
 
@@ -133,7 +136,7 @@ public class SwitchId implements Serializable, Comparable<SwitchId> {
 
         SwitchId other = (SwitchId) o;
 
-        return switchId == other.switchId;
+        return switchIdNum == other.switchIdNum;
     }
 
     /**
@@ -141,7 +144,7 @@ public class SwitchId implements Serializable, Comparable<SwitchId> {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(switchId);
+        return Objects.hash(switchIdNum);
     }
 
 
@@ -150,6 +153,6 @@ public class SwitchId implements Serializable, Comparable<SwitchId> {
      */
     @Override
     public int compareTo(SwitchId other) {
-        return Long.compareUnsigned(switchId, other.switchId);
+        return Long.compareUnsigned(switchIdNum, other.switchIdNum);
     }
 }
