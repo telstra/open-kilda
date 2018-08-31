@@ -25,8 +25,9 @@ import java.io.Serializable;
 import java.util.Objects;
 
 @JsonSerialize
+@SuppressWarnings("squid:S1948")
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ImmutablePair<L, R> implements Serializable {
+public class FlowPair<L, R> implements Serializable {
     static final long serialVersionUID = 1L;
 
     @JsonProperty("forward")
@@ -52,9 +53,9 @@ public class ImmutablePair<L, R> implements Serializable {
             return false;
         }
 
-        ImmutablePair flowPair = (ImmutablePair) object;
-        return Objects.equals(getLeft(), flowPair.getLeft()) &&
-                Objects.equals(getRight(), flowPair.getRight());
+        FlowPair flowPair = (FlowPair) object;
+        return Objects.equals(getLeft(), flowPair.getLeft())
+                && Objects.equals(getRight(), flowPair.getRight());
     }
 
     @Override
@@ -63,7 +64,7 @@ public class ImmutablePair<L, R> implements Serializable {
     }
 
     @JsonCreator
-    public ImmutablePair(@JsonProperty("forward") L left, @JsonProperty("reverse") R right) {
+    public FlowPair(@JsonProperty("forward") L left, @JsonProperty("reverse") R right) {
         this.left = left;
         this.right = right;
     }

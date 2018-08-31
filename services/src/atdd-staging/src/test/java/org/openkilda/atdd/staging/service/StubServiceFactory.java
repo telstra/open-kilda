@@ -30,7 +30,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -78,7 +78,7 @@ import java.util.stream.Stream;
 public class StubServiceFactory {
 
     private final Map<String, FlowPayload> flowPayloads = new HashMap<>();
-    private final Map<String, ImmutablePair<Flow, Flow>> flows = new HashMap<>();
+    private final Map<String, FlowPair<Flow, Flow>> flows = new HashMap<>();
     private int meterCounter = 1;
 
     private final TopologyDefinition topologyDefinition;
@@ -307,7 +307,7 @@ public class StubServiceFactory {
         reverseFlow.setDestinationPort(forwardFlow.getSourcePort());
         reverseFlow.setDestinationVlan(forwardFlow.getSourceVlan());
 
-        flows.put(flowId, new ImmutablePair<>(forwardFlow, reverseFlow));
+        flows.put(flowId, new FlowPair<>(forwardFlow, reverseFlow));
     }
 
     /**

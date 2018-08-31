@@ -24,7 +24,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.algo.SimpleGetShortestPath;
@@ -62,7 +62,7 @@ public class NeoDriver implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
+    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
             throws UnroutablePathException, RecoverableException {
         AvailableNetwork network = new AvailableNetwork(driver, flow.isIgnoreBandwidth(), flow.getBandwidth());
         return getPath(flow, network, strategy);
@@ -72,7 +72,7 @@ public class NeoDriver implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
+    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
             throws UnroutablePathException, RecoverableException {
 
         long latency = 0L;
@@ -112,7 +112,7 @@ public class NeoDriver implements PathComputer {
             logger.info("No path computation for one-switch flow");
         }
 
-        return new ImmutablePair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
+        return new FlowPair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
     }
 
     /**

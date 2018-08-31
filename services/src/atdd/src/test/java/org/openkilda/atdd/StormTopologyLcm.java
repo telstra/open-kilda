@@ -28,7 +28,7 @@ import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.ctrl.state.visitor.DumpStateManager;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -158,9 +158,9 @@ public class StormTopologyLcm {
         DumpStateManager actualSateDumpsFromBolts = kafkaUtils.getStateDumpsFromBolts();
 
         // CacheBolt part
-        Set<ImmutablePair<Flow, Flow>> actualCacheBoltFlows = actualSateDumpsFromBolts
+        Set<FlowPair<Flow, Flow>> actualCacheBoltFlows = actualSateDumpsFromBolts
                 .getCacheBoltState().getFlowDump().getFlows();
-        Set<ImmutablePair<Flow, Flow>> expectedCacheBoltFlows = expectedStateDumpsFromBolts
+        Set<FlowPair<Flow, Flow>> expectedCacheBoltFlows = expectedStateDumpsFromBolts
                 .getCacheBoltState().getFlowDump().getFlows();
         assertTrue(CollectionUtils.isEqualCollection(actualCacheBoltFlows, expectedCacheBoltFlows));
 

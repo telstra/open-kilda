@@ -17,7 +17,7 @@ package org.openkilda.testing.service.topology;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 
 import java.util.List;
@@ -28,7 +28,7 @@ public interface TopologyEngineService {
 
     List<Flow> getAllFlows();
 
-    ImmutablePair<Flow, Flow> getFlow(String flowId);
+    FlowPair<Flow, Flow> getFlow(String flowId);
 
     void restoreFlows();
 
