@@ -101,6 +101,17 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
         return result.summary().counters().nodesDeleted() > 0;
     }
 
+    @Override
+    public boolean resetCosts() {
+        //TODO(rtretiak): Move '700' to Constants
+        String query = "MATCH ()-[i:isl]->() SET i.cost=700";
+        StatementResult result;
+        try (Session session = neo.session()) {
+            result = session.run(query);
+        }
+        return result.summary().counters().propertiesSet() > 0;
+    }
+
     /**
      * Get ISL cost.
      *

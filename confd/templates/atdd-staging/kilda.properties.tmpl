@@ -11,3 +11,8 @@ floodlight.username={{ getv "/kilda_floodlight_username" }}
 floodlight.password={{ getv "/kilda_floodlight_password" }}
 
 aswitch.endpoint={{ getv "/kilda_aswitch_endpoint" }}:{{ getv "/kilda_aswitch_port" }}
+
+reroute.delay={{ getv "/kilda_reroute_throttling_delay_min" }}
+reroute.hardtimeout={{ getv "/kilda_reroute_throttling_delay_max" }}
+discovery.interval={{ getv "/kilda_discovery_interval" }}
+

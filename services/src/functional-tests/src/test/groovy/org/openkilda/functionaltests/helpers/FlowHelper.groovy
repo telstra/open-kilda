@@ -16,7 +16,7 @@ class FlowHelper {
 
     def random = new Random()
     def allowedVlans = 101..4095
-    def sdf = new SimpleDateFormat("ddMMMHHmmss", Locale.US)
+    def sdf = new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US)
 
     FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch) {
         new FlowPayload(sdf.format(new Date()), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,

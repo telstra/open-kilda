@@ -26,5 +26,7 @@ public interface Database {
 
     boolean removeInactiveSwitches();
 
+    boolean resetCosts();
+
     int getIslCost(Isl isl);
 }
