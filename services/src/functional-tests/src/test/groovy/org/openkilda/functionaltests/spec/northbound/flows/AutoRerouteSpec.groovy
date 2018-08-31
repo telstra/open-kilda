@@ -26,7 +26,7 @@ class AutoRerouteSpec extends BaseSpecification {
     NorthboundService northboundService
 
     @Value('${reroute.delay}')
-    int rerouteTimeout
+    int rerouteDelay
     @Value('${discovery.interval}')
     int discoveryInterval
 
@@ -52,13 +52,13 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Down'"
-        Wrappers.wait(rerouteTimeout + 2) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + 2) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "ISL goes back up"
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Up'"
-        Wrappers.wait(rerouteTimeout + discoveryInterval + 3) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + 3) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 

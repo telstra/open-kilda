@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec
 
+import static org.junit.Assume.assumeTrue
+
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -14,13 +16,12 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
-
-import static org.junit.Assume.assumeTrue
 
 @Narrative("""
 This test verifies that we do not perform a reroute as soon as we receive a reroute request (we talk only about
@@ -45,24 +46,24 @@ class ThrottlingReroutesSpec extends BaseSpecification {
     Database db
 
     @Value('${reroute.delay}')
-    int rerouteTimeout
+    int rerouteDelay
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout
     @Value('${discovery.interval}')
     int discoveryInterval
 
     def setupOnce() {
-        //Sometimes Kilda will miss a discovery packet -> not issue a reroute,
-        // so need to allow at least twice that time before closing the window
+        //Sometimes Kilda misses a discovery packet -> doesn't issue a reroute,
+        //so need to allow at least twice that time before closing the window
         assumeTrue("These tests assume a bigger time gap between \${reroute.delay} and \${discovery.interval}",
-                rerouteTimeout > discoveryInterval * 2 + 2)
+                rerouteDelay > discoveryInterval * 2 + 2)
     }
 
     def "Reroute is not performed while new reroutes are being issued (alt path available)"() {
-        def blinkingPeriod = rerouteTimeout
+        def blinkingPeriod = rerouteDelay
         assumeTrue("Configured reroute timeouts are not acceptable for this test. " +
                 "Make a bigger gap between \${reroute.hardtimeout} and \${reroute.delay}",
-                blinkingPeriod + rerouteTimeout + 1 < rerouteHardTimeout)
+                blinkingPeriod + rerouteDelay + 1 < rerouteHardTimeout)
 
         given: "Flow with alternate paths available"
         def switches = topology.getActiveSwitches()
@@ -92,7 +93,7 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Still on the same path right before the timeout should run out"
-        TimeUnit.SECONDS.sleep(rerouteTimeout - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(rerouteDelay - (discoveryInterval + 1))
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow reroutes (changes path) after window timeout"
@@ -106,10 +107,10 @@ class ThrottlingReroutesSpec extends BaseSpecification {
     }
 
     def "Reroute is not performed while new reroutes are being issued (no alt path)"() {
-        def blinkingPeriod = rerouteTimeout
+        def blinkingPeriod = rerouteDelay
         assumeTrue("Configured reroute timeouts are not acceptable for this test. " +
                 "Make a bigger gap between \${reroute.hardtimeout} and \${reroute.delay}",
-                blinkingPeriod + rerouteTimeout + 1 < rerouteHardTimeout)
+                blinkingPeriod + rerouteDelay + 1 < rerouteHardTimeout)
 
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
@@ -140,7 +141,7 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Still UP and on the same path right before the timeout should run out"
-        TimeUnit.SECONDS.sleep(rerouteTimeout - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(rerouteDelay - (discoveryInterval + 1))
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
         northboundService.getFlowStatus(flow.id).status == FlowState.UP
 
@@ -156,10 +157,10 @@ class ThrottlingReroutesSpec extends BaseSpecification {
     }
 
     def "Reroute timer is refreshed even if another flow reroute is issued"() {
-        def blinkingPeriod = rerouteTimeout
+        def blinkingPeriod = rerouteDelay
         assumeTrue("Configured reroute timeouts are not acceptable for this test. " +
                 "Make a bigger gap between \${reroute.hardtimeout} and \${reroute.delay}",
-                blinkingPeriod + rerouteTimeout + 1 < rerouteHardTimeout)
+                blinkingPeriod + rerouteDelay + 1 < rerouteHardTimeout)
 
         given: "2 flows with alternate paths available"
         def switches = topology.getActiveSwitches()
@@ -192,12 +193,12 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         2.times { blinkPort(isl1.dstSwitch.dpId, isl1.dstPort) }
 
         and: "Right before timeout ends the flow2 ISL blinks twice"
-        TimeUnit.SECONDS.sleep(rerouteTimeout - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(rerouteDelay - (discoveryInterval + 1))
         def isl2 = flow2Isls.find { !flow1Isls.contains(it) }
         2.times { blinkPort(isl2.dstSwitch.dpId, isl2.dstPort) }
 
         then: "Flow1 is still on its path right before the updated timeout runs out"
-        TimeUnit.SECONDS.sleep(rerouteTimeout - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(rerouteDelay - (discoveryInterval + 1))
         currentPath1 == PathHelper.convert(northboundService.getFlowPath(flow1.id))
 
         and: "Flow1 reroutes (changes path) after window timeout"

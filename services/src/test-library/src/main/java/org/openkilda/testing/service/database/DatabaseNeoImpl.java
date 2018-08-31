@@ -15,6 +15,8 @@
 
 package org.openkilda.testing.service.database;
 
+import static org.openkilda.testing.Constants.DEFAULT_COST;
+
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import com.google.common.collect.ImmutableMap;
@@ -103,11 +105,10 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
 
     @Override
     public boolean resetCosts() {
-        //TODO(rtretiak): Move '700' to Constants
-        String query = "MATCH ()-[i:isl]->() SET i.cost=700";
+        String query = "MATCH ()-[i:isl]->() SET i.cost=$cost";
         StatementResult result;
         try (Session session = neo.session()) {
-            result = session.run(query);
+            result = session.run(query, ImmutableMap.of("cost", DEFAULT_COST));
         }
         return result.summary().counters().propertiesSet() > 0;
     }

@@ -17,6 +17,7 @@ package org.openkilda.testing;
 
 public final class Constants {
     public static final String ASWITCH_NAME = "aswitch";
+    public static final Integer DEFAULT_COST = 700;
 
     private Constants() {
         throw new UnsupportedOperationException();
