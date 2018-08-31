@@ -380,6 +380,7 @@ class MessageItem(model.JsonSerializable):
                 'latency': latency,
                 'speed': speed,
                 'max_bandwidth': available_bandwidth,
+                'default_max_bandwidth': available_bandwidth,
                 'actual': 'active'})
 
             isl_utils.update_status(tx, isl, mtime=self.timestamp)
