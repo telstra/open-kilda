@@ -13,16 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.database;
+package org.openkilda.testing.service.mininet;
 
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import java.util.Map;
 
-public interface Database {
-    boolean updateLinkProperty(Isl isl, String property, Object value);
+public interface Mininet {
 
-    boolean revertIslBandwidth(Isl isl);
+    Map createTopology(Object topology);
 
-    boolean removeInactiveIsls();
+    void deleteTopology();
 
-    boolean removeInactiveSwitches();
+    void knockoutSwitch(String switchName);
+
+    void addFlow(String switchName, Integer inPort, Integer outPort);
+
+    void removeFlow(String switchName, Integer inPort);
+
+    void portUp(String switchName, Integer port);
+
+    void portDown(String switchName, Integer port);
 }

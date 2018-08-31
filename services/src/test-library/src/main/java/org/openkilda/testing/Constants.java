@@ -13,16 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.database;
+package org.openkilda.testing;
 
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+public final class Constants {
+    public static final String ASWITCH_NAME = "aswitch";
 
-public interface Database {
-    boolean updateLinkProperty(Isl isl, String property, Object value);
-
-    boolean revertIslBandwidth(Isl isl);
-
-    boolean removeInactiveIsls();
-
-    boolean removeInactiveSwitches();
+    private Constants() {
+        throw new UnsupportedOperationException();
+    }
 }

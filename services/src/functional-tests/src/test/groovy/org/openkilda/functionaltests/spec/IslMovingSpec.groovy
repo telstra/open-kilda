@@ -31,11 +31,11 @@ class IslMovingSpec extends BaseSpecification {
         when: "Replug one end of connected link to the not connected one"
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
 
-        then: "New ISL becomes Discovered"
-        islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], DISCOVERED)
-
-        and: "Replugged ISL status changes to MOVED"
+        then: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], MOVED)
+
+        and: "New ISL becomes Discovered"
+        islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], DISCOVERED)
 
         when: "Replug the link back where it was"
         islUtils.replug(newIsl, true, isl, false)

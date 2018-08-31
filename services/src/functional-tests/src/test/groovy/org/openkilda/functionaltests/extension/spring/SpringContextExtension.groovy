@@ -12,7 +12,8 @@ import org.springframework.context.ApplicationContextAware
 
 @Slf4j
 class SpringContextExtension extends AbstractGlobalExtension implements ApplicationContextAware {
-    private static ApplicationContext context;
+    public static ApplicationContext context;
+    public static List<SpringContextListener> listeners = []
     boolean initialized = false
 
     void visitSpec(SpecInfo specInfo) {
@@ -34,5 +35,8 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
     void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         log.info("setting app spring context for spock extensions")
         context = applicationContext
+        listeners.each {
+            it.notifyContextInitialized(applicationContext)
+        }
     }
 }
