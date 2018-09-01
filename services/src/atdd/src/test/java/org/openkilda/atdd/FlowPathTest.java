@@ -30,7 +30,7 @@ import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.pce.RecoverableException;
@@ -52,15 +52,15 @@ import java.util.concurrent.TimeUnit;
 
 public class FlowPathTest {
     private static final String fileName = "topologies/multi-path-topology.json";
-    private static final List<ImmutablePair<String, String>> shortestPathLinks = Arrays.asList(
-            new ImmutablePair<>("00:00:00:00:00:00:00:07", "1"), new ImmutablePair<>("00:00:00:00:00:00:00:03", "2"),
-            new ImmutablePair<>("00:00:00:00:00:00:00:02", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:03", "1"));
-    private static final List<ImmutablePair<String, String>> alternativePathLinks = Arrays.asList(
-            new ImmutablePair<>("00:00:00:00:00:00:00:02", "3"), new ImmutablePair<>("00:00:00:00:00:00:00:04", "1"),
-            new ImmutablePair<>("00:00:00:00:00:00:00:05", "1"), new ImmutablePair<>("00:00:00:00:00:00:00:04", "2"),
-            new ImmutablePair<>("00:00:00:00:00:00:00:05", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:06", "1"),
-            new ImmutablePair<>("00:00:00:00:00:00:00:06", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:07", "3"));
-    static final ImmutablePair<PathInfoData, PathInfoData> expectedShortestPath = new ImmutablePair<>(
+    private static final List<FlowPair<String, String>> shortestPathLinks = Arrays.asList(
+            new FlowPair<>("00:00:00:00:00:00:00:07", "1"), new FlowPair<>("00:00:00:00:00:00:00:03", "2"),
+            new FlowPair<>("00:00:00:00:00:00:00:02", "2"), new FlowPair<>("00:00:00:00:00:00:00:03", "1"));
+    private static final List<FlowPair<String, String>> alternativePathLinks = Arrays.asList(
+            new FlowPair<>("00:00:00:00:00:00:00:02", "3"), new FlowPair<>("00:00:00:00:00:00:00:04", "1"),
+            new FlowPair<>("00:00:00:00:00:00:00:05", "1"), new FlowPair<>("00:00:00:00:00:00:00:04", "2"),
+            new FlowPair<>("00:00:00:00:00:00:00:05", "2"), new FlowPair<>("00:00:00:00:00:00:00:06", "1"),
+            new FlowPair<>("00:00:00:00:00:00:00:06", "2"), new FlowPair<>("00:00:00:00:00:00:00:07", "3"));
+    static final FlowPair<PathInfoData, PathInfoData> expectedShortestPath = new FlowPair<>(
             new PathInfoData(0L, Arrays.asList(
                     new PathNode(new SwitchId(2L), 2, 0, 0L),
                     new PathNode(new SwitchId(3L), 1, 1, 0L),
@@ -71,7 +71,7 @@ public class FlowPathTest {
                     new PathNode(new SwitchId(3L), 2, 1, 0L),
                     new PathNode(new SwitchId(3L), 1, 2, 0L),
                     new PathNode(new SwitchId(2L), 2, 3, 0L))));
-    static final ImmutablePair<PathInfoData, PathInfoData> expectedAlternatePath = new ImmutablePair<>(
+    static final FlowPair<PathInfoData, PathInfoData> expectedAlternatePath = new FlowPair<>(
             new PathInfoData(0L, Arrays.asList(
                     new PathNode(new SwitchId(2L), 3, 0, 0L),
                     new PathNode(new SwitchId(4L), 1, 1, 0L),
@@ -127,7 +127,7 @@ public class FlowPathTest {
     @Then("^shortest path links available bandwidth have available bandwidth (\\d+)$")
     public void checkShortestPathAvailableBandwidthDecreased(long expectedAvailableBandwidth)
             throws InterruptedException {
-        for (ImmutablePair<String, String> expectedLink : shortestPathLinks) {
+        for (FlowPair<String, String> expectedLink : shortestPathLinks) {
             long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     new SwitchId(expectedLink.getLeft()), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
@@ -137,7 +137,7 @@ public class FlowPathTest {
     @Then("^alternative path links available bandwidth have available bandwidth (\\d+)$")
     public void checkAlternativePathAvailableBandwidthDecreased(long expectedAvailableBandwidth)
             throws InterruptedException {
-        for (ImmutablePair<String, String> expectedLink : alternativePathLinks) {
+        for (FlowPair<String, String> expectedLink : alternativePathLinks) {
             long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     new SwitchId(expectedLink.getLeft()), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
@@ -152,7 +152,7 @@ public class FlowPathTest {
                 new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId,
                         new SwitchId(sourceSwitch), sourcePort, sourceVlan, new SwitchId(destinationSwitch),
                         destinationPort, destinationVlan);
-        ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
+        FlowPair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
         System.out.println(path);
         assertEquals(expectedShortestPath, path);
     }

@@ -24,7 +24,8 @@ import lombok.NoArgsConstructor;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Data @NoArgsConstructor
+@Data
+@NoArgsConstructor
 public class ConfiguredPort {
 
     @JsonProperty("switch_id")

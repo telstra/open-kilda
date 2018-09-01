@@ -57,6 +57,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
             db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "available_bandwidth", flow.maximumBandwidth - 1)
             thinIsl
         }
+        sleep(200)
 
         and: "Init a reroute to a more preferable path"
         def rerouteResponse = northboundService.rerouteFlow(flow.id)
@@ -68,8 +69,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         and: "Remove flow"
         northboundService.deleteFlow(flow.id)
         changedIsls.each { db.revertIslBandwidth(it) }
-
-        //TODO: Revert costs (match ()-[i:isl]->() set i.cost=700)
+        northboundService.deleteLinkProps(northboundService.getAllLinkProps())
     }
 
     def "Should be able to reroute to a better path if it has enough bandwidth"() {
@@ -109,7 +109,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         pathHelper.getInvolvedIsls(newPath).contains(thinIsl)
 
         and: "'Thin' ISL has 0 available bandwidth left"
-        islUtils.getIslInfo(thinIsl).availableBandwidth == 0
+        islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0
 
         and: "Remove flow, restore bw, remove costs"
         northboundService.deleteFlow(flow.id)

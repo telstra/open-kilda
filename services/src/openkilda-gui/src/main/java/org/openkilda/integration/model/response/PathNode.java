@@ -1,6 +1,19 @@
-package org.openkilda.integration.model.response;
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
 
-import java.io.Serializable;
+package org.openkilda.integration.model.response;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -8,50 +21,54 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
+
 /**
  * The Class Path.
  *
  * @author Gaurav Chugh
  */
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"port_no", "segment_latency", "seq_id", "switch_id"})
 public class PathNode implements Serializable, Comparable<PathNode> {
 
-    /** The port no. */
     @JsonProperty("port_no")
     private Integer portNo;
 
-    /** The segment latency. */
     @JsonProperty("segment_latency")
     private Integer segmentLatency;
 
-    /** The seq id. */
     @JsonProperty("seq_id")
     private Integer seqId;
 
-    /** The switch id. */
     @JsonProperty("switch_id")
     private String switchId;
 
-    /** The switch id. */
     @JsonProperty("switch_name")
     private String switchName;
 
-    /** The in port no. */
     @JsonProperty("in_port_no")
     private Integer inPortNo;
 
-    /** The out port no. */
     @JsonProperty("out_port_no")
     private Integer outPortNo;
-
 
     @JsonCreator
     public PathNode() {
 
     }
 
+    /**
+     * Instantiates a new path node.
+     *
+     * @param seqId the seq id
+     * @param inPortNo the in port no
+     * @param outPortNo the out port no
+     * @param switchId the switch id
+     * @param switchName the switch name
+     */
     @JsonCreator
     public PathNode(@JsonProperty("seq_id") Integer seqId,
             @JsonProperty("in_port_no") Integer inPortNo,
@@ -66,7 +83,7 @@ public class PathNode implements Serializable, Comparable<PathNode> {
     }
 
     /** The Constant serialVersionUID. */
-    private final static long serialVersionUID = -4515006227265225751L;
+    private static final long serialVersionUID = -4515006227265225751L;
 
     /**
      * Gets the port no.
@@ -176,10 +193,20 @@ public class PathNode implements Serializable, Comparable<PathNode> {
         this.outPortNo = outPortNo;
     }
 
+    /**
+     * Gets the switch name.
+     *
+     * @return the switch name
+     */
     public String getSwitchName() {
         return switchName;
     }
 
+    /**
+     * Sets the switch name.
+     *
+     * @param switchName the new switch name
+     */
     public void setSwitchName(String switchName) {
         this.switchName = switchName;
     }
@@ -201,18 +228,23 @@ public class PathNode implements Serializable, Comparable<PathNode> {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         PathNode other = (PathNode) obj;
         if (seqId == null) {
-            if (other.seqId != null)
+            if (other.seqId != null) {
                 return false;
-        } else if (!seqId.equals(other.seqId))
+            }
+        } else if (!seqId.equals(other.seqId)) {
             return false;
+        }
         return true;
     }
 

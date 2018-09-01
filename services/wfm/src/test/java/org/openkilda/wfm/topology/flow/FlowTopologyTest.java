@@ -53,7 +53,7 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -173,7 +173,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record.value());
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
-        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -247,7 +247,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
         assertNotNull(message);
-        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         Flow flowTePayload = flow.getLeft();
@@ -295,7 +295,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
         assertNotNull(message);
-        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         Flow flowTePayload = flow.getLeft();
@@ -698,7 +698,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
         assertNotNull(message);
-        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -742,7 +742,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
         assertNotNull(message);
-        ImmutablePair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPair<Flow, Flow> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -1095,7 +1095,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         kProducer.pushMessage(topic, request);
     }
 
-    private ImmutablePair<Flow, Flow> getFlowPayload(InfoMessage message) {
+    private FlowPair<Flow, Flow> getFlowPayload(InfoMessage message) {
         InfoData data = message.getData();
         FlowInfoData flow = (FlowInfoData) data;
         return flow.getPayload();

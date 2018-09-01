@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flow.validation;
 
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.cache.FlowCache;
 
@@ -45,7 +45,7 @@ public class FlowValidatorTest {
         flow.setDestinationSwitch(DST_SWITCH);
         flow.setDestinationPort(DST_PORT);
         flow.setDestinationVlan(DST_VLAN);
-        flowCache.pushFlow(new ImmutablePair<>(flow, flow));
+        flowCache.pushFlow(new FlowPair<>(flow, flow));
     }
 
     @Test(expected = FlowValidationException.class)

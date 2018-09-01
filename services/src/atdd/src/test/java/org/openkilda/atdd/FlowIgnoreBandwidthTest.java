@@ -7,7 +7,7 @@ import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowOperationException;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -101,7 +101,7 @@ public class FlowIgnoreBandwidthTest {
             + "and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag in TE$")
     public void flowHaveIgnoreBandwidthFlagInTe(String source, String dest) {
         String flowId = lookupCreatedFlowId(source, dest);
-        ImmutablePair<Flow, Flow> flowPair = TopologyHelp.GetFlow(flowId);
+        FlowPair<Flow, Flow> flowPair = TopologyHelp.GetFlow(flowId);
 
         Assert.assertNotNull(flowPair);
         Assert.assertTrue(

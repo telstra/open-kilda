@@ -1,4 +1,25 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.auth.interceptor;
+
+import org.openkilda.auth.context.ServerContext;
+import org.openkilda.auth.model.Permissions;
+import org.openkilda.auth.model.RequestContext;
+import org.openkilda.constants.IConstants;
+import org.openkilda.constants.Status;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,21 +31,6 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
-import java.nio.file.AccessDeniedException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
-import org.openkilda.auth.context.ServerContext;
-import org.openkilda.auth.model.Permissions;
-import org.openkilda.auth.model.RequestContext;
-import org.openkilda.constants.IConstants;
-import org.openkilda.constants.Status;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.Permission;
@@ -34,6 +40,16 @@ import org.usermanagement.service.PermissionService;
 import org.usermanagement.service.RoleService;
 import org.usermanagement.util.MessageUtils;
 
+import java.nio.file.AccessDeniedException;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 @Component
 public class RequestInterceptor extends HandlerInterceptorAdapter {
@@ -57,8 +73,8 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     private UserRepository userRepository;
 
     @Override
-    public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response,
-            final Object handler) throws Exception {
+    public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler)
+            throws Exception {
         String correlationId = request.getParameter(CORRELATION_ID);
         correlationId = correlationId == null ? UUID.randomUUID().toString() : correlationId;
 
@@ -71,8 +87,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
             if (userInfo != null) {
                 if (handler instanceof HandlerMethod) {
                     HandlerMethod handlerMethod = (HandlerMethod) handler;
-                    Permissions permissions =
-                            handlerMethod.getMethod().getAnnotation(Permissions.class);
+                    Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
                     if (permissions != null) {
                         validateAndPopulatePermisssion(userInfo, permissions);
                     }
@@ -80,17 +95,15 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
                 updateRequestContext(correlationId, request, userInfo);
             }
         } catch (IllegalStateException ex) {
-            LOGGER.error(
-                    "[getLoggedInUser] Exception while retrieving user information from session. Exception: "
-                            + ex.getLocalizedMessage(),
-                    ex);
+            LOGGER.error("[getLoggedInUser] Exception while retrieving user information from session. Exception: "
+                    + ex.getLocalizedMessage(), ex);
         }
         return true;
     }
 
     @Override
-    public void postHandle(final HttpServletRequest request, final HttpServletResponse response,
-            final Object handler, final ModelAndView modelAndView) throws Exception {
+    public void postHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler,
+            final ModelAndView modelAndView) throws Exception {
         super.postHandle(request, response, handler, modelAndView);
         MDC.remove(CORRELATION_ID);
     }
@@ -106,12 +119,13 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         requestContext.setClientIpAddress(getClientIp(request));
     }
 
-    private void validateAndPopulatePermisssion(final UserInfo userInfo,
-            final Permissions permissions) throws Exception {
+    private void validateAndPopulatePermisssion(final UserInfo userInfo, final Permissions permissions)
+            throws Exception {
         if (!permissions.checkObjectAccessPermissions()) {
             if (!hasPermissions(userInfo, permissions.values())) {
                 LOGGER.error("Access Denied. User(id: " + userInfo.getUserId()
-                        + ") not have the permission to perform this operation. Permissions required " + permissions.values());
+                        + ") not have the permission to perform this operation. Permissions required "
+                        + permissions.values());
                 throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
             }
         }
@@ -142,11 +156,10 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
             if (roles != null && roles.size() > 0) {
                 List<Role> roleList = roleService.getRoleByName(roles);
                 for (Role role : roleList) {
-                    if (Status.ACTIVE.getStatusEntity().getStatus()
-                            .equalsIgnoreCase(role.getStatus()) && role.getPermissions() != null) {
+                    if (Status.ACTIVE.getStatusEntity().getStatus().equalsIgnoreCase(role.getStatus())
+                            && role.getPermissions() != null) {
                         for (Permission permission : role.getPermissions()) {
-                            if (Status.ACTIVE.getStatusEntity().getStatus()
-                                    .equalsIgnoreCase(permission.getStatus())) {
+                            if (Status.ACTIVE.getStatusEntity().getStatus().equalsIgnoreCase(permission.getStatus())) {
                                 availablePermissions.add(permission.getName());
                             }
                         }

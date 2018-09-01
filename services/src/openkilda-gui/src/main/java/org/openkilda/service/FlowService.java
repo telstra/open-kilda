@@ -1,11 +1,20 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.service;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.log4j.Logger;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
@@ -16,16 +25,26 @@ import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.utility.CollectionUtil;
+
+import org.apache.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The Class ServiceFlowImpl.
  *
  * @author Gaurav Chugh
  */
+
 @Service
 public class FlowService {
 
@@ -33,13 +52,13 @@ public class FlowService {
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
-    
+
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
-    
+
     @Autowired
     private UserService userService;
-    
+
     /**
      * get All Flows.
      *
@@ -48,7 +67,6 @@ public class FlowService {
     public List<FlowInfo> getAllFlows() {
         return flowsIntegrationService.getFlows();
     }
-
 
     /**
      * Gets the flow count.
@@ -138,7 +156,6 @@ public class FlowService {
         return flowsIntegrationService.getFlowById(flowId);
     }
 
-
     /**
      * Gets the flow status by id.
      *
@@ -149,28 +166,27 @@ public class FlowService {
         return flowsIntegrationService.getFlowStatusById(flowId);
     }
 
+    /**
+     * Creates the flow.
+     *
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow createFlow(Flow flow) {
+        return flowsIntegrationService.createFlow(flow);
+    }
 
-	/**
-	 * Creates the flow.
-	 *
-	 * @param flow the flow
-	 * @return the flow
-	 */
-	public Flow createFlow(Flow flow) {
-		return flowsIntegrationService.createFlow(flow);
-	}
-	
-	/**
-	 * Update flow.
-	 *
-	 * @param flowId the flow id
-	 * @param flow the flow
-	 * @return the flow
-	 */
-	public Flow updateFlow(String flowId, Flow flow) {
-		return flowsIntegrationService.updateFlow(flowId, flow);
-	}
-	
+    /**
+     * Update flow.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow updateFlow(String flowId, Flow flow) {
+        return flowsIntegrationService.updateFlow(flowId, flow);
+    }
+
     /**
      * Delete flow.
      *
@@ -179,7 +195,7 @@ public class FlowService {
      * @return the flow
      */
     public Flow deleteFlow(String flowId, UserInfo userInfo) {
-        if (userService.validateOTP(userInfo.getUserId(), userInfo.getCode())) {
+        if (userService.validateOtp(userInfo.getUserId(), userInfo.getCode())) {
             return flowsIntegrationService.deleteFlow(flowId);
         } else {
             return null;

@@ -1,4 +1,24 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.security;
+
+import org.apache.commons.codec.binary.Base32;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.lang.reflect.UndeclaredThrowableException;
 import java.math.BigInteger;
@@ -12,21 +32,32 @@ import java.util.TimeZone;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.commons.codec.binary.Base32;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+/**
+ * The Class TwoFactorUtility.
+ */
 
-public class TwoFactorUtility {
+public final class TwoFactorUtility {
 
+    /** The logger. */
     private static Log logger = LogFactory.getLog(TwoFactorUtility.class);
+    
+    /** The Constant DIGITS_POWER. */
     private static final int[] DIGITS_POWER
-    // 0 1 2 3 4 5 6 7 8
-            = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000};
+            // 0 1 2 3 4 5 6 7 8
+            = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
+    
+    private TwoFactorUtility() {
+        
+    }
 
+    /**
+     * Gets the base 32 encrypted key.
+     *
+     * @return the base 32 encrypted key
+     */
     public static String getBase32EncryptedKey() {
         SecureRandom random = new SecureRandom();
-        byte bytes[] = new byte[20];
+        byte[] bytes = new byte[20];
         random.nextBytes(bytes);
         Base32 base32 = new Base32();
         String base32String = base32.encodeAsString(bytes);
@@ -36,11 +67,17 @@ public class TwoFactorUtility {
         return base32String;
     }
 
+    /**
+     * Generate encrypted key.
+     *
+     * @param base32String the base 32 string
+     * @return the string
+     */
     public static String generateEncryptedKey(final String base32String) {
         logger.debug("[generateEncryptedKey] param : base32String " + base32String);
         String generatedKey = null;
         try {
-            String rsaString = RSAEncryptionDescription.rsaEncrypt(base32String.getBytes(), "");
+            String rsaString = RsaEncryptionDescription.rsaEncrypt(base32String.getBytes(), "");
             byte[] key = Base64.encodeBase64(rsaString.getBytes());
             generatedKey = new String(key);
         } catch (Exception e) {
@@ -53,41 +90,55 @@ public class TwoFactorUtility {
         return generatedKey;
     }
 
+    /**
+     * Decrypt key.
+     *
+     * @param secretKey the secret key
+     * @return the string
+     * @throws Exception the exception
+     */
     public static String decryptKey(final String secretKey) throws Exception {
         logger.debug("[decryptKey] param : secretKey " + secretKey);
         byte[] decodedArray = Base64.decodeBase64(secretKey.getBytes());
         String decodeValue = new String(decodedArray, StandardCharsets.UTF_8);
-        String decryptKey = RSAEncryptionDescription.rsaDecrypt(decodeValue, "");
+        String decryptKey = RsaEncryptionDescription.rsaDecrypt(decodeValue, "");
 
         logger.debug("[decryptKey] response " + decryptKey);
         return decryptKey;
     }
 
+    /**
+     * Validate otp.
+     *
+     * @param otp the otp
+     * @param decryptKey the decrypt key
+     * @return true, if successful
+     */
     public static boolean validateOtp(final String otp, final String decryptKey) {
         logger.debug("[validateOtp] param : ,decryptKey : " + decryptKey);
         boolean otpValid = false;
         Base32 base32 = new Base32();
-        byte decoded[] = base32.decode(decryptKey);
+        byte[] decoded = base32.decode(decryptKey);
         String byteToHex = bytesToHex(decoded);
         String seed = byteToHex;
-        long T0 = 0;
-        long X = 30;
+        long t0 = 0;
+        long x = 30;
         String codelength = "6";
         long z = System.currentTimeMillis() / 1000;
 
-        long testTime[] = {z};
+        long[] testTime = { z };
         String steps = "0";
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         df.setTimeZone(TimeZone.getTimeZone("UTC"));
         String otpVal = "";
         try {
             for (int i = 0; i < testTime.length; i++) {
-                long T = (testTime[i] - T0) / X;
-                steps = Long.toHexString(T).toUpperCase();
+                long t = (testTime[i] - t0) / x;
+                steps = Long.toHexString(t).toUpperCase();
                 while (steps.length() < 16) {
                     steps = "0" + steps;
                 }
-                otpVal = generateTOTP(seed, steps, codelength, "HmacSHA1");
+                otpVal = generateOtp(seed, steps, codelength, "HmacSHA1");
             }
         } catch (Exception e) {
             logger.error("[validateOtp] Exception :" + e);
@@ -102,26 +153,35 @@ public class TwoFactorUtility {
         return otpValid;
     }
 
-    public static String generateTOTP(final String key, final String time, final String returnDigits) {
-        logger.debug("[generateTOTP] param : key " + key + ",returnDigits : " + returnDigits);
-        return generateTOTP(key, time, returnDigits, "HmacSHA1");
+    /**
+     * Generate OTP.
+     *
+     * @param key the key
+     * @param time the time
+     * @param returnDigits the return digits
+     * @return the string
+     */
+    public static String generateOtp(final String key, final String time, final String returnDigits) {
+        logger.debug("[generateOtp] param : key " + key + ",returnDigits : " + returnDigits);
+        return generateOtp(key, time, returnDigits, "HmacSHA1");
     }
 
     /**
-     * This method generates a TOTP value for the given set of parameters.
+     * This method generates a OTP value for the given set of parameters.
      *
      * @param key : the shared secret, HEX encoded
      * @param time : a value that reflects a time
      * @param returnDigits : number of digits to return
      * @param crypto : the crypto function to use
-     *
-     * @return: a numeric String in base 10 that includes {@link truncationDigits} digits
+     * @return the string
+     * @return: a numeric String in base 10 that includes
+     *          {@link truncationDigits} digits
      */
 
-    public static String generateTOTP(final String key, final String time,
-            final String returnDigits, final String crypto) {
-        logger.debug("[generateTOTP] param : key " + key + ",time : " + time + ",returnDigits: "
-                + returnDigits + ", crypto :" + crypto);
+    public static String generateOtp(final String key, final String time, final String returnDigits,
+            final String crypto) {
+        logger.debug("[generateOtp] param : key " + key + ",time : " + time + ",returnDigits: " + returnDigits
+                + ", crypto :" + crypto);
         int codeDigits = Integer.decode(returnDigits).intValue();
         String result = null;
 
@@ -152,25 +212,38 @@ public class TwoFactorUtility {
         return result;
     }
 
+    /**
+     * Hex str 2 bytes.
+     *
+     * @param hex the hex
+     * @return the byte[]
+     */
     private static byte[] hexStr2Bytes(final String hex) {
         logger.debug("[hexStr2Bytes] param : key " + hex);
         // Adding one byte to get the right conversion
         // Values starting with "0" can be converted
-        byte[] bArray = new BigInteger("10" + hex, 16).toByteArray();
+        byte[] byteArray = new BigInteger("10" + hex, 16).toByteArray();
 
         // Copy all the REAL bytes, not the "first"
-        byte[] ret = new byte[bArray.length - 1];
+        byte[] ret = new byte[byteArray.length - 1];
         for (int i = 0; i < ret.length; i++) {
-            ret[i] = bArray[i + 1];
+            ret[i] = byteArray[i + 1];
         }
 
         logger.debug("[hexStr2Bytes] response " + ret);
         return ret;
     }
 
+    /**
+     * Hmac sha.
+     *
+     * @param crypto the crypto
+     * @param keyBytes the key bytes
+     * @param text the text
+     * @return the byte[]
+     */
     private static byte[] hmac_sha(final String crypto, final byte[] keyBytes, final byte[] text) {
-        logger.debug("[hmac_sha] param : keyBytes " + keyBytes + ",text : " + text + ", crypto :"
-                + crypto);
+        logger.debug("[hmac_sha] param : keyBytes " + keyBytes + ",text : " + text + ", crypto :" + crypto);
 
         try {
             Mac hmac;
@@ -185,6 +258,12 @@ public class TwoFactorUtility {
         }
     }
 
+    /**
+     * Bytes to hex.
+     *
+     * @param bytes the bytes
+     * @return the string
+     */
     private static String bytesToHex(final byte[] bytes) {
         logger.debug("[bytesToHex] param : bytes " + bytes);
         final char[] hexArray = "0123456789ABCDEF".toCharArray();
