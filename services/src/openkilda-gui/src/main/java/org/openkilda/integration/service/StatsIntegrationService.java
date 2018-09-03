@@ -15,6 +15,7 @@
 
 package org.openkilda.integration.service;
 
+import org.openkilda.constants.IConstants;
 import org.openkilda.constants.IConstants.Metrics;
 import org.openkilda.constants.OpenTsDb;
 import org.openkilda.constants.OpenTsDb.StatsType;
@@ -95,8 +96,9 @@ public class StatsIntegrationService {
 
             LOGGER.info("Inside getStats: startDate: " + startDate + ": endDate: " + endDate + ": payload: " + payload);
 
-            HttpResponse response = restClientManager.invoke(applicationProperties.getOpenTsdbQuery(), HttpMethod.POST,
-                    payload, "application/json", "");
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getOpenTsdbBaseUrl() + IConstants.OpenTsDbUrl.OPEN_TSDB_QUERY,
+                    HttpMethod.POST, payload, "application/json", "");
             if (RestClientManager.isValidResponse(response)) {
                 return IoUtil.toString(response.getEntity().getContent());
             }
