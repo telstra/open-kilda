@@ -19,7 +19,7 @@ class FlowHelper {
     def sdf = new SimpleDateFormat("ddMMMHHmmss", Locale.US)
     FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch) {
         new FlowPayload(sdf.format(new Date()), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
-                false, "autotest flow", null, null)
+                false, false, "autotest flow", null, null)
     }
 
     /**
