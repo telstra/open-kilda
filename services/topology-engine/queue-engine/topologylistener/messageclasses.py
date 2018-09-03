@@ -25,6 +25,7 @@ from topologylistener import db
 from topologylistener import exc
 from topologylistener import isl_utils
 from topologylistener import link_props_utils
+from neo4j.exceptions import CypherSyntaxError
 import flow_utils
 import message_utils
 
@@ -239,6 +240,13 @@ class MessageItem(model.JsonSerializable):
             else:
                 raise exc.NotImplementedError(
                     'link props request {}'.format(self.get_message_type()))
+        except CypherSyntaxError as e:
+            logger.exception('Invalid request: ', e)
+            payload = message_utils.make_link_props_response(
+                self.payload, None, 'Invalid request')
+            message_utils.send_link_props_response(
+                payload, self.correlation_id,
+                self.get_message_type() == CD_LINK_PROPS_DROP)
         except Exception as e:
             payload = message_utils.make_link_props_response(
                 self.payload, None, error=str(e))
