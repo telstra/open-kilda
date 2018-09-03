@@ -21,8 +21,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 
 public interface IPathVerificationService extends IFloodlightService {
 
-    public boolean isAlive();
-
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port);
 
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId);

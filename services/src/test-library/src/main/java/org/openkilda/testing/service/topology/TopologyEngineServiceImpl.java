@@ -17,7 +17,7 @@ package org.openkilda.testing.service.topology;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 
 import org.slf4j.Logger;
@@ -56,10 +56,10 @@ public class TopologyEngineServiceImpl implements TopologyEngineService {
     }
 
     @Override
-    public ImmutablePair<Flow, Flow> getFlow(String flowId) {
+    public FlowPair<Flow, Flow> getFlow(String flowId) {
         try {
             return restTemplate.exchange("/api/v1/topology/flows/{flow_id}", HttpMethod.GET, null,
-                    new ParameterizedTypeReference<ImmutablePair<Flow, Flow>>() {
+                    new ParameterizedTypeReference<FlowPair<Flow, Flow>>() {
                     }, flowId).getBody();
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {

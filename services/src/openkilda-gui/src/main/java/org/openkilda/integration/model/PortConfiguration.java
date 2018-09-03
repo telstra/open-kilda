@@ -26,10 +26,11 @@ import java.io.Serializable;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Data @NoArgsConstructor
+@Data
+@NoArgsConstructor
 public class PortConfiguration implements Serializable {
 
-    private final static long serialVersionUID = -8688238020704231665L;
+    private static final long serialVersionUID = -8688238020704231665L;
     
     @JsonProperty("status")
     private String status;

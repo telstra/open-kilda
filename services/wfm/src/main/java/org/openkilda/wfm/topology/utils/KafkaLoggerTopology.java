@@ -25,16 +25,16 @@ import org.slf4j.event.Level;
 
 /**
  * A topology that will listen to a kafka topic and log the messages at the configured level.
- * <p>
- * NB: This will only be able to log if the configured log level is below what is passed in.
+ *
+ * <p>NB: This will only be able to log if the configured log level is below what is passed in.
  * Consequently, the default log level is INFO, which is the default configured setting.
  * In other words, the default loglevel is INFO. If KafkaLoggerTopology is configured with
  * DEBUG, then the messages won't appear.
- * <p>
- * The alternative is to adjust the loglevel of KafkaLoggerTopology to that of what is
+ *
+ * <p>The alternative is to adjust the loglevel of KafkaLoggerTopology to that of what is
  * configured, but that doesn't feel right. Let's see how this works in operations.
- * <p>
- * Example Call:
+ *
+ * <p>Example Call:
  * (1) storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
  * org.openkilda.wfm.KafkaLoggerTopology logger-5 kilda.speaker INFO fred
  * (2) ==> using a FQDN zookeeper <==

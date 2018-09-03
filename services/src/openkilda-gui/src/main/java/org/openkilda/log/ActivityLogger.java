@@ -1,4 +1,27 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.log;
+
+import org.openkilda.auth.context.ServerContext;
+import org.openkilda.auth.model.RequestContext;
+import org.openkilda.log.constants.ActivityType;
+import org.openkilda.log.model.LogInfo;
+import org.openkilda.log.service.UserActivityService;
+
+import org.apache.log4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -6,13 +29,6 @@ import org.springframework.stereotype.Component;
 import java.util.Calendar;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import org.apache.log4j.Logger;
-import org.openkilda.auth.context.ServerContext;
-import org.openkilda.auth.model.RequestContext;
-import org.openkilda.log.constants.ActivityType;
-import org.openkilda.log.model.LogInfo;
-import org.openkilda.log.service.UserActivityService;
 
 @Component
 public class ActivityLogger {
@@ -29,7 +45,7 @@ public class ActivityLogger {
 
     public ActivityLogger() {
         synchronized (logs) {
-            if(!isThreadStarted) {
+            if (!isThreadStarted) {
                 Thread thread = new Thread(new ActivityLogProcessor());
                 thread.start();
                 isThreadStarted = true;
@@ -47,8 +63,13 @@ public class ActivityLogger {
         log(logInfo);
     }
 
+    /**
+     * Log.
+     *
+     * @param logInfo the log info
+     */
     public void log(final LogInfo logInfo) {
-        if(logInfo != null) {
+        if (logInfo != null) {
             try {
                 logs.put(logInfo);
             } catch (InterruptedException e) {
@@ -73,14 +94,8 @@ public class ActivityLogger {
     public class ActivityLogProcessor implements Runnable {
 
         @Override
-        protected void finalize() throws Throwable {
-            super.finalize();
-            isThreadStarted = false;
-        }
-
-        @Override
         public void run() {
-            while(true) {
+            while (true) {
                 try {
                     LogInfo logInfo = logs.take();
                     userActivityService.logUserActivity(logInfo);

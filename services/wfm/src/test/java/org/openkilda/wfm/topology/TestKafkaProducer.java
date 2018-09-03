@@ -51,8 +51,7 @@ public class TestKafkaProducer {
         producer.send(producerRecord);
     }
 
-    public void flush()
-    {
+    public void flush() {
         producer.flush();
     }
 

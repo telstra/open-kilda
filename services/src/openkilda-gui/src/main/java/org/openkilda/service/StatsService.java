@@ -1,18 +1,23 @@
-package org.openkilda.service;
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+package org.openkilda.service;
 
 import org.openkilda.constants.IConstants.Metrics;
 import org.openkilda.constants.IConstants.Status;
-import org.openkilda.constants.OpenTsDB.StatsType;
+import org.openkilda.constants.OpenTsDb.StatsType;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.integration.model.response.IslPath;
@@ -21,19 +26,31 @@ import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.FlowPathStats;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchPortStats;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The Class StatsService.
  *
  * @author Gaurav Chugh
  */
+
 @Service
 public class StatsService {
 
@@ -41,33 +58,28 @@ public class StatsService {
 
     @Autowired
     private StatsIntegrationService statsIntegrationService;
-    
+
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
-    
+
     /**
      * Gets the stats.
      *
      * @param startDate the start date
      * @param endDate the end date
      * @param downsample the downsample
-     * @param SwitchId the switch id
-     * @param port the port
-     * @param flowId the flow id
      * @param srcSwitch the src switch
      * @param srcPort the src port
      * @param dstSwitch the dst switch
      * @param dstPort the dst port
-     * @param statsType the stats type
      * @param metric the metric
      * @return the stats
      * @throws IntegrationException the integration exception
      */
-    public String getSwitchIslStats(String startDate, String endDate, String downsample,
-            String srcSwitch, String srcPort,
-            String dstSwitch, String dstPort, String metric)
-            throws IntegrationException {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, null, srcSwitch, srcPort, dstSwitch, dstPort, StatsType.ISL, metric, null);
+    public String getSwitchIslStats(String startDate, String endDate, String downsample, String srcSwitch,
+            String srcPort, String dstSwitch, String dstPort, String metric) throws IntegrationException {
+        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, null, srcSwitch, srcPort,
+                dstSwitch, dstPort, StatsType.ISL, metric, null);
     }
 
     /**
@@ -81,10 +93,10 @@ public class StatsService {
      * @return the flow stats
      * @throws IntegrationException the integration exception
      */
-    public String getFlowStats(String startDate, String endDate, String downsample, String flowId,
-            String metric) throws IntegrationException {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, flowId, null, null, null, null,
-                StatsType.FLOW, metric, null);
+    public String getFlowStats(String startDate, String endDate, String downsample, String flowId, String metric)
+            throws IntegrationException {
+        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, flowId, null, null, null,
+                null, StatsType.FLOW, metric, null);
     }
 
     /**
@@ -99,14 +111,14 @@ public class StatsService {
      * @return the switch stats
      * @throws IntegrationException the integration exception
      */
-    public String getSwitchPortStats(String startDate, String endDate, String downsample,
-            String switchid, String portnumber, String metric) throws IntegrationException {
+    public String getSwitchPortStats(String startDate, String endDate, String downsample, String switchid,
+            String portnumber, String metric) throws IntegrationException {
         List<String> switchIds = new ArrayList<String>();
         switchIds.add(switchid);
-        return statsIntegrationService.getStats(startDate, endDate, downsample, switchIds,
-                portnumber, null, null, null, null, null, StatsType.PORT, metric, null);
+        return statsIntegrationService.getStats(startDate, endDate, downsample, switchIds, portnumber, null, null, null,
+                null, null, StatsType.PORT, metric, null);
     }
-    
+
     /**
      * Gets the switch isl loss packet stats.
      *
@@ -120,12 +132,12 @@ public class StatsService {
      * @param metric the metric
      * @return the switch isl loss packet stats
      */
-    public String getSwitchIslLossPacketStats(String startDate, String endDate, String downsample,
-            String srcSwitch, String srcPort, String dstSwitch, String dstPort, String metric) {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, null,
-                srcSwitch, srcPort, dstSwitch, dstPort, StatsType.ISL_LOSS_PACKET, metric, null);
+    public String getSwitchIslLossPacketStats(String startDate, String endDate, String downsample, String srcSwitch,
+            String srcPort, String dstSwitch, String dstPort, String metric) {
+        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, null, srcSwitch, srcPort,
+                dstSwitch, dstPort, StatsType.ISL_LOSS_PACKET, metric, null);
     }
-    
+
     /**
      * Gets the flow loss packet stats.
      *
@@ -133,16 +145,15 @@ public class StatsService {
      * @param endDate the end date
      * @param downsample the downsample
      * @param flowId the flow id
-     * @param metric the metric
      * @param direction the direction
      * @return the flow loss packet stats
      * @throws IntegrationException the integration exception
      */
-    public String getFlowLossPacketStats(String startDate, String endDate, String downsample,
-            String flowId, String direction) throws IntegrationException {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, flowId,
-                null, null, null, null, StatsType.FLOW_LOSS_PACKET,
-                Metrics.PEN_FLOW_INGRESS_PACKETS.getTag().replace("Flow_", ""), direction);
+    public String getFlowLossPacketStats(String startDate, String endDate, String downsample, String flowId,
+            String direction) throws IntegrationException {
+        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, flowId, null, null, null,
+                null, StatsType.FLOW_LOSS_PACKET, Metrics.PEN_FLOW_INGRESS_PACKETS.getTag().replace("Flow_", ""),
+                direction);
     }
 
     /**
@@ -152,11 +163,9 @@ public class StatsService {
      * @return the flow path stat
      */
     public String getFlowPathStats(FlowPathStats flowPathStats) {
-        return statsIntegrationService.getStats(flowPathStats.getStartDate(),
-                flowPathStats.getEndDate(), flowPathStats.getDownsample(),
-                flowPathStats.getSwitches(), null, flowPathStats.getFlowid(), null, null, null,
-                null, StatsType.FLOW_RAW_PACKET,
-                Metrics.PEN_FLOW_RAW_PACKETS.getTag().replace("Flow_", ""),
+        return statsIntegrationService.getStats(flowPathStats.getStartDate(), flowPathStats.getEndDate(),
+                flowPathStats.getDownsample(), flowPathStats.getSwitches(), null, flowPathStats.getFlowid(), null, null,
+                null, null, StatsType.FLOW_RAW_PACKET, Metrics.PEN_FLOW_RAW_PACKETS.getTag().replace("Flow_", ""),
                 flowPathStats.getDirection());
     }
 
@@ -169,16 +178,15 @@ public class StatsService {
      * @param switchId the switch id
      * @return the switch ports stats
      */
-    public List<PortInfo> getSwitchPortsStats(String startDate, String endDate, String downSample,
-            String switchId) {
+    public List<PortInfo> getSwitchPortsStats(String startDate, String endDate, String downSample, String switchId) {
         List<String> switchIds = Arrays.asList(switchId);
-        String result = statsIntegrationService.getStats(startDate, endDate, downSample, switchIds, null,
-                null, null, null, null, null, StatsType.SWITCH_PORT, null, null);
+        String result = statsIntegrationService.getStats(startDate, endDate, downSample, switchIds, null, null, null,
+                null, null, null, StatsType.SWITCH_PORT, null, null);
         List<SwitchPortStats> switchPortStats = new ArrayList<SwitchPortStats>();
         try {
             ObjectMapper mapper = new ObjectMapper();
-            switchPortStats = mapper.readValue(result, TypeFactory.defaultInstance()
-                    .constructCollectionLikeType(List.class, SwitchPortStats.class));
+            switchPortStats = mapper.readValue(result,
+                    TypeFactory.defaultInstance().constructCollectionLikeType(List.class, SwitchPortStats.class));
         } catch (IOException e) {
             LOGGER.error("Inside getSwitchPortsStats Exception is: " + e.getMessage());
         }
@@ -200,15 +208,14 @@ public class StatsService {
                 if (!portStatsByPortNo.containsKey(port)) {
                     portStatsByPortNo.put(port, new HashMap<String, Double>());
                 }
-                portStatsByPortNo.get(port).put(
-                        stats.getMetric().replace("pen.switch.", ""),
+                portStatsByPortNo.get(port).put(stats.getMetric().replace("pen.switch.", ""),
                         calculateHighestValue(stats.getDps()));
             }
         }
-        
+
         return getIslPorts(portStatsByPortNo, switchId);
     }
-    
+
     /**
      * Calculate highest value.
      *
@@ -225,12 +232,12 @@ public class StatsService {
                     maxTimestamp = val;
                 }
             }
-            maxVal = BigDecimal.valueOf(dps.get(String.valueOf(maxTimestamp)))
-                    .setScale(2, RoundingMode.HALF_UP).doubleValue();
+            maxVal = BigDecimal.valueOf(dps.get(String.valueOf(maxTimestamp))).setScale(2, RoundingMode.HALF_UP)
+                    .doubleValue();
         }
         return maxVal;
     }
-    
+
     /**
      * Sets the isl ports.
      *
@@ -238,8 +245,7 @@ public class StatsService {
      * @param switchid the switchid
      * @return the list
      */
-    private List<PortInfo> getIslPorts(final Map<String, Map<String, Double>> portStatsByPortNo,
-            String switchid) {
+    private List<PortInfo> getIslPorts(final Map<String, Map<String, Double>> portStatsByPortNo, String switchid) {
         List<PortInfo> portInfos = getPortInfo(portStatsByPortNo);
 
         List<IslLink> islLinkPorts = switchIntegrationService.getIslLinkPortsInfo();
@@ -250,8 +256,7 @@ public class StatsService {
                     switchIdInfo = ("SW" + islPath.getSwitchId().replaceAll(":", "")).toUpperCase();
                     if (switchIdInfo.equals(switchid)) {
                         for (int i = 0; i < portInfos.size(); i++) {
-                            if (portInfos.get(i).getPortNumber()
-                                    .equals(islPath.getPortNo().toString())) {
+                            if (portInfos.get(i).getPortNumber().equals(islPath.getPortNo().toString())) {
                                 portInfos.get(i).setInterfacetype("ISL");
                             }
                         }
@@ -268,6 +273,7 @@ public class StatsService {
             PortInfo portInfo = new PortInfo();
             portInfo.setPortNumber(portStats.getKey());
             portInfo.setInterfacetype("PORT");
+            portInfo.setStatus(Status.DOWN);
             if (portStats.getValue().containsKey("state")) {
                 portInfo.setStatus(portStats.getValue().get("state") == 0 ? Status.DOWN : Status.UP);
                 portStats.getValue().remove("state");

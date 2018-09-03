@@ -15,71 +15,52 @@
 
 package org.openkilda.messaging.payload.flow;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 import org.openkilda.messaging.Utils;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 
 import java.io.Serializable;
-import java.util.Objects;
 
-/**
- * Flow representation class.
- */
-// TODO move into api module
+// TODO(surabujin) move into api module
+// TODO(surabujin) split into input/output
+// FIXME(surabujin): reconsider usage of "equals" methods and set of properties in it
+@Data
 @NoArgsConstructor
-@JsonSerialize
+@EqualsAndHashCode(exclude = {"status"})
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class FlowPayload implements Serializable {
-    /**
-     * The constant serialVersionUID.
-     */
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Flow id.
-     */
     @JsonProperty(Utils.FLOW_ID)
     private String id;
 
-    /**
-     * Source endpoint.
-     */
+    @NonNull
     @JsonProperty("source")
     private FlowEndpointPayload source;
 
-    /**
-     * Destination endpoint.
-     */
+    @NonNull
     @JsonProperty("destination")
     private FlowEndpointPayload destination;
 
-    /**
-     * Bandwidth.
-     */
     @JsonProperty("maximum-bandwidth")
     private long maximumBandwidth;
 
-    /**
-     * If SET ignore bandwidth in path computation.
-     */
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth = false;
 
-    /**
-     * FlowPayload description.
-     */
+    @JsonProperty("periodic-pings")
+    private boolean periodicPings = false;
+
     @JsonProperty("description")
     private String description;
 
-    /**
-     * Last flow updated timestamp.
-     */
     @JsonProperty("last-updated")
     private String lastUpdated;
 
@@ -97,12 +78,14 @@ public class FlowPayload implements Serializable {
      * @param description      flow description
      * @param lastUpdated      flow last updated timestamp
      */
+    @Builder
     @JsonCreator
     public FlowPayload(@JsonProperty(Utils.FLOW_ID) String id,
                        @JsonProperty("source") FlowEndpointPayload source,
                        @JsonProperty("destination") FlowEndpointPayload destination,
                        @JsonProperty("maximum-bandwidth") long maximumBandwidth,
                        @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
+                       @JsonProperty("periodic-pings") Boolean periodicPings,
                        @JsonProperty("description") String description,
                        @JsonProperty("last-updated") String lastUpdated,
                        @JsonProperty("status") String status) {
@@ -110,25 +93,21 @@ public class FlowPayload implements Serializable {
         setSource(source);
         setDestination(destination);
         setMaximumBandwidth(maximumBandwidth);
-        setIgnoreBandwidth(ignoreBandwidth);
-        setDescription(description);
-        setLastUpdated(lastUpdated);
-        setStatus(status);
-    }
 
-    /**
-     * Gets flow id.
-     *
-     * @return flow id
-     */
-    public String getId() {
-        return id;
+        if (ignoreBandwidth != null) {
+            this.ignoreBandwidth = ignoreBandwidth;
+        }
+        if (periodicPings != null) {
+            this.periodicPings = periodicPings;
+        }
+
+        this.description = description;
+        this.lastUpdated = lastUpdated;
+        this.status = status;
     }
 
     /**
      * Sets flow id.
-     *
-     * @param id flow id
      */
     public void setId(String id) {
         if (id == null || id.isEmpty()) {
@@ -138,171 +117,12 @@ public class FlowPayload implements Serializable {
     }
 
     /**
-     * Gets source endpoint.
-     *
-     * @return source endpoint
-     */
-    public FlowEndpointPayload getSource() {
-        return source;
-    }
-
-    /**
-     * Sets source endpoint.
-     *
-     * @param source source endpoint
-     */
-    public void setSource(FlowEndpointPayload source) {
-        if (source == null) {
-            throw new IllegalArgumentException("need to set source");
-        }
-        this.source = source;
-    }
-
-    /**
-     * Gets destination endpoint.
-     *
-     * @return destination endpoint
-     */
-    public FlowEndpointPayload getDestination() {
-        return destination;
-    }
-
-    /**
-     * Sets destination endpoint.
-     *
-     * @param destination destination endpoint
-     */
-    public void setDestination(FlowEndpointPayload destination) {
-        if (destination == null) {
-            throw new IllegalArgumentException("need to set destination");
-        }
-        this.destination = destination;
-    }
-
-    /**
-     * Gets maximum-bandwidth.
-     *
-     * @return maximum-bandwidth
-     */
-    public long getMaximumBandwidth() {
-        return maximumBandwidth;
-    }
-
-    /**
      * Sets maximum bandwidth.
-     *
-     * @param maximumBandwidth maximum bandwidth
      */
     public void setMaximumBandwidth(long maximumBandwidth) {
-        if (maximumBandwidth >= 0L) {
-            this.maximumBandwidth = maximumBandwidth;
-        } else {
+        if (maximumBandwidth < 0L) {
             throw new IllegalArgumentException("need to set non negative bandwidth");
         }
-    }
-
-    public boolean isIgnoreBandwidth() {
-        return ignoreBandwidth;
-    }
-
-    /**
-     * Sets ignore bandwidth flag.
-     *
-     * @param ignoreBandwidth flag value
-     */
-    public void setIgnoreBandwidth(Boolean ignoreBandwidth) {
-        if (ignoreBandwidth == null) {
-            ignoreBandwidth = false;
-        }
-        this.ignoreBandwidth = ignoreBandwidth;
-    }
-
-    /**
-     * Gets flow description.
-     *
-     * @return flow description
-     */
-    public String getDescription() {
-        return description;
-    }
-
-    /**
-     * Sets flow description.
-     *
-     * @param description flow description
-     */
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    /**
-     * Gets last flow updated timestamp.
-     *
-     * @return last flow updated timestamp
-     */
-    public String getLastUpdated() {
-        return lastUpdated;
-    }
-
-    /**
-     * Sets last flow updated timestamp.
-     *
-     * @param lastUpdated flow updated timestamp
-     */
-    public void setLastUpdated(String lastUpdated) {
-        this.lastUpdated = lastUpdated;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(Utils.FLOW_ID, id)
-                .add("source", source)
-                .add("destination", destination)
-                .add("maximum-bandwidth", maximumBandwidth)
-                .add("description", description)
-                .add("last-updated", lastUpdated)
-                .toString();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-
-        if (obj == null || !(obj instanceof FlowPayload)) {
-            return false;
-        }
-
-        FlowPayload that = (FlowPayload) obj;
-        return Objects.equals(getId(), that.getId())
-                && Objects.equals(getSource(), that.getSource())
-                && Objects.equals(getDestination(), that.getDestination())
-                && Objects.equals(getMaximumBandwidth(), that.getMaximumBandwidth())
-                && Objects.equals(getDescription(), that.getDescription())
-                && Objects.equals(getLastUpdated(), that.getLastUpdated());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, source, destination, maximumBandwidth, description, lastUpdated);
+        this.maximumBandwidth = maximumBandwidth;
     }
 }

@@ -44,6 +44,13 @@ def convert_integer(raw, limit=sys.maxint):
     return value
 
 
+def dash_to_underscore(source):
+    result = {}
+    for key in source:
+        result[key.replace('-', '_')] = source[key]
+    return result
+
+
 def grab_fields(data, fields_mapping):
     return {
         y: data[x]
@@ -358,7 +365,8 @@ class LinkProps(TimestampMixin, AbstractLink):
         'time_create', 'time_modify',
         'latency', 'speed', 'available_bandwidth', 'actual', 'status'))
     props_converters = {
-        'cost': convert_integer}
+        'cost': convert_integer,
+        'max_bandwidth': convert_integer}
 
     props = Default(dict, produce=True)
     filtered = Default(set, produce=True)

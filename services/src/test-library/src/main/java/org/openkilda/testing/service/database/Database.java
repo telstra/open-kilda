@@ -21,4 +21,8 @@ public interface Database {
     boolean updateLinkProperty(Isl isl, String property, Object value);
 
     boolean revertIslBandwidth(Isl isl);
+
+    boolean removeInactiveIsls();
+
+    boolean removeInactiveSwitches();
 }

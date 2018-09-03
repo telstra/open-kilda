@@ -18,7 +18,7 @@ package org.openkilda.messaging.info.flow;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -55,7 +55,7 @@ public class FlowInfoData extends InfoData {
      * The flow operation payload.
      */
     @JsonProperty(Utils.PAYLOAD)
-    private ImmutablePair<Flow, Flow> payload;
+    private FlowPair<Flow, Flow> payload;
 
     /**
      * Flow request correlation id.
@@ -85,7 +85,7 @@ public class FlowInfoData extends InfoData {
      */
     @JsonCreator
     public FlowInfoData(@JsonProperty(Utils.FLOW_ID) final String flowId,
-                        @JsonProperty(Utils.PAYLOAD) ImmutablePair<Flow, Flow> payload,
+                        @JsonProperty(Utils.PAYLOAD) FlowPair<Flow, Flow> payload,
                         @JsonProperty("operation") FlowOperation operation,
                         @JsonProperty(Utils.CORRELATION_ID) String correlationId) {
         this.flowId = flowId;
@@ -117,7 +117,7 @@ public class FlowInfoData extends InfoData {
      *
      * @return flow operation payload
      */
-    public ImmutablePair<Flow, Flow> getPayload() {
+    public FlowPair<Flow, Flow> getPayload() {
         return payload;
     }
 
@@ -126,7 +126,7 @@ public class FlowInfoData extends InfoData {
      *
      * @param payload flow operation payload
      */
-    public void setPayload(ImmutablePair<Flow, Flow> payload) {
+    public void setPayload(FlowPair<Flow, Flow> payload) {
         this.payload = payload;
     }
 

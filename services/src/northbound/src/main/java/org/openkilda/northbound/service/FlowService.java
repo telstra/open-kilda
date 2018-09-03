@@ -24,8 +24,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.flows.VerificationInput;
-import org.openkilda.northbound.dto.flows.VerificationOutput;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 
 import java.util.List;
 
@@ -143,7 +143,7 @@ public interface FlowService extends BasicService {
      */
     List<FlowValidationDto> validateFlow(final String flowId);
 
-    VerificationOutput verifyFlow(String flowId, VerificationInput payload);
+    PingOutput pingFlow(String flowId, PingInput payload);
 
     /**
      * Sync the FlowCache in the flow topology (in case it is out of sync.

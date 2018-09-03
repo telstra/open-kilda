@@ -4,14 +4,22 @@ $(document).ready(function() {
 	var flowid = window.location.href.split("#")[1]
 	var tmp_anchor = '<a href="flowdetails#' + flowid + '">' + flowid + '</a>';
 	$("#flow-id-name").parent().append(flowid);
-	$("#loading").css("display", "block");
+	$("#loading").css("display", "block");	
 	common.getData("/flows/"+flowid,"GET").then(function(response) {
 		$("#loading").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		flowObj.setFlow(response);
-		showFlowData(response);
-	},
-	function(error){
+		var isEdit = localStorage.getItem("flowEdit_"+flowid);
+		if(isEdit){
+			$('#flow_detail_div').hide();
+			localStorage.removeItem("flowEdit_"+flowid);
+			flowObj.editFlow();
+		}else{
+			$('#flow_detail_div').show();
+			showFlowData(response);
+		}
+		
+	},function(error){
 		common.infoMessage('Flow does not exists, please try with new flow id','info');
 		setTimeout(function(){ 
 			window.location = APP_CONTEXT+ "/flows"; 

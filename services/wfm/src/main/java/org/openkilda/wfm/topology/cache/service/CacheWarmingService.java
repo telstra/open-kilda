@@ -22,7 +22,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.NetworkCache;
@@ -132,7 +132,7 @@ public class CacheWarmingService {
      * Put flows to local storage with cached state.
      * @param flows that will be added
      */
-    public void addPredefinedFlow(ImmutablePair<Flow, Flow> flows) {
+    public void addPredefinedFlow(FlowPair<Flow, Flow> flows) {
         if (Objects.nonNull(flows.getLeft())) {
             predefinedFlows.add(new MutablePair<>(flows.getLeft(), CachedFlowState.CACHED));
         }

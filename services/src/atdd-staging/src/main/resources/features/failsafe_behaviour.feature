@@ -13,6 +13,7 @@ Feature: Failsafe Suite
     And remains in this state for 30 seconds
     Then ISL status is DISCOVERED
     And ISL status changes to FAILED
+    And remains in this state for 15 seconds
     And flow is in UP state
     And flow path is changed
     And flow is valid per Northbound validation

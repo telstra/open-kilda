@@ -1,14 +1,29 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.controller;
 
-import java.util.List;
-
-import org.apache.log4j.Logger;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.constants.IConstants.Metrics;
 import org.openkilda.model.FlowPathStats;
 import org.openkilda.model.PortInfo;
 import org.openkilda.service.StatsService;
+
+import org.apache.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,6 +34,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+
+import java.util.List;
 
 @Controller
 @RequestMapping(value = "/stats")
@@ -44,27 +61,26 @@ public class StatsController {
     /**
      * Gets the isl stats.
      *
-     * @param flowid the flowid
      * @param startDate the start date
      * @param endDate the end date
      * @param downsample the downsample
      * @return the flow stats
      * @throws Exception the exception
      */
-    @RequestMapping(
-            value = "isl/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric}",
+    @RequestMapping(value =
+            "isl/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_ISL})
-    public @ResponseBody String getIslStats(@PathVariable String srcSwitch,
-            @PathVariable String srcPort, @PathVariable String dstSwitch,
-            @PathVariable String dstPort, @PathVariable String startDate,
-            @PathVariable String endDate, @PathVariable String downsample,
-            @PathVariable String metric) throws Exception {
+    @Permissions(values = { IConstants.Permission.MENU_ISL })
+    @ResponseBody
+    public String getIslStats(@PathVariable String srcSwitch, @PathVariable String srcPort,
+            @PathVariable String dstSwitch, @PathVariable String dstPort, @PathVariable String startDate,
+            @PathVariable String endDate, @PathVariable String downsample, @PathVariable String metric)
+            throws Exception {
 
         LOGGER.info("Inside StatsController method getIslStats ");
-        return statsService.getSwitchIslStats(startDate, endDate, downsample, srcSwitch,
-                srcPort, dstSwitch, dstPort, metric);
+        return statsService.getSwitchIslStats(startDate, endDate, downsample, srcSwitch, srcPort, dstSwitch, dstPort,
+                metric);
 
     }
 
@@ -79,19 +95,17 @@ public class StatsController {
      * @return the port stats
      * @throws Exception the exception
      */
-    @RequestMapping(
-            value = "switchid/{switchid}/port/{port}/{startDate}/{endDate}/{downsample}/{metric}",
+    @RequestMapping(value = "switchid/{switchid}/port/{port}/{startDate}/{endDate}/{downsample}/{metric}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
-    public @ResponseBody String getPortStats(@PathVariable String switchid,
-            @PathVariable String port, @PathVariable String startDate,
-            @PathVariable String endDate, @PathVariable String downsample,
+    @Permissions(values = { IConstants.Permission.MENU_SWITCHES })
+    @ResponseBody
+    public String getPortStats(@PathVariable String switchid, @PathVariable String port,
+            @PathVariable String startDate, @PathVariable String endDate, @PathVariable String downsample,
             @PathVariable String metric) throws Exception {
 
         LOGGER.info("Inside StatsController method getPortStats ");
-        return statsService.getSwitchPortStats(startDate, endDate, downsample, switchid, port,
-                metric);
+        return statsService.getSwitchPortStats(startDate, endDate, downsample, switchid, port, metric);
 
     }
 
@@ -108,10 +122,11 @@ public class StatsController {
     @RequestMapping(value = "flowid/{flowid}/{startDate}/{endDate}/{downsample}/{metric}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
-    public @ResponseBody String getFlowStats(@PathVariable String flowid,
-            @PathVariable String startDate, @PathVariable String endDate,
-            @PathVariable String downsample, @PathVariable String metric) throws Exception {
+    @Permissions(values = { IConstants.Permission.MENU_FLOWS })
+    @ResponseBody
+    public String getFlowStats(@PathVariable String flowid, @PathVariable String startDate,
+            @PathVariable String endDate, @PathVariable String downsample, @PathVariable String metric)
+            throws Exception {
 
         LOGGER.info("Inside StatsController method getFlowStats ");
         return statsService.getFlowStats(startDate, endDate, downsample, flowid, metric);
@@ -132,20 +147,20 @@ public class StatsController {
      * @return the isl loss packet stats
      * @throws Exception the exception
      */
-    @RequestMapping(
-            value = "isl/losspackets/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric}",
+    @RequestMapping(value =
+            "isl/losspackets/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_ISL})
-    public @ResponseBody String getIslLossPacketStats(@PathVariable String srcSwitch,
-            @PathVariable String srcPort, @PathVariable String dstSwitch,
-            @PathVariable String dstPort, @PathVariable String startDate,
-            @PathVariable String endDate, @PathVariable String downsample,
-            @PathVariable String metric) throws Exception {
+    @Permissions(values = { IConstants.Permission.MENU_ISL })
+    @ResponseBody
+    public String getIslLossPacketStats(@PathVariable String srcSwitch, @PathVariable String srcPort,
+            @PathVariable String dstSwitch, @PathVariable String dstPort, @PathVariable String startDate,
+            @PathVariable String endDate, @PathVariable String downsample, @PathVariable String metric)
+            throws Exception {
 
         LOGGER.info("Inside StatsController method getIslLossPacketStats ");
-        return statsService.getSwitchIslLossPacketStats(startDate, endDate, downsample, srcSwitch,
-                srcPort, dstSwitch, dstPort, metric);
+        return statsService.getSwitchIslLossPacketStats(startDate, endDate, downsample, srcSwitch, srcPort, dstSwitch,
+                dstPort, metric);
     }
     
     /**
@@ -159,33 +174,31 @@ public class StatsController {
      * @return the flow loss packet stats
      * @throws Exception the exception
      */
-    @RequestMapping(
-            value = "flow/losspackets/{flowid}/{startDate}/{endDate}/{downsample}/{direction}",
+    @RequestMapping(value = "flow/losspackets/{flowid}/{startDate}/{endDate}/{downsample}/{direction}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
-    public @ResponseBody String getFlowLossPacketStats(@PathVariable String flowid,
-            @PathVariable String startDate, @PathVariable String endDate,
-            @PathVariable String downsample, @PathVariable String direction) throws Exception {
+    @Permissions(values = { IConstants.Permission.MENU_FLOWS })
+    @ResponseBody
+    public String getFlowLossPacketStats(@PathVariable String flowid, @PathVariable String startDate,
+            @PathVariable String endDate, @PathVariable String downsample, @PathVariable String direction)
+            throws Exception {
 
         LOGGER.info("Inside StatsController method getFlowLossPacketStats ");
-        return statsService.getFlowLossPacketStats(startDate, endDate, downsample, flowid,
-                direction);
+        return statsService.getFlowLossPacketStats(startDate, endDate, downsample, flowid, direction);
     }
     
     /**
      * Gets the flow path stat.
      *
-     * @param flowPathStat the flow path stat (flowid , list of switchids, start date, end date)
+     * @param flowPathStats the flow path stat (flowid , list of switchids, start date, end date)
      * @return the flow path stat
      * @throws Exception the exception
      */
-    @RequestMapping(value = "flowpath", method = RequestMethod.POST,
-            produces = MediaType.APPLICATION_JSON_VALUE)
+    @RequestMapping(value = "flowpath", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
-    public @ResponseBody String getFlowPathStat(@RequestBody FlowPathStats flowPathStats)
-            throws Exception {
+    @Permissions(values = { IConstants.Permission.MENU_FLOWS })
+    @ResponseBody
+    public String getFlowPathStat(@RequestBody FlowPathStats flowPathStats) throws Exception {
 
         LOGGER.info("Inside StatsController method getFlowPathStat ");
         return statsService.getFlowPathStats(flowPathStats);
@@ -201,13 +214,14 @@ public class StatsController {
      * @return the switch ports stats
      * @throws Exception the exception
      */
-    @RequestMapping(value = "switchports/{switchid}/{startDate}/{endDate}/{downsample}",
-            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @RequestMapping(value = "switchports/{switchid}/{startDate}/{endDate}/{downsample}", method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
-    public @ResponseBody List<PortInfo> getSwitchPortsStats(@PathVariable String switchid,
-            @PathVariable String startDate, @PathVariable String endDate,
-            @PathVariable String downsample) throws Exception {
+    @Permissions(values = { IConstants.Permission.MENU_SWITCHES })
+    @ResponseBody
+    public List<PortInfo> getSwitchPortsStats(@PathVariable String switchid,
+            @PathVariable String startDate, @PathVariable String endDate, @PathVariable String downsample)
+            throws Exception {
 
         LOGGER.info("Inside StatsController method getSwitchPortsStats ");
         return statsService.getSwitchPortsStats(startDate, endDate, downsample, switchid);

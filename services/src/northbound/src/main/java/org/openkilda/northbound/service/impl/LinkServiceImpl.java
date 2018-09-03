@@ -18,6 +18,7 @@ package org.openkilda.northbound.service.impl;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
@@ -117,8 +118,16 @@ public class LinkServiceImpl implements LinkService {
         logger.debug("Link props \"SET\" request received (consists of {} records)", linkPropsList.size());
 
         ArrayList<String> pendingRequest = new ArrayList<>(linkPropsList.size());
+        ArrayList<String> errors = new ArrayList<>();
         for (LinkPropsDto requestItem : linkPropsList) {
-            LinkPropsPut teRequest = new LinkPropsPut(linkPropsMapper.toLinkProps(requestItem));
+            LinkProps linkProps;
+            try {
+                linkProps = linkPropsMapper.toLinkProps(requestItem);
+            } catch (IllegalArgumentException e) {
+                errors.add(e.getMessage());
+                continue;
+            }
+            LinkPropsPut teRequest = new LinkPropsPut(linkProps);
             String requestId = idFactory.produceChained(RequestCorrelationId.getId());
             CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
             messageProducer.send(topologyEngineTopic, message);
@@ -126,8 +135,11 @@ public class LinkServiceImpl implements LinkService {
             pendingRequest.add(requestId);
         }
 
+        if (!errors.isEmpty()) {
+            return new BatchResults(errors.size(), 0, errors);
+        }
+
         int successCount = 0;
-        ArrayList<String> errors = new ArrayList<>(pendingRequest.size());
         for (String requestId : pendingRequest) {
             InfoMessage message = (InfoMessage) messageConsumer.poll(requestId);
             LinkPropsResponse response = (LinkPropsResponse) message.getData();

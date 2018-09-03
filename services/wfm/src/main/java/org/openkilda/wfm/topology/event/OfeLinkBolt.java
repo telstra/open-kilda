@@ -503,6 +503,12 @@ public class OfeLinkBolt
          *  one place.
          */
         if (IslChangeType.DISCOVERED.equals(state)) {
+            if (discoveredIsl.isSelfLooped()) {
+                logger.info("DISCO: ISL Event: loop detected: switch={} srcPort={} dstPort={}",
+                        srcSwitch, srcPort, dstPort);
+                return;
+            }
+
             if (discovery.isIslMoved(srcSwitch, srcPort, dstSwitch, dstPort)) {
                 handleMovedIsl(tuple, srcSwitch, srcPort, dstSwitch, dstPort, correlationId);
             }

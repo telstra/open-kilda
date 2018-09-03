@@ -67,19 +67,19 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
                 String json = Utils.MAPPER.writeValueAsString(new CommandMessage(
                         request, System.currentTimeMillis(), correlationId, Destination.WFM));
                 Values values = new Values(json);
-                _collector.emit(tuple, values);
+                outputCollector.emit(tuple, values);
             } catch (JsonProcessingException exception) {
                 logger.error("Could not format flow reroute request by flow={}", flowId, exception);
             }
         }
-        _collector.ack(tuple);
+        outputCollector.ack(tuple);
     }
 
     @Override
     protected void doWork(Tuple tuple) {
         reroutesThrottling.putRequest(tuple.getStringByField(CacheBolt.FLOW_ID_FIELD),
                 tuple.getStringByField(CacheBolt.CORRELATION_ID_FIELD));
-        _collector.ack(tuple);
+        outputCollector.ack(tuple);
     }
 
     @Override

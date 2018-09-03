@@ -41,7 +41,7 @@ import java.util.Properties;
 /**
  * Created by carmine on 4/4/17.
  */
-public class AbstractStormTest {
+public abstract class AbstractStormTest {
     protected static String CONFIG_NAME = "class-level-overlay.properties";
     protected static String NEO4J_LISTEN_ADDRESS = "localhost:27600";
 
@@ -59,10 +59,14 @@ public class AbstractStormTest {
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, makeUnboundConfig(KafkaConfig.class).getHosts());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
-        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.StringSerializer");
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.StringSerializer");
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.StringDeserializer");
         properties.put("request.required.acks", "1");
         return properties;
     }
@@ -110,20 +114,21 @@ public class AbstractStormTest {
     }
 
     protected static LaunchEnvironment makeLaunchEnvironment() throws CmdLineException, ConfigurationException {
-        String args[] = makeLaunchArgs();
+        String[] args = makeLaunchArgs();
         return new LaunchEnvironment(args);
     }
+
     protected static LaunchEnvironment makeLaunchEnvironment(Properties overlay)
             throws CmdLineException, ConfigurationException, IOException {
         String extra = fsData.newFile().getName();
         makeConfigFile(overlay, extra);
 
-        String args[] = makeLaunchArgs(extra);
+        String[] args = makeLaunchArgs(extra);
         return new LaunchEnvironment(args);
     }
 
-    protected static String[] makeLaunchArgs(String ...extraConfig) {
-        String args[] = new String[extraConfig.length + 1];
+    protected static String[] makeLaunchArgs(String... extraConfig) {
+        String[] args = new String[extraConfig.length + 1];
 
         File root = fsData.getRoot();
         args[0] = new File(root, CONFIG_NAME).toString();

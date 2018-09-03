@@ -15,15 +15,16 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.wfm.error.JsonEncodeException;
+import org.openkilda.wfm.topology.AbstractTopology;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.wfm.error.JsonEncodeException;
-import org.openkilda.wfm.topology.AbstractTopology;
 
 import java.util.Collections;
 import java.util.List;

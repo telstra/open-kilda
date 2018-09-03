@@ -1,6 +1,30 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.security.mapper;
 
 import static java.util.stream.Collectors.joining;
+
+import org.openkilda.constants.HttpError;
+import org.openkilda.integration.exception.ContentNotFoundException;
+import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.exception.InvalidResponseException;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,17 +40,10 @@ import java.util.Collections;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-import org.openkilda.constants.HttpError;
-import org.openkilda.integration.exception.ContentNotFoundException;
-import org.openkilda.integration.exception.IntegrationException;
-import org.openkilda.integration.exception.InvalidResponseException;
-
 /**
  * The Class CustomExceptionMapper.
  */
+
 @ControllerAdvice
 public class CustomExceptionMapper extends GlobalExceptionMapper {
 
@@ -37,8 +54,7 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
      * Instantiates a new custom exception mapper.
      */
     public CustomExceptionMapper() {
-        _log.info("[CustomExceptionMapper] Initializing {}...",
-                CustomExceptionMapper.class.getName());
+        _log.info("[CustomExceptionMapper] Initializing {}...", CustomExceptionMapper.class.getName());
     }
 
     /**
@@ -48,18 +64,23 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = {Exception.class})
-    protected ResponseEntity<Object> defaultExceptionHandler(final Exception ex,
-            final WebRequest request) {
+    @ExceptionHandler(value = { Exception.class })
+    protected ResponseEntity<Object> defaultExceptionHandler(final Exception ex, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
-        return response(HttpError.INTERNAL_ERROR.getHttpStatus(),
-                HttpError.INTERNAL_ERROR.getCode(), HttpError.INTERNAL_ERROR.getAuxilaryMessage(),
-                HttpError.INTERNAL_ERROR.getMessage(), "");
+        return response(HttpError.INTERNAL_ERROR.getHttpStatus(), HttpError.INTERNAL_ERROR.getCode(),
+                HttpError.INTERNAL_ERROR.getAuxilaryMessage(), HttpError.INTERNAL_ERROR.getMessage(), "");
     }
 
-    @ExceptionHandler(value = {ConstraintViolationException.class})
-    protected ResponseEntity<Object> constraintViolationExceptionHandler(
-            final ConstraintViolationException ex, final WebRequest request) {
+    /**
+     * Constraint violation exception handler.
+     *
+     * @param ex the ex
+     * @param request the request
+     * @return the response entity
+     */
+    @ExceptionHandler(value = { ConstraintViolationException.class })
+    protected ResponseEntity<Object> constraintViolationExceptionHandler(final ConstraintViolationException ex,
+            final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         String message = ex.getConstraintViolations().stream().map(ConstraintViolation::getMessage)
                 .sorted(Collections.reverseOrder()).collect(joining(", "));
@@ -67,45 +88,64 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
                 HttpError.BAD_REQUEST.getAuxilaryMessage(), message);
     }
 
-    @ExceptionHandler(value = {IntegrationException.class})
-    protected ResponseEntity<Object> integrationExceptionHandler(
-            final IntegrationException ex, final WebRequest request) {
+    /**
+     * Integration exception handler.
+     *
+     * @param ex the ex
+     * @param request the request
+     * @return the response entity
+     */
+    @ExceptionHandler(value = { IntegrationException.class })
+    protected ResponseEntity<Object> integrationExceptionHandler(final IntegrationException ex,
+            final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
-        return response(HttpError.INTERNAL_ERROR.getHttpStatus(),
-                HttpError.INTERNAL_ERROR.getCode(), HttpError.INTERNAL_ERROR.getAuxilaryMessage(),
-                ex.toString());
+        return response(HttpError.INTERNAL_ERROR.getHttpStatus(), HttpError.INTERNAL_ERROR.getCode(),
+                HttpError.INTERNAL_ERROR.getAuxilaryMessage(), ex.toString());
     }
 
-    @ExceptionHandler(value = {InvalidResponseException.class})
-    protected ResponseEntity<Object> invalidResponseExceptionHandler(
-            final InvalidResponseException ex, final WebRequest request) {
+    /**
+     * Invalid response exception handler.
+     *
+     * @param ex the ex
+     * @param request the request
+     * @return the response entity
+     */
+    @ExceptionHandler(value = { InvalidResponseException.class })
+    protected ResponseEntity<Object> invalidResponseExceptionHandler(final InvalidResponseException ex,
+            final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         if (ex.getResponse() != null) {
             JSONParser jsonParser = new JSONParser();
             try {
                 JSONObject jsonObject = (JSONObject) jsonParser.parse(ex.getResponse());
-                String error_message = HttpError.PRECONDITION_FAILED.getAuxilaryMessage();
-                String error_type = ex.toString();
+                String errorMessage = HttpError.PRECONDITION_FAILED.getAuxilaryMessage();
+                String errorType = ex.toString();
                 if (jsonObject.get("error-message") != null) {
-                    error_message = jsonObject.get("error-message").toString();
+                    errorMessage = jsonObject.get("error-message").toString();
                 }
                 if (jsonObject.get("error-type") != null) {
-                    error_message = jsonObject.get("error-type").toString();
+                    errorType = jsonObject.get("error-type").toString();
                 }
-                return response(HttpError.PRECONDITION_FAILED.getHttpStatus(),
-                        HttpError.PRECONDITION_FAILED.getCode(), error_message, error_type);
+                return response(HttpError.PRECONDITION_FAILED.getHttpStatus(), HttpError.PRECONDITION_FAILED.getCode(),
+                        errorMessage, errorType);
             } catch (ParseException e) {
                 e.printStackTrace();
             }
         }
-        return response(HttpError.PRECONDITION_FAILED.getHttpStatus(),
-                HttpError.PRECONDITION_FAILED.getCode(),
+        return response(HttpError.PRECONDITION_FAILED.getHttpStatus(), HttpError.PRECONDITION_FAILED.getCode(),
                 HttpError.PRECONDITION_FAILED.getAuxilaryMessage(), ex.toString());
     }
 
-    @ExceptionHandler(value = {ContentNotFoundException.class})
-    protected ResponseEntity<Object> contentNotFoundExceptionHandler(
-            final ContentNotFoundException ex, final WebRequest request) {
+    /**
+     * Content not found exception handler.
+     *
+     * @param ex the ex
+     * @param request the request
+     * @return the response entity
+     */
+    @ExceptionHandler(value = { ContentNotFoundException.class })
+    protected ResponseEntity<Object> contentNotFoundExceptionHandler(final ContentNotFoundException ex,
+            final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpStatus.NO_CONTENT, HttpError.NO_CONTENT.getCode(),
                 HttpError.NO_CONTENT.getAuxilaryMessage(), ex.toString());
