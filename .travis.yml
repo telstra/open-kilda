@@ -30,8 +30,9 @@ jobs:
         # JaCoCo is used to have code coverage, the agent has to be activated
         - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
         - make -C services/src
-        - cd services/src
-        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent package sonar:sonar
+        - mvn -f services/src/pom.xml clean org.jacoco:jacoco-maven-plugin:prepare-agent package sonar:sonar
+        - make -C services/wfm
+        - mvn -f services/wfm/pom.xml clean org.jacoco:jacoco-maven-plugin:prepare-agent package sonar:sonar
 
       cache:
         directories:
