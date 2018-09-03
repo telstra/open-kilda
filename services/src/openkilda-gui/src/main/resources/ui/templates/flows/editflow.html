@@ -1,4 +1,10 @@
-	<form id="flowForm" name="FlowForm" onsubmit="return flowObj.validateFlow();" novalidate >
+	<div class='form-group  col-lg-12 text-center'>
+		<div class="col-md-3 pull-right" style="right: -100px;">
+			<span class="btn kilda_btn hidePermission"	onClick="flowObj.deleteFlowAlert()" id="delete_flow" permission="fw_flow_delete">Delete</span> 						
+		</div>
+	</div>
+	<div class="row">
+		<form id="flowForm" name="FlowForm" onsubmit="return flowObj.validateFlow();" novalidate >
 		<div class="col-lg-12">
 				<div class="col-lg-12 flow_detail_title_div">
 					<h5 class='modal-title'>FLOW DETAILS</h5>
@@ -16,9 +22,7 @@
 							<div class='form-group row flow_details'>
 							<label class='col-sm-3 col-form-label'>Description:</label>
 							<div class="col-sm-4">
-								<textarea id="flow_description" class="form-control" required name="flow_description" onblur="flowObj.checkValidate('flow_description')"></textarea>
-								<span id="flow_descriptionError" class="has-error error">Description is required!</span>
-								
+								<textarea id="flow_description" class="form-control" name="flow_description"></textarea>								
 							</div>
 						</div>
 	
@@ -108,5 +112,7 @@
 			</div>
 	
 	</form>
+	</div>
+	
 
 			
