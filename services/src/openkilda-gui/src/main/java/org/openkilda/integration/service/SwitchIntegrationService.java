@@ -15,6 +15,7 @@
 
 package org.openkilda.integration.service;
 
+import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
@@ -85,11 +86,11 @@ public class SwitchIntegrationService {
      * @return the switches
      */
     public List<SwitchInfo> getSwitches() {
-        HttpResponse response = restClientManager.invoke(applicationProperties.getSwitches(),
-                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_SWITCHES, HttpMethod.GET, "", "",
+                applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
-            List<SwitchInfo> switchesResponse =
-                    restClientManager.getResponseList(response, SwitchInfo.class);
+            List<SwitchInfo> switchesResponse = restClientManager.getResponseList(response, SwitchInfo.class);
             return getSwitchInfoSetName(switchesResponse);
         }
         return null;
@@ -158,8 +159,9 @@ public class SwitchIntegrationService {
      * @return the isl links port info
      */
     public List<IslLink> getIslLinkPortsInfo() {
-        HttpResponse response = restClientManager.invoke(applicationProperties.getLinks(),
-                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINKS, HttpMethod.GET, "", "",
+                applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
             return links;
@@ -191,16 +193,15 @@ public class SwitchIntegrationService {
      * @return the isl link cost
      */
     public List<LinkProps> getIslLinkProps(LinkProps keys) {
-        UriComponentsBuilder builder =
-                UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS);
         builder = setLinkProps(keys, builder);
         String fullUri = builder.build().toUriString();
         HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
         try {
             if (RestClientManager.isValidResponse(response)) {
-                List<LinkProps> linkPropsResponses =
-                        restClientManager.getResponseList(response, LinkProps.class);
+                List<LinkProps> linkPropsResponses = restClientManager.getResponseList(response, LinkProps.class);
                 if (!CollectionUtil.isEmpty(linkPropsResponses)) {
                     return linkPropsResponses;
                 }
@@ -250,9 +251,9 @@ public class SwitchIntegrationService {
      */
     public String updateIslLinkProps(List<LinkProps> keys) {
         try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getLinkProps(),
-                    HttpMethod.PUT, objectMapper.writeValueAsString(keys), "application/json",
-                    applicationService.getAuthHeader());
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS, HttpMethod.PUT,
+                    objectMapper.writeValueAsString(keys), "application/json", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (Exception e) {
             LOGGER.error("Inside updateIslLinkProps  Exception :", e);
@@ -300,11 +301,10 @@ public class SwitchIntegrationService {
     public String getSwitchRules(String switchId) {
 
         try {
-            HttpResponse response =
-                    restClientManager
-                            .invoke(applicationProperties.getSwitchRules().replace("{switch_id}",
-                                    switchId), HttpMethod.GET, "", "",
-                                    applicationService.getAuthHeader());
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl()
+                            + IConstants.NorthBoundUrl.GET_SWITCH_RULES.replace("{switch_id}", switchId),
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (Exception e) {
             LOGGER.error("Inside updateIslLinkProps  Exception :", e);
@@ -323,8 +323,8 @@ public class SwitchIntegrationService {
     public ConfiguredPort configurePort(String switchId, String port, PortConfiguration configuration) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getConfigSwitchPort().replace("{switch_id}", switchId).replace("{port_no}",
-                            port),
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.CONFIG_SWITCH_PORT
+                            .replace("{switch_id}", switchId).replace("{port_no}", port),
                     HttpMethod.PUT, objectMapper.writeValueAsString(configuration), "application/json",
                     applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {

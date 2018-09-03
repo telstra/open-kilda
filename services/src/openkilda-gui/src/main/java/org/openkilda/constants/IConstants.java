@@ -20,11 +20,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 /**
  * The Interface IConstants.
  *
  * @author Gaurav Chugh
  */
+
 public abstract class IConstants {
 
     public static final String SESSION_OBJECT = "sessionObject";
@@ -51,6 +56,35 @@ public abstract class IConstants {
 
         public static final String UP = "UP";
         public static final String DOWN = "DOWN";
+    }
+    
+    public final class NorthBoundUrl {
+
+        private NorthBoundUrl() {
+
+        }
+
+        public static final String GET_FLOW = "/flows";
+        public static final String GET_FLOW_STATUS = GET_FLOW + "/status/";
+        public static final String GET_FLOW_REROUTE = GET_FLOW + "/{flow_id}/reroute";
+        public static final String GET_FLOW_VALIDATE = GET_FLOW + "/{flow_id}/validate";
+        public static final String GET_PATH_FLOW = GET_FLOW + "/path";
+        public static final String GET_SWITCHES = "/switches";
+        public static final String GET_SWITCH_RULES = GET_SWITCHES + "/{switch_id}/rules";
+        public static final String GET_LINKS = "/links";
+        public static final String GET_LINK_PROPS = "/link/props";
+        public static final String UPDATE_FLOW = GET_FLOW + "/{flow_id}";
+        public static final String GET_FLOW_PATH = GET_FLOW + "/{flow_id}/path";
+        public static final String CONFIG_SWITCH_PORT = GET_SWITCHES + "/{switch_id}/port/{port_no}/config";
+    }
+    
+    public final class OpenTsDbUrl {
+
+        private OpenTsDbUrl() {
+
+        }
+
+        public static final String OPEN_TSDB_QUERY = "/api/query/";
     }
 
     public final class Permission {

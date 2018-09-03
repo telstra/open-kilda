@@ -21,6 +21,8 @@ import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.integration.service.FlowsIntegrationService;
 import org.openkilda.integration.service.SwitchIntegrationService;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
@@ -58,6 +60,9 @@ public class FlowService {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private ActivityLogger activityLogger;
 
     /**
      * get All Flows.
@@ -173,7 +178,9 @@ public class FlowService {
      * @return the flow
      */
     public Flow createFlow(Flow flow) {
-        return flowsIntegrationService.createFlow(flow);
+    	flow = flowsIntegrationService.createFlow(flow);
+        activityLogger.log(ActivityType.CREATE_FLOW, flow.getId());
+        return flow;
     }
 
     /**
@@ -184,7 +191,9 @@ public class FlowService {
      * @return the flow
      */
     public Flow updateFlow(String flowId, Flow flow) {
-        return flowsIntegrationService.updateFlow(flowId, flow);
+        flow = flowsIntegrationService.updateFlow(flowId, flow);
+        activityLogger.log(ActivityType.UPDATE_FLOW, flow.getId());
+        return flow;
     }
 
     /**
@@ -196,7 +205,9 @@ public class FlowService {
      */
     public Flow deleteFlow(String flowId, UserInfo userInfo) {
         if (userService.validateOtp(userInfo.getUserId(), userInfo.getCode())) {
-            return flowsIntegrationService.deleteFlow(flowId);
+        	Flow flow = flowsIntegrationService.deleteFlow(flowId);
+            activityLogger.log(ActivityType.DELETE_FLOW, flow.getId());
+            return flow;
         } else {
             return null;
         }
