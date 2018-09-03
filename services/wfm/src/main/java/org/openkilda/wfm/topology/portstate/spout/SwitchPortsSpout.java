@@ -23,7 +23,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
-import org.openkilda.wfm.topology.portstate.PortStateTopologyConfig;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.spout.SpoutOutputCollector;
@@ -46,15 +45,13 @@ public class SwitchPortsSpout extends BaseRichSpout {
     private static final String REQUESTER = SwitchPortsSpout.class.getSimpleName();
     private final int frequency;
     private SpoutOutputCollector collector;
-    final String speakerTopic;
 
-    public SwitchPortsSpout(PortStateTopologyConfig config) {
-        this(config, DEFAULT_FREQUENCY);
+    public SwitchPortsSpout() {
+        this(DEFAULT_FREQUENCY);
     }
 
-    public SwitchPortsSpout(PortStateTopologyConfig config, int frequency) {
+    public SwitchPortsSpout(int frequency) {
         this.frequency = frequency;
-        this.speakerTopic = config.getKafkaSpeakerTopic();
     }
 
     private static long now() {

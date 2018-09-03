@@ -2,7 +2,7 @@
 
 ## The problem 
 Floodlight OpenKilda Modules interact with other OpenKilda components via Kafka topics. 
-Incoming messages are read from kilda.speaker topic by a single consuming thread (reactor) and dispatched to handlers via a fixed-sized thread pool.
+Incoming messages are read from kilda.speaker.* topic by a single consuming thread (reactor) and dispatched to handlers via a fixed-sized thread pool.
 
 Currently the reactor fetches all available messages from the topic and schedules them to be processed in the thread pool. 
 And although the number of execution threads is fixed, the thread pool queue of scheduled handlers is unbound. 

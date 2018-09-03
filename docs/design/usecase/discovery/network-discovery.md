@@ -20,7 +20,7 @@ series of events at a high level.
 3. Storm (OFEventWFMTopology) picks up these messages and does the following:
     1. updates its state
     2. if a port has been discovered, send an ISL discovery request to floodlight 
-        (topic:kilda.speaker)
+        (topic:kilda.speaker.disco)
     3. forward state changes to the topology-engine (topic: kilda.topo.eng)
     4. (optional) the Storm topology may exercise some business logic before forwarding an event
         to the topology engine. As an example, verifying an up/down event (ie suppress flapping)
@@ -47,7 +47,7 @@ Floodlight->OFEventWFMTopology: kafka:kilda.topo.disco
 OFEventWFMTopology->OFEventWFMTopology: state update
 opt new port, discover ISL
     note over Floodlight: PathVericationService
-    OFEventWFMTopology->Floodlight: kafka:kilda.speaker
+    OFEventWFMTopology->Floodlight: kafka:kilda.speaker.disco
     Floodlight->Switch: LLDP Packet
     Floodlight->OFEventWFMTopology: kafka:kilda.topo.disco
 end

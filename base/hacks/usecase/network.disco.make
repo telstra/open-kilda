@@ -105,6 +105,9 @@ clean-network:
 ## - kilda.topo.disco
 ## - kilda.topo.eng
 ## - kilda.speaker
+## - kilda.speaker.disco
+## - kilda.speaker.flow
+## - kilda.speaker.flow.ping
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 .PHONY: dump.topo.disco dump.topo.eng dump.speaker dump.topics
 
@@ -122,9 +125,27 @@ dump.topo.eng:
 
 dump.speaker:
 	@echo ""
-	@echo "==> Use this to validate traffic between the storm topology and the speaker (ISL disco)"
+	@echo "==> Use this to validate traffic between the storm topology and the speaker (generic)"
 	@echo ""
 	kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker --from-beginning
+
+dump.speaker.disco:
+	@echo ""
+	@echo "==> Use this to validate traffic between the storm topology and the speaker (ISL disco)"
+	@echo ""
+	kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker.disco --from-beginning
+
+dump.speaker.flow:
+	@echo ""
+	@echo "==> Use this to validate traffic between the storm topology and the speaker (flow requests)"
+	@echo ""
+	kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker.flow --from-beginning
+
+dump.speaker.flow.ping:
+	@echo ""
+	@echo "==> Use this to validate traffic between the storm topology and the speaker (flow ping requests)"
+	@echo ""
+	kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker.flow.ping --from-beginning
 
 list.topics:
 	@echo ""

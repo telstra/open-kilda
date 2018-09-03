@@ -59,10 +59,6 @@ public class ConsumerContext extends Context {
         return switchManager;
     }
 
-    public String getKafkaSpeakerTopic() {
-        return kafkaTopicsConfig.getSpeakerTopic();
-    }
-
     public String getKafkaFlowTopic() {
         return kafkaTopicsConfig.getFlowTopic();
     }

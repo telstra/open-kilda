@@ -14,7 +14,7 @@ participant Blacklist
 participant TimeoutManager
 participant SpeakerEncoder
 
-control kilda.speaker
+control kilda.speaker.flow.ping
 
 control kilda.ping
 
@@ -58,10 +58,10 @@ note right of TimeoutManager: scheduleTimeout for\npingId
 TimeoutManager -> SpeakerEncoder: PingRequest
 
 activate SpeakerEncoder
-SpeakerEncoder -> kilda.speaker: json{PingRequest}
+SpeakerEncoder -> kilda.speaker.flow.ping: json{PingRequest}
 deactivate SpeakerEncoder
 
-kilda.speaker -> FL: json{PingRequest}
+kilda.speaker.flow.ping -> FL: json{PingRequest}
 alt normal workflow
     activate FL
 
