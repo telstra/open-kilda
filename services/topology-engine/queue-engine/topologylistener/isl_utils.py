@@ -333,6 +333,9 @@ def del_props(tx, isl, props):
           (:switch {name: $dst_switch})""") + '\nREMOVE '.join(remove)
     db.log_query('ISL drop props', q, p)
     stats = tx.run(q, p).stats()
+    if 'max_bandwidth' in props:
+        db_isl = fetch(tx, isl)
+        set_props(tx, isl, {'max_bandwidth': db_isl.get('default_max_bandwidth', 0)})
     return stats['contains_updates']
 
 
