@@ -86,6 +86,18 @@ public class ASwitchServiceImpl implements ASwitchService {
         LOGGER.info("Brought down ports: {}", ports);
     }
 
+    @Override
+    public void knockoutSwitch(String switchId) {
+        throw new UnsupportedOperationException(
+                "knockoutSwitch operation for a-switch is not available on hardware env");
+    }
+
+    @Override
+    public void reviveSwitch(String switchId, String controllerAddress) {
+        throw new UnsupportedOperationException(
+                "reviveSwitch operation for a-switch is not available on hardware env");
+    }
+
     private HttpHeaders buildJsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
