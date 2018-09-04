@@ -96,18 +96,22 @@ public enum SwitchState {
         return type;
     }
 
+    /**
+     * Converts a switch state string representation to the instance of {@link SwitchState}.
+     *
+     * @param state the switch state string representation.
+     * @return the instance of {@link SwitchState}.
+     * @throws IllegalArgumentException if the incorrect switch state string representation is passed.
+     */
     public static SwitchState from(String state) {
         return Arrays.stream(SwitchState.values())
                 .filter(item -> item.type.equalsIgnoreCase(state))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(String.format("Incorrect switch state: %s", state)));
+                .orElseThrow(
+                        () -> new IllegalArgumentException(String.format("Incorrect switch state: %s", state)));
     }
 
     public boolean isActive() {
         return this == ADDED || this == ACTIVATED;
-    }
-
-    public boolean isInactive() {
-        return this == REMOVED || this == DEACTIVATED;
     }
 }
