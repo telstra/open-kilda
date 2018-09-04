@@ -69,7 +69,7 @@ class BandwidthSpec extends BaseSpecification {
         flow?.id && northboundService.deleteFlow(flow.id)
     }
 
-    def "Verify longer path is chosen in case of not enough available bandwidth on shorter path"() {
+    def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
         given: "Two active switches and two possible flow paths at least"
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> possibleFlowPaths = []
@@ -158,6 +158,50 @@ class BandwidthSpec extends BaseSpecification {
         Wrappers.wait(5) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
+
+        cleanup: "Delete created flow"
+        flow?.id && northboundService.deleteFlow(flow.id)
+    }
+
+    def "Able to update bandwidth to maximum link speed without using alternate links"() {
+        given: "Two active neighboring switches"
+        def isl = topology.getIslsForActiveSwitches().first()
+        def srcSwitch = isl.srcSwitch
+        def dstSwitch = isl.dstSwitch
+        assert srcSwitch && dstSwitch
+
+        when: "Create a flow with a valid small bandwidth"
+        def maximumBandwidth = 1000
+
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = maximumBandwidth
+        northboundService.addFlow(flow)
+
+        then: "Flow is really created and has 'Up' status"
+        Wrappers.wait(5) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+        }
+
+        and: "Only one link is involved in flow path"
+        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
+        involvedIsls.size() == 1
+        involvedIsls.first() == isl
+
+        when: "Update flow bandwidth to maximum link speed"
+        def linkSpeed = islUtils.getIslInfo(involvedIsls.first()).get().speed
+        flow.maximumBandwidth = linkSpeed
+        northboundService.updateFlow(flow.id, flow)
+
+        then: "Flow is really updated and has 'Up' status"
+        northboundService.getFlow(flow.id).maximumBandwidth == linkSpeed
+        Wrappers.wait(5) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+        }
+
+        and: "The same path is used by updated flow"
+        def flowPathUpdated = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        flowPathUpdated == flowPath
 
         cleanup: "Delete created flow"
         flow?.id && northboundService.deleteFlow(flow.id)
