@@ -324,7 +324,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionMeter meter = null;
         if (meterId != 0L && !OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
             if (ofFactory.getVersion().compareTo(OF_12) <= 0) {
+                /* FIXME: Since we can't read/validate meters from switches with OF 1.2 we should not install them
                 actionList.add(legacyMeterAction(ofFactory, meterId));
+                */
             } else if (ofFactory.getVersion().compareTo(OF_15) == 0) {
                 actionList.add(ofFactory.actions().buildMeter().setMeterId(meterId).build());
             } else /* OF_13, OF_14 */ {
@@ -532,26 +534,29 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public long installMeter(final DatapathId dpid, final long bandwidth, final long burstSize, final long meterId)
             throws SwitchOperationException {
+        long meterCommandXid = 0L;
+
         if (meterId == 0) {
             logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return 0L;
+            return meterCommandXid;
         }
 
         IOFSwitch sw = lookupSwitch(dpid);
 
         if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
             logger.info("skip installing meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return 0L;
+            return meterCommandXid;
         }
-
-        long meterCommandXid;
 
         if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
+            logger.info("Skip installing meter {} on switch {} because of OF version 1.2", meterId, dpid);
+            /* FIXME: Since we can't read/validate meters from switches with OF 1.2 we should not install them
             meterCommandXid = installLegacyMeter(sw, dpid, bandwidth, burstSize, meterId);
-        } else {
-            meterCommandXid = buildAndinstallMeter(sw, dpid, bandwidth, burstSize, meterId);
+            */
+            return meterCommandXid;
         }
 
+        meterCommandXid = buildAndinstallMeter(sw, dpid, bandwidth, burstSize, meterId);
         // All cases when we're installing meters require that we wait until the command is processed and the meter is
         // installed.
         sendBarrierRequest(sw);
