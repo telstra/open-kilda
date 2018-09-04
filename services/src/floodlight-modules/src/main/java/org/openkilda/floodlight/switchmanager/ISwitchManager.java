@@ -22,7 +22,7 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
+import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.List;
@@ -166,7 +166,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @return OF meter config stats entries
      * @throws SwitchOperationException Switch not found
      */
-    OFMeterConfigStatsReply dumpMeters(final DatapathId dpid) throws SwitchOperationException;
+    List<OFMeterConfig> dumpMeters(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Installs a meter on ingress switch OF_13.

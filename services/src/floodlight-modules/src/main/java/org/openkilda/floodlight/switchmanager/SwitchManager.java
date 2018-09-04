@@ -70,6 +70,7 @@ import org.projectfloodlight.openflow.protocol.OFLegacyMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFLegacyMeterMod;
 import org.projectfloodlight.openflow.protocol.OFLegacyMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
@@ -499,8 +500,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public OFMeterConfigStatsReply dumpMeters(final DatapathId dpid) throws SwitchOperationException {
-        OFMeterConfigStatsReply values = null;
+    public List<OFMeterConfig> dumpMeters(final DatapathId dpid) throws SwitchOperationException {
+        List<OFMeterConfig> result = null;
         IOFSwitch sw = lookupSwitch(dpid);
         if (sw == null) {
             throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
@@ -517,13 +518,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
 
         try {
-            ListenableFuture<OFMeterConfigStatsReply> future = sw.writeRequest(meterRequest);
-            values = future.get(5, TimeUnit.SECONDS);
+            ListenableFuture<List<OFMeterConfigStatsReply>> future = sw.writeStatsRequest(meterRequest);
+            List<OFMeterConfigStatsReply> values = future.get(10, TimeUnit.SECONDS);
+            if (values != null) {
+                result = values.stream()
+                        .map(OFMeterConfigStatsReply::getEntries)
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList());
+            }
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             logger.error("Could not get meter config stats for {}.", dpid, e);
         }
 
-        return values;
+        return result;
     }
 
     /**
