@@ -380,7 +380,6 @@ function computeGraphData(data,startDate,endDate,type,timezone) {
 }
 function loadPathGraph(data,startDate,endDate,type,timezone){
    var graph_data = computeGraphData(data,startDate,endDate,type,timezone);
-   console.log('graph_data',graph_data);
   var graphData = graph_data['data'];
   var labels = graph_data['labels'];
   var series = {};
