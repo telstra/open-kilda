@@ -17,7 +17,6 @@ package org.openkilda.floodlight.switchmanager;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
@@ -61,7 +60,6 @@ import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
@@ -346,7 +344,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command with meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY, singleton(OFFlowModFlags.RESET_COUNTS));
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, "--InstallIngressFlow--", flowMod);
     }
@@ -378,7 +376,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY, null);
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, "--InstallEgressFlow--", flowMod);
     }
@@ -406,7 +404,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY, null);
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, flowId, flowMod);
     }
@@ -455,7 +453,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command with meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY, singleton(OFFlowModFlags.RESET_COUNTS));
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         pushFlow(sw, flowId, flowMod);
 
@@ -713,7 +711,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .applyActions(actionList).createBuilder().build();
         final long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, instructionApplyActions,
-                cookie, VERIFICATION_RULE_PRIORITY, null);
+                cookie, VERIFICATION_RULE_PRIORITY);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
         flowname += "--VerificationFlow--" + dpid.toString();
         pushFlow(sw, flowname, flowMod);
@@ -736,7 +734,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
 
         Match match = simpleDstMatch(ofFactory, dstMac, dstMask);
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null, cookie, priority, null);
+        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null, cookie, priority);
         String flowName = "--CustomDropRule--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
     }
@@ -755,7 +753,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             logger.debug("Skip installation of drop flow for switch {}", dpid);
         } else {
             logger.debug("Installing drop flow for switch {}", dpid);
-            OFFlowMod flowMod = buildFlowMod(ofFactory, null, null, null, DROP_RULE_COOKIE, 1, null);
+            OFFlowMod flowMod = buildFlowMod(ofFactory, null, null, null, DROP_RULE_COOKIE, 1);
             String flowName = "--DropRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
@@ -1094,23 +1092,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param actions  actions for the flow
      * @param cookie   cookie for the flow
      * @param priority priority to set on the flow
-     * @param flags    a Set of OFFlowModFlags to set on the flow
      * @return {@link OFFlowMod}
      */
     private OFFlowMod buildFlowMod(final OFFactory ofFactory, final Match match, final OFInstructionMeter meter,
-                                   final OFInstructionApplyActions actions, final long cookie, final int priority,
-                                   final Set<OFFlowModFlags> flags) {
+                                   final OFInstructionApplyActions actions, final long cookie, final int priority) {
         OFFlowMod.Builder fmb = ofFactory.buildFlowAdd();
         fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
         fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
         fmb.setBufferId(OFBufferId.NO_BUFFER);
         fmb.setCookie(U64.of(cookie));
         fmb.setPriority(priority);
-
-        if (flags != null) {
-            fmb.setFlags(flags);
-        }
-
         List<OFInstruction> instructions = new ArrayList<>(2);
 
         // If no meter then no bandwidth limit
