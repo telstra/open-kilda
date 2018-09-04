@@ -13,18 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache;
+package org.openkilda.testing.service.mininet;
 
-public enum StormNodeId {
-    ;
+import java.util.Map;
 
-    private final String id;
+public interface Mininet {
 
-    StormNodeId(String id) {
-        this.id = id;
-    }
+    Map createTopology(Object topology);
 
-    public String getId() {
-        return id;
-    }
+    void deleteTopology();
+
+    void knockoutSwitch(String switchName);
+
+    void addFlow(String switchName, Integer inPort, Integer outPort);
+
+    void removeFlow(String switchName, Integer inPort);
+
+    void portUp(String switchName, Integer port);
+
+    void portDown(String switchName, Integer port);
 }

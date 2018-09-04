@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache;
+package org.openkilda.wfm.topology.cache.transport;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -38,7 +38,7 @@ import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
@@ -75,20 +75,20 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static final String thirdFlowId = "third-flow";
     private static final SwitchInfoData sw = new SwitchInfoData(new SwitchId("ff:03"),
             SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda");
-    private static final ImmutablePair<Flow, Flow> firstFlow = new ImmutablePair<>(
+    private static final FlowPair<Flow, Flow> firstFlow = new FlowPair<>(
             new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
             new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
-    private static final ImmutablePair<Flow, Flow> secondFlow = new ImmutablePair<>(
+    private static final FlowPair<Flow, Flow> secondFlow = new FlowPair<>(
             new Flow(secondFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2),
             new Flow(secondFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2));
-    private static final ImmutablePair<Flow, Flow> thirdFlow = new ImmutablePair<>(
+    private static final FlowPair<Flow, Flow> thirdFlow = new FlowPair<>(
             new Flow(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2),
             new Flow(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2));
-    private static final Set<ImmutablePair<Flow, Flow>> flows = new HashSet<>();
+    private static final Set<FlowPair<Flow, Flow>> flows = new HashSet<>();
     private static final NetworkInfoData dump = new NetworkInfoData(
             "test", Collections.singleton(sw), Collections.emptySet(), Collections.emptySet(), flows);
 
@@ -290,7 +290,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
-    private static void sendFlowUpdate(ImmutablePair<Flow, Flow> flow) throws IOException {
+    private static void sendFlowUpdate(FlowPair<Flow, Flow> flow) throws IOException {
         System.out.println("Flow Topology: Send Flow Creation Request");
         String correlationId = UUID.randomUUID().toString();
         FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
@@ -338,8 +338,8 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         PathInfoData pathInfoData = new PathInfoData(0L, path);
         flow.setFlowPath(pathInfoData);
-        ImmutablePair<Flow, Flow> immutablePair = new ImmutablePair<>(flow, flow);
-        return new FlowInfoData(flowId, immutablePair, FlowOperation.CREATE, UUID.randomUUID().toString());
+        FlowPair<Flow, Flow> flowPair = new FlowPair<>(flow, flow);
+        return new FlowInfoData(flowId, flowPair, FlowOperation.CREATE, UUID.randomUUID().toString());
     }
 
     private static String waitDumpRequest() throws InterruptedException, IOException {

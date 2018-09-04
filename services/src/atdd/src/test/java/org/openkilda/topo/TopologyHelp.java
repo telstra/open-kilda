@@ -21,7 +21,7 @@ import static org.openkilda.flow.FlowUtils.getTimeDuration;
 
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 
 import org.glassfish.jersey.client.ClientConfig;
 
@@ -150,7 +150,7 @@ public class TopologyHelp {
         return result;
     }
 
-    public static ImmutablePair<Flow, Flow> GetFlow(String flowId) {
+    public static FlowPair<Flow, Flow> GetFlow(String flowId) {
         System.out.println("\n==> Topology-Engine Get Flow");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
@@ -168,7 +168,7 @@ public class TopologyHelp {
             return null;
         }
 
-        ImmutablePair<Flow, Flow> result = response.readEntity(new GenericType<ImmutablePair<Flow, Flow>>() {});
+        FlowPair<Flow, Flow> result = response.readEntity(new GenericType<FlowPair<Flow, Flow>>() {});
         System.out.println(String.format("====> Topology-Engine Get Flow = %s", result));
         return result;
     }

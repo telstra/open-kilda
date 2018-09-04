@@ -108,7 +108,7 @@ public class IslSteps {
      */
     @Then("ISLs? status changes? to (\\w*)$")
     public void waitForIslStatus(String islStatus) {
-        islUtils.waitForIslStatus(changedIsls, islStatus);
+        islUtils.waitForIslStatus(changedIsls, IslChangeType.valueOf(islStatus));
     }
 
     @Then("ISLs? status is (\\w*)$")
@@ -201,7 +201,7 @@ public class IslSteps {
         List<Isl> isls = islAliases.stream()
                 .map(alias -> (Isl) topologyUnderTest.getAliasedObject(alias))
                 .collect(Collectors.toList());
-        islUtils.waitForIslStatus(isls, expectedStatus);
+        islUtils.waitForIslStatus(isls, IslChangeType.valueOf(expectedStatus));
     }
 
     @Then("^ISL status is (.*) for ISLs: (.*)$")

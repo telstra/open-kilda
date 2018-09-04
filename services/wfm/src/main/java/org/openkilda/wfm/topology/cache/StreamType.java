@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.cache;
 
+import org.openkilda.wfm.topology.cache.transport.CacheTopology;
+
 /**
  * Represents stream used in {@link CacheTopology}.
  */

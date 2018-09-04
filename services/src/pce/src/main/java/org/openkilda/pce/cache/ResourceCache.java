@@ -16,7 +16,7 @@
 package org.openkilda.pce.cache;
 
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.ResourcePool;
 
@@ -283,7 +283,7 @@ public class ResourceCache extends Cache {
      *
      * @param flow flow
      */
-    public void allocateFlow(ImmutablePair<Flow, Flow> flow) {
+    public void allocateFlow(FlowPair<Flow, Flow> flow) {
 
         if (flow.left != null) {
             allocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
@@ -312,7 +312,7 @@ public class ResourceCache extends Cache {
      *
      * @param flow flow
      */
-    public void deallocateFlow(ImmutablePair<Flow, Flow> flow) {
+    public void deallocateFlow(FlowPair<Flow, Flow> flow) {
         deallocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
 
         deallocateVlanId(flow.left.getTransitVlan());

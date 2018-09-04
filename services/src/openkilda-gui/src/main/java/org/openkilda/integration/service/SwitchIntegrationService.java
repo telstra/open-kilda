@@ -1,26 +1,21 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.integration.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import org.springframework.web.util.UriComponentsBuilder;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.http.HttpResponse;
+import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
@@ -37,6 +32,28 @@ import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.apache.http.HttpResponse;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The Class SwitchIntegrationService.
@@ -67,24 +84,23 @@ public class SwitchIntegrationService {
      * Gets the switches.
      *
      * @return the switches
-     * @throws IntegrationException
      */
     public List<SwitchInfo> getSwitches() {
-        HttpResponse response = restClientManager.invoke(applicationProperties.getSwitches(),
-                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_SWITCHES, HttpMethod.GET, "", "",
+                applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
-            List<SwitchInfo> switchesResponse =
-                    restClientManager.getResponseList(response, SwitchInfo.class);
+            List<SwitchInfo> switchesResponse = restClientManager.getResponseList(response, SwitchInfo.class);
             return getSwitchInfoSetName(switchesResponse);
         }
         return null;
     }
 
     /**
-     * Gets the SwitchInfoSetName.
+     * Gets the switch info set name.
      *
-     * @return the switches
-     * @throws IntegrationException
+     * @param switches the switches
+     * @return the switch info set name
      */
     private List<SwitchInfo> getSwitchInfoSetName(List<SwitchInfo> switches) {
 
@@ -101,11 +117,11 @@ public class SwitchIntegrationService {
     }
 
     /**
-     * This Method is used to set custom Switch name.
-     * 
-     * @param csNames
-     * @param switchId
-     * @return switch name
+     * Custom switch name.
+     *
+     * @param csNames the cs names
+     * @param switchId the switch id
+     * @return the string
      */
     public String customSwitchName(Map<String, String> csNames, String switchId) {
         if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
@@ -119,8 +135,9 @@ public class SwitchIntegrationService {
             } else {
                 return switchId;
             }
-        } else
+        } else {
             return switchId;
+        }
     }
 
     /**
@@ -142,8 +159,9 @@ public class SwitchIntegrationService {
      * @return the isl links port info
      */
     public List<IslLink> getIslLinkPortsInfo() {
-        HttpResponse response = restClientManager.invoke(applicationProperties.getLinks(),
-                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINKS, HttpMethod.GET, "", "",
+                applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
             return links;
@@ -151,15 +169,14 @@ public class SwitchIntegrationService {
         return null;
     }
     
-   private Map<String,String> islCostMap(){
-    List<LinkProps> linkProps = getIslLinkProps(null);
-    Map<String,String> islCostMap = new HashMap<>();
+    private Map<String, String> islCostMap() {
+        List<LinkProps> linkProps = getIslLinkProps(null);
+        Map<String, String> islCostMap = new HashMap<>();
         if (linkProps != null) {
 
             linkProps.forEach(linkProp -> {
-                String key =
-                        linkProp.getSrc_switch() + "-" + linkProp.getSrc_port() + "-"
-                                + linkProp.getDst_switch() + "-" + linkProp.getDst_port();
+                String key = linkProp.getSrcSwitch() + "-" + linkProp.getSrcPort() + "-" + linkProp.getDstSwitch() + "-"
+                        + linkProp.getDstPort();
                 String value = linkProp.getProperty("cost");
                 islCostMap.put(key, value);
             });
@@ -176,16 +193,15 @@ public class SwitchIntegrationService {
      * @return the isl link cost
      */
     public List<LinkProps> getIslLinkProps(LinkProps keys) {
-        UriComponentsBuilder builder =
-                UriComponentsBuilder.fromHttpUrl(applicationProperties.getLinkProps());
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS);
         builder = setLinkProps(keys, builder);
         String fullUri = builder.build().toUriString();
         HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
         try {
             if (RestClientManager.isValidResponse(response)) {
-                List<LinkProps> linkPropsResponses =
-                        restClientManager.getResponseList(response, LinkProps.class);
+                List<LinkProps> linkPropsResponses = restClientManager.getResponseList(response, LinkProps.class);
                 if (!CollectionUtil.isEmpty(linkPropsResponses)) {
                     return linkPropsResponses;
                 }
@@ -229,16 +245,15 @@ public class SwitchIntegrationService {
 
     /**
      * Update isl link props.
-     * 
-     * @param keys
-     * @return link props
-     * @throws JsonProcessingException
+     *
+     * @param keys the keys
+     * @return the string
      */
     public String updateIslLinkProps(List<LinkProps> keys) {
         try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getLinkProps(),
-                    HttpMethod.PUT, objectMapper.writeValueAsString(keys), "application/json",
-                    applicationService.getAuthHeader());
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS, HttpMethod.PUT,
+                    objectMapper.writeValueAsString(keys), "application/json", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (Exception e) {
             LOGGER.error("Inside updateIslLinkProps  Exception :", e);
@@ -249,23 +264,27 @@ public class SwitchIntegrationService {
     /**
      * This Method is used to set link props.
      * 
-     * @param keys
-     * @param builder
+     * @param keys th link properties
+     * @param builder the uri component builder
      * @return UriComponentsBuilder
      */
     private UriComponentsBuilder setLinkProps(LinkProps keys, UriComponentsBuilder builder) {
         try {
             if (keys != null) {
-                if (!keys.getSrc_switch().isEmpty())
+                if (!keys.getSrcSwitch().isEmpty()) {
                     builder.queryParam("src_switch",
-                            URLEncoder.encode(keys.getSrc_switch(), "UTF-8"));
-                if (!keys.getSrc_port().isEmpty())
-                    builder.queryParam("src_port", URLEncoder.encode(keys.getSrc_port(), "UTF-8"));
-                if (!keys.getDst_switch().isEmpty())
+                            URLEncoder.encode(keys.getSrcSwitch(), "UTF-8"));
+                }
+                if (!keys.getSrcPort().isEmpty()) {
+                    builder.queryParam("src_port", URLEncoder.encode(keys.getSrcPort(), "UTF-8"));
+                }
+                if (!keys.getDstSwitch().isEmpty()) {
                     builder.queryParam("dst_switch",
-                            URLEncoder.encode(keys.getDst_switch(), "UTF-8"));
-                if (!keys.getDst_port().isEmpty())
-                    builder.queryParam("dst_port", URLEncoder.encode(keys.getDst_port(), "UTF-8"));
+                            URLEncoder.encode(keys.getDstSwitch(), "UTF-8"));
+                }
+                if (!keys.getDstPort().isEmpty()) {
+                    builder.queryParam("dst_port", URLEncoder.encode(keys.getDstPort(), "UTF-8"));
+                }
             }
         } catch (UnsupportedEncodingException e) {
             throw new ContentNotFoundException();
@@ -276,17 +295,16 @@ public class SwitchIntegrationService {
     /**
      * This Method is used to get switch rules.
      * 
-     * @param switchId
-     * @return
+     * @param switchId the switch id
+     * @return the switch rules
      */
     public String getSwitchRules(String switchId) {
 
         try {
-            HttpResponse response =
-                    restClientManager
-                            .invoke(applicationProperties.getSwitchRules().replace("{switch_id}",
-                                    switchId), HttpMethod.GET, "", "",
-                                    applicationService.getAuthHeader());
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl()
+                            + IConstants.NorthBoundUrl.GET_SWITCH_RULES.replace("{switch_id}", switchId),
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (Exception e) {
             LOGGER.error("Inside updateIslLinkProps  Exception :", e);
@@ -305,8 +323,8 @@ public class SwitchIntegrationService {
     public ConfiguredPort configurePort(String switchId, String port, PortConfiguration configuration) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getConfigSwitchPort().replace("{switch_id}", switchId).replace("{port_no}",
-                            port),
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.CONFIG_SWITCH_PORT
+                            .replace("{switch_id}", switchId).replace("{port_no}", port),
                     HttpMethod.PUT, objectMapper.writeValueAsString(configuration), "application/json",
                     applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {

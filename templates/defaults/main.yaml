@@ -63,6 +63,7 @@ opentsdb_flush_interval: 1
 opentsdb_workers: 1
 reroute_throttling_delay_min: 10
 reroute_throttling_delay_max: 600
+test_profile: "virtual"
 
 logging:
   # method can be file of logstash

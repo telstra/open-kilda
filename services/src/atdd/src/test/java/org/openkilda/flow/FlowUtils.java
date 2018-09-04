@@ -30,8 +30,8 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
@@ -307,7 +307,7 @@ public final class FlowUtils {
      * @param flow flow
      * @return flow path
      */
-    public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
+    public static FlowPair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
             throws InterruptedException, UnroutablePathException, RecoverableException {
         Thread.sleep(1000);
         PathComputer pathComputer = new NeoDriver(DefaultParameters.neoAuth.getDriver());

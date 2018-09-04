@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.usermanagement.util;
 
 import java.util.Collection;
@@ -5,13 +20,14 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
-
 /**
  * The Class Validator.
  */
-public final class ValidatorUtil {
 
+public final class ValidatorUtil {
+    
+    private ValidatorUtil() {
+    }
 
     /**
      * Checks if is null or empty.
@@ -22,7 +38,6 @@ public final class ValidatorUtil {
     public static boolean isNullOrEmpty(final Object obj) {
         return isNull(obj);
     }
-
 
     /**
      * Checks if is numeric.
@@ -38,7 +53,6 @@ public final class ValidatorUtil {
         return isNumeric;
     }
 
-
     /**
      * Valid length.
      *
@@ -52,7 +66,6 @@ public final class ValidatorUtil {
         }
         return false;
     }
-
 
     /**
      * Valid int range.
@@ -69,7 +82,6 @@ public final class ValidatorUtil {
         return false;
     }
 
-
     /**
      * Checks if is integer.
      *
@@ -84,7 +96,8 @@ public final class ValidatorUtil {
     }
 
     /** The Constant UUID_PATTERN. */
-    public static final String UUID_PATTERN = "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$";
+    public static final String UUID_PATTERN = 
+            "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$";
 
     /** The Constant NUMBER_PATTERN. */
     public static final String NUMBER_PATTERN = "^[0-9]*$";
@@ -92,7 +105,7 @@ public final class ValidatorUtil {
     /**
      * Checks if is valid uuid.
      *
-     * @param uuId the uu id
+     * @param uuid the uuid
      * @return the boolean
      */
     public static Boolean isValidUuid(final String uuid) {
@@ -152,19 +165,27 @@ public final class ValidatorUtil {
      * @return true, if successful
      */
     public static boolean validateEmail(final String email) {
-        String emailPattern = "^[_A-Za-z0-9-\\+]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$";
+        String emailPattern = 
+                "^[_A-Za-z0-9-\\+]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$";
         Pattern pattern = Pattern.compile(emailPattern);
         Matcher matcher = pattern.matcher(email.trim());
         return matcher.matches();
     }
 
-    private static final String ALPHA_NUMERIC_STRING = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$&*_-";
+    private static final String ALPHA_NUMERIC_STRING =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$&*_-";
 
+    /**
+     * Random alpha numeric.
+     *
+     * @param count the count
+     * @return the string
+     */
     public static String randomAlphaNumeric(final int count) {
         StringBuilder builder = new StringBuilder();
         int result = count;
         while (result-- != 0) {
-            int character = (int)(Math.random()*ALPHA_NUMERIC_STRING.length());
+            int character = (int) (Math.random() * ALPHA_NUMERIC_STRING.length());
             builder.append(ALPHA_NUMERIC_STRING.charAt(character));
         }
         return builder.toString();

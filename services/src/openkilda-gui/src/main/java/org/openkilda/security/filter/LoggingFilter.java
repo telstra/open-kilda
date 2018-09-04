@@ -1,14 +1,29 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.security.filter;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -29,26 +44,24 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class LoggingFilter extends OncePerRequestFilter {
 
-    /** The Constant _log. */
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggingFilter.class);
 
-    /** The Constant REQUEST_PREFIX. */
     private static final String REQUEST_PREFIX = "Request: ";
 
-    /** The Constant RESPONSE_PREFIX. */
     private static final String RESPONSE_PREFIX = "Response: ";
 
     /*
      * (non-Javadoc)
      *
-     * @see org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(javax.servlet.http.
-     * HttpServletRequest, javax.servlet.http.HttpServletResponse, javax.servlet.FilterChain)
+     * @see
+     * org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(
+     * javax.servlet.http. HttpServletRequest,
+     * javax.servlet.http.HttpServletResponse, javax.servlet.FilterChain)
      */
     @Override
-    protected void doFilterInternal(final HttpServletRequest request,
-            final HttpServletResponse response, final FilterChain filterChain)
-            throws ServletException, IOException {
-        if(LOGGER.isDebugEnabled()) {
+    protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response,
+            final FilterChain filterChain) throws ServletException, IOException {
+        if (LOGGER.isDebugEnabled()) {
             List<String> apis = Arrays.asList("stats/", "switch/");
 
             final long startTime = System.currentTimeMillis();
@@ -94,13 +107,12 @@ public class LoggingFilter extends OncePerRequestFilter {
      * Log request.
      *
      * @param request the request
-     * @param the
      */
     private void logRequest(final HttpServletRequest request) {
         StringBuilder msg = new StringBuilder();
-        msg.append(REQUEST_PREFIX).append("\n\tid: '").append(request.getAttribute("Id"))
-                .append("', ").append("\n\tcontent type: '").append(request.getContentType())
-                .append("', ").append("\n\turl: '").append(request.getRequestURL());
+        msg.append(REQUEST_PREFIX).append("\n\tid: '").append(request.getAttribute("Id")).append("', ")
+                .append("\n\tcontent type: '").append(request.getContentType()).append("', ").append("\n\turl: '")
+                .append(request.getRequestURL());
         if (request.getQueryString() != null) {
             msg.append('?').append(request.getQueryString());
         }
@@ -118,13 +130,12 @@ public class LoggingFilter extends OncePerRequestFilter {
      * Log response.
      *
      * @param response the response
-     * @param the
-     * @throws IOException
-     * @throws JsonMappingException
-     * @throws JsonParseException
+     * @throws JsonParseException the json parse exception
+     * @throws JsonMappingException the json mapping exception
+     * @throws IOException Signals that an I/O exception has occurred.
      */
-    private void logResponse(final ResponseWrapper response) throws JsonParseException,
-            JsonMappingException, IOException {
+    private void logResponse(final ResponseWrapper response)
+            throws JsonParseException, JsonMappingException, IOException {
         StringBuilder msg = new StringBuilder();
         msg.append(RESPONSE_PREFIX);
         msg.append("\nid: '").append((response.getId())).append("' ");
@@ -135,8 +146,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             content = new String(response.getData(), response.getCharacterEncoding());
             Object json = mapper.readValue(content, Object.class);
 
-            msg.append("\nResponse: \n").append(
-                    mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
+            msg.append("\nResponse: \n").append(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
         } catch (UnsupportedEncodingException e) {
             LOGGER.error("[logResponse] Exception: " + e.getMessage(), e);
         } catch (MismatchedInputException e) {

@@ -59,7 +59,7 @@ public class BidirectionalFlow implements Serializable {
     @JsonProperty("reverse")
     private Flow reverse;
 
-    public BidirectionalFlow(ImmutablePair<Flow, Flow> flowPair) {
+    public BidirectionalFlow(FlowPair<Flow, Flow> flowPair) {
         this(flowPair.getLeft(), flowPair.getRight());
     }
 

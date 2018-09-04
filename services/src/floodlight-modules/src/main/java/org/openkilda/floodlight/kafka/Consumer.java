@@ -64,7 +64,7 @@ public class Consumer implements Runnable {
 
     @Override
     public void run() {
-        while (true) {
+        while (!Thread.currentThread().isInterrupted()) {
             /*
              * Ensure we try to keep processing messages. It is possible that the consumer needs
              * to be re-created, either due to internal error, or if it fails to poll within the
@@ -77,6 +77,7 @@ public class Consumer implements Runnable {
             try (KafkaConsumer<String, String> consumer =
                          new KafkaConsumer<>(kafkaConfig.createKafkaConsumerProperties())) {
                 consumer.subscribe(topics);
+                logger.info("Kafka consumer: start. Topics: {}", topics);
 
                 KafkaOffsetRegistry offsetRegistry =
                         new KafkaOffsetRegistry(consumer, kafkaConfig.getAutoCommitInterval());
@@ -103,8 +104,9 @@ public class Consumer implements Runnable {
                     switchManager.safeModeTick(); // HACK alert .. should go in its own timer loop
                 }
             } catch (InterruptException ex) {
-                // Leave if the thread has been interrupted.
-                throw ex;
+                // Gracefully finish loop on thread interruption.
+                logger.warn("Kafka consumer loop has been interrupted");
+                Thread.currentThread().interrupt();
             } catch (Exception e) {
                 // Just log the exception, and start processing again with a new consumer.
                 logger.error("Exception received during main kafka consumer loop: {}", e);

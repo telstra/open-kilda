@@ -19,7 +19,6 @@ WORKDIR /app
 RUN mkdir conf/
 ADD pom.xml /app
 ADD src/ /app/src/
-ADD conf/ /app/conf/
 RUN mkdir target
 RUN mkdir /app/src/main/resources/lib/font/
 RUN mkdir /app/src/main/resources/lib/javascript/

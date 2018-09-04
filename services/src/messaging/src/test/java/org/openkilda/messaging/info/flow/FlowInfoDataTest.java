@@ -20,7 +20,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 
@@ -72,7 +72,7 @@ public class FlowInfoDataTest implements StringSerializer {
 
         FlowInfoData origin = new FlowInfoData(
                 forwardFlowThread.getFlowId(),
-                new ImmutablePair<>(forwardFlowThread, reverseFlowThread),
+                new FlowPair<>(forwardFlowThread, reverseFlowThread),
                 FlowOperation.CREATE, "unit-test-correlation-id");
 
         InfoMessage wrapper = new InfoMessage(origin, System.currentTimeMillis(), origin.getCorrelationId());
