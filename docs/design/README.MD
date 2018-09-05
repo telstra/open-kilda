@@ -38,6 +38,7 @@ PCE description.
 
 ## Floodlight
 [The document](https://github.com/telstra/open-kilda/blob/develop/docs/design/solutions/floodlight/floodlight-guaranteed-processing.md) floodlight design and implementation
+[Using multiple FL instances](fl-parallelism/)
 
 ## Storm
 [The document](storm-decouple/) contains solution for separate transport and domain level of application.

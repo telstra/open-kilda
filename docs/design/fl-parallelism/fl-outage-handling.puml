@@ -1,0 +1,73 @@
+@startuml
+title FL outage handling
+
+participant swA
+participant swB
+participant swC
+
+participant FL
+
+box "FL IO Kafka topics" #LightGreen
+control "FLn-write" as fl_write.kafka
+control "FLn-read" as fl_read.kafka
+end box
+
+participant "FL-router" as fl_router
+participant MonotonicTime as Time
+
+control kilda.topo.disco as discovery.kafka
+
+swA -> FL: connect
+swB -> FL: connect
+
+fl_router <-] : FlOutageNotification
+activate fl_router
+note right of fl_router: using data from\nswitch to FL map
+loop for switch related to failed FL
+fl_router -> discovery.kafka: switchUnmanagedNotification\nSwitchId
+end
+deactivate fl_router
+
+Time -> fl_router: tick
+activate fl_router
+fl_router -> fl_read.kafka: AliveRequest
+deactivate fl_router
+fl_read.kafka ->X FL: AliveRequest
+
+swB -> FL: disconnect
+swC -> FL: connect
+
+...
+
+Time -> fl_router: tick
+activate fl_router
+fl_router -> fl_read.kafka: AliveRequest
+deactivate fl_router
+fl_read.kafka -> FL: AliveRequest
+activate FL
+FL -> fl_write.kafka: AliveResponse
+deactivate FL
+fl_write.kafka -> fl_router: AliveResponse
+
+activate fl_router
+fl_router -> fl_read.kafka: SyncRequest
+
+fl_read.kafka -> FL: SyncRequest
+activate FL
+loop for managed switches
+    FL -> fl_write.kafka: SwitchSyncData
+end
+deactivate FL
+
+fl_write.kafka -> fl_router: swASyncData
+note right of fl_router: determine sync\nstream end
+loop proxy managed switch list
+    fl_router -> discovery.kafka: SwitchSyncData
+end 
+note right of fl_router: compare switch list\nwith previous state
+loop for disconnected switches
+    fl_router -> discovery.kafka: switchOfflineNotification\nSwitchId
+end
+deactivate fl_router
+
+@enduml

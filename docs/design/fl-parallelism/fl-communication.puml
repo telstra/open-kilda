@@ -1,0 +1,83 @@
+@startuml
+title FL communication channel
+
+collections FL
+
+box "FL IO Kafka topics" #LightGreen
+control "FLn-write" as fl_write
+control "FLn-read" as fl_read
+end box
+
+box "FL router" #LightBlue
+participant "FL-router" as fl_router
+control "speaker"
+end box
+
+box "Speaker consumers" #LightGreen
+control "topicA"
+control "topicB"
+end box
+
+== FL is message recipient ==
+
+topicA -> speaker: json
+speaker -> fl_router: json
+
+activate fl_router
+note right of fl_router: extract switch id
+alt message with reply-to topic
+    note right of fl_router: extract reply-to topic
+    fl_router -> fl_router: store mapping\ncorrelationId->reply-to
+end
+
+note right of fl_router: determine target FL\nby switchId
+alt positive case
+    fl_router -> fl_read: json
+    fl_read -> FL: json
+    activate FL
+    FL -> fl_write: FlReceiveAck
+    deactivate FL
+    fl_write -> fl_router: FlReceiveAck
+    note right of FL: handle command
+else no ack from FL
+    fl_router -> fl_read: json
+    fl_read ->X FL
+    ...
+    fl_router -> fl_router: FL ack timeout
+    fl_router -> fl_router: blacklist possible\noutdated response
+    fl_router -> topicB: NoSwitchError
+    topicB -> : json
+else no switch to FL mapping
+    fl_router -> topicB: NoSwitchError
+    topicB -> : json
+end
+deactivate fl_router
+
+== FL is message origin ==
+
+opt response is blacklisted
+    FL -> fl_write: json
+    fl_write -> fl_router: json
+    activate fl_router
+    note right of fl_router: check blacklist
+    fl_router ->X fl_router: drop message
+    deactivate fl_router
+end
+
+FL -> fl_write: json
+fl_write -> fl_router: json
+activate fl_router
+note right of fl_router: extract SwitchId
+fl_router -> fl_router: update SwitchId\nto FL map
+alt we have stored output topic
+    note right of fl_router: lookup stored\noutput topic
+    fl_router -> topicA: json
+    topicA -> :json
+else
+    fl_router -> fl_router: determine output\ntopic by message kind
+    fl_router -> topicB: json
+    topicB -> :json
+end
+deactivate fl_router
+
+@enduml
