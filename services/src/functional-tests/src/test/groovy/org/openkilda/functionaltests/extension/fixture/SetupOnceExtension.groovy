@@ -14,7 +14,7 @@ import org.spockframework.runtime.model.SpecInfo
 class SetupOnceExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo specInfo) {
         def setupRan = false
-        specInfo.allFixtureMethods*.addInterceptor new AbstractMethodInterceptor() {
+        specInfo.setupMethods*.addInterceptor new AbstractMethodInterceptor() {
             @Override
             void interceptSetupMethod(IMethodInvocation invocation) throws Throwable {
                 if (!setupRan) {
@@ -22,9 +22,9 @@ class SetupOnceExtension extends AbstractGlobalExtension {
                     if (spec instanceof SetupOnce) {
                         spec.setupOnce()
                         setupRan = true
-                        invocation.proceed()
                     }
                 }
+                invocation.proceed()
             }
         }
     }

@@ -16,7 +16,8 @@ class Wrappers {
      * @return result of the body execution
      * @throws MultipleFailureException if closure fails to execute in given amount of tries.
      */
-    def static retry(int times = 5, double retryInterval = 2, Closure handler = { e -> log.debug(e) }, Closure body) {
+    def static retry(int times = 5, double retryInterval = 2, Closure handler = { e -> log.debug("retry failed", e) },
+                     Closure body) {
         int retries = 0
 
         List<Throwable> ex = []

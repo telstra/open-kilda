@@ -1,0 +1,45 @@
+input {
+  tcp {
+    port => {{ getv "/kilda_logging_port_topology_engine" }}
+    codec => json
+    type => "kilda-TE"
+  }
+  tcp {
+    port => {{ getv "/kilda_logging_port_storm" }}
+    codec => json
+    type => "kilda-storm"
+  }
+  tcp {
+    port => {{ getv "/kilda_logging_port_floodlight" }}
+    codec => json_lines
+    type => "kilda-FL"
+  }
+  tcp {
+    port => {{ getv "/kilda_logging_port_topology_engine_rest" }}
+    codec => json
+    type => "kilda-TER"
+  }
+  tcp {
+    port => {{ getv "/kilda_logging_port_mininet" }}
+    codec => json
+    type => "kilda-MN"
+  }
+  tcp {
+    port => {{ getv "/kilda_logging_port_northbound" }}
+    codec => json
+    type => "kilda-NB"
+  }
+}
+
+filter {
+  ruby {
+    code => "
+      event.to_hash.keys.each { |k| event[ k.sub('.','_') ] = event.remove(k) if k.include?'.' }
+    "
+  }
+}
+output {
+  elasticsearch {
+    hosts => "{{ getv "/kilda_logging_elasticsearch_hosts" }}"
+  }
+}

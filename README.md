@@ -135,75 +135,69 @@ make up-test-mode
 make atdd
 ```
 
-### How to use ansible for config/properties templating
+### How to use confd for config/properties templating
 
-We have ansible playbook for managing config/properties files from templates which is 
-placed in templates/ folder.
-This playbook contains three files with variables.
-One for default options (like endpoints, all defaults should be here): templates/defaults/main.yaml
-and second one for paths of template and destinations: templates/vars/path.yaml
-and last one for overriding defaults: templates/vars/vars.yaml
+Pre-requirements: you need confd version v0.14.0+ for processing yams/json as backend. You can download it from [official confd site](https://github.com/kelseyhightower/confd/blob/master/docs/installation.md)
 
-For now default options are the same which was before this playbook implementation and suitable for
-docker-compose build.
+We have confd for managing config/properties files from templates. Confd configs, templates and variable file stored in confd/ folder.
+`confd/conf.d/*.toml` - files with desctiption how to process templates (src. path, dst.path.... etc)
+`confd/templates/*/*.tmpl` - templates in go-template format
+`confd/vars/main.yaml` - file with all variables substituted in templates
 
 #### How should I add new template
 
-Pre-requirements:
-You have to add `localhost ansible_connection=local` to /etc/ansible/hosts
-
-1. create and place jinja template file to templates/templates/ folder
-2. add it to templates/vars/path.yaml
-3. change (if needed) vars in templates/defaults/main.yaml
-4. run: `make update-props-dryrun` for checking that template behaviour is ok
+1. create and place template file to confd/templates/ folder
+2. create and place template description in confd/conf.d/ filder
+3. change (if needed) vars in confd/main.yaml
+4. run: `make update-props-dryrun` for checking that templates can be processed
 5. run: `make update-props` for applying templates
 
-#### How should I change/add/override default var values
-1. Add new vars, edit: templates/defaults/main.yaml
-2. If you need override default vars, edit: templates/vars/vars.yaml
-2. run: `make update-props-dryrun` for checking that template behaviour is ok
-3. run: `make update-props` for applying templates
-
 #### Common use cases
-An exmaplte, you already have neo4j server, and want to use it instead of dockerized neo4j.
-You can add neo4j endpoints to templates/defaults/main.yaml and create properties template for
-services which use neo4j:
+An exmaplte, you already have neo4j server, and want to use it instead of dockerized neo4j. You can add neo4j endpoints to confd/vars/main.yaml and create properties template for services which use neo4j:
 
-templates/defaults/main.yaml:
+confd/conf.d/topology_engine.application.toml:
 ```
-neo4j_host: "neo4j"
-neo4j_user: "neo4j"
-neo4j_password: "temppass"
+[template]
+src = "topology-engine/topology_engine.ini.tmpl"
+dest = "services/topology-engine/queue-engine/topology_engine.ini"
+keys = [ "/" ]
+mode = "0644"
 ```
 
-templates/templates/topology-engine/topology_engine.properties.j2:
+confd/vars/main.yaml:
+```
+kilda_neo4j_host: "neo4j"
+kilda_neo4j_user: "neo4j"
+kilda_neo4j_password: "temppass"
+```
+
+confd/templates/topology-engine/topology_engine.ini.tmpl
 ```
 [kafka]
-consumer.group=python-tpe-tl-consumer
-topology.topic={{ kafka_topic }}
-bootstrap.servers={{ kafka_hosts }}
+consumer.group={{ getv "/kilda_kafka_te_consumer_group" }}
+flow.topic={{ getv "/kilda_kafka_topic_flow" }}
+cache.topic={{ getv "/kilda_kafka_topic_topo_cache" }}
+speaker.topic={{ getv "/kilda_kafka_topic_speaker" }}
+topo.eng.topic={{ getv "/kilda_kafka_topic_topo_eng" }}
+northbound.topic={{ getv "/kilda_kafka_topic_northbound" }}
+bootstrap.servers={{ getv "/kilda_kafka_hosts" }}
+environment.naming.prefix = {{ getv "/kilda_environment_naming_prefix" }}
 
 [gevent]
-worker.pool.size=1024
+worker.pool.size={{ getv "/kilda_worker_pool_size" }}
 
 [zookeeper]
-hosts={{ zookeeper_hosts }}
+hosts={{ getv "/kilda_zookeeper_hosts" }}
 
 [neo4j]
-host={{ neo4j_host }}
-user={{ neo4j_user }}
-pass={{ neo4j_password }}
-```
-
-templates/vars/path.yaml:
-```
-  - topology_engine_properties:
-    dest: services/topology-engine/queue-engine/topology_engine.properties
-    tmpl: templates/topology-engine/topology_engine.properties.j2
+host={{ getv "/kilda_neo4j_host" }}
+user={{ getv "/kilda_neo4j_user" }}
+pass={{ getv "/kilda_neo4j_password" }}
+socket.timeout=30
 ```
 
 In this example we will generate file services/topology-engine/queue-engine/topology_engine.properties 
-from template templates/topology-engine/topology_engine.properties.j2
+from template confd/templates/topology-engine/topology_engine.ini.tmpl
 
 ### How enable travis CI
 Someone with admin rights should log in using github account to https://travis-ci.org and on the page 

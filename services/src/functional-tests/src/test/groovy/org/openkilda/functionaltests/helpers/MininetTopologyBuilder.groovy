@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.aswitch.ASwitchService
 import org.openkilda.testing.service.aswitch.model.ASwitchFlow
@@ -49,6 +50,13 @@ class MininetTopologyBuilder {
             }
         }
         northbound.toggleFeature(features)
+
+        //wait until topology is discovered
+        assert Wrappers.wait(5) {
+            northbound.getAllLinks().findAll {
+                it.state == IslChangeType.DISCOVERED
+            }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
+        }
     }
 
     /**
