@@ -28,7 +28,7 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
             //delete any existing mininet topologies
             mininet.deleteTopology()
             mininetTopology.buildVirtualEnvironment()
-            log.info("Virtual environment successfully created")
+            log.info("Virtual topology successfully created")
         }
     }
 

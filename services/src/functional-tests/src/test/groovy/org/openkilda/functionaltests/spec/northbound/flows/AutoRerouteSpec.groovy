@@ -4,14 +4,14 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.model.SwitchId
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.switches.PortDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 
 class AutoRerouteSpec extends BaseSpecification {
     @Autowired
@@ -25,7 +25,10 @@ class AutoRerouteSpec extends BaseSpecification {
     @Autowired
     NorthboundService northboundService
 
-    def flowStatusTimeout = 7
+    @Value('${reroute.delay}')
+    int rerouteDelay
+    @Value('${discovery.interval}')
+    int discoveryInterval
 
     def "Flow should go Down when its link fails and there is no ability to reroute"() {
         given: "A flow"
@@ -37,28 +40,30 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Ports that lead to alternative paths are brought down to deny alternative paths"
         def altPaths = allPaths.findAll { it != currentPath }
-        List<PortDto> broughtDownPorts = altPaths.collect { path ->
+        List<PathNode> broughtDownPorts = []
+        altPaths.unique { it.first() }.each { path ->
             def src = path.first()
-            def dst = path.last()
-            [northboundService.portDown(src.switchId, src.portNo),
-             northboundService.portDown(dst.switchId, dst.portNo)]
-        }.flatten()
+            broughtDownPorts.add(src)
+            northboundService.portDown(src.switchId, src.portNo)
+        }
 
         when: "One of the flow's ISLs goes down"
         def isl = pathHelper.getInvolvedIsls(currentPath).first()
         northboundService.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Down'"
-        Wrappers.wait(flowStatusTimeout) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + 2) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "ISL goes back up"
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Up'"
-        Wrappers.wait(flowStatusTimeout) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(rerouteDelay + discoveryInterval + 3) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+        }
 
         and: "Restore topology to original state, remove flow"
-        broughtDownPorts.each { northboundService.portUp(new SwitchId(it.switchId), it.portNumber) }
+        broughtDownPorts.each { northboundService.portUp(it.switchId, it.portNo) }
         northboundService.deleteFlow(flow.id)
         //TODO(rtretiak): restore costs that were changed due to portdowns
     }
