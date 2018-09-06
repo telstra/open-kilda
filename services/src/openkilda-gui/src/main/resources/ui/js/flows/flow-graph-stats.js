@@ -11,8 +11,7 @@
 
 var flowid = window.location.href.split("#")[1];
 var graphInterval;
-$(function() {
-				
+$(function() {				
 		var count = 0;
 		$("#datetimepicker7,#datetimepicker8").on("change",function(event) {
 			count++;
@@ -26,16 +25,24 @@ $(function() {
 		$("#downsampling,#menulist,#autoreload,#directionlist").on("change",function(event) {
 				getGraphData();	
 		});
+		
 		$('#reverseFromdatepicker,#reverseTodatepicker').on('change',function(event){
-			var fromDateVal = $('#reverseFromdatepicker').val();
-			var fromDate =new Date(fromDateVal);
-			var toDateval = $('#reverseTodatepicker').val();
-			var toDate = new Date(toDateval);
+			var fromDate =new Date($('#reverseFromdatepicker').val());
+			var toDate = new Date($('#reverseTodatepicker').val());
+			if(moment(fromDate).isAfter(toDate)){
+				common.infoMessage("Start date can not be after End date",'error');
+				return;
+			}
 			loadReverseGraph(fromDate,toDate);
+			
 		})
 		$('#forwardFromdatepicker,#forwardTodatepicker').on('change',function(event){
 			var fromDate = new Date($('#forwardFromdatepicker').val());
 			var toDate = new Date($('#forwardTodatepicker').val());
+			if(moment(fromDate).isAfter(toDate)){
+				common.infoMessage("Start date can not be after End date",'error');
+				return;
+			}
 			loadForwardGraph(fromDate,toDate);
 		})
 		$('#timezoneForward').on('change',function(){
@@ -54,7 +61,7 @@ $(function() {
 				$('#forwardFromdatepicker').val(startDate);
 				$('#forwardTodatepicker').val(endDate)
 			}
-			loadForwardGraph(startDate,endDate);
+			loadForwardGraph(new Date(startDate),new Date(endDate));
 		})
 		$('#timezoneReverse').on('change',function(){
 			var timezone = $('#timezoneReverse option:selected').val();
@@ -72,7 +79,7 @@ $(function() {
 				$('#reverseFromdatepicker').val(startDate);
 				$('#reverseTodatepicker').val(endDate)
 			}
-			loadReverseGraph(startDate,endDate);
+			loadReverseGraph(new Date(startDate),new Date(endDate));
 		})
 		$('#timezone').on('change',function(){
 			var timezone = $('#timezone option:selected').val();
@@ -312,7 +319,7 @@ function computeGraphData(data,startDate,endDate,type,timezone) {
 					   labels.push(metric);
 					   var colorCode = getColorCode(j,color);
 			            color.push(colorCode);
-					   var k = 0;
+					   var k = 1;
 					   for(i in dataValues) {
 
 				            if(dataValues[i]<0){
@@ -336,7 +343,7 @@ function computeGraphData(data,startDate,endDate,type,timezone) {
 					   metric = metric + "("+data[j].tags.flowid+")";
 					   labels.push(metric);
 					   color.push("#aad200");
-					   var k = 0;
+					   var k = 1;
 					   for(i in dataValues) {
 
 				            if(dataValues[i]<0){
@@ -376,6 +383,7 @@ function computeGraphData(data,startDate,endDate,type,timezone) {
 			}
 			graphData.push(arr);
 		}
+	 
 	  return {labels:labels,data:graphData,color:color};
 }
 function loadPathGraph(data,startDate,endDate,type,timezone){

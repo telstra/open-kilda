@@ -122,9 +122,10 @@ public final class UserConversionUtil {
      * @param userInfo the user info
      * @param userEntity the user entity
      */
-    public static void toUpateUserEntity(final UserInfo userInfo, final UserEntity userEntity) {
+    public static void toUpateUserEntity(final UserInfo userInfo, final UserEntity userEntity,final StringBuilder activityMessage) {
         if (!ValidatorUtil.isNull(userInfo.getName())) {
             userEntity.setName(userInfo.getName());
+            activityMessage.append("username:" + userInfo.getName() + "\n");
         }
 
         if (!ValidatorUtil.isNull(userInfo.getStatus())) {
@@ -135,10 +136,19 @@ public final class UserConversionUtil {
                 userEntity.setActiveFlag(false);
             }
             userEntity.setStatusEntity(status.getStatusEntity());
+            activityMessage.append("status:" + userInfo.getStatus() + "\n");
         }
-
+        if (!ValidatorUtil.isNull(userInfo.getIs2FaEnabled())) {
+            if (!userInfo.getIs2FaEnabled()) {
+                userEntity.setIs2FaConfigured(false);
+                userEntity.setTwoFaKey(null);
+            }
+            userEntity.setIs2FaEnabled(userInfo.getIs2FaEnabled());
+            activityMessage.append("2FA status:" + userInfo.getIs2FaEnabled() + "\n");
+        }
         if (!ValidatorUtil.isNull(userInfo.getPassword())) {
             userEntity.setPassword(StringUtil.encodeString(userInfo.getPassword()));
+            activityMessage.append("password" + "\n");
         }
         userEntity.setUpdatedDate(new Date());
     }

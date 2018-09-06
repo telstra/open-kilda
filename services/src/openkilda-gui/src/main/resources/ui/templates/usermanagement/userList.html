@@ -46,29 +46,18 @@
       <div class="form-group row">
          <label for="role" class="col-sm-2 text-right">Role:</label> 
          <div class="col-sm-6">
-         	<!-- <input name="role" type="text" class="form-control" placeholder="Role" onkeyup="removeError(this)" /> -->
          	<select name="userRoles[]" id="userRoleToSelect" multiple="multiple">                
          	</select> 
 			<span id="userRoleToSelectError" class="error" style="display: none; color: red;">Role is required.</span>
          </div>
       </div>
-    <!--<div class="form-group row" id="pswd">
-         <label for="password" class="col-sm-2 text-right">Password:</label>
+      <div class="form-group row">
+      	<label for="role" class="col-sm-2 text-right"></label> 
          <div class="col-sm-6">
-         	<input name="password" type="password" class="form-control" placeholder="Password" onkeyup="removeError(this);removePasswordError(this)" /> 
-         	<span id="passwordError" class="error" style="display: none; color: red;">Password is required.</span>
-         	<span id="passwordInvalid" class="error" style="display: none; color: red;">Password complexity does not matched..</span>
-         </div>  
+         	<input type="checkbox" name="is2FaEnabled" id="is2FaEnabled" />
+         	<span class="text-right">Enable 2FA</span> 
+         </div>
       </div>
-      <div class="form-group row" id="cpswd">
-         <label for="confirmPassword" class="col-sm-2 text-right">Confirm Password:</label>
-         <div class="col-sm-6">
-         	<input name="confirmPassword" type="password" class="form-control" placeholder="Confirm password" onkeyup="removeError(this);removePasswordError(this)" /> 
-         	<span id="confirmPasswordError" class="error" style="display: none; color: red;">Confirm password is required.</span>
-         	<span id="confirmPasswordInvalid" class="error" style="display: none; color: red;">Password complexity does not matched.</span>
-         	<span id="pwdMismatchError" class="error" style="display: none; color: red;">Passwords are not same.</span>
-         </div>  
-      </div>  -->
       <div class="form-group row">
          <div class="col-sm-8 text-right">
 	         <button id="closeUserForm" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
