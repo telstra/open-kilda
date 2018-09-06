@@ -31,6 +31,9 @@ import java.util.Map;
 
 @Component
 public class DatabaseNeoImpl implements DisposableBean, Database {
+    private static final String MATCH_LINK_QUERY = "MATCH ()-[link:isl {src_port:$srcPort, dst_port:$dstPort, "
+            + "src_switch:$srcSwitch, dst_switch:$dstSwitch}]->()";
+
     private Driver neo;
 
     public DatabaseNeoImpl(@Value("${neo.uri}") String neoUri) {
@@ -51,8 +54,7 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
      */
     @Override
     public boolean updateLinkProperty(Isl isl, String property, Object value) {
-        String query = "MATCH ()-[link:isl {src_port:$srcPort, dst_port:$dstPort, src_switch:$srcSwitch, "
-                + "dst_switch:$dstSwitch}]->() SET link += {props}";
+        String query = MATCH_LINK_QUERY + " SET link += {props}";
         Map<String, Object> params = getParams(isl);
         params.put("props", ImmutableMap.of(property, value));
         StatementResult result;
@@ -70,8 +72,7 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
      */
     @Override
     public boolean revertIslBandwidth(Isl isl) {
-        String query = "MATCH ()-[link:isl {src_port:$srcPort, dst_port:$dstPort, src_switch:$srcSwitch, "
-                + "dst_switch:$dstSwitch}]->() SET link.max_bandwidth=link.speed, link.available_bandwidth=link.speed";
+        String query = MATCH_LINK_QUERY + " SET link.max_bandwidth=link.speed, link.available_bandwidth=link.speed";
         Map<String, Object> params = getParams(isl);
         StatementResult result;
         try (Session session = neo.session()) {
@@ -98,6 +99,23 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
             result = session.run(query);
         }
         return result.summary().counters().nodesDeleted() > 0;
+    }
+
+    /**
+     * Get ISL cost.
+     *
+     * @param isl ISL for which cost should be retrieved
+     * @return ISL cost
+     */
+    @Override
+    public int getIslCost(Isl isl) {
+        String query = MATCH_LINK_QUERY + " RETURN link.cost";
+        Map<String, Object> params = getParams(isl);
+        StatementResult result;
+        try (Session session = neo.session()) {
+            result = session.run(query, params);
+        }
+        return result.single().get("link.cost").asInt();
     }
 
     private Map<String, Object> getParams(Isl isl) {
