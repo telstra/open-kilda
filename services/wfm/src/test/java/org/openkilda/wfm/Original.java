@@ -91,7 +91,8 @@ public class Original {
         topicCountMap.put(topic, 1);
         ConsumerConfig consumerConfig = new ConsumerConfig(props);
         consumerConnector = Consumer.createJavaConsumerConnector(consumerConfig);
-        Map<String, List<KafkaStream<String, String>>> consumers = consumerConnector.createMessageStreams(topicCountMap, new StringDecoder(null), new StringDecoder(null));
+        Map<String, List<KafkaStream<String, String>>> consumers =
+                consumerConnector.createMessageStreams(topicCountMap, new StringDecoder(null), new StringDecoder(null));
         KafkaStream<String, String> stream = consumers.get(topic).get(0);
         return stream.iterator();
     }

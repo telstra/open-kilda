@@ -19,7 +19,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.model.AvailableNetwork;
 
@@ -57,7 +57,7 @@ public interface PathComputer extends Serializable {
      * @param network prepared network where searching will be performed.
      * @return {@link PathInfoData} instances
      */
-    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
+    FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
             throws UnroutablePathException, RecoverableException;
 
     /**
@@ -66,7 +66,7 @@ public interface PathComputer extends Serializable {
      * @param flow {@link Flow} instances
      * @return {@link PathInfoData} instances
      */
-    ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
+    FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
             throws UnroutablePathException, RecoverableException;
 
     /**
@@ -94,9 +94,7 @@ public interface PathComputer extends Serializable {
      *
      * @return the Flow if it exists, null otherwise.
      */
-    default List<Flow> getFlow(String flowId) {
-        return null;
-    }
+    List<Flow> getFlow(String flowId);
 
     /*
      * @return all flows (forward and reverse) by id, if exist.

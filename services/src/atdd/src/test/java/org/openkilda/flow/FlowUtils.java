@@ -30,8 +30,8 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.model.ImmutablePair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
@@ -41,8 +41,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.flows.VerificationInput;
-import org.openkilda.northbound.dto.flows.VerificationOutput;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;
@@ -57,7 +57,6 @@ import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.glassfish.jersey.jackson.JacksonFeature;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -308,7 +307,7 @@ public final class FlowUtils {
      * @param flow flow
      * @return flow path
      */
-    public static ImmutablePair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
+    public static FlowPair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
             throws InterruptedException, UnroutablePathException, RecoverableException {
         Thread.sleep(1000);
         PathComputer pathComputer = new NeoDriver(DefaultParameters.neoAuth.getDriver());
@@ -532,32 +531,10 @@ public final class FlowUtils {
         try {
             Set<String> flows = new HashSet<>();
 
-            // TODO: This method started with getting counts and compariing, but that shouldn't be
-            //          the responsibility of this method given its name - cleanupFlows.
-            //          So, the TODO is to determine whether this code exists elsewhere in tests,
-            //          and if not, move it somewhere after, or part of, create test.
+            getFlowDump().forEach(flow -> flows.add(flow.getId()));
+            dumpFlows().forEach(flow -> flows.add(flow.getFlowId()));
 
-            // Get the flows through the NB API
-            List<FlowPayload> nbFlows = getFlowDump();
-            System.out.println(format("=====> Cleanup Flows, nbflow count = %d",
-                    nbFlows.size()));
-
-            nbFlows.forEach(flow -> flows.add(flow.getId()));
-
-            // Get the flows through the TE Rest API ... loop until the math works out.
-            List<Flow> tpeFlows = new ArrayList<>();
-            for (int i = 0; i < 10; ++i) {
-                tpeFlows = dumpFlows();
-                if (tpeFlows.size() == nbFlows.size() * 2) {
-                    tpeFlows.forEach(flow -> flows.add(flow.getFlowId()));
-                    break;
-                }
-                TimeUnit.SECONDS.sleep(2);
-            }
-            System.out.println(format("=====> Cleanup Flows, tpeFlows count = %d",
-                    tpeFlows.size()));
-
-            // Delete all the flows
+            System.out.println(format("=====> Cleanup Flows - going to drop %d flows", flows.size()));
             flows.forEach(FlowUtils::deleteFlow);
 
             // Wait for them to become zero
@@ -574,12 +551,6 @@ public final class FlowUtils {
 
             assertEquals(0, nbCount);
             assertEquals(0, terCount);
-
-        // (crimi) - it is unclear why we are doing a count validation here .. it makes sense to do this
-        // in the creation. But on cleanup, we just want things to be zero.
-        //            assertEquals(nbFlows.size() * 2, tpeFlows.size());
-        //            assertEquals(nbFlows.size(), flows.size());
-
         } catch (Exception exception) {
             System.out.println(format("Error during flow deletion: %s", exception.getMessage()));
             exception.printStackTrace();
@@ -824,7 +795,7 @@ public final class FlowUtils {
     /**
      * Method verifyFlow.
      */
-    public static VerificationOutput verifyFlow(String flowId, VerificationInput payload) {
+    public static PingOutput verifyFlow(String flowId, PingInput payload) {
         long currentTime = System.currentTimeMillis();
         String correlationId = String.valueOf(currentTime);
 
@@ -843,7 +814,7 @@ public final class FlowUtils {
 
         int responseCode = response.getStatus();
         if (responseCode == 200) {
-            VerificationOutput result = response.readEntity(VerificationOutput.class);
+            PingOutput result = response.readEntity(PingOutput.class);
             System.out.println(format("====> Northbound VERIFY Flow = %s", result));
             return result;
         } else {

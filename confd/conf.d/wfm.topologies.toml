@@ -1,0 +1,5 @@
+[template]
+src = "wfm/topology.properties.tmpl"
+dest = "services/wfm/src/main/resources/topology.properties"
+keys = [ "/" ]
+mode = "0644"

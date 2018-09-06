@@ -364,7 +364,6 @@
     <suppress files="src/main/java/org/openkilda/messaging/model/Metric.java" lines="173" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/messaging/model/Metric.java" lines="174" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/messaging/model/Metric.java" lines="175" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/ImmutablePair.java" lines="56" checks="OperatorWrap"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowPayload.java" lines="73" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowPayload.java" lines="210" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/messaging/payload/flow/FlowPayload.java" lines="218" checks="SummaryJavadoc"/>
@@ -421,7 +420,4 @@
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="24" checks="RedundantImport"/>
     <suppress files="src/test/java/org/openkilda/messaging/command/discovery/DiscoverISLCommandDataTest.java" lines="28" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="53" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/BidirectionalFlow.java" lines="64" checks="JavadocMethod"/>
 </suppressions>

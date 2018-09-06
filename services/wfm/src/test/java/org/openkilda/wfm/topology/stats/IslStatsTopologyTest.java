@@ -15,11 +15,11 @@
 
 package org.openkilda.wfm.topology.stats;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.OutputCollectorMock;
-import org.openkilda.wfm.topology.islstats.IslStatsTopology;
+
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,7 +47,7 @@ public class IslStatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void IslStatsTopologyTest() throws Exception {
+    public void islStatsTopologyTest() throws Exception {
 
     }
 }

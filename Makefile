@@ -2,7 +2,7 @@
 default: build-latest run-dev
 
 build-base:
-	base/hacks/shorm.requirements.download.sh
+	base/hacks/storm.requirements.download.sh
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 	docker build -t kilda/zookeeper:latest services/zookeeper
 	docker build -t kilda/kafka:latest services/kafka
@@ -31,7 +31,7 @@ up-test-mode:
 up-log-mode: up-test-mode
 	docker-compose logs -f
 
-# keeping run-test for backwards compatibility (documentation) .. should depracate
+# keeping run-test for backwards compatibility (documentation) .. should deprecate
 run-test: up-log-mode
 
 clean-sources:
@@ -49,7 +49,6 @@ update-msg:
 	mvn -f services/src/messaging/pom.xml install -DskipTests
 
 update: update-parent update-msg update-pce
-
 
 compile:
 	$(MAKE) -C services/src
@@ -72,13 +71,15 @@ avoid-port-conflicts:
 clean-test:
 	docker-compose down
 	docker-compose rm -fv
-	docker volume list -q | grep kilda | xargs docker volume rm
+	docker volume list -q | grep kilda | xargs -r docker volume  rm
+
+clean: clean-sources clean-test
 
 update-props:
-	ansible-playbook -D -s config.yml
+	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only
 
 update-props-dryrun:
-	ansible-playbook -D -C -v -s config.yml
+	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only -noop
 
 # NB: To override the default (localhost) kilda location, you can make a call like this:
 #		cd services/src/atdd && \
@@ -119,3 +120,4 @@ sec: update
 .PHONY: up-test-mode up-log-mode run-test clean-test
 .PHONY: atdd smoke perf sec
 .PHONY: clean-sources unit update
+.PHONY: clean

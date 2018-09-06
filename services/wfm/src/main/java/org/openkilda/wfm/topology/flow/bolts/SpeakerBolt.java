@@ -25,9 +25,6 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.flow.UniFlowVerificationResponse;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.topology.flow.FlowTopology;
@@ -37,7 +34,6 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
@@ -50,11 +46,6 @@ import java.util.Map;
  * Speaker Bolt. Processes replies from OpenFlow Speaker service.
  */
 public class SpeakerBolt extends BaseRichBolt {
-    public static final String FIELD_ID_INPUT = "input";
-    public static final String FIELD_ID_PAYLOAD = "payload";
-
-    public static final String STREAM_VERIFICATION_ID = "verification";
-    public static final Fields STREAM_VERIFICATION_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_INPUT);
     /**
      * The logger.
      */
@@ -77,11 +68,6 @@ public class SpeakerBolt extends BaseRichBolt {
 
             Message message = MAPPER.readValue(request, Message.class);
             logger.debug("Request tuple={}", tuple);
-
-            if (message instanceof InfoMessage) {
-                handleInfoMessage(tuple, (InfoMessage) message);
-                return;
-            }
 
             if (!Destination.WFM_TRANSACTION.equals(message.getDestination())) {
                 return;
@@ -157,17 +143,6 @@ public class SpeakerBolt extends BaseRichBolt {
         }
     }
 
-    private void handleInfoMessage(Tuple input, InfoMessage message) {
-        InfoData rawPayload = message.getData();
-
-        if (rawPayload instanceof UniFlowVerificationResponse) {
-            Values proxyData = new Values(rawPayload, message);
-            outputCollector.emit(STREAM_VERIFICATION_ID, input, proxyData);
-        } else {
-            logger.debug("Unhandled InfoMessage with payload type: {}", rawPayload.getClass().getName());
-        }
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -178,7 +153,6 @@ public class SpeakerBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(
                 StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatus);
-        outputFieldsDeclarer.declareStream(STREAM_VERIFICATION_ID, STREAM_VERIFICATION_FIELDS);
     }
 
     /**

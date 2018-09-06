@@ -5,6 +5,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
@@ -17,6 +18,8 @@ class PathHelper {
     TopologyDefinition topology
     @Autowired
     NorthboundService northbound
+    @Autowired
+    Database db
 
     /**
      * Selects ISL that is present only in less preferable path and is not present in more preferable one. Then
@@ -58,10 +61,10 @@ class PathHelper {
             def src = path[i - 1]
             def dst = path[i]
             def involvedIsl = topology.isls.find {
-                (it.srcSwitch.dpId == src.switchId && it.srcPort == src.portNo && it.dstPort == dst.portNo &&
-                        it.dstSwitch.dpId == dst.switchId) ||
-                        (it.dstSwitch.dpId == src.switchId && it.dstPort == src.portNo && it.srcPort == dst.portNo &&
-                                it.srcSwitch.dpId == dst.switchId)
+                (it.srcSwitch?.dpId == src.switchId && it?.srcPort == src.portNo &&
+                        it.dstPort == dst.portNo && it.dstSwitch.dpId == dst.switchId) ||
+                        (it.dstSwitch?.dpId == src.switchId && it?.dstPort == src.portNo &&
+                                it.srcPort == dst.portNo && it.srcSwitch.dpId == dst.switchId)
             } ?: Isl.factory(topology.switches.find { it.dpId == src.switchId },
                     src.portNo, topology.switches.find { it.dpId == dst.switchId }, dst.portNo, 0, null)
             involvedIsls << involvedIsl
@@ -87,5 +90,25 @@ class PathHelper {
         pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
         pathNodes.each { it.seqId = seqId++ } //set valid seqId indexes
         return pathNodes
+    }
+
+    /**
+     * Get cost of a certain ISL from DB.
+     *
+     * @param isl ISL for which cost should be retrieved
+     * @return ISL cost
+     */
+    int getCost(Isl isl) {
+        return db.getIslCost(isl)
+    }
+
+    /**
+     * Get total cost of all ISLs that are involved in a given path.
+     *
+     * @param path Path in List<PathNode> representation
+     * @return ISLs cost
+     */
+    int getCost(List<PathNode> path) {
+        return getInvolvedIsls(path).sum { getCost(it) }
     }
 }

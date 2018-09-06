@@ -6,6 +6,20 @@ workers = 1
 kafka.hosts = kafka.pendev:9092
 kafka.partitions.default = 1
 kafka.replication.default = 3
+kafka.topic.ctrl = kilda.ctrl
+kafka.topic.flow = kilda.flow
+kafka.topic.flow.status = kilda.flow.status
+kafka.topic.ping = kilda.ping
+kafka.topic.health.check = kilda.health.check
+kafka.topic.northbound = kilda.northbound
+kafka.topic.opentsdb = kilda.otsdb
+kafka.topic.simulator = kilda.simulator
+kafka.topic.speaker = kilda.speaker
+kafka.topic.stats = kilda.stats
+kafka.topic.topo.cache = kilda.topo.cache
+kafka.topic.topo.disco = kilda.topo.disco
+kafka.topic.topo.eng = kilda.topo.eng
+kafka.topic.topo.nbworker = kilda.topo.nb
 
 reroute.throttling.delay.min = 10
 reroute.throttling.delay.max = 600
@@ -47,6 +61,13 @@ discovery.limit = -1
 discovery.speaker-failure-timeout = 5
 discovery.dump-request-timeout-seconds=60
 discovery.keep.removed.isl = 60
+
+# all following ping intervals are in seconds
+#flow.ping.scale-factor = 2
+#flow.ping.interval = 10
+#flow.ping.timeout = 2
+#flow.ping.fail.delay = 45
+#flow.ping.fail.reset = 1800
 
 local = no
 local.execution.time = 300

@@ -22,7 +22,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.Utils;
@@ -58,14 +58,14 @@ public class FlowCache extends Cache {
     /**
      * Flow pool.
      */
-    private final Map<String, ImmutablePair<Flow, Flow>> flowPool = new ConcurrentHashMap<>();
+    private final Map<String, FlowPair<Flow, Flow>> flowPool = new ConcurrentHashMap<>();
 
     /**
      * Fills cache.
      *
      * @param flows flows
      */
-    public void load(Set<ImmutablePair<Flow, Flow>> flows) {
+    public void load(Set<FlowPair<Flow, Flow>> flows) {
         logger.debug("Flows: {}", flows);
         flows.forEach(this::putFlow);
     }
@@ -84,7 +84,7 @@ public class FlowCache extends Cache {
      * @param flow flow
      * @return previous flow
      */
-    public ImmutablePair<Flow, Flow> putFlow(ImmutablePair<Flow, Flow> flow) {
+    public FlowPair<Flow, Flow> putFlow(FlowPair<Flow, Flow> flow) {
         return flowPool.put(flow.getLeft().getFlowId(), flow);
     }
 
@@ -94,7 +94,7 @@ public class FlowCache extends Cache {
      * @param flowId flow id
      * @return removed flow
      */
-    public ImmutablePair<Flow, Flow> removeFlow(String flowId) {
+    public FlowPair<Flow, Flow> removeFlow(String flowId) {
         return flowPool.remove(flowId);
     }
 
@@ -103,7 +103,7 @@ public class FlowCache extends Cache {
      *
      * @param flow The flow to track / allocate.
      */
-    public void pushFlow(ImmutablePair<Flow, Flow> flow) {
+    public void pushFlow(FlowPair<Flow, Flow> flow) {
         resourceCache.allocateFlow(flow);
         putFlow(flow);
     }
@@ -126,7 +126,7 @@ public class FlowCache extends Cache {
      * @param switchId switch id
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(SwitchId switchId) {
+    public Set<FlowPair<Flow, Flow>> getActiveFlowsWithAffectedPath(SwitchId switchId) {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
@@ -143,7 +143,7 @@ public class FlowCache extends Cache {
      * @param islData isl
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(IslInfoData islData) {
+    public Set<FlowPair<Flow, Flow>> getActiveFlowsWithAffectedPath(IslInfoData islData) {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
@@ -157,7 +157,7 @@ public class FlowCache extends Cache {
      * @param portData port
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
+    public Set<FlowPair<Flow, Flow>> getActiveFlowsWithAffectedPath(PortInfoData portData) {
         PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
@@ -172,7 +172,7 @@ public class FlowCache extends Cache {
      * @param switchId switch id
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(SwitchId switchId) {
+    public Set<FlowPair<Flow, Flow>> getFlowsWithAffectedPath(SwitchId switchId) {
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
@@ -188,7 +188,7 @@ public class FlowCache extends Cache {
      * @param islData isl
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(IslInfoData islData) {
+    public Set<FlowPair<Flow, Flow>> getFlowsWithAffectedPath(IslInfoData islData) {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
@@ -201,7 +201,7 @@ public class FlowCache extends Cache {
      * @param portData port
      * @return set of flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getFlowsWithAffectedPath(PortInfoData portData) {
+    public Set<FlowPair<Flow, Flow>> getFlowsWithAffectedPath(PortInfoData portData) {
         PathNode node = new PathNode(portData.getSwitchId(), portData.getPortNo(), 0);
         return flowPool.values().stream().filter(flow ->
                 flow.getLeft().getFlowPath().getPath().contains(node)
@@ -218,7 +218,7 @@ public class FlowCache extends Cache {
     public Map<String, String> getFlowsWithAffectedEndpoint(SwitchId switchId) {
         Map<String, String> response = new HashMap<>();
 
-        for (ImmutablePair<Flow, Flow> flow : flowPool.values()) {
+        for (FlowPair<Flow, Flow> flow : flowPool.values()) {
             SwitchId endpoint = getFlowLinkedEndpoint(flow, switchId);
             if (endpoint != null) {
                 response.put(flow.getLeft().getFlowId(), endpoint.toString());
@@ -234,8 +234,8 @@ public class FlowCache extends Cache {
      * @param flowId flow id
      * @return flow path
      */
-    public ImmutablePair<PathInfoData, PathInfoData> getFlowPath(String flowId) {
-        return new ImmutablePair<>(getFlow(flowId).left.getFlowPath(), getFlow(flowId).right.getFlowPath());
+    public FlowPair<PathInfoData, PathInfoData> getFlowPath(String flowId) {
+        return new FlowPair<>(getFlow(flowId).left.getFlowPath(), getFlow(flowId).right.getFlowPath());
     }
 
     /**
@@ -244,10 +244,10 @@ public class FlowCache extends Cache {
      * @param flowId flow id
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> getFlow(String flowId) {
+    public FlowPair<Flow, Flow> getFlow(String flowId) {
         logger.debug("Get {} flow", flowId);
 
-        ImmutablePair<Flow, Flow> flow = flowPool.get(flowId);
+        FlowPair<Flow, Flow> flow = flowPool.get(flowId);
         if (flow == null) {
             // TODO: Is this really an exception? Should we just return null or empty?
             //      Feels like the caller should address this, and anticipate empty.
@@ -265,17 +265,17 @@ public class FlowCache extends Cache {
      * @param path flow path
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> createFlow(Flow flow, ImmutablePair<PathInfoData, PathInfoData> path) {
+    public FlowPair<Flow, Flow> createFlow(Flow flow, FlowPair<PathInfoData, PathInfoData> path) {
         String flowId = flow.getFlowId();
         logger.debug("Create {} flow with {} parameters", flowId, flow);
 
-        ImmutablePair<Flow, Flow> oldFlow = flowPool.get(flowId);
+        FlowPair<Flow, Flow> oldFlow = flowPool.get(flowId);
         if (oldFlow != null) {
             throw new CacheException(ErrorType.ALREADY_EXISTS, "Can not create flow",
                     String.format("Flow %s already exists", flowId));
         }
 
-        ImmutablePair<Flow, Flow> newFlow = buildFlow(flow, path);
+        FlowPair<Flow, Flow> newFlow = buildFlow(flow, path);
         resourceCache.allocateFlow(newFlow);
         flowPool.put(flowId, newFlow);
 
@@ -288,10 +288,10 @@ public class FlowCache extends Cache {
      * @param flowId flow id
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> deleteFlow(String flowId) {
+    public FlowPair<Flow, Flow> deleteFlow(String flowId) {
         logger.debug("Delete {} flow", flowId);
 
-        ImmutablePair<Flow, Flow> flow = flowPool.remove(flowId);
+        FlowPair<Flow, Flow> flow = flowPool.remove(flowId);
         if (flow == null) {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not delete flow",
                     String.format("Flow %s not found", flowId));
@@ -309,17 +309,17 @@ public class FlowCache extends Cache {
      * @param path flow path
      * @return flow
      */
-    public ImmutablePair<Flow, Flow> updateFlow(Flow flow, ImmutablePair<PathInfoData, PathInfoData> path) {
+    public FlowPair<Flow, Flow> updateFlow(Flow flow, FlowPair<PathInfoData, PathInfoData> path) {
         String flowId = flow.getFlowId();
         logger.debug("Update {} flow with {} parameters", flowId, flow);
 
-        ImmutablePair<Flow, Flow> oldFlow = flowPool.remove(flowId);
+        FlowPair<Flow, Flow> oldFlow = flowPool.remove(flowId);
         if (oldFlow == null) {
             throw new CacheException(ErrorType.NOT_FOUND, "Can not update flow",
                     String.format("Flow %s not found", flowId));
         }
 
-        ImmutablePair<Flow, Flow> newFlow;
+        FlowPair<Flow, Flow> newFlow;
         try {
             newFlow = buildFlow(flow, path);
             resourceCache.deallocateFlow(oldFlow);
@@ -339,7 +339,7 @@ public class FlowCache extends Cache {
      *
      * @return all flows
      */
-    public Set<ImmutablePair<Flow, Flow>> dumpFlows() {
+    public Set<FlowPair<Flow, Flow>> dumpFlows() {
         logger.debug("Get all flows");
         return new HashSet<>(flowPool.values());
     }
@@ -365,16 +365,16 @@ public class FlowCache extends Cache {
      * @param secondPath second {@link LinkedList} of {@link PathInfoData} instances
      * @return intersection {@link Set} of {@link PathNode} instances
      */
-    public ImmutablePair<Set<PathNode>, Set<PathNode>> getPathIntersection(
-            ImmutablePair<PathInfoData, PathInfoData> firstPath,
-            ImmutablePair<PathInfoData, PathInfoData> secondPath) {
+    public FlowPair<Set<PathNode>, Set<PathNode>> getPathIntersection(
+            FlowPair<PathInfoData, PathInfoData> firstPath,
+            FlowPair<PathInfoData, PathInfoData> secondPath) {
         logger.debug("Get path intersection between {} and {}", firstPath, secondPath);
 
         Set<PathNode> forwardIntersection = getPathIntersection(firstPath.left, secondPath.left);
         Set<PathNode> reverseIntersection = getPathIntersection(firstPath.right, secondPath.right);
 
-        ImmutablePair<Set<PathNode>, Set<PathNode>> intersection =
-                new ImmutablePair<>(forwardIntersection, reverseIntersection);
+        FlowPair<Set<PathNode>, Set<PathNode>> intersection =
+                new FlowPair<>(forwardIntersection, reverseIntersection);
 
         logger.debug("Path intersection is {}", intersection);
 
@@ -384,8 +384,9 @@ public class FlowCache extends Cache {
     /**
      * Builds new forward and reverse flow pair.
      */
-    private ImmutablePair<Flow, Flow> buildFlow(final Flow flow,
-                                               ImmutablePair<PathInfoData, PathInfoData> path) {
+    private FlowPair<Flow, Flow> buildFlow(final Flow flow,
+                                           FlowPair<PathInfoData, PathInfoData> path) {
+        // FIXME(surabujin): format datetime as '2011-12-03T10:15:30Z' (don't match with format used in TE)
         String timestamp = Utils.getIsoTimestamp();
         int cookie = resourceCache.allocateCookie();
 
@@ -401,17 +402,9 @@ public class FlowCache extends Cache {
             forwardVlan = reverseVlan = 0;
         }
 
-        Flow.FlowBuilder forwardBuilder = Flow.builder()
-                .flowId(flow.getFlowId())
+        Flow.FlowBuilder forwardBuilder = flow.toBuilder()
                 .cookie(cookie | ResourceCache.FORWARD_FLOW_COOKIE_MASK)
-                .description(flow.getDescription())
                 .lastUpdated(timestamp)
-                .sourceSwitch(flow.getSourceSwitch())
-                .destinationSwitch(flow.getDestinationSwitch())
-                .sourcePort(flow.getSourcePort())
-                .destinationPort(flow.getDestinationPort())
-                .sourceVlan(flow.getSourceVlan())
-                .destinationVlan(flow.getDestinationVlan())
                 .transitVlan(forwardVlan)
                 .flowPath(path.getLeft())
                 .state(FlowState.ALLOCATED);
@@ -419,25 +412,23 @@ public class FlowCache extends Cache {
                 () -> resourceCache.allocateMeterId(flow.getSourceSwitch()));
         Flow forward = forwardBuilder.build();
 
-        Flow.FlowBuilder reverseBuilder = Flow.builder()
-                .flowId(flow.getFlowId())
+        Flow.FlowBuilder reverseBuilder = flow.toBuilder()
                 .cookie(cookie | ResourceCache.REVERSE_FLOW_COOKIE_MASK)
-                .description(flow.getDescription())
                 .lastUpdated(timestamp)
-                .sourceSwitch(flow.getDestinationSwitch())
-                .destinationSwitch(flow.getSourceSwitch())
-                .sourcePort(flow.getDestinationPort())
-                .destinationPort(flow.getSourcePort())
-                .sourceVlan(flow.getDestinationVlan())
-                .destinationVlan(flow.getSourceVlan())
                 .transitVlan(reverseVlan)
                 .flowPath(path.getRight())
-                .state(FlowState.ALLOCATED);
+                .state(FlowState.ALLOCATED)
+                .sourceSwitch(flow.getDestinationSwitch())
+                .sourcePort(flow.getDestinationPort())
+                .sourceVlan(flow.getDestinationVlan())
+                .destinationSwitch(flow.getSourceSwitch())
+                .destinationPort(flow.getSourcePort())
+                .destinationVlan(flow.getSourceVlan());
         setBandwidthAndMeter(reverseBuilder, flow.getBandwidth(), flow.isIgnoreBandwidth(),
                 () -> resourceCache.allocateMeterId(flow.getDestinationSwitch()));
         Flow reverse = reverseBuilder.build();
 
-        return new ImmutablePair<>(forward, reverse);
+        return new FlowPair<>(forward, reverse);
     }
 
     private void setBandwidthAndMeter(Flow.FlowBuilder builder, long bandwidth, boolean isIgnoreBandwidth,
@@ -465,7 +456,7 @@ public class FlowCache extends Cache {
      * @param flow flow
      * @return true if source and destination switches are same for specified flow, otherwise false
      */
-    public boolean isOneSwitchFlow(ImmutablePair<Flow, Flow> flow) {
+    public boolean isOneSwitchFlow(FlowPair<Flow, Flow> flow) {
         return flow.getLeft().getSourceSwitch().equals(flow.getLeft().getDestinationSwitch())
                 && flow.getRight().getSourceSwitch().equals(flow.getRight().getDestinationSwitch());
     }
@@ -477,7 +468,7 @@ public class FlowCache extends Cache {
      * @param switchId switch id
      * @return second endpoint if specified switch id one of the flows endpoint, otherwise null
      */
-    private SwitchId getFlowLinkedEndpoint(ImmutablePair<Flow, Flow> flow, SwitchId switchId) {
+    private SwitchId getFlowLinkedEndpoint(FlowPair<Flow, Flow> flow, SwitchId switchId) {
         Flow forward = flow.getLeft();
         Flow reverse = flow.getRight();
         SwitchId linkedSwitch = null;
@@ -531,7 +522,7 @@ public class FlowCache extends Cache {
     /**
      * Gets flow pairs which have source or destination is on the switch.
      */
-    public Set<ImmutablePair<Flow, Flow>> getIngressAndEgressFlows(SwitchId switchId) {
+    public Set<FlowPair<Flow, Flow>> getIngressAndEgressFlows(SwitchId switchId) {
         return flowPool.values().stream()
                 .filter(flowPair -> Objects.nonNull(getFlowLinkedEndpoint(flowPair, switchId)))
                 .collect(Collectors.toSet());

@@ -22,6 +22,7 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 
 import org.neo4j.driver.v1.Record;
+import org.neo4j.driver.v1.Value;
 
 import java.io.IOException;
 
@@ -52,8 +53,9 @@ public class FlowAdapter {
 
         flow = new Flow(
                 dbRecord.get(Utils.FLOW_ID).asString(),
-                dbRecord.get("bandwidth").asInt(),
-                dbRecord.get("ignore_bandwidth").asBoolean(),
+                dbRecord.get("bandwidth").asLong(),
+                readBoolean(dbRecord, "ignore_bandwidth", false),
+                readBoolean(dbRecord, "periodic_pings", false),
                 dbRecord.get("cookie").asLong(),
                 dbRecord.get("description").asString(),
                 dbRecord.get("last_updated").asString(),
@@ -71,5 +73,13 @@ public class FlowAdapter {
 
     public Flow getFlow() {
         return flow;
+    }
+
+    private boolean readBoolean(Record dbRecord, String fieldName, boolean defaultValue) {
+        Value field = dbRecord.get(fieldName);
+        if (field.isNull()) {
+            return defaultValue;
+        }
+        return field.asBoolean();
     }
 }

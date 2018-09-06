@@ -1,12 +1,33 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.config;
+
+import org.openkilda.dao.entity.VersionEntity;
+import org.openkilda.dao.repository.VersionRepository;
+import org.openkilda.service.FlowService;
+
+import com.ibatis.common.jdbc.ScriptRunner;
+
+import org.apache.log4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.ibatis.common.jdbc.ScriptRunner;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -19,28 +40,23 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-import org.apache.log4j.Logger;
-import org.openkilda.dao.entity.VersionEntity;
-import org.openkilda.dao.repository.VersionRepository;
-import org.openkilda.service.FlowService;
-
 @Repository("databaseConfigurator")
 public class DatabaseConfigurator {
 
     private static final Logger LOGGER = Logger.getLogger(FlowService.class);
-
-    private final static String SCRIPT_LOCATION = "db";
-    private final static String SCRIPT_FILE_PREFIX = "import-script_";
-    private final static String SCRIPT_FILE_SUFFIX = ".sql";
-
+    
+    private static final String SCRIPT_FILE_PREFIX = "import-script_";
+    private static final String SCRIPT_FILE_SUFFIX = ".sql";
+    private static final String SCRIPT_LOCATION = "db";
+    
     private ResourceLoader resourceLoader;
 
     private VersionRepository versionRepository;
 
     private DataSource dataSource;
 
-    public DatabaseConfigurator(@Autowired final VersionRepository versionRepository,
-            final DataSource dataSource, final ResourceLoader resourceLoader) {
+    public DatabaseConfigurator(@Autowired final VersionRepository versionRepository, final DataSource dataSource,
+            final ResourceLoader resourceLoader) {
         this.versionRepository = versionRepository;
         this.dataSource = dataSource;
         this.resourceLoader = resourceLoader;
@@ -57,8 +73,8 @@ public class DatabaseConfigurator {
         long lastestScriptNumber = getLatestScriptVersion(versionEntities);
         Map<String, InputStream> filesByName = getScriptFiles(lastestScriptNumber);
 
-        for(int i = 0; i < filesByName.size(); i++) {
-            try (InputStream inputStream = filesByName.get(lastestScriptNumber + i +1)) {
+        for (int i = 0; i < filesByName.size(); i++) {
+            try (InputStream inputStream = filesByName.get(lastestScriptNumber + i + 1)) {
                 runScript(inputStream);
             } catch (IOException e) {
                 LOGGER.error("Failed to load db script", e);
@@ -67,7 +83,7 @@ public class DatabaseConfigurator {
     }
 
     private Long getLatestScriptVersion(final List<VersionEntity> versionEntities) {
-        Long lastestVersion = 0l;
+        Long lastestVersion = 0L;
         for (VersionEntity versionEntity : versionEntities) {
             if (lastestVersion < versionEntity.getVersionNumber()) {
                 lastestVersion = versionEntity.getVersionNumber();
@@ -84,8 +100,8 @@ public class DatabaseConfigurator {
         try {
             while (true) {
                 lastestScriptNumber++;
-                is = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" +
-                        SCRIPT_FILE_PREFIX + lastestScriptNumber + SCRIPT_FILE_SUFFIX).getInputStream();
+                is = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" + SCRIPT_FILE_PREFIX
+                        + lastestScriptNumber + SCRIPT_FILE_SUFFIX).getInputStream();
                 if (is != null) {
                     runScript(is);
                 } else {

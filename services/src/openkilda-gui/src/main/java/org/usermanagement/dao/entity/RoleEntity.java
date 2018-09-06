@@ -1,4 +1,21 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.usermanagement.dao.entity;
+
+import org.openkilda.entity.BaseEntity;
 
 import java.io.Serializable;
 import java.util.HashSet;
@@ -15,8 +32,6 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-
-import org.openkilda.entity.BaseEntity;
 
 @Entity
 @Table(name = "kilda_role")
@@ -39,16 +54,14 @@ public class RoleEntity extends BaseEntity implements Serializable {
     @JoinColumn(name = "status_id", nullable = false)
     private StatusEntity statusEntity;
 
-    /** The roles. */
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "role_permission", joinColumns = {@JoinColumn(name = "role_id")},
-            inverseJoinColumns = {@JoinColumn(name = "permission_id")})
+    @JoinTable(name = "role_permission", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
+            @JoinColumn(name = "permission_id") })
     private Set<PermissionEntity> permissions = new HashSet<PermissionEntity>();
-    
-    /** The roles. */
+
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "user_role", joinColumns = {@JoinColumn(name = "role_id")},
-            inverseJoinColumns = {@JoinColumn(name = "user_id")})
+    @JoinTable(name = "user_role", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
+            @JoinColumn(name = "user_id") })
     private Set<UserEntity> users = new HashSet<UserEntity>();
 
     /**
@@ -63,7 +76,8 @@ public class RoleEntity extends BaseEntity implements Serializable {
     /**
      * Sets the role id.
      *
-     * @param roleId the new role id
+     * @param roleId
+     *            the new role id
      */
     public void setRoleId(final Long roleId) {
         this.roleId = roleId;
@@ -81,7 +95,8 @@ public class RoleEntity extends BaseEntity implements Serializable {
     /**
      * Sets the name.
      *
-     * @param name the new name
+     * @param name
+     *            the new name
      */
     public void setName(final String name) {
         this.name = name;
@@ -99,7 +114,8 @@ public class RoleEntity extends BaseEntity implements Serializable {
     /**
      * Sets the permissions.
      *
-     * @param permissions the new permissions
+     * @param permissions
+     *            the new permissions
      */
     public void setPermissions(final Set<PermissionEntity> permissions) {
         this.permissions = permissions;
@@ -122,14 +138,14 @@ public class RoleEntity extends BaseEntity implements Serializable {
     }
 
     public Set<UserEntity> getUsers() {
-		return users;
-	}
+        return users;
+    }
 
-	public void setUsers(Set<UserEntity> users) {
-		this.users = users;
-	}
+    public void setUsers(Set<UserEntity> users) {
+        this.users = users;
+    }
 
-	@Override
+    @Override
     public String toString() {
         return "RoleEntity [roleId=" + roleId + ", name=" + name + ", description=" + description + ", statusEntity="
                 + statusEntity + ", permissions=" + permissions + "]";

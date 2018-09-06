@@ -22,7 +22,7 @@ import java.util.UUID;
 public class CommandContext {
     private final FloodlightModuleContext moduleContext;
     private final long ctime;
-    private final String correlationId;
+    private String correlationId;
 
     public CommandContext(FloodlightModuleContext moduleContext) {
         this(moduleContext, UUID.randomUUID().toString());
@@ -40,6 +40,10 @@ public class CommandContext {
 
     public long getCtime() {
         return ctime;
+    }
+
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
     }
 
     public String getCorrelationId() {

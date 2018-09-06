@@ -1,4 +1,32 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.controller;
+
+import org.openkilda.auth.context.ServerContext;
+import org.openkilda.auth.model.Permissions;
+import org.openkilda.constants.IConstants;
+import org.openkilda.integration.model.Flow;
+import org.openkilda.integration.model.FlowStatus;
+import org.openkilda.integration.model.response.FlowPayload;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
+import org.openkilda.model.FlowCount;
+import org.openkilda.model.FlowInfo;
+import org.openkilda.model.FlowPath;
+import org.openkilda.service.FlowService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.ModelAndView;
+
 import org.usermanagement.model.UserInfo;
 
 import java.util.ArrayList;
@@ -20,19 +49,6 @@ import java.util.Collection;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
-
-import org.openkilda.auth.context.ServerContext;
-import org.openkilda.auth.model.Permissions;
-import org.openkilda.constants.IConstants;
-import org.openkilda.integration.model.Flow;
-import org.openkilda.integration.model.FlowStatus;
-import org.openkilda.integration.model.response.FlowPayload;
-import org.openkilda.log.ActivityLogger;
-import org.openkilda.log.constants.ActivityType;
-import org.openkilda.model.FlowCount;
-import org.openkilda.model.FlowInfo;
-import org.openkilda.model.FlowPath;
-import org.openkilda.service.FlowService;
 
 /**
  * The Class FlowController.
@@ -50,7 +66,7 @@ public class FlowController extends BaseController {
 
     @Autowired
     private ActivityLogger activityLogger;
-    
+
     @Autowired
     private ServerContext serverContext;
 
@@ -61,7 +77,7 @@ public class FlowController extends BaseController {
      * @return flows view if called with valid user session.
      */
     @RequestMapping
-    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
+    @Permissions(values = { IConstants.Permission.MENU_FLOWS })
     public ModelAndView flowList(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.FLOW_LIST);
     }
@@ -133,7 +149,7 @@ public class FlowController extends BaseController {
     }
 
     /**
-     * Validate the flow
+     * Validate the flow.
      *
      * @param flowId id of validate flow requested.
      * @return validate flow
@@ -147,7 +163,7 @@ public class FlowController extends BaseController {
     }
 
     /**
-     * Get flow by Id
+     * Get flow by Id.
      *
      * @param flowId id of flow requested.
      * @return flow
@@ -160,7 +176,7 @@ public class FlowController extends BaseController {
     }
 
     /**
-     * Get flow Status by Id
+     * Get flow Status by Id.
      *
      * @param flowId id of flow requested.
      * @return flow
@@ -180,7 +196,7 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.CREATED)
-    @Permissions(values = {IConstants.Permission.FW_FLOW_CREATE})
+    @Permissions(values = { IConstants.Permission.FW_FLOW_CREATE })
     public @ResponseBody Flow createFlow(@RequestBody final Flow flow) {
         LOGGER.info("[createFlow] - start. Flow id: " + flow.getId());
         return flowService.createFlow(flow);
@@ -193,13 +209,13 @@ public class FlowController extends BaseController {
      * @param flow the flow
      * @return the flow
      */
-	@RequestMapping(value = "/{flowId}", method = RequestMethod.PUT)
-	@ResponseStatus(HttpStatus.CREATED)
-	@Permissions(values = {IConstants.Permission.FW_FLOW_UPDATE})
-	public @ResponseBody Flow updateFlow(@PathVariable("flowId") final String flowId,@RequestBody final Flow flow) {
-		LOGGER.info("[updateFlow] - start. Flow id: " + flowId);
-		return flowService.updateFlow(flowId, flow);
-	}
+    @RequestMapping(value = "/{flowId}", method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Permissions(values = { IConstants.Permission.FW_FLOW_UPDATE })
+    public @ResponseBody Flow updateFlow(@PathVariable("flowId") final String flowId, @RequestBody final Flow flow) {
+        LOGGER.info("[updateFlow] - start. Flow id: " + flowId);
+        return flowService.updateFlow(flowId, flow);
+    }
 
     /**
      * Delete flow.
@@ -210,8 +226,9 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/{flowId}", method = RequestMethod.DELETE)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.FW_FLOW_DELETE})
-    public @ResponseBody Flow deleteFlow(@RequestBody final UserInfo userInfo,
+    @Permissions(values = { IConstants.Permission.FW_FLOW_DELETE })
+    @ResponseBody
+    public Flow deleteFlow(@RequestBody final UserInfo userInfo,
             @PathVariable("flowId") final String flowId) {
         LOGGER.info("[deleteFlow] - start. Flow id: " + flowId);
         if (serverContext.getRequestContext() != null) {

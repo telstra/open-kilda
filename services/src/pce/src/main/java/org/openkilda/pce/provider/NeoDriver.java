@@ -24,7 +24,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.algo.SimpleGetShortestPath;
@@ -50,7 +50,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class NeoDriver implements PathComputer {
-
     private static final Logger logger = LoggerFactory.getLogger(NeoDriver.class);
 
     private final Driver driver;
@@ -63,7 +62,7 @@ public class NeoDriver implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
+    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
             throws UnroutablePathException, RecoverableException {
         AvailableNetwork network = new AvailableNetwork(driver, flow.isIgnoreBandwidth(), flow.getBandwidth());
         return getPath(flow, network, strategy);
@@ -73,7 +72,7 @@ public class NeoDriver implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public ImmutablePair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
+    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
             throws UnroutablePathException, RecoverableException {
 
         long latency = 0L;
@@ -113,7 +112,7 @@ public class NeoDriver implements PathComputer {
             logger.info("No path computation for one-switch flow");
         }
 
-        return new ImmutablePair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
+        return new FlowPair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
     }
 
     /**
@@ -135,8 +134,7 @@ public class NeoDriver implements PathComputer {
                 //(crimi) - getPath with hint works .. you can use the next line to troubleshoot if
                 // concerned about how hit is working
                 //LinkedList<SimpleIsl> rPath = reverse.getPath();
-                Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> path = Pair.of(forwardPath, reversePath);
-                return path;
+                return Pair.of(forwardPath, reversePath);
         }
     }
 
@@ -166,15 +164,13 @@ public class NeoDriver implements PathComputer {
                         .setTransitVlanId(safeAsInt(record.get("transit_vlan")))
                 );
             }
-
         }
         return flows;
     }
 
     @Override
     public List<Flow> getFlow(String flowId) {
-        List<Flow> found = getFlows(flowId);
-        return found.size() > 0 ? found : null;
+        return getFlows(flowId);
     }
 
     @Override
@@ -192,24 +188,26 @@ public class NeoDriver implements PathComputer {
 
 
     private List<Flow> loadFlows(String whereClause, Value parameters) {
-        String q =
-                "MATCH (:switch)-[f:flow]->(:switch) "
-                        + whereClause
-                        + "RETURN f.flowid as flowid, "
-                        + "f.bandwidth as bandwidth, "
-                        + "f.ignore_bandwidth as ignore_bandwidth, "
-                        + "f.cookie as cookie, "
-                        + "f.description as description, "
-                        + "f.last_updated as last_updated, "
-                        + "f.src_switch as src_switch, "
-                        + "f.dst_switch as dst_switch, "
-                        + "f.src_port as src_port, "
-                        + "f.dst_port as dst_port, "
-                        + "f.src_vlan as src_vlan, "
-                        + "f.dst_vlan as dst_vlan, "
-                        + "f.flowpath as path, "
-                        + "f.meter_id as meter_id, "
-                        + "f.transit_vlan as transit_vlan";
+        // FIXME(surabujin): remove cypher(graphQL) injection breach
+        String q = ""
+                + "MATCH (:switch)-[f:flow]->(:switch)"
+                + "\n" + whereClause + "\n"
+                + "RETURN f.flowid as flowid,\n"
+                + "       f.bandwidth as bandwidth,\n"
+                + "       f.ignore_bandwidth as ignore_bandwidth,\n"
+                + "       f.periodic_pings as periodic_pings,\n"
+                + "       f.cookie as cookie,\n"
+                + "       f.description as description,\n"
+                + "       f.last_updated as last_updated,\n"
+                + "       f.src_switch as src_switch,\n"
+                + "       f.dst_switch as dst_switch,\n"
+                + "       f.src_port as src_port,\n"
+                + "       f.dst_port as dst_port,\n"
+                + "       f.src_vlan as src_vlan,\n"
+                + "       f.dst_vlan as dst_vlan,\n"
+                + "       f.flowpath as path,\n"
+                + "       f.meter_id as meter_id,\n"
+                + "       f.transit_vlan as transit_vlan";
 
         logger.debug("Executing getFlows Query: {}", q);
 
@@ -225,7 +223,7 @@ public class NeoDriver implements PathComputer {
     }
 
     @Override
-    public List<SwitchInfoData> getSwitches() {
+    public  List<SwitchInfoData> getSwitches() {
         String q =
                 "MATCH (sw:switch) "
                         + "RETURN "

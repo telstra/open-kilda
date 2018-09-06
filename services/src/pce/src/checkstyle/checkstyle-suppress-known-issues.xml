@@ -117,8 +117,6 @@
     <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="59" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="83" checks="JavadocParagraph"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="107" checks="ParameterName"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="107" checks="ParameterName"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/AuthNeo4j.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/AuthNeo4j.java" lines="15" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/pce/provider/Auth.java" lines="1" checks="RegexpHeader"/>

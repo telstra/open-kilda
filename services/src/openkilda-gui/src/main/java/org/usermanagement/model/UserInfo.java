@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.usermanagement.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -13,8 +28,8 @@ import java.util.Set;
  * The Class UserInfo.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({ "user_id", "name", "user_name", "roles", "email", "role_id", "password", "status",
-		"new_password", "code", "settings" })
+@JsonPropertyOrder({ "user_id", "name", "user_name", "roles", "email", "role_id", "password", "status", "new_password",
+        "code", "settings" })
 public class UserInfo implements Serializable {
 
     private static final long serialVersionUID = 5779373512137456449L;
@@ -54,13 +69,12 @@ public class UserInfo implements Serializable {
 
     @JsonProperty("status")
     private String status;
-    
+
     @JsonProperty("code")
     private String code;
-    
+
     @JsonProperty("settings")
     private String data;
-
 
     /**
      * Gets the user id.
@@ -140,7 +154,7 @@ public class UserInfo implements Serializable {
      * @return the roles
      */
     public Set<String> getRoles() {
-        if(roles == null) {
+        if (roles == null) {
             roles = new HashSet<>();
         }
         return roles;
@@ -172,7 +186,6 @@ public class UserInfo implements Serializable {
     public void setEmail(final String email) {
         this.email = email;
     }
-
 
     /**
      * Gets the role ids.
@@ -246,88 +259,87 @@ public class UserInfo implements Serializable {
         this.permissions = permissions;
     }
 
-
     /**
-     * @return
+     * Get the new password.
+     * 
+     * @return the new password.
      */
     public String getNewPassword() {
-		return newPassword;
-	}
+        return newPassword;
+    }
 
+    /**
+     * Sets the new password.
+     * 
+     * @param newPassword the new password.
+     */
+    public void setNewPassword(final String newPassword) {
+        this.newPassword = newPassword;
+    }
 
-	/**
-	 * @param newPassword
-	 */
-	public void setNewPassword(final String newPassword) {
-		this.newPassword = newPassword;
-	}
-
-	/**
-	 * Gets the checks if is 2 fa enabled.
-	 *
-	 * @return the checks if is 2 fa enabled
-	 */
-	public Boolean getIs2FaEnabled() {
+    /**
+     * Gets the checks if is 2 fa enabled.
+     *
+     * @return the checks if is 2 fa enabled.
+     */
+    public Boolean getIs2FaEnabled() {
         return is2FaEnabled;
     }
 
-	/**
-	 * Sets the checks if is 2 fa enabled.
-	 *
-	 * @param is2FaEnabled the new checks if is 2 fa enabled
-	 */
-	public void setIs2FaEnabled(final Boolean is2FaEnabled) {
+    /**
+     * Sets the checks if is 2 fa enabled.
+     *
+     * @param is2FaEnabled the new checks if is 2 fa enabled
+     */
+    public void setIs2FaEnabled(final Boolean is2FaEnabled) {
         this.is2FaEnabled = is2FaEnabled;
     }
 
-	
-	/**
-	 * Gets the code.
-	 *
-	 * @return the code
-	 */
-	public String getCode() {
-		return code;
-	}
-	
+    /**
+     * Gets the code.
+     *
+     * @return the code
+     */
+    public String getCode() {
+        return code;
+    }
 
-	/**
-	 * Sets the code.
-	 *
-	 * @param code the new code
-	 */
-	public void setCode(String code) {
-		this.code = code;
-	}
-	
-	/**
-	 * Gets the data.
-	 *
-	 * @return the data
-	 */
-	public String getData() {
-		return data;
-	}
+    /**
+     * Sets the code.
+     *
+     * @param code the new code
+     */
+    public void setCode(String code) {
+        this.code = code;
+    }
 
-	/**
-	 * Sets the data.
-	 *
-	 * @param data the new data
-	 */
-	public void setData(String data) {
-		this.data = data;
-	}
-	
+    /**
+     * Gets the data.
+     *
+     * @return the data
+     */
+    public String getData() {
+        return data;
+    }
 
-	/*
+    /**
+     * Sets the data.
+     *
+     * @param data the new data
+     */
+    public void setData(String data) {
+        this.data = data;
+    }
+
+    /*
      * (non-Javadoc)
      *
      * @see java.lang.Object#toString()
      */
-	@Override
-	public String toString() {
-		return "UserInfo [userId=" + userId + ", username=" + username + ", name=" + name + ", roles=" + roles
-				+ ", email=" + email + ", roleIds=" + roleIds + ", password=" + password + ", status=" + status
-				+ ", newPassword=" + newPassword + ", code=" + code + "]";
-	}
+    @Override
+    public String toString() {
+        return "UserInfo [userId=" + userId + ", username=" + username + ", name=" + name + ", roles=" + roles
+                + ", email=" + email + ", roleIds=" + roleIds + ", password=" + password + ", status=" + status
+                + ", newPassword=" + newPassword + ", code=" + code + "]";
+    }
 }

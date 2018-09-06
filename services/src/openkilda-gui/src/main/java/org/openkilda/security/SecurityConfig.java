@@ -1,5 +1,21 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.security;
 
+import org.openkilda.utility.StringUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -12,14 +28,13 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.web.access.AccessDeniedHandler;
 
+import org.usermanagement.service.UserService;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import org.openkilda.utility.StringUtil;
-import org.usermanagement.service.UserService;
-
 /**
- * The Class SecurityConfig : used to configure security, authenticationManager and authProvider
+ * The Class SecurityConfig : used to configure security, authenticationManager and authProvider.
  *
  * @author Gaurav Chugh
  */
@@ -36,20 +51,40 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     /*
      * (non-Javadoc)
      *
-     * @see
-     * org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
-     * #configure(org.springframework.security.config.annotation.web.builders.HttpSecurity)
+     * @see org.springframework.security.config.annotation.web.configuration.
+     * WebSecurityConfigurerAdapter
+     * #configure(org.springframework.security.config.annotation.web.builders.
+     * HttpSecurity)
      */
 
     @Override
     protected void configure(final HttpSecurity http) throws Exception {
 
-        http.csrf().disable().authorizeRequests()
-                .antMatchers("/login", "/authenticate", "/forgotpassword")
-                .permitAll().anyRequest().authenticated().and().formLogin().loginPage("/login").permitAll().and()
-                .logout().permitAll().and().exceptionHandling().accessDeniedHandler(accessDeniedHandler);
+        http.csrf().disable().authorizeRequests().antMatchers("/login", "/authenticate", "/forgotpassword").permitAll()
+                .anyRequest().authenticated().and().formLogin().loginPage("/login").permitAll().and().logout()
+                .permitAll().and().exceptionHandling().accessDeniedHandler(accessDeniedHandler);
     }
 
+    @Override
+    public void configure(final WebSecurity web) throws Exception {
+        web.ignoring().antMatchers("/resources/**", "/ui/**", "/lib/**");
+    }
+    
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.springframework.security.config.annotation.web.configuration.
+     * WebSecurityConfigurerAdapter #authenticationManager()
+     */
+    @Override
+    @Bean("authenticationManager")
+    public ProviderManager authenticationManager() {
+        List<AuthenticationProvider> authProviderList = new ArrayList<AuthenticationProvider>();
+        authProviderList.add(authProvider());
+        ProviderManager providerManager = new ProviderManager(authProviderList);
+        return providerManager;
+    }
+    
     /**
      * Auth provider.
      *
@@ -63,24 +98,4 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         return authProvider;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
-     * #authenticationManager()
-     */
-    @Override
-    @Bean("authenticationManager")
-    public ProviderManager authenticationManager() {
-        List<AuthenticationProvider> authProviderList = new ArrayList<AuthenticationProvider>();
-        authProviderList.add(authProvider());
-        ProviderManager providerManager = new ProviderManager(authProviderList);
-        return providerManager;
-    }
-
-    @Override
-    public void configure(final WebSecurity web) throws Exception {
-        web.ignoring().antMatchers("/resources/**", "/ui/**", "/lib/**");
-    }
 }

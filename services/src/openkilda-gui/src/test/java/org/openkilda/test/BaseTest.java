@@ -1,4 +1,27 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.test;
+
+import org.openkilda.util.IConstantsTest;
+import org.openkilda.utility.IoUtil;
+
+import org.apache.log4j.Logger;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -10,12 +33,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.log4j.Logger;
-import org.junit.Assert;
-import org.junit.Test;
-import org.openkilda.util.IConstantsTest;
-import org.openkilda.utility.IoUtil;
 
 /**
  * The Class BaseTest.
@@ -41,42 +58,36 @@ public class BaseTest {
                 urlList.add(readLine);
             }
         } catch (Exception exception) {
-            LOGGER.error(
-                    "exception occured Inside method executeKildaFiles: " + exception.getMessage());
+            LOGGER.error("exception occured Inside method executeKildaFiles: " + exception.getMessage());
         }
 
         for (String url : urlList) {
             try {
                 String[] inputValue = url.split("/");
-                String FileName = inputValue[inputValue.length - 1];
+                String fileName = inputValue[inputValue.length - 1];
 
                 if (url.contains(".css")) {
-                    downloadFiles(url,
-                            IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + FileName);
+                    downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + fileName);
                     Assert.assertTrue(true);
                 }
                 if (url.contains(".js")) {
-                    if (FileName.contains(IConstantsTest.JQUERY_FILE)) {
-                        FileName = IConstantsTest.JQUERY_MIN_FILE;
+                    if (fileName.contains(IConstantsTest.JQUERY_FILE)) {
+                        fileName = IConstantsTest.JQUERY_MIN_FILE;
                     }
-                    downloadFiles(url,
-                            IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH + FileName);
+                    downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH + fileName);
                     Assert.assertTrue(true);
                 }
                 if (url.contains("ttf") || url.contains("woff2") || url.contains("woff")) {
-                    downloadFiles(url,
-                            IConstantsTest.CLASSPATH + IConstantsTest.FONTS_PATH + FileName);
+                    downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.FONTS_PATH + fileName);
                     Assert.assertTrue(true);
                 }
                 if (url.contains("Roboto")) {
-                    downloadFiles(url,
-                            IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + "roboto.css");
+                    downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + "roboto.css");
                     Assert.assertTrue(true);
                 }
 
             } catch (Exception exception) {
-                LOGGER.error("exception occured Inside method executeKildaFiles : "
-                        + exception.getMessage());
+                LOGGER.error("exception occured Inside method executeKildaFiles : " + exception.getMessage());
                 Assert.assertTrue(false);
             }
         }
@@ -87,8 +98,10 @@ public class BaseTest {
     /**
      * Download files.
      *
-     * @param urlStr the url str
-     * @param file the file
+     * @param urlStr
+     *            the url str
+     * @param file
+     *            the file
      */
     private void downloadFiles(final String urlStr, final String file) {
         if (file.contains(IConstantsTest.FONTS_PATH)) {
@@ -125,15 +138,15 @@ public class BaseTest {
                 fileOutputStream.write(buffer, 0, count);
             }
 
-        } catch (MalformedURLException malformedURLException) {
+        } catch (MalformedURLException malformedUrlException) {
             LOGGER.error("exception occured during accessing file url" + urlStr + " : exception : "
-                    + malformedURLException.getMessage());
+                    + malformedUrlException.getMessage());
         } catch (IOException ioException) {
-            LOGGER.error("exception occured during downloading file " + file + " : exception : "
-                    + ioException.getMessage());
+            LOGGER.error(
+                    "exception occured during downloading file " + file + " : exception : " + ioException.getMessage());
         } catch (Exception exception) {
-            LOGGER.error("exception occured during downloading file " + file + " : exception : "
-                    + exception.getMessage());
+            LOGGER.error(
+                    "exception occured during downloading file " + file + " : exception : " + exception.getMessage());
         } finally {
             IoUtil.close(fileOutputStream);
             IoUtil.close(bufferedInputStream);
