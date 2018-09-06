@@ -34,6 +34,16 @@ class LinkPropertiesSpec extends BaseSpecification {
         northbound.getAllLinkProps().empty
     }
 
+    def "Valid error response is returned when sending invalid char in link props key"() {
+        when: "Send link property request with invalid character"
+        def response = northbound.updateLinkProps([new LinkPropsDto("00:00:00:00:00:00:00:01", 1,
+                "00:00:00:00:00:00:00:02", 1, ['`cost': "700"])])
+
+        then: "Response states that operation failed"
+        response.failures == 1
+        //TODO(rtretiak): Issue #1241, verify valid error body
+    }
+
     def "Unable to create link property with invalid switchId format"() {
         when: "Try creating link property with invalid switchId format"
         northbound.updateLinkProps([new LinkPropsDto("I'm invalid", 1, "00:00:00:00:00:00:00:02", 1, [:])])
