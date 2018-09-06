@@ -153,12 +153,7 @@ public class IslUtils {
                 replugSource ? srcIsl.getDstSwitch() : (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()),
                 replugSource ? srcIsl.getDstPort() : (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()),
                 0,
-                new TopologyDefinition.ASwitch(
-                        replugSource ? (plugIntoSource ? dstIsl.getAswitch().getInPort() :
-                                dstIsl.getAswitch().getOutPort()) : srcIsl.getAswitch().getInPort(),
-                        replugSource ? srcIsl.getAswitch().getOutPort() :
-                                (plugIntoSource ? dstIsl.getAswitch().getInPort() : dstIsl.getAswitch().getOutPort())
-                ));
+                new TopologyDefinition.ASwitch(aswFlowForward.getInPort(), aswFlowForward.getOutPort()));
     }
 
     private RetryPolicy retryPolicy() {
