@@ -17,14 +17,17 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
     boolean initialized = false
 
     void visitSpec(SpecInfo specInfo) {
+        specInfo.getAllFeatures().find {it.name == "Prepare spring context.."}?.excluded = initialized
+        initialized = true
         //this is the earliest point where Spock can have access to Spring context
         specInfo.setupMethods*.addInterceptor new AbstractMethodInterceptor() {
+            def autowired = false
             @Override
             void interceptSetupMethod(IMethodInvocation invocation) throws Throwable {
-                if (!initialized) {
-                    context.getAutowireCapableBeanFactory().autowireBeanProperties(
-                            invocation.sharedInstance, AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
-                    initialized = true
+                if(!autowired) {
+                    context.getAutowireCapableBeanFactory().autowireBeanProperties(invocation.sharedInstance,
+                            AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
+                    autowired = true
                 }
                 invocation.proceed()
             }
