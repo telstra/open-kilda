@@ -60,9 +60,9 @@ public class IslUtils {
      */
     public void waitForIslStatus(List<Isl> isls, IslChangeType expectedStatus, RetryPolicy retryPolicy) {
         List<IslInfoData> actualIsl = Failsafe.with(retryPolicy
-                .retryIf(states -> ((List<IslInfoData>) states).stream()
+                .retryIf(states -> states != null && ((List<IslInfoData>) states).stream()
                         .map(IslInfoData::getState)
-                        .anyMatch(state -> !state.equals(expectedStatus))))
+                        .anyMatch(state -> !expectedStatus.equals(state))))
                 .get(() -> {
                     List<IslInfoData> allLinks = northbound.getAllLinks();
                     return isls.stream().map(isl -> getIslInfo(allLinks, isl).get()).collect(Collectors.toList());
