@@ -1,0 +1,12 @@
+[kafka]
+consumer.group=python-tper-flow-consumer
+kafka.topic.flow={{ getv "/kilda_kafka_topic_flow" }}
+bootstrap.servers={{ getv "/kilda_kafka_hosts" }}
+environment.naming.prefix = {{ getv "/kilda_environment_naming_prefix" }}
+
+[neo4j]
+host={{ getv "/kilda_neo4j_host" }}
+user={{ getv "/kilda_neo4j_user" }}
+pass={{ getv "/kilda_neo4j_password" }}
+retry.max_attempts = 3
+retry.delay = 0.1
