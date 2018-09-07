@@ -17,7 +17,6 @@ package org.openkilda.floodlight.switchmanager;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
@@ -61,7 +60,6 @@ import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
@@ -70,6 +68,7 @@ import org.projectfloodlight.openflow.protocol.OFLegacyMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFLegacyMeterMod;
 import org.projectfloodlight.openflow.protocol.OFLegacyMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
@@ -321,16 +320,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
 
         // build meter instruction
-        OFInstructionMeter meter = null;
-        if (meterId != 0L && !OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
-            if (ofFactory.getVersion().compareTo(OF_12) <= 0) {
-                actionList.add(legacyMeterAction(ofFactory, meterId));
-            } else if (ofFactory.getVersion().compareTo(OF_15) == 0) {
-                actionList.add(ofFactory.actions().buildMeter().setMeterId(meterId).build());
-            } else /* OF_13, OF_14 */ {
-                meter = ofFactory.instructions().buildMeter().setMeterId(meterId).build();
-            }
-        }
+        OFInstructionMeter meter = buildMeterInstruction(meterId, sw, ofFactory, actionList);
 
         // output action based on encap scheme
         actionList.addAll(inputVlanTypeToOfActionList(ofFactory, transitVlanId, outputVlanType));
@@ -346,7 +336,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command with meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY, singleton(OFFlowModFlags.RESET_COUNTS));
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, "--InstallIngressFlow--", flowMod);
     }
@@ -378,7 +368,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY, null);
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, "--InstallEgressFlow--", flowMod);
     }
@@ -406,7 +396,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY, null);
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         return pushFlow(sw, flowId, flowMod);
     }
@@ -431,16 +421,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
 
         // build meter instruction
-        OFInstructionMeter meter = null;
-        if (meterId != 0L && !OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
-            if (ofFactory.getVersion().compareTo(OF_12) <= 0) {
-                actionList.add(legacyMeterAction(ofFactory, meterId));
-            } else if (ofFactory.getVersion().compareTo(OF_15) == 0) {
-                actionList.add(ofFactory.actions().buildMeter().setMeterId(meterId).build());
-            } else /* OF_13, OF_14 */ {
-                meter = ofFactory.instructions().buildMeter().setMeterId(meterId).build();
-            }
-        }
+        OFInstructionMeter meter = buildMeterInstruction(meterId, sw, ofFactory, actionList);
 
         // output action based on encap scheme
         actionList.addAll(pushSchemeOutputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
@@ -455,7 +436,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command with meter
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY, singleton(OFFlowModFlags.RESET_COUNTS));
+                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
 
         pushFlow(sw, flowId, flowMod);
 
@@ -499,8 +480,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public OFMeterConfigStatsReply dumpMeters(final DatapathId dpid) throws SwitchOperationException {
-        OFMeterConfigStatsReply values = null;
+    public List<OFMeterConfig> dumpMeters(final DatapathId dpid) throws SwitchOperationException {
+        List<OFMeterConfig> result = null;
         IOFSwitch sw = lookupSwitch(dpid);
         if (sw == null) {
             throw new IllegalArgumentException(String.format("Switch %s was not found", dpid));
@@ -517,13 +498,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
 
         try {
-            ListenableFuture<OFMeterConfigStatsReply> future = sw.writeRequest(meterRequest);
-            values = future.get(5, TimeUnit.SECONDS);
+            ListenableFuture<List<OFMeterConfigStatsReply>> future = sw.writeStatsRequest(meterRequest);
+            List<OFMeterConfigStatsReply> values = future.get(10, TimeUnit.SECONDS);
+            if (values != null) {
+                result = values.stream()
+                        .map(OFMeterConfigStatsReply::getEntries)
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList());
+            }
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             logger.error("Could not get meter config stats for {}.", dpid, e);
         }
 
-        return values;
+        return result;
     }
 
     /**
@@ -532,26 +519,29 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public long installMeter(final DatapathId dpid, final long bandwidth, final long burstSize, final long meterId)
             throws SwitchOperationException {
+        long meterCommandXid = 0L;
+
         if (meterId == 0) {
             logger.info("skip installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return 0L;
+            return meterCommandXid;
         }
 
         IOFSwitch sw = lookupSwitch(dpid);
 
         if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
             logger.info("skip installing meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
-            return 0L;
+            return meterCommandXid;
         }
-
-        long meterCommandXid;
 
         if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
+            logger.info("Skip installing meter {} on switch {} because of OF version 1.2", meterId, dpid);
+            /* FIXME: Since we can't read/validate meters from switches with OF 1.2 we should not install them
             meterCommandXid = installLegacyMeter(sw, dpid, bandwidth, burstSize, meterId);
-        } else {
-            meterCommandXid = buildAndinstallMeter(sw, dpid, bandwidth, burstSize, meterId);
+            */
+            return meterCommandXid;
         }
 
+        meterCommandXid = buildAndinstallMeter(sw, dpid, bandwidth, burstSize, meterId);
         // All cases when we're installing meters require that we wait until the command is processed and the meter is
         // installed.
         sendBarrierRequest(sw);
@@ -713,7 +703,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .applyActions(actionList).createBuilder().build();
         final long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, instructionApplyActions,
-                cookie, VERIFICATION_RULE_PRIORITY, null);
+                cookie, VERIFICATION_RULE_PRIORITY);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
         flowname += "--VerificationFlow--" + dpid.toString();
         pushFlow(sw, flowname, flowMod);
@@ -736,7 +726,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
 
         Match match = simpleDstMatch(ofFactory, dstMac, dstMask);
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null, cookie, priority, null);
+        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null, cookie, priority);
         String flowName = "--CustomDropRule--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
     }
@@ -755,7 +745,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             logger.debug("Skip installation of drop flow for switch {}", dpid);
         } else {
             logger.debug("Installing drop flow for switch {}", dpid);
-            OFFlowMod flowMod = buildFlowMod(ofFactory, null, null, null, DROP_RULE_COOKIE, 1, null);
+            OFFlowMod flowMod = buildFlowMod(ofFactory, null, null, null, DROP_RULE_COOKIE, 1);
             String flowName = "--DropRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
@@ -1094,23 +1084,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param actions  actions for the flow
      * @param cookie   cookie for the flow
      * @param priority priority to set on the flow
-     * @param flags    a Set of OFFlowModFlags to set on the flow
      * @return {@link OFFlowMod}
      */
     private OFFlowMod buildFlowMod(final OFFactory ofFactory, final Match match, final OFInstructionMeter meter,
-                                   final OFInstructionApplyActions actions, final long cookie, final int priority,
-                                   final Set<OFFlowModFlags> flags) {
+                                   final OFInstructionApplyActions actions, final long cookie, final int priority) {
         OFFlowMod.Builder fmb = ofFactory.buildFlowAdd();
         fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
         fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
         fmb.setBufferId(OFBufferId.NO_BUFFER);
         fmb.setCookie(U64.of(cookie));
         fmb.setPriority(priority);
-
-        if (flags != null) {
-            fmb.setFlags(flags);
-        }
-
         List<OFInstruction> instructions = new ArrayList<>(2);
 
         // If no meter then no bandwidth limit
@@ -1240,6 +1223,31 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return swInfo;
     }
 
+    /**
+     * Creates meter instruction for OF versions 1.3 and 1.4 or adds meter to actions.
+     * @param meterId meter to be installed.
+     * @param sw switch information.
+     * @param ofFactory OF factory for the switch.
+     * @param actionList actions for the flow.
+     * @return built {@link OFInstructionMeter} for OF 1.3 and 1.4, otherwise returns null.
+     */
+    private OFInstructionMeter buildMeterInstruction(long meterId, IOFSwitch sw, OFFactory ofFactory,
+                                                     List<OFAction> actionList) {
+        OFInstructionMeter meterInstruction = null;
+        if (meterId != 0L && !OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
+            if (ofFactory.getVersion().compareTo(OF_12) <= 0) {
+                /* FIXME: Since we can't read/validate meters from switches with OF 1.2 we should not install them
+                actionList.add(legacyMeterAction(ofFactory, meterId));
+                */
+            } else if (ofFactory.getVersion().compareTo(OF_15) == 0) {
+                actionList.add(ofFactory.actions().buildMeter().setMeterId(meterId).build());
+            } else /* OF_13, OF_14 */ {
+                meterInstruction = ofFactory.instructions().buildMeter().setMeterId(meterId).build();
+            }
+        }
+
+        return meterInstruction;
+    }
 
     /**
      * A struct to collect all the data necessary to manage the safe application of base rules.

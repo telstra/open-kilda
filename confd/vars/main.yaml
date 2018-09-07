@@ -1,0 +1,88 @@
+---
+# defaults file for templates
+kilda_environment_naming_prefix: ""
+kilda_environment_role: "devel"
+
+kilda_neo4j_host: "neo4j.pendev"
+kilda_neo4j_bolt_port: "7687"
+kilda_neo4j_rest_port: "7474"
+kilda_neo4j_user: "neo4j"
+kilda_neo4j_password: "temppass"
+kilda_neo4j_cypher_path: "/db/data/cypher"
+
+kilda_kafka_hosts: "kafka.pendev:9092"
+kilda_zookeeper_hosts: "zookeeper.pendev:2181"
+kilda_opentsdb_hosts: "opentsdb.pendev"
+kilda_opentsdb_port: "4242"
+kilda_storm_numbus_hosts: "nimbus.pendev"
+
+kilda_gui_host: "http://127.0.0.1"
+kilda_gui_port: 1010
+kilda_smtp_host: "127.0.0.1"
+kilda_smtp_port: "25"
+kilda_mail_from: "donotreply@openkilda.org"
+
+kilda_floodlight_endpoint: "http://127.0.0.1"
+kilda_floodlight_rest_port: "8081"
+kilda_floodlight_username: "kilda"
+kilda_floodlight_password: "kilda"
+
+kilda_aswitch_port: "5001"
+kilda_aswitch_endpoint: "http://127.0.0.1"
+kilda_mininet_endpoint: "http://127.0.0.1"
+kilda_mininet_rest_port: "38080"
+kilda_topology_engine_endpoint: "http://127.0.0.1"
+kilda_topology_engine_rest_endpoint: "http://127.0.0.1"
+kilda_topology_engine_rest_port: "80"
+kilda_northbound_endpoint: "http://northbound.pendev"
+kilda_northbound_rest_port: "8080"
+
+kilda_northbound_username: "kilda"
+kilda_northbound_password: "kilda"
+
+kilda_topology_engine_rest_username: "kilda"
+kilda_topology_engine_rest_password: "kilda"
+
+kilda_kafka_topic_flow: "kilda.flow"
+kilda_kafka_topic_topo_cache: "kilda.topo.cache"
+kilda_kafka_topic_speaker: "kilda.speaker"
+kilda_kafka_topic_topo_eng: "kilda.topo.eng"
+kilda_kafka_topic_northbound: "kilda.northbound"
+
+kilda_kafka_te_consumer_group: "kilda-tpe"
+
+kilda_discovery_interval: 2
+kilda_discovery_timeout: "9"
+# discovery_limit of -1 is forever
+# 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..
+kilda_discovery_limit: "-1"
+kilda_discovery_keep_removed_isl: 60
+kilda_worker_pool_size: 512
+kilda_opentsdb_timeout: 30
+kilda_opentsdb_num_spouts: 1
+kilda_opentsdb_num_opentsdbfilterbolt: 1
+kilda_opentsdb_num_opentsdbbolt: 1
+kilda_opentsdb_workers_opentsdbolt: 1
+kilda_opentsdb_num_datapointparserbolt: 1
+kilda_opentsdb_workers_datapointparserbolt: 1
+kilda_opentsdb_batch_size: 50
+kilda_opentsdb_flush_interval: 1
+kilda_opentsdb_workers: 1
+
+kilda_production_fileserver: "http://127.0.0.1"
+
+kilda_reroute_throttling_delay_min: 10
+kilda_reroute_throttling_delay_max: 30
+
+kilda_logging_json_file: False
+kilda_logging_logstash: True
+kilda_logging_logfile_path: "/var/log/"
+kilda_logging_logstash_host: "logstash.pendev"
+kilda_logging_elasticsearch_hosts: "elasticsearch.pendev:9200"
+kilda_logging_fl_loglevel: "INFO"
+kilda_logging_port_topology_engine: 5000
+kilda_logging_port_storm: 5001
+kilda_logging_port_floodlight: 5002
+kilda_logging_port_topology_engine_rest: 5003
+kilda_logging_port_mininet: 5004
+kilda_logging_port_northbound: 5005

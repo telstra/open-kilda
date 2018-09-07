@@ -1,0 +1,5 @@
+[template]
+src = "gui/application.properties.tmpl"
+dest = "services/src/openkilda-gui/src/main/resources/application.properties"
+keys = [ "/" ]
+mode = "0644"

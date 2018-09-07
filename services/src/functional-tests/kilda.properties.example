@@ -15,3 +15,7 @@ neo.uri=bolt://localhost:7687
 mininet.endpoint=http://localhost:38080
 mininet-flowtool.endpoint=http://localhost:17191
 spring.profiles.active=virtual
+
+reroute.delay=10
+reroute.hardtimeout=30
+discovery.interval=2

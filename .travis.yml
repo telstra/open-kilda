@@ -3,11 +3,17 @@ services:
 
 jobs:
   include:
-    - stage: ansible-test
-      language: python
+    - stage: confd-test
+      before_install:
+        - wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64
+        - sudo mkdir -p /opt/confd/bin
+        - sudo mv confd-0.16.0-linux-amd64 /opt/confd/bin/confd
+        - sudo chmod +x /opt/confd/bin/confd
+        - export PATH="$PATH:/opt/confd/bin"
+
       script:
-        - pip install ansible
         - make update-props-dryrun
+        - make update-props
 
     - stage: tests
       name: "Sonar"
@@ -45,8 +51,11 @@ jobs:
       jdk: oraclejdk8
 
       before_install:
-        - sudo pip install --upgrade pip
-        - sudo pip install ansible
+        - wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64
+        - sudo mkdir -p /opt/confd/bin
+        - sudo mv confd-0.16.0-linux-amd64 /opt/confd/bin/confd
+        - sudo chmod +x /opt/confd/bin/confd
+        - export PATH="$PATH:/opt/confd/bin"
 
       script:
         - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"

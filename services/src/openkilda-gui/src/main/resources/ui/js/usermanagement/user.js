@@ -1,10 +1,11 @@
 class User {
-    constructor(name, user_name, email, role, password) {
+    constructor(name, user_name, email, role, password,is2FaEnabled) {
         this.name = name;
         this.user_name = user_name;
         this.email = email;
         this.role_id = role;
         this.password = password;
+        this.is2FaEnabled = is2FaEnabled;
     }
 }
 
@@ -45,7 +46,8 @@ var userService = (function() {
         }       
         var $form = $("#addUserForm");
         var data = getFormData($form);
-        var userData = new User(data.name, data.email, data.email, roles, data.password);
+        var is2FaEnabled = (typeof(data.is2FaEnabled)!='undefined') ? true : false;
+        var userData = new User(data.name, data.email, data.email, roles, data.password,is2FaEnabled);
         $("#loading").css("display", "block");
         if (user_id) {
             $.ajax({
@@ -117,6 +119,8 @@ var userService = (function() {
         userService.getUser(id).then(function(response) {
             document.userForm.name.value = response.name;
             document.userForm.email.value = response.email;
+            document.userForm.is2FaEnabled.value = response.is2FaEnabled;
+            document.userForm.is2FaEnabled.checked = response.is2FaEnabled;
             user_id = response.user_id;
             userService.selectedRoles(response.roles);
         }, function(error) {

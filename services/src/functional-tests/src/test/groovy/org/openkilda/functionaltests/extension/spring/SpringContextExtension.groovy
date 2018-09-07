@@ -18,15 +18,15 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
 
     void visitSpec(SpecInfo specInfo) {
         //this is the earliest point where Spock can have access to Spring context
-        specInfo.allFixtureMethods*.addInterceptor new AbstractMethodInterceptor() {
+        specInfo.setupMethods*.addInterceptor new AbstractMethodInterceptor() {
             @Override
             void interceptSetupMethod(IMethodInvocation invocation) throws Throwable {
                 if (!initialized) {
                     context.getAutowireCapableBeanFactory().autowireBeanProperties(
                             invocation.sharedInstance, AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
                     initialized = true
-                    invocation.proceed()
                 }
+                invocation.proceed()
             }
         }
     }

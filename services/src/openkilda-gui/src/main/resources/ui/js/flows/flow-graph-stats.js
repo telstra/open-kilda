@@ -11,8 +11,7 @@
 
 var flowid = window.location.href.split("#")[1];
 var graphInterval;
-$(function() {
-				
+$(function() {				
 		var count = 0;
 		$("#datetimepicker7,#datetimepicker8").on("change",function(event) {
 			count++;
@@ -26,17 +25,61 @@ $(function() {
 		$("#downsampling,#menulist,#autoreload,#directionlist").on("change",function(event) {
 				getGraphData();	
 		});
-		$('#reverseFromdatepicker,#reverseTodatepicker,#timezoneReverse').on('change',function(event){
-			var fromDateVal = $('#reverseFromdatepicker').val();
-			var fromDate =new Date(fromDateVal);
-			var toDateval = $('#reverseTodatepicker').val();
-			var toDate = new Date(toDateval);
+		
+		$('#reverseFromdatepicker,#reverseTodatepicker').on('change',function(event){
+			var fromDate =new Date($('#reverseFromdatepicker').val());
+			var toDate = new Date($('#reverseTodatepicker').val());
+			if(moment(fromDate).isAfter(toDate)){
+				common.infoMessage("Start date can not be after End date",'error');
+				return;
+			}
 			loadReverseGraph(fromDate,toDate);
+			
 		})
-		$('#forwardFromdatepicker,#forwardTodatepicker,#timezoneForward').on('change',function(event){
+		$('#forwardFromdatepicker,#forwardTodatepicker').on('change',function(event){
 			var fromDate = new Date($('#forwardFromdatepicker').val());
 			var toDate = new Date($('#forwardTodatepicker').val());
+			if(moment(fromDate).isAfter(toDate)){
+				common.infoMessage("Start date can not be after End date",'error');
+				return;
+			}
 			loadForwardGraph(fromDate,toDate);
+		})
+		$('#timezoneForward').on('change',function(){
+			var timezone = $('#timezoneForward option:selected').val();
+			var dat2 = new Date();
+			var dat1 = new Date(dat2.getTime());
+			dat1.setHours(dat2.getHours() - 4);		
+			if(timezone == 'UTC'){
+				var startDate = moment(dat1).utc().format("YYYY/MM/DD HH:mm:ss");
+				var endDate = moment(dat2).utc().format("YYYY/MM/DD HH:mm:ss");
+				$('#forwardFromdatepicker').val(startDate);
+				$('#forwardTodatepicker').val(endDate)
+			}else{
+				var startDate = moment(dat1).format("YYYY/MM/DD HH:mm:ss");
+				var endDate = moment(dat2).format("YYYY/MM/DD HH:mm:ss");
+				$('#forwardFromdatepicker').val(startDate);
+				$('#forwardTodatepicker').val(endDate)
+			}
+			loadForwardGraph(new Date(startDate),new Date(endDate));
+		})
+		$('#timezoneReverse').on('change',function(){
+			var timezone = $('#timezoneReverse option:selected').val();
+			var dat2 = new Date();
+			var dat1 = new Date(dat2.getTime());
+			dat1.setHours(dat2.getHours() - 4);		
+			if(timezone == 'UTC'){
+				var startDate = moment(dat1).utc().format("YYYY/MM/DD HH:mm:ss");
+				var endDate = moment(dat2).utc().format("YYYY/MM/DD HH:mm:ss");
+				$('#reverseFromdatepicker').val(startDate);
+				$('#reverseTodatepicker').val(endDate)
+			}else{
+				var startDate = moment(dat1).format("YYYY/MM/DD HH:mm:ss");
+				var endDate = moment(dat2).format("YYYY/MM/DD HH:mm:ss");
+				$('#reverseFromdatepicker').val(startDate);
+				$('#reverseTodatepicker').val(endDate)
+			}
+			loadReverseGraph(new Date(startDate),new Date(endDate));
 		})
 		$('#timezone').on('change',function(){
 			var timezone = $('#timezone option:selected').val();
@@ -56,6 +99,7 @@ $(function() {
 			}
 			getGraphData();	
 		})
+		
 	
 		
 	$('#flowselectedGraph').on('change',function(){
@@ -86,6 +130,8 @@ $(document).ready(function() {
 	$.datetimepicker.setLocale('en');
 	var date = new Date()
 	$('#timezone').val("LOCAL");
+	$('#timezoneForward').val('LOCAL');
+	$('#timezoneReverse').val('LOCAL');
 	var yesterday = new Date(date.getTime());
 	yesterday.setDate(date.getDate() - 1);
 	var YesterDayDate = moment(yesterday).format("YYYY/MM/DD HH:mm:ss");
@@ -164,27 +210,27 @@ function loadForwardGraph(fromDate, toDate){
 		$('#reverse_graph_icon').removeClass('glyphicon-minus').addClass('glyphicon-plus');
 		if(typeof(fromDate) !==' undefined' && typeof(toDate) !== 'undefined') {
 			if(timezone == 'UTC'){
-				var startDate = moment(fromDate).utc().format("YYYY-MM-DD-HH:mm:ss"); 
-				var endDate = moment(toDate).utc().format("YYYY-MM-DD-HH:mm:ss");
-				var fromStartDate =  moment(fromDate).utc().format("YYYY-MM-DD HH:mm:ss"); 
-				var toEndDate = moment(toDate).utc().format("YYYY/MM/DD HH:mm:ss"); 
-			}else{
 				var startDate = moment(fromDate).format("YYYY-MM-DD-HH:mm:ss"); 
 				var endDate = moment(toDate).format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).format("YYYY/MM/DD HH:mm:ss"); 
+			}else{
+				var startDate = moment(fromDate).utc().format("YYYY-MM-DD-HH:mm:ss"); 
+				var endDate = moment(toDate).utc().format("YYYY-MM-DD-HH:mm:ss");
 				var fromStartDate =  moment(fromDate).format("YYYY-MM-DD HH:mm:ss"); 
 				var toEndDate = moment(toDate).format("YYYY/MM/DD HH:mm:ss"); 
 			}
 		}else{
 			if(timezone == 'UTC'){
-				var startDate = moment().subtract(4,'hour').utc().format("YYYY-MM-DD-HH:mm:ss"); 
-				var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
-				var fromStartDate = moment().subtract(4,'hour').utc().format("YYYY/MM/DD HH:mm:ss");
-				var toEndDate = moment().utc().format("YYYY/MM/DD HH:mm:ss");
+				var startDate = moment().subtract(4,'hour').format("YYYY-MM-DD-HH:mm:ss"); 
+				var endDate = moment().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate = moment().subtract(4,'hour').format("YYYY/MM/DD HH:mm:ss");
+				var toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
 				$('#forwardFromdatepicker').val(fromStartDate);
 				$('#forwardTodatepicker').val(toEndDate);
 			}else{
-				var startDate = moment().subtract(4,'hour').format("YYYY-MM-DD-HH:mm:ss");
-				var endDate = moment().format("YYYY-MM-DD-HH:mm:ss");
+				var startDate = moment().subtract(4,'hour').utc().format("YYYY-MM-DD-HH:mm:ss");
+				var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
 				var fromStartDate = moment().subtract(4,'hour').format("YYYY/MM/DD HH:mm:ss");
 				var toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
 				$('#forwardFromdatepicker').val(fromStartDate);
@@ -221,6 +267,7 @@ function loadForwardGraph(fromDate, toDate){
 					loadPathGraph(response,fromStartDate,toEndDate,'forward',timezone);
 				},function(error){
 					$('#waitforward').hide();
+					loadPathGraph([],fromStartDate,toEndDate,'forward',timezone);
 				})
 				
 			},500);
@@ -245,27 +292,25 @@ function getColorCode(j,arr){
 		return getColorCode(j,arr);
 	}
 }
-function computeGraphData(data,startDate,endDate,type,timezone){
+function computeGraphData(data,startDate,endDate,type,timezone) {
 	var graphData = [];
 	var labels =["Date"];
 	var color = [];
-	if(typeof(startDate)!=='undefined' && startDate!=null){
+	if(typeof(startDate)!=='undefined' && startDate!=null) {
 		var dat = new Date(startDate);
 		var startTime = dat.getTime();
 		var usedDate = new Date();
-		if(typeof(timezone) !== 'undefined' && timezone=='UTC'){
+		if(typeof(timezone) !== 'undefined' && timezone=='UTC') {
 			startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
 		}
 		var arr = [new Date(startTime)];
-		for(var j = 0; j < data.length; j++){
+		for(var j = 0; j < data.length; j++) {
 			arr.push(null);
 		}
 		graphData.push(arr);
-	}
-	  if(data){
-		  if(data.length == 0){
-			  graphData = []; 
-		  }else{ 
+	 }
+	  if(data) {
+		  if(data.length > 0) { 
 			   for(var j = 0; j < data.length; j++){ 
 				   var dataValues = (typeof(data[j]) !=='undefined') ? data[j].dps : 0;
 				   var metric = (typeof(data[j]) !=='undefined') ? data[j].metric : '';
@@ -274,7 +319,7 @@ function computeGraphData(data,startDate,endDate,type,timezone){
 					   labels.push(metric);
 					   var colorCode = getColorCode(j,color);
 			            color.push(colorCode);
-					   var k = 0;
+					   var k = 1;
 					   for(i in dataValues) {
 
 				            if(dataValues[i]<0){
@@ -288,7 +333,7 @@ function computeGraphData(data,startDate,endDate,type,timezone){
 							      	graphData[k] = temparr;
 							      	
 				             }else{
-				            	 var temparr = graphData[k];
+				            	 var temparr = (typeof(graphData[k])!='undefined' && graphData[k]!=null) ? graphData[k] : [];
 				            	 temparr.push(dataValues[i]);
 				            	 graphData[k] = temparr;
 				             }
@@ -297,9 +342,8 @@ function computeGraphData(data,startDate,endDate,type,timezone){
 				   }else if(metric === 'pen.flow.packets'){
 					   metric = metric + "("+data[j].tags.flowid+")";
 					   labels.push(metric);
-					   var colorCode = getColorCode(j,color);
-			            color.push("#aad200");
-					   var k = 0;
+					   color.push("#aad200");
+					   var k = 1;
 					   for(i in dataValues) {
 
 				            if(dataValues[i]<0){
@@ -313,7 +357,7 @@ function computeGraphData(data,startDate,endDate,type,timezone){
 							      	graphData[k] = temparr;
 							      	
 				             }else{
-				            	 var temparr = graphData[k];
+				            	 var temparr = (typeof(graphData[k])!='undefined' && graphData[k]!=null) ? graphData[k] : [];
 				            	 temparr.push(dataValues[i]);
 				            	 graphData[k] = temparr;
 				             }
@@ -325,7 +369,7 @@ function computeGraphData(data,startDate,endDate,type,timezone){
 				   }
 			   }
 			}
-	  } 
+	  }
 	  if(typeof(endDate)!=='undefined' && endDate!=null){ 
 			var dat = new Date(endDate);
 			var lastTime = dat.getTime();
@@ -339,6 +383,7 @@ function computeGraphData(data,startDate,endDate,type,timezone){
 			}
 			graphData.push(arr);
 		}
+	 
 	  return {labels:labels,data:graphData,color:color};
 }
 function loadPathGraph(data,startDate,endDate,type,timezone){
@@ -422,13 +467,13 @@ function loadReverseGraph(fromDate,toDate){
 		$('#forward_graph_icon').removeClass('glyphicon-minus').addClass('glyphicon-plus');
 		if(typeof(fromDate) !==' undefined' && typeof(toDate) !== 'undefined') {
 			if(timezone == 'UTC'){
-				var startDate = moment(fromDate).utc().format("YYYY-MM-DD-HH:mm:ss"); 
-				var endDate = moment(toDate).utc().format("YYYY-MM-DD-HH:mm:ss");
-				var fromStartDate =  moment(fromDate).utc().format("YYYY-MM-DD HH:mm:ss"); 
-				var toEndDate = moment(toDate).utc().format("YYYY/MM/DD HH:mm:ss"); 
-			}else{
-				var startDate = moment(fromDate).format("YYYY-MM-DD-HH:mm:ss");
+				var startDate = moment(fromDate).format("YYYY-MM-DD-HH:mm:ss"); 
 				var endDate = moment(toDate).format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate =  moment(fromDate).format("YYYY-MM-DD HH:mm:ss"); 
+				var toEndDate = moment(toDate).format("YYYY/MM/DD HH:mm:ss"); 
+			}else{
+				var startDate = moment(fromDate).utc().format("YYYY-MM-DD-HH:mm:ss");
+				var endDate = moment(toDate).utc().format("YYYY-MM-DD-HH:mm:ss");
 				var fromStartDate =  moment(fromDate).format("YYYY-MM-DD HH:mm:ss"); 
 				var toEndDate = moment(toDate).format("YYYY/MM/DD HH:mm:ss");
 			}
@@ -436,15 +481,15 @@ function loadReverseGraph(fromDate,toDate){
 			
 		}else{
 			if(timezone == 'UTC'){
-				var startDate = moment().subtract(4,'hour').utc().format("YYYY-MM-DD-HH:mm:ss"); 
-				var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
-				var fromStartDate = moment().subtract(4,'hour').utc().format("YYYY/MM/DD HH:mm:ss");
-				var toEndDate = moment().utc().format("YYYY/MM/DD HH:mm:ss");
+				var startDate = moment().subtract(4,'hour').format("YYYY-MM-DD-HH:mm:ss"); 
+				var endDate = moment().format("YYYY-MM-DD-HH:mm:ss");
+				var fromStartDate = moment().subtract(4,'hour').format("YYYY/MM/DD HH:mm:ss");
+				var toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
 				$('#reverseFromdatepicker').val(fromStartDate);
 				$('#reverseTodatepicker').val(toEndDate);
 			}else{
-				var startDate = moment().subtract(4,'hour').format("YYYY-MM-DD-HH:mm:ss"); // To do change the value 4 to 2 to change time difference to 2 hours in subtract function
-				var endDate = moment().format("YYYY-MM-DD-HH:mm:ss");
+				var startDate = moment().subtract(4,'hour').utc().format("YYYY-MM-DD-HH:mm:ss"); // To do change the value 4 to 2 to change time difference to 2 hours in subtract function
+				var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
 				var fromStartDate = moment().subtract(4,'hour').format("YYYY/MM/DD HH:mm:ss");
 				var toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
 				$('#reverseFromdatepicker').val(fromStartDate);
@@ -483,6 +528,7 @@ function loadReverseGraph(fromDate,toDate){
 					loadPathGraph(response,fromStartDate,toEndDate,'reverse',timezone);
 				},function(error){
 					$('#waitreverse').hide();
+					loadPathGraph([],fromStartDate,toEndDate,'reverse',timezone);
 				})
 			},500);
 			

@@ -16,7 +16,6 @@ EXPOSE 1010
 
 WORKDIR /app
 
-RUN mkdir conf/
 ADD pom.xml /app
 ADD src/ /app/src/
 RUN mkdir target

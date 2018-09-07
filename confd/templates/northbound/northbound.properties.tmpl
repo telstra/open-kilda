@@ -1,0 +1,21 @@
+environment.naming.prefix = {{ getv "/kilda_environment_naming_prefix" }}
+
+service.name=@project.name@
+service.version=@project.version@
+service.description=@project.description@
+security.rest.username.env=REST_USERNAME
+security.rest.password.env=REST_PASSWORD
+security.rest.username.default={{ getv "/kilda_northbound_username" }}
+security.rest.password.default={{ getv "/kilda_northbound_username" }}
+
+kafka.hosts={{ getv "/kilda_kafka_hosts" }}
+
+server.contextPath=/api/v1
+
+topology.engine.rest.endpoint={{ getv "/kilda_topology_engine_rest_endpoint" }}:{{ getv "/kilda_topology_engine_rest_port" }}
+northbound.messages.expiration.minutes=15
+
+neo4j.hosts = {{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
+neo4j.user = {{ getv "/kilda_neo4j_user" }}
+neo4j.pswd = {{ getv "/kilda_neo4j_password" }}
+

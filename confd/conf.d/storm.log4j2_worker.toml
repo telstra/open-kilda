@@ -1,0 +1,5 @@
+[template]
+src = "storm/log4j2/worker.xml.tmpl"
+dest = "services/storm/log4j2/worker.xml"
+keys = [ "/" ]
+mode = "0644"
