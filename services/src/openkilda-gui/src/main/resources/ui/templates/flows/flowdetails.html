@@ -29,15 +29,9 @@
 					<li><i class="fa icon-double-angle-right"></i><a
 						th:href="@{/flows}">Flows</a></li>
 					<li><i class="fa icon-double-angle-right" id="flow-id-name"></i></li>
-					<div class="col-md-3 pull-right" style="right: -220px;">
-					<!-- <span class="btn kilda_btn hidePermission"
-						onClick="flowObj.deleteFlowAlert()" id="delete_flow"
-						permission="fw_flow_delete">Delete</span> -->
-						 <span class="btn kilda_btn hidePermission" style="padding: 6px 20px;"
-						onClick="flowObj.editFlow();" id="edit_flow"
-						permission="fw_flow_update">Edit</span>
-				</div>
+					
 				</ul>
+				
 			</div>
 		</div>
 		<div id="editflowloader" class="bg_load" style="display: none;">
@@ -79,6 +73,14 @@
 						id:</label>
 					<p class='flow_div_flow_id copy_to_clipBoard'
 						style='display: inline-block;'></p>
+				</div>
+				<div class="col-md-3 pull-right" style="right: -120px;">
+					<!-- <span class="btn kilda_btn hidePermission"
+						onClick="flowObj.deleteFlowAlert()" id="delete_flow"
+						permission="fw_flow_delete">Delete</span> -->
+					  <span class="btn kilda_btn hidePermission" style="padding: 6px 20px;"
+						onClick="flowObj.editFlow();" id="edit_flow"
+						permission="fw_flow_update">Edit</span>
 				</div>
 			</div>
 
