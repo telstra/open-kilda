@@ -2217,7 +2217,7 @@ td.highlight {
     margin: -20px 10px;
     float: right;
 }
-pre.validate_json{
+pre.validate_json , pre.resync_json{
 	display: block;
     font-family: monospace;
     white-space: pre;
@@ -2567,7 +2567,7 @@ span.mandatory-text.text-danger {
     font-size: 15px;
     font-weight: 100;
 }
-#validate_flow_btn{
+#validate_flow_btn,#resync_flow_btn{
 	float:right;
     margin: -20px 10px 10px 0px;
 }
@@ -2794,4 +2794,15 @@ div#portsTable_info {
     padding: 10px 5px;
     font-size: 12px;
 }
+.response_flow_label{
+	 background: #262d37;
+     color: #FFF;
+     opacity:0.7;
+     float: left;
+     opacity: 0.7;
+     border-radius: 0!important;
+     padding: 8px 50px;
+     font-size:14px;
+}
+     
 

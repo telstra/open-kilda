@@ -96,10 +96,10 @@ public class UserValidator {
         }
 
         if (ValidatorUtil.isNull(userInfo.getName()) && ValidatorUtil.isNull(userInfo.getRoleIds())
-                && ValidatorUtil.isNull(userInfo.getStatus())) {
+                && ValidatorUtil.isNull(userInfo.getStatus()) && ValidatorUtil.isNull(userInfo.getIs2FaEnabled())) {
             LOGGER.error("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
-                    + messageUtil.getAttributeNotNull("name, status and role_id"));
-            throw new RequestValidationException(messageUtil.getAttributeNotNull("name, status and role_id"));
+                    + messageUtil.getAttributeNotNull("name, 2FA, status and role_id"));
+            throw new RequestValidationException(messageUtil.getAttributeNotNull("name, 2FA, status and role_id"));
         }
 
         if (!ValidatorUtil.isNull(userInfo.getStatus()) && Status.getStatusByName(userInfo.getStatus()) == null) {
@@ -108,11 +108,13 @@ public class UserValidator {
             throw new RequestValidationException(messageUtil.getAttributeInvalid("status", userInfo.getStatus()));
         }
 
-        UserEntity userEntityTemp = userRepository.findByUsername(userInfo.getUsername());
-        if (userEntityTemp != null && !userEntityTemp.getUserId().equals(userInfo.getUserId())) {
-            LOGGER.error("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
-                    + messageUtil.getAttributeUnique("username"));
-            throw new RequestValidationException(messageUtil.getAttributeUnique("username"));
+        if (!ValidatorUtil.isNull(userInfo.getUsername())) {
+            UserEntity userEntityTemp = userRepository.findByUsername(userInfo.getUsername());
+            if (userEntityTemp != null && !userEntityTemp.getUserId().equals(userInfo.getUserId())) {
+                LOGGER.error("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
+                        + messageUtil.getAttributeUnique("username"));
+                throw new RequestValidationException(messageUtil.getAttributeUnique("username"));
+            }
         }
         return userEntity;
     }

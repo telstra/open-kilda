@@ -15,6 +15,8 @@
 
 package org.openkilda.helper;
 
+import org.openkilda.auth.context.ServerContext;
+import org.openkilda.auth.model.RequestContext;
 import org.openkilda.constants.HttpError;
 import org.openkilda.constants.IAuthConstants;
 import org.openkilda.exception.ExternalSystemException;
@@ -40,10 +42,8 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -66,6 +66,9 @@ public class RestClientManager {
 
     @Autowired
     private ObjectMapper mapper;
+    
+    @Autowired
+    private ServerContext serverContext;
 
     /**
      * Invoke.
@@ -84,6 +87,8 @@ public class RestClientManager {
         HttpResponse httpResponse = null;
 
         try {
+        	RequestContext requestContext = serverContext.getRequestContext();
+        	
             HttpClient client = HttpClients.createDefault();
             HttpUriRequest httpUriRequest = null;
             HttpEntityEnclosingRequestBase httpEntityEnclosingRequest = null;
@@ -106,6 +111,7 @@ public class RestClientManager {
                 if (!StringUtil.isNullOrEmpty(basicAuth)) {
                     LOGGER.debug("[invoke] Setting authorization in header as " + IAuthConstants.Header.AUTHORIZATION);
                     httpUriRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
+                    httpUriRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
                 }
             }
 
@@ -115,6 +121,7 @@ public class RestClientManager {
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
                 // Setting request payload
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);

@@ -37,10 +37,24 @@ $(document).ready(function() {
 function callValidateFlow(flow_id){
 	$('#validate_json_loader').show();
 	$('#validate_json').html("")
+	$('#resync_flow_response').hide();
 		common.getData("/flows/" + flow_id+"/validate","GET").then(function(response) { // calling re-route api
 				var responseData = JSON.stringify(response,null,2);
 				$('#validate_json').html(responseData)
+				$('#validate_flow_response').show();
 				$('#validate_json_loader').hide();
+		})
+}
+
+function callResyncFlow(flow_id){
+	$('#resync_json_loader').show();
+	$('#resync_json').html("")
+	$('#validate_flow_response').hide();
+		common.getData("/flows/" + flow_id+"/sync","PATCH").then(function(response) { // calling re-route api
+				var responseData = JSON.stringify(response,null,2);
+				$('#resync_json').html(responseData);
+				$('#resync_flow_response').show();
+				$('#resync_json_loader').hide();
 		})
 }
 function showFlowData(obj) {
@@ -70,6 +84,18 @@ function showFlowData(obj) {
 		e.preventDefault();
 		callValidateFlow(obj.flowid);
 	});
+	$('#resync_flow_btn').click(function(e){
+		e.preventDefault();
+		callResyncFlow(obj.flowid);
+	})
+	$('#clear_validate').click(function(e){
+		$("#validate_json").html("");
+		$("#validate_flow_response").hide();
+	})
+	$('#clear_resync').click(function(e){
+		$("#resync_json").html("");
+		$("#resync_flow_response").hide();
+	})
 
 }
 
