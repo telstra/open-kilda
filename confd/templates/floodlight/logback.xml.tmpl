@@ -7,9 +7,9 @@
   </appender>
 {{- if eq (getv "/kilda_logging_json_file") "true" }}
   <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>{{ getv "/kilda_logging_logfile_path" }}/floodlight/floodlight.log.json</file>
+    <file>{{ getv "/kilda_logging_logfile_path" }}/floodlight.log.json</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-      <fileNamePattern>{{ getv "/kilda_logging_logfile_path" }}/floodlight/floodlight.log.json.%d{yyyy-MM-dd}.%i</fileNamePattern>
+      <fileNamePattern>{{ getv "/kilda_logging_logfile_path" }}/floodlight.log.json.%d{yyyy-MM-dd}.%i</fileNamePattern>
        <maxFileSize>100MB</maxFileSize>
        <totalSizeCap>20GB</totalSizeCap>
        <maxHistory>10</maxHistory>
