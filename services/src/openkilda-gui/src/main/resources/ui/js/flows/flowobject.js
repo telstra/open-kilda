@@ -238,7 +238,8 @@ class Flow {
 					}
 
 					$('#editflowloader').hide();
-					
+					$('#flow_detail_div').hide();
+					$('#edit_flow').addClass('hidePermission').removeClass('showPermission');
 					$("#edit_flow_div").show().load('../ui/templates/flows/editflow.html',function(){
 						$("#edit_flow_div").find("#source_vlan").html(vlanOptions).val(flowData.source['vlan-id']);
 						$("#edit_flow_div").find("#target_vlan").html(vlanOptions).val(flowData.destination['vlan-id']);

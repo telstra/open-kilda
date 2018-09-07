@@ -16,13 +16,11 @@
 package org.openkilda.constants;
 
 import java.util.ArrayList;
+
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 /**
  * The Interface IConstants.
@@ -75,6 +73,7 @@ public abstract class IConstants {
         public static final String GET_LINK_PROPS = "/link/props";
         public static final String UPDATE_FLOW = GET_FLOW + "/{flow_id}";
         public static final String GET_FLOW_PATH = GET_FLOW + "/{flow_id}/path";
+        public static final String RESYNC_FLOW = GET_FLOW + "/{flow_id}/sync";
         public static final String CONFIG_SWITCH_PORT = GET_SWITCHES + "/{switch_id}/port/{port_no}/config";
     }
     
@@ -163,6 +162,8 @@ public abstract class IConstants {
         
         public static final String FW_FLOW_DELETE = "fw_flow_delete";
 
+        public static final String FW_FLOW_RESYNC = "fw_flow_resync";
+        
         public static final String SW_PORT_CONFIG = "sw_port_config";
     }
 

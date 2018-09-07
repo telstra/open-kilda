@@ -34,10 +34,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpResponse;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -268,13 +266,32 @@ public class FlowsIntegrationService {
      * @return the flow
      */
     public Flow deleteFlow(String flowId) {
-        HttpResponse response = restClientManager.invoke(
+    	HttpResponse response = restClientManager.invoke(
                 applicationProperties.getNbBaseUrl()
                         + IConstants.NorthBoundUrl.UPDATE_FLOW.replace("{flow_id}", flowId),
                 HttpMethod.DELETE, "", "application/json", applicationService.getAuthHeader());
-        if (RestClientManager.isValidResponse(response)) {
-            return restClientManager.getResponse(response, Flow.class);
-        }
+	        if (RestClientManager.isValidResponse(response)) {
+	            return restClientManager.getResponse(response, Flow.class);
+	        }
         return null;
     }
+    
+	/**
+	 * Re sync flow
+	 * 
+	 * @param flowId the flow id
+	 * @return
+	 */
+	public String resyncFlow(String flowId) {
+		try{
+			HttpResponse response = restClientManager.invoke(
+					 applicationProperties.getNbBaseUrl()
+					 		+ IConstants.NorthBoundUrl.RESYNC_FLOW.replace("{flow_id}", flowId),
+					 HttpMethod.PATCH, "", "application/json", applicationService.getAuthHeader());
+			 return IoUtil.toString(response.getEntity().getContent());
+	   } catch (Exception e) {
+           LOGGER.error("Inside resyncFlow  Exception :", e);
+           throw new IntegrationException(e);
+       }
+	}
 }

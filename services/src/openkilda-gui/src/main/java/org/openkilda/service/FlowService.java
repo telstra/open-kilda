@@ -27,12 +27,9 @@ import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.utility.CollectionUtil;
-
 import org.apache.log4j.Logger;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
@@ -191,8 +188,8 @@ public class FlowService {
      * @return the flow
      */
     public Flow updateFlow(String flowId, Flow flow) {
-        flow = flowsIntegrationService.updateFlow(flowId, flow);
-        activityLogger.log(ActivityType.UPDATE_FLOW, flow.getId());
+    	activityLogger.log(ActivityType.UPDATE_FLOW, flow.getId());
+    	flow = flowsIntegrationService.updateFlow(flowId, flow);
         return flow;
     }
 
@@ -212,4 +209,16 @@ public class FlowService {
             return null;
         }
     }
+    
+	/**
+	 * Re sync flow
+	 * 
+	 * @param flowId the flow id
+	 * 
+	 * @return
+	 */
+	public String resyncFlow(String flowId) {
+		activityLogger.log(ActivityType.RESYNC_FLOW, flowId);
+		return flowsIntegrationService.resyncFlow(flowId);
+	}
 }

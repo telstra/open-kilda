@@ -236,4 +236,18 @@ public class FlowController extends BaseController {
         }
         return flowService.deleteFlow(flowId, userInfo);
     }
+    
+    /**
+     * Validate the flow.
+     *
+     * @param flowId id of validate flow requested.
+     * @return validate flow
+     */
+    @RequestMapping(value = "/{flowId}/sync", method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.FW_FLOW_RESYNC })
+    public @ResponseBody String resyncFlow(@PathVariable final String flowId) {
+        LOGGER.info("[resyncFlow] - start. Flow id: " + flowId);
+        return flowService.resyncFlow(flowId);
+    }
 }

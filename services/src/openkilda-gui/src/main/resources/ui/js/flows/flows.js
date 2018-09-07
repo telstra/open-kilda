@@ -130,7 +130,7 @@ function showflowData(response){
 						}
 					   
 		 			   $("#flowTable").append(tableRow);
-		 			   if(response[i].status == "UP" || response[i].status == "ALLOCATED") {
+		 			   if(response[i].status == "UP" || response[i].status == "ALLOCATED" || response[i].status == "CACHED") {
 		 				   	$("#div_"+(i+1)).addClass('up-state');
 		 		        } else {
 		 		        	$("#div_"+(i+1)).addClass('down-state');
