@@ -74,7 +74,7 @@ public final class IofSwitchConverter {
         SwitchInfoData switchInfoData = buildSwitchInfoData(sw, eventType);
 
         List<FlowEntry> flows = flowStats.getEntries().stream()
-                .map(OFFlowStatsConverter::toFlowEntry)
+                .map(OfFlowStatsConverter::toFlowEntry)
                 .collect(Collectors.toList());
 
         return new SwitchInfoExtendedData(switchInfoData, flows);

@@ -20,6 +20,7 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
+
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
@@ -45,7 +46,7 @@ import java.util.stream.Collectors;
 /**
  * Utility class that converts OFlowStats from the switch to kilda known format for further processing.
  */
-public final class OFFlowStatsConverter {
+public final class OfFlowStatsConverter {
 
     /**
      * OF specification added 13 bit that defines existence of vlan tag.
@@ -103,7 +104,7 @@ public final class OFFlowStatsConverter {
                 .collect(Collectors.toMap(OFInstruction::getType, instruction -> instruction));
 
         FlowApplyActions applyActions = Optional.ofNullable(instructionMap.get(OFInstructionType.APPLY_ACTIONS))
-                .map(OFFlowStatsConverter::buildApplyActions)
+                .map(OfFlowStatsConverter::buildApplyActions)
                 .orElse(null);
 
         Long meter = Optional.ofNullable(instructionMap.get(OFInstructionType.METER))
@@ -116,7 +117,6 @@ public final class OFFlowStatsConverter {
                 .build();
     }
 
-    //TODO(Nikita C): make possible to have multiple actions with s
     private static FlowApplyActions buildApplyActions(OFInstruction instruction) {
         Map<OFActionType, OFAction> actions = ((OFInstructionApplyActions) instruction).getActions()
                 .stream()
@@ -133,7 +133,7 @@ public final class OFFlowStatsConverter {
                         .map(action -> String.valueOf(((OFActionOutput) action).getPort().toString()))
                         .orElse(null))
                 .fieldAction(Optional.ofNullable(actions.get(OFActionType.SET_FIELD))
-                        .map(OFFlowStatsConverter::buildSetField)
+                        .map(OfFlowStatsConverter::buildSetField)
                         .orElse(null))
                 .build();
     }
@@ -151,6 +151,6 @@ public final class OFFlowStatsConverter {
                 .build();
     }
 
-    private OFFlowStatsConverter() {
+    private OfFlowStatsConverter() {
     }
 }
