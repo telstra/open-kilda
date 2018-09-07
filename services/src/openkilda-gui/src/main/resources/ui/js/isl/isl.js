@@ -22,11 +22,34 @@ $(document).ready(function() {
 	var method ="GET";
 	common.getData(url,method).then(function(response) {
 		$("#loading").css("display", "none");
-		showLinkDetails(obj,response);
-	},
-	function(error){
+		var isvalidCost = false;
+		if(response){
+			var isvalidCost = checkvalidatedCostData(obj,response);
+		}
+		if(isvalidCost){ 
+			showLinkDetails(obj,response,false);
+		}else{ 
+			common.infoMessage("Error in getting ISL cost!",'failure');
+			showLinkDetails(obj,response,true);
+		}
+		
+	},function(error){
 		$("#loading").css("display", "none");
-		showLinkDetails(obj,null);
+		if(error && error.status != 200){
+			var errMsg = (error && error.responseJSON && error.responseJSON["error-message"]) ? error.responseJSON["error-auxiliary-message"] : "Error in getting ISL cost";
+				common.infoMessage(errMsg,'failure');
+				showLinkDetails(obj,null,true);
+			
+		}else{
+			showLinkDetails(obj,null,false);
+		}
+		
+		
+	}).fail(function(error){
+		$("#loading").css("display", "none");
+		var errMsg = (error && error.responseJSON && error.responseJSON["error-message"]) ? error.responseJSON["error-auxiliary-message"] : "Error in getting ISL cost";
+		common.infoMessage(errMsg,'failure');
+		showLinkDetails(obj,null,true);
 	})
 	
 	$('#edit_isl_cost').click(function(e){
@@ -54,7 +77,9 @@ $(document).ready(function() {
 	})
 	
 })
-
+function checkvalidatedCostData(link,costData){
+	return (link && costData && link.source_switch == costData.src_switch && link.target_switch == costData.dst_switch && link.src_port == costData.src_port && link.dst_port == costData.dst_port)
+}
 function updateIslCost(forwardislCostData,oldCost){
 	var linkData = localStorage.getItem("linkData");
 	var obj = JSON.parse(linkData);
@@ -74,12 +99,12 @@ function updateIslCost(forwardislCostData,oldCost){
 			common.infoMessage("ISL cost updated successfully!",'success');
 			showLinkDetails(obj,forwardislCostData);
 		}else if(typeof(res.failures)!=='undefined' && res.failures > 0){
-			common.infoMessage("Error in updating ISL cost!",'failure');
+			common.infoMessage("Error in updating ISL cost!",'Failure');
 			showLinkDetails(obj,oldCost);
 		}
 		
 	}).fail(function(error){
-		common.infoMessage("Error in updating ISL cost!",'failure');
+		common.infoMessage("Error in updating ISL cost!",'Failure');
 		showLinkDetails(obj,oldCost);
 	})
 
@@ -91,7 +116,7 @@ function updateIslCost(forwardislCostData,oldCost){
 /**
  generate and display the isl/low details in the html
  */
-function showLinkDetails(linkData,costData) {
+function showLinkDetails(linkData,costData,error) {
 	var speed = linkData.speed;
 	var available_bandwidth = linkData.available_bandwidth;
 	if(typeof available_bandwidth !== 'string') {
@@ -114,7 +139,10 @@ function showLinkDetails(linkData,costData) {
 	$(".isl_div_latency").html(linkData.latency);
 	$(".isl_div_avaliable_bandwidth").html(available_bandwidth);
 	$(".isl_div_state").html(linkData.state);
-	if(costData && costData.props && costData.props.cost){
+	 if(typeof(error) != 'undefined' && error){
+			$(".isl_div_cost").addClass('from-error-message').html("Not able to get the cost").css('float','left');
+			$('#edit_isl_cost').addClass('hidePermission').removeClass('showPermission');
+	}else if(costData && costData.props && costData.props.cost){
 		$(".isl_div_cost").html(costData.props.cost)
 		$('#isl_cost').val(costData.props.cost);
 		$('#isl_cost_obj').val(JSON.stringify(costData));
