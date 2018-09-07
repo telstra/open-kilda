@@ -29,7 +29,14 @@
 					<li><i class="fa icon-double-angle-right"></i><a
 						th:href="@{/flows}">Flows</a></li>
 					<li><i class="fa icon-double-angle-right" id="flow-id-name"></i></li>
-
+					<div class="col-md-3 pull-right" style="right: -220px;">
+					<!-- <span class="btn kilda_btn hidePermission"
+						onClick="flowObj.deleteFlowAlert()" id="delete_flow"
+						permission="fw_flow_delete">Delete</span> -->
+						 <span class="btn kilda_btn hidePermission" style="padding: 6px 20px;"
+						onClick="flowObj.editFlow();" id="edit_flow"
+						permission="fw_flow_update">Edit</span>
+				</div>
 				</ul>
 			</div>
 		</div>
@@ -428,13 +435,31 @@
 									<div class="btn kilda_btn hidePermission"
 										id="validate_flow_btn" permission="fw_permission_validate">Validate
 										Flow</div>
+										<div class="btn kilda_btn hidePermission"
+										id="resync_flow_btn" permission="fw_flow_resync">Resync
+										Flow</div>
 									<div id="validate_json_loader" class="bg-data-loader"
 										style="bottom: 1px; display: none;">
 										<div class="loader"></div>
 									</div>
-									<div class="col-md-12">
-										<pre id="validate_json"
-											class="validate_json copy_to_clipBoard"></pre>
+									<div id="resync_json_loader" class="bg-data-loader"
+										style="bottom: 1px; display: none;">
+										<div class="loader"></div>
+									</div>
+									<div class="col-md-12" id="validate_flow_response" style="display:none;">
+										<pre  class="validate_json ">
+										<label class="response_flow_label">Validate Flow</label>
+										<button class="btn kilda_btn pull-right" style=" margin:-7px 6px; opacity: 0.7; border-radius: 0!important;" id="clear_validate">Clear</button>
+											<div id="validate_json" class="copy_to_clipBoard" style="margin: 18px 5px;"></div>
+										</pre>
+									</div>
+									<div class="col-md-12" id="resync_flow_response" style="display:none;">
+									 	
+										<pre  class="resync_json ">
+										 	<label class="response_flow_label">Resync Flow</label>
+											<button class="btn kilda_btn pull-right" style=" margin:-7px 6px; opacity: 0.7; border-radius: 0!important;"  id="clear_resync">Clear</button>
+											<div id="resync_json" class="copy_to_clipBoard" style="margin: 18px 5px;"></div>
+										</pre>
 									</div>
 
 								</div>
