@@ -37,12 +37,12 @@ public class TraffExamVirtualServiceImpl implements TraffExamService {
     }
 
     @Override
-    public Host hostByName(String name) throws NoResultsFoundException {
+    public Host hostByName(String name) {
         throw unsupportedException;
     }
 
     @Override
-    public ExamResources startExam(Exam exam) throws NoResultsFoundException, OperationalException {
+    public ExamResources startExam(Exam exam) {
         throw unsupportedException;
     }
 
@@ -57,12 +57,12 @@ public class TraffExamVirtualServiceImpl implements TraffExamService {
     }
 
     @Override
-    public ExamReport fetchReport(Exam exam) throws NoResultsFoundException, ExamNotFinishedException {
+    public ExamReport fetchReport(Exam exam) {
         throw unsupportedException;
     }
 
     @Override
-    public void stopExam(Exam exam) throws NoResultsFoundException {
+    public void stopExam(Exam exam) {
         throw unsupportedException;
     }
 

@@ -2,8 +2,9 @@ package org.openkilda.functionaltests.extension.spring
 
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
-import org.spockframework.runtime.extension.AbstractMethodInterceptor
+import org.spockframework.runtime.extension.IMethodInterceptor
 import org.spockframework.runtime.extension.IMethodInvocation
+import org.spockframework.runtime.model.MethodKind
 import org.spockframework.runtime.model.SpecInfo
 import org.springframework.beans.BeansException
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory
@@ -12,26 +13,34 @@ import org.springframework.context.ApplicationContextAware
 
 @Slf4j
 class SpringContextExtension extends AbstractGlobalExtension implements ApplicationContextAware {
+    static final String DUMMY_TEST_NAME = "Prepare spring context.."
     public static ApplicationContext context;
     public static List<SpringContextListener> listeners = []
-    boolean initialized = false
 
     void visitSpec(SpecInfo specInfo) {
-        specInfo.getAllFeatures().find {it.name == "Prepare spring context.."}?.excluded = initialized
-        initialized = true
-        //this is the earliest point where Spock can have access to Spring context
-        specInfo.setupMethods*.addInterceptor new AbstractMethodInterceptor() {
+        //include dummy test to let Spring context to be initialized before running actual features
+        //this will always be first in the execution order
+        specInfo.getAllFeatures().find {it.name == DUMMY_TEST_NAME}?.excluded = context != null
+
+        specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {
             def autowired = false
+
             @Override
-            void interceptSetupMethod(IMethodInvocation invocation) throws Throwable {
-                if(!autowired) {
-                    context.getAutowireCapableBeanFactory().autowireBeanProperties(invocation.sharedInstance,
-                            AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
-                    autowired = true
+            void intercept(IMethodInvocation invocation) throws Throwable {
+                //this is the earliest point where Spock can have access to Spring context
+                if (invocation.method.kind == MethodKind.SETUP) {
+                    if (!autowired) {
+                        context.getAutowireCapableBeanFactory().autowireBeanProperties(invocation.sharedInstance,
+                                AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
+                        autowired = true
+                    }
                 }
-                invocation.proceed()
+                //do not invoke any fixtures for the dummy test
+                if (invocation?.getFeature()?.name != DUMMY_TEST_NAME) {
+                    invocation.proceed()
+                }
             }
-        }
+        })
     }
 
     @Override
