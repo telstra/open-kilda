@@ -79,7 +79,6 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         correlationId = correlationId == null ? UUID.randomUUID().toString() : correlationId;
 
         try {
-            MDC.put(CORRELATION_ID, correlationId);
             HttpSession session = request.getSession();
             UserInfo userInfo = null;
 
@@ -111,12 +110,13 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     private void updateRequestContext(final String correlationId, final HttpServletRequest request,
             final UserInfo userInfo) {
         RequestContext requestContext = serverContext.getRequestContext();
-        requestContext.setCorrelationId(correlationId);
+        requestContext.setCorrelationId(userInfo.getUsername() + "_" + correlationId);
         requestContext.setUserId(userInfo.getUserId());
         requestContext.setUserName(userInfo.getUsername());
         requestContext.setPermissions(userInfo.getPermissions());
-
         requestContext.setClientIpAddress(getClientIp(request));
+        
+        MDC.put(CORRELATION_ID, requestContext.getCorrelationId());
     }
 
     private void validateAndPopulatePermisssion(final UserInfo userInfo, final Permissions permissions)
