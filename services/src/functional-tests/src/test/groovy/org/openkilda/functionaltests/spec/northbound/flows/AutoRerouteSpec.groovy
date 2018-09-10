@@ -4,6 +4,7 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -12,6 +13,8 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+
+import static org.junit.Assume.assumeTrue
 
 class AutoRerouteSpec extends BaseSpecification {
     @Autowired
@@ -66,5 +69,55 @@ class AutoRerouteSpec extends BaseSpecification {
         broughtDownPorts.each { northboundService.portUp(it.switchId, it.portNo) }
         northboundService.deleteFlow(flow.id)
         //TODO(rtretiak): restore costs that were changed due to portdowns
+    }
+
+    def "Flow in 'Down' status tries to reroute when discovering a new ISL"() {
+        given: "Two active switches and flow with one alternate path at least"
+        def switches = topology.getActiveSwitches()
+        List<List<PathNode>> possibleFlowPaths = []
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            possibleFlowPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths.size() > 1
+        }
+        assumeTrue("No suiting switches found", srcSwitch && dstSwitch)
+
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = 1000
+        northboundService.addFlow(flow)
+        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+
+        when: "Bring all ports down on source switch that are involved in current and alternate paths"
+        List<PathNode> broughtDownPorts = []
+        possibleFlowPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northboundService.portDown(src.switchId, src.portNo)
+        }
+
+        then: "Flow goes to 'Down' status"
+        Wrappers.wait(rerouteDelay + 2) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+
+        when: "Bring all ports up on source switch that are involved in alternate paths"
+        broughtDownPorts.findAll {
+            it.portNo != flowPath.first().portNo
+        }.each {
+            northboundService.portUp(it.switchId, it.portNo)
+        }
+
+        then: "Flow goes to 'Up' status"
+        Wrappers.wait(rerouteDelay + discoveryInterval + 3) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+        }
+
+        and: "Flow was rerouted"
+        def reroutedFlowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        flowPath != reroutedFlowPath
+
+        cleanup: "Bring port involved in original path up and delete flow"
+        flow?.id && northboundService.deleteFlow(flow.id)
+        flowPath?.first() && northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
+        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
     }
 }

@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import static org.junit.Assume.assumeTrue
 
@@ -31,7 +31,7 @@ is issued during 'reroute.delay' the timer is refreshed.
 System should stop refreshing the timer if 'reroute.hardtimeout' is reached and perform all the queued reroutes (unique 
 for each flowId).
 """)
-class ThrottlingReroutesSpec extends BaseSpecification {
+class ThrottlingRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
