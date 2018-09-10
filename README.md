@@ -18,10 +18,11 @@ virtualenv --python=python2 .venv
 pip install tox
 ```
 
-Also, don't forget to install ansible. This tool is used for creating config/properties files from templates. To install it execute the following command:
+Also, don't forget to install confd. This tool is used for creating config/properties files from templates. To install it execute the following command:
 
 ```
-pip install ansible
+wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64 -O /usr/local/bin/confd
+chmod +x /usr/local/bin/confd
 ```
 
 ### How to build Kilda Controller
