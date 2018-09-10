@@ -131,7 +131,7 @@ public class DiscoveryManager {
             if (link.isAckAttemptsLimitExceeded(islConsecutiveFailureLimit)) {
                 // We've attempted to get the health multiple times, with no response.
                 // Time to mark it as a failure and send a failure notice ** if ** it was an ISL.
-                if (link.isActive() && link.getConsecutiveFailure() == 0) {
+                if (!link.getState().isInactive() && link.getConsecutiveFailure() == 0) {
                     // It is a discovery failure if it was previously a success.
                     result.discoveryFailure.add(node);
                     logger.info("ISL IS DOWN (NO RESPONSE): {}", link);
@@ -142,7 +142,7 @@ public class DiscoveryManager {
                 // NB: this node can be in both discoveryFailure and needDiscovery
             }
 
-            if (link.isAttemptsLimitExceeded(islConsecutiveFailureLimit) && link.isActive()) {
+            if (link.isAttemptsLimitExceeded(islConsecutiveFailureLimit) && link.getState().isActive()) {
                 logger.info("Speaker doesn't send disco packet for {}", link);
                 unsentDiscoPackets++;
             }
@@ -187,7 +187,7 @@ public class DiscoveryManager {
             logger.warn("Ignore \"AVAIL\" request for {}: node not found", node);
         } else {
             DiscoveryLink link = matchedLink.get();
-            if (!link.isActive() || link.isDestinationChanged(dstSwitch, dstPort)) {
+            if (!link.getState().isActive() || link.isDestinationChanged(dstSwitch, dstPort)) {
                 // we've found newly discovered or moved/replugged isl
                 link.activate(new NetworkEndpoint(dstSwitch, dstPort));
 
@@ -230,7 +230,7 @@ public class DiscoveryManager {
             logger.warn("Ignoring \"FAILED\" request. There is no link found from {}", endpoint);
         } else {
             DiscoveryLink link = matchedLink.get();
-            if (link.isActive() && link.getConsecutiveFailure() == 0) {
+            if (!link.getState().isInactive() && link.getConsecutiveFailure() == 0) {
                 // This is the first failure for an ISL. That is a state change.
                 // IF this isn't an ISL and we receive a failure, that isn't a state change.
                 stateChanged = true;
@@ -256,7 +256,7 @@ public class DiscoveryManager {
     }
 
     /**
-     * Handle added/activated switch.
+     * Handle activated switch.
      *
      * @param switchId id of the switch.
      */
@@ -273,21 +273,10 @@ public class DiscoveryManager {
         Set<DiscoveryLink> subjectList = findAllBySwitch(switchId);
 
         if (!subjectList.isEmpty()) {
-            logger.info("Received SWITCH UP (id:{}) with EXISTING NODES.  Clearing isFoundISL flags", switchId);
-            for (DiscoveryLink subject : subjectList) {
-                subject.deactivate();
-            }
+            logger.info("Received SWITCH UP (id:{}) with EXISTING NODES. Clearing up counters for active ports",
+                    switchId);
+            subjectList.forEach(DiscoveryLink::setUknownState);
         }
-    }
-
-    /**
-     * Handle deactivated switch.
-     *
-     * @param switchId id of the switch.
-     */
-    public void handleSwitchDown(SwitchId switchId) {
-        logger.info("Deregister switch {} from ISL discovery manager", switchId);
-        removeFromDiscovery(new NetworkEndpoint(switchId, 0));
     }
 
     /**
@@ -295,16 +284,16 @@ public class DiscoveryManager {
      */
     public void handlePortUp(SwitchId switchId, int portId) {
         DiscoveryLink link = registerPort(switchId, portId);
-        if (link.isActive() || !link.isNewAttemptAllowed()) {
+        if (link.getState().isActive() || !link.isNewAttemptAllowed()) {
             // Similar to SwitchUp, if we have a PortUp on an existing port, either we are receiving
             // a duplicate, or we missed the port down, or a new discovery has occurred.
             // NB: this should cause an ISL discovery packet to be sent.
             // TODO: we should probably separate "port up" from "do discovery". ATM, one would call
             //          this function just to get the "do discovery" functionality.
-            logger.info("Port UP on existing node {};  clear failures and ISLFound", link);
+            logger.info("Port UP on existing NetworkEndpoint {};  clear failures and ISLFound", link);
             link.deactivate();
         } else {
-            logger.info("Port UP on new node: {}", link);
+            logger.info("Port UP on new NetworkEndpoint: {}", link.getSource());
         }
     }
 

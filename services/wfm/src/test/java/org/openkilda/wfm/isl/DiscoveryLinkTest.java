@@ -16,8 +16,10 @@
 package org.openkilda.wfm.isl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import org.openkilda.messaging.model.DiscoveryLink;
+import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.SwitchId;
 
@@ -41,13 +43,13 @@ public class DiscoveryLinkTest {
     @Test
     public void testDefaultLinkDiscovered() {
         // initial state should be false
-        assertEquals(false, dn.isActive());
+        assertEquals(false, dn.getState().isActive());
     }
 
     @Test
     public void shouldLinkBeDiscoveredWhenDestinationIsSet() {
         dn.activate(new NetworkEndpoint(new SwitchId("ff:02"), 2));
-        assertEquals(true, dn.isActive());
+        assertEquals(true, dn.getState().isActive());
     }
 
     /**
@@ -125,5 +127,15 @@ public class DiscoveryLinkTest {
         dn.resetTickCounter();
         assertEquals(0, dn.getTimeCounter());
 
+    }
+
+    @Test
+    public void linkShouldChangeStatusOnDeactivation() {
+        dn = new DiscoveryLink(new SwitchId("ff:01"), 2, new SwitchId("ff:02"), 2, 0, 1, true);
+        dn.deactivate();
+        assertSame(dn.getState(), LinkState.UNKNOWN);
+
+        dn.deactivate();
+        assertSame(dn.getState(), LinkState.INACTIVE);
     }
 }

@@ -159,6 +159,6 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.doWork(tuple);
 
-        assertFalse(discoveryLink.isActive());
+        assertFalse(discoveryLink.getState().isActive());
     }
 }

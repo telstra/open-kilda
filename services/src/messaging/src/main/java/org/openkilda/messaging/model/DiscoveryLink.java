@@ -72,8 +72,8 @@ public class DiscoveryLink implements Serializable {
     @JsonProperty("consecutive_failure_limit")
     private int consecutiveFailureLimit;
 
-    @JsonProperty("active")
-    private boolean active;
+    @JsonProperty("link_state")
+    private LinkState state;
 
     /**
      * Constructor with non-defined destination of the ISL.
@@ -86,6 +86,7 @@ public class DiscoveryLink implements Serializable {
         this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
+        this.state = LinkState.INACTIVE;
     }
 
     /**
@@ -100,7 +101,7 @@ public class DiscoveryLink implements Serializable {
         this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
-        this.active = active;
+        this.state = active ? LinkState.ACTIVE : LinkState.INACTIVE;
     }
 
     /**
@@ -126,7 +127,7 @@ public class DiscoveryLink implements Serializable {
         this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = consecutiveFailure;
         this.consecutiveSuccess = consecutiveSuccess;
-        this.active = active;
+        this.state = active ? LinkState.ACTIVE : LinkState.INACTIVE;
     }
 
     /**
@@ -134,7 +135,7 @@ public class DiscoveryLink implements Serializable {
      */
     public void activate(NetworkEndpoint destination) {
         this.destination = destination;
-        this.active = true;
+        this.state = LinkState.ACTIVE;
     }
 
     /**
@@ -142,7 +143,7 @@ public class DiscoveryLink implements Serializable {
      * whether ISL is moved or not.
      */
     public void deactivate() {
-        this.active = false;
+        this.state = state.isActive() ? LinkState.UNKNOWN : LinkState.INACTIVE;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
     }
@@ -178,8 +179,8 @@ public class DiscoveryLink implements Serializable {
     }
 
     public void fail() {
-        consecutiveFailure++;
-        active = false;
+        this.consecutiveFailure++;
+        this.state = LinkState.INACTIVE;
     }
 
     public void success() {
@@ -243,6 +244,10 @@ public class DiscoveryLink implements Serializable {
         return !Objects.equals(this.destination, new NetworkEndpoint(dstSwitch, dstPort));
     }
 
+    public void setUknownState() {
+        this.state = LinkState.UNKNOWN;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -261,4 +266,22 @@ public class DiscoveryLink implements Serializable {
         return Objects.hash(getSource(), getDestination());
     }
 
+    /**
+     * We need transition status for {@link DiscoveryLink} because we should be able to track links, where we are not
+     * sure if it is active or not. For instance, if switch goes up again - we have to recheck all links, but we can't
+     * say for sure what status links have.
+     */
+    public enum LinkState {
+        ACTIVE,
+        UNKNOWN,
+        INACTIVE;
+
+        public boolean isActive() {
+            return this == ACTIVE;
+        }
+
+        public boolean isInactive() {
+            return this == INACTIVE;
+        }
+    }
 }
