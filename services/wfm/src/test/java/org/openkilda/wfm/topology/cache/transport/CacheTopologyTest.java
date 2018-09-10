@@ -19,6 +19,7 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.switches.SwitchDeleteRequest;
 import org.openkilda.messaging.ctrl.CtrlRequest;
 import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.DumpStateResponseData;
@@ -237,6 +238,34 @@ public class CacheTopologyTest extends AbstractStormTest {
         Message responseGeneric = objectMapper.readValue(raw.value(), Message.class);
         CtrlResponse response = (CtrlResponse) responseGeneric;
         Assert.assertEquals(request.getCorrelationId(), response.getCorrelationId());
+    }
+
+    @Test
+    public void switchDelete() throws Exception {
+        checkSwitchesCount(0);
+        SwitchInfoData data = new SwitchInfoData(new SwitchId("ff:02"), SwitchState.ADDED, "", "", "", "");
+        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString());
+        sendMessage(infoMessage, topology.getConfig().getKafkaTopoCacheTopic());
+        checkSwitchesCount(1);
+        SwitchDeleteRequest switchDeleteRequest = new SwitchDeleteRequest(new SwitchId("ff:02"));
+        CommandMessage commandMessage =
+                new CommandMessage(switchDeleteRequest, System.currentTimeMillis(), UUID.randomUUID().toString());
+        sendMessage(commandMessage, topology.getConfig().getKafkaTopoCacheTopic());
+        checkSwitchesCount(0);
+    }
+
+    private void checkSwitchesCount(int expectedCount) throws Exception {
+        CtrlRequest dumpRequest = new CtrlRequest(
+                "cachetopology/*", new RequestData("dump"), 1, "dump-correlation-id", Destination.WFM_CTRL);
+
+        sendMessage(dumpRequest, topology.getConfig().getKafkaCtrlTopic());
+
+        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
+
+        CtrlResponse response = objectMapper.readValue(raw.value(), CtrlResponse.class);
+        DumpStateResponseData dumpState = (DumpStateResponseData) response.getData();
+        CacheBoltState cacheBoltState = (CacheBoltState) dumpState.getState();
+        Assert.assertEquals(expectedCount, cacheBoltState.getNetwork().getSwitches().size());
     }
 
     @Ignore

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.cache.service;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.command.switches.SwitchDeleteRequest;
 import org.openkilda.messaging.ctrl.state.FlowDump;
 import org.openkilda.messaging.ctrl.state.NetworkDump;
 import org.openkilda.messaging.error.CacheException;
@@ -33,6 +34,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.wfm.Sender;
 import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -399,5 +401,18 @@ public class CacheService {
                 logger.warn("Skip undefined flow operation {}", flowData);
                 break;
         }
+    }
+
+    /**
+     * Deletes a switch from a cache.
+     *
+     * @param request the instance of {@link SwitchDeleteRequest}.
+     * @param sender the instance of {@link Sender}.
+     * @param correlationId the log correlation id.
+     */
+    public void deleteSwitch(SwitchDeleteRequest request, Sender sender, String correlationId) {
+        logger.debug("Switch {} is being deleted, correlationId: {}", request.getSwitchId(), correlationId);
+        networkCache.deleteSwitch(request.getSwitchId());
+        logger.debug("Switch {} has been deleted, correlationId: {}", request.getSwitchId(), correlationId);
     }
 }
