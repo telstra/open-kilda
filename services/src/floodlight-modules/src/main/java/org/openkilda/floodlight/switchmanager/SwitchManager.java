@@ -705,6 +705,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         Match match = matchVerification(sw, isBroadcast);
         ArrayList<OFAction> actionList = new ArrayList<>(2);
+        if (isBroadcast) {
+            actionList.add(actionAddRxTimestamp(sw, 944));
+        }
         actionList.add(actionSendToController(sw));
         actionList.add(actionSetDstMac(sw, dpidToMac(sw)));
         OFInstructionApplyActions instructionApplyActions = ofFactory.instructions()
@@ -1174,7 +1177,25 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setField(oxms.buildEthDst().setValue(macAddress).build()).build();
     }
 
+    /**
+     * Create an action to place the RxTimestamp in the packet.
+     *
+     * @param sw Switch object
+     * @param offset Offset within packet to copy timstamp at
+     * @return {@link OFAction}
+     */
 
+    private OFAction actionAddRxTimestamp(final IOFSwitch sw, int offset) {
+        OFOxms oxms = sw.getOFFactory().oxms();
+        OFActions actions = sw.getOFFactory().actions();
+        return actions.buildNoviflowCopyField()
+                .setNBits(64)
+                .setSrcOffset(0)
+                .setDstOffset(offset)
+                .setOxmSrcHeader(oxms.buildNoviflowRxtimestamp().getTypeLen())
+                .setOxmDstHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
+                .build();
+    }
 
     /**
      * A simple Match rule based on destination mac address and mask.
