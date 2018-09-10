@@ -153,7 +153,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         northboundService.deleteFlow(flow.id)
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.each { northboundService.portUp(new SwitchId(it.switchId), it.portNumber) }
-        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state == IslChangeType.DISCOVERED } }
+        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
     }
 
     def "Reroute timer is refreshed even if another flow reroute is issued"() {
@@ -246,7 +246,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow rerouted after hard timeout despite ISL is still blinking"
-        Wrappers.wait(hardTimeoutTime - System.currentTimeSeconds() + 2) {
+        Wrappers.wait(hardTimeoutTime - System.currentTimeSeconds() + 3) {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         blinkingThread.alive

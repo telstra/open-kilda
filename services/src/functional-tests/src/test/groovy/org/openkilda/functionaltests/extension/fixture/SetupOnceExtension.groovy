@@ -1,8 +1,9 @@
 package org.openkilda.functionaltests.extension.fixture
 
 import org.spockframework.runtime.extension.AbstractGlobalExtension
-import org.spockframework.runtime.extension.AbstractMethodInterceptor
+import org.spockframework.runtime.extension.IMethodInterceptor
 import org.spockframework.runtime.extension.IMethodInvocation
+import org.spockframework.runtime.model.MethodKind
 import org.spockframework.runtime.model.SpecInfo
 
 /**
@@ -14,10 +15,10 @@ import org.spockframework.runtime.model.SpecInfo
 class SetupOnceExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo specInfo) {
         def setupRan = false
-        specInfo.setupMethods*.addInterceptor new AbstractMethodInterceptor() {
+        specInfo.allFixtureMethods*.addInterceptor new IMethodInterceptor() {
             @Override
-            void interceptSetupMethod(IMethodInvocation invocation) throws Throwable {
-                if (!setupRan) {
+            void intercept(IMethodInvocation invocation) throws Throwable {
+                if (!setupRan && invocation.method.kind == MethodKind.SETUP) {
                     def spec = invocation.sharedInstance
                     if (spec instanceof SetupOnce) {
                         spec.setupOnce()

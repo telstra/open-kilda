@@ -46,12 +46,12 @@ class LinkPropertiesSpec extends BaseSpecification {
 
     def "Unable to create link property with invalid switchId format"() {
         when: "Try creating link property with invalid switchId format"
-        northbound.updateLinkProps([new LinkPropsDto("I'm invalid", 1, "00:00:00:00:00:00:00:02", 1, [:])])
+        def linkProp = new LinkPropsDto("I'm invalid", 1, "00:00:00:00:00:00:00:02", 1, [:])
+        def response = northbound.updateLinkProps([linkProp])
 
         then: "Kilda responds with error"
-        def e = thrown(HttpServerErrorException)
-        e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
-        e.getResponseBodyAsString().contains("SwitchIdFormatException: Can not parse input string")
+        response.failures == 1
+        response.messages.first() == "Can not parse input string: \"${linkProp.srcSwitch}\""
     }
 
     @Unroll
