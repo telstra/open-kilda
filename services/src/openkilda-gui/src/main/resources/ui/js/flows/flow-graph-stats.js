@@ -324,9 +324,9 @@ function computeGraphData(data,startDate,endDate,type,timezone) {
 
 				            if(dataValues[i]<0){
 				            	dataValues[i] = 0;
-				            }    
-				             
-				             if(j == 0){
+				            }
+				            
+				            if(j == 0){
 				            	 	var temparr = [];
 				            	 	temparr[0] = new Date(Number(i*1000)); 
 							      	temparr[1] = dataValues[i];
