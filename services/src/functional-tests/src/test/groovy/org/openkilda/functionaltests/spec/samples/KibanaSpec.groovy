@@ -1,9 +1,11 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.samples
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.KibanaHelper
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Ignore
 
+@Ignore("This is an example specification")
 class KibanaSpec extends BaseSpecification {
     @Autowired
     KibanaHelper kibanaHelper;
