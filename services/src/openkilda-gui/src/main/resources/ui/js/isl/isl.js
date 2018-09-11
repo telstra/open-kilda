@@ -129,10 +129,20 @@ function showLinkDetails(linkData,costData,error) {
 	$('.isl_details_div').show();
 	$('#DownsampleID').show();
 	var size = 0, key;
-	$(".link_div_source_switch").html(linkData.source_switch);
+	 var source_switch_toggle = $('#on-off-switch-src').val();
+	 var target_switch_toggle = $('#on-off-switch-dest').val();
+	 if(source_switch_toggle == 1) {
+		 $(".link_div_source_switch").html(common.toggleSwitchID(linkData.source_switch));
+	 }else{
+		$(".link_div_source_switch").html(linkData.source_switch);
+	 }
 	$(".link_div_source_switch_name").html(linkData.source_switch_name);
 	$(".link_div_source_port").html(linkData.src_port);
-	$(".link_div_destination_switch").html(linkData.target_switch);
+	if(target_switch_toggle == 1) {
+		$(".link_div_destination_switch").html(common.toggleSwitchID(linkData.target_switch));
+	}else {
+		$(".link_div_destination_switch").html(linkData.target_switch);
+	}
 	$(".link_div_destination_switch_name").html(linkData.target_switch_name);
 	$(".link_div_destination_port").html(linkData.dst_port);
 	$(".isl_div_speed").html(speed);
