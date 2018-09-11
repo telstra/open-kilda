@@ -16,7 +16,9 @@
 package org.openkilda.testing.service.aswitch;
 
 import static org.openkilda.testing.Constants.ASWITCH_NAME;
+import static org.openkilda.testing.Constants.VIRTUAL_CONTROLLER_ADDRESS;
 
+import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
 import org.openkilda.testing.service.mininet.Mininet;
 
@@ -34,6 +36,8 @@ import java.util.stream.Collectors;
 public class ASwitchVirtualImpl implements ASwitchService {
     @Autowired
     private Mininet mininet;
+    @Autowired
+    private TopologyDefinition topology;
 
     @Override
     public void addFlows(List<ASwitchFlow> flows) {
@@ -64,5 +68,18 @@ public class ASwitchVirtualImpl implements ASwitchService {
     @Override
     public void portsDown(List<Integer> ports) {
         ports.forEach(port -> mininet.portDown(ASWITCH_NAME, port));
+    }
+
+    @Override
+    public void knockoutSwitch(String switchId) {
+        mininet.knockoutSwitch(topology.getSwitches().stream()
+                .filter(sw -> sw.getDpId().toString().equals(switchId)).findFirst().get().getName());
+    }
+
+    @Override
+    public void reviveSwitch(String switchId, String controllerAddress) {
+        String switchName = topology.getSwitches().stream()
+                .filter(sw -> sw.getDpId().toString().equals(switchId)).findFirst().get().getName();
+        mininet.revive(switchName, VIRTUAL_CONTROLLER_ADDRESS);
     }
 }

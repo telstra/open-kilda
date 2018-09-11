@@ -60,6 +60,15 @@ public class MininetImpl implements Mininet {
     }
 
     @Override
+    public void revive(String switchName, String controller) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/reviveswitch");
+        uriBuilder.queryParam("switch", switchName);
+        uriBuilder.queryParam("controller", controller);
+        flowToolRestTemplate.exchange(uriBuilder.build().toString(), HttpMethod.POST,
+                new HttpEntity<>("", buildJsonHeaders()), String.class);
+    }
+
+    @Override
     public void addFlow(String switchName, Integer inPort, Integer outPort) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/add_transit_flow");
         uriBuilder.queryParam("switch", switchName);
