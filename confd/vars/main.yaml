@@ -51,7 +51,8 @@ kilda_kafka_topic_northbound: "kilda.northbound"
 
 kilda_kafka_te_consumer_group: "kilda-tpe"
 
-kilda_discovery_interval: 2
+# interval in ticks (seconds) between sending disco packets
+kilda_discovery_interval: 3
 kilda_discovery_timeout: "9"
 # discovery_limit of -1 is forever
 # 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..

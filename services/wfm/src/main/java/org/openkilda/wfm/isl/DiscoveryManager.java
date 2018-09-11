@@ -147,6 +147,7 @@ public class DiscoveryManager {
                 unsentDiscoPackets++;
             }
 
+            link.tick();
             /*
              * If you get here, the following are true:
              *  - it isn't in some filter
@@ -160,8 +161,6 @@ public class DiscoveryManager {
                 result.needDiscovery.add(node);
 
                 logger.trace("Added to discovery plan: {}", link);
-            } else {
-                link.tick();
             }
 
         }

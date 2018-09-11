@@ -253,14 +253,14 @@ public class DiscoveryManagerTest {
     @Test
     public void shouldCheckIslWithInterval() {
         // verify Health Check Interval is working properly.
-        islHealthCheckInterval = 2;
+        islHealthCheckInterval = 3;
         islHealthFailureLimit  = 4; // for testing, failure after 1 tick;
         maxAttemptsLimit = 8;
 
         dm = new DiscoveryManager(new HashMap<>(), islHealthCheckInterval,
                 islHealthFailureLimit, maxAttemptsLimit, minutesKeepRemovedIsl);
         setupThreeLinks();
-        // Initially, given 2 tick interval, nothing should be in the lists
+        // Initially, given 3 tick interval, nothing should be in the lists
         DiscoveryManager.Plan discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(0, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
