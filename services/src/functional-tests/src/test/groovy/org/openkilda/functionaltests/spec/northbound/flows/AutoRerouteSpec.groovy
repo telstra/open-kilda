@@ -58,7 +58,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Up'"
-        Wrappers.wait(rerouteDelay + discoveryInterval + 3) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + 2) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
