@@ -16,6 +16,10 @@ mininet.endpoint=http://localhost:38080
 mininet-flowtool.endpoint=http://localhost:17191
 spring.profiles.active=virtual
 
+elasticsearch.endpoint = https://elasticsearch.local:9200
+elasticsearch.username = username
+elasticsearch.password = password
+
 reroute.delay=10
 reroute.hardtimeout=30
 discovery.interval=2

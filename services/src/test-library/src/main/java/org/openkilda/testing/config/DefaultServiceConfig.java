@@ -60,6 +60,15 @@ public class DefaultServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
+    @Bean(name = "elasticSearchRestTemplate")
+    public RestTemplate elasticSearchRestTemplate(
+            @Value("${elasticsearch.endpoint}") String endpoint,
+            @Value("${elasticsearch.username}") String username,
+            @Value("${elasticsearch.password}") String password) {
+        return buildRestTemplateWithAuth(endpoint, username, password);
+    }
+
+
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
         return buildLoggingRestTemplate();
