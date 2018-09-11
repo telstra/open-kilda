@@ -133,9 +133,9 @@ public class DiscoveryLinkTest {
     public void linkShouldChangeStatusOnDeactivation() {
         dn = new DiscoveryLink(new SwitchId("ff:01"), 2, new SwitchId("ff:02"), 2, 0, 1, true);
         dn.deactivate();
-        assertSame(dn.getState(), LinkState.UNKNOWN);
+        assertSame(LinkState.UNKNOWN, dn.getState());
 
         dn.deactivate();
-        assertSame(dn.getState(), LinkState.INACTIVE);
+        assertSame(LinkState.INACTIVE, dn.getState());
     }
 }

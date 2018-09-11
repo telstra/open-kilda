@@ -295,10 +295,6 @@ class MessageItem(model.JsonSerializable):
                  'SET target.state="inactive"')
             tx.run(q, {'dpid': switch_id})
 
-            # since we continue sending isl discovery packets after switch down event, there is no need to mark ISLs as
-            # inactive in neo4j.
-            # isl_utils.switch_unplug(tx, switch_id)
-
     def isl_discovery_failed(self):
         """
         :return: Ideally, this should return true IFF discovery is deleted or deactivated.

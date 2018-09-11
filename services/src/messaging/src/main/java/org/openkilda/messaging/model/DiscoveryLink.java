@@ -117,7 +117,7 @@ public class DiscoveryLink implements Serializable {
             @JsonProperty("consecutive_failure") final int consecutiveFailure,
             @JsonProperty("consecutive_success") final int consecutiveSuccess,
             @JsonProperty("consecutive_failure_limit") final int consecutiveFailureLimit,
-            @JsonProperty("active") final boolean active) {
+            @JsonProperty("link_state") final boolean active) {
         this.source = source;
         this.destination = destination;
         this.attempts = attempts;
