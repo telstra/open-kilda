@@ -143,7 +143,7 @@ public class DiscoveryLink implements Serializable {
      * whether ISL is moved or not.
      */
     public void deactivate() {
-        this.state = state.isActive() ? LinkState.UNKNOWN : LinkState.INACTIVE;
+        this.state = LinkState.INACTIVE;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
     }
@@ -244,8 +244,16 @@ public class DiscoveryLink implements Serializable {
         return !Objects.equals(this.destination, new NetworkEndpoint(dstSwitch, dstPort));
     }
 
-    public void setUknownState() {
+    /**
+     * Resets state and counters of the link.
+     */
+    public void resetState() {
         this.state = LinkState.UNKNOWN;
+        this.attempts = 0;
+        this.ackAttempts = 0;
+        this.timeCounter = 0;
+        this.consecutiveFailure = 0;
+        this.consecutiveSuccess = 0;
     }
 
     @Override
