@@ -136,7 +136,7 @@ def push_props_to_isl(tx, subject, *fields):
         return
 
     copy_fields = {
-        name: 'source.' + name for name in fields}
+        name: 'source.' + db.escape(name) for name in fields}
     q = textwrap.dedent("""
         MATCH (source:link_props) 
         WHERE source.src_switch = $src_switch

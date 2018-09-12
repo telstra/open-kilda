@@ -62,7 +62,7 @@ unit-java-common: build-base
 unit-java-storm: avoid-port-conflicts
 	mvn -B -f services/wfm/pom.xml test
 unit-py-te:
-	$(MAKE) -C services/topology-engine ARTIFACTS=../../artifact/topology-engine test
+	$(MAKE) -C services/topology-engine ARTIFACTS=../../artifact/topology-engine --keep-going test test-artifacts
 
 .PHONY: avoid-port-conflicts
 avoid-port-conflicts:
