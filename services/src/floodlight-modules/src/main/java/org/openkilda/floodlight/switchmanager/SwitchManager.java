@@ -1511,7 +1511,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             sendBarrierRequest(sw);
         }
     }
-    
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<OFPortDesc> dumpPortsDescription(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+
+        return new ArrayList<>(sw.getPorts());
+    }
+
     private void updatePortStatus(IOFSwitch sw, int portNumber, boolean isAdminDown) throws SwitchOperationException {
         Set<OFPortConfig> config = new HashSet<>(1);
         if (isAdminDown) {

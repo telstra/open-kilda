@@ -26,7 +26,9 @@ import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
+import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.PortStatus;
@@ -40,6 +42,8 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
+import org.openkilda.messaging.info.switches.PortDescription;
+import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.model.SwitchId;
@@ -284,6 +288,36 @@ public class SwitchServiceImpl implements SwitchService {
                 updateStatusCommand, response, correlationId);
 
         return new PortDto(switchPortResponse.getSwitchId().toString(), switchPortResponse.getPortNo());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public SwitchPortsDescription getSwitchPortsDescription(SwitchId switchId) {
+        String correlationId = RequestCorrelationId.getId();
+        DumpSwitchPortsDescriptionRequest request = new DumpSwitchPortsDescriptionRequest(switchId);
+        CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
+                correlationId, Destination.CONTROLLER, northboundTopic);
+        messageProducer.send(floodlightTopic, commandMessage);
+        Message message = messageConsumer.poll(correlationId);
+
+        return (SwitchPortsDescription) validateInfoMessage(commandMessage, message, correlationId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public PortDescription getPortDescription(SwitchId switchId, int port) {
+        String correlationId = RequestCorrelationId.getId();
+        DumpPortDescriptionRequest request = new DumpPortDescriptionRequest(switchId, port);
+        CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
+                correlationId, Destination.CONTROLLER, northboundTopic);
+        messageProducer.send(floodlightTopic, commandMessage);
+        Message message = messageConsumer.poll(correlationId);
+
+        return (PortDescription) validateInfoMessage(commandMessage, message, correlationId);
     }
 
     private Boolean toPortAdminDown(PortStatus status) {
