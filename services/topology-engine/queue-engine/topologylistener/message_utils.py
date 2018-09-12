@@ -232,6 +232,15 @@ def send_validation_rules_response(missing_rules, excess_rules, proper_rules,
                   topic=config.KAFKA_NORTHBOUND_TOPIC)
 
 
+def send_error_validation_rules_response(correlation_id, error_type, error_message, error_description):
+    send_error_message(correlation_id,
+                       error_type,
+                       error_message,
+                       error_description,
+                       destination="NORTHBOUND",
+                       topic=config.KAFKA_NORTHBOUND_TOPIC)
+
+
 def send_sync_rules_response(installed_rules, correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.info.switches.SyncRulesResponse'

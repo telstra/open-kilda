@@ -449,10 +449,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid) throws SwitchNotFoundException {
         List<OFFlowStatsEntry> entries = new ArrayList<>();
-        IOFSwitch sw = ofSwitchService.getSwitch(dpid);
-        if (sw == null) {
-            throw new SwitchNotFoundException(dpid);
-        }
+        IOFSwitch sw = lookupSwitch(dpid);
 
         OFFactory ofFactory = sw.getOFFactory();
         OFFlowStatsRequest flowRequest = ofFactory.buildFlowStatsRequest()
@@ -471,6 +468,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             logger.error("Could not get flow stats for {}.", dpid, e);
+            throw new SwitchNotFoundException(dpid);
         }
 
         return entries;
