@@ -34,4 +34,11 @@ public interface KildaCoreConfig {
     @Key("command-processor-idle-workers-keep-alive-seconds")
     @Default("300")
     long getCommandIdleWorkersKeepAliveSeconds();
+
+    @Key("testing-mode")
+    String getTestingMode();
+
+    default boolean isTestingMode() {
+        return "YES".equals(getTestingMode());
+    }
 }

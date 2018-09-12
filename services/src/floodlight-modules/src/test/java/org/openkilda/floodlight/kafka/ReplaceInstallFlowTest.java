@@ -28,6 +28,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
+import org.openkilda.floodlight.service.MetricService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -106,6 +107,7 @@ public class ReplaceInstallFlowTest {
         context.addService(IKafkaProducerService.class, createMock(IKafkaProducerService.class));
         context.addService(IPathVerificationService.class, pathVerificationService);
         context.addService(ISwitchManager.class, switchManager);
+        context.addService(MetricService.class, new MetricService());
 
         switchManager.init(context);
 

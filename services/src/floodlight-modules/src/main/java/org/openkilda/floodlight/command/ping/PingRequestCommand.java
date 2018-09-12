@@ -58,7 +58,7 @@ public class PingRequestCommand extends PingCommand {
     }
 
     @Override
-    public Command call() {
+    public Command execute() {
         try {
             checkDestination();
             send(checkSource());

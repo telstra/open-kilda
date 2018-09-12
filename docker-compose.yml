@@ -318,13 +318,13 @@ services:
     container_name: floodlight
     build:
       context: services/src/floodlight-modules
-    image: "kilda/floodlight:${full_build_number:-latest}"
     ports:
       - "6653:6653"
       - "8180:8080"
       - "6655:6655"
       - "6642:6642"
       - "8081:8080"
+      - "11011"
     depends_on:
       kafka:
         condition: service_healthy

@@ -98,6 +98,17 @@
             <groupId>org.glassfish</groupId>
             <artifactId>javax.el</artifactId>
         </dependency>
+
+        <dependency>
+          <groupId>io.dropwizard.metrics</groupId>
+          <artifactId>metrics-core</artifactId>
+          <version>${metrics.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-jmx</artifactId>
+            <version>${metrics.version}</version>
+        </dependency>
     </dependencies>
 
     <repositories>

@@ -36,7 +36,7 @@ public class InputDispatchCommand extends Command {
     }
 
     @Override
-    public Command call() throws Exception {
+    public Command execute() throws Exception {
         for (IInputTranslator entry : subscribers) {
             Command command = entry.makeCommand(getContext(), input);
             if (command != null) {

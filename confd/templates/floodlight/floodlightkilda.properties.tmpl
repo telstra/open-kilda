@@ -59,6 +59,9 @@ net.floodlightcontroller.statistics.StatisticsCollector.enable=FALSE
 net.floodlightcontroller.statistics.StatisticsCollector.collectionIntervalPortStatsSeconds=60
 net.floodlightcontroller.topology.TopologyManager.pathMetric=latency
 net.floodlightcontroller.topology.TopologyManager.maxPathsToCompute=3
+{{ if eq (getv "/kilda_environment_role") "devel" "test" }}
+org.openkilda.floodlight.KildaCore.testing-mode=YES
+{{ end }}
 #org.openkilda.floodlight.KildaCore.command-processor-workers-count = 4
 #org.openkilda.floodlight.KildaCore.command-processor-workers-limit = 32
 org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = {{ getv "/kilda_floodlight_command_processor_deferred_requests_limit" }}
@@ -66,9 +69,6 @@ org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = {
 org.openkilda.floodlight.KafkaChannel.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
 org.openkilda.floodlight.KafkaChannel.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
 #org.openkilda.floodlight.KafkaChannel.heart-beat-interval=1
-{{ if eq (getv "/kilda_environment_role") "devel" "test" }}
-org.openkilda.floodlight.KafkaChannel.testing-mode=YES
-{{ end }}
 org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors={{ getv "/kilda_floodlight_consumer_executors" }}
 org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors={{ getv "/kilda_floodlight_consumer_disco_executors" }}
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-auto-commit-interval=1000

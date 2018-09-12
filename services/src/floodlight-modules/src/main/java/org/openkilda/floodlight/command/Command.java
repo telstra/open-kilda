@@ -29,7 +29,20 @@ public abstract class Command implements Callable<Command> {
         this.context = context;
     }
 
-    public Command exceptional(Throwable e) {
+    @Override
+    public Command call() {
+        Command next;
+        try {
+            next = execute();
+        } catch (Exception e) {
+            next = exceptional(e);
+        }
+        return next;
+    }
+
+    protected abstract Command execute() throws Exception;
+
+    protected Command exceptional(Throwable e) {
         log.error(String.format("Unhandled exception into %s: %s", getClass().getName(), e.getMessage()), e);
         return null;
     }
@@ -42,7 +55,7 @@ public abstract class Command implements Callable<Command> {
         return true;
     }
 
-    protected CommandContext getContext() {
+    public CommandContext getContext() {
         return context;
     }
 }

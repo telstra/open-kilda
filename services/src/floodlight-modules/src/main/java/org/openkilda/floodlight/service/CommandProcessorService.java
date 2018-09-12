@@ -19,6 +19,7 @@ import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.command.CommandMetric;
 import org.openkilda.floodlight.command.PendingCommandSubmitter;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
@@ -99,10 +100,15 @@ public class CommandProcessorService implements IService {
      * Execute command without intermediate completion check.
      */
     public void processLazy(Command command) {
+        CommandMetric wrapper = new CommandMetric(command.getContext(), command);
+        Future<Command> next = executor.submit(wrapper);
+
         if (command.isOneShot()) {
-            executeOneShot(command);
-        } else {
-            executeChainResult(command);
+            return;
+        }
+
+        synchronized (this) {
+            tasks.addLast(new ProcessorTask(wrapper, next));
         }
     }
 
@@ -117,23 +123,6 @@ public class CommandProcessorService implements IService {
     }
 
     public synchronized void markCompleted(ProcessorTask task) { }
-
-    private void executeOneShot(Command command) {
-        executor.execute(() -> {
-            try {
-                command.call();
-            } catch (Exception e) {
-                command.exceptional(e);
-            }
-        });
-    }
-
-    private void executeChainResult(Command command) {
-        Future<Command> successor = executor.submit(command);
-        synchronized (this) {
-            tasks.addLast(new ProcessorTask(command, successor));
-        }
-    }
 
     private synchronized void reSubmitPending(List<ProcessorTask> pending) {
         tasks.addAll(pending);

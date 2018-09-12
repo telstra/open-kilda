@@ -39,7 +39,7 @@ public class PendingCommandSubmitter extends Command {
     }
 
     @Override
-    public Command call() throws Exception {
+    public Command execute() throws Exception {
         try {
             int count;
             int iteration = 0;

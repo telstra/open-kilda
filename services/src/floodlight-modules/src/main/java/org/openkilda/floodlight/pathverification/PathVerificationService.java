@@ -183,7 +183,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     public Command makeCommand(CommandContext context, OfInput input) {
         return new Command(context) {
             @Override
-            public Command call() {
+            public Command execute() {
                 handlePacketIn(input);
                 return null;
             }

@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.kafka;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.CommandProcessorService;
@@ -62,6 +63,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         return ImmutableList.of(
+                KildaCore.class,
                 IPathVerificationService.class,
                 ISwitchManager.class,
                 KafkaUtilityService.class,
@@ -121,7 +123,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
             ConsumerContext context = new ConsumerContext(moduleContext);
             this.handlerFactory = new RecordHandler.Factory(context);
 
-            isTestingMode = moduleContext.getServiceImpl(KafkaUtilityService.class).isTestingMode();
+            isTestingMode = moduleContext.getServiceImpl(KildaCore.class).isTestingMode();
         }
 
         private void launch(ExecutorService handlerExecutor, KafkaConsumerSetup kafkaSetup) {

@@ -41,7 +41,7 @@ public class PingResponseCommand extends PingCommand {
     }
 
     @Override
-    public Command call() throws Exception {
+    public Command execute() {
         log.debug("{} - {}", getClass().getCanonicalName(), input);
 
         byte[] payload = unwrap();

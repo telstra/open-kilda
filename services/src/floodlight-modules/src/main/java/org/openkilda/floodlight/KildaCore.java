@@ -17,6 +17,7 @@ package org.openkilda.floodlight;
 
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.MetricService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
@@ -35,13 +36,15 @@ import java.util.Map;
  * This module is a container for all base kilda services. The main mark of such service - lack of dependencies on other
  * kilda services. I.e. they have dependencies only on base FL services.
  */
-public class KildaCore implements IFloodlightModule {
+public class KildaCore implements IFloodlightModule, IFloodlightService {
     private KildaCoreConfig config;
     private final CommandContextFactory commandContextFactory = new CommandContextFactory();
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableList.of(
+                KildaCore.class,
+                MetricService.class,
                 CommandProcessorService.class,
                 InputService.class);
     }
@@ -49,6 +52,8 @@ public class KildaCore implements IFloodlightModule {
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         HashMap<Class<? extends IFloodlightService>, IFloodlightService> services = new HashMap<>();
+        services.put(KildaCore.class, this);
+        services.put(MetricService.class, new MetricService());
         services.put(CommandProcessorService.class, new CommandProcessorService(this, commandContextFactory));
         services.put(InputService.class, new InputService(commandContextFactory));
         return services;
@@ -71,11 +76,16 @@ public class KildaCore implements IFloodlightModule {
     public void startUp(FloodlightModuleContext moduleContext) {
         commandContextFactory.init(moduleContext);
 
+        moduleContext.getServiceImpl(MetricService.class).setup(moduleContext);
         moduleContext.getServiceImpl(CommandProcessorService.class).setup(moduleContext);
         moduleContext.getServiceImpl(InputService.class).setup(moduleContext);
     }
 
     public KildaCoreConfig getConfig() {
         return config;
+    }
+
+    public boolean isTestingMode() {
+        return config.isTestingMode();
     }
 }

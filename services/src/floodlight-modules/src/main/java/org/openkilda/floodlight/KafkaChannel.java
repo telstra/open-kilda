@@ -62,7 +62,8 @@ public class KafkaChannel implements IFloodlightModule {
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        return ImmutableList.of();
+        return ImmutableList.of(
+                KildaCore.class);
     }
 
     @Override

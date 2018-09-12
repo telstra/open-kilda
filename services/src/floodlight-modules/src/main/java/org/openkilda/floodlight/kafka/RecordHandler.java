@@ -29,6 +29,7 @@ import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.MetricService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
@@ -86,6 +87,7 @@ import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 
+import com.codahale.metrics.Timer;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
@@ -153,48 +155,51 @@ class RecordHandler implements Runnable {
         CommandData data = message.getData();
         CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
-        if (data instanceof DiscoverIslCommandData) {
-            doDiscoverIslCommand(message);
-        } else if (data instanceof PingRequest) {
-            doPingRequest(context, (PingRequest) data);
-        } else if (data instanceof DiscoverPathCommandData) {
-            doDiscoverPathCommand(data);
-        } else if (data instanceof InstallIngressFlow) {
-            doProcessIngressFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof InstallEgressFlow) {
-            doProcessEgressFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof InstallTransitFlow) {
-            doProcessTransitFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof InstallOneSwitchFlow) {
-            doProcessOneSwitchFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof RemoveFlow) {
-            doDeleteFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof NetworkCommandData) {
-            doNetworkDump(message);
-        } else if (data instanceof SwitchRulesDeleteRequest) {
-            doDeleteSwitchRules(message, replyToTopic, replyDestination);
-        } else if (data instanceof SwitchRulesInstallRequest) {
-            doInstallSwitchRules(message, replyToTopic, replyDestination);
-        } else if (data instanceof ConnectModeRequest) {
-            doConnectMode(message, replyToTopic, replyDestination);
-        } else if (data instanceof DumpRulesRequest) {
-            doDumpRulesRequest(message, replyToTopic, replyDestination);
-        } else if (data instanceof BatchInstallRequest) {
-            doBatchInstall(message);
-        } else if (data instanceof PortsCommandData) {
-            doPortsCommandDataRequest(message);
-        } else if (data instanceof DeleteMeterRequest) {
-            doDeleteMeter(message, replyToTopic, replyDestination);
-        } else if (data instanceof PortConfigurationRequest) {
-            doConfigurePort(message, replyToTopic, replyDestination);
-        } else if (data instanceof DumpSwitchPortsDescriptionRequest) {
-            doDumpSwitchPortsDescriptionRequest(message, replyToTopic, replyDestination);
-        } else if (data instanceof DumpPortDescriptionRequest) {
-            doDumpPortDescriptionRequest(message, replyToTopic, replyDestination);
-        } else if (data instanceof DumpMetersRequest) {
-            doDumpMetersRequest(message, replyToTopic, replyDestination);
-        } else {
-            logger.error("unknown data type: {}", data.toString());
+        MetricService metric = this.context.getModuleContext().getServiceImpl(MetricService.class);
+        try (Timer.Context time = metric.timer(data.getClass(), "request").time()) {
+            if (data instanceof DiscoverIslCommandData) {
+                doDiscoverIslCommand(message);
+            } else if (data instanceof PingRequest) {
+                doPingRequest(context, (PingRequest) data);
+            } else if (data instanceof DiscoverPathCommandData) {
+                doDiscoverPathCommand(data);
+            } else if (data instanceof InstallIngressFlow) {
+                doProcessIngressFlow(message, replyToTopic, replyDestination);
+            } else if (data instanceof InstallEgressFlow) {
+                doProcessEgressFlow(message, replyToTopic, replyDestination);
+            } else if (data instanceof InstallTransitFlow) {
+                doProcessTransitFlow(message, replyToTopic, replyDestination);
+            } else if (data instanceof InstallOneSwitchFlow) {
+                doProcessOneSwitchFlow(message, replyToTopic, replyDestination);
+            } else if (data instanceof RemoveFlow) {
+                doDeleteFlow(message, replyToTopic, replyDestination);
+            } else if (data instanceof NetworkCommandData) {
+                doNetworkDump(message);
+            } else if (data instanceof SwitchRulesDeleteRequest) {
+                doDeleteSwitchRules(message, replyToTopic, replyDestination);
+            } else if (data instanceof SwitchRulesInstallRequest) {
+                doInstallSwitchRules(message, replyToTopic, replyDestination);
+            } else if (data instanceof ConnectModeRequest) {
+                doConnectMode(message, replyToTopic, replyDestination);
+            } else if (data instanceof DumpRulesRequest) {
+                doDumpRulesRequest(message, replyToTopic, replyDestination);
+            } else if (data instanceof BatchInstallRequest) {
+                doBatchInstall(message);
+            } else if (data instanceof PortsCommandData) {
+                doPortsCommandDataRequest(message);
+            } else if (data instanceof DeleteMeterRequest) {
+                doDeleteMeter(message, replyToTopic, replyDestination);
+            } else if (data instanceof PortConfigurationRequest) {
+                doConfigurePort(message, replyToTopic, replyDestination);
+            } else if (data instanceof DumpSwitchPortsDescriptionRequest) {
+                doDumpSwitchPortsDescriptionRequest(message, replyToTopic, replyDestination);
+            } else if (data instanceof DumpPortDescriptionRequest) {
+                doDumpPortDescriptionRequest(message, replyToTopic, replyDestination);
+            } else if (data instanceof DumpMetersRequest) {
+                doDumpMetersRequest(message, replyToTopic, replyDestination);
+            } else {
+                logger.error("unknown data type: {}", data.toString());
+            }
         }
     }
 

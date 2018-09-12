@@ -15,14 +15,10 @@
 
 FROM kilda/base-ubuntu
 
-ADD src/main/resources/floodlightkilda.properties /app
-ADD src/main/resources/logback.xml /app
+ADD app /app
 ADD run-deps/floodlight.jar /app/floodlight.jar
+ADD src/main/resources/logback.xml /app
+ADD src/main/resources/floodlightkilda.properties /app
 ADD target/floodlight-modules.jar /app/floodlight-modules.jar
 
-CMD ["java", \
-    "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", \
-    "-Dlogback.configurationFile=/app/logback.xml", "-cp", \
-    "/app/floodlight.jar:/app/floodlight-modules.jar", \
-    "net.floodlightcontroller.core.Main", "-cf", "/app/floodlightkilda.properties"]
-
+CMD ["/app/entry-point.sh"]
