@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.service.database;
 
+import static org.neo4j.driver.v1.Values.NULL;
 import static org.openkilda.testing.Constants.DEFAULT_COST;
 
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
@@ -127,7 +128,8 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
         try (Session session = neo.session()) {
             result = session.run(query, params);
         }
-        return result.single().get("link.cost").asInt();
+        org.neo4j.driver.v1.Value cost = result.single().get("link.cost");
+        return cost != NULL ? cost.asInt() : DEFAULT_COST;
     }
 
     private Map<String, Object> getParams(Isl isl) {
