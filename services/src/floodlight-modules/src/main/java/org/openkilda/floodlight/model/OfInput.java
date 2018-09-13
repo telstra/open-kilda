@@ -24,7 +24,6 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.U64;
-import org.slf4j.Logger;
 
 public class OfInput {
     private final long receiveTime;
@@ -64,18 +63,11 @@ public class OfInput {
             return null;
         }
 
-        return cookie;
-    }
-
-    /**
-     * Check current packet(PACKET_IN) cookie value is mismatched with expected value.
-     */
-    public boolean packetInCookieMismatch(U64 expected, Logger log) {
-        boolean isMismatched = packetInCookieMismatchCheck(expected);
-        if (isMismatched) {
-            log.debug("{} - cookie mismatch (expected:{} != actual:{})", this, expected, packetInCookie());
+        if (packetInReservedCookieValue.equals(cookie)) {
+            return null;
         }
-        return isMismatched;
+
+        return cookie;
     }
 
     public OFType getType() {
@@ -105,22 +97,6 @@ public class OfInput {
     @Override
     public String toString() {
         return String.format("%s ===> %s.%s:%d", dpId, message.getType(), message.getVersion(), message.getXid());
-    }
-
-    private boolean packetInCookieMismatchCheck(U64 expected) {
-        U64 actual = packetInCookie();
-
-        if (actual == null) {
-            return false;
-        }
-        if (packetInReservedCookieValue.equals(actual)) {
-            return false;
-        }
-        if (U64.ZERO.equals(actual)) {
-            return false;
-        }
-
-        return !actual.equals(expected);
     }
 
     private static Ethernet extractPacketInPayload(OFMessage message, FloodlightContext context) {

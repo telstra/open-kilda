@@ -62,7 +62,9 @@ public class PingResponseCommand extends PingCommand {
     }
 
     private byte[] unwrap() {
-        if (input.packetInCookieMismatch(PingService.OF_CATCH_RULE_COOKIE, log)) {
+        final PingService pingService = getPingService();
+
+        if (pingService.isCookieMismatch(input)) {
             return null;
         }
 
@@ -72,7 +74,7 @@ public class PingResponseCommand extends PingCommand {
             return null;
         }
 
-        return getPingService().unwrapData(input.getDpId(), ethernetPackage);
+        return pingService.unwrapData(input.getDpId(), ethernetPackage);
     }
 
     private PingData decode(byte[] payload) throws CorruptedNetworkDataException {
