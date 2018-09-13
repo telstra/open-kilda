@@ -18,9 +18,13 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
     public static List<SpringContextListener> listeners = []
 
     void visitSpec(SpecInfo specInfo) {
-        //include dummy test to let Spring context to be initialized before running actual features
-        //this will always be first in the execution order
-        specInfo.getAllFeatures().find {it.name == DUMMY_TEST_NAME}?.excluded = context != null
+        //include dummy test only if there is a parametrized test in spec
+        //dummy test lets Spring context to be initialized before running actual features to allow accessing context
+        //from 'where' block
+        //it will always be first in the execution order
+        specInfo.getAllFeatures().find {it.name == DUMMY_TEST_NAME}?.excluded = !specInfo.getAllFeatures().find {
+            it.parameterized
+        } as boolean
 
         specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {
             boolean autowired = false
