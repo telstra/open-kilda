@@ -307,8 +307,6 @@ class MessageItem(model.JsonSerializable):
                  'SET target.state="inactive"')
             tx.run(q, {'dpid': switch_id})
 
-            isl_utils.switch_unplug(tx, switch_id)
-
     def isl_discovery_failed(self):
         """
         :return: Ideally, this should return true IFF discovery is deleted or deactivated.

@@ -432,16 +432,12 @@ public class OfeLinkBolt
 
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {
         SwitchId switchId = switchData.getSwitchId();
-        String state = switchData.getState().toString();
+        SwitchState state = switchData.getState();
         logger.info("DISCO: Switch Event: switch={} state={}", switchId, state);
 
-        if (SwitchState.DEACTIVATED.getType().equals(state)) {
-            // current logic: switch down means stop checking associated ports/links.
-            // - possible extra steps of validation of switch down should occur elsewhere
-            // - possible extra steps of generating link down messages aren't important since
-            //      the TPE will drop the switch node from its graph.
-            discovery.handleSwitchDown(switchId);
-        } else if (SwitchState.ACTIVATED.getType().equals(state)) {
+        if (state == SwitchState.DEACTIVATED) {
+            passToTopologyEngine(tuple);
+        } else if (state == SwitchState.ACTIVATED) {
             // It's possible that we get duplicated switch up events .. particulary if
             // FL goes down and then comes back up; it'll rebuild its switch / port information.
             // NB: need to account for this, and send along to TE to be conservative.
