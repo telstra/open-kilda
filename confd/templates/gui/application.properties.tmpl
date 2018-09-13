@@ -23,22 +23,11 @@ spring.mvc.throw-exception-if-no-handler-found=true
 
 #Northbound Base URL
 nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}/api/v1
-GET_FLOW=${nb.base.url}/flows
-GET_FLOW_STATUS=${GET_FLOW}/status/
-GET_FLOW_REROUTE=${GET_FLOW}/{flow_id}/reroute
-GET_FLOW_VALIDATE=${GET_FLOW}/{flow_id}/validate
-GET_PATH_FLOW = ${GET_FLOW}/path
-GET_SWITCHES=${nb.base.url}/switches
-GET_SWITCH_RULES=${GET_SWITCHES}/{switch_id}/rules
-GET_LINKS=${nb.base.url}/links
-GET_LINK_PROPS=${nb.base.url}/link/props
-UPDATE_FLOW=${GET_FLOW}/{flow_id}
-GET_FLOW_PATH=${GET_FLOW}/{flow_id}/path
-CONFIG_SWITCH_PORT=${GET_SWITCHES}/{switch_id}/port/{port_no}/config
+
 
 #OPEN TSDB Base URL
 opentsdb.base.url=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
-OPEN_TSDB_QUERY=${opentsdb.base.url}/api/query/
+
 
 
 #Kilda username and password
