@@ -38,8 +38,6 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
@@ -170,8 +168,6 @@ class RecordHandler implements Runnable {
             doConnectMode(message, replyToTopic, replyDestination);
         } else if (data instanceof DumpRulesRequest) {
             doDumpRulesRequest(message, replyToTopic, replyDestination);
-        } else if (data instanceof BatchInstallRequest) {
-            doBatchInstall(message);
         } else if (data instanceof PortsCommandData) {
             doPortsCommandDataRequest(message);
         } else if (data instanceof DeleteMeterRequest) {
@@ -648,37 +644,6 @@ class RecordHandler implements Runnable {
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
-        }
-    }
-
-    /**
-     * Batch install of flows on the switch.
-     *
-     * @param message with list of flows.
-     */
-    private void doBatchInstall(final CommandMessage message) throws FlowCommandException {
-        BatchInstallRequest request = (BatchInstallRequest) message.getData();
-        final String switchId = request.getSwitchId();
-        logger.debug("Processing flow commands for switch {}", switchId);
-
-        for (BaseInstallFlow command : request.getFlowCommands()) {
-            logger.debug("Processing command for switch {} {}", switchId, command);
-            try {
-                if (command instanceof InstallIngressFlow) {
-                    installIngressFlow((InstallIngressFlow) command);
-                } else if (command instanceof InstallEgressFlow) {
-                    installEgressFlow((InstallEgressFlow) command);
-                } else if (command instanceof InstallTransitFlow) {
-                    installTransitFlow((InstallTransitFlow) command);
-                } else if (command instanceof InstallOneSwitchFlow) {
-                    installOneSwitchFlow((InstallOneSwitchFlow) command);
-                } else {
-                    throw new FlowCommandException(command.getId(), ErrorType.REQUEST_INVALID,
-                            "Unsupported command for batch install.");
-                }
-            } catch (SwitchOperationException e) {
-                logger.error("Error during flow installation", e);
-            }
         }
     }
 
