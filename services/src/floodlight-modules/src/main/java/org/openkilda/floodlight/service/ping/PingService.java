@@ -17,7 +17,6 @@ package org.openkilda.floodlight.service.ping;
 
 import org.openkilda.floodlight.SwitchUtils;
 import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
-import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -38,14 +37,10 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class PingService implements IFloodlightService {
-    private static Logger log = LoggerFactory.getLogger(PingService.class);
-
     public static final U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
     private static final String NET_L3_ADDRESS = "127.0.0.2";
     private static final int NET_L3_PORT = PathVerificationService.VERIFICATION_PACKET_UDP_PORT + 1;
@@ -71,18 +66,6 @@ public class PingService implements IFloodlightService {
 
         InputService inputService = moduleContext.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, new PingInputTranslator());
-    }
-
-    /**
-     * Check is cookie in PACKET_IN message match this ping catch rules cookie.
-     */
-    public boolean isCookieMismatch(OfInput input) {
-        U64 cookie = input.packetInCookie();
-        final boolean isFiltered = cookie != null && !OF_CATCH_RULE_COOKIE.equals(cookie);
-        if (isFiltered) {
-            log.debug("{} - cookie mismatch ({} != {})", input, OF_CATCH_RULE_COOKIE, cookie);
-        }
-        return isFiltered;
     }
 
     /**
