@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import static org.junit.Assume.assumeTrue
 
@@ -31,7 +31,7 @@ is issued during 'reroute.delay' the timer is refreshed.
 System should stop refreshing the timer if 'reroute.hardtimeout' is reached and perform all the queued reroutes (unique 
 for each flowId).
 """)
-class ThrottlingReroutesSpec extends BaseSpecification {
+class ThrottlingRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
@@ -153,7 +153,7 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         northboundService.deleteFlow(flow.id)
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.each { northboundService.portUp(new SwitchId(it.switchId), it.portNumber) }
-        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state == IslChangeType.DISCOVERED } }
+        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
     }
 
     def "Reroute timer is refreshed even if another flow reroute is issued"() {
@@ -246,7 +246,7 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow rerouted after hard timeout despite ISL is still blinking"
-        Wrappers.wait(hardTimeoutTime - System.currentTimeSeconds() + 2) {
+        Wrappers.wait(hardTimeoutTime - System.currentTimeSeconds() + 3) {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         blinkingThread.alive

@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.ping.PingRequestCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsConverter;
+import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
@@ -48,7 +49,9 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
+import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
@@ -56,6 +59,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.rule.DumpRulesErrorData;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
@@ -71,6 +75,8 @@ import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
+import org.openkilda.messaging.info.switches.PortDescription;
+import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.SwitchId;
@@ -172,6 +178,10 @@ class RecordHandler implements Runnable {
             doDeleteMeter(message, replyToTopic, replyDestination);
         } else if (data instanceof PortConfigurationRequest) {
             doConfigurePort(message, replyToTopic, replyDestination);
+        } else if (data instanceof DumpSwitchPortsDescriptionRequest) {
+            doDumpSwitchPortsDescriptionRequest(message, replyToTopic, replyDestination);
+        } else if (data instanceof DumpPortDescriptionRequest) {
+            doDumpPortDescriptionRequest(message, replyToTopic, replyDestination);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -633,8 +643,8 @@ class RecordHandler implements Runnable {
             context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
         } catch (SwitchOperationException e) {
             logger.info("Dump rules is unsuccessful. Switch {} not found", request.getSwitchId());
-            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(),
-                    request.getSwitchId().toString());
+            ErrorData errorData = new DumpRulesErrorData(ErrorType.NOT_FOUND, e.getMessage(),
+                    "The switch was not found when requesting a rules dump.");
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
@@ -752,6 +762,73 @@ class RecordHandler implements Runnable {
                     "Port configuration request failed");
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
+    }
+
+    private void doDumpSwitchPortsDescriptionRequest(
+            CommandMessage message, String replyToTopic, Destination replyDestination) {
+        DumpSwitchPortsDescriptionRequest request = (DumpSwitchPortsDescriptionRequest) message.getData();
+        try {
+            SwitchId switchId = request.getSwitchId();
+            logger.debug("Get port descriptions for switch {}", switchId);
+
+            SwitchPortsDescription response = getSwitchPortsDescription(switchId);
+
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.error("Unable to dump switch port descriptions request", e);
+            ErrorData errorData =
+                    new ErrorData(
+                            ErrorType.NOT_FOUND, e.getMessage(), "Unable to dump switch port descriptions request");
+            ErrorMessage error =
+                    new ErrorMessage(
+                            errorData, System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            context.getKafkaProducer().postMessage(replyToTopic, error);
+        }
+    }
+
+    private SwitchPortsDescription getSwitchPortsDescription(SwitchId switchId) throws SwitchOperationException {
+
+        List<OFPortDesc> ofPortsDescriptions =
+                context.getSwitchManager().dumpPortsDescription(DatapathId.of(switchId.toLong()));
+        List<PortDescription> portsDescriptions = ofPortsDescriptions.stream()
+                .map(OfPortDescConverter::toPortDescription)
+                .collect(Collectors.toList());
+
+        return SwitchPortsDescription.builder()
+                .version(ofPortsDescriptions.get(0).getVersion().toString())
+                .portsDescription(portsDescriptions)
+                .build();
+    }
+
+    private void doDumpPortDescriptionRequest(
+            CommandMessage message, String replyToTopic, Destination replyDestination) {
+        DumpPortDescriptionRequest request = (DumpPortDescriptionRequest) message.getData();
+        try {
+            SwitchId switchId = request.getSwitchId();
+            logger.debug("Get port description for switch {}", switchId);
+            SwitchPortsDescription switchPortsDescription = getSwitchPortsDescription(switchId);
+
+            int port = request.getPortNumber();
+            PortDescription response = switchPortsDescription.getPortsDescription()
+                    .stream()
+                    .filter(x -> x.getPortNumber() == port)
+                    .findFirst()
+                    .orElseThrow(() -> new SwitchOperationException(
+                            DatapathId.of(switchId.toLong()),
+                            String.format("Port %d does not exist on the switch %s", port, switchId)));
+
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
+            context.getKafkaProducer().postMessage(replyToTopic, infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.error("Unable to dump port description request", e);
+            ErrorData errorData =
+                    new ErrorData(ErrorType.NOT_FOUND, e.getMessage(), "Unable to dump port description request");
+            ErrorMessage error =
+                    new ErrorMessage(
+                            errorData, System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             context.getKafkaProducer().postMessage(replyToTopic, error);
         }
     }

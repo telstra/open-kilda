@@ -6,6 +6,14 @@ KILDA CONTROLLER
 ## Introduction
 
 ### Prerequisites
+
+The followings are required for building Kilda controller:
+ - Maven 3.3.9+
+ - JDK8
+ - Python 2.7+
+ - Docker Compose 1.20.0+ 
+ - GNU Make 4.1+
+
 You need to rise maven RAM limit at least up to 1G.
 
 ```export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=128m"```
@@ -55,6 +63,100 @@ or
 
 1. ```make up-test-mode```
 
+### How to debug Kilda Controller components
+
+An important aspect of troubleshooting errors and problems in your code is to avoid them in the first place. It's not 
+always easy enough so we should have a reliable mechanism. Adding any diagnostic code may be helpful, but there are more
+convenient ways. Just a few configuration changes and you'll be able to use a debug toolkit.
+As a basis, let's take the northbound component. This is a simple REST application providing the interface for interaction
+with the switch, link, flow, feature, health-check controllers. The first thing that we need to do is to add 
+ 
+```"-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y"```
+
+to the ```CMD``` block in ```services/src/northbound/Dockerfile```, where ```50505``` is the port we’ll use for debugging. 
+It can be any port, it’s up to us. The final file will be the following:
+
+```
+FROM kilda/base-ubuntu
+ADD target/northbound.jar /app/
+WORKDIR /app
+CMD ["java","-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y","-jar","northbound.jar"]
+``` 
+
+Since debugging is done over the network, that also means we need to expose that port in Docker. For that purpose we need
+to add  ```"50505:50505"``` to the northbound ```ports``` block in ```docker-compose.yml``` as in example below.  
+
+```
+northbound:
+  container_name: openkilda-northbound
+  build:
+    context: services/src/northbound/
+  ports:
+    - '8088:8080'
+    - '50505:50505'
+  ...
+```
+
+After making those changes we need to configure remote debug in IntelliJ Idea: navigate to ```Edit Configurations -> Remote```
+and set up the debug port as ```50505```. This completes the main part of the configuration.
+
+Next, we just run ```docker-compose up```. If everything above was done correctly you must see:
+
+```"java -agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y -jar northbound.jar"```
+
+in the command column for the open-kilda_northbound. The command ```docker ps -a --no-trunc | grep northbound``` could
+be helpful. Also check open-kilda_northbound logs, the log record
+ 
+```Listening for transport dt_socket at address: 50505```
+
+must be presented.
+
+After all these steps you just need to run the debugger. Console log should contain the following message:
+
+```Connected to the target VM, address: 'localhost:50505', transport: 'socket'```
+
+To check how debugging works we need to:
+- set up a breakpoint;
+- make a call to execute some functionality;
+
+In some cases, we must have an approach for debugging a deploy process for a couple (or more) components that interact with each other. Let's
+suppose both of them work under docker and some component doesn't belong to us and provided as a library. The typical case: 
+WorkflowManager (further WFM) and Storm. The approach that is going to be used is almost the same as for northbound but there are
+nuances.
+First of all, we need to check which version of Storm is used in Open Kilda Controller. For that open ```services/storm/Dockerfile```
+and find the version of Storm. In our case, the Storm version is ```1.1.0```. To be able to debug Storm we have to clone
+the sources from the GitHub repo ```https://github.com/apache/storm.git``` and switch to the release ```1.1.0```. 
+```git checkout -b 1.1.0 e40d213```. Information about releases can be found here ```https://github.com/apache/storm/releases/```
+
+Then go to ```services/wfm/Dockerfile``` and add ```ENV STORM_JAR_JVM_OPTS "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=50506"```
+The final file should be as in example below:
+
+```
+FROM kilda/storm:latest
+
+ENV STORM_JAR_JVM_OPTS "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=50506"
+...
+
+``` 
+
+And it only remains to add a port ```50506``` for the WFM contaner as in the example below:
+
+```
+wfm:
+  container_name: wfm
+  build:
+    context: services/wfm
+  ...
+  ports:
+    - "50506:50506"
+```
+
+Then we should configure remote debugging in IntelliJ Idea and the set up the debug port as ```50506```. After executing 
+```docker-compose up``` you should see the following log record ```Listening for transport dt_socket at address: 50506```
+in the WFM logs. As soon as you see it run the debugger - you'll able to debug both components: WFM and Storm.
+
+In order to debug a topology, for example, ```OfEventWfmTopology```, we should navigate to Maven Projects, Profiles and toggle ```local``` checkbox. Then open ```OfEventWfmTopology``` application debug configuration and add ```--local``` to Program arguments, execute ```docker-compose up``` and run in the debug mode ```OfEventWfmTopology```.
+
 ### How to run ATDD
 
 Steps:
@@ -75,7 +177,7 @@ From the base directory run these commands:
 
 Start with the following
 
-1. '''make unit'''
+1. ```make unit```
 
 From there, you can go to specific projects to build / develop / unit test. 
 Just follow the _make unit_ trail.  Most projects have a maven target.

@@ -36,7 +36,8 @@ $(document).ready(function() {
 
 function callValidateFlow(flow_id){
 	$('#validate_json_loader').show();
-	$('#validate_json').html("")
+	$('#validate_json').html("");
+	$('#validate_flow_response').hide();
 	$('#resync_flow_response').hide();
 		common.getData("/flows/" + flow_id+"/validate","GET").then(function(response) { // calling re-route api
 				var responseData = JSON.stringify(response,null,2);
@@ -48,7 +49,8 @@ function callValidateFlow(flow_id){
 
 function callResyncFlow(flow_id){
 	$('#resync_json_loader').show();
-	$('#resync_json').html("")
+	$('#resync_json').html("");
+	$('#resync_flow_response').hide();
 	$('#validate_flow_response').hide();
 		common.getData("/flows/" + flow_id+"/sync","PATCH").then(function(response) { // calling re-route api
 				var responseData = JSON.stringify(response,null,2);

@@ -25,6 +25,8 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.switches.PortDescription;
+import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
@@ -274,5 +276,37 @@ public class SwitchController {
             @RequestBody PortConfigurationPayload portConfig) {
         LOGGER.info("Port Configuration '{}' request for port {} of switch {}", portConfig, portNo, switchId);
         return switchService.configurePort(switchId, portNo, portConfig);
+    }
+
+    /**
+     * Get a description of the switch ports.
+     *
+     * @param switchId the switch id.
+     * @return switch ports description.
+     */
+    @ApiOperation(value = "Get switch ports description from the switch", response = SwitchPortsDescription.class)
+    @GetMapping(value = "/switches/{switch-id}/ports",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public SwitchPortsDescription getSwitchPortsDescription(
+            @PathVariable("switch-id") SwitchId switchId) {
+        return switchService.getSwitchPortsDescription(switchId);
+    }
+
+    /**
+     * Get a description of the switch port.
+     *
+     * @param switchId the switch id.
+     * @param port the port of the switch.
+     * @return port description.
+     */
+    @ApiOperation(value = "Get port description from the switch", response = PortDescription.class)
+    @GetMapping(value = "/switches/{switch-id}/ports/{port}",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public PortDescription getPortDescription(
+            @PathVariable("switch-id") SwitchId switchId,
+            @PathVariable("port") int port) {
+        return switchService.getPortDescription(switchId, port);
     }
 }

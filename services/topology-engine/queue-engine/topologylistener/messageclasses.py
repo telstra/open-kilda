@@ -25,6 +25,7 @@ from topologylistener import db
 from topologylistener import exc
 from topologylistener import isl_utils
 from topologylistener import link_props_utils
+from neo4j.exceptions import CypherSyntaxError
 import flow_utils
 import message_utils
 
@@ -46,6 +47,7 @@ MT_VALID_REQUEST = "org.openkilda.messaging.command.switches.SwitchRulesValidate
 MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SwitchRulesSyncRequest"
 MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 MT_SWITCH_RULES = "org.openkilda.messaging.info.rule.SwitchFlowEntries"
+MT_ERROR_SWITCH_RULES = "org.openkilda.messaging.error.rule.DumpRulesErrorData"
 #feature toggle is the functionality to turn off/on specific features
 MT_STATE_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleStateRequest"
 MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
@@ -213,6 +215,9 @@ class MessageItem(model.JsonSerializable):
             elif self.get_message_type() == MT_SWITCH_RULES:
                 event_handled = self.validate_switch_rules()
 
+            elif self.get_message_type() == MT_ERROR_SWITCH_RULES:
+                event_handled = self.error_validate_switch_rules()
+
             elif self.get_message_type() == MT_SYNC_REQUEST:
                 event_handled = self.sync_switch_rules()
 
@@ -239,6 +244,13 @@ class MessageItem(model.JsonSerializable):
             else:
                 raise exc.NotImplementedError(
                     'link props request {}'.format(self.get_message_type()))
+        except CypherSyntaxError as e:
+            logger.exception('Invalid request: ', e)
+            payload = message_utils.make_link_props_response(
+                self.payload, None, 'Invalid request')
+            message_utils.send_link_props_response(
+                payload, self.correlation_id,
+                self.get_message_type() == CD_LINK_PROPS_DROP)
         except Exception as e:
             payload = message_utils.make_link_props_response(
                 self.payload, None, error=str(e))
@@ -758,6 +770,13 @@ class MessageItem(model.JsonSerializable):
                                                      diff["excess_rules"],
                                                      diff["proper_rules"],
                                                      self.correlation_id)
+        return True
+
+    def error_validate_switch_rules(self):
+        message_utils.send_error_validation_rules_response(self.correlation_id,
+                                                           self.payload['error-type'],
+                                                           self.payload['error-message'],
+                                                           self.payload['error-description'])
         return True
 
     def validate_and_sync_switch_rules(self):

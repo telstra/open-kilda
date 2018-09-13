@@ -223,6 +223,7 @@ function callIntervalData(loadUrl, reverseLoadUrl, selMetric){
 function fetchGraphData(loadUrl, reverseLoadUrl, metric,timezone){
 	var startDate = new Date($("#datetimepicker7ISL").val());
 	var endDate =  new Date($("#datetimepicker8ISL").val());
+	
 	loadGraph.loadGraphData(loadUrl, "GET", metric).then( function(response) {
 		if (response && response.length && typeof(response[0].tags)!=='undefined' ) {
 			response[0].tags.direction ="F";
@@ -232,7 +233,9 @@ function fetchGraphData(loadUrl, reverseLoadUrl, metric,timezone){
 				if(responseReverse && responseReverse.length && typeof(responseReverse[0].tags)!=='undefined' ){
 					responseReverse[0].tags.direction ="R";
 				}
-				response.push(responseReverse[0]);
+				if(responseReverse && responseReverse.length){
+					response.push(responseReverse[0]);
+				}
 				$("#wait1").css("display", "none");
 				$('body').css('pointer-events', 'all');
 				showStatsGraph.showStatsData(response, metric, null, null, startDate, endDate, timezone); 

@@ -560,53 +560,64 @@ function ZoomCallBack(minX, maxX, yRanges) {
 		 }
 		 
 		if(!jsonResponse) { 
-		    	var getValue = (typeof(data[0]) !=='undefined') ? data[0].dps : 0;	
-		    	 metric1 = (typeof(data[0]) !=='undefined') ? data[0].metric : '';	
-		    	 
-		    	if(data.length == 2) {
-		    		var getVal = data[1].dps;
-		    		 metric2 = data[1].metric;
-		    		 
-		    		 if(data[1].tags.direction){
-		    			 metric2 = data[1].metric + "("+data[1].tags.direction+")"
-		    		 }
-		    		 if(data[0].tags.direction){
-		    			 metric1 = data[0].metric + "("+data[0].tags.direction+")"
-		    		 }
-		    	}
-		    	    
-				    if(!getValue) {
-				    	metric1 = "F";
-				    	metric2 = "R";		    	
-				    } else {
-
-				    	 for(i in getValue) {
-
-                              if(getValue[i] < 0 || getValue[i] == null ){
-                              	getValue[i] = 0;
-                              }    
-                              if(typeof(getVal[i])!=='undefined' && (getVal[i] < 0 || getVal[i] == null)){
-                            	  getVal[i] = 0;
-                              }
-						      var temparr = [];
-						      temparr[0] = new Date(Number(i*1000)); 
-						       temparr[1] = getValue[i]
-						      if(data.length == 2) {
-								temparr[2] = getVal[i];
-						  
-						      }
-						      graphData.push(temparr)
-						 }
-				    }
-				    if(metric1 && metric2){
-				    	var labels = ['Time', metric1,metric2];
-				    }else if(metric1){
-				    	var labels = ['Time', metric1];
-				    }
-				    else{
-				    	var labels = ['Time', metric2];
-				    }	
-		}else{
+	    	var getValue = (typeof(data[0]) !=='undefined') ? data[0].dps : 0;	
+	    	 metric1 = (typeof(data[0]) !=='undefined') ? data[0].metric : '';	
+	    	 
+	    	if(data.length == 2) {
+	    		var getVal = data[1].dps;
+	    		 	metric2 = data[1].metric;
+	    		 	if(data[1].tags.direction){
+	    		 		metric2 = data[1].metric + "("+data[1].tags.direction+")"
+	    		 	}
+	    		 	if(data[0].tags.direction){
+	    		 		metric1 = data[0].metric + "("+data[0].tags.direction+")"
+	    		 	}
+	    	}
+	    	    
+		   if(!getValue) {
+		    	metric1 = "F";
+		    	metric2 = "R";		    	
+		    } else if(getValue && Object.keys(getValue).length) {
+		    	for(i in getValue) {
+					if(getValue[i] < 0 || getValue[i] == null ) {
+						getValue[i] = 0;
+					}    
+					var temparr = [];
+					temparr[0] = new Date(Number(i*1000)); 
+					temparr[1] = getValue[i]
+					if(data.length == 2) {
+						if(typeof(getVal[i])!=='undefined' && (getVal[i] < 0 || getVal[i] == null)){
+							getVal[i] = 0;
+						}
+						temparr[2] = getVal[i];
+					}
+					graphData.push(temparr)
+				}
+		    }else if(getVal && Object.keys(getVal).length) {
+		    	for(i in getVal) {
+					if(getValue[i] < 0 || getValue[i] == null ) {
+						getValue[i] = 0;
+					}    
+					if(typeof(getVal[i])!=='undefined' && (getVal[i] < 0 || getVal[i] == null)) {
+						getVal[i] = 0;
+					}
+					var temparr = [];
+					temparr[0] = new Date(Number(i*1000)); 
+					temparr[1] = getValue[i]
+					if(data.length == 2) {
+						temparr[2] = getVal[i];
+					}
+					graphData.push(temparr)
+				 }
+		    }
+		   if(metric1 && metric2){
+			   var labels = ['Time', metric1,metric2];
+		   }else if(metric1){
+			   var labels = ['Time', metric1];
+		   }else{
+			   var labels = ['Time', metric2];
+		    }	
+		}else{ 
 			metric1 = "F";
 	    	metric2 = "R";
 			var labels = ['Time', metric1,metric2];
@@ -621,30 +632,31 @@ function ZoomCallBack(minX, maxX, yRanges) {
 			}
 			var arr = [new Date(lastTime),null,null];
 			graphData.push(arr);
+			graphData[0]= graphData[0].splice(0,labels.length);
+			graphData[graphData.length-1]= graphData[graphData.length-1].splice(0,labels.length);
 		}
 		if(graphCode == undefined){
-					
 			if(domId == 'source') {
 				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
-								 		      labels: labels,									 			 
-								 		      labelsUTC:true,
-								 		      colors: ["#182488","#aad200"],
-								 		     zoomCallback:function(minX, maxX, yRanges){
-									 		    	ZoomCallBack(minX, maxX, yRanges)
-									 		      },
+							 		      drawPoints: false,
+							 		      labels: labels,									 			 
+							 		      labelsUTC:true,
+							 		      colors: ["#182488","#aad200"],
+							 		      zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 							});
 				}else {
 					var g = new Dygraph(document.getElementById("source-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
-								 		      labels: labels,	
-								 		      colors: ["#182488","#aad200"],
-								 		     zoomCallback:function(minX, maxX, yRanges){
-									 		    	ZoomCallBack(minX, maxX, yRanges)
-									 		      },
+							 		      drawPoints: false,
+							 		      labels: labels,	
+							 		      colors: ["#182488","#aad200"],
+							 		      zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 							});
 				}
 				
@@ -652,23 +664,23 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
-								 		      labels: labels,	 								 			 
-								 		      labelsUTC:true,	
-								 		      colors: ["#182488","#aad200"],
-								 		     zoomCallback:function(minX, maxX, yRanges){
-									 		    	ZoomCallBack(minX, maxX, yRanges)
-									 		      },
+							 		      drawPoints: false,
+							 		      labels: labels,	 								 			 
+							 		      labelsUTC:true,	
+							 		      colors: ["#182488","#aad200"],
+							 		      zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 							});
 				} else {
 					var g = new Dygraph(document.getElementById("dest-graph_div"), graphData,
 							{
-								 		      drawPoints: false,
-								 		      labels: labels,	 								 			 
-								 		      colors: ["#182488","#aad200"],
-								 		     zoomCallback:function(minX, maxX, yRanges){
-									 		    	ZoomCallBack(minX, maxX, yRanges)
-									 		      },
+							 		      drawPoints: false,
+							 		      labels: labels,	 								 			 
+							 		      colors: ["#182488","#aad200"],
+							 		      zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 							});
 				}
 				
@@ -678,23 +690,23 @@ function ZoomCallBack(minX, maxX, yRanges) {
 				if(typeof(timezone) !== 'undefined' && timezone == 'UTC') {
 					var g = new Dygraph(document.getElementById("graphdiv"), graphData,
 							{    										
-								 		      drawPoints: false,
-								 		      labels: labels,									 			 
-								 		      labelsUTC:true, 
-								 		      colors: ["#182488","#aad200"],
-								 		      zoomCallback:function(minX, maxX, yRanges){
-									 		    	ZoomCallBack(minX, maxX, yRanges)
-									 		      },
+							 		      drawPoints: false,
+							 		      labels: labels,									 			 
+							 		      labelsUTC:true, 
+							 		      colors: ["#182488","#aad200"],
+							 		      zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 							});
 				} else {
 					var g = new Dygraph(document.getElementById("graphdiv"), graphData,
 							{    										
-								 		      drawPoints: false,
-								 		      labels: labels,									 			 
-								 		      colors: ["#182488","#aad200"],
-								 		      zoomCallback:function(minX, maxX, yRanges){
-									 		    	ZoomCallBack(minX, maxX, yRanges)
-									 		      },
+							 		      drawPoints: false,
+							 		      labels: labels,									 			 
+							 		      colors: ["#182488","#aad200"],
+							 		      zoomCallback:function(minX, maxX, yRanges){
+								 		    	ZoomCallBack(minX, maxX, yRanges)
+								 		      },
 							});
 				}
 				
@@ -1504,7 +1516,7 @@ function callIslSwitchIntervalData(switchId,portId){
 		
 	var downsampling =$("#downsamplingISL option:selected").val()
 	selMetric = $('#menulistISL').val();
-	var switch_id =common.toggleSwitchID(switchId);
+	var switch_id =common.toggleSwitchID(switchId);//switchId.replace(/:/g, "");
 	var url = "/stats/switchid/"+switch_id+"/port/"+portId+"/"+convertedStartDate+"/"+convertedEndDate+"/"+downsampling+"/"+selMetric;
 	loadGraph.loadGraphData(url,"GET",selMetric).then(function(response) {
 	var graphDivCode = null;	
