@@ -23,17 +23,15 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
         specInfo.getAllFeatures().find {it.name == DUMMY_TEST_NAME}?.excluded = context != null
 
         specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {
-            def autowired = false
-
+            boolean autowired = false
+            
             @Override
             void intercept(IMethodInvocation invocation) throws Throwable {
                 //this is the earliest point where Spock can have access to Spring context
-                if (invocation.method.kind == MethodKind.SETUP) {
-                    if (!autowired) {
-                        context.getAutowireCapableBeanFactory().autowireBeanProperties(invocation.sharedInstance,
-                                AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
-                        autowired = true
-                    }
+                if (!autowired && invocation.method.kind == MethodKind.SETUP) {
+                    context.getAutowireCapableBeanFactory().autowireBeanProperties(
+                            invocation.sharedInstance, AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
+                    autowired = true
                 }
                 //do not invoke any fixtures for the dummy test
                 if (invocation?.getFeature()?.name != DUMMY_TEST_NAME) {

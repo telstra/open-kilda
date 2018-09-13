@@ -87,8 +87,9 @@ class IslMovingSpec extends BaseSpecification {
             v.findAll { !it.dstSwitch }.size() > 1 //contains at least 2 not connected asw link
         }?.value as List<TopologyDefinition.Isl>
         assumeNotNull("Not able to find required switch with enough free A-switch ISLs", isls)
-        def islToPlug = isls[0]
-        def islToPlugInto = isls[1]
+        def notConnectedIsls = isls.findAll { !it.dstSwitch }
+        def islToPlug = notConnectedIsls[0]
+        def islToPlugInto = notConnectedIsls[1]
 
         when: "Plug an ISL between two ports on the same switch"
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true)
@@ -101,8 +102,8 @@ class IslMovingSpec extends BaseSpecification {
         }
 
         and: "Unplug the link how it was before"
-        aswitchService.removeFlows(Arrays.asList(
+        aswitchService.removeFlows([
                 new ASwitchFlow(expectedIsl.aswitch.getInPort(), expectedIsl.aswitch.getOutPort()),
-                new ASwitchFlow(expectedIsl.aswitch.getOutPort(), expectedIsl.aswitch.getInPort())));
+                new ASwitchFlow(expectedIsl.aswitch.getOutPort(), expectedIsl.aswitch.getInPort())])
     }
 }

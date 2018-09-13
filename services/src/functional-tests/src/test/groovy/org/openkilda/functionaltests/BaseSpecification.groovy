@@ -12,13 +12,16 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
     String profile
 
     /**
-     * Use this instead of setupSpec in order to have access to Spring Context and do actions BeforeClass
+     * Use this instead of setupSpec in order to have access to Spring Context and do actions BeforeClass.
+     * Can be overridden by inheritor specs.
      * @see {@link org.openkilda.functionaltests.extension.fixture.SetupOnceExtension}
      */
     def setupOnce() {
     }
 
     def setup() {
+        //setup with empty body in order to trigger a SETUP invocation, which is intercepted in several extensions
+        //this can have implementation if required
     }
 
     def requireProfiles(String[] profiles) {

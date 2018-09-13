@@ -9,6 +9,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,6 +28,8 @@ class AutoRerouteSpec extends BaseSpecification {
     PathHelper pathHelper
     @Autowired
     NorthboundService northboundService
+    @Autowired
+    Database db
 
     @Value('${reroute.delay}')
     int rerouteDelay
@@ -42,9 +45,9 @@ class AutoRerouteSpec extends BaseSpecification {
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Ports that lead to alternative paths are brought down to deny alternative paths"
-        def altPaths = allPaths.findAll { it != currentPath }
+        def altPaths = allPaths.findAll {it != currentPath}
         List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
+        altPaths.unique {it.first()}.each {path ->
             def src = path.first()
             broughtDownPorts.add(src)
             northboundService.portDown(src.switchId, src.portNo)
@@ -55,7 +58,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Down'"
-        Wrappers.wait(rerouteDelay + 2) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + 2) {northboundService.getFlowStatus(flow.id).status == FlowState.DOWN}
 
         when: "ISL goes back up"
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
@@ -66,9 +69,14 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         and: "Restore topology to original state, remove flow"
-        broughtDownPorts.each { northboundService.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.each {northboundService.portUp(it.switchId, it.portNo)}
         northboundService.deleteFlow(flow.id)
-        //TODO(rtretiak): restore costs that were changed due to portdowns
+        Wrappers.wait(5) {northboundService.getAllLinks().every {it.state != IslChangeType.FAILED}}
+    }
+
+    def cleanup() {
+        northboundService.deleteLinkProps(northboundService.getAllLinkProps())
+        db.resetCosts()
     }
 
     def "Flow in 'Down' status tries to reroute when discovering a new ISL"() {
