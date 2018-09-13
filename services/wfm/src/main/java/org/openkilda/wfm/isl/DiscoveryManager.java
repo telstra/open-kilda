@@ -237,7 +237,6 @@ public class DiscoveryManager {
             }
             link.renew();
             link.fail();
-            link.deactivate();
         }
         return stateChanged;
     }
@@ -274,7 +273,9 @@ public class DiscoveryManager {
         if (!subjectList.isEmpty()) {
             logger.info("Received SWITCH UP (id:{}) with EXISTING NODES. Clearing up counters for active ports",
                     switchId);
-            subjectList.forEach(DiscoveryLink::setUknownState);
+            subjectList.stream()
+                .filter(link -> link.getState().isActive())
+                .forEach(DiscoveryLink::resetState);
         }
     }
 
@@ -289,8 +290,8 @@ public class DiscoveryManager {
             // NB: this should cause an ISL discovery packet to be sent.
             // TODO: we should probably separate "port up" from "do discovery". ATM, one would call
             //          this function just to get the "do discovery" functionality.
-            logger.info("Port UP on existing NetworkEndpoint {};  clear failures and ISLFound", link);
-            link.deactivate();
+            logger.info("Port UP on existing NetworkEndpoint {};  clear failures and isl status", link);
+            link.resetState();
         } else {
             logger.info("Port UP on new NetworkEndpoint: {}", link.getSource());
         }

@@ -117,7 +117,7 @@ public class DiscoveryLink implements Serializable {
             @JsonProperty("consecutive_failure") final int consecutiveFailure,
             @JsonProperty("consecutive_success") final int consecutiveSuccess,
             @JsonProperty("consecutive_failure_limit") final int consecutiveFailureLimit,
-            @JsonProperty("link_state") final boolean active) {
+            @JsonProperty("link_state") final LinkState state) {
         this.source = source;
         this.destination = destination;
         this.attempts = attempts;
@@ -127,7 +127,7 @@ public class DiscoveryLink implements Serializable {
         this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = consecutiveFailure;
         this.consecutiveSuccess = consecutiveSuccess;
-        this.state = active ? LinkState.ACTIVE : LinkState.INACTIVE;
+        this.state = state;
     }
 
     /**
@@ -143,7 +143,7 @@ public class DiscoveryLink implements Serializable {
      * whether ISL is moved or not.
      */
     public void deactivate() {
-        this.state = state.isActive() ? LinkState.UNKNOWN : LinkState.INACTIVE;
+        this.state = LinkState.INACTIVE;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
     }
@@ -244,7 +244,10 @@ public class DiscoveryLink implements Serializable {
         return !Objects.equals(this.destination, new NetworkEndpoint(dstSwitch, dstPort));
     }
 
-    public void setUknownState() {
+    /**
+     * Resets state of the link.
+     */
+    public void resetState() {
         this.state = LinkState.UNKNOWN;
     }
 
@@ -268,8 +271,8 @@ public class DiscoveryLink implements Serializable {
 
     /**
      * We need transition status for {@link DiscoveryLink} because we should be able to track links, where we are not
-     * sure if it is active or not. For instance, if switch goes up again - we have to recheck all links, but we can't
-     * say for sure what status links have.
+     * sure if it is active or not. For instance, if switch goes up again - we have to recheck all active links,
+     * we can't say for sure whether these links are still active or not, need to verify it.
      */
     public enum LinkState {
         ACTIVE,
