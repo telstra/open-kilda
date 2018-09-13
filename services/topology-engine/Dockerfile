@@ -21,7 +21,7 @@ RUN apt-get update \
         vim \
     && pip install --upgrade pip \
     && pip install \
-        'kafka-python>=1.4.0' \
+        kafka \
         'py2neo>=4.0.0' \
         'gevent<=1.3.1' \
         python-logstash \
