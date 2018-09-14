@@ -50,7 +50,7 @@ class MininetTopologyBuilder {
         northbound.toggleFeature(features)
 
         //wait until topology is discovered
-        assert Wrappers.wait(5) {
+        assert Wrappers.wait(10) {
             northbound.getAllLinks().findAll {
                 it.state == IslChangeType.DISCOVERED
             }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
