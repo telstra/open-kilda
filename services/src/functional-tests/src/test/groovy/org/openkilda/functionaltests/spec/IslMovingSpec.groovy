@@ -30,7 +30,9 @@ class IslMovingSpec extends BaseSpecification {
         assert isl
 
         and: "A non-connected a-switch link"
-        def notConnectedIsl = topology.notConnectedIsls.first()
+        def notConnectedIsl = topology.notConnectedIsls.find {
+            it.srcSwitch != isl.srcSwitch && it.srcSwitch != isl.dstSwitch 
+        }
 
         when: "Replug one end of connected link to the not connected one"
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
