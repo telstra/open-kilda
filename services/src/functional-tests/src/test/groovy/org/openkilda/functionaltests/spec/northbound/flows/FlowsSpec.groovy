@@ -38,8 +38,8 @@ class FlowsSpec extends BaseSpecification {
         switchRules.excessRules.empty
         switchRules.missingRules.empty
 
-        cleanup:
-        flow && northboundService.deleteFlow(flow.id)
+        and: "Delete flow"
+        northboundService.deleteFlow(flow.id)
 
         where:
         sw << getTopology().activeSwitches.unique {it.ofVersion}

@@ -1,5 +1,10 @@
 package org.openkilda.functionaltests.spec
 
+import static org.junit.Assume.assumeNotNull
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -7,10 +12,8 @@ import org.openkilda.testing.service.aswitch.ASwitchService
 import org.openkilda.testing.service.aswitch.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
-import org.springframework.beans.factory.annotation.Autowired
 
-import static org.junit.Assume.assumeNotNull
-import static org.openkilda.messaging.info.event.IslChangeType.*
+import org.springframework.beans.factory.annotation.Autowired
 
 class IslMovingSpec extends BaseSpecification {
     @Autowired
