@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.kafka;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.openkilda.messaging.Utils.MAPPER;
 
@@ -136,17 +137,18 @@ class RecordHandler implements Runnable {
         } catch (SwitchOperationException e) {
             logger.error("Unable to handle request {}: {}", message.getData().getClass().getName(), e.getMessage());
         } catch (FlowCommandException e) {
+            logger.error("Failed to handle message {}", message);
             ErrorMessage error = new ErrorMessage(
                     e.makeErrorResponse(),
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             getKafkaProducer().sendMessageAndTrack(replyToTopic, error);
-        } catch (Exception e) {
-            logger.error("Unhandled exception", e);
         }
     }
 
     private void handleCommand(CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException, SwitchOperationException {
+        logger.debug("Handling message: '{}'. Reply topic: '{}'. Reply destination: '{}'.",
+                message, replyToTopic, replyDestination);
         CommandData data = message.getData();
         CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
@@ -191,7 +193,7 @@ class RecordHandler implements Runnable {
         } else if (data instanceof DumpMetersRequest) {
             doDumpMetersRequest(message, replyToTopic, replyDestination);
         } else {
-            logger.error("unknown data type: {}", data.toString());
+            logger.error("Unable to handle '{}' request - handler not found.", data.getClass().getName());
         }
     }
 
@@ -234,6 +236,7 @@ class RecordHandler implements Runnable {
     private void doProcessIngressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
         InstallIngressFlow command = (InstallIngressFlow) message.getData();
+        logger.info("Installing ingress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
 
         try {
             installIngressFlow(command);
@@ -284,6 +287,7 @@ class RecordHandler implements Runnable {
     private void doProcessEgressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
         InstallEgressFlow command = (InstallEgressFlow) message.getData();
+        logger.info("Installing egress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
 
         try {
             installEgressFlow(command);
@@ -321,6 +325,7 @@ class RecordHandler implements Runnable {
     private void doProcessTransitFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
         InstallTransitFlow command = (InstallTransitFlow) message.getData();
+        logger.info("Installing transit flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
 
         try {
             installTransitFlow(command);
@@ -356,7 +361,7 @@ class RecordHandler implements Runnable {
     private void doProcessOneSwitchFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
         InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
-        logger.debug("creating a flow through one switch: {}", command);
+        logger.info("Installing one switch flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
 
         try {
             installOneSwitchFlow(command);
@@ -406,7 +411,6 @@ class RecordHandler implements Runnable {
     private void doDeleteFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
         RemoveFlow command = (RemoveFlow) message.getData();
-        logger.debug("deleting a flow: {}", command);
 
         DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
         ISwitchManager switchManager = context.getSwitchManager();
@@ -446,7 +450,7 @@ class RecordHandler implements Runnable {
      * @param message NetworkCommandData
      */
     private void doNetworkDump(final CommandMessage message) throws SwitchOperationException {
-        logger.debug("Processing dump switches request");
+        logger.info("Processing request from WFM to dump switches. {}", message.getCorrelationId());
 
         SwitchTrackingService switchTracking = context.getModuleContext().getServiceImpl(SwitchTrackingService.class);
         switchTracking.dumpAllSwitches(message.getCorrelationId());
@@ -454,7 +458,7 @@ class RecordHandler implements Runnable {
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
-        logger.debug("Installing rules on '{}' switch: action={}",
+        logger.info("Installing rules on '{}' switch: action={}",
                 request.getSwitchId(), request.getInstallRulesAction());
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -490,6 +494,7 @@ class RecordHandler implements Runnable {
             producerService.sendMessageAndTrack(replyToTopic, infoMessage);
 
         } catch (SwitchOperationException e) {
+            logger.error("Failed to install rules on switch '{}'", request.getSwitchId(), e);
             ErrorData errorData = new ErrorData(ErrorType.CREATION_FAILURE, e.getMessage(),
                     request.getSwitchId().toString());
             ErrorMessage error = new ErrorMessage(errorData,
@@ -500,7 +505,7 @@ class RecordHandler implements Runnable {
 
     private void doDeleteSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         SwitchRulesDeleteRequest request = (SwitchRulesDeleteRequest) message.getData();
-        logger.debug("Deleting rules from '{}' switch: action={}, criteria={}", request.getSwitchId(),
+        logger.info("Deleting rules from '{}' switch: action={}, criteria={}", request.getSwitchId(),
                 request.getDeleteRulesAction(), request.getCriteria());
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -563,13 +568,14 @@ class RecordHandler implements Runnable {
             producerService.sendMessageAndTrack(replyToTopic, infoMessage);
 
         } catch (SwitchNotFoundException e) {
-            logger.info("Deleting switch rules is unsuccessful. Switch {} not found", request.getSwitchId());
+            logger.error("Deleting switch rules was unsuccessful. Switch '{}' not found", request.getSwitchId());
             ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, e.getMessage(),
                     request.getSwitchId().toString());
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
             producerService.sendMessageAndTrack(replyToTopic, error);
         } catch (SwitchOperationException e) {
+            logger.error("Failed to delete switch '{}' rules.", request.getSwitchId(), e);
             ErrorData errorData = new ErrorData(ErrorType.DELETION_FAILURE, e.getMessage(),
                     request.getSwitchId().toString());
             ErrorMessage error = new ErrorMessage(errorData,
@@ -589,7 +595,7 @@ class RecordHandler implements Runnable {
         ISwitchManager switchManager = context.getSwitchManager();
         ConnectModeRequest.Mode result = switchManager.connectMode(request.getMode());
 
-        logger.debug("CONNECT MODE is now '{}'", result);
+        logger.info("CONNECT MODE is now '{}'", result);
         ConnectModeResponse response = new ConnectModeResponse(result);
         InfoMessage infoMessage = new InfoMessage(response,
                 System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
@@ -604,7 +610,7 @@ class RecordHandler implements Runnable {
 
         try {
             SwitchId switchId = request.getSwitchId();
-            logger.debug("Loading installed rules for switch {}", switchId);
+            logger.info("Loading installed rules for switch {}", switchId);
 
             List<OFFlowStatsEntry> flowEntries =
                     context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
@@ -620,7 +626,7 @@ class RecordHandler implements Runnable {
                     message.getCorrelationId());
             producerService.sendMessageAndTrack(replyToTopic, infoMessage);
         } catch (SwitchOperationException e) {
-            logger.info("Dump rules is unsuccessful. Switch {} not found", request.getSwitchId());
+            logger.error("Dumping of rules on switch '{}' was unsuccessful: {}", request.getSwitchId(), e.getMessage());
             ErrorData errorData = new DumpRulesErrorData(ErrorType.NOT_FOUND, e.getMessage(),
                     "The switch was not found when requesting a rules dump.");
             ErrorMessage error = new ErrorMessage(errorData,
@@ -637,7 +643,7 @@ class RecordHandler implements Runnable {
     private void doBatchInstall(final CommandMessage message) throws FlowCommandException {
         BatchInstallRequest request = (BatchInstallRequest) message.getData();
         final String switchId = request.getSwitchId();
-        logger.debug("Processing flow commands for switch {}", switchId);
+        logger.info("Do batch install flow rules on switch '{}'", switchId);
 
         for (BaseInstallFlow command : request.getFlowCommands()) {
             logger.debug("Processing command for switch {} {}", switchId, command);
@@ -665,6 +671,7 @@ class RecordHandler implements Runnable {
 
         try {
             PortsCommandData request = (PortsCommandData) message.getData();
+            logger.info("Getting ports data. Requester: {}", request.getRequester());
             Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
             for (Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
                 SwitchId switchId = new SwitchId(entry.getKey().toString());
@@ -687,17 +694,18 @@ class RecordHandler implements Runnable {
                             message.getCorrelationId());
                     getKafkaProducer().sendMessageAndTrack(context.getKafkaStatsTopic(), infoMessage);
                 } catch (Exception e) {
-                    logger.error("Could not get port stats data for switch {} with error {}",
+                    logger.error("Could not get port stats data for switch '{}' with error '{}'",
                             switchId, e.getMessage(), e);
                 }
             }
         } catch (Exception e) {
-            logger.error("Could not get port data for stats {}", e.getMessage(), e);
+            logger.error("Could not get port data for stats '{}'", e.getMessage(), e);
         }
     }
 
     private void doDeleteMeter(CommandMessage message, String replyToTopic, Destination replyDestination) {
         DeleteMeterRequest request = (DeleteMeterRequest) message.getData();
+        logger.info("Deleting meter '{}'. Switch: '{}'", request.getMeterId(), request.getSwitchId());
 
         final IKafkaProducerService producerService = getKafkaProducer();
 
@@ -713,8 +721,8 @@ class RecordHandler implements Runnable {
                     replyDestination);
             producerService.sendMessageAndTrack(replyToTopic, infoMessage);
         } catch (SwitchOperationException e) {
-            logger.error("Failed to delete meter {} from switch {}: {}", request.getMeterId(), request.getSwitchId(),
-                    e.getMessage());
+            logger.error("Deleting meter '{}' from switch '{}' was unsuccessful: {}",
+                    request.getMeterId(), request.getSwitchId(), e.getMessage());
             ErrorData errorData =
                     new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), request.getSwitchId().toString());
             ErrorMessage error = new ErrorMessage(errorData,
@@ -761,7 +769,7 @@ class RecordHandler implements Runnable {
 
         try {
             SwitchId switchId = request.getSwitchId();
-            logger.debug("Get port descriptions for switch {}", switchId);
+            logger.info("Dump ALL ports description for switch {}", switchId);
 
             SwitchPortsDescription response = getSwitchPortsDescription(switchId);
 
@@ -801,7 +809,7 @@ class RecordHandler implements Runnable {
 
         try {
             SwitchId switchId = request.getSwitchId();
-            logger.debug("Get port description for switch {}", switchId);
+            logger.info("Get port {}-{} description", switchId, request.getPortNumber());
             SwitchPortsDescription switchPortsDescription = getSwitchPortsDescription(switchId);
 
             int port = request.getPortNumber();
@@ -811,7 +819,7 @@ class RecordHandler implements Runnable {
                     .findFirst()
                     .orElseThrow(() -> new SwitchOperationException(
                             DatapathId.of(switchId.toLong()),
-                            String.format("Port %d does not exist on the switch %s", port, switchId)));
+                            format("Port %s-%d does not exists.", switchId, port)));
 
             InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
             producerService.sendMessageAndTrack(replyToTopic, infoMessage);
@@ -909,7 +917,7 @@ class RecordHandler implements Runnable {
             //          a BaseMessage
             message = MAPPER.readValue(value, CommandMessage.class);
         } catch (Exception exception) {
-            logger.error("error parsing record={}", record.value(), exception);
+            logger.error("error parsing record '{}'", record.value(), exception);
             return;
         }
 
@@ -917,7 +925,7 @@ class RecordHandler implements Runnable {
         try (CorrelationContextClosable closable = CorrelationContext.create(message.getCorrelationId())) {
             doControllerMsg(message);
         } catch (Exception exception) {
-            logger.error("error processing message={}", message, exception);
+            logger.error("error processing message '{}'", message, exception);
         }
     }
 
