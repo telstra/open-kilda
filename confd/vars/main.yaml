@@ -2,6 +2,7 @@
 # defaults file for templates
 kilda_environment_naming_prefix: ""
 kilda_environment_role: "devel"
+kilda_test_profile: "virtual"
 
 kilda_neo4j_host: "neo4j.pendev"
 kilda_neo4j_bolt_port: "7687"
