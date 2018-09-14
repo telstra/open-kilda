@@ -29,9 +29,7 @@
 					<li><i class="fa icon-double-angle-right"></i><a
 						th:href="@{/flows}">Flows</a></li>
 					<li><i class="fa icon-double-angle-right" id="flow-id-name"></i></li>
-					
 				</ul>
-				
 			</div>
 		</div>
 		<div id="editflowloader" class="bg_load" style="display: none;">
@@ -327,40 +325,70 @@
 												class="glyphicon glyphicon-plus"></i></a>
 										</h3>
 									</div>
-									<div class="row" id="forward_graph" style="display: none;">
+									<div class="container-fluid" id="forward_graph" style="display: none;">
 										<div class="col-xs-12">
-										<fieldset class="form-group col-xs-4">
-
-														<label class="col-xs-2 text-label">Timezone:</label>
-														<div class="col-xs-10">
+											<div class="row">
+												<fieldset class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-4 text-label text-right">Timezone:</label>
+														<div class="col-xs-8">
 															<select id="timezoneForward" name="timezoneForward">
 																<option value="UTC">UTC</option>
 																<option value="LOCAL">My Timezone</option>
 															</select>
-
 														</div>
-													</fieldset>
-											<fieldset id="fromforwardId" class="form-group col-xs-4">
+													</div>
+												</fieldset>
+												<fieldset id="fromforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-2 text-label text-right">From:</label>
+														<div class="col-xs-10">
+															<input type="text" id="forwardFromdatepicker"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
+																class="form-control"></input> <span
+																class="from-error-message"></span>
+														</div>
+													</div>
+												</fieldset>
+												<fieldset id="toforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-2 text-label text-right">To:</label>
+														<div class="col-xs-10">
+															<input type="text" id="forwardTodatepicker"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
+																class="form-control"></input> <span
+																class="to-error-message"></span>
+														</div>
+													</div>
+												</fieldset>
+												<fieldset id="metricforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-4 text-label text-right">Metric:</label>
+														<div class="col-xs-8">
+															<select id="forwardMetric" >
+															</select>
+														</div>
+													</div>
+												</fieldset>
+												<!-- <fieldset id="cookieforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-3 text-label text-right">Cookie:</label>
+														<div class="col-xs-8">
+															<select id="cookieforwardIdselect"></select>
+														</div>
+													</div>
+												</fieldset> -->
+											</div>
 
-												<label class="col-xs-2 text-label">From:</label>
-												<div class="col-xs-10">
-													<input type="text" id="forwardFromdatepicker"
-														value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
-														class="form-control"></input> <span
-														class="from-error-message"></span>
-												</div>
-											</fieldset>
 
-
-											<fieldset id="toforwardId" class="form-group col-xs-4">
-												<label class="col-xs-2 text-label">To:</label>
-												<div class="col-xs-10">
-													<input type="text" id="forwardTodatepicker"
-														value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
-														class="form-control"></input> <span
-														class="to-error-message"></span>
-												</div>
-											</fieldset>
+										</div>
+										<div class="col-xs-12" style="margin-left:40px;">
+										<div class="row" >
+											<label class="text-label text-right">Cookie:</label>
+											<div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookieforwardId">
+											 
+											</div>
+										</div>
 										</div>
 										<div class="col-xs-12">
 											<div id="waitforward" class="bg-data-loader"
@@ -369,8 +397,6 @@
 											</div>
 											<div id="forward_path_graph" style="display: none;"></div>
 										</div>
-
-
 									</div>
 
 
@@ -383,40 +409,69 @@
 												class="glyphicon glyphicon-plus"></i></a>
 										</h3>
 									</div>
-									<div class="row" id="reverse_graph" style="display: none;">
+									<div class="container-fluid" id="reverse_graph" style="display: none;">
 										<div class="col-xs-12">
-										<fieldset class="form-group col-xs-4">
-
-														<label class="col-xs-2 text-label">Timezone:</label>
+											<div class="row">
+												<fieldset class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-4 text-label text-right">Timezone:</label>
+															<div class="col-xs-8">
+																<select id="timezoneReverse" name="timezoneReverse">
+																	<option value="UTC">UTC</option>
+																	<option value="LOCAL">My Timezone</option>
+																</select>
+															</div>
+													</div>
+												</fieldset>
+												<fieldset id="fromreverseId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-2 text-label text-right">From:</label>
 														<div class="col-xs-10">
-															<select id="timezoneReverse" name="timezoneReverse">
-																<option value="UTC">UTC</option>
-																<option value="LOCAL">My Timezone</option>
-															</select>
-
+															<input type="text" id="reverseFromdatepicker"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
+																class="form-control"></input> <span
+																class="from-error-message"></span>
 														</div>
-													</fieldset>
-											<fieldset id="fromreverseId" class="form-group col-xs-4">
-
-												<label class="col-xs-2 text-label">From:</label>
-												<div class="col-xs-10">
-													<input type="text" id="reverseFromdatepicker"
-														value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
-														class="form-control"></input> <span
-														class="from-error-message"></span>
-												</div>
-											</fieldset>
-
-
-											<fieldset id="toReverseId" class="form-group col-xs-4">
-												<label class="col-xs-2 text-label">To:</label>
-												<div class="col-xs-10">
-													<input type="text" id="reverseTodatepicker"
-														value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
-														class="form-control"></input> <span
-														class="to-error-message"></span>
-												</div>
-											</fieldset>
+													</div>
+												</fieldset>
+												<fieldset id="toReverseId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-2 text-label text-right">To:</label>
+														<div class="col-xs-10">
+															<input type="text" id="reverseTodatepicker"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
+																class="form-control"></input> <span
+																class="to-error-message"></span>
+														</div>
+													</div>
+												</fieldset>
+												<fieldset id="metricforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-4 text-label text-right">Metric:</label>
+														<div class="col-xs-8">
+															<select id="reverseMetric" >
+															</select>
+														</div>
+													</div>
+												</fieldset>
+												<!-- <fieldset id="cookiereverseId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-3 text-label text-right">Cookie:</label>
+														<div class="col-xs-8">
+															<select id="cookiereverseIdselect"></select>
+														</div>
+													</div>
+													
+												</fieldset> -->
+											</div>
+										</div>
+										<div class="col-xs-12" style="margin-left:40px;">
+										<div class="row" >
+											<label class="text-label text-right">Cookie:</label>
+											<div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookiereverseId">
+											 
+											</div>
+										</div>
 										</div>
 										<div class="col-xs-12">
 											<div id="waitreverse" class="bg-data-loader"
