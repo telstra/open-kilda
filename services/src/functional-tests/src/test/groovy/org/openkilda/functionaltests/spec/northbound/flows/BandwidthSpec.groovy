@@ -255,7 +255,7 @@ class BandwidthSpec extends BaseSpecification {
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
         involvedIsls.size() == 1
-        involvedIsls.first() in [isl, islUtils.reverseIsl(isl)]
+        involvedIsls.first() == isl
 
         when: "Update flow bandwidth to maximum link speed"
         def linkSpeed = islUtils.getIslInfo(involvedIsls.first()).get().speed
