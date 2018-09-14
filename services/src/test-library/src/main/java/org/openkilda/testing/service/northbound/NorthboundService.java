@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
@@ -82,6 +83,10 @@ public interface NorthboundService {
     PortDto portDown(SwitchId switchId, Integer portNo);
 
     PortDto portUp(SwitchId switchId, Integer portNo);
+
+    List<PortDescription> getPorts(SwitchId switchId);
+
+    PortDescription getPort(SwitchId switchId, Integer portNo);
 
     //links
 

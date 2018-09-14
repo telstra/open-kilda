@@ -44,4 +44,23 @@ class SwitchPortConfigSpec extends BaseSpecification {
                     islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
         }
     }
+
+    def "Bring switch port down/up (ISL-free port)"() {
+        given: "An active switch and ISL-free port"
+        def sw = topology.getActiveSwitches().first()
+        def port = topology.getAllowedPortsForSwitch(sw).first()
+        assert "LINK_DOWN" in northboundService.getPort(sw.dpId, port).state
+
+        when: "Bring port down on switch"
+        northboundService.portDown(sw.dpId, port)
+
+        then: "Port is really 'down'"
+        "PORT_DOWN" in northboundService.getPort(sw.dpId, port).config
+
+        when: "Bring port up on switch"
+        northboundService.portUp(sw.dpId, port)
+
+        then: "Port is really 'up'"
+        !("PORT_DOWN" in northboundService.getPort(sw.dpId, port).config)
+    }
 }
