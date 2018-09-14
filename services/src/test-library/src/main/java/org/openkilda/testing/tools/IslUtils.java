@@ -135,9 +135,11 @@ public class IslUtils {
 
         //change flow on aSwitch
         //delete old flow
-        aswitchService.removeFlows(Arrays.asList(
-                new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
-                new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
+        if (srcASwitch.getInPort() != null && srcASwitch.getOutPort() != null) {
+            aswitchService.removeFlows(Arrays.asList(
+                    new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
+                    new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
+        }
         //create new flow
         ASwitchFlow aswFlowForward = new ASwitchFlow(srcASwitch.getInPort(),
                 plugIntoSource ? dstASwitch.getInPort() : dstASwitch.getOutPort());

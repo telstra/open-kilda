@@ -64,14 +64,16 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Up'"
-        Wrappers.wait(rerouteDelay + discoveryInterval + 2) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + 3) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
         and: "Restore topology to original state, remove flow"
-        broughtDownPorts.each {northboundService.portUp(it.switchId, it.portNo)}
+        broughtDownPorts.every {northboundService.portUp(it.switchId, it.portNo)}
         northboundService.deleteFlow(flow.id)
-        Wrappers.wait(5) {northboundService.getAllLinks().every {it.state != IslChangeType.FAILED}}
+        Wrappers.wait(discoveryInterval + 2) {
+            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+        }
     }
 
     def cleanup() {
@@ -115,7 +117,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         then: "Flow goes to 'Up' status"
-        Wrappers.wait(rerouteDelay + discoveryInterval + 3) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + 5) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
@@ -123,9 +125,11 @@ class AutoRerouteSpec extends BaseSpecification {
         def reroutedFlowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         flowPath != reroutedFlowPath
 
-        cleanup: "Bring port involved in original path up and delete flow"
-        flow?.id && northboundService.deleteFlow(flow.id)
-        flowPath?.first() && northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
-        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
+        and: "Bring port involved in original path up and delete flow"
+        northboundService.deleteFlow(flow.id)
+        northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
+        Wrappers.wait(discoveryInterval + 2) {
+            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+        }
     }
 }
