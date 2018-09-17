@@ -29,6 +29,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
@@ -61,6 +63,8 @@ public interface NorthboundService {
     List<FlowPayload> getAllFlows();
 
     List<FlowValidationDto> validateFlow(String flowId);
+
+    PingOutput pingFlow(String flowId, PingInput pingInput);
 
     FlowReroutePayload rerouteFlow(String flowId);
 

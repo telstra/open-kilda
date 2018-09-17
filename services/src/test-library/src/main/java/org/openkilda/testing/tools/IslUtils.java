@@ -107,6 +107,9 @@ public class IslUtils {
      * @param isl isl to reverse
      */
     public Isl reverseIsl(Isl isl) {
+        if (isl.getDstSwitch() == null) {
+            return isl; //don't reverse not connected ISL
+        }
         ASwitch reversedAsw = null;
         if (isl.getAswitch() != null) {
             reversedAsw = ASwitch.factory(isl.getAswitch().getOutPort(), isl.getAswitch().getInPort());
