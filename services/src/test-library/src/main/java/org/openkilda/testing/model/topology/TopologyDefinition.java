@@ -251,6 +251,12 @@ public class TopologyDefinition {
                 @JsonProperty("a_switch") ASwitch aswitch) {
             return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch);
         }
+
+        @Override
+        public String toString() {
+            return String.format("%s-%s -> %s-%s", srcSwitch.dpId.toString(), srcPort,
+                    dstSwitch.dpId.toString(), dstPort);
+        }
     }
 
     @Value

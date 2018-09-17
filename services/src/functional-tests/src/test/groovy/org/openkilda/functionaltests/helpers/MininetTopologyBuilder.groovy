@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.aswitch.ASwitchService
 import org.openkilda.testing.service.aswitch.model.ASwitchFlow
@@ -39,9 +40,6 @@ class MininetTopologyBuilder {
                                   new ASwitchFlow(isl.aswitch.outPort, isl.aswitch.inPort)])
             }
         }
-        //remove any garbage left after configuring a-switch
-        db.removeInactiveIsls()
-        db.removeInactiveSwitches()
         //turn on all features
         def features = northbound.getFeatureToggles()
         features.metaClass.properties.each {
@@ -57,6 +55,15 @@ class MininetTopologyBuilder {
                 it.state == IslChangeType.DISCOVERED
             }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
         }
+        assert Wrappers.wait(3) {
+            northbound.getAllSwitches().findAll {
+                it.state == SwitchState.ACTIVATED
+            }.size() == topologyDefinition.activeSwitches.size()
+        }
+
+        //remove any garbage left after configuring a-switch
+        db.removeInactiveIsls()
+        db.removeInactiveSwitches()
     }
 
     /**

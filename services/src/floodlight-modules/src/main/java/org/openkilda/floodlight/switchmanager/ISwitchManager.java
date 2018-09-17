@@ -23,6 +23,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.List;
@@ -253,4 +254,13 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found or Port not found
      */
     void configurePort(DatapathId dpId, int portNumber, Boolean portAdminDown) throws SwitchOperationException;
+
+    /**
+     * Return a list of ports description.
+     *
+     * @param dpid switch id.
+     * @return a list of ports description.
+     * @throws SwitchOperationException Switch not found.
+     */
+    List<OFPortDesc> dumpPortsDescription(DatapathId dpid) throws SwitchOperationException;
 }

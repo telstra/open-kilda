@@ -10,10 +10,11 @@ $(document).ready(function() {
 
 			var switchname = window.location.href.split("#")[1]	;
 			var port_number = window.location.href.split("#")[2];
-			var tmp_anchor = '<a href="/openkilda/topology">'+ 'Topology' + '</a>';
+			var tmp_anchor = '<a href="/openkilda/switch">'+ 'Switch' + '</a>';
 			$("#topologyId").parent().append(tmp_anchor);			
 			var tmp_anchor_switch = '<a href="details#' + switchname + '">'+ switchname + '</a>';
-			$("#kilda-switch-name").parent().append(tmp_anchor_switch)			
+			$("#kilda-switch-name").parent().append(tmp_anchor_switch);
+			$("#kilda-port-name").parent().append(port_number);
 			var portData = localStorage.getItem('port_'+common.toggleSwitchID(switchname)+"_"+port_number);
 			
 			if(!portData) {

@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import static org.junit.Assume.assumeTrue
 
@@ -31,7 +31,7 @@ is issued during 'reroute.delay' the timer is refreshed.
 System should stop refreshing the timer if 'reroute.hardtimeout' is reached and perform all the queued reroutes (unique 
 for each flowId).
 """)
-class ThrottlingReroutesSpec extends BaseSpecification {
+class ThrottlingRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
@@ -56,7 +56,7 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         //Sometimes Kilda misses a discovery packet -> doesn't issue a reroute,
         //so need to allow at least twice that time before closing the window
         assumeTrue("These tests assume a bigger time gap between \${reroute.delay} and \${discovery.interval}",
-                rerouteDelay > discoveryInterval * 2 + 2)
+                rerouteDelay > discoveryInterval * 2 + 1)
     }
 
     def "Reroute is not performed while new reroutes are being issued (alt path available)"() {
@@ -93,11 +93,11 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Still on the same path right before the timeout should run out"
-        TimeUnit.SECONDS.sleep(rerouteDelay - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval)
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow reroutes (changes path) after window timeout"
-        Wrappers.wait(3 + discoveryInterval) {
+        Wrappers.wait(2 + discoveryInterval) {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
@@ -141,19 +141,19 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Still UP and on the same path right before the timeout should run out"
-        TimeUnit.SECONDS.sleep(rerouteDelay - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval)
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
         northboundService.getFlowStatus(flow.id).status == FlowState.UP
 
         and: "Flow tries to reroute and goes DOWN after window timeout"
-        Wrappers.wait(3 + discoveryInterval) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(2 + discoveryInterval) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "do cleanup"
         northboundService.deleteFlow(flow.id)
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.each { northboundService.portUp(new SwitchId(it.switchId), it.portNumber) }
-        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state == IslChangeType.DISCOVERED } }
+        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
     }
 
     def "Reroute timer is refreshed even if another flow reroute is issued"() {
@@ -193,16 +193,16 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         2.times { blinkPort(isl1.dstSwitch.dpId, isl1.dstPort) }
 
         and: "Right before timeout ends the flow2 ISL blinks twice"
-        TimeUnit.SECONDS.sleep(rerouteDelay - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval)
         def isl2 = flow2Isls.find { !flow1Isls.contains(it) }
         2.times { blinkPort(isl2.dstSwitch.dpId, isl2.dstPort) }
 
         then: "Flow1 is still on its path right before the updated timeout runs out"
-        TimeUnit.SECONDS.sleep(rerouteDelay - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval)
         currentPath1 == PathHelper.convert(northboundService.getFlowPath(flow1.id))
 
         and: "Flow1 reroutes (changes path) after window timeout"
-        Wrappers.wait(3 + discoveryInterval) {
+        Wrappers.wait(2 + discoveryInterval) {
             currentPath1 != PathHelper.convert(northboundService.getFlowPath(flow1.id))
         }
         //TODO(rtretiak): Check logs that 1 reroute is also issued for flow2
@@ -242,11 +242,11 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         blinkingThread.start()
 
         then: "Flow is still not rerouted right before hard timeout should end"
-        TimeUnit.SECONDS.sleep(hardTimeoutTime - System.currentTimeSeconds() - (discoveryInterval + 1))
+        TimeUnit.SECONDS.sleep(hardTimeoutTime - System.currentTimeSeconds() - discoveryInterval)
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow rerouted after hard timeout despite ISL is still blinking"
-        Wrappers.wait(hardTimeoutTime - System.currentTimeSeconds() + 2) {
+        Wrappers.wait(hardTimeoutTime - System.currentTimeSeconds() + 3) {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         blinkingThread.alive
@@ -268,6 +268,6 @@ class ThrottlingReroutesSpec extends BaseSpecification {
         northboundService.portDown(sw, port)
         northboundService.portUp(sw, port)
         //give Kilda time to send and receive a discovery packet, so that ISL is rediscovered and reroute is reissued
-        sleep((discoveryInterval + 1) * 1000)
+        sleep(discoveryInterval * 1000)
     }
 }

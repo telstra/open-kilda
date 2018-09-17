@@ -137,23 +137,6 @@ def resolve_conflicts(tx, isl):
             logger.debug("Skip conflict ISL %s deactivation due to its current status - %s", link_isl, link['actual'])
 
 
-def switch_unplug(tx, dpid, mtime=True):
-    logging.info("Deactivate all ISL to/from %s", dpid)
-
-    involved = list(fetch_by_datapath(tx, dpid))
-    _lock_affected_switches(tx, involved, dpid)
-
-    for db_link in involved:
-        source = model.IslPathNode(
-                db_link['src_switch'], db_link['src_port'])
-        dest = model.IslPathNode(db_link['dst_switch'], db_link['dst_port'])
-        isl = model.InterSwitchLink(source, dest, db_link['actual'])
-        logging.debug("Found ISL: %s", isl)
-
-        set_active_field(tx, db.neo_id(db_link), 'inactive')
-        update_status(tx, isl, mtime=mtime)
-
-
 def disable_by_endpoint(tx, endpoint, is_moved=False, mtime=True):
     logging.debug('Locate all ISL starts on %s', endpoint)
 
