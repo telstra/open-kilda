@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka.producer;
+package org.openkilda.floodlight.service.kafka;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;

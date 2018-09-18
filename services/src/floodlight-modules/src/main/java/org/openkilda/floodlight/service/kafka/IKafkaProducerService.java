@@ -13,25 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight;
+package org.openkilda.floodlight.service.kafka;
 
-import com.sabre.oss.conf4j.annotation.Default;
-import com.sabre.oss.conf4j.annotation.Key;
+import org.openkilda.floodlight.service.IService;
+import org.openkilda.messaging.Message;
 
-public interface KildaCoreConfig {
-    @Key("command-processor-workers-count")
-    @Default("4")
-    int getCommandPersistentWorkersCount();
+public interface IKafkaProducerService extends IService {
+    void enableGuaranteedOrder(String topic);
 
-    @Key("command-processor-workers-limit")
-    @Default("32")
-    int getCommandWorkersLimit();
+    void disableGuaranteedOrder(String topic);
 
-    @Key("command-processor-deferred-requests-limit")
-    @Default("8")
-    int getCommandDeferredRequestsLimit();
+    void disableGuaranteedOrder(String topic, long transitionPeriod);
 
-    @Key("command-processor-idle-workers-keep-alive-seconds")
-    @Default("300")
-    long getCommandIdleWorkersKeepAliveSeconds();
+    void sendMessageAndTrack(String topic, Message message);
+
+    SendStatus sendMessage(String topic, Message message);
 }

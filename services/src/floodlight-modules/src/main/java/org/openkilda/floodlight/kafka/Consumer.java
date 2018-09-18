@@ -19,47 +19,48 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+import org.openkilda.floodlight.service.kafka.KafkaConsumerSetup;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 
 import com.google.common.annotations.VisibleForTesting;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InterruptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
 public class Consumer implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(Consumer.class);
 
-    private final List<String> topics;
-    private final KafkaConsumerConfig kafkaConfig;
     private final ExecutorService handlersPool;
     private final RecordHandler.Factory handlerFactory;
+    private final KafkaConsumerSetup kafkaSetup;
+    private final long commitInterval;
+
+    private final KafkaUtilityService kafkaUtilityService;
     private final ISwitchManager switchManager; // HACK alert.. adding to facilitate safeSwitchTick()
-    private final OffsetResetStrategy defaultOffsetStrategy;
 
-    public Consumer(KafkaConsumerConfig kafkaConfig, ExecutorService handlersPool,
-                    RecordHandler.Factory handlerFactory, ISwitchManager switchManager,
-                    String topic, OffsetResetStrategy defaultOffsetStrategy) {
-        this.topics = Collections.singletonList(requireNonNull(topic));
-
-        this.kafkaConfig = requireNonNull(kafkaConfig);
+    public Consumer(FloodlightModuleContext moduleContext, ExecutorService handlersPool,
+                    KafkaConsumerSetup kafkaSetup, RecordHandler.Factory handlerFactory,
+                    long commitInterval) {
         this.handlersPool = requireNonNull(handlersPool);
         this.handlerFactory = requireNonNull(handlerFactory);
-        this.switchManager = requireNonNull(switchManager);
-        this.defaultOffsetStrategy = defaultOffsetStrategy;
+        this.kafkaSetup = kafkaSetup;
+
+        checkArgument(commitInterval > 0, "commitInterval must be positive");
+        this.commitInterval = commitInterval;
+
+        kafkaUtilityService = moduleContext.getServiceImpl(KafkaUtilityService.class);
+        switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
     }
 
     @Override
@@ -75,18 +76,11 @@ public class Consumer implements Runnable {
              *  - max.poll.records = 500 (must be able to process about 2 records per second
              */
 
-            Properties consumerProperties = kafkaConfig.createKafkaConsumerProperties();
-            if (defaultOffsetStrategy != null) {
-                // Define what to do when there is no offset in Kafka.
-                consumerProperties.setProperty("auto.offset.reset", defaultOffsetStrategy.toString().toLowerCase());
-            }
+            try (org.apache.kafka.clients.consumer.Consumer<String, String> consumer =
+                         kafkaUtilityService.makeConsumer(kafkaSetup)) {
+                logger.info("Kafka consumer: start. Topics: {}", kafkaSetup.getTopics());
 
-            try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties)) {
-                consumer.subscribe(topics);
-                logger.info("Kafka consumer: start. Topics: {}", topics);
-
-                KafkaOffsetRegistry offsetRegistry =
-                        new KafkaOffsetRegistry(consumer, kafkaConfig.getAutoCommitInterval());
+                KafkaOffsetRegistry offsetRegistry = new KafkaOffsetRegistry(consumer, commitInterval);
 
                 while (true) {
                     try {
@@ -132,14 +126,15 @@ public class Consumer implements Runnable {
      */
     @VisibleForTesting
     static class KafkaOffsetRegistry {
-        private final KafkaConsumer<String, String> consumer;
+        private final org.apache.kafka.clients.consumer.Consumer<String, String> consumer;
         private final long autoCommitInterval;
+
         private final Map<TopicPartition, Long> partitionToUncommittedOffset = new HashMap<>();
         private long lastCommitTime;
 
-        KafkaOffsetRegistry(KafkaConsumer<String, String> consumer, long autoCommitInterval) {
-            this.consumer = requireNonNull(consumer);
-            checkArgument(autoCommitInterval > 0, "autoCommitInterval must be positive");
+        KafkaOffsetRegistry(org.apache.kafka.clients.consumer.Consumer<String, String> consumer,
+                            long autoCommitInterval) {
+            this.consumer = consumer;
             this.autoCommitInterval = autoCommitInterval;
 
             lastCommitTime = System.currentTimeMillis();

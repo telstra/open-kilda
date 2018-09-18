@@ -17,7 +17,6 @@ package org.openkilda.floodlight.pathverification;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
@@ -25,6 +24,7 @@ import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
@@ -141,10 +141,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         logger.debug("main pathverification service: " + this);
 
         ConfigurationProvider provider = ConfigurationProvider.of(context, this);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
 
-        initConfiguration(topicsConfig, serviceConfig);
+        initConfiguration(serviceConfig);
         initServices(context);
 
         // FIXME(surabujin): use shared KafkaProducer i.e. org.openkilda.floodlight.kafka.KafkaMessageProducer
@@ -152,9 +151,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     }
 
     @VisibleForTesting
-    void initConfiguration(KafkaTopicsConfig topicsConfig, PathVerificationServiceConfig serviceConfig)
+    void initConfiguration(PathVerificationServiceConfig serviceConfig)
             throws FloodlightModuleException {
-        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
         islBandwidthQuotient = serviceConfig.getIslBandwidthQuotient();
 
         initAlgorithm(serviceConfig.getHmac256Secret());
@@ -181,9 +179,16 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         producer = mockProducer;
     }
 
+    @VisibleForTesting
+    void setTopoDiscoTopic(String topic) {
+        topoDiscoTopic = topic;
+    }
+
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        logger.info("Stating " + PathVerificationService.class.getCanonicalName());
+        logger.info("Stating {}", PathVerificationService.class.getCanonicalName());
+
+        topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
 
         InputService inputService = context.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, this);

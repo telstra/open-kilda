@@ -90,6 +90,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
 
         reset(producer);
 
+        pvs.setTopoDiscoTopic("unittest.kilda.topo.disco");
         pvs.setKafkaProducer(producer);
     }
 

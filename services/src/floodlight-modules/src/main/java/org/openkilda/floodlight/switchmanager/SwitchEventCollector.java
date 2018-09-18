@@ -15,10 +15,9 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.converter.IofSwitchConverter;
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
@@ -30,6 +29,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.SwitchId;
 
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.PortChangeType;
@@ -54,7 +54,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     private static final Logger logger = LoggerFactory.getLogger(SwitchEventCollector.class);
 
     private IOFSwitchService switchService;
-    private KafkaMessageProducer kafkaProducer;
+    private IKafkaProducerService producerService;
     private ISwitchManager switchManager;
 
     private String topoDiscoTopic;
@@ -70,7 +70,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @NewCorrelationContextRequired
     public void switchAdded(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.ADDED);
-        kafkaProducer.postMessage(topoDiscoTopic, message);
+        producerService.sendMessageAndTrack(topoDiscoTopic, message);
     }
 
     /**
@@ -81,7 +81,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void switchRemoved(final DatapathId switchId) {
         switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.REMOVED);
-        kafkaProducer.postMessage(topoDiscoTopic, message);
+        producerService.sendMessageAndTrack(topoDiscoTopic, message);
     }
 
     /**
@@ -127,7 +127,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
         if (isPhysicalPort(port.getPortNo())) {
             Message message = buildPortMessage(switchId, port, type);
-            kafkaProducer.postMessage(topoDiscoTopic, message);
+            producerService.sendMessageAndTrack(topoDiscoTopic, message);
         }
     }
 
@@ -138,7 +138,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @NewCorrelationContextRequired
     public void switchChanged(final DatapathId switchId) {
         Message message = buildSwitchMessage(switchService.getSwitch(switchId), SwitchState.CHANGED);
-        kafkaProducer.postMessage(topoDiscoTopic, message);
+        producerService.sendMessageAndTrack(topoDiscoTopic, message);
     }
 
     /*
@@ -153,7 +153,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     public void switchDeactivated(final DatapathId switchId) {
         switchManager.stopSafeMode(switchId);
         Message message = buildSwitchMessage(switchId, SwitchState.DEACTIVATED);
-        kafkaProducer.postMessage(topoDiscoTopic, message);
+        producerService.sendMessageAndTrack(topoDiscoTopic, message);
     }
 
     /**
@@ -181,11 +181,11 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
-        services.add(IOFSwitchService.class);
-        services.add(KafkaMessageProducer.class);
-        services.add(ISwitchManager.class);
-        return services;
+        return ImmutableList.of(
+                IOFSwitchService.class,
+                KafkaUtilityService.class,
+                IKafkaProducerService.class,
+                ISwitchManager.class);
     }
 
     /**
@@ -194,12 +194,8 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         switchService = context.getServiceImpl(IOFSwitchService.class);
-        kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+        producerService = context.getServiceImpl(IKafkaProducerService.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
-
-        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
-        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
     }
 
     /*
@@ -211,7 +207,10 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        logger.info("Starting " + SwitchEventCollector.class.getCanonicalName());
+        logger.info("Starting {}", SwitchEventCollector.class.getCanonicalName());
+
+        topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
+
         switchService.addOFSwitchListener(this);
     }
 

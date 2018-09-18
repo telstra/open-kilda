@@ -15,44 +15,34 @@
 
 package org.openkilda.floodlight.kafka;
 
-import static java.util.Objects.requireNonNull;
-
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightService;
 
-import java.util.Collection;
-
-public class ConsumerContext extends Context {
+public class ConsumerContext {
+    private final FloodlightModuleContext moduleContext;
     private final IPathVerificationService pathVerificationService;
-    private final KafkaMessageProducer kafkaProducer;
     private final ISwitchManager switchManager;
-    private final KafkaTopicsConfig kafkaTopicsConfig;
 
-    public static void fillDependencies(Collection<Class<? extends IFloodlightService>> dependencies) {
-        dependencies.add(IPathVerificationService.class);
-        dependencies.add(ISwitchManager.class);
+    private final KafkaTopicsConfig kafkaTopics;
+
+    public ConsumerContext(FloodlightModuleContext moduleContext) {
+        this.moduleContext = moduleContext;
+        this.pathVerificationService = moduleContext.getServiceImpl(IPathVerificationService.class);
+        this.switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
+
+        kafkaTopics = moduleContext.getServiceImpl(KafkaUtilityService.class).getTopics();
     }
 
-    public ConsumerContext(FloodlightModuleContext moduleContext, KafkaTopicsConfig kafkaTopicsConfig) {
-        super(moduleContext);
-
-        pathVerificationService = moduleContext.getServiceImpl(IPathVerificationService.class);
-        switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
-        kafkaProducer = moduleContext.getServiceImpl(KafkaMessageProducer.class);
-
-        this.kafkaTopicsConfig = requireNonNull(kafkaTopicsConfig, "kafkaTopicsConfig cannot be null");
+    public FloodlightModuleContext getModuleContext() {
+        return moduleContext;
     }
 
     public IPathVerificationService getPathVerificationService() {
         return pathVerificationService;
-    }
-
-    public KafkaMessageProducer getKafkaProducer() {
-        return kafkaProducer;
     }
 
     public ISwitchManager getSwitchManager() {
@@ -60,18 +50,18 @@ public class ConsumerContext extends Context {
     }
 
     public String getKafkaFlowTopic() {
-        return kafkaTopicsConfig.getFlowTopic();
+        return kafkaTopics.getFlowTopic();
     }
 
     public String getKafkaTopoDiscoTopic() {
-        return kafkaTopicsConfig.getTopoDiscoTopic();
+        return kafkaTopics.getTopoDiscoTopic();
     }
 
     public String getKafkaStatsTopic() {
-        return kafkaTopicsConfig.getStatsTopic();
+        return kafkaTopics.getStatsTopic();
     }
 
     public String getKafkaNorthboundTopic() {
-        return kafkaTopicsConfig.getNorthboundTopic();
+        return kafkaTopics.getNorthboundTopic();
     }
 }

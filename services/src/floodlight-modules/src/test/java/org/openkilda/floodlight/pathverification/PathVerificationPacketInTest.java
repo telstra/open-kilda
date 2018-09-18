@@ -19,7 +19,6 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
 
-import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
@@ -170,10 +169,9 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         fmc.addConfigParam(pvs, "hmac256-secret", "secret");
         fmc.addConfigParam(pvs, "bootstrap-servers", "");
         ConfigurationProvider provider = ConfigurationProvider.of(fmc, pvs);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
 
-        pvs.initConfiguration(topicsConfig, serviceConfig);
+        pvs.initConfiguration(serviceConfig);
         pvs.initServices(fmc);
 
         srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
