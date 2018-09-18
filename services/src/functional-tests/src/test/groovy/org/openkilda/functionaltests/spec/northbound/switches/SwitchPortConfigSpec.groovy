@@ -23,6 +23,8 @@ class SwitchPortConfigSpec extends BaseSpecification {
     int discoveryInterval
 
     def "Bring switch port down/up (ISL-busy port)"() {
+        requireProfiles("hardware")
+
         given: "An ISL between active switches"
         def isl = topology.islsForActiveSwitches.first()
 
@@ -46,6 +48,8 @@ class SwitchPortConfigSpec extends BaseSpecification {
     }
 
     def "Bring switch port down/up (ISL-free port)"() {
+        requireProfiles("hardware")
+        
         given: "An active switch and ISL-free port"
         def sw = topology.getActiveSwitches().first()
         def port = topology.getAllowedPortsForSwitch(sw).first()
