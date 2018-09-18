@@ -283,13 +283,13 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public PortDto portUp(SwitchId switchId, Integer portNo) {
-        log.info("Bringing port up for switch {}, port {}", switchId, portNo);
+        log.debug("Bringing port up for switch {}, port {}", switchId, portNo);
         return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.UP));
     }
 
     @Override
     public PortDto portDown(SwitchId switchId, Integer portNo) {
-        log.info("Bringing port down for switch {}, port {}", switchId, portNo);
+        log.debug("Bringing port down for switch {}, port {}", switchId, portNo);
         return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.DOWN));
     }
 
