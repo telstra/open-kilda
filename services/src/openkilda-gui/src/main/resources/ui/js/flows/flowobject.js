@@ -19,7 +19,22 @@ class Flow {
 	setFlowPathObj(obj){
 		this.flowpathObj = obj;
 	}
-	
+	getallmetric() {
+		var metricVarList = ["bits:Bits/sec","bytes:Bytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
+		return metricVarList;
+	}
+	getFlowMetric() {
+		var metricArray =flowObj.getallmetric();
+		var returnmetricArray = [];
+		var optionHTML = "";
+		for (var i = 0; i < metricArray.length ; i++) {
+			
+			if(metricArray[i].includes("bits") || metricArray[i].includes("packets") || metricArray[i].includes("bytes")) {
+				returnmetricArray.push(metricArray[i]);
+			}
+		}
+		return returnmetricArray;
+	}
 	getPorts (id) {
 		 var switch_id = common.toggleSwitchID($("#" + id).val());
 		 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");

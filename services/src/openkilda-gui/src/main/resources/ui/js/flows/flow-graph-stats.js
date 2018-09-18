@@ -5,9 +5,9 @@
 
 
 /**
-* Execute  getGraphData function when onchange event is fired 
-* on the filter input values of datetimepicker, downsampling and menulist.
-*/
+ * Execute getGraphData function when onchange event is fired on the filter
+ * input values of datetimepicker, downsampling and menulist.
+ */
 
 var flowid = window.location.href.split("#")[1];
 var graphInterval;
@@ -25,7 +25,30 @@ $(function() {
 		$("#downsampling,#menulist,#autoreload,#directionlist").on("change",function(event) {
 				getGraphData();	
 		});
-		
+		$('#cookiereverseId').delegate('label','click',function(event){
+			var loadfromcookie = $(this).find('input').val();
+			var startDate = new Date($('#reverseFromdatepicker').val());
+			var endDate = new Date($('#reverseTodatepicker').val());
+			var timezone = $('#timezoneReverse option:selected').val();
+			loadPathGraph([],startDate,endDate,'reverse',timezone,loadfromcookie)
+		})
+		$('#cookieforwardId').delegate('label','click',function(event){
+			var loadfromcookie = $(this).find('input').val();
+			var startDate = new Date($('#forwardFromdatepicker').val());
+			var endDate = new Date($('#forwardTodatepicker').val());
+			var timezone = $('#timezoneForward option:selected').val();
+			loadPathGraph([],startDate,endDate,'forward',timezone,loadfromcookie);
+		})
+		$('#forwardMetric').on('change',function(event){
+			var fromDate = new Date($('#forwardFromdatepicker').val());
+			var toDate = new Date($('#forwardTodatepicker').val());
+			loadForwardGraph(fromDate,toDate);
+		})
+		$('#reverseMetric').on('change',function(event){
+			var fromDate =new Date($('#reverseFromdatepicker').val());
+			var toDate = new Date($('#reverseTodatepicker').val());
+			loadReverseGraph(fromDate,toDate);
+		})
 		$('#reverseFromdatepicker,#reverseTodatepicker').on('change',function(event){
 			var fromDate =new Date($('#reverseFromdatepicker').val());
 			var toDate = new Date($('#reverseTodatepicker').val());
@@ -121,9 +144,9 @@ $(function() {
 });	
 
 /**
-* Execute this function when page is loaded
-* or when user is directed to this page.
-*/
+ * Execute this function when page is loaded or when user is directed to this
+ * page.
+ */
 $(document).ready(function() {
 
 	
@@ -197,14 +220,25 @@ function fetchAndLoadGraphData(flowid,convertedStartDate,convertedEndDate,downsa
 }
 function loadForwardGraph(fromDate, toDate){
 	$('#forward_path_graph').html('');
-	var isGraphLoaded = $('#forward_path_graph').css('display') == 'block';
+    var metrics = flowObj.getFlowMetric();
+    var isGraphLoaded = $('#forward_path_graph').css('display') == 'block';
 	var timezone = $('#timezoneForward option:selected').val();
+	var metric = $('#forwardMetric option:selected').val();
 	if(typeof(fromDate) == 'undefined' && typeof(toDate) == 'undefined') {
 		$('#reverse_path_graph').hide();
 		$('#reverse_graph').hide();
 		$('#forward_graph').slideToggle();
 		$('#forward_path_graph').slideToggle('slow');
-		toggleOpenCloseClass("forward_graph_icon","glyphicon-plus","glyphicon-minus");	
+		toggleOpenCloseClass("forward_graph_icon","glyphicon-plus","glyphicon-minus");
+		 var options = '';
+		    if(metrics && metrics.length){
+		    	for(var i=0; i < metrics.length; i++) {
+		    		options = options + "<option value="+metrics[i].split(":")[0]+">"+metrics[i].split(":")[1]+"</option>";
+		    	}
+		    }
+		    $('#forwardMetric').html(options);
+		    $('#forwardMetric').val('bits');
+		    metric = $('#forwardMetric option:selected').val();
 	}
 	if(!isGraphLoaded || (typeof(fromDate) !==' undefined' && typeof(toDate) !== 'undefined')){
 		$('#reverse_graph_icon').removeClass('glyphicon-minus').addClass('glyphicon-plus');
@@ -254,6 +288,7 @@ function loadForwardGraph(fromDate, toDate){
 							"enddate":endDate,
 							"downsample":downsampling,
 							"direction":'forward',
+							'metric':metric
 						  }
 			$('#waitforward').show();
 			setTimeout(function(){
@@ -283,7 +318,7 @@ function getColorCode(j,arr){
 	var chars = '0123456789ABCDE'.split('');
     var hex = '#';
     for (var i = 0; i < 6; i++) {
-        hex += chars[Math.floor(Math.random() * 16)];
+        hex += chars[Math.floor(Math.random() * 14)];
     }
     var colorCode = hex;
 	if(arr.indexOf(colorCode) < 0 ){
@@ -292,10 +327,72 @@ function getColorCode(j,arr){
 		return getColorCode(j,arr);
 	}
 }
-function computeGraphData(data,startDate,endDate,type,timezone) {
+function getCookieBasedData(data,type) {
+	var constructedData = {};
+	for(var i=0; i < data.length; i++){
+	   var cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie']: null;
+	   if(cookieId){
+		   var keyArray = Object.keys(constructedData);
+		   if(keyArray.indexOf(cookieId) > -1){
+			   constructedData[cookieId].push(data[i]);
+		   }else{
+			   if(type == 'forward' && cookieId.charAt(0) == '4'){
+				   constructedData[cookieId]=[];
+				   constructedData[cookieId].push(data[i]);
+			   }else if(type == 'reverse' && cookieId.charAt(0) == '2' ){
+				   constructedData[cookieId]=[];
+				   constructedData[cookieId].push(data[i]);
+			   }
+		   }
+	   }
+   }
+   var options = "";
+   var keyArrayCookie = Object.keys(constructedData);
+   if(type == 'forward'){
+	   for(var j=0; j<keyArrayCookie.length; j++ ){
+			 	   if(j == 0){
+					   options = options + '<label class="btn kilda_btn active"> <input type="radio" name="cookieForward" id="option_'+keyArrayCookie[j]+'" value='+keyArrayCookie[j]+' autocomplete="off" checked /><span class="copy_to_clipBoard">'+keyArrayCookie[j]+'</span> </label>';
+						
+				   }else{
+					   options = options + '<label class="btn kilda_btn"> <input type="radio" name="cookieForward" id="option_'+keyArrayCookie[j]+'" value='+keyArrayCookie[j]+' autocomplete="off" /><span class="copy_to_clipBoard">'+keyArrayCookie[j]+'</span> </label>';
+						  
+				   }
+			  	  
+		   }
+	   $("#cookieforwardId").html(options);
+	   $("#option_"+keyArrayCookie[0]).prop('checked','checked');
+   }else{
+	   for(var j=0; j<keyArrayCookie.length; j++ ){
+			  if(j == 0){
+				  options = options + '<label class="btn kilda_btn active"> <input type="radio" name="cookieReverse" id="option_'+keyArrayCookie[j]+'" value='+keyArrayCookie[j]+' autocomplete="off" checked/><span class="copy_to_clipBoard">'+keyArrayCookie[j]+'</span> </label>';
+				 }else{
+				  options = options + '<label class="btn kilda_btn"> <input type="radio" name="cookieReverse" id="option_'+keyArrayCookie[j]+'" value='+keyArrayCookie[j]+' autocomplete="off" /><span class="copy_to_clipBoard">'+keyArrayCookie[j]+'</span> </label>';
+			  }
+				  
+		   }
+	   $("#cookiereverseId").html(options);
+	   $("#option_"+keyArrayCookie[0]).prop('checked','checked');
+   }
+   return constructedData;
+}
+function computeGraphData(dataResponse,startDate,endDate,type,timezone ,loadfromcookie) {
+	if(typeof(loadfromcookie)!='undefined' && loadfromcookie) {
+		var cookieBasedData = JSON.parse(localStorage.getItem('flowPathCookieData'));
+		var cookieId = loadfromcookie;
+	}else{
+		var cookieBasedData = getCookieBasedData(dataResponse,type);
+		localStorage.setItem('flowPathCookieData',JSON.stringify(cookieBasedData));
+		if(type=='forward'){
+			var cookieId = $('#cookieforwardId label.active').find('input').val(); 
+		}else{
+			var cookieId = $('#cookiereverseId label.active').find('input').val();
+		}
+	}
+	
 	var graphData = [];
 	var labels =["Date"];
 	var color = [];
+	var data = cookieBasedData[cookieId];
 	if(typeof(startDate)!=='undefined' && startDate!=null) {
 		var dat = new Date(startDate);
 		var startTime = dat.getTime();
@@ -304,9 +401,12 @@ function computeGraphData(data,startDate,endDate,type,timezone) {
 			startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
 		}
 		var arr = [new Date(startTime)];
-		for(var j = 0; j < data.length; j++) {
-			arr.push(null);
+		if(data){
+			for(var j = 0; j < data.length; j++) {
+				arr.push(null);
+			}
 		}
+		
 		graphData.push(arr);
 	 }
 	  if(data) {
@@ -339,7 +439,7 @@ function computeGraphData(data,startDate,endDate,type,timezone) {
 				             }
 						    k++;  	
 						 }
-				   }else if(metric === 'pen.flow.packets'){
+				   }else if(metric === 'pen.flow.packets' || metric === 'pen.flow.bits' || metric === 'pen.flow.bytes'){
 					   metric = metric + "("+data[j].tags.flowid+")";
 					   labels.push(metric);
 					   color.push("#aad200");
@@ -378,16 +478,19 @@ function computeGraphData(data,startDate,endDate,type,timezone) {
 				lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
 			}
 			var arr = [new Date(lastTime)];
-			for(var j = 0; j < data.length; j++){
-				arr.push(null);
+			if(data){
+				for(var j = 0; j < data.length; j++){
+					arr.push(null);
+				}
 			}
 			graphData.push(arr);
+			
 		}
-	 
-	  return {labels:labels,data:graphData,color:color};
+	 return {labels:labels,data:graphData,color:color};
 }
-function loadPathGraph(data,startDate,endDate,type,timezone){
-   var graph_data = computeGraphData(data,startDate,endDate,type,timezone);
+
+function loadPathGraph(data,startDate,endDate,type,timezone,loadfromcookie){
+  var graph_data = computeGraphData(data,startDate,endDate,type,timezone,loadfromcookie);
   var graphData = graph_data['data'];
   var labels = graph_data['labels'];
   var series = {};
@@ -456,12 +559,23 @@ function loadReverseGraph(fromDate,toDate){
 	$('#reverse_path_graph').html('');
 	var isGraphLoaded = $('#reverse_path_graph').css('display') == 'block';
 	var timezone = $('#timezoneReverse option:selected').val();
+	var metric = $('#reverseMetric option:selected').val();
 	if(typeof(fromDate) =='undefined' && typeof(toDate) == 'undefined'){
 		$('#forward_path_graph').hide();
 		$('#forward_graph').hide();
 		$('#reverse_graph').slideToggle('slow');
 		$('#reverse_path_graph').slideToggle('slow');
 		toggleOpenCloseClass("reverse_graph_icon","glyphicon-plus","glyphicon-minus");
+		var metrics = flowObj.getFlowMetric();
+	    var options = '';
+	    if(metrics && metrics.length){
+	    	for(var i=0; i < metrics.length; i++) {
+	    		options = options + "<option value="+metrics[i].split(":")[0]+">"+metrics[i].split(":")[1]+"</option>";
+	    	}
+	    }
+	    $('#reverseMetric').html(options);
+	    $('#reverseMetric').val('bits');
+	    metric = $('#reverseMetric option:selected').val();
 	}
 	if(!isGraphLoaded || (typeof(fromDate) !=='undefined' && typeof(toDate) !== 'undefined') ){
 		$('#forward_graph_icon').removeClass('glyphicon-minus').addClass('glyphicon-plus');
@@ -488,7 +602,7 @@ function loadReverseGraph(fromDate,toDate){
 				$('#reverseFromdatepicker').val(fromStartDate);
 				$('#reverseTodatepicker').val(toEndDate);
 			}else{
-				var startDate = moment().subtract(4,'hour').utc().format("YYYY-MM-DD-HH:mm:ss"); // To do change the value 4 to 2 to change time difference to 2 hours in subtract function
+				var startDate = moment().subtract(4,'hour').utc().format("YYYY-MM-DD-HH:mm:ss"); 
 				var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
 				var fromStartDate = moment().subtract(4,'hour').format("YYYY/MM/DD HH:mm:ss");
 				var toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
@@ -515,6 +629,7 @@ function loadReverseGraph(fromDate,toDate){
 							"enddate":endDate,
 							"downsample":downsampling,
 							"direction":'reverse',
+							'metric':metric,
 						  }
 			$('#waitreverse').show();
 			setTimeout(function(){
@@ -539,9 +654,9 @@ function loadReverseGraph(fromDate,toDate){
 	
 }
 /**
-* Execute this function to  show stats data whenever user filters data in the
-* html page.
-*/
+ * Execute this function to show stats data whenever user filters data in the
+ * html page.
+ */
 function getGraphData() {
 
 	var regex = new RegExp("^\\d+(s|h|m){1}$");

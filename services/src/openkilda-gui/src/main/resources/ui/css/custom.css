@@ -2205,6 +2205,16 @@ td.highlight {
     text-decoration: none;
     background: #b0b0b0;
 }
+#cookieforwardId > .btn.kilda_btn:hover ,#cookiereverseId > .btn.kilda_btn:hover {
+    color: #FFF;
+    text-decoration: none;
+    background: #262d37;
+}
+#cookieforwardId > .btn.kilda_btn.active:hover ,#cookiereverseId > .btn.kilda_btn.active:hover {
+    color: #000;
+    text-decoration: none;
+    background: #b0b0b0;
+}
 .kilda_btn:focus{
     color: #000;
     text-decoration: none;
@@ -2804,5 +2814,32 @@ div#portsTable_info {
      padding: 8px 50px;
      font-size:14px;
 }
-     
+
+.kilda_white_logo{
+  	background: url(../images/kilda_logo_white.png) no-repeat 0 0;
+    background-size: 180px 40px;
+    height: 40px;
+    width: 180px;
+    margin: 10px 0px;
+    display: block;
+}
+#forward_graph .form-group input, #forward_graph .form-group select, #forward_graph .form-group textarea {
+	width: 100%;
+	height:35px;
+	padding: 8px 8px;
+}
+#reverse_graph .form-group input, #reverse_graph .form-group select, #reverse_graph .form-group textarea {
+	width: 100%;
+	height:35px;
+	padding: 8px 8px;
+}
+
+label.btn.kilda_btn.active {
+    background: #b0b0b0;
+    color:#000!important;
+    font-weight:bold;
+}
+label.btn.kilda_btn > span.copy_to_clipBoard {
+    padding: 10px;
+}
 
