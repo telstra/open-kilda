@@ -75,7 +75,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         and: "Restore topology to original state, remove flow"
-        broughtDownPorts.every {northboundService.portUp(it.switchId, it.portNo)}
+        broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
         northboundService.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + 2) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
@@ -127,8 +127,8 @@ class AutoRerouteSpec extends BaseSpecification {
         flowPath != reroutedFlowPath
 
         and: "Bring port involved in original path up and delete flow"
-        northboundService.deleteFlow(flow.id)
         northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
+        northboundService.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + 2) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
