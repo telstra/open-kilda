@@ -16,6 +16,7 @@
 package org.openkilda.northbound.service;
 
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
@@ -56,4 +57,15 @@ public interface LinkService extends BasicService {
      * @return the number of successes (rows affected), failures, and any failure messages
      */
     BatchResults delLinkProps(List<LinkPropsDto> linkPropsList);
+
+    /**
+     * Get all flows for a particular link.
+     *
+     * @param srcSwitch source switch dpid.
+     * @param srcPort source port number.
+     * @param dstSwitch destination switch dpid.
+     * @param dstPort destination port number.
+     * @return all flows for a particular link.
+     */
+    List<FlowPayload> getFlowsForLink(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 }

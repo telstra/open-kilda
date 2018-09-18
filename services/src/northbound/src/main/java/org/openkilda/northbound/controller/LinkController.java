@@ -17,6 +17,7 @@ package org.openkilda.northbound.controller;
 
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
@@ -119,5 +120,22 @@ public class LinkController {
     public BatchResults delLinkProps(
             @RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.delLinkProps(keysAndProps);
+    }
+
+    /**
+     * Get all flows for a particular link.
+     *
+     * @return list of flows for a particular link.
+     */
+    @ApiOperation(value = "Get all flows for a particular link, based on arguments.", response = LinkPropsDto.class,
+            responseContainer = "List")
+    @GetMapping(path = "/link/flows",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public List<FlowPayload> getFlowsForLink(@RequestParam(value = "src_switch", required = false) SwitchId srcSwitch,
+                                             @RequestParam(value = "src_port", required = false) Integer srcPort,
+                                             @RequestParam(value = "dst_switch", required = false) SwitchId dstSwitch,
+                                             @RequestParam(value = "dst_port", required = false) Integer dstPort) {
+        return linkService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 }

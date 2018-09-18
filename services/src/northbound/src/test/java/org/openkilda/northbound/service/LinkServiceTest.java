@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
@@ -28,12 +29,15 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.te.request.LinkPropsDrop;
 import org.openkilda.messaging.te.request.LinkPropsPut;
 import org.openkilda.messaging.te.request.LinkPropsRequest;
@@ -57,6 +61,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
@@ -64,6 +69,7 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -80,6 +86,9 @@ public class LinkServiceTest {
 
     @Autowired
     private MessageExchanger messageExchanger;
+
+    @MockBean
+    private FlowService flowService;
 
     @Before
     public void reset() {
@@ -211,6 +220,59 @@ public class LinkServiceTest {
         assertThat(result.getFailures(), is(0));
         assertThat(result.getSuccesses(), is(1));
         assertTrue(result.getMessages().isEmpty());
+    }
+
+    @Test
+    public void shouldGetEmptyFlowsForLinkList() {
+        String correlationId = "empty-flows-for-link";
+        FlowsResponse flowsResponse = new FlowsResponse(new ArrayList<>());
+        Message message = new ChunkedInfoMessage(flowsResponse, 0, correlationId, null);
+        messageExchanger.mockResponse(message);
+        RequestCorrelationId.create(correlationId);
+
+        List<FlowPayload> flowPayloads = new ArrayList<>();
+        flowPayloads.add(new FlowPayload("flow1",
+                new FlowEndpointPayload(new SwitchId("00:01"), 1, 0),
+                new FlowEndpointPayload(new SwitchId("00:02"), 2, 0),
+                0, true, false, "description", "last update", "testing"));
+        flowPayloads.add(new FlowPayload("flow2",
+                new FlowEndpointPayload(new SwitchId("00:02"), 3, 0),
+                new FlowEndpointPayload(new SwitchId("00:01"), 4, 0),
+                0, true, false, "description", "last update", "testing"));
+        when(flowService.getFlows()).thenReturn(flowPayloads);
+
+        List<FlowPayload> result = linkService.getFlowsForLink(null, 0, null, 0);
+        assertTrue("List of flows for the link should be empty", result.isEmpty());
+    }
+
+    @Test
+    public void shouldGetFlowsForLinkList() {
+        String correlationId = "non-empty-flows-for-link";
+
+        List<String> flowIds = new ArrayList<>();
+        flowIds.add("flow1");
+        FlowsResponse flowsResponse = new FlowsResponse(flowIds);
+        Message message = new ChunkedInfoMessage(flowsResponse, 0, correlationId, null);
+        messageExchanger.mockResponse(message);
+        RequestCorrelationId.create(correlationId);
+
+        List<FlowPayload> flowPayloads = new ArrayList<>();
+        flowPayloads.add(new FlowPayload("flow1",
+                new FlowEndpointPayload(new SwitchId("00:01"), 1, 0),
+                new FlowEndpointPayload(new SwitchId("00:02"), 2, 0),
+                0, true, false, "description", "last update", "testing"));
+        flowPayloads.add(new FlowPayload("flow2",
+                new FlowEndpointPayload(new SwitchId("00:02"), 3, 0),
+                new FlowEndpointPayload(new SwitchId("00:01"), 4, 0),
+                0, true, false, "description", "last update", "testing"));
+        when(flowService.getFlows()).thenReturn(flowPayloads);
+
+        List<FlowPayload> result = linkService.getFlowsForLink(null, 0, null, 0);
+        assertFalse("List of link props shouldn't be empty", result.isEmpty());
+        assertThat(result.size(), is(1));
+
+        FlowPayload payload = result.get(0);
+        assertThat(payload.getId(), is(flowPayloads.get(0).getId()));
     }
 
     @TestConfiguration

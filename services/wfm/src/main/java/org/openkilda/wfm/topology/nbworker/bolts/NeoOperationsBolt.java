@@ -15,10 +15,15 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.IslExistsException;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -54,6 +59,20 @@ public abstract class NeoOperationsBolt extends AbstractBolt {
 
         try (Session session = driver.session(request.isReadRequest() ? AccessMode.READ : AccessMode.WRITE)) {
             List<? extends InfoData> result = processRequest(input, request, session);
+            getOutput().emit(input, new Values(result, correlationId));
+        } catch (IllegalArgumentException e) {
+            ErrorData errorData = new ErrorData(ErrorType.PARAMETERS_INVALID,
+                    e.getMessage(),
+                    "Invalid parameters.");
+            ErrorMessage result = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
+            getOutput().emit(input, new Values(result, correlationId));
+        } catch (IslExistsException e) {
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND,
+                    e.getMessage(),
+                    "ISL does not exist.");
+            ErrorMessage result = new ErrorMessage(errorData,
+                    System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
             getOutput().emit(input, new Values(result, correlationId));
         }
     }

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.AbstractBolt;
@@ -41,11 +42,25 @@ public class ResponseSplitterBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) {
-        List<InfoData> responses = (List<InfoData>) input.getValueByField("response");
-        String correlationId = input.getStringByField("correlationId");
-        LOGGER.debug("Received response correlationId {}", correlationId);
+        Object response = input.getValueByField("response");
+        if (response instanceof ErrorMessage) {
+            ErrorMessage errorMessage = (ErrorMessage) response;
+            sendErrorResponce(errorMessage, input);
+        } else {
+            List<InfoData> responses = (List<InfoData>) response;
+            String correlationId = input.getStringByField("correlationId");
+            LOGGER.debug("Received response correlationId {}", correlationId);
 
-        sendChunkedResponse(responses, input, correlationId);
+            sendChunkedResponse(responses, input, correlationId);
+        }
+    }
+
+    private void sendErrorResponce(ErrorMessage errorMessage, Tuple input) {
+        try {
+            getOutput().emit(input, new Values(Utils.MAPPER.writeValueAsString(errorMessage)));
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Error during writing response as json", e);
+        }
     }
 
     private void sendChunkedResponse(List<InfoData> responses, Tuple input, String requestId) {

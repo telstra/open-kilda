@@ -15,15 +15,20 @@
 
 package org.openkilda.northbound.service.impl;
 
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.nbtopology.request.GetFlowIdsForLinkRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.te.request.LinkPropsDrop;
 import org.openkilda.messaging.te.request.LinkPropsPut;
 import org.openkilda.messaging.te.response.LinkPropsResponse;
@@ -34,6 +39,7 @@ import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
+import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -83,6 +89,12 @@ public class LinkServiceImpl implements LinkService {
     private ResponseCollector<LinkPropsResponse> teLinksCollector;
     @Autowired
     private ResponseCollector<LinkPropsData> linksPropsCollector;
+
+    /**
+     * Used to get flows.
+     */
+    @Autowired
+    private FlowService flowService;
 
     @Override
     public List<LinkDto> getLinks() {
@@ -180,5 +192,26 @@ public class LinkServiceImpl implements LinkService {
         }
 
         return new BatchResults(errors.size(), successCount, errors);
+    }
+
+    @Override
+    public List<FlowPayload> getFlowsForLink(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get all flows for a particular link request processing");
+        GetFlowIdsForLinkRequest data = new GetFlowIdsForLinkRequest(new NetworkEndpointMask(srcSwitch, srcPort),
+                new NetworkEndpointMask(dstSwitch, dstPort), correlationId);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        messageProducer.send(nbworkerTopic, request);
+
+        Message message = (Message) messageConsumer.poll(correlationId);
+        FlowsResponse flowsResponse = (FlowsResponse) validateInfoMessage(request, message, correlationId);
+
+        logger.debug("Received {} flow ids", flowsResponse.getFlowIds().size());
+
+        List<FlowPayload> flows = flowService.getFlows();
+
+        return flows.stream()
+                .filter(flow -> flowsResponse.getFlowIds().contains(flow.getId()))
+                .collect(Collectors.toList());
     }
 }
