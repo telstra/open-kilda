@@ -19,17 +19,17 @@ KafkaMessageCollector -> Consumer : Start the reactor thread
 
 ref over OFEventWFMTopology, TE: Kilda components communicates to Floodlight
 
-OFEventWFMTopology -> kilda.speaker: Send a discovery command
+OFEventWFMTopology -> kilda.speaker.disco: Send a discovery command
 
 
-TE -> kilda.speaker : Send a flow command
+TE -> kilda.speaker.disco : Send a flow command
 
 == Reactor thread ==
 
 loop forever, a single thread
-    Consumer -> kilda.speaker : Poll messages
+    Consumer -> kilda.speaker.disco : Poll messages
     activate Consumer
-    kilda.speaker -> Consumer : A batch of messages
+    kilda.speaker.disco -> Consumer : A batch of messages
     loop for each message
         create RecordHandler
         Consumer -> RecordHandler : Build a message handler
@@ -41,7 +41,7 @@ loop forever, a single thread
             activate RecordHandler
             FixedThreadPool -> Consumer
         deactivate  FixedThreadPool
-        Consumer -> kilda.speaker: Commit the offset for a message
+        Consumer -> kilda.speaker.disco: Commit the offset for a message
     end
     Consumer -> SwitchManager : safeModeTick
     deactivate Consumer

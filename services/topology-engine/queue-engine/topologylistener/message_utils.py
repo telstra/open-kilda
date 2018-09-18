@@ -256,7 +256,7 @@ def send_force_install_commands(switch_id, flow_commands, correlation_id):
     message.switch_id = switch_id
     message.flow_commands = flow_commands
     send_to_topic(message, correlation_id, MT_COMMAND,
-                  topic=config.KAFKA_SPEAKER_TOPIC)
+                  topic=config.KAFKA_SPEAKER_FLOW_TOPIC)
 
 
 class Message(Abstract):

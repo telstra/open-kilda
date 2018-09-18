@@ -51,8 +51,8 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getPingTopic();
     }
 
-    default String getKafkaSpeakerTopic() {
-        return getKafkaTopics().getSpeakerTopic();
+    default String getKafkaSpeakerFlowPingTopic() {
+        return getKafkaTopics().getSpeakerFlowPingTopic();
     }
 
     default String getKafkaNorthboundTopic() {

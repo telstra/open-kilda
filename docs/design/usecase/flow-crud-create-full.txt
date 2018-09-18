@@ -15,7 +15,7 @@ participant "FLOW TransactionBolt" as TransactionBolt
 participant "CACHE CacheBolt" as CacheBolt
 control kilda.topo.eng
 participant TE
-control kilda.speaker
+control kilda.speaker.flow
 participant SPEAKER
 participant "FLOW SpeakerBolt" as SpeakerBolt
 
@@ -58,7 +58,7 @@ loop in (forward, reverse)
     end
 
     loop each path sements
-        TE -> kilda.speaker: CommandMessage\ninstance of BaseInstallFlow
+        TE -> kilda.speaker.flow: CommandMessage\ninstance of BaseInstallFlow
         TE -> kilda.flow: CommandMessage\ninstance of BaseInstallFlow
 
         kilda.flow -> TopologyEngineBolt: CommandMessage\ninstance of BaseInstallFlow
@@ -67,7 +67,7 @@ loop in (forward, reverse)
 	note right of TransactionBolt: Bind transaction id with flow id
 	TransactionBolt -> CrudBolt: Values(flowId, FlowState.IN_PROGRESS)
 
-	kilda.speaker -> SPEAKER: CommandMessage\ninstance of BaseInstallFlow
+	kilda.speaker.flow -> SPEAKER: CommandMessage\ninstance of BaseInstallFlow
 	alt InstallIngressFlow
 	    note right of SPEAKER: allocate meter id
 	    note right of SPEAKER: SwitchManager.installMeter() 

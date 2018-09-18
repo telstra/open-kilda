@@ -97,7 +97,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
                 .shuffleGrouping(WFM_STATS_SPOUT);
 
         // Setup spout and bolt for sending SwitchPortsCommand every frequency seconds
-        SwitchPortsSpout switchPortsSpout = new SwitchPortsSpout(topologyConfig, JANITOR_REFRESH);
+        SwitchPortsSpout switchPortsSpout = new SwitchPortsSpout(JANITOR_REFRESH);
         builder.setSpout(SWITCH_PORTS_SPOUT_NAME, switchPortsSpout);
 
         String speakerTopic = topologyConfig.getKafkaSpeakerTopic();

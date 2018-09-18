@@ -59,6 +59,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.spout.internal.Timer;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.state.KeyValueState;
@@ -106,6 +107,7 @@ public class OfeLinkBolt
     @VisibleForTesting
     static final String STATE_ID_DISCOVERY = "discovery-manager";
     static final String TOPO_ENG_STREAM = "topo.eng";
+    static final String SPEAKER_DISCO_STREAM = "speaker.disco";
     static final String SPEAKER_STREAM = "speaker";
 
     private final String islDiscoveryTopic;
@@ -148,7 +150,7 @@ public class OfeLinkBolt
         watchDogInterval = discoveryConfig.getDiscoverySpeakerFailureTimeout();
         dumpRequestTimeout = discoveryConfig.getDiscoveryDumpRequestTimeout();
 
-        islDiscoveryTopic = config.getKafkaSpeakerTopic();
+        islDiscoveryTopic = config.getKafkaSpeakerDiscoTopic();
     }
 
     @Override
@@ -280,7 +282,7 @@ public class OfeLinkBolt
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER);
         logger.debug("LINK: Send ISL discovery command: {}", message);
-        collector.emit(SPEAKER_STREAM, tuple, new Values(PAYLOAD, Utils.MAPPER.writeValueAsString(message)));
+        collector.emit(SPEAKER_DISCO_STREAM, tuple, new Values(PAYLOAD, Utils.MAPPER.writeValueAsString(message)));
     }
 
     @Override
@@ -584,8 +586,11 @@ public class OfeLinkBolt
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SPEAKER_STREAM, new Fields("key", "message"));
-        declarer.declareStream(TOPO_ENG_STREAM, new Fields("key", "message"));
+        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
+                FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
+        declarer.declareStream(SPEAKER_STREAM, fields);
+        declarer.declareStream(SPEAKER_DISCO_STREAM, fields);
+        declarer.declareStream(TOPO_ENG_STREAM, fields);
         // FIXME(dbogun): use proper tuple format
         declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
