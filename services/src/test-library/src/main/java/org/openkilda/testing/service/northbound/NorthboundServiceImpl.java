@@ -23,6 +23,8 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.switches.PortDescription;
+import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
@@ -289,6 +291,19 @@ public class NorthboundServiceImpl implements NorthboundService {
     public PortDto portDown(SwitchId switchId, Integer portNo) {
         log.info("Bringing port down for switch {}, port {}", switchId, portNo);
         return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.DOWN));
+    }
+
+    @Override
+    public List<PortDescription> getPorts(SwitchId switchId) {
+        SwitchPortsDescription ports = restTemplate.exchange("/api/v1/switches/{switch_id}/ports", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchPortsDescription.class, switchId).getBody();
+        return ports.getPortsDescription();
+    }
+
+    @Override
+    public PortDescription getPort(SwitchId switchId, Integer portNo) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/ports/{port_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PortDescription.class, switchId, portNo).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
