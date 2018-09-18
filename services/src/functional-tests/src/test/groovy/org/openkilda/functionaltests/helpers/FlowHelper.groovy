@@ -4,6 +4,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 

@@ -12,6 +12,7 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 
