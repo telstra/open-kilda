@@ -12,7 +12,7 @@ participant Floodlight
 
 participant Switch
 
-Client -> Northbound : GET /switches/{switch-id}/port_desc/{port}
+Client -> Northbound : GET /switches/{switch-id}/ports/{port}
 
 activate Northbound
 Northbound -> kilda.speaker: CommandMessage\nDumpPortDescriptionRequest
