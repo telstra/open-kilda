@@ -21,8 +21,8 @@ import static org.junit.Assert.assertArrayEquals;
 
 import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.KildaCore;
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
@@ -64,6 +64,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
     protected OFDescStatsReply swDescription;
     protected PathVerificationService pvs;
     protected InputService inputService = new InputService(commandContextFactory);
+    protected IKafkaProducerService producerService = EasyMock.createMock(IKafkaProducerService.class);
 
     protected String sw1HwAddrTarget;
     protected String sw2HwAddrTarget;
@@ -149,6 +150,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
         fmc.addService(InputService.class, inputService);
+        fmc.addService(IKafkaProducerService.class, producerService);
 
         KildaCore kildaCore = EasyMock.createMock(KildaCore.class);
         fmc.addService(CommandProcessorService.class, new CommandProcessorService(kildaCore, commandContextFactory));
@@ -168,11 +170,8 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         fmc.addConfigParam(pvs, "isl_bandwidth_quotient", "0.0");
         fmc.addConfigParam(pvs, "hmac256-secret", "secret");
         fmc.addConfigParam(pvs, "bootstrap-servers", "");
-        ConfigurationProvider provider = ConfigurationProvider.of(fmc, pvs);
-        PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
 
-        pvs.initConfiguration(serviceConfig);
-        pvs.initServices(fmc);
+        pvs.init(fmc);
 
         srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
         dstIpTarget = new InetSocketAddress("192.168.10.101", 100);
