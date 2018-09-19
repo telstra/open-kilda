@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.atdd.staging.service;
 
 import static java.util.Arrays.asList;
@@ -8,27 +23,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.atdd.staging.service.aswitch.ASwitchService;
-import org.openkilda.atdd.staging.service.aswitch.model.ASwitchFlow;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowApplyActions;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowEntriesMap;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowEntry;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowInstructions;
-import org.openkilda.atdd.staging.service.floodlight.model.FlowMatchField;
-import org.openkilda.atdd.staging.service.floodlight.model.MeterBand;
-import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
-import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
-import org.openkilda.atdd.staging.service.floodlight.model.SwitchEntry;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
-import org.openkilda.atdd.staging.service.traffexam.model.Bandwidth;
-import org.openkilda.atdd.staging.service.traffexam.model.Exam;
-import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
-import org.openkilda.atdd.staging.service.traffexam.model.Host;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -36,13 +30,35 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.aswitch.ASwitchService;
+import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.floodlight.model.FlowApplyActions;
+import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.testing.service.floodlight.model.FlowEntry;
+import org.openkilda.testing.service.floodlight.model.FlowInstructions;
+import org.openkilda.testing.service.floodlight.model.FlowMatchField;
+import org.openkilda.testing.service.floodlight.model.MeterBand;
+import org.openkilda.testing.service.floodlight.model.MeterEntry;
+import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
+import org.openkilda.testing.service.floodlight.model.SwitchEntry;
+import org.openkilda.testing.service.northbound.NorthboundService;
+import org.openkilda.testing.service.topology.TopologyEngineService;
+import org.openkilda.testing.service.traffexam.TraffExamService;
+import org.openkilda.testing.service.traffexam.model.Bandwidth;
+import org.openkilda.testing.service.traffexam.model.Exam;
+import org.openkilda.testing.service.traffexam.model.ExamReport;
+import org.openkilda.testing.service.traffexam.model.Host;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.mockito.stubbing.Answer;
@@ -56,13 +72,13 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * A factory for stub implementations of services.
- * This is used by unit tests to imitate correct behaviour of Kilda components.
+ * A factory for stub implementations of services. This is used by unit tests to imitate correct behaviour of Kilda
+ * components.
  */
 public class StubServiceFactory {
 
     private final Map<String, FlowPayload> flowPayloads = new HashMap<>();
-    private final Map<String, ImmutablePair<Flow, Flow>> flows = new HashMap<>();
+    private final Map<String, FlowPair<Flow, Flow>> flows = new HashMap<>();
     private int meterCounter = 1;
 
     private final TopologyDefinition topologyDefinition;
@@ -97,7 +113,7 @@ public class StubServiceFactory {
 
         when(serviceMock.getFlows(any()))
                 .thenAnswer(invocation -> {
-                    String switchId = (String) invocation.getArguments()[0];
+                    SwitchId switchId = (SwitchId) invocation.getArguments()[0];
                     String switchVersion = topologyDefinition.getActiveSwitches().stream()
                             .filter(sw -> sw.getDpId().equals(switchId))
                             .map(Switch::getOfVersion)
@@ -109,7 +125,7 @@ public class StubServiceFactory {
 
         when(serviceMock.getMeters(any()))
                 .then((Answer<MetersEntriesMap>) invocation -> {
-                    String switchId = (String) invocation.getArguments()[0];
+                    SwitchId switchId = (SwitchId) invocation.getArguments()[0];
 
                     MetersEntriesMap result = new MetersEntriesMap();
                     flows.values().forEach(flowPair -> {
@@ -127,7 +143,7 @@ public class StubServiceFactory {
 
         when(serviceMock.getSwitches())
                 .then((Answer<List<SwitchEntry>>) invocation -> topologyDefinition.getActiveSwitches().stream()
-                        .map(sw -> SwitchEntry.builder().switchId(sw.getDpId()).oFVersion(sw.getOfVersion()).build())
+                        .map(sw -> SwitchEntry.builder().switchId(sw.getDpId()).ofVersion(sw.getOfVersion()).build())
                         .collect(toList()));
 
         return serviceMock;
@@ -151,7 +167,7 @@ public class StubServiceFactory {
         return serviceMock;
     }
 
-    private FlowEntriesMap buildFlowEntries(String switchId, String switchVersion) {
+    private FlowEntriesMap buildFlowEntries(SwitchId switchId, String switchVersion) {
         FlowEntriesMap result = new FlowEntriesMap();
 
         //broadcast verification flow (for all OF versions)
@@ -159,7 +175,8 @@ public class StubServiceFactory {
                 FlowMatchField.builder().ethDst("08:ed:02:ef:ff:ff").build(),
                 FlowInstructions.builder().applyActions(
                         FlowApplyActions.builder()
-                                .flowOutput("controller").field(switchId + "->eth_dst").build()
+                                .flowOutput("controller")
+                                .field(switchId.toMacAddress() + "->eth_dst").build()
                 ).build()
         );
         result.put(flowEntry.getCookie(), flowEntry);
@@ -175,11 +192,11 @@ public class StubServiceFactory {
         if ("OF_13".equals(switchVersion)) {
             //non-broadcast flow for versions 13 and later
             FlowEntry flowFor13Version = buildFlowEntry("flow-0x8000000000000003",
-                    FlowMatchField.builder().ethDst(switchId).build(),
+                    FlowMatchField.builder().ethDst(switchId.toMacAddress()).build(),
                     FlowInstructions.builder().applyActions(
                             FlowApplyActions.builder()
                                     .flowOutput("controller")
-                                    .field(switchId + "->eth_dst")
+                                    .field(switchId.toMacAddress() + "->eth_dst")
                                     .build()
                     ).build()
             );
@@ -205,19 +222,24 @@ public class StubServiceFactory {
 
         when(serviceMock.getActiveSwitches())
                 .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
-                        .map(sw -> new SwitchInfoData(sw.getDpId(), SwitchState.ACTIVATED, "", "", "", ""))
+                        .map(sw -> new SwitchInfoData(sw.getDpId(),
+                                SwitchState.ACTIVATED, "", "", "", ""))
                         .collect(toList()));
 
         when(serviceMock.getActiveLinks())
                 .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
                         .flatMap(link -> Stream.of(
                                 new IslInfoData(0,
-                                        asList(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0),
-                                                new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1)),
+                                        asList(new PathNode(link.getSrcSwitch().getDpId(),
+                                                        link.getSrcPort(), 0),
+                                                new PathNode(link.getDstSwitch().getDpId(),
+                                                        link.getDstPort(), 1)),
                                         link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0),
                                 new IslInfoData(0,
-                                        asList(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0),
-                                                new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1)),
+                                        asList(new PathNode(link.getDstSwitch().getDpId(),
+                                                        link.getDstPort(), 0),
+                                                new PathNode(link.getSrcSwitch().getDpId(),
+                                                        link.getSrcPort(), 1)),
                                         link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0)
                         ))
                         .collect(toList()));
@@ -285,7 +307,7 @@ public class StubServiceFactory {
         reverseFlow.setDestinationPort(forwardFlow.getSourcePort());
         reverseFlow.setDestinationVlan(forwardFlow.getSourceVlan());
 
-        flows.put(flowId, new ImmutablePair<>(forwardFlow, reverseFlow));
+        flows.put(flowId, new FlowPair<>(forwardFlow, reverseFlow));
     }
 
     /**

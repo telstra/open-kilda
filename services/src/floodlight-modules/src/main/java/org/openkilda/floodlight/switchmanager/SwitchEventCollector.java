@@ -17,7 +17,7 @@ package org.openkilda.floodlight.switchmanager;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
-import org.openkilda.floodlight.converter.IOFSwitchConverter;
+import org.openkilda.floodlight.converter.IofSwitchConverter;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
@@ -59,23 +60,8 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     private String topoDiscoTopic;
 
     /*
-      * IOFSwitchListener methods
-      */
-
-    private static org.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {
-        switch (type) {
-            case ADD:
-                return org.openkilda.messaging.info.event.PortChangeType.ADD;
-            case OTHER_UPDATE:
-                return org.openkilda.messaging.info.event.PortChangeType.OTHER_UPDATE;
-            case DELETE:
-                return org.openkilda.messaging.info.event.PortChangeType.DELETE;
-            case UP:
-                return org.openkilda.messaging.info.event.PortChangeType.UP;
-            default:
-                return org.openkilda.messaging.info.event.PortChangeType.DOWN;
-        }
-    }
+     * IOFSwitchListener methods
+     */
 
     /**
      * {@inheritDoc}
@@ -107,8 +93,9 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         final IOFSwitch sw = switchService.getSwitch(switchId);
         logger.info("ACTIVATING SWITCH: {}", switchId);
 
-//        Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED, switchManager.dumpFlowTable(switchId));
-//        kafkaProducer.postMessage(topoDiscoTopic, message);
+        // Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED,
+        // switchManager.dumpFlowTable(switchId));
+        // kafkaProducer.postMessage(topoDiscoTopic, message);
         ConnectModeRequest.Mode mode = switchManager.connectMode(null);
 
         try {
@@ -127,22 +114,9 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
             // ISL discovery will fail.
             switchManager.sendPortUpEvents(sw);
         } catch (SwitchOperationException e) {
-            logger.error("Could not activate switch={}", switchId);
+            logger.error("Could not activate switch={}", switchId, e);
         }
 
-    }
-
-    public static boolean isPhysicalPort(OFPort p) {
-        return !(p.equals(OFPort.LOCAL) ||
-                p.equals(OFPort.ALL) ||
-                p.equals(OFPort.CONTROLLER) ||
-                p.equals(OFPort.ANY) ||
-                p.equals(OFPort.FLOOD) ||
-                p.equals(OFPort.ZERO) ||
-                p.equals(OFPort.NO_MASK) ||
-                p.equals(OFPort.IN_PORT) ||
-                p.equals(OFPort.NORMAL) ||
-                p.equals(OFPort.TABLE));
     }
 
     /**
@@ -223,7 +197,7 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, this);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
     }
@@ -242,42 +216,76 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
     }
 
     /**
+     * Return true if port is physical.
+     *
+     * @param p port.
+     * @return true if port is physical.
+     */
+    public static boolean isPhysicalPort(OFPort p) {
+        return !(p.equals(OFPort.LOCAL)
+                || p.equals(OFPort.ALL)
+                || p.equals(OFPort.CONTROLLER)
+                || p.equals(OFPort.ANY)
+                || p.equals(OFPort.FLOOD)
+                || p.equals(OFPort.ZERO)
+                || p.equals(OFPort.NO_MASK)
+                || p.equals(OFPort.IN_PORT)
+                || p.equals(OFPort.NORMAL)
+                || p.equals(OFPort.TABLE));
+    }
+
+    private static org.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {
+        switch (type) {
+            case ADD:
+                return org.openkilda.messaging.info.event.PortChangeType.ADD;
+            case OTHER_UPDATE:
+                return org.openkilda.messaging.info.event.PortChangeType.OTHER_UPDATE;
+            case DELETE:
+                return org.openkilda.messaging.info.event.PortChangeType.DELETE;
+            case UP:
+                return org.openkilda.messaging.info.event.PortChangeType.UP;
+            default:
+                return org.openkilda.messaging.info.event.PortChangeType.DOWN;
+        }
+    }
+
+    /**
      * Builds a switch message type.
      *
-     * @param sw        switch instance
+     * @param sw switch instance
      * @param eventType type of event
      * @return Message
      */
     public static Message buildSwitchMessage(final IOFSwitch sw, final SwitchState eventType) {
-        return buildMessage(IOFSwitchConverter.buildSwitchInfoData(sw, eventType));
-    }
-
-    /**
-     * Builds a switch message type with flows.
-     *
-     * @param sw        switch instance.
-     * @param eventType type of event.
-     * @param flowStats flows one the switch.
-     * @return Message
-     */
-    private Message buildExtendedSwitchMessage(final IOFSwitch sw, final SwitchState eventType,
-            OFFlowStatsReply flowStats) {
-        return buildMessage(IOFSwitchConverter.buildSwitchInfoDataExtended(sw, eventType, flowStats));
+        return buildMessage(IofSwitchConverter.buildSwitchInfoData(sw, eventType));
     }
 
     /**
      * Builds a switch message type.
      *
-     * @param switchId  switch id
+     * @param switchId switch id
      * @param eventType type of event
      * @return Message
      */
     public static Message buildSwitchMessage(final DatapathId switchId, final SwitchState eventType) {
         final String unknown = "unknown";
 
-        InfoData data = new SwitchInfoData(switchId.toString(), eventType, unknown, unknown, unknown, unknown);
-
+        InfoData data = new SwitchInfoData(new SwitchId(switchId.getLong()), eventType,
+                unknown, unknown, unknown, unknown);
         return buildMessage(data);
+    }
+
+    /**
+     * Builds a switch message type with flows.
+     *
+     * @param sw switch instance.
+     * @param eventType type of event.
+     * @param flowStats flows one the switch.
+     * @return Message
+     */
+    private Message buildExtendedSwitchMessage(final IOFSwitch sw, final SwitchState eventType,
+            OFFlowStatsReply flowStats) {
+        return buildMessage(IofSwitchConverter.buildSwitchInfoDataExtended(sw, eventType, flowStats));
     }
 
     /**
@@ -294,12 +302,13 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * Builds a port state change message with port number.
      *
      * @param switchId datapathId of switch
-     * @param port     port that triggered the event
-     * @param type     type of port event
+     * @param port port that triggered the event
+     * @param type type of port event
      * @return Message
      */
     public static Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
-        InfoData data = new PortInfoData(switchId.toString(), port.getPortNumber(), null, toJsonType(type));
+        InfoData data = new PortInfoData(new SwitchId(switchId.getLong()), port.getPortNumber(),
+                null, toJsonType(type));
         return buildMessage(data);
     }
 
@@ -307,12 +316,13 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
      * Builds a port state message with OFPortDesc.
      *
      * @param switchId datapathId of switch
-     * @param port     port that triggered the event
-     * @param type     type of port event
+     * @param port port that triggered the event
+     * @param type type of port event
      * @return Message
      */
     private Message buildPortMessage(final DatapathId switchId, final OFPortDesc port, final PortChangeType type) {
-        InfoData data = new PortInfoData(switchId.toString(), port.getPortNo().getPortNumber(), null, toJsonType(type));
+        InfoData data = new PortInfoData(new SwitchId(switchId.getLong()), port.getPortNo().getPortNumber(),
+                null, toJsonType(type));
         return buildMessage(data);
     }
 }

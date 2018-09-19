@@ -22,6 +22,7 @@ import org.openkilda.messaging.ctrl.KafkaBreakTarget;
 import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +36,10 @@ public class TestAwareConsumer extends Consumer {
     private KafkaBreakTrigger breakTrigger;
     private List<KafkaBreakTrigger> expectedTriggers;
 
-    public TestAwareConsumer(ConsumerContext context, ExecutorService handlersPool,
-                             Factory handlerFactory, ISwitchManager switchManager, String topic, String... moreTopics) {
-        super(context, handlersPool, handlerFactory, switchManager, topic, moreTopics);
+    public TestAwareConsumer(ConsumerContext context, KafkaConsumerConfig kafkaConfig, ExecutorService handlersPool,
+                             Factory handlerFactory, ISwitchManager switchManager, String topic,
+                             OffsetResetStrategy defaultOffsetStrategy) {
+        super(kafkaConfig, handlersPool, handlerFactory, switchManager, topic, defaultOffsetStrategy);
 
         breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_CONSUMER);
 
@@ -65,7 +67,7 @@ public class TestAwareConsumer extends Consumer {
             return;
         }
 
-        if (! breakTrigger.isCommunicationEnabled()) {
+        if (!breakTrigger.isCommunicationEnabled()) {
             logger.info("Suppress record - key: {}, value: {}", record.key(), record.value());
             return;
         }

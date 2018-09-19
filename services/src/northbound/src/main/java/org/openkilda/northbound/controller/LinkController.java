@@ -16,9 +16,10 @@
 package org.openkilda.northbound.controller;
 
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.northbound.dto.LinkPropsDto;
-import org.openkilda.northbound.dto.LinksDto;
-import org.openkilda.northbound.service.LinkPropsResult;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.service.LinkService;
 
 import io.swagger.annotations.Api;
@@ -63,10 +64,10 @@ public class LinkController {
      *
      * @return list of links.
      */
-    @ApiOperation(value = "Get all links", response = LinksDto.class, responseContainer = "List")
+    @ApiOperation(value = "Get all links", response = LinkDto.class, responseContainer = "List")
     @GetMapping(path = "/links")
     @ResponseStatus(HttpStatus.OK)
-    public List<LinksDto> getLinks() {
+    public List<LinkDto> getLinks() {
         return linkService.getLinks();
     }
 
@@ -81,9 +82,9 @@ public class LinkController {
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public List<LinkPropsDto> getLinkProps(@RequestParam(value = "src_switch", required = false) String srcSwitch,
+    public List<LinkPropsDto> getLinkProps(@RequestParam(value = "src_switch", required = false) SwitchId srcSwitch,
                                            @RequestParam(value = "src_port", required = false) Integer srcPort,
-                                           @RequestParam(value = "dst_switch", required = false) String dstSwitch,
+                                           @RequestParam(value = "dst_switch", required = false) SwitchId dstSwitch,
                                            @RequestParam(value = "dst_port", required = false) Integer dstPort) {
         return linkService.getLinkProps(srcSwitch, srcPort, dstSwitch, dstPort);
     }
@@ -92,14 +93,14 @@ public class LinkController {
      * Create/Update link properties in the static link properties table.
      *
      * @param keysAndProps if null, get all link props. Otherwise, the link props that much the primary keys.
-     * @return list of link properties.
+     * @return result of the processing.
      */
-    @ApiOperation(value = "Create/Update link properties", response = LinkPropsResult.class)
+    @ApiOperation(value = "Create/Update link properties", response = BatchResults.class)
     @RequestMapping(path = "/link/props",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public LinkPropsResult putLinkProps(
+    public BatchResults putLinkProps(
             @RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.setLinkProps(keysAndProps);
     }
@@ -108,14 +109,14 @@ public class LinkController {
      * Delete link properties from the static link properties table.
      *
      * @param keysAndProps if null, get all link props. Otherwise, the link props that much the primary keys.
-     * @return list of link properties.
+     * @return result of the processing.
      */
-    @ApiOperation(value = "Delete link properties (static), based on arguments.", response = LinkPropsResult.class)
+    @ApiOperation(value = "Delete link properties (static), based on arguments.", response = BatchResults.class)
     @RequestMapping(path = "/link/props",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public LinkPropsResult delLinkProps(
+    public BatchResults delLinkProps(
             @RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.delLinkProps(keysAndProps);
     }

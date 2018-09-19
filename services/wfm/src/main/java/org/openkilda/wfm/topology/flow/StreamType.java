@@ -25,9 +25,14 @@ public enum StreamType {
     CREATE,
 
     /**
-     * Get flow(s) topology stream.
+     * Get flow topology stream.
      */
     READ,
+
+    /**
+     * Dump flows stream.
+     */
+    DUMP,
 
     /**
      * Update flow topology stream.
@@ -53,11 +58,6 @@ public enum StreamType {
      * Reroute flow topology stream.
      */
     REROUTE,
-
-    /**
-     * Get flow path topology stream.
-     */
-    PATH,
 
     /**
      * Get flow status topology stream.

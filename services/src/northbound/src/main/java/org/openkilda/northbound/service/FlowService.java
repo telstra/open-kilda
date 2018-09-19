@@ -24,6 +24,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 
 import java.util.List;
 
@@ -95,7 +97,7 @@ public interface FlowService extends BasicService {
     FlowPathPayload pathFlow(final String id);
 
     /**
-     * Use this to push flows that may not be in the database / caches but they should be
+     * Use this to push flows that may not be in the database / caches but they should be.
      *
      * @param externalFlows   the list of flows to push.
      * @param propagate if true, the path/rules will be propagated to the switch
@@ -140,6 +142,8 @@ public interface FlowService extends BasicService {
      * @throws java.nio.file.InvalidPathException if the flow doesn't return a path and it should.
      */
     List<FlowValidationDto> validateFlow(final String flowId);
+
+    PingOutput pingFlow(String flowId, PingInput payload);
 
     /**
      * Sync the FlowCache in the flow topology (in case it is out of sync.

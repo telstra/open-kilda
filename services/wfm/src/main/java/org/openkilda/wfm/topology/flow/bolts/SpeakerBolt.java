@@ -25,18 +25,19 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
@@ -66,10 +67,11 @@ public class SpeakerBolt extends BaseRichBolt {
         try {
 
             Message message = MAPPER.readValue(request, Message.class);
+            logger.debug("Request tuple={}", tuple);
+
             if (!Destination.WFM_TRANSACTION.equals(message.getDestination())) {
                 return;
             }
-            logger.debug("Request tuple={}", tuple);
 
             if (message instanceof CommandMessage) {
 
@@ -77,7 +79,7 @@ public class SpeakerBolt extends BaseRichBolt {
 
                 if (data instanceof BaseInstallFlow) {
                     Long transactionId = ((BaseInstallFlow) data).getTransactionId();
-                    String switchId = ((BaseInstallFlow) data).getSwitchId();
+                    SwitchId switchId = ((BaseInstallFlow) data).getSwitchId();
                     String flowId = ((BaseInstallFlow) data).getId();
 
                     logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
@@ -92,7 +94,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 } else if (data instanceof RemoveFlow) {
 
                     Long transactionId = ((RemoveFlow) data).getTransactionId();
-                    String switchId = ((RemoveFlow) data).getSwitchId();
+                    SwitchId switchId = ((RemoveFlow) data).getSwitchId();
                     String flowId = ((RemoveFlow) data).getId();
 
                     logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",
@@ -146,8 +148,10 @@ public class SpeakerBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(
+                StreamType.CREATE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
+        outputFieldsDeclarer.declareStream(
+                StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatus);
     }
 

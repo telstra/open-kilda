@@ -1,11 +1,12 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>org.openkilda.wfm</groupId>
     <artifactId>WorkflowManager</artifactId>
-    <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
     <name>WFM</name>
     <url>https://bitbucket.org/openkilda/controller/wiki/Home</url>
 
@@ -30,26 +31,13 @@
         <lombok.version>1.16.20</lombok.version>
         <aspectj.version>1.8.13</aspectj.version>
         <commons.collection.version>4.1</commons.collection.version>
+        <hibernate-validator.version>6.0.10.Final</hibernate-validator.version>
+        <glassfish-el.version>3.0.1-b09</glassfish-el.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <puppycrawl-tools-checkstyle.version>8.10</puppycrawl-tools-checkstyle.version>
     </properties>
-
-    <profiles>
-        <profile>
-            <id>local</id>
-            <properties>
-                    <provided.scope>compile</provided.scope>
-            </properties>
-        </profile>
-        <profile>
-            <id>remote</id>
-            <properties>
-                    <provided.scope>provided</provided.scope>
-            </properties>
-        </profile>
-    </profiles>
 
     <dependencies>
         <dependency>
@@ -70,10 +58,6 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.jersey.core</groupId>
-                    <artifactId>jersey-client</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>javax.ws.rs</groupId>
@@ -134,14 +118,6 @@
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
                     <artifactId>jackson-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.jersey.core</groupId>
-                    <artifactId>jersey-client</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.jersey.connectors</groupId>
-                    <artifactId>jersey-apache-connector</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -289,6 +265,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-library</artifactId>
+            <version>1.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
@@ -306,8 +289,17 @@
             <artifactId>gson</artifactId>
             <version>2.8.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>${hibernate-validator.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.el</artifactId>
+            <version>${glassfish-el.version}</version>
+        </dependency>
     </dependencies>
-
 
     <build>
         <pluginManagement>
@@ -344,7 +336,6 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -557,7 +548,36 @@
                     </dependency>
                 </dependencies>
             </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>tidy-maven-plugin</artifactId>
+                <version>1.1.0</version>
+                <executions>
+                    <execution>
+                        <id>validate</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>local</id>
+            <properties>
+                    <provided.scope>compile</provided.scope>
+            </properties>
+        </profile>
+        <profile>
+            <id>remote</id>
+            <properties>
+                    <provided.scope>provided</provided.scope>
+            </properties>
+        </profile>
+    </profiles>
 </project>

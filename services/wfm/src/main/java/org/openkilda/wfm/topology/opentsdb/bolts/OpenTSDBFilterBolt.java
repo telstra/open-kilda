@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.opentsdb.bolts;
 
+import org.openkilda.messaging.info.Datapoint;
+
 import lombok.Value;
 import org.apache.storm.Config;
 import org.apache.storm.Constants;
@@ -25,7 +27,6 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.openkilda.messaging.info.Datapoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,10 +128,10 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
                         datapoint,
                         prevDatapoint.getValue().equals(datapoint.getValue()),
                         datapoint.getTime() - prevDatapoint.getTime()
-                        );
+                );
             }
-            update = !prevDatapoint.getValue().equals(datapoint.getValue()) ||
-                    datapoint.getTime() - prevDatapoint.getTime() >= MUTE_IF_NO_UPDATES_MILLIS;
+            update = !prevDatapoint.getValue().equals(datapoint.getValue())
+                    || datapoint.getTime() - prevDatapoint.getTime() >= MUTE_IF_NO_UPDATES_MILLIS;
         }
         return update;
     }
@@ -139,8 +140,8 @@ public class OpenTSDBFilterBolt extends BaseRichBolt {
         String sourceComponent = tuple.getSourceComponent();
         String sourceStreamId = tuple.getSourceStreamId();
         
-        return Constants.SYSTEM_COMPONENT_ID.equals(sourceComponent) &&
-                Constants.SYSTEM_TICK_STREAM_ID.equals(sourceStreamId);
+        return Constants.SYSTEM_COMPONENT_ID.equals(sourceComponent)
+                && Constants.SYSTEM_TICK_STREAM_ID.equals(sourceStreamId);
     }
 
     @Value

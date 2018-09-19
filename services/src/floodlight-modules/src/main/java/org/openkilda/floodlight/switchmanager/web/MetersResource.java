@@ -19,13 +19,12 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
-import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.switchmanager.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
-import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.data.Status;
 import org.restlet.resource.Get;
@@ -34,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MetersResource extends ServerResource {
@@ -50,11 +50,12 @@ public class MetersResource extends ServerResource {
                 .get(ISwitchManager.class.getCanonicalName());
 
         try {
-            OFMeterConfigStatsReply replay = switchManager.dumpMeters(DatapathId.of(switchId));
-            logger.debug("Meters from switch {} received: {}", switchId, replay);
+            List<OFMeterConfig> meters = switchManager.dumpMeters(DatapathId.of(switchId));
 
-            if (replay != null) {
-                for (OFMeterConfig entry : replay.getEntries()) {
+            if (meters != null) {
+                logger.debug("Meters from switch {} received: {}", switchId, meters.size());
+
+                for (OFMeterConfig entry : meters) {
                     response.put(entry.getMeterId(), entry);
                 }
             }
@@ -67,7 +68,7 @@ public class MetersResource extends ServerResource {
 
             getResponse().setStatus(Status.SERVER_ERROR_NOT_IMPLEMENTED);
 
-        } catch (IllegalArgumentException|SwitchOperationException exception) {
+        } catch (IllegalArgumentException | SwitchOperationException exception) {
             String messageString = "No such switch";
             logger.error("{}: {}", messageString, switchId, exception);
             MessageError responseMessage = new MessageError(CorrelationContext.getId(), System.currentTimeMillis(),

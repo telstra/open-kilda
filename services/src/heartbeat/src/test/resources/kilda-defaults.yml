@@ -1,5 +1,0 @@
-test1:
-  string: foo
-  integer: 3
-  long: !!java.lang.Long 1
-  boolean: true

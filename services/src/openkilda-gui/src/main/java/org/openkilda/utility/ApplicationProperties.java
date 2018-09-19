@@ -1,4 +1,21 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.utility;
+
+import lombok.Getter;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -12,61 +29,14 @@ import org.springframework.stereotype.Component;
  *
  */
 @Component
+@Getter
 public class ApplicationProperties {
-
-    /**
-     * Properties has to synch with application.properties file
-     */
-
-    /** The application properties. */
-
-    @Value("${floodlight.base.url}")
-    private String floodlightBaseUrl;
-
-    @Value("${GET_SWITCHES}")
-    private String switches;
-    
-    @Value("${GET_SWITCH_RULES}")
-    private String switchRules;
-    
-    @Value("${GET_SWITCH_PORTS}")
-    private String switchPorts;
-
-    @Value("${tpe.base.url}")
-    private String tpeBaseUrl;
-
-    @Value("${GET_LINKS}")
-    private String links;
-
-    @Value("${GET_LINK_PROPS}")
-    private String linkProps;
 
     @Value("${nb.base.url}")
     private String nbBaseUrl;
 
-    @Value("${GET_FLOW}")
-    private String flows;
-
-    @Value("${GET_TOPOLOGY_FLOWS}")
-    private String topologyFlows;
-
-    @Value("${GET_PATH_FLOW}")
-    private String pathFlow;
-
-    @Value("${GET_FLOW_STATUS}")
-    private String flowStatus;
-
-    @Value("${GET_FLOW_REROUTE}")
-    private String flowReroute;
-
-    @Value("${GET_FLOW_VALIDATE}")
-    private String flowValidate;
-
     @Value("${opentsdb.base.url}")
     private String openTsdbBaseUrl;
-
-    @Value("${OPEN_TSDB_QUERY}")
-    private String openTsdbQuery;
 
     @Value("${kilda.username}")
     private String kildaUsername;
@@ -76,81 +46,5 @@ public class ApplicationProperties {
 
     @Value("${switch.data.file.path}")
     private String switchDataFilePath;
-
-    public String getFloodlightBaseUrl() {
-        return floodlightBaseUrl;
-    }
-
-    public String getSwitches() {
-        return switches;
-    }
-
-    public String getSwitchPorts() {
-        return switchPorts;
-    }
-
-    public String getTpeBaseUrl() {
-        return tpeBaseUrl;
-    }
-
-    public String getLinks() {
-        return links;
-    }
-
-    public String getLinkProps() {
-        return linkProps;
-    }
-
-    public String getNbBaseUrl() {
-        return nbBaseUrl;
-    }
-
-    public String getFlows() {
-        return flows;
-    }
-
-    public String getTopologyFlows() {
-        return topologyFlows;
-    }
-
-    public String getPathFlow() {
-        return pathFlow;
-    }
-
-    public String getFlowStatus() {
-        return flowStatus;
-    }
-
-    public String getOpenTsdbBaseUrl() {
-        return openTsdbBaseUrl;
-    }
-
-    public String getOpenTsdbQuery() {
-        return openTsdbQuery;
-    }
-
-    public String getKildaUsername() {
-        return kildaUsername;
-    }
-
-    public String getKildaPassword() {
-        return kildaPassword;
-    }
-
-    public String getSwitchDataFilePath() {
-        return switchDataFilePath;
-    }
-
-    public String getFlowReroute() {
-        return flowReroute;
-    }
-
-    public String getFlowValidate() {
-        return flowValidate;
-    }
-
-    public String getSwitchRules() {
-        return switchRules;
-    }
-
+    
 }

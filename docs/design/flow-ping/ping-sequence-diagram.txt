@@ -1,0 +1,137 @@
+@startuml
+title The PING
+
+control Time
+
+participant FlowFetcher
+participant PingProducer
+
+participant InputDecoder
+participant InputRouter
+
+participant PingRouter
+participant Blacklist
+participant TimeoutManager
+participant SpeakerEncoder
+
+control kilda.speaker.flow.ping
+
+control kilda.ping
+
+participant FL
+
+control SW.source
+control SW.dest
+
+participant ResultDispatcher
+
+FlowFetcher -> PingProducer: PingContext
+
+activate PingProducer
+note right of PingProducer: make PingContext for FORWARD ping
+note right of PingProducer: make PingContext for REVERSE ping
+note right of PingProducer: both produced PingContext\nrepresent one ping group
+note right of PingProducer: both FORWARD and REVERSE\npings are handled in same way
+PingProducer -> PingRouter: PingContext
+deactivate PingProducer
+activate PingRouter
+
+alt periodic ping
+    PingRouter -> Blacklist: PingContext\n(src+dst grouping)
+    deactivate PingRouter
+
+    activate Blacklist
+    alt blacklisted
+        Blacklist ->x Blacklist: drop request
+    else normal workflow
+        Blacklist -> PingRouter: PingContext
+        activate PingRouter
+    end
+    deactivate Blacklist
+end
+
+PingRouter -> TimeoutManager: PingContext\n(pingId grouping)
+deactivate PingRouter
+
+activate TimeoutManager
+note right of TimeoutManager: scheduleTimeout for\npingId
+TimeoutManager -> SpeakerEncoder: PingRequest
+
+activate SpeakerEncoder
+SpeakerEncoder -> kilda.speaker.flow.ping: json{PingRequest}
+deactivate SpeakerEncoder
+
+kilda.speaker.flow.ping -> FL: json{PingRequest}
+alt normal workflow
+    activate FL
+
+    alt FL not own source SW
+        note right of FL: make error response\nSOURCE_NOT_AVAILABLE
+        FL -> kilda.ping: json{PingResponse}
+
+    else FL not own dest SW
+        note right of FL: make error response\nDEST_NOT_AVAILABLE
+        FL -> kilda.ping: json{PingResponse}
+
+    else dest SW is not capable to catch response
+        note right of FL: make error response\nNOT_CAPABLE
+        FL -> kilda.ping: json{PingResponse}
+
+    else normal workflow
+        note right of FL: make PingData
+        note right of FL: wrap PingData\ninto ethernet pkt
+        note right of FL: make OFPacketOut
+        FL -> SW.source: OFPacketOut
+    end
+
+    deactivate FL
+
+    alt flow is ok
+        SW.source -> SW.dest: ethernet pkt
+        note right of SW.source: some time later
+        SW.dest -> FL: OFPacketIn
+
+        activate FL
+        note right of FL: extract ethernet pkt
+        note right of FL: extract PingData
+        note right of FL: measure flow\nlatency
+
+        note right of FL: make PingResponse
+        FL -> kilda.ping: json{PingResponse}
+        deactivate FL
+
+    else flow is corrupted
+        SW.source ->x SW.source: THE END
+        note right of FL: there is no\nresponse on ping
+    end
+
+    kilda.ping -> InputDecoder: json{PingResponse}
+
+    activate InputDecoder
+    InputDecoder -> InputRouter: PingResponse
+    deactivate InputDecoder
+
+    activate InputRouter
+    InputRouter -> PingRouter: PingResponse
+    deactivate InputRouter
+
+    activate PingRouter
+    PingRouter -> TimeoutManager: PingResponse\n(pingId grouping)
+    deactivate PingRouter
+
+    note right of TimeoutManager: cancel timeout
+
+    TimeoutManager -> ResultDispatcher: PingContext
+
+else timeout
+    Time -> TimeoutManager: X monotonic tick
+    Time -> TimeoutManager: X + N monotonic tick
+
+    note right of TimeoutManager: set error TIMEOUT
+    TimeoutManager -> ResultDispatcher: PingContext
+
+end
+deactivate TimeoutManager
+
+
+@enduml

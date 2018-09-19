@@ -15,7 +15,7 @@ participant "FLOW TransactionBolt" as TransactionBolt
 participant "CACHE CacheBolt" as CacheBolt
 control kilda.topo.eng
 participant TE
-control kilda.speaker
+control kilda.speaker.flow
 participant SPEAKER
 participant "FLOW SpeakerBolt" as SpeakerBolt
 
@@ -53,10 +53,10 @@ loop in (forward, reverse)
         note right of TE: flow_utils.remove_flow(flow)
         loop in flow_path
             note right of TE: new RemoveFlow()
-            TE -> kilda.speaker: CommandMessage(RemoveFlow) dest=controller
+            TE -> kilda.speaker.flow: CommandMessage(RemoveFlow) dest=controller
             TE -> kilda.flow: CommandMessage(RemoveFlow) dest=WFM
 
-            kilda.speaker -> SPEAKER: CommandMessage(RemoveFlow)
+            kilda.speaker.flow -> SPEAKER: CommandMessage(RemoveFlow)
             note right of SPEAKER: switchManager.deleteFlow(...)
             opt meter exist
                 note right of SPEAKER: switchManager.deleteMeter(...)

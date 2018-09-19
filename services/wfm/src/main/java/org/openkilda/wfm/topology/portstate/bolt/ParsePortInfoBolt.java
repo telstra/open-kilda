@@ -1,4 +1,25 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.wfm.topology.portstate.bolt;
+
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -7,12 +28,6 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.messaging.info.event.PortChangeType;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.utils.StatsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,8 +61,7 @@ public class ParsePortInfoBolt extends BaseRichBolt {
                         List<Object> result = makeTsdbDatapoint(port);
                         logger.debug("Emitting: {}", result);
                         collector.emit(result);
-                    }
-                    else if(logger.isDebugEnabled()) {
+                    } else if (logger.isDebugEnabled()) {
                         List<Object> result = makeTsdbDatapoint(port);
                         logger.debug("Skip: {}", result);
                     }
@@ -93,9 +107,9 @@ public class ParsePortInfoBolt extends BaseRichBolt {
         Map<String, String> tag = tagsTable.get(data.getSwitchId(), data.getPortNo());
         if (tag == null) {
             tag = new HashMap<>();
-            tag.put("switchid", StatsUtil.formatSwitchId(data.getSwitchId()));
+            tag.put("switchid", data.getSwitchId().toOtsdFormat());
             tag.put("port", String.valueOf(data.getPortNo()));
-            tagsTable.put(data.getSwitchId(), data.getPortNo(), tag);
+            tagsTable.put(data.getSwitchId().toString(), data.getPortNo(), tag);
         }
         return tag;
     }

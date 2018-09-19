@@ -25,9 +25,15 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.northbound.dto.SwitchDto;
+import org.openkilda.messaging.info.switches.PortDescription;
+import org.openkilda.messaging.info.switches.SwitchPortsDescription;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
+import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.switches.SwitchDto;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -37,6 +43,8 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -46,6 +54,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -69,6 +78,8 @@ import java.util.concurrent.CompletableFuture;
         @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
         @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
 public class SwitchController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchController.class);
 
     @Autowired
     private SwitchService switchService;
@@ -97,10 +108,10 @@ public class SwitchController {
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public SwitchFlowEntries getSwitchRules(
-            @PathVariable("switch-id") String switchId,
+            @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "Results will be filtered based on matching the cookie.",
                     required = false)
-            @RequestParam("cookie") Optional<Long> cookie) {
+            @RequestParam(value = "cookie", required = false) Optional<Long> cookie) {
         SwitchFlowEntries response = switchService.getRules(switchId, cookie.orElse(0L));
         return response;
     }
@@ -119,22 +130,22 @@ public class SwitchController {
      */
     @ApiOperation(value = "Delete switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
     @DeleteMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> deleteSwitchRules(
-            @PathVariable("switch-id") String switchId,
+            @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: "
                     + "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS,"
                     + "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
                     required = false)
-            @RequestParam("delete-action") Optional<DeleteRulesAction> deleteAction,
-            @RequestParam("cookie") Optional<Long> cookie,
-            @RequestParam("in-port") Optional<Integer> inPort,
-            @RequestParam("in-vlan") Optional<Integer> inVlan,
-            @RequestParam("priority") Optional<Integer> priority,
-            @RequestParam("out-port") Optional<Integer> outPort) {
+            @RequestParam(value = "delete-action", required = false) Optional<DeleteRulesAction> deleteAction,
+            @RequestParam(value = "cookie", required = false) Optional<Long> cookie,
+            @RequestParam(value = "in-port", required = false) Optional<Integer> inPort,
+            @RequestParam(value = "in-vlan", required = false) Optional<Integer> inVlan,
+            @RequestParam(value = "priority", required = false) Optional<Integer> priority,
+            @RequestParam(value = "out-port", required = false) Optional<Integer> outPort) {
 
         List<Long> result;
 
@@ -173,16 +184,16 @@ public class SwitchController {
      */
     @ApiOperation(value = "Install switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
     @PutMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
     public ResponseEntity<List<Long>> installSwitchRules(
-            @PathVariable("switch-id") String switchId,
+            @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
                     + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
                     required = false)
-            @RequestParam("install-action") Optional<InstallRulesAction> installAction) {
+            @RequestParam(value = "install-action", required = false) Optional<InstallRulesAction> installAction) {
         List<Long> response = switchService
                 .installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS));
         return ResponseEntity.ok(response);
@@ -218,7 +229,7 @@ public class SwitchController {
     @ApiOperation(value = "Validate the rules installed on the switch", response = RulesValidationResult.class)
     @GetMapping(path = "/switches/{switch_id}/rules/validate")
     @ResponseStatus(HttpStatus.OK)
-    public RulesValidationResult validateRules(@PathVariable(name = "switch_id") String switchId) {
+    public RulesValidationResult validateRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.validateRules(switchId);
     }
 
@@ -230,7 +241,73 @@ public class SwitchController {
     @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
     @GetMapping(path = "/switches/{switch_id}/rules/synchronize")
     @ResponseStatus(HttpStatus.OK)
-    public RulesSyncResult syncRules(@PathVariable(name = "switch_id") String switchId) {
+    public RulesSyncResult syncRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.syncRules(switchId);
+    }
+
+    /**
+     * Remove the meter from specific switch.
+     * @param switchId switch dpid.
+     * @param meterId id of the meter to be deleted.
+     * @return result of the operation wrapped into {@link DeleteMeterResult}. True means no errors is occurred.
+     */
+    @ApiOperation(value = "Delete meter from the switch", response = DeleteMeterResult.class)
+    @DeleteMapping(path = "/switches/{switch_id}/meter/{meter_id}")
+    @ResponseStatus(HttpStatus.OK)
+    public DeleteMeterResult deleteMeter(@PathVariable(name = "switch_id") SwitchId switchId,
+                                         @PathVariable(name = "meter_id") long meterId) {
+        return switchService.deleteMeter(switchId, meterId);
+    }
+
+    /**
+     * Configure port.
+     *
+     * @param switchId the switch id
+     * @param portNo the port no
+     * @param portConfig the port configuration payload
+     * @return the response entity
+     */
+    @ApiOperation(value = "Configure port on the switch", response = PortDto.class)
+    @ApiResponse(code = 200, response = PortDto.class, message = "Operation is successful")
+    @PutMapping(value = "/switches/{switch_id}/port/{port_no}/config",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public PortDto configurePort(
+            @PathVariable(name = "switch_id") SwitchId switchId,
+            @PathVariable(name = "port_no") int portNo,
+            @RequestBody PortConfigurationPayload portConfig) {
+        LOGGER.info("Port Configuration '{}' request for port {} of switch {}", portConfig, portNo, switchId);
+        return switchService.configurePort(switchId, portNo, portConfig);
+    }
+
+    /**
+     * Get a description of the switch ports.
+     *
+     * @param switchId the switch id.
+     * @return switch ports description.
+     */
+    @ApiOperation(value = "Get switch ports description from the switch", response = SwitchPortsDescription.class)
+    @GetMapping(value = "/switches/{switch-id}/ports",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public SwitchPortsDescription getSwitchPortsDescription(
+            @PathVariable("switch-id") SwitchId switchId) {
+        return switchService.getSwitchPortsDescription(switchId);
+    }
+
+    /**
+     * Get a description of the switch port.
+     *
+     * @param switchId the switch id.
+     * @param port the port of the switch.
+     * @return port description.
+     */
+    @ApiOperation(value = "Get port description from the switch", response = PortDescription.class)
+    @GetMapping(value = "/switches/{switch-id}/ports/{port}",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public PortDescription getPortDescription(
+            @PathVariable("switch-id") SwitchId switchId,
+            @PathVariable("port") int port) {
+        return switchService.getPortDescription(switchId, port);
     }
 }

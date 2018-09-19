@@ -1,19 +1,35 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.helper;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
+import org.openkilda.auth.context.ServerContext;
+import org.openkilda.auth.model.RequestContext;
+import org.openkilda.constants.HttpError;
+import org.openkilda.constants.IAuthConstants;
+import org.openkilda.exception.ExternalSystemException;
+import org.openkilda.exception.RestCallFailedException;
+import org.openkilda.exception.UnauthorizedException;
+import org.openkilda.integration.exception.InvalidResponseException;
+import org.openkilda.model.response.ErrorMessage;
+import org.openkilda.service.AuthPropertyService;
+import org.openkilda.utility.IoUtil;
+import org.openkilda.utility.StringUtil;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-
-import java.io.IOException;
-import java.util.List;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -26,16 +42,16 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
-import org.openkilda.constants.HttpError;
-import org.openkilda.constants.IAuthConstants;
-import org.openkilda.exception.ExternalSystemException;
-import org.openkilda.exception.RestCallFailedException;
-import org.openkilda.exception.UnauthorizedException;
-import org.openkilda.integration.exception.InvalidResponseException;
-import org.openkilda.model.response.ErrorMessage;
-import org.openkilda.service.AuthPropertyService;
-import org.openkilda.utility.IoUtil;
-import org.openkilda.utility.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * The Class RestClientManager.
@@ -50,7 +66,9 @@ public class RestClientManager {
 
     @Autowired
     private ObjectMapper mapper;
-
+    
+    @Autowired
+    private ServerContext serverContext;
 
     /**
      * Invoke.
@@ -62,13 +80,15 @@ public class RestClientManager {
      * @param basicAuth the basic auth
      * @return the http response
      */
-    public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod,
-            final String payload, final String contentType, final String basicAuth) {
+    public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod, final String payload,
+            final String contentType, final String basicAuth) {
         LOGGER.info("[invoke] - Start");
 
         HttpResponse httpResponse = null;
 
         try {
+        	RequestContext requestContext = serverContext.getRequestContext();
+        	
             HttpClient client = HttpClients.createDefault();
             HttpUriRequest httpUriRequest = null;
             HttpEntityEnclosingRequestBase httpEntityEnclosingRequest = null;
@@ -82,16 +102,16 @@ public class RestClientManager {
                 httpUriRequest = new HttpDelete(apiUrl);
             } else if (HttpMethod.PATCH.equals(httpMethod)) {
                 httpUriRequest = new HttpPatch(apiUrl);
-            }else {
+            } else {
                 httpUriRequest = new HttpGet(apiUrl);
             }
 
             if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)) {
                 // Setting Required Headers
                 if (!StringUtil.isNullOrEmpty(basicAuth)) {
-                    LOGGER.debug("[invoke] Setting authorization in header as "
-                            + IAuthConstants.Header.AUTHORIZATION);
+                    LOGGER.debug("[invoke] Setting authorization in header as " + IAuthConstants.Header.AUTHORIZATION);
                     httpUriRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
+                    httpUriRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
                 }
             }
 
@@ -101,6 +121,7 @@ public class RestClientManager {
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
                 // Setting request payload
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);
@@ -118,37 +139,6 @@ public class RestClientManager {
         LOGGER.info("[invoke] - End");
         return httpResponse;
     }
-
-    /**
-     * Invoke.
-     *
-     * @param <T> the generic type
-     * @param response the response
-     * @param responseClass the response class
-     * @return the http response
-     */
-    // @SuppressWarnings("rawtypes")
-    // public HttpResponse invoke(final String correlationId, String apiUrl,
-    // final HttpMethod httpMethod, final String payload, final String token,
-    // final String contentType, final String basicAuth, final Map<String, String> queryParams) {
-    // StringBuilder queryStringBuilder = new StringBuilder();
-    // if (queryParams != null) {
-    // for (String key : queryParams.keySet()) {
-    //
-    // if (!StringUtils.isNullOrEmpty(key)
-    // && !StringUtils.isNullOrEmpty(queryParams.get(key))) {
-    // if (queryStringBuilder.length() == 0 && !apiUrl.contains("?")) {
-    // queryStringBuilder.append("?");
-    // } else {
-    // queryStringBuilder.append("&");
-    // }
-    // queryStringBuilder.append(key).append("=").append(queryParams.get(key));
-    // }
-    // }
-    // }
-    // return invoke(correlationId, apiUrl + queryStringBuilder.toString(), httpMethod, payload,
-    // token, contentType, basicAuth, new HashMap());
-    // }
 
     /**
      * Gets the response list.
@@ -194,9 +184,9 @@ public class RestClientManager {
             if (response.getStatusLine().getStatusCode() != HttpStatus.NO_CONTENT.value()) {
                 String responseEntity = IoUtil.toString(response.getEntity().getContent());
 
-                LOGGER.info("[getResponse]  : response object " + responseEntity);
-                if (!(HttpStatus.valueOf(response.getStatusLine().getStatusCode())
-                        .is2xxSuccessful() && response.getEntity() != null)) {
+                LOGGER.debug("[getResponse]  : response object " + responseEntity);
+                if (!(HttpStatus.valueOf(response.getStatusLine().getStatusCode()).is2xxSuccessful()
+                        && response.getEntity() != null)) {
                     String errorMessage = null;
                     try {
                         if (responseEntity.startsWith("[")) {
@@ -206,34 +196,28 @@ public class RestClientManager {
                             responseEntity = responseEntity.replace("]", "").trim();
                         }
 
-                        errorMessage =
-                                mapper.readValue(responseEntity, ErrorMessage.class).getMessage();
+                        errorMessage = mapper.readValue(responseEntity, ErrorMessage.class).getMessage();
 
                     } catch (Exception e) {
-                        if (response.getStatusLine().getStatusCode() == HttpStatus.UNAUTHORIZED
-                                .value()) {
+                        if (response.getStatusLine().getStatusCode() == HttpStatus.UNAUTHORIZED.value()) {
                             throw new UnauthorizedException(HttpError.UNAUTHORIZED.getMessage());
                         }
 
                         LOGGER.error("[getResponse] Exception :", e);
-                        errorMessage =
-                                authPropertyService.getError(
-                                        IAuthConstants.Code.RESPONSE_PARSING_FAIL_ERROR)
-                                        .getMessage();
+                        errorMessage = authPropertyService.getError(IAuthConstants.Code.RESPONSE_PARSING_FAIL_ERROR)
+                                .getMessage();
                         throw new RestCallFailedException(errorMessage);
                     }
 
                     LOGGER.error("[getResponse] Exception : " + responseEntity);
-                    throw new ExternalSystemException(response.getStatusLine().getStatusCode(),
-                            errorMessage);
+                    throw new ExternalSystemException(response.getStatusLine().getStatusCode(), errorMessage);
 
                 } else {
                     if (dependentClass == null) {
                         obj = mapper.readValue(responseEntity, responseClass);
                     } else {
-                        obj =
-                                mapper.readValue(responseEntity, TypeFactory.defaultInstance()
-                                        .constructCollectionLikeType(responseClass, dependentClass));
+                        obj = mapper.readValue(responseEntity, TypeFactory.defaultInstance()
+                                .constructCollectionLikeType(responseClass, dependentClass));
                     }
                 }
             }
@@ -254,16 +238,18 @@ public class RestClientManager {
         boolean isValid = response.getStatusLine().getStatusCode() >= HttpStatus.OK.value()
                 && response.getStatusLine().getStatusCode() < HttpStatus.MULTIPLE_CHOICES.value()
                 && response.getEntity() != null;
-        if(isValid) {
+        if (isValid) {
             return true;
         } else {
             try {
                 String content = IoUtil.toString(response.getEntity().getContent());
-                throw new InvalidResponseException(response.getStatusLine().getStatusCode(),
-                        content);
+                LOGGER.error("[getResponse] Invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
+                        + ", content: " + content);
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             } catch (IOException exception) {
                 LOGGER.error("[getResponse] Exception :" + exception.getMessage(), exception);
-                throw new InvalidResponseException();
+                throw new InvalidResponseException(HttpError.INTERNAL_ERROR.getCode(),
+                        HttpError.INTERNAL_ERROR.getMessage());
             }
         }
     }

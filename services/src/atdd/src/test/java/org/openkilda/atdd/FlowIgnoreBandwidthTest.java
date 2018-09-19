@@ -7,7 +7,8 @@ import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowOperationException;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -31,8 +32,9 @@ public class FlowIgnoreBandwidthTest {
         createdFlows = new HashMap<>();
     }
 
-    @Then("^available ISL's bandwidths between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) is (\\d+)$")
-    public void availableISLBandwidthsBetweenSwitches(String source, String dest, long expected) {
+    @Then("^available ISL's bandwidths between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) "
+            + "and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) is (\\d+)$")
+    public void availableIslBandwidthsBetweenSwitches(String source, String dest, long expected) {
         List<LinkDto> islLinks = LinksUtils.dumpLinks();
 
         Long actual = null;
@@ -44,11 +46,11 @@ public class FlowIgnoreBandwidthTest {
             PathDto left = link.getPath().get(0);
             PathDto right = link.getPath().get(1);
 
-            if (! source.equals(left.getSwitchId())) {
+            if (!new SwitchId(source).equals(left.getSwitchId())) {
                 continue;
             }
 
-            if (! dest.equals(right.getSwitchId())) {
+            if (!new SwitchId(dest).equals(right.getSwitchId())) {
                 continue;
             }
 
@@ -57,18 +59,19 @@ public class FlowIgnoreBandwidthTest {
         }
 
         Assert.assertNotNull(actual);
-        Assert.assertEquals("Actual bandwidth does not match expectations.", expected, (long)actual);
+        Assert.assertEquals("Actual bandwidth does not match expectations.", expected, (long) actual);
         System.out.println(String.format("Available bandwidth between %s and %s is %d", source, dest, actual));
     }
 
-    @When("^flow ignore bandwidth between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) with (\\d+) bandwidth is created$")
+    @When("^flow ignore bandwidth between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) "
+            + "and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) with (\\d+) bandwidth is created$")
     public void flowIgnoreBandwidthBetweenSwitchesWithBandwidthIsCreated(String source, String dest, int bandwidth)
             throws InterruptedException {
         String flowId = FlowUtils.getFlowName("flowId");
-        FlowEndpointPayload sourcePoint = new FlowEndpointPayload(source, 1, 0);
-        FlowEndpointPayload destPoint = new FlowEndpointPayload(dest, 2, 0);
+        FlowEndpointPayload sourcePoint = new FlowEndpointPayload(new SwitchId(source), 1, 0);
+        FlowEndpointPayload destPoint = new FlowEndpointPayload(new SwitchId(dest), 2, 0);
         FlowPayload requestPayload = new FlowPayload(
-                flowId, sourcePoint, destPoint, bandwidth, true, "Flow that ignore ISL bandwidth", null,
+                flowId, sourcePoint, destPoint, bandwidth, true, false, "Flow that ignore ISL bandwidth", null,
                 FlowState.UP.getState());
 
         System.out.println(String.format("==> Send flow CREATE request (%s <--> %s)", source, dest));
@@ -84,7 +87,8 @@ public class FlowIgnoreBandwidthTest {
         saveCreatedFlowId(source, dest, flowId);
     }
 
-    @Then("^flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag$")
+    @Then("^flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) "
+            + "and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag$")
     public void flowHaveIgnoreBandwidthFlag(String source, String dest) {
         String flowId = lookupCreatedFlowId(source, dest);
         FlowPayload flow = FlowUtils.getFlow(flowId);
@@ -93,10 +97,11 @@ public class FlowIgnoreBandwidthTest {
         Assert.assertTrue("Flow's ignore_bandwidth flag is NOT set", flow.isIgnoreBandwidth());
     }
 
-    @Then("^flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag in TE$")
-    public void flowHaveIgnoreBandwidthFlagInTE(String source, String dest) {
+    @Then("^flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) "
+            + "and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag in TE$")
+    public void flowHaveIgnoreBandwidthFlagInTe(String source, String dest) {
         String flowId = lookupCreatedFlowId(source, dest);
-        ImmutablePair<Flow, Flow> flowPair = TopologyHelp.GetFlow(flowId);
+        FlowPair<Flow, Flow> flowPair = TopologyHelp.GetFlow(flowId);
 
         Assert.assertNotNull(flowPair);
         Assert.assertTrue(
@@ -123,8 +128,9 @@ public class FlowIgnoreBandwidthTest {
 
     private String lookupCreatedFlowId(String source, String dest) {
         String key = makeCreatedFlowIdKey(source, dest);
-        if (! createdFlows.containsKey(key)) {
-            throw new IllegalArgumentException(String.format("There is no known flows between %s and %s", source, dest));
+        if (!createdFlows.containsKey(key)) {
+            throw new IllegalArgumentException(
+                    String.format("There is no known flows between %s and %s", source, dest));
         }
         return createdFlows.get(key);
     }

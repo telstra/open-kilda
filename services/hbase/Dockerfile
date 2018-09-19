@@ -14,10 +14,21 @@
 #
 
 FROM kilda/base-ubuntu
-ADD ansible /ansible
-# tar should be pre-populated with the tarball; see the top level Makefile (build-base:)
-ADD tar /src
-RUN ansible-playbook -s /ansible/deploy.yml
-ADD hbase-conf/hbase-env.sh /opt/hbase/conf/hbase-env.sh
-ADD hbase-conf/hbase-site.xml /opt/hbase/conf/hbase-site.xml
-ADD hbase-conf/start-hbase /opt/hbase/bin/start-hbase
+
+ENV PACKAGE hbase-1.2.4
+
+WORKDIR /tmp/
+
+RUN    wget https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz \
+    && wget https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz.md5 \
+    && sed 's/\ //g' ${PACKAGE}-bin.tar.gz.md5 > $PACKAGE.tmp.md5 \
+    && awk -F ":" '{print $2 " " $1}' $PACKAGE.tmp.md5 > ${PACKAGE}-bin.tar.gz.md5 \
+    && md5sum -c ${PACKAGE}-bin.tar.gz.md5 \
+    && tar -xzf ${PACKAGE}-bin.tar.gz --directory /opt/ \
+    && ln -s /opt/$PACKAGE /opt/hbase \
+    && rm -rfv /tmp/*
+
+WORKDIR /opt/hbase/
+
+COPY hbase-conf/hbase-env.sh hbase-conf/hbase-site.xml /opt/hbase/conf/
+COPY hbase-conf/start-hbase /opt/hbase/bin/start-hbase

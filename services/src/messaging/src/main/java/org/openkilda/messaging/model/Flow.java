@@ -15,30 +15,21 @@
 
 package org.openkilda.messaging.model;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * Represents flow entity.
- */
-@JsonSerialize
-@Getter
-@Setter
+@Data
 public class Flow implements Serializable {
     /**
      * Serialization version number constant.
@@ -57,13 +48,16 @@ public class Flow implements Serializable {
      * FLow bandwidth.
      */
     @JsonProperty("bandwidth")
-    private int bandwidth;
+    private long bandwidth;
 
     /**
      * Should flow ignore bandwidth in path computation.
      */
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
+
+    @JsonProperty("periodic-pings")
+    private boolean periodicPings;
 
     /**
      * Flow cookie.
@@ -87,13 +81,13 @@ public class Flow implements Serializable {
      * Flow source switch.
      */
     @JsonProperty("src_switch")
-    private String sourceSwitch;
+    private SwitchId sourceSwitch;
 
     /**
      * Flow destination switch.
      */
     @JsonProperty("dst_switch")
-    private String destinationSwitch;
+    private SwitchId destinationSwitch;
 
     /**
      * Flow source port.
@@ -144,34 +138,7 @@ public class Flow implements Serializable {
     @JsonProperty("state")
     private FlowState state;
 
-    /**
-     * Default constructor.
-     */
     public Flow() {
-    }
-
-    /**
-     * Copy constructor.
-     *
-     * @param flow flow
-     */
-    public Flow(Flow flow) {
-        this.flowId = flow.getFlowId();
-        this.bandwidth = flow.getBandwidth();
-        this.ignoreBandwidth = flow.isIgnoreBandwidth();
-        this.cookie = flow.getCookie();
-        this.description = flow.getDescription();
-        this.lastUpdated = flow.getLastUpdated();
-        this.sourceSwitch = flow.getSourceSwitch();
-        this.destinationSwitch = flow.getDestinationSwitch();
-        this.sourcePort = flow.getSourcePort();
-        this.destinationPort = flow.getDestinationPort();
-        this.sourceVlan = flow.getSourceVlan();
-        this.destinationVlan = flow.getDestinationVlan();
-        this.transitVlan = flow.getTransitVlan();
-        this.meterId = flow.getMeterId();
-        this.flowPath = flow.getFlowPath();
-        this.state = flow.getState();
     }
 
     /**
@@ -195,15 +162,16 @@ public class Flow implements Serializable {
      * @param state             flow state
      */
     @JsonCreator
-    @Builder
+    @Builder(toBuilder = true)
     public Flow(@JsonProperty(Utils.FLOW_ID) final String flowId,
-                @JsonProperty("bandwidth") final int bandwidth,
-                @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
+                @JsonProperty("bandwidth") final long bandwidth,
+                @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
+                @JsonProperty("periodic-pings") boolean periodicPings,
                 @JsonProperty("cookie") final long cookie,
                 @JsonProperty("description") final String description,
                 @JsonProperty("last_updated") final String lastUpdated,
-                @JsonProperty("src_switch") final String sourceSwitch,
-                @JsonProperty("dst_switch") final String destinationSwitch,
+                @JsonProperty("src_switch") final SwitchId sourceSwitch,
+                @JsonProperty("dst_switch") final SwitchId destinationSwitch,
                 @JsonProperty("src_port") final int sourcePort,
                 @JsonProperty("dst_port") final int destinationPort,
                 @JsonProperty("src_vlan") final int sourceVlan,
@@ -214,7 +182,8 @@ public class Flow implements Serializable {
                 @JsonProperty("state") FlowState state) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
-        setIgnoreBandwidth(ignoreBandwidth);
+        this.ignoreBandwidth = ignoreBandwidth;
+        this.periodicPings = periodicPings;
         this.cookie = cookie;
         this.description = description;
         this.lastUpdated = lastUpdated;
@@ -231,6 +200,29 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Copy constructor.
+     */
+    public Flow(Flow flow) {
+        this(flow.getFlowId(),
+                flow.getBandwidth(),
+                flow.isIgnoreBandwidth(),
+                flow.isPeriodicPings(),
+                flow.getCookie(),
+                flow.getDescription(),
+                flow.getLastUpdated(),
+                flow.getSourceSwitch(),
+                flow.getDestinationSwitch(),
+                flow.getSourcePort(),
+                flow.getDestinationPort(),
+                flow.getSourceVlan(),
+                flow.getDestinationVlan(),
+                flow.getMeterId(),
+                flow.getTransitVlan(),
+                flow.getFlowPath(),
+                flow.getState());
+    }
+
+    /**
      * Instance constructor.
      *
      * @param flowId            flow id
@@ -244,31 +236,43 @@ public class Flow implements Serializable {
      * @param destinationPort   destination port
      * @param destinationVlan   destination vlan id
      */
-    public Flow(String flowId, int bandwidth, boolean ignoreBandwidth, String description,
-            String sourceSwitch, int sourcePort, int sourceVlan,
-            String destinationSwitch, int destinationPort, int destinationVlan) {
-        this.flowId = flowId;
-        this.bandwidth = bandwidth;
-        this.ignoreBandwidth = ignoreBandwidth;
-        this.description = description;
-        this.sourceSwitch = sourceSwitch;
-        this.destinationSwitch = destinationSwitch;
-        this.sourcePort = sourcePort;
-        this.destinationPort = destinationPort;
-        this.sourceVlan = sourceVlan;
-        this.destinationVlan = destinationVlan;
+    public Flow(String flowId,
+                long bandwidth,
+                boolean ignoreBandwidth,
+                String description,
+                SwitchId sourceSwitch, int sourcePort, int sourceVlan,
+                SwitchId destinationSwitch, int destinationPort, int destinationVlan) {
+        this(flowId,
+                bandwidth,
+                ignoreBandwidth,
+                false,
+                0,
+                description,
+                null,
+                sourceSwitch,
+                destinationSwitch,
+                sourcePort,
+                destinationPort,
+                sourceVlan,
+                destinationVlan,
+                0, 0, null, null);
     }
 
-    /**
-     * Sets the ignoreBandwidth.
-     *
-     * @param ignoreBandwidth ignore bandwidth flag
-     */
-    public void setIgnoreBandwidth(Boolean ignoreBandwidth) {
-        if (ignoreBandwidth == null) {
-            ignoreBandwidth = false;
-        }
-        this.ignoreBandwidth = ignoreBandwidth;
+    public Flow(FlowPayload input) {
+        this(input.getId(),
+                input.getMaximumBandwidth(),
+                input.isIgnoreBandwidth(),
+                input.isPeriodicPings(),
+                0,
+                input.getDescription(),
+                null,
+                input.getSource().getDatapath(),
+                input.getDestination().getDatapath(),
+                input.getSource().getPortNumber(),
+                input.getDestination().getPortNumber(),
+                input.getSource().getVlanId(),
+                input.getDestination().getVlanId(),
+                0, 0, null, null);
     }
 
     /**
@@ -339,13 +343,23 @@ public class Flow implements Serializable {
      * @param switchId switch id
      * @return true if flow path contains specified switch
      */
-    public boolean containsSwitchInPath(String switchId) {
+    public boolean containsSwitchInPath(SwitchId switchId) {
         return flowPath.getPath().stream()
                 .anyMatch(node -> node.getSwitchId().equals(switchId));
     }
 
     /**
-     * {@inheritDoc}
+     * Flow to Flow comparison.
+     *
+     * <p>Ignore fields:
+     * - ignoreBandwidth
+     * - periodicPings
+     * - cookie
+     * - lastUpdated
+     * - meterId
+     * - transitVlan
+     * - flowPath
+     * FIXME(surabujin): drop/replace with lombok version (no usage found)
      */
     @Override
     public boolean equals(Object object) {
@@ -369,37 +383,9 @@ public class Flow implements Serializable {
                 && getDestinationVlan() == flow.getDestinationVlan();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public int hashCode() {
         return Objects.hash(flowId, bandwidth, description, state,
                 sourceSwitch, sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(Utils.FLOW_ID, flowId)
-                .add("bandwidth", bandwidth)
-                .add("ignore_bandwidth", ignoreBandwidth)
-                .add("description", description)
-                .add("state", state)
-                .add("src_switch", sourceSwitch)
-                .add("src_port", sourcePort)
-                .add("src_vlan", sourceVlan)
-                .add("dst_switch", destinationSwitch)
-                .add("dst_port", destinationPort)
-                .add("dst_vlan", destinationVlan)
-                .add("cookie", cookie)
-                .add("transit_vlan", transitVlan)
-                .add("meter_id", meterId)
-                .add("last_updated", lastUpdated)
-                .add(Utils.FLOW_PATH, flowPath)
-                .toString();
     }
 }

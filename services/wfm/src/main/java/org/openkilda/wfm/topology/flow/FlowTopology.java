@@ -126,13 +126,12 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 // TODO: this READ is used for single and for all flows. But all flows shouldn't be fieldsGrouping.
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)
+                .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DUMP.toString())
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PUSH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UNPUSH.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PATH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.REROUTE.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
                 // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
                 // tackle during multi instance testing
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId)
@@ -158,6 +157,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         /*
          * Spout receives Topology Engine response
          */
+        // FIXME(surabujin): can be replaced with NORTHBOUND_KAFKA_SPOUT (same topic)
         KafkaSpout topologyKafkaSpout = createKafkaSpout(
                 topologyConfig.getKafkaFlowTopic(), ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString());
         builder.setSpout(ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString(), topologyKafkaSpout, parallelism);
@@ -172,7 +172,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         /*
          * Bolt sends Speaker requests
          */
-        KafkaBolt speakerKafkaBolt = createKafkaBolt(topologyConfig.getKafkaSpeakerTopic());
+        KafkaBolt speakerKafkaBolt = createKafkaBolt(topologyConfig.getKafkaSpeakerFlowTopic());
         builder.setBolt(ComponentType.SPEAKER_KAFKA_BOLT.toString(), speakerKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.CREATE.toString())
                 .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.DELETE.toString());
@@ -180,6 +180,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         /*
          * Spout receives Speaker responses
          */
+        // FIXME(surabujin): can be replaced with NORTHBOUND_KAFKA_SPOUT (same topic)
         KafkaSpout speakerKafkaSpout = createKafkaSpout(
                 topologyConfig.getKafkaFlowTopic(), ComponentType.SPEAKER_KAFKA_SPOUT.toString());
         builder.setSpout(ComponentType.SPEAKER_KAFKA_SPOUT.toString(), speakerKafkaSpout, parallelism);

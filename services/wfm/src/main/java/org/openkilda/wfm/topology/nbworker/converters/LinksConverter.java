@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 
 import org.apache.commons.lang3.math.NumberUtils;
@@ -56,13 +57,13 @@ public final class LinksConverter {
     public static IslInfoData toIslInfoData(Relationship relationship) {
         // max_bandwidth not used in IslInfoData
         PathNode src = new PathNode();
-        src.setSwitchId(relationship.get(SRC_SWITCH_FIELD).asString());
+        src.setSwitchId(new SwitchId(relationship.get(SRC_SWITCH_FIELD).asString()));
         src.setPortNo(parseIntValue(relationship.get(SRC_PORT_FIELD)));
         src.setSegLatency(parseIntValue(relationship.get("latency")));
         src.setSeqId(0);
 
         PathNode dst = new PathNode();
-        dst.setSwitchId(relationship.get(DST_SWITCH_FIELD).asString());
+        dst.setSwitchId(new SwitchId(relationship.get(DST_SWITCH_FIELD).asString()));
         dst.setPortNo(parseIntValue(relationship.get(DST_PORT_FIELD)));
         dst.setSegLatency(parseIntValue(relationship.get("latency")));
         dst.setSeqId(1);
@@ -97,9 +98,9 @@ public final class LinksConverter {
                 .collect(Collectors.toMap(Map.Entry::getKey, el -> String.valueOf(el.getValue())));
 
         // remove known fields to leave only props in that map
-        String srcSwitch = properties.remove(SRC_SWITCH_FIELD);
+        SwitchId srcSwitch = new SwitchId(properties.remove(SRC_SWITCH_FIELD));
         int srcPort = NumberUtils.toInt(properties.remove(SRC_PORT_FIELD));
-        String dstSwitch = properties.remove(DST_SWITCH_FIELD);
+        SwitchId dstSwitch = new SwitchId(properties.remove(DST_SWITCH_FIELD));
         int dstPort = NumberUtils.toInt(properties.remove(DST_PORT_FIELD));
 
         // remove created/updated fields as they aren't part of link properties

@@ -16,38 +16,51 @@
 package org.openkilda.floodlight.config.provider;
 
 import static java.util.Collections.singletonList;
-import static java.util.Objects.requireNonNull;
 
 import org.openkilda.config.EnvironmentConfig;
 import org.openkilda.config.naming.KafkaNamingForConfigurationValueProcessor;
 import org.openkilda.config.naming.KafkaNamingStrategy;
+import org.openkilda.config.provider.ValidatingConfigurationProvider;
 import org.openkilda.floodlight.config.EnvironmentFloodlightConfig;
 
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
-import com.sabre.oss.conf4j.source.ConfigurationSource;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
- * This class creates a configuration instance and fills it with values from the properties.
+ * This class creates a configuration instance and fills it with values from the Floodlight module parameters.
  * <p/>
  * The provider applies {@link KafkaNamingStrategy} with the environment prefix
  * from {@link EnvironmentConfig#getNamingPrefix()} to configuration values which marked for mapping.
  *
- * @see ConfigurationSource
+ * @see MapConfigurationSource
  * @see JdkProxyStaticConfigurationFactory
  * @see EnvironmentConfig#getNamingPrefix()
  * @see KafkaNamingStrategy
  * @see KafkaNamingForConfigurationValueProcessor
  */
-public class ConfigurationProvider {
-    private final ConfigurationSource source;
-    private final JdkProxyStaticConfigurationFactory factory;
+public class ConfigurationProvider extends ValidatingConfigurationProvider {
+    private static final Logger log = LoggerFactory.getLogger(ConfigurationProvider.class);
 
-    public ConfigurationProvider(FloodlightModuleContext context, IFloodlightModule module) {
-        source = new MapConfigurationSource(context.getConfigParams(module));
-        factory = new JdkProxyStaticConfigurationFactory();
+    /**
+     * Build ConfigurationProvider instance from config data provided by FL's module context.
+     */
+    public static ConfigurationProvider of(FloodlightModuleContext moduleContext, IFloodlightModule module) {
+        Map<String, String> configData = moduleContext.getConfigParams(module);
+        ConfigurationProvider provider = new ConfigurationProvider(configData);
+
+        dumpConfigData(module, configData);
+        return provider;
+    }
+
+    protected ConfigurationProvider(Map<String, String> configData) {
+        super(new MapConfigurationSource(configData), new JdkProxyStaticConfigurationFactory());
 
         EnvironmentFloodlightConfig environmentConfig =
                 factory.createConfiguration(EnvironmentFloodlightConfig.class, source);
@@ -55,19 +68,17 @@ public class ConfigurationProvider {
         KafkaNamingStrategy namingStrategy = new KafkaNamingStrategy(namingPrefix != null ? namingPrefix : "");
 
         // Apply the environment prefix to Kafka topics and groups in the configuration.
-        factory.setConfigurationValueProcessors(
+        ((JdkProxyStaticConfigurationFactory) factory).setConfigurationValueProcessors(
                 singletonList(new KafkaNamingForConfigurationValueProcessor(namingStrategy)));
     }
 
-    /**
-     * Creates a configuration class and fills it with values.
-     *
-     * @param configurationType configuration class.
-     * @return configuration instance
-     */
-    public <T> T getConfiguration(Class<T> configurationType) {
-        requireNonNull(configurationType, "configurationType cannot be null");
-
-        return factory.createConfiguration(configurationType, source);
+    private static void dumpConfigData(IFloodlightModule module, Map<String, String> configData) {
+        String delimiter = "\n      ";
+        String dump = configData.entrySet().stream()
+                .map(entry -> String.format("%s = %s", entry.getKey(), entry.getValue()))
+                .collect(Collectors.joining(delimiter));
+        log.debug(
+                "Dump config properties for {} (raw values, before filter and validation):{}{}",
+                module.getClass().getName(), delimiter, dump);
     }
 }

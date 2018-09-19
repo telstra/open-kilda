@@ -17,43 +17,38 @@ FROM ubuntu:xenial
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update
+###############################################
+# Install pip and Java8 in base container     #
+###############################################
 
-#############################
-#Base container configuration
-#############################
-RUN apt-get autoremove
-
-#####################
-#Install Ansible and APT deps
-#####################
-RUN apt-get install -y build-essential apt-utils libffi-dev libssl-dev software-properties-common
-RUN apt-get install -y curl ssh iputils-ping
-RUN apt-get install -y python python-dev python-pip
-RUN pip install --upgrade pip
-
-################
-#Install Ansible
-################
-RUN pip install ansible
-RUN chmod +x /usr/local/bin/ansible*
-RUN mkdir /etc/ansible
-#Sets the default context of Ansible to be the local container
-ADD config/hosts /etc/ansible/hosts 
-
-################################
-#Install Java8 in base container
-################################
-RUN add-apt-repository ppa:webupd8team/java \
-    && apt-get update
-RUN echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
-RUN apt-get install -y oracle-java8-installer
 ENV JAVA_VER 8
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
-RUN echo "export JAVA_HOME=/usr/lib/jvm/java-8-oracle" >> ~/.bashrc
 
-RUN rm -rf /var/lib/apt/lists/*
-RUN apt-get clean
-RUN apt clean
-ADD app /app
-RUN chmod 777 /app/*
+COPY app /app
+
+RUN chmod 777 /app/* \
+    && echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections \
+    && echo debconf shared/accepted-oracle-license-v1-1 seen true | debconf-set-selections \
+    && apt -o Acquire::CompressionTypes::Order=bz2 update \
+    && apt install -y --no-install-recommends \
+        libffi-dev \
+        libssl-dev \
+        software-properties-common \
+        curl \
+        ssh \
+        iputils-ping \
+        python \
+        python-dev \
+        python-pip \
+        make \
+        apt-transport-https \
+    && pip install --upgrade pip \
+    && python -m pip install setuptools \
+    && add-apt-repository ppa:webupd8team/java \
+    && apt update \
+    && apt install -y --no-install-recommends \
+        oracle-java8-installer \
+        oracle-java8-set-default \
+    && update-java-alternatives -s java-8-oracle \
+    && echo "export JAVA_HOME=/usr/lib/jvm/java-8-oracle" >> ~/.bashrc \
+    && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/* /var/cache/oracle-jdk8-installer

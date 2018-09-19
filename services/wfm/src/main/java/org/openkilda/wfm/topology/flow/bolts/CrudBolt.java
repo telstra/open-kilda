@@ -45,19 +45,21 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.info.flow.FlowPathResponse;
+import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
+import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.FlowInfo;
 import org.openkilda.pce.provider.PathComputer;
@@ -244,24 +246,17 @@ public class CrudBolt
                         case UNPUSH:
                             handleUnpushRequest(flowId, imsg, tuple);
                             break;
-                        case PATH:
-                            handlePathRequest(flowId, cmsg, tuple);
-                            break;
                         case REROUTE:
                             handleRerouteRequest(cmsg, tuple);
-                            break;
-                        case STATUS:
-                            handleStatusRequest(flowId, cmsg, tuple);
                             break;
                         case CACHE_SYNC:
                             handleCacheSyncRequest(cmsg, tuple);
                             break;
                         case READ:
-                            if (flowId != null) {
-                                handleReadRequest(flowId, cmsg, tuple);
-                            } else {
-                                handleDumpRequest(cmsg, tuple);
-                            }
+                            handleReadRequest(flowId, cmsg, tuple);
+                            break;
+                        case DUMP:
+                            handleDumpRequest(cmsg, tuple);
                             break;
                         default:
 
@@ -380,7 +375,7 @@ public class CrudBolt
                 // TODO: if the flow is modified, then just leverage drop / add primitives.
                 // TODO: Ensure that the DB is always the source of truth - cache and db ops part of transaction.
                 // Need to compare both sides
-                ImmutablePair<Flow, Flow> fc = flowCache.getFlow(flowid);
+                FlowPair<Flow, Flow> fc = flowCache.getFlow(flowid);
 
                 final int count = modifiedFlowChanges.size();
                 if (fi.getCookie() != fc.left.getCookie() && fi.getCookie() != fc.right.getCookie()) {
@@ -419,7 +414,7 @@ public class CrudBolt
         }
 
         // Now we see if the cache holds things not in the DB
-        for (ImmutablePair<Flow, Flow> flow : flowCache.dumpFlows()) {
+        for (FlowPair<Flow, Flow> flow : flowCache.dumpFlows()) {
             String key = flow.left.getFlowId() + flow.left.getCookie();
             // compare the left .. if it is in, then check the right .. o/w remove it (no need to check right
             if (!flowToInfo.containsKey(key)) {
@@ -440,8 +435,7 @@ public class CrudBolt
         }
 
         FlowCacheSyncResults results = new FlowCacheSyncResults(
-                droppedFlows.toArray(new String[0]), addedFlows.toArray(new String[0]),
-                modifiedFlowChanges.toArray(new String[0]), unchangedFlows.toArray(new String[0]));
+                droppedFlows, addedFlows, modifiedFlowChanges, unchangedFlows);
         Values northbound = new Values(new InfoMessage(new FlowCacheSyncResponse(results),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
@@ -468,7 +462,7 @@ public class CrudBolt
                 })
                 .forEach(flowPair -> {
                     final BidirectionalFlow bidirectionalFlow = flowPair.make();
-                    final ImmutablePair<Flow, Flow> flow = new ImmutablePair<>(
+                    final FlowPair<Flow, Flow> flow = new FlowPair<>(
                             bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
                     final String flowId = flow.getLeft().getFlowId();
                     logger.debug("Refresh the flow: {}", flowId);
@@ -515,7 +509,7 @@ public class CrudBolt
         });
     }
 
-    private void emitCacheSyncInfoMessage(String flowId, @Nullable ImmutablePair<Flow, Flow> flow,
+    private void emitCacheSyncInfoMessage(String flowId, @Nullable FlowPair<Flow, Flow> flow,
             Tuple tuple, String correlationId) {
         String subCorrelationId = format("%s-%s", correlationId, flowId);
         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.CACHE, subCorrelationId);
@@ -532,7 +526,7 @@ public class CrudBolt
     private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
         logger.info("PUSH flow: {} :: {}", flowId, message);
         FlowInfoData fid = (FlowInfoData) message.getData();
-        ImmutablePair<Flow, Flow> flow = fid.getPayload();
+        FlowPair<Flow, Flow> flow = fid.getPayload();
 
         flowCache.pushFlow(flow);
 
@@ -551,10 +545,8 @@ public class CrudBolt
 
     private void handleUnpushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
         logger.info("UNPUSH flow: {} :: {}", flowId, message);
-        FlowInfoData fid = (FlowInfoData) message.getData();
 
-
-        ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
+        FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
         // Update Cache
         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.UNPUSH, message.getCorrelationId());
@@ -571,7 +563,7 @@ public class CrudBolt
 
 
     private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
-        ImmutablePair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
+        FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
         logger.info("Deleted flow: {}", flowId);
 
@@ -588,7 +580,7 @@ public class CrudBolt
     private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
 
-        ImmutablePair<PathInfoData, PathInfoData> path;
+        FlowPair<PathInfoData, PathInfoData> path;
         try {
             flowValidator.validate(requestedFlow);
 
@@ -598,13 +590,14 @@ public class CrudBolt
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.CREATION_FAILURE, "Could not create flow", e.getMessage());
+                    ErrorType.ALREADY_EXISTS, "Could not create flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.CREATION_FAILURE, "Could not create flow", "Path was not found");
+                    ErrorType.NOT_FOUND, "Could not create flow",
+                    "Not enough bandwidth found or path not found");
         }
 
-        ImmutablePair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
+        FlowPair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
         logger.info("Created flow: {}, correlationId: {}", flow, message.getCorrelationId());
 
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
@@ -620,22 +613,23 @@ public class CrudBolt
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         FlowRerouteRequest request = (FlowRerouteRequest) message.getData();
-        Flow requestedFlow = request.getPayload();
-        final String flowId = requestedFlow.getFlowId();
-        ImmutablePair<Flow, Flow> flow;
-        String correlationId = message.getCorrelationId();
+        final String flowId = request.getFlowId();
+        final String correlationId = message.getCorrelationId();
         logger.warn("Handling reroute request with correlationId {}", correlationId);
 
+        FlowPair<Flow, Flow> flow = flowCache.getFlow(flowId);
         switch (request.getOperation()) {
-
             case UPDATE:
-                flow = flowCache.getFlow(flowId);
+                final Flow flowForward = flow.getLeft();
 
                 try {
-                    logger.warn("Origin flow {} path: {} correlationId {}", flowId, flow.getLeft().getFlowPath(),
+                    logger.warn("Origin flow {} path: {} correlationId {}", flowId, flowForward.getFlowPath(),
                             correlationId);
-                    ImmutablePair<PathInfoData, PathInfoData> path =
-                            pathComputer.getPath(flow.getLeft(), Strategy.COST);
+                    AvailableNetwork network = pathComputer.getAvailableNetwork(flowForward.isIgnoreBandwidth(),
+                            flowForward.getBandwidth());
+                    network.addIslsOccupiedByFlow(flowId, flowForward.isIgnoreBandwidth(), flowForward.getBandwidth());
+                    FlowPair<PathInfoData, PathInfoData> path =
+                            pathComputer.getPath(flow.getLeft(), network, Strategy.COST);
                     logger.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {} correlationId {}",
                             flowId, path.getLeft(), path.getRight(), correlationId);
                     boolean isFoundNewPath = (
@@ -651,10 +645,8 @@ public class CrudBolt
                         flow = flowCache.updateFlow(flow.getLeft(), path);
                         logger.warn("Rerouted flow with new path: {}, correlationId {}", flow, correlationId);
 
-                        FlowInfoData data = new FlowInfoData(flowId, flow, UPDATE,
-                                message.getCorrelationId());
-                        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(),
-                                message.getCorrelationId());
+                        FlowInfoData data = new FlowInfoData(flowId, flow, UPDATE, correlationId);
+                        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
                         Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
                         outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
                     } else {
@@ -665,7 +657,7 @@ public class CrudBolt
                     logger.debug("Sending response to NB. Correlation id {}", correlationId);
                     FlowRerouteResponse response = new FlowRerouteResponse(flow.left.getFlowPath(), isFoundNewPath);
                     Values values = new Values(new InfoMessage(response, message.getTimestamp(),
-                            message.getCorrelationId(), Destination.NORTHBOUND));
+                            correlationId, Destination.NORTHBOUND));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
                 } catch (UnroutablePathException e) {
                     logger.warn("There is no path available for the flow {}, correlationId: {}", flowId,
@@ -673,22 +665,18 @@ public class CrudBolt
                     flow.getLeft().setState(FlowState.DOWN);
                     flow.getRight().setState(FlowState.DOWN);
                     throw new MessageException(correlationId, System.currentTimeMillis(),
-                            ErrorType.UPDATE_FAILURE, "Could not reroute flow", "Path was not found");
+                            ErrorType.NOT_FOUND, "Could not reroute flow", "Path was not found");
                 }
                 break;
 
             case CREATE:
-                flow = flowCache.getFlow(flowId);
-                logger.warn("State flow: {}={}, correlationId: {}", flow.getLeft().getFlowId(), FlowState.UP,
-                        message.getCorrelationId());
+                logger.warn("State flow: {}={}, correlationId: {}", flowId, FlowState.UP, correlationId);
                 flow.getLeft().setState(FlowState.UP);
                 flow.getRight().setState(FlowState.UP);
                 break;
 
             case DELETE:
-                flow = flowCache.getFlow(flowId);
-                logger.warn("State flow: {}={}, correlationId: {}", flow.getLeft().getFlowId(), FlowState.DOWN,
-                        message.getCorrelationId());
+                logger.warn("State flow: {}={}, correlationId: {}", flowId, FlowState.DOWN, correlationId);
                 flow.getLeft().setState(FlowState.DOWN);
                 flow.getRight().setState(FlowState.DOWN);
                 break;
@@ -703,22 +691,26 @@ public class CrudBolt
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
         String correlationId = message.getCorrelationId();
 
-        ImmutablePair<PathInfoData, PathInfoData> path;
+        FlowPair<PathInfoData, PathInfoData> path;
         try {
             flowValidator.validate(requestedFlow);
 
-            path = pathComputer.getPath(requestedFlow, Strategy.COST);
+            AvailableNetwork network = pathComputer.getAvailableNetwork(requestedFlow.isIgnoreBandwidth(),
+                    requestedFlow.getBandwidth());
+            network.addIslsOccupiedByFlow(requestedFlow.getFlowId(),
+                    requestedFlow.isIgnoreBandwidth(), requestedFlow.getBandwidth());
+            path = pathComputer.getPath(requestedFlow, network, Strategy.COST);
             logger.info("Updated flow path: {}, correlationId {}", path, correlationId);
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not update flow", e.getMessage());
+                    ErrorType.ALREADY_EXISTS, "Could not update flow", e.getMessage());
         } catch (UnroutablePathException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, "Could not update flow", "Path was not found");
+                    ErrorType.NOT_FOUND, "Could not update flow", "Path was not found");
         }
 
-        ImmutablePair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
+        FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
 
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
@@ -733,8 +725,8 @@ public class CrudBolt
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<Flow> flows = flowCache.dumpFlows().stream()
-                .map(ImmutablePair::getLeft)
+        List<BidirectionalFlow> flows = flowCache.dumpFlows().stream()
+                .map(BidirectionalFlow::new)
                 .collect(Collectors.toList());
 
         logger.debug("Dump flows: found {} items", flows.size());
@@ -744,13 +736,13 @@ public class CrudBolt
             Message response = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, null);
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
         } else {
-            Iterator<Flow> iterator = flows.iterator();
+            Iterator<BidirectionalFlow> iterator = flows.iterator();
             do {
-                Flow flow = iterator.next();
+                BidirectionalFlow flow = iterator.next();
                 String nextRequestId = iterator.hasNext() ? UUID.randomUUID().toString() : null;
 
-                Message response = new ChunkedInfoMessage(new FlowResponse(flow), System.currentTimeMillis(),
-                        requestId, nextRequestId);
+                Message response = new ChunkedInfoMessage(
+                        new FlowReadResponse(flow), System.currentTimeMillis(), requestId, nextRequestId);
                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
                 requestId = nextRequestId;
             } while (iterator.hasNext());
@@ -758,33 +750,16 @@ public class CrudBolt
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
+        BidirectionalFlow flow = new BidirectionalFlow(flowCache.getFlow(flowId));
 
-        logger.info("Got flow: {}, correlationId: {}", flow, message.getCorrelationId());
+        logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
-        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
-    }
-
-    private void handlePathRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
-        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
-
-        logger.debug("Path flow: {}, correlationId {}", flow, message.getCorrelationId());
-
-        Values northbound = new Values(new InfoMessage(new FlowPathResponse(flow.left.getFlowPath()),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
-    }
-
-    private void handleStatusRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
-        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
-        FlowState status = flow.getLeft().getState();
-
-        logger.debug("Status flow: {}={}", flowId, status);
-
-        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload(flowId, status)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        Values northbound = new Values(
+                new InfoMessage(
+                        new FlowReadResponse(flow),
+                        message.getTimestamp(),
+                        message.getCorrelationId(),
+                        Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
@@ -796,7 +771,7 @@ public class CrudBolt
      */
     private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId)
             throws IOException {
-        ImmutablePair<Flow, Flow> flow = flowCache.getFlow(flowId);
+        FlowPair<Flow, Flow> flow = flowCache.getFlow(flowId);
         logger.info("State flow: {}={}", flowId, state);
         flow.getLeft().setState(state);
         flow.getRight().setState(state);
@@ -840,7 +815,7 @@ public class CrudBolt
     }
 
     private void handleFlowSync(NetworkInfoData networkDump) {
-        Set<ImmutablePair<Flow, Flow>> flows = networkDump.getFlows();
+        Set<FlowPair<Flow, Flow>> flows = networkDump.getFlows();
 
         logger.info("Load flows {}", flows.size());
         flows.forEach(flowCache::putFlow);
@@ -852,7 +827,7 @@ public class CrudBolt
      * @param flow cache flow
      * @return response flow model
      */
-    private Flow buildFlowResponse(ImmutablePair<Flow, Flow> flow) {
+    private Flow buildFlowResponse(FlowPair<Flow, Flow> flow) {
         Flow response = new Flow(flow.left);
         response.setCookie(response.getCookie() & ResourceCache.FLOW_COOKIE_VALUE_MASK);
         return response;
@@ -863,7 +838,7 @@ public class CrudBolt
                 System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
     }
 
-    private boolean isFlowActive(ImmutablePair<Flow, Flow> flowPair) {
+    private boolean isFlowActive(FlowPair<Flow, Flow> flowPair) {
         return flowPair.getLeft().getState().isActive() && flowPair.getRight().getState().isActive();
     }
 
@@ -871,7 +846,7 @@ public class CrudBolt
         PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
-            ImmutablePair<Flow, Flow> flowPair = new ImmutablePair<>(
+            FlowPair<Flow, Flow> flowPair = new FlowPair<>(
                     bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
             flowCache.pushFlow(flowPair);
         }
@@ -891,7 +866,7 @@ public class CrudBolt
     }
 
     @Override
-    public AbstractDumpState dumpStateBySwitchId(String switchId) {
+    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
         // Not implemented
         return new CrudBoltState(new FlowDump(new HashSet<>()));
     }

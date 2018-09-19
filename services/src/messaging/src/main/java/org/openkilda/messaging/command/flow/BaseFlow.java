@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -58,7 +59,7 @@ public class BaseFlow extends CommandData {
      * The switch id to manage flow on. It is a mandatory parameter.
      */
     @JsonProperty("switch_id")
-    protected String switchId;
+    protected SwitchId switchId;
 
     /**
      * Instance constructor.
@@ -73,7 +74,7 @@ public class BaseFlow extends CommandData {
     public BaseFlow(@JsonProperty(TRANSACTION_ID) final Long transactionId,
                     @JsonProperty(FLOW_ID) final String id,
                     @JsonProperty("cookie") final Long cookie,
-                    @JsonProperty("switch_id") final String switchId) {
+                    @JsonProperty("switch_id") final SwitchId switchId) {
         setTransactionId(transactionId);
         setId(id);
         setCookie(cookie);
@@ -142,7 +143,7 @@ public class BaseFlow extends CommandData {
      *
      * @return ID of the switch
      */
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 
@@ -151,7 +152,7 @@ public class BaseFlow extends CommandData {
      *
      * @param switchId of the switch
      */
-    public void setSwitchId(String switchId) {
+    public void setSwitchId(SwitchId switchId) {
         if (switchId == null) {
             throw new IllegalArgumentException("need to set a switch_id");
         } else if (!Utils.validateSwitchId(switchId)) {

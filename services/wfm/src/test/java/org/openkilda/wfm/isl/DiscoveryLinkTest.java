@@ -16,9 +16,12 @@
 package org.openkilda.wfm.isl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import org.openkilda.messaging.model.DiscoveryLink;
+import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -26,7 +29,7 @@ import org.junit.Test;
 public class DiscoveryLinkTest {
 
     private DiscoveryLink dn;
-    private static final String switchName = "sw1";
+    private static final SwitchId switchName = new SwitchId("ff:01");
     private static final int portNumber = 1;
 
     @Before
@@ -40,13 +43,13 @@ public class DiscoveryLinkTest {
     @Test
     public void testDefaultLinkDiscovered() {
         // initial state should be false
-        assertEquals(false, dn.isActive());
+        assertEquals(false, dn.getState().isActive());
     }
 
     @Test
     public void shouldLinkBeDiscoveredWhenDestinationIsSet() {
-        dn.activate(new NetworkEndpoint("sw2", 2));
-        assertEquals(true, dn.isActive());
+        dn.activate(new NetworkEndpoint(new SwitchId("ff:02"), 2));
+        assertEquals(true, dn.getState().isActive());
     }
 
     /**
@@ -55,12 +58,12 @@ public class DiscoveryLinkTest {
     @Test
     public void forlorn() {
         int threshhold = 2;
-        dn = new DiscoveryLink("sw1", 2, 0, threshhold);
-        assertEquals("A DN starts out as not excluded", false, dn.isDiscoverySuspended());
+        dn = new DiscoveryLink(new SwitchId("ff:01"), 2, 0, threshhold);
+        assertEquals("A DN starts out as not excluded", true, dn.isNewAttemptAllowed());
         dn.fail();
         dn.fail();
         dn.fail();
-        assertEquals("The DN should now be excluded", true, dn.isDiscoverySuspended());
+        assertEquals("The DN should now be excluded", false, dn.isNewAttemptAllowed());
     }
 
     /**
@@ -124,5 +127,13 @@ public class DiscoveryLinkTest {
         dn.resetTickCounter();
         assertEquals(0, dn.getTimeCounter());
 
+    }
+
+    @Test
+    public void linkShouldChangeStatusOnDeactivation() {
+        dn = new DiscoveryLink(new SwitchId("ff:01"), 2, new SwitchId("ff:02"), 2, 0, 1, true);
+
+        dn.deactivate();
+        assertSame(LinkState.INACTIVE, dn.getState());
     }
 }

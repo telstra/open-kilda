@@ -96,5 +96,5 @@ public enum ComponentType {
 
     LCM_SPOUT,
     LCM_FLOW_SYNC_BOLT,
-    TOPOLOGY_ENGINE_OUTPUT
+    TOPOLOGY_ENGINE_OUTPUT,
 }

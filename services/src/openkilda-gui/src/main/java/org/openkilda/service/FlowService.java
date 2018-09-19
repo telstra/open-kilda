@@ -1,28 +1,49 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.service;
+
+import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.model.Flow;
+import org.openkilda.integration.model.FlowStatus;
+import org.openkilda.integration.model.response.FlowPayload;
+import org.openkilda.integration.service.FlowsIntegrationService;
+import org.openkilda.integration.service.SwitchIntegrationService;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
+import org.openkilda.model.FlowCount;
+import org.openkilda.model.FlowInfo;
+import org.openkilda.model.FlowPath;
+import org.openkilda.utility.CollectionUtil;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.usermanagement.model.UserInfo;
+import org.usermanagement.service.UserService;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
-import org.openkilda.integration.exception.IntegrationException;
-import org.openkilda.integration.model.Flow;
-import org.openkilda.integration.model.FlowStatus;
-import org.openkilda.integration.service.FlowsIntegrationService;
-import org.openkilda.integration.service.SwitchIntegrationService;
-import org.openkilda.model.FlowCount;
-import org.openkilda.model.FlowInfo;
-import org.openkilda.model.FlowPath;
-import org.openkilda.utility.CollectionUtil;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 /**
  * The Class ServiceFlowImpl.
  *
  * @author Gaurav Chugh
  */
+
 @Service
 public class FlowService {
 
@@ -30,25 +51,29 @@ public class FlowService {
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
+
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
 
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private ActivityLogger activityLogger;
 
     /**
      * get All Flows.
      *
      * @return SwitchRelationData
-     * @throws Exception
      */
     public List<FlowInfo> getAllFlows() {
         return flowsIntegrationService.getFlows();
     }
 
-
     /**
      * Gets the flow count.
      *
-     * @param switchRelationData the switch relation data
+     * @param flows the flows
      * @return the flow count
      */
     public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
@@ -87,19 +112,17 @@ public class FlowService {
     /**
      * Gets the path link.
      *
-     * @param flowid the flowid
+     * @param flowId the flow id
      * @return the path link
-     * @throws IntegrationException
      */
-    public FlowPath getFlowPath(final String flowId) throws IntegrationException {
+    public FlowPayload getFlowPath(final String flowId) throws IntegrationException {
         return flowsIntegrationService.getFlowPath(flowId);
     }
 
     /**
-     * Gets the all flows list
+     * Gets the all flows list.
      *
      * @return the all flow list
-     * @throws IntegrationException
      */
     public List<Flow> getAllFlowList() {
         return flowsIntegrationService.getAllFlowList();
@@ -107,8 +130,8 @@ public class FlowService {
 
     /**
      * Re route Flow by flow id.
-     * 
-     * @param flowId
+     *
+     * @param flowId the flow id
      * @return flow path
      */
     public FlowPath rerouteFlow(String flowId) {
@@ -116,10 +139,10 @@ public class FlowService {
     }
 
     /**
-     * Validate Flow by flow id.
-     * 
-     * @param flowId
-     * @return
+     * Validate Flow.
+     *
+     * @param flowId the flow id
+     * @return the string
      */
     public String validateFlow(String flowId) {
         return flowsIntegrationService.validateFlow(flowId);
@@ -127,16 +150,75 @@ public class FlowService {
 
     /**
      * Flow by flow id.
-     * 
-     * @param flowId
-     * @return
+     *
+     * @param flowId the flow id
+     * @return the flow by id
      */
     public Flow getFlowById(String flowId) {
         return flowsIntegrationService.getFlowById(flowId);
     }
 
-
+    /**
+     * Gets the flow status by id.
+     *
+     * @param flowId the flow id
+     * @return the flow status by id
+     */
     public FlowStatus getFlowStatusById(String flowId) {
         return flowsIntegrationService.getFlowStatusById(flowId);
     }
+
+    /**
+     * Creates the flow.
+     *
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow createFlow(Flow flow) {
+    	flow = flowsIntegrationService.createFlow(flow);
+        activityLogger.log(ActivityType.CREATE_FLOW, flow.getId());
+        return flow;
+    }
+
+    /**
+     * Update flow.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the flow
+     */
+    public Flow updateFlow(String flowId, Flow flow) {
+    	activityLogger.log(ActivityType.UPDATE_FLOW, flow.getId());
+    	flow = flowsIntegrationService.updateFlow(flowId, flow);
+        return flow;
+    }
+
+    /**
+     * Delete flow.
+     *
+     * @param flowId the flow id
+     * @param userInfo the user info
+     * @return the flow
+     */
+    public Flow deleteFlow(String flowId, UserInfo userInfo) {
+        if (userService.validateOtp(userInfo.getUserId(), userInfo.getCode())) {
+        	Flow flow = flowsIntegrationService.deleteFlow(flowId);
+            activityLogger.log(ActivityType.DELETE_FLOW, flow.getId());
+            return flow;
+        } else {
+            return null;
+        }
+    }
+    
+	/**
+	 * Re sync flow
+	 * 
+	 * @param flowId the flow id
+	 * 
+	 * @return
+	 */
+	public String resyncFlow(String flowId) {
+		activityLogger.log(ActivityType.RESYNC_FLOW, flowId);
+		return flowsIntegrationService.resyncFlow(flowId);
+	}
 }

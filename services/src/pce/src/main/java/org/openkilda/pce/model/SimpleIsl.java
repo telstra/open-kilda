@@ -12,82 +12,57 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 package org.openkilda.pce.model;
 
-import java.util.Objects;
+import org.openkilda.messaging.model.SwitchId;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * The ISL is directed and connects to a pair of EndPoints.
- *
+ * <p/>
  * For equals and hashcode, only the src and dst information are used, not the properties.
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode(exclude = {"cost", "latency"})
 public class SimpleIsl {
-    /** If another default is desired, you can control that at object creation */
-    public static final int DEFAULT_COST = 700;
+    /** If another default is desired, you can control that at object creation. */
+    private static final int DEFAULT_COST = 700;
 
-    public String src_dpid;
-    public String dst_dpid;
-    public int src_port;
-    public int dst_port;
-    public int cost;
-    public int latency;
+    private SwitchId srcDpid;
+    private SwitchId dstDpid;
+    private int srcPort;
+    private int dstPort;
+    private int cost;
+    private int latency;
 
 
-    public SimpleIsl(String src_dpid, String dst_dpid, int src_port, int dst_port, int cost, int latency) {
-        this.src_dpid = src_dpid;
-        this.dst_dpid = dst_dpid;
-        this.src_port = src_port;
-        this.dst_port = dst_port;
+    public SimpleIsl(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int cost, int latency) {
+        this.srcDpid = srcDpid;
+        this.dstDpid = dstDpid;
+        this.srcPort = srcPort;
+        this.dstPort = dstPort;
         this.cost = (cost == 0) ? DEFAULT_COST : cost;
         this.latency = latency;
     }
 
     /**
-     * Use this comparison if very strong equality is needed (most likely rare; probably only testing)
+     * Use this comparison if very strong equality is needed (most likely rare; probably only testing).
      *
      * @return true if every field is the same.
      */
     public boolean identical(Object o) {
-        if (this.equals(o)){
+        if (this.equals(o)) {
             SimpleIsl simpleIsl = (SimpleIsl) o;
             return cost == simpleIsl.cost && latency == simpleIsl.latency;
         }
         return false;
     }
 
-    /**
-     * Since equals and hashcode may be used in collection operations, we ignore properties like
-     * cost and latency. Otherwise, you could end up with two isls in a list that shouldn't be there
-     * - ie you cant have two isls over the same switch/port.
-     *
-     * @return true if src and dst match.  To compare properties as well, use identical.
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof SimpleIsl)) return false;
-        SimpleIsl simpleIsl = (SimpleIsl) o;
-        return src_port == simpleIsl.src_port &&
-                dst_port == simpleIsl.dst_port &&
-                Objects.equals(src_dpid, simpleIsl.src_dpid) &&
-                Objects.equals(dst_dpid, simpleIsl.dst_dpid);
-    }
-
-    @Override
-    public int hashCode() {
-
-        return Objects.hash(src_dpid, dst_dpid, src_port, dst_port);
-    }
-
-    @Override
-    public String toString() {
-        return "SimpleIsl{" +
-                "src_dpid='" + src_dpid + '\'' +
-                ", dst_dpid='" + dst_dpid + '\'' +
-                ", src_port=" + src_port +
-                ", dst_port=" + dst_port +
-                ", cost=" + cost +
-                ", latency=" + latency +
-                '}';
-    }
 }

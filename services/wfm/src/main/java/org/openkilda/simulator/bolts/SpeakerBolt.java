@@ -1,4 +1,46 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.simulator.bolts;
+
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.simulator.SimulatorTopology;
+import org.openkilda.simulator.classes.Commands;
+import org.openkilda.simulator.classes.IPortImpl;
+import org.openkilda.simulator.classes.ISwitchImpl;
+import org.openkilda.simulator.classes.PortStateType;
+import org.openkilda.simulator.classes.SimulatorCommands;
+import org.openkilda.simulator.classes.SimulatorException;
+import org.openkilda.simulator.messages.LinkMessage;
+import org.openkilda.simulator.messages.SwitchMessage;
+import org.openkilda.simulator.messages.simulator.SimulatorMessage;
+import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;
+import org.openkilda.simulator.messages.simulator.command.AddSwitchCommand;
+import org.openkilda.simulator.messages.simulator.command.PortModMessage;
+import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -7,33 +49,22 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.*;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.simulator.SimulatorTopology;
-import org.openkilda.simulator.classes.*;
-import org.openkilda.simulator.interfaces.ISwitch;
-import org.openkilda.simulator.messages.LinkMessage;
-import org.openkilda.simulator.messages.SwitchMessage;
-import org.openkilda.simulator.messages.simulator.SimulatorMessage;
-import org.openkilda.simulator.messages.simulator.command.AddLinkCommandMessage;
-import org.openkilda.simulator.messages.simulator.command.AddSwitchCommand;
-import org.openkilda.simulator.messages.simulator.command.PortModMessage;
-import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class SpeakerBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(SpeakerBolt.class);
     private OutputCollector collector;
-    protected Map<String, ISwitchImpl> switches;
+    protected Map<SwitchId, ISwitchImpl> switches;
+
     public enum TupleFields {
         COMMAND,
         DATA;
@@ -41,7 +72,7 @@ public class SpeakerBolt extends BaseRichBolt {
 
     protected String makeSwitchMessage(ISwitchImpl sw, SwitchState state) throws IOException {
         SwitchInfoData data = new SwitchInfoData(
-                sw.getDpid().toString(),
+                new SwitchId(sw.getDpid().toString()),
                 state,
                 "192.168.0.1", // TODO: need to create these on the fly
                 "sw" + sw.getDpid().toString(),
@@ -58,7 +89,7 @@ public class SpeakerBolt extends BaseRichBolt {
 
     protected String makePortMessage(ISwitchImpl sw, int portNum, PortChangeType type) throws IOException {
         PortInfoData data = new PortInfoData(
-                sw.getDpid().toString(),
+                new SwitchId(sw.getDpid().toString()),
                 portNum,
                 type
         );
@@ -72,10 +103,10 @@ public class SpeakerBolt extends BaseRichBolt {
 
     protected List<Values> addSwitch(AddSwitchCommand data) throws Exception {
         List<Values> values = new ArrayList<>();
-        String dpid = data.getDpid();
+        SwitchId dpid = data.getDpid();
         if (switches.get(dpid) == null) {
             ISwitchImpl sw = new ISwitchImpl(dpid, data.getNumOfPorts(), PortStateType.DOWN);
-            switches.put(sw.getDpid().toString(), sw);
+            switches.put(new SwitchId(sw.getDpid().toString()), sw);
             values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ADDED)));
             values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ACTIVATED)));
         }
@@ -101,13 +132,14 @@ public class SpeakerBolt extends BaseRichBolt {
                 localPort.enable();
             }
 
-            switches.put(sw.getDpid().toString(), sw);
+            switches.put(new SwitchId(sw.getDpid().toString()), sw);
 
             values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ADDED)));
             values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ACTIVATED)));
 
             for (IPortImpl p : sw.getPorts()) {
-                PortChangeType changeType = p.isActive() ? PortChangeType.UP : PortChangeType.DOWN; //TODO: see if OF sends DOWN
+                PortChangeType changeType =
+                        p.isActive() ? PortChangeType.UP : PortChangeType.DOWN; //TODO: see if OF sends DOWN
                 if (changeType == PortChangeType.UP) {
                     values.add(new Values("INFO", makePortMessage(sw, p.getNumber(), changeType)));
                 }
@@ -131,13 +163,13 @@ public class SpeakerBolt extends BaseRichBolt {
         if (!sw.isActive()) {
             return;
         }
-        IPortImpl localPort = sw.getPort(data.getPortNo());
+        IPortImpl localPort = sw.getPort(data.getPortNumber());
 
         if (localPort.isActiveIsl()) {
             List<PathNode> path = new ArrayList<>();
-            PathNode path1 = new PathNode(sw.getDpid().toString(), localPort.getNumber(), 0);
+            PathNode path1 = new PathNode(new SwitchId(sw.getDpid().toString()), localPort.getNumber(), 0);
             path1.setSegLatency(localPort.getLatency());
-            PathNode path2 = new PathNode(localPort.getPeerSwitch(), localPort.getPeerPortNum(), 1);
+            PathNode path2 = new PathNode(new SwitchId(localPort.getPeerSwitch()), localPort.getPeerPortNum(), 1);
             path.add(path1);
             path.add(path2);
             IslInfoData islInfoData = new IslInfoData(
@@ -147,7 +179,10 @@ public class SpeakerBolt extends BaseRichBolt {
                     IslChangeType.DISCOVERED,
                     100000);
             collector.emit(SimulatorTopology.SWITCH_BOLT_STREAM, tuple,
-                    new Values(localPort.getPeerSwitch().toLowerCase(), Commands.DO_DISCOVER_ISL_P2_COMMAND.name(), islInfoData));
+                    new Values(
+                            localPort.getPeerSwitch().toLowerCase(),
+                            Commands.DO_DISCOVER_ISL_P2_COMMAND.name(),
+                            islInfoData));
         }
     }
 
@@ -175,16 +210,17 @@ public class SpeakerBolt extends BaseRichBolt {
     }
 
     protected List<Values> addLink(AddLinkCommandMessage message) throws Exception {
-        List<Values> values = new ArrayList<>();
         ISwitchImpl sw;
         IPortImpl port;
 
-        sw = getSwitch("00:00:" + message.getDpid());
+        sw = getSwitch(message.getDpid());
         port = sw.getPort(message.getLink().getLocalPort());
         port.setLatency(message.getLink().getLatency());
         port.setPeerSwitch(message.getLink().getPeerSwitch());
         port.setPeerPortNum(message.getLink().getPeerPort());
         port.enable();
+
+        List<Values> values = new ArrayList<>();
         values.add(new Values("INFO", Utils.MAPPER.writeValueAsString(port.makePorChangetMessage())));
 
         return values;
@@ -192,14 +228,21 @@ public class SpeakerBolt extends BaseRichBolt {
 
     protected List<Values> modPort(PortModMessage message) throws Exception {
         List<Values> values = new ArrayList<>();
-        ISwitchImpl sw = getSwitch("00:00:" + message.getDpid());
+        ISwitchImpl sw = getSwitch(message.getDpid());
         IPortImpl port = sw.getPort(message.getPortNum());
         port.modPort(message);
         values.add(new Values("INFO", Utils.MAPPER.writeValueAsString(port.makePorChangetMessage())));
         return values;
     }
 
-    public ISwitchImpl getSwitch(String name) throws Exception {
+    /**
+     * Return the switch.
+     *
+     * @param name switch id.
+     * @return the switch.
+     * @throws Exception exception of switch not found.
+     */
+    public ISwitchImpl getSwitch(SwitchId name) throws Exception {
         ISwitchImpl sw = switches.get(name);
         if (sw == null) {
             throw new SimulatorException(String.format("Switch %s not found", name));
@@ -207,6 +250,12 @@ public class SpeakerBolt extends BaseRichBolt {
         return sw;
     }
 
+    /**
+     * Execute simulator command in the tuple.
+     *
+     * @param tuple tuple.
+     * @throws Exception exception of unknown switch command.
+     */
     public void doSimulatorCommand(Tuple tuple) throws Exception {
         List<Values> values = new ArrayList<>();
         if (tuple.getFields().contains("command")) {
@@ -248,6 +297,12 @@ public class SpeakerBolt extends BaseRichBolt {
         }
     }
 
+    /**
+     * Execute command in the tuple.
+     *
+     * @param tuple tuple.
+     * @throws Exception exception of unknown switch command.
+     */
     public void doCommand(Tuple tuple) throws Exception {
         String command = tuple.getStringByField(TupleFields.COMMAND.name());
         List<Values> values = new ArrayList<>();
@@ -267,20 +322,8 @@ public class SpeakerBolt extends BaseRichBolt {
         }
 
         CommandData data = (CommandData) tuple.getValueByField(TupleFields.DATA.name());
-        if (command.equals(Commands.DO_DELETE_FLOW.name())) {
-
-        } else if (command.equals(Commands.DO_DISCOVER_ISL_COMMAND.name())) {
+        if (command.equals(Commands.DO_DISCOVER_ISL_COMMAND.name())) {
             discoverIsl(tuple, (DiscoverIslCommandData) data);
-        } else if (command.equals(Commands.DO_DISCOVER_PATH_COMMAND.name())) {
-
-        } else if (command.equals(Commands.DO_INSTALL_EGRESS_FLOW.name())) {
-
-        } else if (command.equals(Commands.DO_INSTALL_INGRESS_FLOW.name())) {
-
-        } else if (command.equals(Commands.DO_INSTALL_ONESWITCH_FLOW.name())) {
-
-        } else if (command.equals(Commands.DO_INSTALL_TRANSIT_FLOW.name())) {
-
         } else {
             logger.error("Unknown switch command: {}".format(command));
             return;

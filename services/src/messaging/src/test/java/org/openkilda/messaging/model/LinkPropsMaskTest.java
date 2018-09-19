@@ -25,8 +25,8 @@ public class LinkPropsMaskTest {
 
     @Test
     public void testLinkPropsSerialization() throws Exception {
-        NetworkEndpointMask source = new NetworkEndpointMask("ff:fe:00:00:00:00:00:01", 8);
-        NetworkEndpointMask dest = new NetworkEndpointMask("ff:fe:00:00:00:00:00:02", null);
+        NetworkEndpointMask source = new NetworkEndpointMask(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
+        NetworkEndpointMask dest = new NetworkEndpointMask(new SwitchId("ff:fe:00:00:00:00:00:02"), null);
 
         LinkPropsMask origin = new LinkPropsMask(source, dest);
         String json = mapper.writeValueAsString(origin);

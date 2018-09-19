@@ -39,7 +39,7 @@ help:
 up:
 	# NB: just specifying the minimal set .. taking advantage of embedded dependencies to bring
 	#     up the remaining containers
-	OK_TESTS="DISABLE_LOGIN" docker-compose up -d mininet floodlight storm_supervisor \
+	OK_TESTS="DISABLE_LOGIN" docker-compose up -d mininet floodlight storm-supervisor \
 	topology-engine kibana
 
 down:
@@ -65,7 +65,7 @@ stop:
 login-storm:
 	@echo ""
 	@echo "NB: For Logs, look at /opt/storm/logs/[workers-artifacts]"
-	docker-compose exec storm_supervisor "/bin/bash"
+	docker-compose exec storm-supervisor "/bin/bash"
 
 login-mininet:
 	@echo ""
@@ -116,6 +116,9 @@ validate-flows:
 ## - kilda.topo.disco
 ## - kilda.topo.eng
 ## - kilda.speaker
+## - kilda.speaker.disco
+## - kilda.speaker.flow
+## - kilda.speaker.flow.ping
 ## =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 .PHONY: dump.topo.disco dump.topo.eng dump.speaker list.topics
 
@@ -133,9 +136,27 @@ dump.topo.eng:
 
 dump.speaker:
 	@echo ""
-	@echo "==> Use this to validate traffic between the storm topology and the speaker (ISL disco)"
+	@echo "==> Use this to validate traffic between the storm topology and the speaker (generic)"
 	@echo ""
 	kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker --from-beginning
+
+dump.speaker.disco:
+	@echo ""
+	@echo "==> Use this to validate traffic between the storm topology and the speaker (ISL disco)"
+	@echo ""
+	kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker.disco --from-beginning
+
+dump.speaker.flow:
+	@echo ""
+	@echo "==> Use this to validate traffic between the storm topology and the speaker (flow requests)"
+	@echo ""
+	kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker.flow --from-beginning
+
+dump.speaker.flow.ping:
+	@echo ""
+	@echo "==> Use this to validate traffic between the storm topology and the speaker (flow ping requests)"
+	@echo ""
+	kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker.flow.ping --from-beginning
 
 list.topics:
 	@echo ""

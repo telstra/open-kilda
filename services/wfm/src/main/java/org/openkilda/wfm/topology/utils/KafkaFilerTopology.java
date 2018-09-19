@@ -29,7 +29,7 @@ import java.io.File;
 public class KafkaFilerTopology extends AbstractTopology<KafkaFilerTopologyConfig> {
     private String topic;
     /**
-     * assigned after createTopology() is called
+     * assigned after createTopology() is called.
      */
     private FilerBolt filer;
 
@@ -48,7 +48,8 @@ public class KafkaFilerTopology extends AbstractTopology<KafkaFilerTopologyConfi
     @Override
     public StormTopology createTopology() {
         final String directory = topologyConfig.getFilterDirectory();
-        final String name = String.format("%s_%s_%s_%d", getTopologyName(), topic, directory, System.currentTimeMillis());
+        final String name =
+                String.format("%s_%s_%s_%d", getTopologyName(), topic, directory, System.currentTimeMillis());
 
         String spoutId = "KafkaSpout-" + topic;
         int parallelism = 1;
@@ -56,8 +57,9 @@ public class KafkaFilerTopology extends AbstractTopology<KafkaFilerTopologyConfi
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout(spoutId, createKafkaSpout(topic, name), parallelism);
         filer = new FilerBolt().withFileName("utils-" + topic + ".log");
-        if (directory.length() != 0)
+        if (directory.length() != 0) {
             filer.withDir(new File(directory));
+        }
 
         builder.setBolt("utils", filer, parallelism)
                 .shuffleGrouping(spoutId);

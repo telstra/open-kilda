@@ -17,11 +17,13 @@ package org.openkilda.floodlight.switchmanager.web;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import com.google.common.collect.ImmutableList;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
+
+import com.google.common.collect.ImmutableList;
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFInstructionType;
@@ -72,7 +74,7 @@ public class FlowsResource extends ServerResource {
     private Map<String, Object> buildFlowInstructions(final List<OFInstruction> instructions) {
         Map<String, Object> data = new HashMap<>();
         for (OFInstruction instruction : instructions) {
-            Map<String, Object> iData = new HashMap<>();
+            Map<String, Object> instructionData = new HashMap<>();
             OFInstructionType instructionType = instruction.getType();
             switch (instructionType) {
                 case APPLY_ACTIONS:
@@ -80,39 +82,40 @@ public class FlowsResource extends ServerResource {
                         OFActionType actionType = action.getType();
                         switch (actionType) {
                             case METER: // ver1.5
-                                iData.put(actionType.toString(), ((OFActionMeter) action).getMeterId());
+                                instructionData.put(actionType.toString(), ((OFActionMeter) action).getMeterId());
                                 break;
                             case OUTPUT:
                                 Optional.ofNullable(((OFActionOutput) action).getPort())
-                                        .ifPresent(port -> iData.put(actionType.toString(), port.toString()));
+                                        .ifPresent(port -> instructionData.put(actionType.toString(), port.toString()));
                                 break;
                             case POP_VLAN:
-                                iData.put(actionType.toString(), null);
+                                instructionData.put(actionType.toString(), null);
                                 break;
                             case PUSH_VLAN:
                                 Optional.ofNullable(((OFActionPushVlan) action).getEthertype())
-                                        .ifPresent(ethType -> iData.put(actionType.toString(), ethType.toString()));
+                                        .ifPresent(ethType -> instructionData.put(
+                                                actionType.toString(), ethType.toString()));
                                 break;
                             case SET_FIELD:
                                 OFOxm<?> setFieldAction = ((OFActionSetField) action).getField();
-                                iData.put(actionType.toString(), String.format("%s->%s",
+                                instructionData.put(actionType.toString(), String.format("%s->%s",
                                         setFieldAction.getValue(), setFieldAction.getMatchField().getName()));
                                 break;
                             default:
-                                iData.put(actionType.toString(), "could not parse");
+                                instructionData.put(actionType.toString(), "could not parse");
                                 break;
                         }
                     }
                     break;
                 case METER:
                     OFInstructionMeter action = ((OFInstructionMeter) instruction);
-                    iData.put(instructionType.toString(), action.getMeterId());
+                    instructionData.put(instructionType.toString(), action.getMeterId());
                     break;
                 default:
-                    iData.put(instructionType.toString(), "could not parse");
+                    instructionData.put(instructionType.toString(), "could not parse");
                     break;
             }
-            data.put(instruction.getType().name(), iData);
+            data.put(instruction.getType().name(), instructionData);
         }
         return data;
     }
@@ -135,9 +138,12 @@ public class FlowsResource extends ServerResource {
         return data;
     }
 
+    /**
+     * The method returns the flow for the switch from the request.
+     */
     @Get("json")
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getFlows() {
+    public Map<String, Object> getFlows() throws SwitchOperationException {
         Map<String, Object> response = new HashMap<>();
         String switchId = (String) this.getRequestAttributes().get("switch_id");
         LOGGER.debug("Get flows for switch: {}", switchId);

@@ -19,6 +19,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -73,7 +75,7 @@ public class BaseInstallFlow extends BaseFlow {
     public BaseInstallFlow(@JsonProperty(TRANSACTION_ID) final Long transactionId,
                            @JsonProperty(FLOW_ID) final String id,
                            @JsonProperty("cookie") final Long cookie,
-                           @JsonProperty("switch_id") final String switchId,
+                           @JsonProperty("switch_id") final SwitchId switchId,
                            @JsonProperty("input_port") final Integer inPort,
                            @JsonProperty("output_port") final Integer outPort) {
         super(transactionId, id, cookie, switchId);
@@ -155,12 +157,12 @@ public class BaseInstallFlow extends BaseFlow {
         }
 
         BaseInstallFlow that = (BaseInstallFlow) object;
-        return Objects.equals(getTransactionId(), that.getTransactionId()) &&
-                Objects.equals(getId(), that.getId()) &&
-                Objects.equals(getCookie(), that.getCookie()) &&
-                Objects.equals(getSwitchId(), that.getSwitchId()) &&
-                Objects.equals(getInputPort(), that.getInputPort()) &&
-                Objects.equals(getOutputPort(), that.getOutputPort());
+        return Objects.equals(getTransactionId(), that.getTransactionId())
+                && Objects.equals(getId(), that.getId())
+                && Objects.equals(getCookie(), that.getCookie())
+                && Objects.equals(getSwitchId(), that.getSwitchId())
+                && Objects.equals(getInputPort(), that.getInputPort())
+                && Objects.equals(getOutputPort(), that.getOutputPort());
     }
 
     /**

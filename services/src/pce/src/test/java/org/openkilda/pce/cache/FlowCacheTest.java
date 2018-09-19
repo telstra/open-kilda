@@ -24,18 +24,20 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.NetworkTopologyConstants;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputerMock;
 
-import edu.emory.mathcs.backport.java.util.Collections;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,24 +50,24 @@ public class FlowCacheTest {
     private final PathComputer.Strategy defaultStrategy = PathComputer.Strategy.COST;
 
     private final Flow firstFlow = new Flow("first-flow", 1, false, "first-flow",
-            "sw1", 11, 100,
-            "sw3", 11, 200);
+            new SwitchId("ff:01"), 11, 100,
+            new SwitchId("ff:03"), 11, 200);
     private final Flow secondFlow = new Flow("second-flow", 1, false, "second-flow",
-            "sw5", 12, 100,
-            "sw3", 12, 200);
+            new SwitchId("ff:05"), 12, 100,
+            new SwitchId("ff:03"), 12, 200);
     private final Flow thirdFlow = new Flow("third-flow", 1, false, "third-flow",
-            "sw3", 21, 100,
-            "sw3", 22, 200);
+            new SwitchId("ff:03"), 21, 100,
+            new SwitchId("ff:03"), 22, 200);
     private final Flow fourthFlow = new Flow("fourth-flow", 1, false, "fourth-flow",
-            "sw4", 21, 100,
-            "sw4", 22, 200);
+            new SwitchId("ff:04"), 21, 100,
+            new SwitchId("ff:04"), 22, 200);
     private final Flow fifthFlow = new Flow("fifth-flow", 1, false, "fifth-flow",
-            "sw5", 21, 100,
-            "sw5", 22, 200);
+            new SwitchId("ff:05"), 21, 100,
+            new SwitchId("ff:05"), 22, 200);
 
     private final Flow noBandwidthFlow = new Flow("no-bandwidth-flow", 0, true, "no-bandwidth-flow",
-            "sw1", 11, 100,
-            "sw3", 11, 200);
+            new SwitchId("ff:01"), 11, 100,
+            new SwitchId("ff:03"), 11, 200);
 
     @Before
     public void setUp() {
@@ -85,16 +87,16 @@ public class FlowCacheTest {
 
     @Test
     public void getFlow() throws Exception {
-        ImmutablePair<Flow, Flow> newFlow =
+        FlowPair<Flow, Flow> newFlow =
                 flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
-        ImmutablePair<Flow, Flow> storedFlow = flowCache.getFlow(firstFlow.getFlowId());
+        FlowPair<Flow, Flow> storedFlow = flowCache.getFlow(firstFlow.getFlowId());
         assertEquals(newFlow, storedFlow);
     }
 
     @Test
     public void createFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
-        ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, path);
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+        FlowPair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, path);
 
         Flow forward = newFlow.left;
         assertEquals(1 | ResourceCache.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
@@ -113,8 +115,8 @@ public class FlowCacheTest {
 
     @Test
     public void createNoBandwidthFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(noBandwidthFlow, defaultStrategy);
-        ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(noBandwidthFlow, path);
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(noBandwidthFlow, defaultStrategy);
+        FlowPair<Flow, Flow> newFlow = flowCache.createFlow(noBandwidthFlow, path);
 
         Flow forward = newFlow.left;
         assertEquals(1 | ResourceCache.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
@@ -136,9 +138,9 @@ public class FlowCacheTest {
         /*
          * This is to validate that single switch flows don't consume transit vlans.
          */
-        ImmutablePair<PathInfoData, PathInfoData> path1 = computer.getPath(thirdFlow, defaultStrategy);
-        ImmutablePair<PathInfoData, PathInfoData> path2 = computer.getPath(fourthFlow, defaultStrategy);
-        ImmutablePair<PathInfoData, PathInfoData> path3 = computer.getPath(fifthFlow, defaultStrategy);
+        FlowPair<PathInfoData, PathInfoData> path1 = computer.getPath(thirdFlow, defaultStrategy);
+        FlowPair<PathInfoData, PathInfoData> path2 = computer.getPath(fourthFlow, defaultStrategy);
+        FlowPair<PathInfoData, PathInfoData> path3 = computer.getPath(fifthFlow, defaultStrategy);
 
         for (int i = 0; i < 1000; i++) {
             thirdFlow.setFlowId(thirdFlow.getFlowId() + i);
@@ -151,42 +153,62 @@ public class FlowCacheTest {
 
     }
 
-
-    @Test(expected = CacheException.class)
+    @Test
     public void createAlreadyExistentFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
         flowCache.createFlow(firstFlow, path);
-        flowCache.createFlow(firstFlow, path);
+
+        final Set<Integer> allocatedVlans = flowCache.getAllocatedVlans();
+        final Set<Integer> allocatedCookies = flowCache.getAllocatedCookies();
+        final Map<SwitchId, Set<Integer>> allocatedMeters = flowCache.getAllocatedMeters();
+        try {
+            flowCache.createFlow(firstFlow, path);
+            throw new AssertionError(String.format(
+                    "Expected exception %s is not raised", CacheException.class.getName()));
+        } catch (CacheException e) {
+            // all good till now
+        }
+
+        String callName = String.format("%s.createFlow(...) call", flowCache.getClass().getCanonicalName());
+        Assert.assertEquals(
+                String.format("Detect VlanId leak in %s", callName),
+                allocatedVlans, flowCache.getAllocatedVlans());
+        Assert.assertEquals(
+                String.format("Detect cookies leak in %s", callName),
+                allocatedCookies, flowCache.getAllocatedCookies());
+        Assert.assertEquals(
+                String.format("Detect meterId leak in %s", callName),
+                allocatedMeters, flowCache.getAllocatedMeters());
     }
 
     @Test
     public void deleteFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
-        ImmutablePair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, path);
-        ImmutablePair<Flow, Flow> oldFlow = flowCache.deleteFlow(firstFlow.getFlowId());
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+        FlowPair<Flow, Flow> newFlow = flowCache.createFlow(firstFlow, path);
+        FlowPair<Flow, Flow> oldFlow = flowCache.deleteFlow(firstFlow.getFlowId());
         assertEquals(newFlow, oldFlow);
         assertEquals(0, flowCache.dumpFlows().size());
     }
 
     @Test
     public void updateFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
 
-        final ImmutablePair<Flow, Flow> oldFlow = flowCache.createFlow(firstFlow, path);
-        assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw1").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw2").size());
-        assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw3").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw4").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw5").size());
+        final FlowPair<Flow, Flow> oldFlow = flowCache.createFlow(firstFlow, path);
+        assertEquals(1, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:01")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:02")).size());
+        assertEquals(1, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:03")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:04")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:05")).size());
         assertEquals(2, flowCache.resourceCache.getAllVlanIds().size());
         assertEquals(1, flowCache.resourceCache.getAllCookies().size());
 
-        final ImmutablePair<Flow, Flow> newFlow = flowCache.updateFlow(firstFlow, path);
-        assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw1").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw2").size());
-        assertEquals(1, flowCache.resourceCache.getAllMeterIds("sw3").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw4").size());
-        assertEquals(0, flowCache.resourceCache.getAllMeterIds("sw5").size());
+        final FlowPair<Flow, Flow> newFlow = flowCache.updateFlow(firstFlow, path);
+        assertEquals(1, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:01")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:02")).size());
+        assertEquals(1, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:03")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:04")).size());
+        assertEquals(0, flowCache.resourceCache.getAllMeterIds(new SwitchId("ff:05")).size());
         assertEquals(2, flowCache.resourceCache.getAllVlanIds().size());
         assertEquals(1, flowCache.resourceCache.getAllCookies().size());
 
@@ -202,9 +224,9 @@ public class FlowCacheTest {
 
     @Test
     public void updateNoBandwidthFlow() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
 
-        ImmutablePair<Flow, Flow> oldFlow = flowCache.createFlow(firstFlow, path);
+        FlowPair<Flow, Flow> oldFlow = flowCache.createFlow(firstFlow, path);
 
         assertEquals(ResourceCache.MIN_METER_ID, oldFlow.left.getMeterId());
         assertEquals(ResourceCache.MIN_METER_ID, oldFlow.right.getMeterId());
@@ -212,36 +234,64 @@ public class FlowCacheTest {
         firstFlow.setBandwidth(0);
         fifthFlow.setIgnoreBandwidth(true);
 
-        ImmutablePair<Flow, Flow> newFlow = flowCache.updateFlow(firstFlow, path);
+        FlowPair<Flow, Flow> newFlow = flowCache.updateFlow(firstFlow, path);
 
         assertEquals(0, newFlow.left.getMeterId());
         assertEquals(0, newFlow.right.getMeterId());
     }
 
     @Test
+    public void updateMissingFlow() throws Exception {
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+
+        final Set<Integer> allocatedVlans = flowCache.getAllocatedVlans();
+        final Set<Integer> allocatedCookies = flowCache.getAllocatedCookies();
+        final Map<SwitchId, Set<Integer>> allocatedMeters = flowCache.getAllocatedMeters();
+
+        try {
+            flowCache.updateFlow(firstFlow, path);
+            throw new AssertionError(String.format(
+                    "Expected exception %s is not raised", CacheException.class.getName()));
+        } catch (CacheException e) {
+            // all good till now
+        }
+
+        String callName = String.format("%s.createFlow(...) call", flowCache.getClass().getCanonicalName());
+        Assert.assertEquals(
+                String.format("Detect VlanId leak in %s", callName),
+                allocatedVlans, flowCache.getAllocatedVlans());
+        Assert.assertEquals(
+                String.format("Detect cookies leak in %s", callName),
+                allocatedCookies, flowCache.getAllocatedCookies());
+        Assert.assertEquals(
+                String.format("Detect meterId leak in %s", callName),
+                allocatedMeters, flowCache.getAllocatedMeters());
+    }
+
+    @Test
     public void dumpFlows() throws Exception {
-        ImmutablePair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
-        ImmutablePair<Flow, Flow> second =
+        FlowPair<Flow, Flow> first = flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
+        FlowPair<Flow, Flow> second =
                 flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
-        ImmutablePair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
+        FlowPair<Flow, Flow> third = flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
         assertEquals(new HashSet<>(Arrays.asList(first, second, third)), flowCache.dumpFlows());
     }
 
     @Test
     public void getFlowPath() throws Exception {
         flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(firstFlow, defaultStrategy);
         assertEquals(path, flowCache.getFlowPath(firstFlow.getFlowId()));
     }
 
     @Test
     public void getFlowsWithAffectedPathBySwitch() throws Exception {
-        Set<ImmutablePair<Flow, Flow>> affected;
-        final ImmutablePair<Flow, Flow> first =
+        Set<FlowPair<Flow, Flow>> affected;
+        final FlowPair<Flow, Flow> first =
                 flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
-        final ImmutablePair<Flow, Flow> second =
+        final FlowPair<Flow, Flow> second =
                 flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
-        final ImmutablePair<Flow, Flow> third =
+        final FlowPair<Flow, Flow> third =
                 flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
 
         affected = flowCache.getFlowsWithAffectedPath(NetworkTopologyConstants.sw5.getSwitchId());
@@ -256,10 +306,10 @@ public class FlowCacheTest {
 
     @Test
     public void getFlowsWithAffectedPathByIsl() throws Exception {
-        Set<ImmutablePair<Flow, Flow>> affected;
-        final ImmutablePair<Flow, Flow> first =
+        Set<FlowPair<Flow, Flow>> affected;
+        final FlowPair<Flow, Flow> first =
                 flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
-        final ImmutablePair<Flow, Flow> second =
+        final FlowPair<Flow, Flow> second =
                 flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
         flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
 
@@ -278,10 +328,10 @@ public class FlowCacheTest {
 
     @Test
     public void getFlowsWithAffectedPathByPort() throws Exception {
-        Set<ImmutablePair<Flow, Flow>> affected;
-        final ImmutablePair<Flow, Flow> first =
+        Set<FlowPair<Flow, Flow>> affected;
+        final FlowPair<Flow, Flow> first =
                 flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
-        final ImmutablePair<Flow, Flow> second =
+        final FlowPair<Flow, Flow> second =
                 flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
         flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
 
@@ -305,11 +355,11 @@ public class FlowCacheTest {
     @Test
     public void getFlowsForUpState() throws Exception {
         Map<String, String> affected;
-        final ImmutablePair<Flow, Flow> first =
+        final FlowPair<Flow, Flow> first =
                 flowCache.createFlow(firstFlow, computer.getPath(firstFlow, defaultStrategy));
-        final ImmutablePair<Flow, Flow> second =
+        final FlowPair<Flow, Flow> second =
                 flowCache.createFlow(secondFlow, computer.getPath(secondFlow, defaultStrategy));
-        final ImmutablePair<Flow, Flow> third =
+        final FlowPair<Flow, Flow> third =
                 flowCache.createFlow(thirdFlow, computer.getPath(thirdFlow, defaultStrategy));
 
         affected = flowCache.getFlowsWithAffectedEndpoint(NetworkTopologyConstants.sw5.getSwitchId());
@@ -325,7 +375,7 @@ public class FlowCacheTest {
 
     @Test
     public void getPath() throws Exception {
-        ImmutablePair<PathInfoData, PathInfoData> path = computer.getPath(
+        FlowPair<PathInfoData, PathInfoData> path = computer.getPath(
                 makeFlow("generic", NetworkTopologyConstants.sw1, NetworkTopologyConstants.sw3, 0), defaultStrategy);
         System.out.println(path.toString());
 
@@ -407,7 +457,7 @@ public class FlowCacheTest {
 
         PathNode node;
 
-        ImmutablePair<PathInfoData, PathInfoData> path43 = computer.getPath(
+        FlowPair<PathInfoData, PathInfoData> path43 = computer.getPath(
                 makeFlow("collide-flow-one", NetworkTopologyConstants.sw4, NetworkTopologyConstants.sw3, 5),
                 defaultStrategy);
         System.out.println(path43);
@@ -459,7 +509,7 @@ public class FlowCacheTest {
         assertEquals(islForwardPath43, path43.left);
         assertEquals(islReversePath43, path43.right);
 
-        ImmutablePair<PathInfoData, PathInfoData> path23 = computer.getPath(
+        FlowPair<PathInfoData, PathInfoData> path23 = computer.getPath(
                 makeFlow("collide-flow-two", NetworkTopologyConstants.sw2, NetworkTopologyConstants.sw3, 5),
                 defaultStrategy);
         System.out.println(path23);
@@ -511,7 +561,7 @@ public class FlowCacheTest {
         assertEquals(islForwardPath23, path23.left);
         assertEquals(islReversePath23, path23.right);
 
-        ImmutablePair<Set<PathNode>, Set<PathNode>> expected = new ImmutablePair<>(
+        FlowPair<Set<PathNode>, Set<PathNode>> expected = new FlowPair<>(
                 new HashSet<>(Arrays.asList(node1, node2)),
                 new HashSet<>(Arrays.asList(node3, node4)));
 

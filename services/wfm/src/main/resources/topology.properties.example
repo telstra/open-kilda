@@ -1,0 +1,76 @@
+environment.naming.prefix = 
+
+parallelism = 1
+workers = 1
+
+kafka.hosts = kafka.pendev:9092
+kafka.partitions.default = 1
+kafka.replication.default = 3
+kafka.topic.ctrl = kilda.ctrl
+kafka.topic.flow = kilda.flow
+kafka.topic.flow.status = kilda.flow.status
+kafka.topic.ping = kilda.ping
+kafka.topic.health.check = kilda.health.check
+kafka.topic.northbound = kilda.northbound
+kafka.topic.opentsdb = kilda.otsdb
+kafka.topic.simulator = kilda.simulator
+kafka.topic.speaker = kilda.speaker
+kafka.topic.speaker.disco = kilda.speaker.disco
+kafka.topic.speaker.flow = kilda.speaker.flow
+kafka.topic.speaker.flow.ping = kilda.speaker.flow.ping
+kafka.topic.stats = kilda.stats
+kafka.topic.topo.cache = kilda.topo.cache
+kafka.topic.topo.disco = kilda.topo.disco
+kafka.topic.topo.eng = kilda.topo.eng
+kafka.topic.topo.nbworker = kilda.topo.nb
+
+reroute.throttling.delay.min = 10
+reroute.throttling.delay.max = 600
+
+opentsdb.hosts = http://opentsdb.pendev:4242
+opentsdb.timeout = 30
+opentsdb.num.spouts = 1
+opentsdb.num.opentsdbfilterbolt = 1
+opentsdb.num.opentsdbbolt = 1
+opentsdb.workers.opentsdbolt = 1
+opentsdb.num.datapointparserbolt = 1
+opentsdb.workers.datapointparserbolt = 1
+opentsdb.batch.size = 50
+opentsdb.flush.interval = 1
+opentsdb.workers = 1
+opentsdb.client.chunked-requests.enabled = true
+
+neo4j.hosts = neo4j.pendev:7687
+neo4j.user = neo4j
+neo4j.pswd = temppass
+
+filter.directory =
+logger.level = INFO
+logger.watermark =
+
+#######
+# Discovery
+# - discovery.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0
+# - discovery.timeout = at which point do we send an ISL Failure (if it is an ISL)
+#       - NB: the number is in "ticks", not "attempts" .. attempts = timeout/interval
+# - discovery.limit = at what point do we stop sending? -1 means never ..
+# - discovery.speaker-failure-timeout - after this amount of seconds without a
+#   message from speaker it will be marked as unavailable
+# - discovery.keep.removed.isl - how long should we store/remember in minutes isl endpoints.
+#   it is mainly used for defining whether isl is moved or not
+discovery.interval = 2
+discovery.timeout = 9
+discovery.limit = -1
+discovery.speaker-failure-timeout = 5
+discovery.dump-request-timeout-seconds=60
+discovery.keep.removed.isl = 60
+
+# all following ping intervals are in seconds
+#flow.ping.scale-factor = 2
+#flow.ping.interval = 10
+#flow.ping.timeout = 2
+#flow.ping.fail.delay = 45
+#flow.ping.fail.reset = 1800
+
+local = no
+local.execution.time = 300

@@ -15,21 +15,21 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
+import org.projectfloodlight.openflow.protocol.OFMeterConfig;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.List;
 import java.util.Map;
 
-/**
- * Created by jonv on 29/3/17.
- */
+
 public interface ISwitchManager extends IFloodlightService {
     /** OVS software switch manufacturer constant value. */
     String OVS_MANUFACTURER = "Nicira, Inc.";
@@ -38,6 +38,8 @@ public interface ISwitchManager extends IFloodlightService {
     long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
 
     /**
+     * Set connection mode.
+     *
      * @param mode the mode to use, if not null
      * @return the connection mode after the set operation (if not null)
      */
@@ -56,11 +58,7 @@ public interface ISwitchManager extends IFloodlightService {
     /**
      * Installs the default verification rule, if it is allowed. One case where it isn't -
      * if the switch is an OpenFlow 1.2 switch and isBroadcast = false. In that scenario, nothing
-     * happesn
-     *
-     * @param dpid datapathId of switch
-     * @param isBroadcast
-     * @throws SwitchOperationException in case of errors
+     * happens.
      */
     void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException;
@@ -81,7 +79,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dstMask Destination Mask to match on
      * @param cookie Cookie to use for this rule
      * @param priority Priority of the rule
-     * @throws SwitchOperationException
      */
     void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
                                final long cookie, final int priority) throws SwitchOperationException;
@@ -156,21 +153,21 @@ public interface ISwitchManager extends IFloodlightService {
                                                       final long meterId) throws SwitchOperationException;
 
     /**
-     * Returns list of installed flows
+     * Returns list of installed flows.
      *
      * @param dpid switch id
      * @return OF flow stats entries
      */
-    List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid);
+    List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid) throws SwitchNotFoundException;
 
     /**
-     * Returns list of installed meters
+     * Returns list of installed meters.
      *
      * @param dpid switch id
      * @return OF meter config stats entries
      * @throws SwitchOperationException Switch not found
      */
-    OFMeterConfigStatsReply dumpMeters(final DatapathId dpid) throws SwitchOperationException;
+    List<OFMeterConfig> dumpMeters(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Installs a meter on ingress switch OF_13.
@@ -200,7 +197,7 @@ public interface ISwitchManager extends IFloodlightService {
     Map<DatapathId, IOFSwitch> getAllSwitchMap();
 
     /**
-     * Deletes all non-default rules from the switch
+     * Deletes all non-default rules from the switch.
      *
      * @param dpid datapath ID of the switch
      * @return the list of cookies for removed rules
@@ -209,7 +206,7 @@ public interface ISwitchManager extends IFloodlightService {
     List<Long> deleteAllNonDefaultRules(DatapathId dpid) throws SwitchOperationException;
 
     /**
-     * Deletes the default rules (drop + verification) from the switch
+     * Deletes the default rules (drop + verification) from the switch.
      *
      * @param dpid datapath ID of the switch
      * @return the list of cookies for removed rules
@@ -218,7 +215,7 @@ public interface ISwitchManager extends IFloodlightService {
     List<Long> deleteDefaultRules(DatapathId dpid) throws SwitchOperationException;
 
     /**
-     * Delete rules that match the criteria
+     * Delete rules that match the criteria.
      *
      * @param dpid datapath ID of the switch
      * @param criteria the list of delete criteria
@@ -229,17 +226,11 @@ public interface ISwitchManager extends IFloodlightService {
 
     /**
      * Safely install default rules - ie monitor traffic.
-     *
-     * @param dpid the switch id to
-     * @throws SwitchOperationException
      */
     void startSafeMode(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Stop the safe install .. switch is deactivated or removed.
-     *
-     * @param dpid the switch id to
-     * @throws SwitchOperationException
      */
     void stopSafeMode(final DatapathId dpid);
 
@@ -248,4 +239,28 @@ public interface ISwitchManager extends IFloodlightService {
     void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException;
 
     void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException;
+
+    /**
+     * Configure switch port. <br>
+     * Configurations
+     * <ul>
+     * <li> UP/DOWN port </li>
+     * <li> Change port speed </li>
+     * </ul>
+     *
+     * @param dpId datapath ID of the switch.
+     * @param portNumber the port to configure.
+     * @param portAdminDown the port status to be applied.
+     * @throws SwitchOperationException Switch not found or Port not found
+     */
+    void configurePort(DatapathId dpId, int portNumber, Boolean portAdminDown) throws SwitchOperationException;
+
+    /**
+     * Return a list of ports description.
+     *
+     * @param dpid switch id.
+     * @return a list of ports description.
+     * @throws SwitchOperationException Switch not found.
+     */
+    List<OFPortDesc> dumpPortsDescription(DatapathId dpid) throws SwitchOperationException;
 }

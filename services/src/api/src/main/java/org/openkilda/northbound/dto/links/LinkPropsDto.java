@@ -16,16 +16,19 @@
 package org.openkilda.northbound.dto.links;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(exclude = "props")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
@@ -36,29 +39,6 @@ public class LinkPropsDto {
     private String dstSwitch;
     private Integer dstPort;
     private Map<String, String> props = new HashMap<>();
-
-    /**
-     * Creates an empty link properties.
-     */
-    public LinkPropsDto() {
-    }
-
-    public LinkPropsDto(@JsonProperty("src_switch") String srcSwitch, @JsonProperty("src_port") Integer srcPort,
-                        @JsonProperty("dst_switch") String dstSwitch, @JsonProperty("dst_port") Integer dstPort,
-                        @JsonProperty("props") Map<String, String> props) {
-        this.srcSwitch = srcSwitch;
-        this.srcPort = srcPort;
-        this.dstSwitch = dstSwitch;
-        this.dstPort = dstPort;
-        this.props = props;
-    }
-
-    /**
-     * Creates a copy of link properties.
-     */
-    public LinkPropsDto(Map<String, String> props) {
-        this.props = new HashMap<>(props);
-    }
 
     public String getProperty(String key) {
         return props.get(key);

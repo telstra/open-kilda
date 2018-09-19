@@ -19,16 +19,22 @@ import static com.nitorcreations.Matchers.reflectEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.floodlight.model.MeterEntry;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
+import cucumber.api.java.en.And;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.Map.Entry;
 
 @Slf4j
 public class NorthboundSteps {
@@ -46,6 +52,7 @@ public class NorthboundSteps {
 
     private HealthCheck healthCheckResponse;
     private FeatureTogglePayload featureTogglesResponse;
+    private DeleteMeterResult deleteMeterResponse;
 
     @When("^request Northbound health check$")
     public void requestNorthboundHealthcheck() {
@@ -87,5 +94,17 @@ public class NorthboundSteps {
     @Then("^feature toggles response matches request$")
     public void northboundResponseMatchesRequest() {
         assertThat(featureToggleRequest, reflectEquals(featureTogglesResponse));
+    }
+
+    @And("^remove '(.*)' from '(.*)'$")
+    public void removeMeter(String meterAlias, String switchAlias) {
+        Entry<Integer, MeterEntry> meter = topologyUnderTest.getAliasedObject(meterAlias);
+        Switch sw = topologyUnderTest.getAliasedObject(switchAlias);
+        deleteMeterResponse = northboundService.deleteMeter(sw.getDpId(), meter.getKey());
+    }
+
+    @Then("^remove meter response is successful$")
+    public void removeMeterResponseIsSuccessful() {
+        assertTrue(deleteMeterResponse.isDeleted());
     }
 }

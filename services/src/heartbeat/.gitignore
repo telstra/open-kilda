@@ -1,8 +1,0 @@
-target/
-tmp/
-config/
-
-# eclipse stuff
-.classpath
-.project
-.settings/

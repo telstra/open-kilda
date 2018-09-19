@@ -18,7 +18,9 @@ package org.openkilda.northbound.service.impl;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
@@ -27,11 +29,11 @@ import org.openkilda.messaging.te.request.LinkPropsPut;
 import org.openkilda.messaging.te.response.LinkPropsResponse;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
-import org.openkilda.northbound.dto.LinkPropsDto;
-import org.openkilda.northbound.dto.LinksDto;
+import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
-import org.openkilda.northbound.service.LinkPropsResult;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -83,7 +85,7 @@ public class LinkServiceImpl implements LinkService {
     private ResponseCollector<LinkPropsData> linksPropsCollector;
 
     @Override
-    public List<LinksDto> getLinks() {
+    public List<LinkDto> getLinks() {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get links request received");
         CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
@@ -96,7 +98,7 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public List<LinkPropsDto> getLinkProps(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort) {
+    public List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get link properties request received");
         LinkPropsGet request = new LinkPropsGet(new NetworkEndpointMask(srcSwitch, srcPort),
@@ -112,12 +114,20 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public LinkPropsResult setLinkProps(List<LinkPropsDto> linkPropsList) {
+    public BatchResults setLinkProps(List<LinkPropsDto> linkPropsList) {
         logger.debug("Link props \"SET\" request received (consists of {} records)", linkPropsList.size());
 
         ArrayList<String> pendingRequest = new ArrayList<>(linkPropsList.size());
+        ArrayList<String> errors = new ArrayList<>();
         for (LinkPropsDto requestItem : linkPropsList) {
-            LinkPropsPut teRequest = new LinkPropsPut(linkPropsMapper.toLinkProps(requestItem));
+            LinkProps linkProps;
+            try {
+                linkProps = linkPropsMapper.toLinkProps(requestItem);
+            } catch (IllegalArgumentException e) {
+                errors.add(e.getMessage());
+                continue;
+            }
+            LinkPropsPut teRequest = new LinkPropsPut(linkProps);
             String requestId = idFactory.produceChained(RequestCorrelationId.getId());
             CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
             messageProducer.send(topologyEngineTopic, message);
@@ -125,8 +135,11 @@ public class LinkServiceImpl implements LinkService {
             pendingRequest.add(requestId);
         }
 
+        if (!errors.isEmpty()) {
+            return new BatchResults(errors.size(), 0, errors);
+        }
+
         int successCount = 0;
-        ArrayList<String> errors = new ArrayList<>(pendingRequest.size());
         for (String requestId : pendingRequest) {
             InfoMessage message = (InfoMessage) messageConsumer.poll(requestId);
             LinkPropsResponse response = (LinkPropsResponse) message.getData();
@@ -138,13 +151,11 @@ public class LinkServiceImpl implements LinkService {
             }
         }
 
-        return new LinkPropsResult(
-                linkPropsList.size() - successCount, successCount,
-                errors.toArray(new String[0]));
+        return new BatchResults(linkPropsList.size() - successCount, successCount, errors);
     }
 
     @Override
-    public LinkPropsResult delLinkProps(List<LinkPropsDto> linkPropsList) {
+    public BatchResults delLinkProps(List<LinkPropsDto> linkPropsList) {
         ArrayList<String> pendingChains = new ArrayList<>();
         for (LinkPropsDto requestItem : linkPropsList) {
             LinkPropsDrop teRequest = new LinkPropsDrop(linkPropsMapper.toLinkPropsMask(requestItem));
@@ -168,6 +179,6 @@ public class LinkServiceImpl implements LinkService {
             }
         }
 
-        return new LinkPropsResult(errors.size(), successCount, errors.toArray(new String[0]));
+        return new BatchResults(errors.size(), successCount, errors);
     }
 }

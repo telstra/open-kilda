@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,8 +21,9 @@ import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
-import org.openkilda.northbound.dto.LinkPropsDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 
 import org.mapstruct.Mapper;
 
@@ -38,8 +39,8 @@ public interface LinkPropsMapper {
         NetworkEndpoint source = data.getLinkProps().getSource();
         NetworkEndpoint destination = data.getLinkProps().getDest();
         return new LinkPropsDto(
-                source.getDatapath(), source.getPortNumber(),
-                destination.getDatapath(), destination.getPortNumber(),
+                source.getDatapath().toString(), source.getPortNumber(),
+                destination.getDatapath().toString(), destination.getPortNumber(),
                 data.getLinkProps().getProps());
     }
 
@@ -47,8 +48,8 @@ public interface LinkPropsMapper {
      * Converts {@link LinkPropsDto} into {@link LinkProps}.
      */
     default LinkProps toLinkProps(LinkPropsDto input) {
-        NetworkEndpoint source = new NetworkEndpoint(input.getSrcSwitch(), input.getSrcPort());
-        NetworkEndpoint dest = new NetworkEndpoint(input.getDstSwitch(), input.getDstPort());
+        NetworkEndpoint source = new NetworkEndpoint(new SwitchId(input.getSrcSwitch()), input.getSrcPort());
+        NetworkEndpoint dest = new NetworkEndpoint(new SwitchId(input.getDstSwitch()), input.getDstPort());
         return new LinkProps(source, dest, input.getProps());
     }
 
@@ -56,8 +57,8 @@ public interface LinkPropsMapper {
      * Converts {@link LinkPropsDto} into {@link LinkPropsMask}.
      */
     default LinkPropsMask toLinkPropsMask(LinkPropsDto input) {
-        NetworkEndpointMask source = new NetworkEndpointMask(input.getSrcSwitch(), input.getSrcPort());
-        NetworkEndpointMask dest = new NetworkEndpointMask(input.getDstSwitch(), input.getDstPort());
+        NetworkEndpointMask source = new NetworkEndpointMask(new SwitchId(input.getSrcSwitch()), input.getSrcPort());
+        NetworkEndpointMask dest = new NetworkEndpointMask(new SwitchId(input.getDstSwitch()), input.getDstPort());
         return new LinkPropsMask(source, dest);
     }
 }

@@ -22,20 +22,19 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.newCapture;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
-import static org.openkilda.floodlight.message.command.encapsulation.PushSchemeOutputCommands.ofFactory;
+import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
-import org.openkilda.floodlight.message.command.encapsulation.OutputCommands;
-import org.openkilda.floodlight.message.command.encapsulation.ReplaceSchemeOutputCommands;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.test.standard.OutputCommands;
+import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
@@ -109,7 +108,6 @@ public class ReplaceInstallFlowTest {
         collector = new KafkaMessageCollector();
         context.addConfigParam(collector, "topic", "");
         context.addConfigParam(collector, "bootstrap-servers", "");
-        collector.init(context);
 
         initScheme();
     }
@@ -131,7 +129,8 @@ public class ReplaceInstallFlowTest {
 
     @Test
     public void installOneSwitchReplaceFlow() throws IOException, InterruptedException {
-        String value = Resources.toString(getClass().getResource("/install_one_switch_replace_flow.json"), Charsets.UTF_8);
+        String value = Resources.toString(
+                getClass().getResource("/install_one_switch_replace_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
         OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), 1024, data.getMeterId());
         OFFlowAdd flowCommand = scheme.oneSwitchReplaceFlowMod(data.getInputPort(), data.getOutputPort(),
@@ -257,12 +256,11 @@ public class ReplaceInstallFlowTest {
         // construct kafka message
         ConsumerRecord<String, String> record = new ConsumerRecord<>("", 0, 0, "", value);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, collector);
-        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, collector);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
 
         // create parser instance
-        ConsumerContext kafkaContext = new ConsumerContext(context, kafkaConfig, topicsConfig);
+        ConsumerContext kafkaContext = new ConsumerContext(context, topicsConfig);
         RecordHandler parseRecord = new RecordHandler(kafkaContext, record, new MeterPool());
         // init test mocks
         Capture<OFFlowAdd> flowAddCapture = flowCommand == null ? null : newCapture(CaptureType.ALL);
@@ -289,12 +287,6 @@ public class ReplaceInstallFlowTest {
         }
     }
 
-    /**
-     * Prepares test mocks for run.
-     *
-     * @param flowAddCapture  Capture for FlowAdd command
-     * @param meterAddCapture Capture for MeterMod<Add> command
-     */
     private void prepareMocks(Capture<OFFlowAdd> flowAddCapture, Capture<OFMeterMod> meterAddCapture,
                               boolean needCheckReverseFlow, boolean needCheckReverseMeter) {
         IOFSwitch iofSwitch = createMock(IOFSwitch.class);

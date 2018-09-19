@@ -15,9 +15,11 @@
 
 package org.openkilda.messaging.info.event;
 
+import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.openkilda.messaging.info.rule.FlowEntry;
 
 import java.util.List;
 
@@ -28,7 +30,7 @@ public class SwitchInfoExtendedData extends SwitchInfoData {
 
     @JsonCreator
     public SwitchInfoExtendedData(
-            @JsonProperty("switch_id") final String switchId,
+            @JsonProperty("switch_id") final SwitchId switchId,
             @JsonProperty("state") final SwitchState state,
             @JsonProperty("address") final String address,
             @JsonProperty("hostname") final String hostname,

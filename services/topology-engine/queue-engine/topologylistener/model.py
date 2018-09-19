@@ -30,12 +30,31 @@ logger = logging.getLogger(__name__)
 
 
 def convert_integer(raw, limit=sys.maxint):
-    if isinstance(raw, (int, long)):
-        return raw
-    value = int(raw, 0)
-    if value > limit:
-        raise exc.UnacceptableDataError(raw, 'numeric value too big {}'.format(raw))
+    if not isinstance(raw, (int, long)):
+        try:
+            value = int(raw, 0)
+        except ValueError:
+            raise exc.UnacceptableDataError(raw, 'not numeric value: {}'.format(raw))
+    else:
+        value = raw
+
+    if limit is not None and value > limit:
+        raise exc.UnacceptableDataError(
+            raw, 'integer value too big {}'.format(raw))
     return value
+
+
+def dash_to_underscore(source):
+    result = {}
+    for key in source:
+        result[key.replace('-', '_')] = source[key]
+    return result
+
+
+def grab_fields(data, fields_mapping):
+    return {
+        y: data[x]
+        for x, y in fields_mapping.items() if x in data}
 
 
 LifeCycleFields = collections.namedtuple('LifeCycleFields', ('ctime', 'mtime'))
@@ -346,7 +365,8 @@ class LinkProps(TimestampMixin, AbstractLink):
         'time_create', 'time_modify',
         'latency', 'speed', 'available_bandwidth', 'actual', 'status'))
     props_converters = {
-        'cost': convert_integer}
+        'cost': convert_integer,
+        'max_bandwidth': convert_integer}
 
     props = Default(dict, produce=True)
     filtered = Default(set, produce=True)

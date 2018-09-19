@@ -15,11 +15,7 @@
 
 package org.openkilda.messaging.payload.flow;
 
-import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.Flow;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Northbound utility methods.
@@ -43,62 +39,6 @@ public final class FlowPayloadToFlowConverter {
                 flowPayload.getDestination().getSwitchDpId(),
                 flowPayload.getDestination().getPortId(),
                 flowPayload.getDestination().getVlanId());
-    }
-
-    /**
-     * Builds {@link FlowPayload} instance by {@link Flow} instance.
-     *
-     * @param flow {@link Flow} instance
-     * @return {@link FlowPayload} instance
-     */
-    public static FlowPayload buildFlowPayloadByFlow(Flow flow) {
-        return new FlowPayload(
-                flow.getFlowId(),
-                new FlowEndpointPayload(
-                        flow.getSourceSwitch(),
-                        flow.getSourcePort(),
-                        flow.getSourceVlan()),
-                new FlowEndpointPayload(
-                        flow.getDestinationSwitch(),
-                        flow.getDestinationPort(),
-                        flow.getDestinationVlan()),
-                flow.getBandwidth(),
-                flow.isIgnoreBandwidth(),
-                flow.getDescription(),
-                flow.getLastUpdated(),
-                flow.getState().getState());
-    }
-
-    /**
-     * Builds list of {@link FlowPayload} instances by list of {@link Flow} instance.
-     *
-     * @param flows list of {@link Flow} instance
-     * @return list of {@link FlowPayload} instance
-     */
-    public static List<FlowPayload> buildFlowsPayloadByFlows(List<Flow> flows) {
-        return flows.stream().map(FlowPayloadToFlowConverter::buildFlowPayloadByFlow).collect(Collectors.toList());
-    }
-
-    /**
-     * Builds {@link FlowPayload} instance by {@link Flow} instance.
-     *
-     * @param flowId flow id
-     * @param path {@link PathInfoData} instance
-     * @return {@link FlowPayload} instance
-     */
-    public static FlowPathPayload buildFlowPathPayloadByFlowPath(String flowId, PathInfoData path) {
-        return new FlowPathPayload(flowId, path);
-    }
-
-    /**
-     * Builds {@link FlowReroutePayload} instance by {@link Flow} instance.
-     *
-     * @param flowId flow id
-     * @param path {@link PathInfoData} instance
-     * @return {@link FlowReroutePayload} instance
-     */
-    public static FlowReroutePayload buildReroutePayload(String flowId, PathInfoData path, boolean rerouted) {
-        return new FlowReroutePayload(flowId, path, rerouted);
     }
 
     private FlowPayloadToFlowConverter() {

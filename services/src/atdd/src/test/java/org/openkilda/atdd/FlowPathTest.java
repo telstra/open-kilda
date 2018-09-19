@@ -30,7 +30,8 @@ import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.UnroutablePathException;
@@ -51,52 +52,52 @@ import java.util.concurrent.TimeUnit;
 
 public class FlowPathTest {
     private static final String fileName = "topologies/multi-path-topology.json";
-    private static final List<ImmutablePair<String, String>> shortestPathLinks = Arrays.asList(
-            new ImmutablePair<>("00:00:00:00:00:00:00:07", "1"), new ImmutablePair<>("00:00:00:00:00:00:00:03", "2"),
-            new ImmutablePair<>("00:00:00:00:00:00:00:02", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:03", "1"));
-    private static final List<ImmutablePair<String, String>> alternativePathLinks = Arrays.asList(
-            new ImmutablePair<>("00:00:00:00:00:00:00:02", "3"), new ImmutablePair<>("00:00:00:00:00:00:00:04", "1"),
-            new ImmutablePair<>("00:00:00:00:00:00:00:05", "1"), new ImmutablePair<>("00:00:00:00:00:00:00:04", "2"),
-            new ImmutablePair<>("00:00:00:00:00:00:00:05", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:06", "1"),
-            new ImmutablePair<>("00:00:00:00:00:00:00:06", "2"), new ImmutablePair<>("00:00:00:00:00:00:00:07", "3"));
-    static final ImmutablePair<PathInfoData, PathInfoData> expectedShortestPath = new ImmutablePair<>(
+    private static final List<FlowPair<String, String>> shortestPathLinks = Arrays.asList(
+            new FlowPair<>("00:00:00:00:00:00:00:07", "1"), new FlowPair<>("00:00:00:00:00:00:00:03", "2"),
+            new FlowPair<>("00:00:00:00:00:00:00:02", "2"), new FlowPair<>("00:00:00:00:00:00:00:03", "1"));
+    private static final List<FlowPair<String, String>> alternativePathLinks = Arrays.asList(
+            new FlowPair<>("00:00:00:00:00:00:00:02", "3"), new FlowPair<>("00:00:00:00:00:00:00:04", "1"),
+            new FlowPair<>("00:00:00:00:00:00:00:05", "1"), new FlowPair<>("00:00:00:00:00:00:00:04", "2"),
+            new FlowPair<>("00:00:00:00:00:00:00:05", "2"), new FlowPair<>("00:00:00:00:00:00:00:06", "1"),
+            new FlowPair<>("00:00:00:00:00:00:00:06", "2"), new FlowPair<>("00:00:00:00:00:00:00:07", "3"));
+    static final FlowPair<PathInfoData, PathInfoData> expectedShortestPath = new FlowPair<>(
             new PathInfoData(0L, Arrays.asList(
-                    new PathNode("00:00:00:00:00:00:00:02", 2, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:03", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:03", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:07", 1, 3, 0L))),
+                    new PathNode(new SwitchId(2L), 2, 0, 0L),
+                    new PathNode(new SwitchId(3L), 1, 1, 0L),
+                    new PathNode(new SwitchId(3L), 2, 2, 0L),
+                    new PathNode(new SwitchId(7L), 1, 3, 0L))),
             new PathInfoData(0L, Arrays.asList(
-                    new PathNode("00:00:00:00:00:00:00:07", 1, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:03", 2, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:03", 1, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:02", 2, 3, 0L))));
-    static final ImmutablePair<PathInfoData, PathInfoData> expectedAlternatePath = new ImmutablePair<>(
+                    new PathNode(new SwitchId(7L), 1, 0, 0L),
+                    new PathNode(new SwitchId(3L), 2, 1, 0L),
+                    new PathNode(new SwitchId(3L), 1, 2, 0L),
+                    new PathNode(new SwitchId(2L), 2, 3, 0L))));
+    static final FlowPair<PathInfoData, PathInfoData> expectedAlternatePath = new FlowPair<>(
             new PathInfoData(0L, Arrays.asList(
-                    new PathNode("00:00:00:00:00:00:00:02", 3, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:04", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:04", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:05", 1, 3, 0L),
-                    new PathNode("00:00:00:00:00:00:00:05", 2, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:06", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:06", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:07", 3, 3, 0L))),
+                    new PathNode(new SwitchId(2L), 3, 0, 0L),
+                    new PathNode(new SwitchId(4L), 1, 1, 0L),
+                    new PathNode(new SwitchId(4L), 2, 2, 0L),
+                    new PathNode(new SwitchId(5L), 1, 3, 0L),
+                    new PathNode(new SwitchId(5L), 2, 0, 0L),
+                    new PathNode(new SwitchId(6L), 1, 1, 0L),
+                    new PathNode(new SwitchId(6L), 2, 2, 0L),
+                    new PathNode(new SwitchId(7L), 3, 3, 0L))),
             new PathInfoData(0L, Arrays.asList(
-                    new PathNode("00:00:00:00:00:00:00:07", 3, 3, 0L),
-                    new PathNode("00:00:00:00:00:00:00:06", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:06", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:05", 2, 0, 0L),
-                    new PathNode("00:00:00:00:00:00:00:05", 1, 3, 0L),
-                    new PathNode("00:00:00:00:00:00:00:04", 2, 2, 0L),
-                    new PathNode("00:00:00:00:00:00:00:04", 1, 1, 0L),
-                    new PathNode("00:00:00:00:00:00:00:02", 3, 0, 0L))));
+                    new PathNode(new SwitchId(7L), 3, 3, 0L),
+                    new PathNode(new SwitchId(6L), 2, 2, 0L),
+                    new PathNode(new SwitchId(6L), 1, 1, 0L),
+                    new PathNode(new SwitchId(5L), 2, 0, 0L),
+                    new PathNode(new SwitchId(5L), 1, 3, 0L),
+                    new PathNode(new SwitchId(4L), 2, 2, 0L),
+                    new PathNode(new SwitchId(4L), 1, 1, 0L),
+                    new PathNode(new SwitchId(2L), 3, 0, 0L))));
 
     private String previousLastUpdated;
     private String actualFlowName;
-    private long pre_start;
+    private long preStart;
     private long start;
 
     @Given("^a multi-path topology$")
-    public void a_multi_path_topology()  {
+    public void multiPathTopology() {
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(classLoader.getResource(fileName).getFile());
         String json;
@@ -107,58 +108,60 @@ public class FlowPathTest {
             throw new TopologyProcessingException(format("Unable to read the topology file '%s'.", fileName), ex);
         }
 
-        pre_start = System.currentTimeMillis();
+        preStart = System.currentTimeMillis();
         assertTrue(TopologyHelp.CreateMininetTopology(json));
         start = System.currentTimeMillis();
     }
 
     @When("^all links have available bandwidth (\\d+)$")
-    public void checkAvailableBandwidth(int expectedAvailableBandwidth) throws InterruptedException {
+    public void checkAvailableBandwidth(long expectedAvailableBandwidth) throws InterruptedException {
         List<LinkDto> links = LinksUtils.dumpLinks();
         for (LinkDto link : links) {
-            int actualBandwidth = getBandwidth(expectedAvailableBandwidth,
-                    link.getPath().get(0).getSwitchId(),
+            long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+                    new SwitchId(link.getPath().get(0).getSwitchId()),
                     String.valueOf(link.getPath().get(0).getPortNo()));
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
     }
 
     @Then("^shortest path links available bandwidth have available bandwidth (\\d+)$")
-    public void checkShortestPathAvailableBandwidthDecreased(int expectedAvailableBandwidth)
+    public void checkShortestPathAvailableBandwidthDecreased(long expectedAvailableBandwidth)
             throws InterruptedException {
-        for (ImmutablePair<String, String> expectedLink : shortestPathLinks) {
-            Integer actualBandwidth = getBandwidth(expectedAvailableBandwidth,
-                    expectedLink.getLeft(), expectedLink.getRight());
-            assertEquals(expectedAvailableBandwidth, actualBandwidth.intValue());
+        for (FlowPair<String, String> expectedLink : shortestPathLinks) {
+            long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+                    new SwitchId(expectedLink.getLeft()), expectedLink.getRight());
+            assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
     }
 
     @Then("^alternative path links available bandwidth have available bandwidth (\\d+)$")
-    public void checkAlternativePathAvailableBandwidthDecreased(int expectedAvailableBandwidth)
+    public void checkAlternativePathAvailableBandwidthDecreased(long expectedAvailableBandwidth)
             throws InterruptedException {
-        for (ImmutablePair<String, String> expectedLink : alternativePathLinks) {
-            Integer actualBandwidth = getBandwidth(expectedAvailableBandwidth,
-                    expectedLink.getLeft(), expectedLink.getRight());
-            assertEquals(expectedAvailableBandwidth, actualBandwidth.intValue());
+        for (FlowPair<String, String> expectedLink : alternativePathLinks) {
+            long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
+                    new SwitchId(expectedLink.getLeft()), expectedLink.getRight());
+            assertEquals(expectedAvailableBandwidth, actualBandwidth);
         }
     }
 
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) path correct$")
     public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
-            String destinationSwitch, int destinationPort, int destinationVlan, int bandwidth)
+                                String destinationSwitch, int destinationPort, int destinationVlan, long bandwidth)
             throws UnroutablePathException, InterruptedException, RecoverableException {
-        Flow flow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId, sourceSwitch,
-                sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
-        ImmutablePair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
+        Flow flow =
+                new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId,
+                        new SwitchId(sourceSwitch), sourcePort, sourceVlan, new SwitchId(destinationSwitch),
+                        destinationPort, destinationVlan);
+        FlowPair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
         System.out.println(path);
         assertEquals(expectedShortestPath, path);
     }
 
-    private int getBandwidth(int expectedBandwidth, String src_switch, String src_port) throws InterruptedException {
-        int actualBandwidth = getLinkBandwidth(src_switch, src_port);
+    private long getBandwidth(long expectedBandwidth, SwitchId srcSwitch, String srcPort) throws InterruptedException {
+        long actualBandwidth = getLinkBandwidth(srcSwitch, srcPort);
         if (actualBandwidth != expectedBandwidth) {
             TimeUnit.SECONDS.sleep(2);
-            actualBandwidth = getLinkBandwidth(src_switch, src_port);
+            actualBandwidth = getLinkBandwidth(srcSwitch, srcPort);
         }
         return actualBandwidth;
     }

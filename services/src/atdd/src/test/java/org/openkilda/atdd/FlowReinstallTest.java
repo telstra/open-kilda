@@ -7,9 +7,10 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
@@ -34,23 +35,24 @@ public class FlowReinstallTest {
     }
 
     @Then("^flow (.*) is(.*) built through (.*) switch")
-    public void flowPathContainsSwitch(final String flow, final String shouldNotContain, final String switchId)
+    public void flowPathContainsSwitch(final String flow, final String shouldNotContain, final String switchIdString)
             throws InterruptedException {
         await().atMost(20, TimeUnit.SECONDS)
                 .pollInterval(Duration.ONE_SECOND)
                 .until(() -> {
-            FlowPathPayload payload = FlowUtils.getFlowPath(FlowUtils.getFlowName(flow));
-            assertTrue("Flow path should exist", payload != null && payload.getPath() != null);
-            List<PathNode> path = payload.getPath().getPath();
-            boolean contains = path.stream()
-                    .anyMatch(node -> switchId.equalsIgnoreCase(node.getSwitchId()));
+                    FlowPathPayload payload = FlowUtils.getFlowPath(FlowUtils.getFlowName(flow));
+                    assertTrue("Flow path should exist", payload != null && payload.getForwardPath() != null);
+                    List<PathNodePayload> path = payload.getForwardPath();
+                    SwitchId switchId = new SwitchId(switchIdString);
+                    boolean contains = path.stream()
+                            .anyMatch(node -> switchId.equals(node.getSwitchId()));
 
-            if (StringUtils.isBlank(shouldNotContain)) {
-                return contains;
-            } else {
-                return !contains;
-            }
-        });
+                    if (StringUtils.isBlank(shouldNotContain)) {
+                        return contains;
+                    } else {
+                        return !contains;
+                    }
+                });
     }
 
     @When("flow reroute feature is (on|off)$")

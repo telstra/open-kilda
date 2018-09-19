@@ -22,7 +22,6 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.verify;
 
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.KafkaFloodlightConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.kafka.producer.Producer;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -32,8 +31,8 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -68,13 +67,11 @@ public class RecordHandlerTest extends EasyMockSupport {
         KafkaMessageCollector collectorModule = new KafkaMessageCollector();
         context.addConfigParam(collectorModule, "topic", "");
         context.addConfigParam(collectorModule, "bootstrap-servers", "");
-        collectorModule.init(context);
 
-        ConfigurationProvider provider = new ConfigurationProvider(context, collectorModule);
-        KafkaFloodlightConfig kafkaConfig = provider.getConfiguration(KafkaFloodlightConfig.class);
+        ConfigurationProvider provider = ConfigurationProvider.of(context, collectorModule);
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
 
-        consumerContext = new ConsumerContext(context, kafkaConfig, topicsConfig);
+        consumerContext = new ConsumerContext(context, topicsConfig);
 
         handler = new RecordHandlerMock(consumerContext);
     }
@@ -133,12 +130,12 @@ public class RecordHandlerTest extends EasyMockSupport {
 
         // Logic in SwitchEventCollector.buildSwitchInfoData is too complicated and requires a lot
         // of mocking code so I replaced it with mock on kafkaMessageCollector.buildSwitchInfoData
-        handler.overrideSwitchInfoData(
+        handler.overrideNetworkDumpSwitchData(
                 DatapathId.of(1),
-                new SwitchInfoData("sw1", SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda"));
-        handler.overrideSwitchInfoData(
+                new NetworkDumpSwitchData(new SwitchId("ff:01")));
+        handler.overrideNetworkDumpSwitchData(
                 DatapathId.of(2),
-                new SwitchInfoData("sw2", SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda"));
+                new NetworkDumpSwitchData(new SwitchId("ff:02")));
 
         // setup hook for verify that we create new message for producer
         producer.postMessage(eq(consumerContext.getKafkaTopoDiscoTopic()), anyObject(InfoMessage.class));
@@ -167,58 +164,4 @@ public class RecordHandlerTest extends EasyMockSupport {
         // TODO: verify content of InfoMessage in producer.postMessage
     }
 
-    //    @Test
-    //    public void portDumpTest() {
-    //        DatapathId dpid = DatapathId.of("de:ad:be:ef:00:00:00:00");
-    //
-    //        OFSwitch iofSwitch1 = mock(OFSwitch.class);
-    //        Map<DatapathId, IOFSwitch> switches = ImmutableMap.of(
-    //                DatapathId.of(1), iofSwitch1);
-    //        expect(switchManager.getAllSwitchMap()).andReturn(switches);
-    //        expect(iofSwitch1.getId()).andReturn(dpid).anyTimes();
-    //
-    //        OFPortDesc ofPortDesc1 = mock(OFPortDesc.class);
-    //        OFPortDesc ofPortDesc2 = mock(OFPortDesc.class);
-    //
-    //        Set<OFPortState> portStateUp = new HashSet<>();
-    //        portStateUp.add(OFPortState.LIVE);
-    //
-    //        expect(iofSwitch1.getPorts()).andReturn(ImmutableList.of(
-    //                ofPortDesc1, ofPortDesc2));
-    //        expect(ofPortDesc1.getPortNo()).andReturn(OFPort.ofInt(1));
-    //        expect(ofPortDesc1.getState()).andReturn(portStateUp);
-    //        expect(ofPortDesc2.getPortNo()).andReturn(OFPort.ofInt(2));
-    //        expect(ofPortDesc2.getState()).andReturn(portStateUp);
-    //
-    //        long timestamp = System.currentTimeMillis();
-    //
-    //        Capture<String> capturedTopic = new Capture<>();
-    //        Capture<InfoMessage> capturedMessage = new Capture<>();
-    //        producer.postMessage(capture(capturedTopic), capture(capturedMessage));
-    //
-    //        replayAll();
-    //
-    //        CommandMessage command = new CommandMessage(new PortsCommandData("test-requester"),
-    // System.currentTimeMillis(),
-    //                Utils.SYSTEM_CORRELATION_ID, Destination.WFM);
-    //        handler.handleMessage(command);
-    //        verify(producer);
-    //
-    //        // Ugly hack below to ensure timestamps are equal
-    //        SwitchPortsData switchPortsData = new SwitchPortsData(
-    //                Stream.of(1, 2)
-    //                        .map(port -> new PortInfoData(dpid.toString(), port, null, PortChangeType.UP))
-    //                        .collect(Collectors.toSet()),
-    //                "test-requester");
-    //        switchPortsData.setTimestamp(capturedMessage.getValue().getTimestamp());
-    //
-    //        InfoMessage expectedMessage = new InfoMessage(
-    //                switchPortsData,
-    //                capturedMessage.getValue().getTimestamp(),
-    //                Utils.SYSTEM_CORRELATION_ID,
-    //                Destination.WFM
-    //        );
-    //
-    //        Assert.assertEquals(expectedMessage, capturedMessage.getValue());
-    //    }
 }

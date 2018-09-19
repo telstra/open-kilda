@@ -1,0 +1,91 @@
+@startuml
+title PERIODIC flow pings
+
+control Time
+
+participant FlowFetcher
+participant Neo4j
+participant PeriodicPingShaping
+
+participant PingRouter
+participant Blacklist
+
+participant PING
+
+participant ResultDispatcher
+participant PeriodicResultManager
+participant StatsProducer
+participant FailReporter
+
+control kilda.stats
+control kilda.flow.status
+
+note right of FlowFetcher: must be 1\nin system
+
+Time -> FlowFetcher: ping tick
+activate FlowFetcher
+FlowFetcher -> Neo4j: fetch all flow
+activate Neo4j
+Neo4j -> FlowFetcher: [flows]
+deactivate Neo4j
+
+note right of FlowFetcher: for each flow
+note right of FlowFetcher: make PingContext(kind=PERIODIC)
+FlowFetcher -> PeriodicPingShaping: PingContext
+deactivate FlowFetcher
+
+activate PeriodicPingShaping
+note right of PeriodicPingShaping: schedule ping\nrequest equally\nacross ping period
+PeriodicPingShaping -> PeriodicPingShaping: delay
+PeriodicPingShaping -> PING: PingContext
+deactivate PeriodicPingShaping
+
+activate PING
+note right of PING: see details\nin "The Ping" diagram
+PING -> ResultDispatcher: PingContext
+deactivate PING
+
+activate ResultDispatcher
+ResultDispatcher -> PeriodicResultManager: PingContext
+deactivate ResultDispatcher
+
+activate PeriodicResultManager
+alt permanent error(NOT_CAPABLE)
+    PeriodicResultManager -> PingRouter: PingContext
+
+    activate PingRouter
+    PingRouter -> Blacklist: PingContext\n(src+dst grouping)
+    deactivate PingRouter
+
+    activate Blacklist
+    note right of Blacklist: update blacklist
+    Blacklist ->x Blacklist: THE END
+    deactivate Blacklist
+end
+
+PeriodicResultManager -> FailReporter: PingContext\n(flowId grouping)
+activate FailReporter
+note right of FailReporter: update flow state
+alt flow state changed
+    FailReporter -> kilda.flow.status: report flow state
+end
+deactivate FailReporter
+
+alt no error
+    PeriodicResultManager -> StatsProducer: Group
+    activate StatsProducer
+    StatsProducer -> kilda.stats: flow ping stats
+    deactivate StatsProducer
+end
+deactivate PeriodicResultManager
+
+
+Time -> FailReporter: X monotonic tick
+Time -> FailReporter: X + M monotonic tick
+alt flow state changed
+    activate FailReporter
+    FailReporter -> kilda.flow.status: report flow state
+    deactivate FailReporter
+end
+
+@enduml

@@ -17,18 +17,22 @@ package org.openkilda.messaging.info.event;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+import org.openkilda.messaging.info.CacheTimeTag;
+import org.openkilda.messaging.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.messaging.info.CacheTimeTag;
 
-import java.util.Map;
 import java.util.Objects;
 
 /**
- * Defines the payload payload of a Message representing a switch info.
+ * Defines the payload of a Message representing a switch info.
+ * <p/>
+ * TODO: it doesn't look correct that we utilize SwitchInfo DTO class as cache entiries
+ * and also injected cache related fields there.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -49,7 +53,7 @@ public class SwitchInfoData extends CacheTimeTag {
      * Switch id.
      */
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     /**
      * Switch ip address.
@@ -98,7 +102,7 @@ public class SwitchInfoData extends CacheTimeTag {
      * @param controller  switch controller
      */
     @JsonCreator
-    public SwitchInfoData(@JsonProperty("switch_id") final String switchId,
+    public SwitchInfoData(@JsonProperty("switch_id") final SwitchId switchId,
                           @JsonProperty("state") final SwitchState state,
                           @JsonProperty("address") final String address,
                           @JsonProperty("hostname") final String hostname,
@@ -113,26 +117,11 @@ public class SwitchInfoData extends CacheTimeTag {
     }
 
     /**
-     * Instance constructor.
-     *
-     * @param map map with switch properties
-     */
-    public SwitchInfoData(Map<String, Object> map) {
-        this.switchId = (String) map.get("switch_id");
-        this.address = (String) map.get("address");
-        this.hostname = (String) map.get("hostname");
-        this.description = (String) map.get("description");
-        this.state = SwitchState.valueOf((String) map.get("state"));
-        this.controller = (String) map.get("controller");
-    }
-
-
-    /**
      * Returns switch id.
      *
      * @return switch id
      */
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 
@@ -141,7 +130,7 @@ public class SwitchInfoData extends CacheTimeTag {
      *
      * @param switchId switch id to set
      */
-    public void setSwitchId(final String switchId) {
+    public void setSwitchId(final SwitchId switchId) {
         this.switchId = switchId;
     }
 

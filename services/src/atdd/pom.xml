@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -12,6 +11,7 @@
     <artifactId>atdd</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
+
     <name>ATDD</name>
     <description>Acceptance tests</description>
     <url>https://bitbucket.org/openkilda/controller/wiki/Home</url>
@@ -46,7 +46,11 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -117,11 +121,6 @@
         <dependency>
             <groupId>net.jodah</groupId>
             <artifactId>failsafe</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>net.jodah</groupId>
-            <artifactId>failsafe</artifactId>
-            <scope>test</scope>
         </dependency>
 
         <dependency>

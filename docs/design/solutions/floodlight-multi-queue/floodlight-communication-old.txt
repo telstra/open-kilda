@@ -1,0 +1,60 @@
+@startuml
+title Floodlight Kilda Modules communication diagram (Old)
+
+participant OFEventWFMTopology
+control kilda.topo.disco
+participant "Topology Engine" as TE
+control kilda.flow
+participant Northbound
+control kilda.northbound
+control kilda.speaker
+participant Floodlight
+participant "A switch"
+
+== Discovery process ==
+OFEventWFMTopology -> kilda.speaker: Send a discovery command
+activate kilda.speaker
+kilda.speaker -> Floodlight: The discovery command
+deactivate kilda.speaker
+activate Floodlight
+Floodlight -> "A switch": Send the discovery packet
+Floodlight -> kilda.topo.disco: Send a confirmation message
+deactivate Floodlight
+activate kilda.topo.disco
+kilda.topo.disco -> OFEventWFMTopology: The confirmation message
+deactivate kilda.topo.disco
+
+"A switch" -> Floodlight: Receive a discovery packet
+activate Floodlight
+Floodlight -> kilda.topo.disco: Send the event message
+deactivate Floodlight
+activate kilda.topo.disco
+kilda.topo.disco -> OFEventWFMTopology: The event message
+deactivate kilda.topo.disco
+
+== Flow install / remove commands ==
+TE -> kilda.speaker: Send a Install***Flow / RemoveFlow message
+activate kilda.speaker
+kilda.speaker -> Floodlight: The message
+deactivate kilda.speaker
+activate Floodlight
+Floodlight -> "A switch": Perform the command
+Floodlight -> kilda.flow: Forward the message as a reply
+deactivate Floodlight
+
+== General requests / commands ==
+Northbound -> kilda.speaker: Send a request
+activate Northbound
+activate kilda.speaker
+kilda.speaker -> Floodlight: The request
+deactivate kilda.speaker
+activate Floodlight
+Floodlight -> "A switch": Perform the request
+Floodlight -> kilda.northbound: Send a reply
+deactivate Floodlight
+activate kilda.northbound
+kilda.northbound -> Northbound: A reply
+deactivate kilda.northbound
+deactivate Northbound
+
+@enduml

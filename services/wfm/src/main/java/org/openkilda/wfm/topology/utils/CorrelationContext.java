@@ -21,6 +21,8 @@ import static org.openkilda.wfm.protocol.JsonMessage.FIELD_ID_JSON;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.CommandContext;
 
 import com.google.common.base.Strings;
 import com.google.gson.JsonElement;
@@ -57,6 +59,15 @@ public final class CorrelationContext {
         final Fields fields = input.getFields();
         if (fields == null || fields.size() == 0) {
             return Optional.empty();
+        }
+
+        if (fields.contains(AbstractBolt.FIELD_ID_CONTEXT)) {
+            try {
+                CommandContext commandContext = (CommandContext) input.getValueByField(AbstractBolt.FIELD_ID_CONTEXT);
+                return Optional.of(new CorrelationContext(commandContext.getCorrelationId()));
+            } catch (ClassCastException e) {
+                // ignore invalid value into context field
+            }
         }
 
         if (fields.contains(FIELD_ID_CORRELATION_ID)) {

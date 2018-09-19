@@ -9,7 +9,7 @@
         </File>
     </Appenders>
     <Loggers>
-        <Logger name="org.openkilda.atdd.staging.tools.LoggingRequestInterceptor" level="DEBUG" additivity="false">
+        <Logger name="org.openkilda.testing.tools.LoggingRequestInterceptor" level="DEBUG" additivity="false">
             <AppenderRef ref="File"/>
         </Logger>
         <Root level="INFO">

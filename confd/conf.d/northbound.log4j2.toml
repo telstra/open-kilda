@@ -1,0 +1,5 @@
+[template]
+src = "northbound/log4j2.xml.tmpl"
+dest = "services/src/northbound/src/main/resources/log4j2.xml"
+keys = [ "/" ]
+mode = "0644"

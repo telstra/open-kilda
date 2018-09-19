@@ -154,15 +154,14 @@ services:
     container_name: wfm
     build:
       context: services/wfm
-    image: "kilda/wfm:${full_build_number:-latest}"
     depends_on:
       kafka:
         condition: service_healthy
       zookeeper:
         condition: service_healthy
-      storm_nimbus:
+      storm-nimbus:
         condition: service_healthy
-      storm_supervisor:
+      storm-supervisor:
         condition: service_healthy
 
 
@@ -197,29 +196,8 @@ services:
          - hbase.pendev
 
 
-#  tools:
-#    build:
-#      context: services
-#      dockerfile:  tools/Dockerfile
-#    image: "kilda/tools:${full_build_number:-latest}"
-#    command: sleep 10d
-#    depends_on:
-#      - zookeeper
-#      - hbase
-#      - storm_nimbus
-#      - storm_supervisor
-#    links:
-#      - zookeeper:zookeeper.pendev
-#      - hbase:hbase.pendev
-#      - storm_nimbus:nimbus.pendev
-#      - storm_supervisor:supervisor.pendev
-#    ports:
-#      - "22:8022"
-#    container_name: "hadoop-tools"
-
-
-  storm_nimbus:
-    container_name: storm_nimbus
+  storm-nimbus:
+    container_name: storm-nimbus
     hostname: nimbus.pendev
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
@@ -241,20 +219,20 @@ services:
     networks:
       default:
         aliases:
-         - storm_nimbus.pendev
+         - storm-nimbus.pendev
          - nimbus.pendev
 
 
-  storm_ui:
-    container_name: storm_ui
+  storm-ui:
+    container_name: storm-ui
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
     depends_on:
       zookeeper:
         condition: service_healthy
-      storm_nimbus:
+      storm-nimbus:
         condition: service_healthy
-      storm_supervisor:
+      storm-supervisor:
         condition: service_healthy
     ports:
       - "8888:8080"
@@ -266,18 +244,18 @@ services:
     networks:
       default:
         aliases:
-         - storm_ui.pendev
+         - storm-ui.pendev
 
 
-  storm_supervisor:
-    container_name: storm_supervisor
-    hostname: storm_supervisor.pendev
+  storm-supervisor:
+    container_name: storm-supervisor
+    hostname: storm-supervisor.pendev
     image: "kilda/storm:${full_build_number:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
       zookeeper:
         condition: service_healthy
-      storm_nimbus:
+      storm-nimbus:
         condition: service_healthy
       logstash:
         condition: service_started
@@ -308,7 +286,7 @@ services:
     networks:
       default:
         aliases:
-         - storm_supervisor.pendev
+         - storm-supervisor.pendev
 
 
   floodlight:
@@ -336,10 +314,11 @@ services:
 
 
   northbound:
+    container_name: openkilda-northbound
     build:
       context: services/src/northbound/
     ports:
-      - "8088:8080"
+      - "8080:8080"
     environment:
       REST_USERNAME: 'kilda'
       REST_PASSWORD: 'kilda'
@@ -372,10 +351,30 @@ services:
          - opentsdb.pendev
 
 
+  gui:
+    container_name: gui
+    build:
+      context: services/src/openkilda-gui
+    ports:
+      - "8010:1010"
+    depends_on:
+      northbound:
+        condition: service_started
+      opentsdb:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+         - openkilda-gui.pendev
+
+
   elasticsearch:
     container_name: elasticsearch
     image: elasticsearch:5.6.5
     hostname: elasticsearch.pendev
+    ports:
+      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9300:9300"
     networks:
       default:
         aliases:

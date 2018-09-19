@@ -1,7 +1,0 @@
-zookeeper:
-  host: zookeeper.pendev
-
-kafka:
-  host: kafka.pendev
-
-logging.level.root: DEBUG

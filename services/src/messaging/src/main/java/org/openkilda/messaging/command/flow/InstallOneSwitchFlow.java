@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -106,7 +107,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     public InstallOneSwitchFlow(@JsonProperty(TRANSACTION_ID) final Long transactionId,
                                 @JsonProperty(FLOW_ID) final String id,
                                 @JsonProperty("cookie") final Long cookie,
-                                @JsonProperty("switch_id") final String switchId,
+                                @JsonProperty("switch_id") final SwitchId switchId,
                                 @JsonProperty("input_port") final Integer inputPort,
                                 @JsonProperty("output_port") final Integer outputPort,
                                 @JsonProperty("input_vlan_id") final Integer inputVlanId,

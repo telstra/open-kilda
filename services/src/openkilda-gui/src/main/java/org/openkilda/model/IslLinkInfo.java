@@ -1,3 +1,18 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -19,7 +34,7 @@ import java.io.Serializable;
         "target_switch", "speed", "state"})
 public class IslLinkInfo implements Serializable {
 
-    private final static long serialVersionUID = 8274573430947748236L;
+    private static final long serialVersionUID = 8274573430947748236L;
 
     @JsonProperty("src_port")
     private int srcPort;
@@ -260,10 +275,12 @@ public class IslLinkInfo implements Serializable {
     public void setUnidirectional(boolean isUnidirectional) {
         this.isUnidirectional = isUnidirectional;
     }
+
     @JsonIgnore
     public String getForwardKey() {
         return this.srcSwitch + "-" + this.srcPort + "-" + this.dstSwitch + "-" + this.dstPort;
     }
+
     @JsonIgnore
     public String getReverseKey() {
         return this.dstSwitch + "-" + this.dstPort + "-" + this.srcSwitch + "-" + this.srcPort;
@@ -276,5 +293,6 @@ public class IslLinkInfo implements Serializable {
     public void setState1(String state1) {
         this.state1 = state1;
     }
+    
     
 }

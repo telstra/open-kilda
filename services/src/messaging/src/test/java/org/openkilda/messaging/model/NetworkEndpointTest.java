@@ -26,7 +26,7 @@ import java.io.IOException;
 public class NetworkEndpointTest implements StringSerializer {
     @Test
     public void serializeLoop() throws Exception {
-        NetworkEndpoint origin = new NetworkEndpoint("ff:fe:00:00:00:00:00:01", 8);
+        NetworkEndpoint origin = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
 
         serialize(origin);
 

@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.cache;
 
+import org.openkilda.wfm.topology.cache.transport.CacheTopology;
+
 /**
  * Represents stream used in {@link CacheTopology}.
  */
@@ -27,7 +29,7 @@ public enum StreamType {
     /**
      * Dump cache.
      */
-    WFM_DUMP,
+    WFM_REROUTE,
 
     /**
      * Network storage update.

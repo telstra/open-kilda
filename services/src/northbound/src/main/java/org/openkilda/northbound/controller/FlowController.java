@@ -16,13 +16,7 @@
 package org.openkilda.northbound.controller;
 
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
-import static org.openkilda.messaging.Utils.FLOW_ID;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -31,10 +25,18 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,11 +112,10 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow", response = FlowPayload.class)
     @RequestMapping(
-            value = "/flows/{flow-id}",
+            value = "/flows/{flow-id:.+}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> getFlow(@PathVariable(name = "flow-id") String flowId) {
-        logger.debug("Get flow: {}={}", FLOW_ID, flowId);
         FlowPayload response = flowService.getFlow(flowId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -127,11 +128,10 @@ public class FlowController {
      */
     @ApiOperation(value = "Deletes flow", response = FlowPayload.class)
     @RequestMapping(
-            value = "/flows/{flow-id}",
+            value = "/flows/{flow-id:.+}",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPayload> deleteFlow(@PathVariable(name = "flow-id") String flowId) {
-        logger.debug("Delete flow: {}={}", FLOW_ID, flowId);
         FlowPayload response = flowService.deleteFlow(flowId);
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
@@ -145,7 +145,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Updates flow", response = FlowPayload.class)
     @RequestMapping(
-            value = "/flows/{flow-id}",
+            value = "/flows/{flow-id:.+}",
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -186,13 +186,13 @@ public class FlowController {
     @ExtraAuthRequired
     @SuppressWarnings("unchecked") // the error is unchecked
     public ResponseEntity<List<FlowPayload>> deleteFlows(
-            @RequestHeader(value = EXTRA_AUTH, defaultValue = "0") long extra_auth) {
-        long current_auth = System.currentTimeMillis();
-        if (Math.abs(current_auth-extra_auth) > 120*1000) {
+            @RequestHeader(value = EXTRA_AUTH, defaultValue = "0") long extraAuth) {
+        long currentAuth = System.currentTimeMillis();
+        if (Math.abs(currentAuth - extraAuth) > 120 * 1000) {
             /*
              * The request needs to be within 120 seconds of the system clock.
              */
-            return new ResponseEntity("Invalid Auth: " + current_auth, new HttpHeaders(), HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity("Invalid Auth: " + currentAuth, new HttpHeaders(), HttpStatus.UNAUTHORIZED);
         }
 
         List<FlowPayload> response = flowService.deleteFlows();
@@ -209,7 +209,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
     @RequestMapping(
-            value = "/flows/status/{flow-id}",
+            value = "/flows/status/{flow-id:.+}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowIdStatusPayload> statusFlow(@PathVariable(name = "flow-id") String flowId) {
@@ -225,7 +225,7 @@ public class FlowController {
      */
     @ApiOperation(value = "Gets flow path", response = FlowPathPayload.class)
     @RequestMapping(
-            value = "/flows/path/{flow-id}", method = RequestMethod.GET,
+            value = "/flows/{flow-id}/path", method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<FlowPathPayload> pathFlow(@PathVariable(name = "flow-id") String flowId) {
         FlowPathPayload response = flowService.pathFlow(flowId);
@@ -237,7 +237,8 @@ public class FlowController {
      * Push flows to kilda ... this can be used to get flows into kilda without kilda creating them
      * itself. Kilda won't expect to create them .. it may (and should) validate them at some stage.
      *
-     * @param externalFlows a list of flows to push to kilda for it to absorb without expectation of creating the flow rules
+     * @param externalFlows a list of flows to push to kilda for it to absorb without expectation of creating the flow
+     *        rules
      * @return list of flow
      */
     @ApiOperation(value = "Push flows without expectation of modifying switches. It can push to switch and validate.",
@@ -250,7 +251,7 @@ public class FlowController {
             @RequestBody List<FlowInfoData> externalFlows,
             @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> propagate,
+            @RequestParam(value = "propagate", required = false) Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
             @RequestParam("verify") Optional<Boolean> verify) {
@@ -277,10 +278,10 @@ public class FlowController {
             @RequestBody List<FlowInfoData> externalFlows,
             @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
                     required = false)
-            @RequestParam("propagate") Optional<Boolean> propagate,
+            @RequestParam(value = "propagate", required = false) Optional<Boolean> propagate,
             @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
                     required = false)
-            @RequestParam("verify") Optional<Boolean> verify) {
+            @RequestParam(value = "verify", required = false) Optional<Boolean> verify) {
         Boolean defaultPropagate = false;
         Boolean defaultVerify = false;
         return flowService.unpushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));
@@ -293,12 +294,11 @@ public class FlowController {
      * @param flowId id of flow to be rerouted.
      * @return flow payload with updated path.
      */
-    @ApiOperation(value = "Reroute flow", response = FlowPathPayload.class)
+    @ApiOperation(value = "Reroute flow", response = FlowReroutePayload.class)
     @RequestMapping(path = "/flows/{flow_id}/reroute",
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
-    public FlowPathPayload rerouteFlow(@PathVariable("flow_id") String flowId) {
-        logger.debug("Received reroute request for flow {}", flowId);
+    public FlowReroutePayload rerouteFlow(@PathVariable("flow_id") String flowId) {
         return flowService.rerouteFlow(flowId);
     }
 
@@ -315,7 +315,6 @@ public class FlowController {
             method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
     public FlowReroutePayload syncFlow(@PathVariable("flow_id") String flowId) {
-        logger.debug("Received sync flow request for flow {}", flowId);
         return flowService.syncFlow(flowId);
     }
 
@@ -352,6 +351,19 @@ public class FlowController {
     }
 
     /**
+     * Verify flow integrity by sending "ping" package over flow path.
+     */
+    @ApiOperation(
+            value = "Verify flow - using special network packet that is being routed in the same way as client traffic")
+    @RequestMapping(path = "/flows/{flow_id}/ping", method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.OK)
+    public PingOutput pingFlow(
+            @RequestBody PingInput payload,
+            @PathVariable("flow_id") String flowId) {
+        return flowService.pingFlow(flowId, payload);
+    }
+
+    /**
      * Make sure any Flow caches are in sync with the DB. This is primarily a janitor primitive.
      *
      * @return a detailed response of the sync operation (added, deleted, modified, unchanged flows)
@@ -361,8 +373,6 @@ public class FlowController {
             method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults syncFlowCache() {
-
-        logger.debug("Received sync FlowCache");
         return flowService.syncFlowCache(SynchronizeCacheAction.NONE);
     }
 
@@ -375,7 +385,6 @@ public class FlowController {
     @DeleteMapping(path = "/flows/cache")
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults invalidateFlowCache() {
-        logger.debug("Received Invalidate FlowCache");
         return flowService.syncFlowCache(SynchronizeCacheAction.INVALIDATE_CACHE);
     }
 
@@ -388,7 +397,6 @@ public class FlowController {
     @PatchMapping(path = "/flows/cache")
     @ResponseStatus(HttpStatus.OK)
     public FlowCacheSyncResults refreshFlowCache() {
-        logger.debug("Received Refresh FlowCache");
         return flowService.syncFlowCache(SynchronizeCacheAction.SYNCHRONIZE_CACHE);
     }
 

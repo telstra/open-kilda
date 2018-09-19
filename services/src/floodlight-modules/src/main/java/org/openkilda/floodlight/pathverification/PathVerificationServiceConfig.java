@@ -20,14 +20,20 @@ import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
 import java.util.Properties;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
 
 @Configuration
 public interface PathVerificationServiceConfig {
     @Key("isl_bandwidth_quotient")
     @Default("1.0")
+    @Min(0)
+    @Max(1)
     double getIslBandwidthQuotient();
 
     @Key("hmac256-secret")
+    @NotBlank
     String getHmac256Secret();
 
     @Key("bootstrap-servers")

@@ -1,6 +1,35 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.simulator.bolts;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.simulator.classes.IPortImpl;
+import org.openkilda.simulator.classes.ISwitchImpl;
+import org.openkilda.simulator.messages.LinkMessage;
+import org.openkilda.simulator.messages.SwitchMessage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.storm.tuple.Values;
@@ -9,23 +38,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.PortChangeType;
-import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.simulator.classes.IPortImpl;
-import org.openkilda.simulator.classes.ISwitchImpl;
-import org.openkilda.simulator.messages.LinkMessage;
-import org.openkilda.simulator.messages.SwitchMessage;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.*;
-
 public class SpeakerBoltTest {
     SpeakerBolt speakerBolt;
-    String dpid = "00:00:00:00:00:01";
+    SwitchId dpid = new SwitchId("00:00:00:00:00:01");
     int numOfPorts = 10;
     int linkLatency = 10;
     int localLinkPort = 1;
@@ -61,7 +80,7 @@ public class SpeakerBoltTest {
         speakerBolt.addSwitch(switchMessage);
         assertEquals(1, speakerBolt.switches.size());
 
-        ISwitchImpl sw = speakerBolt.switches.get("00:00:" + dpid);
+        ISwitchImpl sw = speakerBolt.switches.get(dpid);
         assertTrue(sw.isActive());
 
         List<IPortImpl> ports = sw.getPorts();
@@ -88,11 +107,11 @@ public class SpeakerBoltTest {
             if (count < 2) {
                 assertThat(infoMessage.getData(), instanceOf(SwitchInfoData.class));
                 SwitchInfoData sw = (SwitchInfoData) infoMessage.getData();
-                assertEquals("00:00:" + dpid, sw.getSwitchId());
+                assertEquals(dpid, sw.getSwitchId());
             } else {
                 assertThat(infoMessage.getData(), instanceOf(PortInfoData.class));
                 PortInfoData port = (PortInfoData) infoMessage.getData();
-                assertEquals("00:00:" + dpid, port.getSwitchId());
+                assertEquals(dpid, port.getSwitchId());
                 if (port.getPortNo() == localLinkPort) {
                     assertEquals(PortChangeType.UP, port.getState());
                 } else {

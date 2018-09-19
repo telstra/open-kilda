@@ -5,9 +5,10 @@ import logging
 import os
 import time
 
-import py2neo.database
-import py2neo.database.status
-from py2neo import Graph
+import neo4j.exceptions
+import neo4j.v1.api
+import neo4j.v1.direct
+import py2neo
 
 from . import exc
 
@@ -46,17 +47,17 @@ class RetryConfig(object):
             time.sleep(self.delay)
 
 
-class BoltTransactionPatch(py2neo.database.BoltTransaction):
-    def run(self, statement, parameters=None, **kwparameters):
+# TODO(surabujin): neo4j Session object have build-in retry mechanism. It will
+# be better to use it, that keep support of our own
+class Neo4jSession(neo4j.v1.api.Session):
+    def run(self, statement, parameters=None, **kwargs):
         retry = RetryConfig()
 
         while retry.can_retry():
             try:
-                result = super(BoltTransactionPatch, self).run(
-                        statement, parameters, **kwparameters)
-            except py2neo.database.status.TransientError:
-                if not self.autocommit:
-                    raise
+                result = super(Neo4jSession, self).run(
+                        statement, parameters, **kwargs)
+            except neo4j.exceptions.TransientError:
                 retry.sleep()
                 continue
 
@@ -89,13 +90,13 @@ def connect(config):
 
         args[option] = value
 
-    uri_format = "http://{login}:{password}@{host}:7474/db/data/".format
+    uri_format = "bolt://{login}:{password}@{host}:7687".format
     uri = uri_format(**args)
 
     args['password'] = '*' * 5
     logger.info('NEO4j connect %s', uri_format(**args))
-    return Graph(uri)
+    return py2neo.Graph(uri)
 
 
 # monkeypatching py2neo.database to inject our retry mechanism
-py2neo.database.BoltTransaction = BoltTransactionPatch
+neo4j.v1.direct.Session = Neo4jSession

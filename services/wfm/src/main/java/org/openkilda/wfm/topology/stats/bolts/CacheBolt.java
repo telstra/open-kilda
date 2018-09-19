@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;
@@ -32,7 +33,6 @@ import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
-import org.openkilda.wfm.topology.utils.StatsUtil;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -89,10 +89,11 @@ public class CacheBolt extends BaseRichBolt {
             pathComputer.getAllFlows().forEach(
                     flow -> cookieToFlow.put(flow.getCookie(), new CacheFlowEntry(
                             flow.getFlowId(),
-                            StatsUtil.formatSwitchId(flow.getSourceSwitch()),
-                            StatsUtil.formatSwitchId(flow.getDestinationSwitch())))
+                            flow.getSourceSwitch().toOtsdFormat(),
+                            flow.getDestinationSwitch().toOtsdFormat()))
             );
-            logger.info("initFlowCache: {}", cookieToFlow);
+            logger.debug("initFlowCache: {}", cookieToFlow);
+            logger.info("Stats Cache: Initialized");
         } catch (Exception ex) {
             logger.error("Error on initFlowCache", ex);
         }
@@ -122,8 +123,7 @@ public class CacheBolt extends BaseRichBolt {
 
                 Long cookie = tuple.getLongByField(FieldsNames.COOKIE.name());
                 String flow = tuple.getStringByField(FieldsNames.FLOW.name());
-                String sw = StatsUtil.formatSwitchId(
-                        tuple.getStringByField(FieldsNames.SWITCH.name()));
+                String sw = new SwitchId(tuple.getValueByField(FieldsNames.SWITCH.name()).toString()).toOtsdFormat();
 
                 Commands command = (Commands) tuple.getValueByField(FieldsNames.COMMAND.name());
                 MeasurePoint measurePoint = (MeasurePoint) tuple.getValueByField(FieldsNames.MEASURE_POINT.name());

@@ -42,9 +42,17 @@ public class DiscoveryLink implements Serializable {
     @JsonProperty("destination")
     private NetworkEndpoint destination;
 
-    /** How many attempts have we made .. will fail after X attempts and no response */
+    /**
+     * How many attempts have we made, in other words defines how many discovery messages we have sent to speaker.
+     */
     @JsonProperty("attempts")
     private int attempts;
+
+    /**
+     * Indicates how many discovery packets were sent by speaker to switches.
+     */
+    @JsonProperty("ack_attempts")
+    private int ackAttempts;
 
     @JsonProperty("time_counter")
     private int timeCounter;
@@ -64,13 +72,13 @@ public class DiscoveryLink implements Serializable {
     @JsonProperty("consecutive_failure_limit")
     private int consecutiveFailureLimit;
 
-    @JsonProperty("active")
-    private boolean active;
+    @JsonProperty("link_state")
+    private LinkState state;
 
     /**
      * Constructor with non-defined destination of the ISL.
      */
-    public DiscoveryLink(String srcSwitch, int srcPort, int checkInterval, int consecutiveFailureLimit) {
+    public DiscoveryLink(SwitchId srcSwitch, int srcPort, int checkInterval, int consecutiveFailureLimit) {
         this.source = new NetworkEndpoint(srcSwitch, srcPort);
         this.destination = null;
         this.timeCounter = 0;
@@ -78,12 +86,13 @@ public class DiscoveryLink implements Serializable {
         this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
+        this.state = LinkState.INACTIVE;
     }
 
     /**
      * Constructor with defined destination of the ISL.
      */
-    public DiscoveryLink(String srcSwitch, int srcPort, String dstSwitch, int dstPort,
+    public DiscoveryLink(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
             int checkInterval, int consecutiveFailureLimit, boolean active) {
         this.source = new NetworkEndpoint(srcSwitch, srcPort);
         this.destination = new NetworkEndpoint(dstSwitch, dstPort);
@@ -92,7 +101,7 @@ public class DiscoveryLink implements Serializable {
         this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = 0;
         this.consecutiveSuccess = 0;
-        this.active = active;
+        this.state = active ? LinkState.ACTIVE : LinkState.INACTIVE;
     }
 
     /**
@@ -102,21 +111,23 @@ public class DiscoveryLink implements Serializable {
     public DiscoveryLink(@JsonProperty("source") final NetworkEndpoint source,
             @JsonProperty("destination") final NetworkEndpoint destination,
             @JsonProperty("attempts") final int attempts,
+            @JsonProperty("ack_attempts") final int ackAttempts,
             @JsonProperty("time_counter") final int timeCounter,
             @JsonProperty("check_interval") final int checkInterval,
             @JsonProperty("consecutive_failure") final int consecutiveFailure,
             @JsonProperty("consecutive_success") final int consecutiveSuccess,
             @JsonProperty("consecutive_failure_limit") final int consecutiveFailureLimit,
-            @JsonProperty("active") final boolean active) {
+            @JsonProperty("link_state") final LinkState state) {
         this.source = source;
         this.destination = destination;
         this.attempts = attempts;
+        this.ackAttempts = ackAttempts;
         this.timeCounter = timeCounter;
         this.checkInterval = checkInterval;
         this.consecutiveFailureLimit = consecutiveFailureLimit;
         this.consecutiveFailure = consecutiveFailure;
         this.consecutiveSuccess = consecutiveSuccess;
-        this.active = active;
+        this.state = state;
     }
 
     /**
@@ -124,7 +135,7 @@ public class DiscoveryLink implements Serializable {
      */
     public void activate(NetworkEndpoint destination) {
         this.destination = destination;
-        this.active = true;
+        this.state = LinkState.ACTIVE;
     }
 
     /**
@@ -132,8 +143,9 @@ public class DiscoveryLink implements Serializable {
      * whether ISL is moved or not.
      */
     public void deactivate() {
-        this.active = false;
+        this.state = LinkState.INACTIVE;
         this.consecutiveFailure = 0;
+        this.consecutiveSuccess = 0;
     }
 
     /**
@@ -143,18 +155,19 @@ public class DiscoveryLink implements Serializable {
      */
     public void renew() {
         attempts = 0;
+        ackAttempts = 0;
         timeCounter = 0;
     }
 
     /**
-     * Checks if discovery should be suspended for that link.
+     * Checks if discovery should be suspended for that link or we can try to discover it.
      * @return true if link should be excluded from discovery plan and discovery packets should not be sent.
      */
-    public boolean isDiscoverySuspended() {
+    public boolean isNewAttemptAllowed() {
         if (consecutiveFailureLimit == ENDLESS_ATTEMPTS) { // never gonna give a link up.
-            return false;
+            return true;
         }
-        return consecutiveFailure > consecutiveFailureLimit;
+        return consecutiveFailure < consecutiveFailureLimit;
     }
 
     public void clearConsecutiveFailure() {
@@ -166,7 +179,8 @@ public class DiscoveryLink implements Serializable {
     }
 
     public void fail() {
-        consecutiveFailure++;
+        this.consecutiveFailure++;
+        this.state = LinkState.INACTIVE;
     }
 
     public void success() {
@@ -182,15 +196,33 @@ public class DiscoveryLink implements Serializable {
     }
 
     /**
-     * Check if we should stop to verify ISL.
+     * Checks if limit of not acknowledged attempts is exceeded.
      * @return true if attempts is greater than attemptLimit.
      */
     public boolean isAttemptsLimitExceeded(int attemptsLimit) {
         return attempts > attemptsLimit;
     }
 
+    /**
+     * Increases amount of attempts.
+     */
     public void incAttempts() {
         attempts++;
+    }
+
+    /**
+     * Checks if we should stop trying to discover isl, because of the limit of attempts.
+     * @return true if attempts is greater than attemptLimit.
+     */
+    public boolean isAckAttemptsLimitExceeded(int attemptsLimit) {
+        return ackAttempts > attemptsLimit;
+    }
+
+    /**
+     * Increases amount of acknowledged attempts.
+     */
+    public void incAcknowledgedAttempts() {
+        ackAttempts++;
     }
 
     public boolean timeToCheck() {
@@ -203,13 +235,25 @@ public class DiscoveryLink implements Serializable {
      * @param dstPort destination port.
      * @return true if destination changed.
      */
-    public boolean isDestinationChanged(String dstSwitch, int dstPort) {
+    public boolean isDestinationChanged(SwitchId dstSwitch, int dstPort) {
         // check if the link was previously not discovered
         if (this.destination == null) {
             return false;
         }
 
         return !Objects.equals(this.destination, new NetworkEndpoint(dstSwitch, dstPort));
+    }
+
+    /**
+     * Resets state and counters of the link.
+     */
+    public void resetState() {
+        this.state = LinkState.UNKNOWN;
+        this.attempts = 0;
+        this.ackAttempts = 0;
+        this.timeCounter = 0;
+        this.consecutiveFailure = 0;
+        this.consecutiveSuccess = 0;
     }
 
     @Override
@@ -230,4 +274,22 @@ public class DiscoveryLink implements Serializable {
         return Objects.hash(getSource(), getDestination());
     }
 
+    /**
+     * We need transition status for {@link DiscoveryLink} because we should be able to track links, where we are not
+     * sure if it is active or not. For instance, if switch goes up again - we have to recheck all active links,
+     * we can't say for sure whether these links are still active or not, need to verify it.
+     */
+    public enum LinkState {
+        ACTIVE,
+        UNKNOWN,
+        INACTIVE;
+
+        public boolean isActive() {
+            return this == ACTIVE;
+        }
+
+        public boolean isInactive() {
+            return this == INACTIVE;
+        }
+    }
 }

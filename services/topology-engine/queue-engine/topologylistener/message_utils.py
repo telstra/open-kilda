@@ -232,6 +232,15 @@ def send_validation_rules_response(missing_rules, excess_rules, proper_rules,
                   topic=config.KAFKA_NORTHBOUND_TOPIC)
 
 
+def send_error_validation_rules_response(correlation_id, error_type, error_message, error_description):
+    send_error_message(correlation_id,
+                       error_type,
+                       error_message,
+                       error_description,
+                       destination="NORTHBOUND",
+                       topic=config.KAFKA_NORTHBOUND_TOPIC)
+
+
 def send_sync_rules_response(installed_rules, correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.info.switches.SyncRulesResponse'
@@ -247,7 +256,7 @@ def send_force_install_commands(switch_id, flow_commands, correlation_id):
     message.switch_id = switch_id
     message.flow_commands = flow_commands
     send_to_topic(message, correlation_id, MT_COMMAND,
-                  topic=config.KAFKA_SPEAKER_TOPIC)
+                  topic=config.KAFKA_SPEAKER_FLOW_TOPIC)
 
 
 class Message(Abstract):

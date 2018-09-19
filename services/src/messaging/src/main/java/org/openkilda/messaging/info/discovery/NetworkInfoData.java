@@ -22,7 +22,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
+import org.openkilda.messaging.model.FlowPair;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -78,7 +78,7 @@ public class NetworkInfoData extends InfoData {
      * Flows.
      */
     @JsonProperty("flows")
-    private Set<ImmutablePair<Flow, Flow>> flows;
+    private Set<FlowPair<Flow, Flow>> flows;
 
     /**
      * Default constructor.
@@ -99,7 +99,7 @@ public class NetworkInfoData extends InfoData {
                            @JsonProperty("switches") Set<SwitchInfoData> switches,
                            @JsonProperty("ports") Set<PortInfoData> ports,
                            @JsonProperty("isls") Set<IslInfoData> isls,
-                           @JsonProperty("flows") Set<ImmutablePair<Flow, Flow>> flows) {
+                           @JsonProperty("flows") Set<FlowPair<Flow, Flow>> flows) {
         this.requester = requester;
         this.switches = switches;
         this.ports = ports;
@@ -185,7 +185,7 @@ public class NetworkInfoData extends InfoData {
      *
      * @return flows
      */
-    public Set<ImmutablePair<Flow, Flow>> getFlows() {
+    public Set<FlowPair<Flow, Flow>> getFlows() {
         return flows;
     }
 
@@ -194,7 +194,7 @@ public class NetworkInfoData extends InfoData {
      *
      * @param flows flows
      */
-    public void setFlows(Set<ImmutablePair<Flow, Flow>> flows) {
+    public void setFlows(Set<FlowPair<Flow, Flow>> flows) {
         this.flows = flows;
     }
 

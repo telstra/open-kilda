@@ -1,23 +1,38 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.northbound.dto.flows;
 
-
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.ToString;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * PathDiscrepancyDto is used to capture differences between expected and actual values in a path.
  * One example of its use is in comparing a Flow, as expected based on the database, and as
  * found (actual) on switches.
  */
-@JsonSerialize
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@ToString
 public class PathDiscrepancyDto {
 
-    /** The rule will be a hybrid of what is expected */
+    /** The rule will be a hybrid of what is expected. */
     private String rule;
     private String field;
 
@@ -27,47 +42,4 @@ public class PathDiscrepancyDto {
     @JsonProperty("actual_value")
     private String actualValue;
 
-    @JsonCreator
-    public PathDiscrepancyDto(
-            @JsonProperty("rule") String rule,
-            @JsonProperty("field") String field,
-            @JsonProperty("expected_value") String expectedValue,
-            @JsonProperty("actual_value") String actualValue) {
-        this.rule = rule;
-        this.field = field;
-        this.expectedValue = expectedValue;
-        this.actualValue = actualValue;
-    }
-
-    public String getRule() {
-        return rule;
-    }
-
-    public void setRule(String rule) {
-        this.rule = rule;
-    }
-
-    public String getField() {
-        return field;
-    }
-
-    public void setField(String field) {
-        this.field = field;
-    }
-
-    public String getExpectedValue() {
-        return expectedValue;
-    }
-
-    public void setExpectedValue(String expectedValue) {
-        this.expectedValue = expectedValue;
-    }
-
-    public String getActualValue() {
-        return actualValue;
-    }
-
-    public void setActualValue(String actualValue) {
-        this.actualValue = actualValue;
-    }
 }

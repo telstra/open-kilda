@@ -23,62 +23,76 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.isIn;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import org.openkilda.atdd.staging.helpers.FlowSet;
+import org.openkilda.atdd.staging.helpers.FlowTrafficExamBuilder;
+import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
+import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.floodlight.model.MeterEntry;
+import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
+import org.openkilda.testing.service.northbound.NorthboundService;
+import org.openkilda.testing.service.topology.TopologyEngineService;
+import org.openkilda.testing.service.traffexam.FlowNotApplicableException;
+import org.openkilda.testing.service.traffexam.OperationalException;
+import org.openkilda.testing.service.traffexam.TraffExamService;
+import org.openkilda.testing.service.traffexam.model.Exam;
+import org.openkilda.testing.service.traffexam.model.ExamReport;
+import org.openkilda.testing.service.traffexam.model.ExamResources;
+import org.openkilda.testing.tools.SoftAssertions;
 
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.ListValuedMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
-
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition;
-import org.openkilda.atdd.staging.model.topology.TopologyDefinition.Switch;
-import org.openkilda.atdd.staging.service.floodlight.FloodlightService;
-import org.openkilda.atdd.staging.service.floodlight.model.MeterEntry;
-import org.openkilda.atdd.staging.service.floodlight.model.MetersEntriesMap;
-import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
-import org.openkilda.atdd.staging.service.northbound.NorthboundService;
-import org.openkilda.atdd.staging.service.topology.TopologyEngineService;
-import org.openkilda.atdd.staging.service.traffexam.FlowNotApplicableException;
-import org.openkilda.atdd.staging.service.traffexam.OperationalException;
-import org.openkilda.atdd.staging.service.traffexam.TraffExamService;
-import org.openkilda.atdd.staging.service.traffexam.model.Exam;
-import org.openkilda.atdd.staging.service.traffexam.model.ExamReport;
-import org.openkilda.atdd.staging.service.traffexam.model.ExamResources;
-import org.openkilda.atdd.staging.steps.helpers.FlowTrafficExamBuilder;
-import org.openkilda.atdd.staging.steps.helpers.TopologyUnderTest;
-import org.openkilda.atdd.staging.tools.SoftAssertions;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.ImmutablePair;
-import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
-
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import cucumber.api.java8.En;
+import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.collections4.ListValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -110,7 +124,9 @@ public class FlowCrudSteps implements En {
     @Qualifier("topologyUnderTest")
     private TopologyUnderTest topologyUnderTest;
 
-    Set<FlowPayload> flows;
+    private Set<FlowPayload> flows;
+    private Set<FlowPathPayload> flowPaths = new HashSet<>();
+    private FlowPayload flowResponse;
 
     @Given("^flows defined over active switches in the reference topology$")
     public void defineFlowsOverActiveSwitches() {
@@ -129,6 +145,24 @@ public class FlowCrudSteps implements En {
         flowIsls.putAll(flowManager.createFlowsWithASwitch(flowsAmount, alternatePaths, bw));
         //temporary resaving flows before refactoring all methods to work with topologyUnderTest
         flows = flowIsls.keySet();
+        flows.forEach(flow -> flowPaths.add(northboundService.getFlowPath(flow.getId())));
+    }
+
+    @And("^flow paths? (?:is|are) changed")
+    public void flowPathIsChanged() {
+        Set<FlowPathPayload> actualFlowPaths = new HashSet<>();
+        flows.forEach(flow -> actualFlowPaths.add(northboundService.getFlowPath(flow.getId())));
+        assertThat(actualFlowPaths, everyItem(not(isIn(flowPaths))));
+
+        // Save actual flow paths
+        flowPaths = actualFlowPaths;
+    }
+
+    @And("^flow paths? (?:is|are) unchanged")
+    public void flowPathIsUnchanged() {
+        Set<FlowPathPayload> actualFlowPaths = new HashSet<>();
+        flows.forEach(flow -> actualFlowPaths.add(northboundService.getFlowPath(flow.getId())));
+        assertThat(actualFlowPaths, everyItem(isIn(flowPaths)));
     }
 
     @And("Create defined flows?")
@@ -171,19 +205,19 @@ public class FlowCrudSteps implements En {
         List<Flow> expextedFlows = flows.stream()
                 .map(flow -> new Flow(flow.getId(),
                         flow.getMaximumBandwidth(),
-                        flow.isIgnoreBandwidth(), 0,
+                        flow.isIgnoreBandwidth(), flow.isPeriodicPings(), 0,
                         flow.getDescription(), null,
-                        flow.getSource().getSwitchDpId(),
-                        flow.getDestination().getSwitchDpId(),
-                        flow.getSource().getPortId(),
-                        flow.getDestination().getPortId(),
+                        flow.getSource().getDatapath(),
+                        flow.getDestination().getDatapath(),
+                        flow.getSource().getPortNumber(),
+                        flow.getDestination().getPortNumber(),
                         flow.getSource().getVlanId(),
                         flow.getDestination().getVlanId(),
                         0, 0, null, null))
                 .collect(toList());
 
         for (Flow expectedFlow : expextedFlows) {
-            ImmutablePair<Flow, Flow> flowPair = Failsafe.with(retryPolicy()
+            FlowPair<Flow, Flow> flowPair = Failsafe.with(retryPolicy()
                     .retryWhen(null))
                     .get(() -> topologyEngineService.getFlow(expectedFlow.getFlowId()));
 
@@ -195,6 +229,10 @@ public class FlowCrudSteps implements En {
 
     @And("^(?:each )?flow is in UP state$")
     public void eachFlowIsInUpState() {
+        eachFlowIsUp(flows);
+    }
+
+    private void eachFlowIsUp(Set<FlowPayload> flows) {
         for (FlowPayload flow : flows) {
             FlowIdStatusPayload status = Failsafe.with(retryPolicy()
                     .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
@@ -313,7 +351,7 @@ public class FlowCrudSteps implements En {
         }
     }
 
-    private int getAllowedVlan(Set<FlowPayload> flows, String switchDpId) {
+    private int getAllowedVlan(Set<FlowPayload> flows, SwitchId switchDpId) {
         RangeSet<Integer> allocatedVlans = TreeRangeSet.create();
         flows.forEach(f -> {
             allocatedVlans.add(Range.singleton(f.getSource().getVlanId()));
@@ -332,7 +370,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow has meters installed with (\\d+) max bandwidth$")
     public void eachFlowHasMetersInstalledWithBandwidth(long bandwidth) {
         for (FlowPayload flow : flows) {
-            ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+            FlowPair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
 
             try {
                 MetersEntriesMap forwardSwitchMeters = floodlightService
@@ -357,9 +395,9 @@ public class FlowCrudSteps implements En {
 
     @And("^all active switches have no excessive meters installed$")
     public void noExcessiveMetersInstalledOnActiveSwitches() {
-        ListValuedMap<String, Integer> switchMeters = new ArrayListValuedHashMap<>();
+        ListValuedMap<SwitchId, Integer> switchMeters = new ArrayListValuedHashMap<>();
         for (FlowPayload flow : flows) {
-            ImmutablePair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+            FlowPair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
             if (flowPair != null) {
                 switchMeters.put(flowPair.getLeft().getSourceSwitch(), flowPair.getLeft().getMeterId());
                 switchMeters.put(flowPair.getRight().getSourceSwitch(), flowPair.getRight().getMeterId());
@@ -416,7 +454,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow can not be read from TopologyEngine$")
     public void eachFlowCanNotBeReadFromTopologyEngine() {
         for (FlowPayload flow : flows) {
-            ImmutablePair<Flow, Flow> result = Failsafe.with(retryPolicy()
+            FlowPair<Flow, Flow> result = Failsafe.with(retryPolicy()
                     .abortWhen(null)
                     .retryIf(Objects::nonNull))
                     .get(() -> topologyEngineService.getFlow(flow.getId()));
@@ -425,9 +463,145 @@ public class FlowCrudSteps implements En {
         }
     }
 
+    @And("^create flow between '(.*)' and '(.*)' and alias it as '(.*)'$")
+    public void createFlowBetween(String srcAlias, String dstAlias, String flowAlias) {
+        Switch srcSwitch = topologyUnderTest.getAliasedObject(srcAlias);
+        Switch dstSwitch = topologyUnderTest.getAliasedObject(dstAlias);
+        FlowPayload flow = new FlowSet().buildWithAnyPortsInUniqueVlan("auto" + getTimestamp(),
+                srcSwitch, dstSwitch, 1000);
+        northboundService.addFlow(flow);
+        topologyUnderTest.addAlias(flowAlias, flow);
+    }
+
+    @And("^'(.*)' flow is in UP state$")
+    public void flowIsUp(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        eachFlowIsUp(Collections.singleton(flow));
+    }
+
+    @When("^request all switch meters for switch '(.*)' and alias results as '(.*)'$")
+    public void requestMeters(String switchAlias, String meterAlias) {
+        Switch sw = topologyUnderTest.getAliasedObject(switchAlias);
+        topologyUnderTest.addAlias(meterAlias, floodlightService.getMeters(sw.getDpId()));
+
+    }
+
+    @And("^select first meter of '(.*)' and alias it as '(.*)'$")
+    public void selectFirstMeter(String metersAlias, String newMeterAlias) {
+        MetersEntriesMap meters = topologyUnderTest.getAliasedObject(metersAlias);
+        Entry<Integer, MeterEntry> firstMeter = meters.entrySet().iterator().next();
+        topologyUnderTest.addAlias(newMeterAlias, firstMeter);
+    }
+
+    @Then("^meters '(.*)' does not have '(.*)'$")
+    public void doesNotHaveMeter(String metersAlias, String meterAlias) {
+        MetersEntriesMap meters = topologyUnderTest.getAliasedObject(metersAlias);
+        Entry<Integer, MeterEntry> meter = topologyUnderTest.getAliasedObject(meterAlias);
+        assertFalse(meters.containsKey(meter.getKey()));
+    }
+
     private RetryPolicy retryPolicy() {
         return new RetryPolicy()
                 .withDelay(2, TimeUnit.SECONDS)
                 .withMaxRetries(10);
+    }
+
+    @Given("^random flow aliased as '(.*)'$")
+    public void randomFlowAliasedAsFlow(String flowAlias) {
+        topologyUnderTest.addAlias(flowAlias, flowManager.randomFlow());
+    }
+
+    @And("^change bandwidth of (.*) flow to (\\d+)$")
+    public void changeBandwidthOfFlow(String flowAlias, int newBw) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        flow.setMaximumBandwidth(newBw);
+    }
+
+    @When("^change bandwidth of (.*) flow to '(.*)'$")
+    public void changeBandwidthOfFlow(String flowAlias, String bwAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        long bw = topologyUnderTest.getAliasedObject(bwAlias);
+        flow.setMaximumBandwidth(bw);
+    }
+
+    @And("^create flow '(.*)'$")
+    public void createFlow(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        flowResponse = northboundService.addFlow(flow);
+    }
+
+    @And("^get available bandwidth and maximum speed for flow (.*) and alias them as '(.*)' "
+            + "and '(.*)' respectively$")
+    public void getAvailableBandwidthAndSpeed(String flowAlias, String bwAlias, String speedAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        List<PathNodePayload> flowPath = northboundService.getFlowPath(flow.getId()).getForwardPath();
+        List<IslInfoData> allLinks = northboundService.getAllLinks();
+        long minBw = Long.MAX_VALUE;
+        long minSpeed = Long.MAX_VALUE;
+
+        /*
+        Take flow path and all links. Now for every pair in flow path find a link.
+        Take minimum available bandwidth and minimum available speed from those links
+        (flow's speed and left bandwidth depends on the weakest isl)
+        */
+        for (int i = 1; i < flowPath.size(); i++) {
+            PathNodePayload from = flowPath.get(i - 1);
+            PathNodePayload to = flowPath.get(i);
+            IslInfoData isl = allLinks.stream().filter(link ->
+                    link.getPath().get(0).getSwitchId().equals(from.getSwitchId())
+                            && link.getPath().get(1).getSwitchId().equals(to.getSwitchId()))
+                    .findFirst().get();
+            minBw = Math.min(isl.getAvailableBandwidth(), minBw);
+            minSpeed = Math.min(isl.getSpeed(), minSpeed);
+        }
+        topologyUnderTest.addAlias(bwAlias, minBw);
+        topologyUnderTest.addAlias(speedAlias, minSpeed);
+    }
+
+    @And("^update flow (.*)$")
+    public void updateFlow(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        flowResponse = northboundService.updateFlow(flow.getId(), flow);
+    }
+
+    @When("^get info about flow (.*)$")
+    public void getInfoAboutFlow(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        flowResponse = northboundService.getFlow(flow.getId());
+    }
+
+    @Then("^response flow has bandwidth equal to '(.*)'$")
+    public void responseFlowHasBandwidth(String bwAlias) {
+        long expectedBw = topologyUnderTest.getAliasedObject(bwAlias);
+        assertThat((long) flowResponse.getMaximumBandwidth(), equalTo(expectedBw));
+    }
+
+    @Then("^response flow has bandwidth equal to (\\d+)$")
+    public void responseFlowHasBandwidth(long expectedBw) {
+        assertThat(flowResponse.getMaximumBandwidth(), equalTo(expectedBw));
+    }
+
+    @And("^delete flow (.*)$")
+    public void deleteFlow(String flowAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        northboundService.deleteFlow(flow.getId());
+    }
+
+    @And("^get path of '(.*)' and alias it as '(.*)'$")
+    public void getPathAndAlias(String flowAlias, String pathAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        topologyUnderTest.addAlias(pathAlias, northboundService.getFlowPath(flow.getId()));
+    }
+
+    @And("^(.*) flow's path equals to '(.*)'$")
+    public void verifyFlowPath(String flowAlias, String pathAlias) {
+        FlowPayload flow = topologyUnderTest.getAliasedObject(flowAlias);
+        FlowPathPayload expectedPath = topologyUnderTest.getAliasedObject(pathAlias);
+        FlowPathPayload actualPath = northboundService.getFlowPath(flow.getId());
+        assertThat(actualPath, equalTo(expectedPath));
+    }
+
+    private String getTimestamp() {
+        return new SimpleDateFormat("ddMMMHHmm", Locale.US).format(new Date());
     }
 }

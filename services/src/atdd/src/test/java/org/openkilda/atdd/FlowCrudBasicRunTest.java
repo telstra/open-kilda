@@ -19,24 +19,23 @@ import static java.lang.String.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasItems;
-import static org.openkilda.DefaultParameters.trafficEndpoint;
-import static org.openkilda.DefaultParameters.mininetEndpoint;
-import static org.openkilda.flow.FlowUtils.getTimeDuration;
-import static org.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.DefaultParameters.mininetEndpoint;
+import static org.openkilda.DefaultParameters.trafficEndpoint;
+import static org.openkilda.flow.FlowUtils.getTimeDuration;
+import static org.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.hamcrest.Matcher;
-import org.hamcrest.Matchers;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.BatchResults;
@@ -44,10 +43,13 @@ import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
 import org.openkilda.topo.TopologyHelp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import org.glassfish.jersey.client.ClientConfig;
+import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -64,7 +66,7 @@ public class FlowCrudBasicRunTest {
     private static final String fileName = "topologies/nonrandom-topology.json";
 
     @Given("^a nonrandom linear topology of 7 switches$")
-    public void a_multi_path_topology() throws Throwable {
+    public void multiPathTopology() throws Throwable {
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(classLoader.getResource(fileName).getFile());
         String json = new String(Files.readAllBytes(file.toPath()));
@@ -78,15 +80,19 @@ public class FlowCrudBasicRunTest {
                                        final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                        final int destinationVlan, final int bandwidth) throws Exception {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
-                new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
-                new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, false, flowId, null, FlowState.UP.getState());
+                new FlowEndpointPayload(new SwitchId(sourceSwitch), sourcePort, sourceVlan),
+                new FlowEndpointPayload(new SwitchId(destinationSwitch), destinationPort, destinationVlan),
+                bandwidth, false, false, flowId, null, FlowState.UP.getState());
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
         assertNotNull(response);
-        response.setLastUpdated(null);
 
-        assertEquals(flowPayload, response);
+        System.out.println(String.format(
+                "==> Ensure flow %s status is \"UP\" (%s <--> %s)",
+                flowId, flowPayload.getSource(), flowPayload.getDescription()));
+        FlowIdStatusPayload actual = FlowUtils.waitFlowStatus(flowPayload.getId(), FlowState.UP);
+        assertNotNull(actual);
+        assertEquals(FlowState.UP, actual.getStatus());
     }
 
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is failed$")
@@ -94,9 +100,9 @@ public class FlowCrudBasicRunTest {
                                    final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                    final int destinationVlan, final int bandwidth) throws Exception {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
-                new FlowEndpointPayload(sourceSwitch, sourcePort, sourceVlan),
-                new FlowEndpointPayload(destinationSwitch, destinationPort, destinationVlan),
-                bandwidth, false, flowId, null, FlowState.DOWN.getState());
+                new FlowEndpointPayload(new SwitchId(sourceSwitch), sourcePort, sourceVlan),
+                new FlowEndpointPayload(new SwitchId(destinationSwitch), destinationPort, destinationVlan),
+                bandwidth, false, false, flowId, null, FlowState.DOWN.getState());
 
         FlowPayload response = FlowUtils.putFlow(flowPayload);
 
@@ -106,9 +112,11 @@ public class FlowCrudBasicRunTest {
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be created$")
     public void checkFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                                  final int destinationVlan, final int bandwidth) throws Exception {
-        Flow expectedFlow = new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, 0, flowId, null, sourceSwitch,
-                destinationSwitch, sourcePort, destinationPort, sourceVlan, destinationVlan, 0, 0, null, null);
+                                  final int destinationVlan, final long bandwidth) throws Exception {
+        Flow expectedFlow =
+                new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, false, 0, flowId, null,
+                        new SwitchId(sourceSwitch), new SwitchId(destinationSwitch), sourcePort, destinationPort,
+                        sourceVlan, destinationVlan, 0, 0, null, null);
 
         List<Flow> flows = validateFlowStored(expectedFlow);
 
@@ -126,11 +134,11 @@ public class FlowCrudBasicRunTest {
         System.out.println(format("===> Flow was created at %s\n", flow.getLastUpdated()));
 
         assertEquals(FlowUtils.getFlowName(flowId), flow.getId());
-        assertEquals(sourceSwitch, flow.getSource().getSwitchDpId());
-        assertEquals(sourcePort, flow.getSource().getPortId().longValue());
+        assertEquals(new SwitchId(sourceSwitch), flow.getSource().getDatapath());
+        assertEquals(sourcePort, flow.getSource().getPortNumber().longValue());
         assertEquals(sourceVlan, flow.getSource().getVlanId().longValue());
-        assertEquals(destinationSwitch, flow.getDestination().getSwitchDpId());
-        assertEquals(destinationPort, flow.getDestination().getPortId().longValue());
+        assertEquals(new SwitchId(destinationSwitch), flow.getDestination().getDatapath());
+        assertEquals(destinationPort, flow.getDestination().getPortNumber().longValue());
         assertEquals(destinationVlan, flow.getDestination().getVlanId().longValue());
         assertEquals(bandwidth, flow.getMaximumBandwidth());
         assertNotNull(flow.getLastUpdated());
@@ -146,24 +154,22 @@ public class FlowCrudBasicRunTest {
         assertNotNull(response);
         response.setLastUpdated(null);
 
-        assertEquals(flowPayload, response);
+        assertEquals(flowPayload.getMaximumBandwidth(), response.getMaximumBandwidth());
 
         checkFlowCreation(flowId, sourceSwitch, sourcePort, sourceVlan, destinationSwitch,
                 destinationPort, destinationVlan, newBand);
     }
 
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be deleted$")
-    public void checkFlowDeletion(final String flowId, final String sourceSwitch, final int sourcePort, final int sourceVlan,
-                                  final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                  final int bandwidth) throws Exception {
+    public void checkFlowDeletion(final String flowId, final String sourceSwitch, final int sourcePort,
+                                  final int sourceVlan, final String destinationSwitch, final int destinationPort,
+                                  final int destinationVlan, final int bandwidth) throws Exception {
         int unknownFlowCount = -1; // use -1 to communicate "I don't know what it should be")
-        int expectedFlowCount = getFlowCount(unknownFlowCount) - 2;
+        final int expectedFlowCount = getFlowCount(unknownFlowCount) - 2;
 
         FlowPayload response = FlowUtils.deleteFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(response);
-        response.setLastUpdated(null);
-
-        assertEquals(flowPayload, response);
+        assertEquals(flowPayload.getId(), response.getId());
 
         FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
         if (flow != null) {
@@ -239,7 +245,8 @@ public class FlowCrudBasicRunTest {
         // TODO: implement
     }
 
-    private int checkTraffic(String sourceSwitch, String destSwitch, int sourceVlan, int destinationVlan, int expectedStatus) {
+    private int checkTraffic(String sourceSwitch, String destSwitch,
+                             int sourceVlan, int destinationVlan, int expectedStatus) {
         if (isTrafficTestsEnabled()) {
             System.out.print("=====> Send traffic");
 
@@ -256,15 +263,15 @@ public class FlowCrudBasicRunTest {
             // reuse speeds testing up the code below determines which switch:port
             // pairs should be used as source and drains for traffic while keepig
             // small linear topology in use.
-            int fromNum = Integer.parseInt(sourceSwitch.substring(sourceSwitch.length() -1 ));
-            int toNum = Integer.parseInt(destSwitch.substring(destSwitch.length() -1 ));
+            int fromNum = Integer.parseInt(sourceSwitch.substring(sourceSwitch.length() - 1));
+            int toNum = Integer.parseInt(destSwitch.substring(destSwitch.length() - 1));
             String from = "0000000" + (fromNum - 1);
             String to = "0000000" + (toNum + 1);
             int fromPort = from.equals("00000001") ? 1 : 2;
             int toPort = 1;
             System.out.println(format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
-                    from,fromPort,sourceVlan,sourceSwitch,
-                    to,toPort,destinationVlan,destSwitch));
+                    from, fromPort, sourceVlan, sourceSwitch,
+                    to, toPort, destinationVlan, destSwitch));
 
 
             Response result = client
@@ -292,7 +299,7 @@ public class FlowCrudBasicRunTest {
     private int checkPingTraffic(String sourceSwitch, String destSwitch,
                                  int sourceVlan, int destinationVlan, int expectedStatus) {
         if (isTrafficTestsEnabled()) {
-            System.out.print("=====> Send PING traffic");
+            System.out.print("=====> Send traffic ");
 
             long current = System.currentTimeMillis();
             Client client = ClientBuilder.newClient(new ClientConfig());
@@ -307,16 +314,15 @@ public class FlowCrudBasicRunTest {
             // reuse speeds testing up the code below determines which switch:port
             // pairs should be used as source and drains for traffic while keepig
             // small linear topology in use.
-            int fromNum = Integer.parseInt(sourceSwitch.substring(sourceSwitch.length() -1 ));
-            int toNum = Integer.parseInt(destSwitch.substring(destSwitch.length() -1 ));
+            int fromNum = Integer.parseInt(sourceSwitch.substring(sourceSwitch.length() - 1));
+            int toNum = Integer.parseInt(destSwitch.substring(destSwitch.length() - 1));
             String from = "0000000" + (fromNum - 1);
             String to = "0000000" + (toNum + 1);
             int fromPort = from.equals("00000001") ? 1 : 2;
             int toPort = 1;
             System.out.println(format("from:%s:%d::%d via %s, To:%s:%d::%d via %s",
-                    from,fromPort,sourceVlan,sourceSwitch,
-                    to,toPort,destinationVlan,destSwitch));
-
+                    from, fromPort, sourceVlan, sourceSwitch,
+                    to, toPort, destinationVlan, destSwitch));
 
             Response result = client
                     .target(mininetEndpoint)
@@ -335,10 +341,11 @@ public class FlowCrudBasicRunTest {
             System.out.println(format("======> Response = %s, BODY = %s", result.toString(), body));
             System.out.println(format("======> Send traffic Time: %,.3f", getTimeDuration(current)));
 
-            if (body.equals("NOOP"))
+            if (body.equals("NOOP")) {
                 return expectedStatus;
-            else
+            } else {
                 return status;
+            }
         } else {
             return expectedStatus;
         }
@@ -373,8 +380,8 @@ public class FlowCrudBasicRunTest {
      */
     @Then("^traffic through (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is pingable$")
     public void checkTrafficIsPingable(final String sourceSwitch, final int sourcePort, final int sourceVlan,
-                                        final String destinationSwitch, final int destinationPort,
-                                        final int destinationVlan, final int bandwidth) throws Throwable {
+                                       final String destinationSwitch, final int destinationPort,
+                                       final int destinationVlan, final int bandwidth) throws Throwable {
         TimeUnit.SECONDS.sleep(2);
         int status = checkPingTraffic(sourceSwitch, destinationSwitch, sourceVlan, destinationVlan, 200);
         assertEquals(200, status);
@@ -382,8 +389,8 @@ public class FlowCrudBasicRunTest {
 
     @Then("^traffic through (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is not pingable$")
     public void checkTrafficIsNotPingable(final String sourceSwitch, final int sourcePort, final int sourceVlan,
-                                           final String destinationSwitch, final int destinationPort,
-                                           final int destinationVlan, final int bandwidth) throws Throwable {
+                                          final String destinationSwitch, final int destinationPort,
+                                          final int destinationVlan, final int bandwidth) throws Throwable {
         TimeUnit.SECONDS.sleep(2);
         int status = checkPingTraffic(sourceSwitch, destinationSwitch, sourceVlan, destinationVlan, 503);
         assertNotEquals(200, status);
@@ -433,9 +440,10 @@ public class FlowCrudBasicRunTest {
     }
 
     /**
-     * @param expectedFlowsCount -1 if unknown
-     * @return the count, based on dumpFlows()
-     * @throws Exception
+     * Return the count, based on dumpFlows().
+     *
+     * @param expectedFlowsCount -1 if unknown.
+     * @return the count, based on dumpFlows().
      */
     private int getFlowCount(int expectedFlowsCount) throws Exception {
         List<Flow> flows = FlowUtils.dumpFlows();
