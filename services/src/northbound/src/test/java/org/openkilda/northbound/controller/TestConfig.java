@@ -20,7 +20,6 @@ import static org.mockito.Mockito.mock;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
-import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
@@ -35,8 +34,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
 
 /**
  * The Test configuration.
@@ -67,11 +64,6 @@ public class TestConfig {
     }
 
     @Bean
-    public HealthCheckMessageConsumer healthCheckMessageConsumer() {
-        return new TestHealthCheckMessageMock();
-    }
-
-    @Bean
     public RestTemplate restTemplate() {
         return mock(RestTemplate.class);
     }
@@ -79,18 +71,5 @@ public class TestConfig {
     @Bean
     public CorrelationIdFactory idFactory() {
         return new TestCorrelationIdFactory();
-    }
-
-    private class TestHealthCheckMessageMock implements HealthCheckMessageConsumer {
-
-        @Override
-        public Map<String, String> poll(String correlationId) {
-            return null;
-        }
-
-        @Override
-        public void clear() {
-
-        }
     }
 }
