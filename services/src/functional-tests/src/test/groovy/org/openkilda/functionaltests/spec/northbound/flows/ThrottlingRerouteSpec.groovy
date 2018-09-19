@@ -193,16 +193,16 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         2.times { blinkPort(isl1.dstSwitch.dpId, isl1.dstPort) }
 
         and: "Right before timeout ends the flow2 ISL blinks twice"
-        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval)
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 1)
         def isl2 = flow2Isls.find { !flow1Isls.contains(it) }
         2.times { blinkPort(isl2.dstSwitch.dpId, isl2.dstPort) }
 
         then: "Flow1 is still on its path right before the updated timeout runs out"
-        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval)
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 1)
         currentPath1 == PathHelper.convert(northboundService.getFlowPath(flow1.id))
 
         and: "Flow1 reroutes (changes path) after window timeout"
-        Wrappers.wait(2 + discoveryInterval) {
+        Wrappers.wait(3 + discoveryInterval) {
             currentPath1 != PathHelper.convert(northboundService.getFlowPath(flow1.id))
         }
         //TODO(rtretiak): Check logs that 1 reroute is also issued for flow2
