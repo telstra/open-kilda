@@ -259,6 +259,33 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         blinkingThread && blinkingThread.join()
     }
 
+    def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
+        given: "A flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        northboundService.addFlow(flow)
+        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+
+        when: "Init a flow reroute by blinking a port"
+        def islToBreak = pathHelper.getInvolvedIsls(pathHelper.convert(northboundService.getFlowPath(flow.id))).first()
+        blinkPort(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
+
+        and: "Immediately remove the flow before reroute delay runs out and flow is actually rerouted"
+        northboundService.deleteFlow(flow.id)
+
+        and: "Refresh the reroute by blinking the port again"
+        blinkPort(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
+
+        and: "Wait until reroute delay runs out"
+        TimeUnit.SECONDS.sleep(rerouteDelay + 1)
+
+        then: "Flow is not present in NB"
+        northboundService.getAllFlows().every { it.id != flow.id }
+
+        and: "Flow is not present in Database"
+        db.countFlows() == 0
+    }
+
     def cleanup() {
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
         db.resetCosts()
