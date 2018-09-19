@@ -15,14 +15,14 @@
 
 package org.openkilda.floodlight.service;
 
+import org.openkilda.floodlight.KildaCore;
+import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.PendingCommandSubmitter;
-import org.openkilda.floodlight.kafka.KafkaConsumerConfig;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +37,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-public class CommandProcessorService implements IFloodlightService {
+public class CommandProcessorService implements IService {
     private static final Logger log = LoggerFactory.getLogger(CommandProcessorService.class);
 
     private static final int FUTURE_COMPLETE_CHECK_INTERVAL = 200;
     private static final long REJECTED_REPORT_INTERVAL = 1000;
     private static final long REJECTED_ERROR_LIMIT = 1024;
 
+    private final KildaCore kildaCore;
     private final CommandContextFactory commandContextFactory;
 
     private ThreadPoolExecutor executor;
@@ -52,15 +53,17 @@ public class CommandProcessorService implements IFloodlightService {
     private final LinkedList<Runnable> rejectedQueue = new LinkedList<>();
     private long lastRejectCountReportedAt = 0;
 
-    public CommandProcessorService(CommandContextFactory commandContextFactory) {
+    public CommandProcessorService(KildaCore kildaCore, CommandContextFactory commandContextFactory) {
+        this.kildaCore = kildaCore;
         this.commandContextFactory = commandContextFactory;
     }
 
     /**
      * Service initialize(late) method.
      */
-    public void init(FloodlightModuleContext moduleContext) {
-        KafkaConsumerConfig config = moduleContext.getServiceImpl(ConfigService.class).getConsumerConfig();
+    @Override
+    public void setup(FloodlightModuleContext moduleContext) {
+        KildaCoreConfig config = kildaCore.getConfig();
 
         log.info("config - persistent workers = {}", config.getCommandPersistentWorkersCount());
         log.info("config - workers limit = {}", config.getCommandWorkersLimit());

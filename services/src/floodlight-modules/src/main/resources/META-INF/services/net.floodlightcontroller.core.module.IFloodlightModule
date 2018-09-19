@@ -1,3 +1,4 @@
+org.openkilda.floodlight.KildaCore
 org.openkilda.floodlight.kafka.KafkaMessageProducer
 org.openkilda.floodlight.kafka.KafkaMessageCollector
 org.openkilda.floodlight.pathverification.PathVerificationService

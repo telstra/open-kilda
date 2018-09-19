@@ -17,7 +17,6 @@ package org.openkilda.floodlight.command.ping;
 
 import static org.easymock.EasyMock.expect;
 
-import org.openkilda.floodlight.service.ConfigService;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
@@ -58,7 +57,6 @@ abstract class PingRequestCommandAbstractTest extends PingCommandTest {
     public void setUp() throws Exception {
         super.setUp();
 
-        moduleContext.addService(ConfigService.class, configService);
         moduleContext.addService(IOFSwitchService.class, switchService);
 
         final DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);

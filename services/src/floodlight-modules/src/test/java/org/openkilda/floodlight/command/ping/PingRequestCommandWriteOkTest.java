@@ -90,7 +90,7 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
     private void switchIntoTestMode() throws Exception {
         replayAll();
         moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");
-        realPingService.init(moduleContext);
+        realPingService.setup(moduleContext);
     }
 
     private void expectSuccess(Ping ping) throws Exception {
