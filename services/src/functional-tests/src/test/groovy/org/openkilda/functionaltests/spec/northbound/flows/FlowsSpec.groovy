@@ -6,11 +6,9 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Unroll
 
-import static org.junit.Assume.assumeTrue
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Unroll
 
 class FlowsSpec extends BaseSpecification {
 
@@ -28,10 +26,10 @@ class FlowsSpec extends BaseSpecification {
         when: "Create a single-switch flow"
         def flow = flowHelper.singleSwitchFlow(sw)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(3) {northboundService.getFlowStatus(flow.id).status == FlowState.UP}
+        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         then: "Flow is created with no discrepancies"
-        northboundService.validateFlow(flow.id).every {it.discrepancies.empty}
+        northboundService.validateFlow(flow.id).every { it.discrepancies.empty }
 
         and: "Switch has no missing or excess rules"
         def switchRules = northboundService.validateSwitchRules(sw.dpId)
@@ -42,7 +40,7 @@ class FlowsSpec extends BaseSpecification {
         northboundService.deleteFlow(flow.id)
 
         where:
-        sw << getTopology().activeSwitches.unique {it.ofVersion}
+        sw << getTopology().activeSwitches.unique { it.ofVersion }
     }
 
     def "Able to create a single-switch flow"() {
@@ -52,7 +50,7 @@ class FlowsSpec extends BaseSpecification {
         def sw = topology.activeSwitches.first()
         def flow = flowHelper.singleSwitchFlow(sw)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(3) {northboundService.getFlowStatus(flow.id).status == FlowState.UP}
+        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         then: "Flow is created with no discrepancies, excluding meter discrepancies"
         northboundService.validateFlow(flow.id).every { direction ->

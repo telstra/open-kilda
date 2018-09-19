@@ -1,10 +1,11 @@
 package org.openkilda.functionaltests
 
+import static org.junit.Assume.assumeTrue
+
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
+
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.test.context.ContextConfiguration
-
-import static org.junit.Assume.assumeTrue
 
 @ContextConfiguration(locations = ["classpath:/spring-context.xml"])
 class BaseSpecification extends SpringSpecification implements SetupOnce {
