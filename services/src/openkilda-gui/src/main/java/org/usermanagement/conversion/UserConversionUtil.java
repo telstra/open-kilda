@@ -60,10 +60,6 @@ public final class UserConversionUtil {
         userEntity.setName(userInfo.getName());
         userEntity.setRoles(roleEntities);
         userEntity.setActiveFlag(true);
-        userEntity.setCreatedBy(1L);
-        userEntity.setCreatedDate(new Date());
-        userEntity.setUpdatedBy(1L);
-        userEntity.setUpdatedDate(new Date());
         userEntity.setLoginTime(new Timestamp(System.currentTimeMillis()));
         userEntity.setLogoutTime(new Timestamp(System.currentTimeMillis()));
         userEntity.setIsAuthorized(true);

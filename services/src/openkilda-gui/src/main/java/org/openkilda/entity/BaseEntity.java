@@ -47,6 +47,8 @@ public abstract class BaseEntity {
     @Column(name = "Updated_Date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedDate;
+    
+    public abstract Long id(); 
 
     /**
      * Gets the created by.

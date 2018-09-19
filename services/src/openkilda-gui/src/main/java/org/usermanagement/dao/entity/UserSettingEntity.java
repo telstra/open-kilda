@@ -52,6 +52,14 @@ public class UserSettingEntity extends BaseEntity implements Serializable {
     @Column(name = "DATA", nullable = true, columnDefinition = "clob")
     @Lob
     private String data;
+    
+    /* (non-Javadoc)
+     * @see org.openkilda.entity.BaseEntity#id()
+     */
+    @Override
+    public Long id() {
+        return userSettingId;
+    }
 
     public Long getUserSettingId() {
         return userSettingId;
