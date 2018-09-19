@@ -5,9 +5,8 @@ import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.messaging.model.SwitchId
 import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.service.northbound.NorthboundService
+
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
-import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Shared
 import spock.lang.Unroll
 

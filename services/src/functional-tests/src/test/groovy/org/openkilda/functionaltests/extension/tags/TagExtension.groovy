@@ -24,21 +24,21 @@ class TagExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo spec) {
         List<Tag> includeTags = getBuildTags(INCLUDE_PROPERTY_NAME)
         List<Tag> excludeTags = getBuildTags(EXCLUDE_PROPERTY_NAME)
-        if(includeTags != [null]) {
+        if (includeTags != [null]) {
             spec.excluded = true
             spec.getAllFeatures().each { it.excluded = true }
         }
         spec.getAllFeatures().each { feature ->
             def tags = collectAllTags(feature.featureMethod)
-            if(tags.containsAll(includeTags)) {
+            if (tags.containsAll(includeTags)) {
                 spec.excluded = false
                 feature.excluded = false
                 log.debug("feature '$feature.name' included with tags $tags")
             }
-            if(tags.containsAll(excludeTags)) {
+            if (tags.containsAll(excludeTags)) {
                 log.debug("feature '$feature.name' included with tags $tags")
                 feature.excluded = true
-                if(spec.getAllFeatures().every { it.excluded }) {
+                if (spec.getAllFeatures().every { it.excluded }) {
                     spec.excluded = true
                 }
             }
@@ -48,7 +48,7 @@ class TagExtension extends AbstractGlobalExtension {
     private Set<Tag> collectAllTags(MethodInfo method) {
         def tags = []
         def annotation = method.getAnnotation(Tags)
-        if(annotation) {
+        if (annotation) {
             tags.addAll(annotation.value())
         }
         tags.addAll(collectAllSpecTags(method.getParent()))
@@ -58,18 +58,18 @@ class TagExtension extends AbstractGlobalExtension {
     private Set<Tag> collectAllSpecTags(SpecInfo spec) {
         def tags = []
         def annotation = spec.getAnnotation(Tags)
-        if(annotation) {
+        if (annotation) {
             tags.addAll(annotation.value())
         }
         def superSpec = spec.getSuperSpec()
-        if(superSpec) {
+        if (superSpec) {
             tags.addAll(collectAllSpecTags(superSpec))
         }
         return tags as Set<Tag>
     }
 
     private List<Tag> getBuildTags(propertyName) {
-        return System.getProperty(propertyName, "").split(",").findAll{it != ""}.collect {
+        return System.getProperty(propertyName, "").split(",").findAll { it != "" }.collect {
             Tag.valueOf(it.toUpperCase())
         } ?: [null]
     }
