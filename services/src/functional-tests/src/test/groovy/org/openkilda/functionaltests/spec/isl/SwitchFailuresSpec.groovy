@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.isl
 
 import static org.junit.Assume.assumeTrue
 
