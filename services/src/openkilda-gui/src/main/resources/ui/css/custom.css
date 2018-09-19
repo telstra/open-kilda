@@ -2403,7 +2403,7 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
 	margin: 20px;
 }
 
-.tab-content.user-management-tabs form label {
+.tab-content.user-management-tabs form label, .store-setting-tabs form label{
 	margin: 10px 0 0;
 }
 
@@ -2842,4 +2842,7 @@ label.btn.kilda_btn.active {
 label.btn.kilda_btn > span.copy_to_clipBoard {
     padding: 10px;
 }
+.dropdown-menu>li>a {
+    display: block!important;
+ }
 

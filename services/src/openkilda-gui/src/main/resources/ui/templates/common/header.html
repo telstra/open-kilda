@@ -35,7 +35,10 @@
             </a>
             <ul class="dropdown-menu scale-up">              
                <li>
-                  <a href="#myModal" id="change_password" data-target="#myModal" data-toggle="modal"><i class="icon-signout" aria-hidden="true"></i> Change Password</a>
+                  <a href="#myModal" id="change_password" data-target="#myModal" data-toggle="modal"><i class="icon-lock" aria-hidden="true"></i> Change Password</a>
+              </li>
+              <li>
+                  <a th:href="@{/storesetting}" class="hidePermission" permission="store_setting" id="linkStoreSetting"><i class="icon-cog" aria-hidden="true"></i> Settings</a>
               </li>
               <li>
                   <a th:href="@{/logout}" id="logout"><i class="icon-signout" aria-hidden="true"></i> Logout</a>
