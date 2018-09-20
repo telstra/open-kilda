@@ -13,9 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.aswitch;
+package org.openkilda.testing.service.lockkeeper;
 
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,17 +34,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * This service takes control over the intermediate 'A Switch' in Staging which is meant to allow to
+ * This is a helper 'testing' service and should not be considered as part of Kilda.
+ * Takes control over the intermediate 'A Switch' in Staging which is meant to allow to
  * disconnect ISLs.
+ * Also allows to control floodlight's lifecycle.
  */
 @Service
 @Profile("hardware")
-public class ASwitchServiceImpl implements ASwitchService {
+public class LockKeeperServiceImpl implements LockKeeperService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ASwitchServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LockKeeperServiceImpl.class);
 
     @Autowired
-    @Qualifier("aSwitchRestTemplate")
+    @Qualifier("lockKeeperRestTemplate")
     private RestTemplate restTemplate;
 
     @Override
@@ -96,6 +98,24 @@ public class ASwitchServiceImpl implements ASwitchService {
     public void reviveSwitch(String switchId, String controllerAddress) {
         throw new UnsupportedOperationException(
                 "reviveSwitch operation for a-switch is not available on hardware env");
+    }
+
+    @Override
+    public void stopController() {
+        restTemplate.exchange("/floodlight/stop", HttpMethod.GET,
+                new HttpEntity(buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void startController() {
+        restTemplate.exchange("/floodlight/start", HttpMethod.GET,
+                new HttpEntity(buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void restartController() {
+        restTemplate.exchange("/floodlight/restart", HttpMethod.GET,
+                new HttpEntity(buildJsonHeaders()), String.class);
     }
 
     private HttpHeaders buildJsonHeaders() {

@@ -9,8 +9,8 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.aswitch.ASwitchService
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
@@ -43,7 +43,7 @@ class SwitchFailuresSpec extends BaseSpecification {
     @Autowired
     NorthboundService northboundService
     @Autowired
-    ASwitchService aSwitchService
+    LockKeeperService lockKeeperService
     @Autowired
     IslUtils islUtils
     @Autowired
@@ -60,18 +60,18 @@ class SwitchFailuresSpec extends BaseSpecification {
         Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Two neighbouring switches of the flow go down simultaneously"
-        aSwitchService.knockoutSwitch(isl.srcSwitch.dpId.toString())
-        aSwitchService.knockoutSwitch(isl.dstSwitch.dpId.toString())
+        lockKeeperService.knockoutSwitch(isl.srcSwitch.dpId.toString())
+        lockKeeperService.knockoutSwitch(isl.dstSwitch.dpId.toString())
         def timeIslBroke = System.currentTimeMillis()
         def untilIslShouldFail = { timeIslBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
-        aSwitchService.removeFlows([isl, islUtils.reverseIsl(isl)]
+        lockKeeperService.removeFlows([isl, islUtils.reverseIsl(isl)]
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
 
         and: "Switches go back UP"
-        aSwitchService.reviveSwitch(isl.srcSwitch.dpId.toString(), floodlightEndpoint)
-        aSwitchService.reviveSwitch(isl.dstSwitch.dpId.toString(), floodlightEndpoint)
+        lockKeeperService.reviveSwitch(isl.srcSwitch.dpId.toString(), floodlightEndpoint)
+        lockKeeperService.reviveSwitch(isl.dstSwitch.dpId.toString(), floodlightEndpoint)
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2000)
@@ -93,7 +93,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         }
 
         and: "Cleanup, restore connection, remove flow"
-        aSwitchService.addFlows([isl, islUtils.reverseIsl(isl)]
+        lockKeeperService.addFlows([isl, islUtils.reverseIsl(isl)]
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
         northboundService.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + 2) {

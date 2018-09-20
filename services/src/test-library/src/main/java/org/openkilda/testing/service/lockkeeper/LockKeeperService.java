@@ -13,13 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.aswitch;
+package org.openkilda.testing.service.lockkeeper;
 
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 
 import java.util.List;
 
-public interface ASwitchService {
+/**
+ * This service is meant to give control over some software or hardware parts of the system that are out of Kilda's
+ * direct control. E.g. switches that are not connected to controller or lifecycle of system components.
+ */
+public interface LockKeeperService {
     void addFlows(List<ASwitchFlow> flows);
 
     void removeFlows(List<ASwitchFlow> flows);
@@ -33,4 +37,10 @@ public interface ASwitchService {
     void knockoutSwitch(String switchId);
 
     void reviveSwitch(String switchId, String controllerAddress);
+
+    void stopController();
+
+    void startController();
+
+    void restartController();
 }

@@ -19,8 +19,8 @@ import org.openkilda.atdd.staging.service.StubServiceFactory;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
 import org.openkilda.testing.model.topology.TopologyDefinition;
-import org.openkilda.testing.service.aswitch.ASwitchService;
 import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.lockkeeper.LockKeeperService;
 import org.openkilda.testing.service.northbound.NorthboundService;
 import org.openkilda.testing.service.topology.TopologyEngineService;
 import org.openkilda.testing.service.traffexam.TraffExamService;
@@ -59,8 +59,8 @@ public class StubServiceConfig {
     }
 
     @Bean
-    public ASwitchService aswitchService(StubServiceFactory factory) {
-        return factory.getASwitchStub();
+    public LockKeeperService lockKeeperService(StubServiceFactory factory) {
+        return factory.getLockKeeperStub();
     }
 
     @Bean

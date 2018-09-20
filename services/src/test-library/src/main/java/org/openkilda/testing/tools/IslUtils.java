@@ -26,9 +26,9 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.ASwitch;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
-import org.openkilda.testing.service.aswitch.ASwitchService;
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
 import org.openkilda.testing.service.database.Database;
+import org.openkilda.testing.service.lockkeeper.LockKeeperService;
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
 import net.jodah.failsafe.Failsafe;
@@ -50,7 +50,7 @@ public class IslUtils {
     private NorthboundService northbound;
 
     @Autowired
-    private ASwitchService aswitchService;
+    private LockKeeperService lockKeeperService;
 
     @Autowired
     private Database db;
@@ -138,12 +138,12 @@ public class IslUtils {
         //unplug
         List<Integer> portsToUnplug = Collections.singletonList(
                 replugSource ? srcASwitch.getInPort() : srcASwitch.getOutPort());
-        aswitchService.portsDown(portsToUnplug);
+        lockKeeperService.portsDown(portsToUnplug);
 
         //change flow on aSwitch
         //delete old flow
         if (srcASwitch.getInPort() != null && srcASwitch.getOutPort() != null) {
-            aswitchService.removeFlows(Arrays.asList(
+            lockKeeperService.removeFlows(Arrays.asList(
                     new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
                     new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
         }
@@ -151,10 +151,10 @@ public class IslUtils {
         ASwitchFlow aswFlowForward = new ASwitchFlow(srcASwitch.getInPort(),
                 plugIntoSource ? dstASwitch.getInPort() : dstASwitch.getOutPort());
         ASwitchFlow aswFlowReverse = new ASwitchFlow(aswFlowForward.getOutPort(), aswFlowForward.getInPort());
-        aswitchService.addFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
+        lockKeeperService.addFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
 
         //plug back
-        aswitchService.portsUp(portsToUnplug);
+        lockKeeperService.portsUp(portsToUnplug);
 
         return TopologyDefinition.Isl.factory(
                 replugSource ? (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()) : srcIsl.getSrcSwitch(),

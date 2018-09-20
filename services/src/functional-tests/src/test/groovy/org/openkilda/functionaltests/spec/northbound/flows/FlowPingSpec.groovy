@@ -16,8 +16,8 @@ import org.openkilda.northbound.dto.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.aswitch.ASwitchService
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
@@ -43,7 +43,7 @@ class FlowPingSpec extends BaseSpecification {
     @Autowired
     Database db
     @Autowired
-    ASwitchService aswitch
+    LockKeeperService lockKeeper
 
     @Value('${discovery.interval}')
     int discoveryInterval
@@ -131,7 +131,7 @@ class FlowPingSpec extends BaseSpecification {
         def rulesToRemove = []
         data.breakForward && rulesToRemove << new ASwitchFlow(islToBreak.aswitch.inPort, islToBreak.aswitch.outPort)
         data.breakReverse && rulesToRemove << new ASwitchFlow(islToBreak.aswitch.outPort, islToBreak.aswitch.inPort)
-        aswitch.removeFlows(rulesToRemove)
+        lockKeeper.removeFlows(rulesToRemove)
 
         and: "Ping the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput(1000))
@@ -141,7 +141,7 @@ class FlowPingSpec extends BaseSpecification {
                 .ignoring("forward.latency").ignoring("reverse.latency")
 
         and: "Restore rules, costs and remove flow"
-        aswitch.addFlows(rulesToRemove)
+        lockKeeper.addFlows(rulesToRemove)
         northboundService.deleteFlow(flow.id)
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
         db.resetCosts()

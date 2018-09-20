@@ -10,7 +10,7 @@ floodlight.endpoint=http://localhost:8081
 floodlight.username=username
 floodlight.password=password
 
-aswitch.endpoint=http://localhost:5001
+lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
 mininet.endpoint=http://localhost:38080
 mininet-flowtool.endpoint=http://localhost:17191

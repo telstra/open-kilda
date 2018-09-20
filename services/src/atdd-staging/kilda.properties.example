@@ -10,4 +10,4 @@ floodlight.endpoint=http://localhost:8081
 floodlight.username=username
 floodlight.password=password
 
-aswitch.endpoint=http://localhost:5001 
+lockkeeper.endpoint=http://localhost:5001

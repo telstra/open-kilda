@@ -13,15 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.aswitch;
+package org.openkilda.testing.service.lockkeeper;
 
 import static org.openkilda.testing.Constants.ASWITCH_NAME;
 import static org.openkilda.testing.Constants.VIRTUAL_CONTROLLER_ADDRESS;
 
 import org.openkilda.testing.model.topology.TopologyDefinition;
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.mininet.Mininet;
 
+import com.spotify.docker.client.DefaultDockerClient;
+import com.spotify.docker.client.DockerClient;
+import com.spotify.docker.client.exceptions.DockerCertificateException;
+import com.spotify.docker.client.exceptions.DockerException;
+import com.spotify.docker.client.messages.Container;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -30,14 +35,28 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Simulates the same functionality as {@link LockKeeperServiceImpl} but for virtual Mininet network.
+ */
 @Service
 @Profile("virtual")
 @Slf4j
-public class ASwitchVirtualImpl implements ASwitchService {
+public class LockKeeperVirtualImpl implements LockKeeperService {
+    private static final String FL_CONTAINER_NAME = "/floodlight";
+
     @Autowired
     private Mininet mininet;
     @Autowired
     private TopologyDefinition topology;
+
+    private DockerClient dockerClient;
+    private Container floodlight;
+
+    public LockKeeperVirtualImpl() throws DockerCertificateException, DockerException, InterruptedException {
+        dockerClient = DefaultDockerClient.fromEnv().build();
+        floodlight = dockerClient.listContainers().stream().filter(c -> c.names().contains(FL_CONTAINER_NAME))
+                .findFirst().orElseThrow(() -> new IllegalStateException("Can't find floodlight container"));
+    }
 
     @Override
     public void addFlows(List<ASwitchFlow> flows) {
@@ -81,5 +100,32 @@ public class ASwitchVirtualImpl implements ASwitchService {
         String switchName = topology.getSwitches().stream()
                 .filter(sw -> sw.getDpId().toString().equals(switchId)).findFirst().get().getName();
         mininet.revive(switchName, VIRTUAL_CONTROLLER_ADDRESS);
+    }
+
+    @Override
+    public void stopController() {
+        try {
+            dockerClient.stopContainer(floodlight.id(), 5);
+        } catch (DockerException | InterruptedException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public void startController() {
+        try {
+            dockerClient.startContainer(floodlight.id());
+        } catch (DockerException | InterruptedException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public void restartController() {
+        try {
+            dockerClient.restartContainer(floodlight.id(), 5);
+        } catch (DockerException | InterruptedException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

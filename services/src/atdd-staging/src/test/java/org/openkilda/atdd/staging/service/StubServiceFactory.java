@@ -40,8 +40,6 @@ import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
-import org.openkilda.testing.service.aswitch.ASwitchService;
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
 import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.floodlight.model.FlowApplyActions;
 import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
@@ -52,6 +50,8 @@ import org.openkilda.testing.service.floodlight.model.MeterBand;
 import org.openkilda.testing.service.floodlight.model.MeterEntry;
 import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.testing.service.floodlight.model.SwitchEntry;
+import org.openkilda.testing.service.lockkeeper.LockKeeperService;
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.northbound.NorthboundService;
 import org.openkilda.testing.service.topology.TopologyEngineService;
 import org.openkilda.testing.service.traffexam.TraffExamService;
@@ -150,10 +150,10 @@ public class StubServiceFactory {
     }
 
     /**
-     * Get a stub for {@link ASwitchService}. The instance is tied to the factory state.
+     * Get a stub for {@link LockKeeperService}. The instance is tied to the factory state.
      */
-    public ASwitchService getASwitchStub() {
-        ASwitchService serviceMock = mock(ASwitchService.class);
+    public LockKeeperService getLockKeeperStub() {
+        LockKeeperService serviceMock = mock(LockKeeperService.class);
         List<ASwitchFlow> aswitchFlows = topologyDefinition.getIslsForActiveSwitches().stream()
                 .filter(isl -> isl.getAswitch() != null)
                 .map(isl -> {
