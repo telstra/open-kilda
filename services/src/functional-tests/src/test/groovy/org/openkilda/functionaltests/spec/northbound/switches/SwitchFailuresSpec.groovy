@@ -57,7 +57,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
         northboundService.addFlow(flow)
-        Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Two neighbouring switches of the flow go down simultaneously"
         aSwitchService.knockoutSwitch(isl.srcSwitch.dpId.toString())

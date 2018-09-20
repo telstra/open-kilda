@@ -64,7 +64,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Down'"
-        Wrappers.wait(rerouteDelay + 2) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + 3) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "ISL goes back up"
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
@@ -108,7 +108,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         then: "Flow goes to 'Down' status"
-        Wrappers.wait(rerouteDelay + 2) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + 3) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "Bring all ports up on source switch that are involved in alternate paths"
         broughtDownPorts.findAll {
@@ -173,7 +173,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         and: "Flow is not rerouted and doesn't use more preferable path"
-        TimeUnit.SECONDS.sleep(rerouteDelay + 2)
+        TimeUnit.SECONDS.sleep(rerouteDelay + 3)
         def flowPathAfter = PathHelper.convert(northboundService.getFlowPath(flow.id))
         flowPath == flowPathAfter
 
