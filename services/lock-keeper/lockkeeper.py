@@ -1,6 +1,7 @@
 import os
 
 import paramiko
+import docker
 from flask import Flask
 from flask import jsonify
 from flask import request
@@ -10,6 +11,7 @@ app = Flask(__name__)
 HOST = os.environ.get("LOCK_KEEPER_HOST")
 USER = os.environ.get("LOCK_KEEPER_USER")
 SECRET = os.environ.get("LOCK_KEEPER_SECRET")
+FL_CONTAINER_NAME = "floodlight"
 PORT = 22
 
 
@@ -103,4 +105,22 @@ def ports_up():
 @app.route('/ports', methods=['DELETE'])
 def ports_down():
     change_ports_state(request.get_json(), "down")
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/floodlight/stop', methods=['GET'])
+def fl_stop():
+    docker.from_env().containers.get(FL_CONTAINER_NAME).stop()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/floodlight/start', methods=['GET'])
+def fl_start():
+    docker.from_env().containers.get(FL_CONTAINER_NAME).start()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/floodlight/restart', methods=['GET'])
+def fl_restart():
+    docker.from_env().containers.get(FL_CONTAINER_NAME).restart()
     return jsonify({'status': 'ok'})
