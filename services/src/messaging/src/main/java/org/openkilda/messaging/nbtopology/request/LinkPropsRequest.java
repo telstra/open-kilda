@@ -13,8 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.te.request;
+package org.openkilda.messaging.nbtopology.request;
 
-import org.openkilda.messaging.command.CommandData;
 
-public abstract class LinkPropsRequest extends CommandData {}
+public abstract class LinkPropsRequest extends LinksBaseRequest {}

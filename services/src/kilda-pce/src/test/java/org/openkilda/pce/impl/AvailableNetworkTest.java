@@ -86,7 +86,7 @@ public class AvailableNetworkTest extends BasePathComputerTest {
     }
 
     @Test
-    public void shouldCreateSymmetricOutgoingAndincomming() {
+    public void shouldCreateSymmetricOutgoingAndIncomming() {
         AvailableNetwork network = new AvailableNetwork();
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);

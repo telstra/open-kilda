@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 
@@ -32,6 +33,7 @@ import java.util.Map;
 public abstract class PersistenceOperationsBolt extends AbstractBolt {
     private final PersistenceManager persistenceManager;
     protected transient RepositoryFactory repositoryFactory;
+    protected transient TransactionManager transactionManager;
 
     PersistenceOperationsBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -40,7 +42,7 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         repositoryFactory = persistenceManager.getRepositoryFactory();
-
+        transactionManager = persistenceManager.getTransactionManager();
         super.prepare(stormConf, context, collector);
     }
 

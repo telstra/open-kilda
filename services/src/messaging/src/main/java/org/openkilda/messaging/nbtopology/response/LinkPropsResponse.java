@@ -13,24 +13,40 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.te.request;
+package org.openkilda.messaging.nbtopology.response;
 
-import org.openkilda.messaging.model.LinkProps;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.LinkPropsDto;
+import org.openkilda.messaging.nbtopology.request.LinkPropsRequest;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.Value;
 
 @Value
-public class LinkPropsPut extends LinkPropsRequest {
-    @JsonProperty("link_props")
-    LinkProps linkProps;
+public class LinkPropsResponse extends InfoData {
+    @JsonProperty("request")
+    LinkPropsRequest request;
 
-    @Builder
+    @JsonProperty("link_props")
+    LinkPropsDto linkProps;
+
+    @JsonProperty("error")
+    private String error;
+
     @JsonCreator
-    public LinkPropsPut(
-            @JsonProperty("link_props") LinkProps linkProps) {
+    public LinkPropsResponse(
+            @JsonProperty("request") LinkPropsRequest request,
+            @JsonProperty("link_props") LinkPropsDto linkProps,
+            @JsonProperty("error") String error) {
+        this.request = request;
         this.linkProps = linkProps;
+        this.error = error;
+    }
+
+    @JsonIgnore
+    public boolean isSuccess() {
+        return error == null;
     }
 }

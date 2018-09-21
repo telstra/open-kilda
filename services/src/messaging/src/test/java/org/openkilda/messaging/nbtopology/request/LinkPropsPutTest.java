@@ -13,11 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.te.request;
+package org.openkilda.messaging.nbtopology.request;
 
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.model.LinkProps;
+import org.openkilda.messaging.model.LinkPropsDto;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.SwitchId;
 
@@ -47,7 +47,7 @@ public class LinkPropsPutTest implements StringSerializer {
         HashMap<String, String> keyValuePairs = new HashMap<>();
         keyValuePairs.put("cost", "10000");
 
-        LinkProps linkProps = new LinkProps(
+        LinkPropsDto linkProps = new LinkPropsDto(
                 new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
                 new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 8),
                 keyValuePairs);

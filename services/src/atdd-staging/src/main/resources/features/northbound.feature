@@ -57,20 +57,20 @@ Feature: Northbound endpoints
     Given select a random isl and alias it as 'isl1'
 
     When create link properties request for ISL 'isl1'
-    And update request: add link property 'test_property' with value 'test value'
+    And update request: add link property 'cost' with value '100'
     And send update link properties request
     Then response has 0 failures and 1 success
 
     When get all properties
     Then response has link properties from request
-    And response link properties from request has property 'test_property' with value 'test value'
+    And response link properties from request has property 'cost' with value '100'
 
-    When update request: add link property 'test_property' with value 'test value updated'
+    When update request: add link property 'cost' with value '101'
     And send update link properties request
     Then response has 0 failures and 1 success
     When get all properties
     Then response has link properties from request
-    And response link properties from request has property 'test_property' with value 'test value updated'
+    And response link properties from request has property 'cost' with value '101'
 
     When send delete link properties request
     Then response has 0 failures and 1 success

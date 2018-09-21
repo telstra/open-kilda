@@ -17,13 +17,12 @@ package org.openkilda.northbound.converter;
 
 import static java.util.Objects.requireNonNull;
 
-import org.openkilda.messaging.model.LinkProps;
+import org.openkilda.messaging.model.LinkPropsDto;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.links.LinkPropsDto;
 
 import org.mapstruct.Mapper;
 
@@ -31,32 +30,32 @@ import org.mapstruct.Mapper;
 public interface LinkPropsMapper {
 
     /**
-     * Converts link properties to {@link LinkPropsDto}.
+     * Converts link properties to {@link org.openkilda.northbound.dto.links.LinkPropsDto}.
      */
-    default LinkPropsDto toDto(LinkPropsData data) {
+    default org.openkilda.northbound.dto.links.LinkPropsDto toDto(LinkPropsData data) {
         requireNonNull(data.getLinkProps(), "Link props should be presented");
 
         NetworkEndpoint source = data.getLinkProps().getSource();
         NetworkEndpoint destination = data.getLinkProps().getDest();
-        return new LinkPropsDto(
+        return new org.openkilda.northbound.dto.links.LinkPropsDto(
                 source.getDatapath().toString(), source.getPortNumber(),
                 destination.getDatapath().toString(), destination.getPortNumber(),
                 data.getLinkProps().getProps());
     }
 
     /**
-     * Converts {@link LinkPropsDto} into {@link LinkProps}.
+     * Converts {@link org.openkilda.northbound.dto.links.LinkPropsDto} into {@link LinkPropsDto}.
      */
-    default LinkProps toLinkProps(LinkPropsDto input) {
+    default LinkPropsDto toLinkProps(org.openkilda.northbound.dto.links.LinkPropsDto input) {
         NetworkEndpoint source = new NetworkEndpoint(new SwitchId(input.getSrcSwitch()), input.getSrcPort());
         NetworkEndpoint dest = new NetworkEndpoint(new SwitchId(input.getDstSwitch()), input.getDstPort());
-        return new LinkProps(source, dest, input.getProps());
+        return new LinkPropsDto(source, dest, input.getProps());
     }
 
     /**
-     * Converts {@link LinkPropsDto} into {@link LinkPropsMask}.
+     * Converts {@link org.openkilda.northbound.dto.links.LinkPropsDto} into {@link LinkPropsMask}.
      */
-    default LinkPropsMask toLinkPropsMask(LinkPropsDto input) {
+    default LinkPropsMask toLinkPropsMask(org.openkilda.northbound.dto.links.LinkPropsDto input) {
         NetworkEndpointMask source = new NetworkEndpointMask(new SwitchId(input.getSrcSwitch()), input.getSrcPort());
         NetworkEndpointMask dest = new NetworkEndpointMask(new SwitchId(input.getDstSwitch()), input.getDstPort());
         return new LinkPropsMask(source, dest);

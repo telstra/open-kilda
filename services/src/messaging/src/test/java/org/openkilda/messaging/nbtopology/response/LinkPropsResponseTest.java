@@ -13,17 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.te.response;
+package org.openkilda.messaging.nbtopology.response;
 
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.model.LinkProps;
+import org.openkilda.messaging.model.LinkPropsDto;
 import org.openkilda.messaging.model.LinkPropsTest;
-import org.openkilda.messaging.te.request.LinkPropsDrop;
-import org.openkilda.messaging.te.request.LinkPropsDropTest;
-import org.openkilda.messaging.te.request.LinkPropsPut;
-import org.openkilda.messaging.te.request.LinkPropsPutTest;
-import org.openkilda.messaging.te.request.LinkPropsRequest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
+import org.openkilda.messaging.nbtopology.request.LinkPropsDropTest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
+import org.openkilda.messaging.nbtopology.request.LinkPropsPutTest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsRequest;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,7 +36,7 @@ public class LinkPropsResponseTest implements StringSerializer {
                 makeDropRequest()};
 
         for (LinkPropsRequest request : requestsBatch) {
-            LinkProps result = LinkPropsTest.makeSubject();
+            LinkPropsDto result = LinkPropsTest.makeSubject();
             LinkPropsResponse origin = new LinkPropsResponse(request, result, null);
             InfoMessage wrapper = new InfoMessage(origin, System.currentTimeMillis(), getClass().getCanonicalName());
             serialize(wrapper);
