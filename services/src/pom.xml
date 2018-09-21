@@ -11,6 +11,7 @@
     <description>Kilda SDN Controller</description>
 
     <modules>
+        <module>kilda-core</module>
         <module>messaging</module>
         <module>api</module>
         <module>configuration</module>
