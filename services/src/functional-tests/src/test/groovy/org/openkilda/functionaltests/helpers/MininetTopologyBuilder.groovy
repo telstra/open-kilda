@@ -28,8 +28,6 @@ class MininetTopologyBuilder {
     Database db
     @Autowired
     NorthboundService northbound
-    @Autowired
-    FlowHelper flowHelper
 
     void buildVirtualEnvironment() {
         //build a mininet topology based on topology.yaml
@@ -68,12 +66,6 @@ class MininetTopologyBuilder {
         //remove any garbage left after configuring a-switch
         db.removeInactiveIsls()
         db.removeInactiveSwitches()
-
-        //create casual flow to ensure Kilda's up state
-        def flow = flowHelper.randomFlow(topologyDefinition.activeSwitches[0], topologyDefinition.activeSwitches[1])
-        northbound.addFlow(flow)
-        assert Wrappers.wait(15) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
-        northbound.deleteFlow(flow.id)
     }
 
     /**
