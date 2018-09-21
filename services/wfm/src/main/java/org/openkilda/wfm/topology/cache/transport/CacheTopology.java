@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.cache.transport;
 
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.cache.StreamType;

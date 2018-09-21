@@ -17,9 +17,9 @@ package org.openkilda.pce.cache;
 
 import static org.junit.Assert.assertEquals;
 
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.NetworkTopologyConstants;
 
 import org.junit.After;
@@ -35,16 +35,16 @@ public class NetworkCacheTest {
     private final NetworkCache networkCache = new NetworkCache();
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         networkCache.clear();
     }
 
     @Test
-    public void getSwitch() throws Exception {
+    public void getSwitch() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         assertEquals(NetworkTopologyConstants.sw1,
@@ -54,20 +54,20 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void createSwitch() throws Exception {
+    public void createSwitch() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         assertEquals(2, networkCache.dumpSwitches().size());
     }
 
     @Test
-    public void updateSwitch() throws Exception {
+    public void updateSwitch() {
         SwitchId swId = new SwitchId("ff:07");
-        SwitchInfoData sw7 = new SwitchInfoData(swId, SwitchState.ACTIVATED, "", "", "", "");
+        SwitchInfoData sw7 = new SwitchInfoData(swId, SwitchChangeType.ACTIVATED, "", "", "", "");
         networkCache.createSwitch(sw7);
         assertEquals(sw7, networkCache.getSwitch(swId));
 
-        SwitchInfoData sw7updated = new SwitchInfoData(swId, SwitchState.ACTIVATED, "", "", "", "");
+        SwitchInfoData sw7updated = new SwitchInfoData(swId, SwitchChangeType.ACTIVATED, "", "", "", "");
         networkCache.updateSwitch(sw7updated);
         assertEquals(sw7updated, networkCache.getSwitch(swId));
 
@@ -77,7 +77,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void createOrUpdateSwitch() throws Exception {
+    public void createOrUpdateSwitch() {
         networkCache.createOrUpdateSwitch(NetworkTopologyConstants.sw1);
         networkCache.createOrUpdateSwitch(NetworkTopologyConstants.sw2);
 
@@ -106,17 +106,17 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void getStateSwitches() throws Exception {
+    public void getStateSwitches() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         networkCache.createSwitch(NetworkTopologyConstants.sw3);
-        Set<SwitchInfoData> activeSwitches = networkCache.getStateSwitches(SwitchState.ACTIVATED);
+        Set<SwitchInfoData> activeSwitches = networkCache.getStateSwitches(SwitchChangeType.ACTIVATED);
         assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.sw1,
                 NetworkTopologyConstants.sw2)), activeSwitches);
     }
 
     @Test
-    public void getControllerSwitches() throws Exception {
+    public void getControllerSwitches() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         networkCache.createSwitch(NetworkTopologyConstants.sw3);
@@ -126,7 +126,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void getDirectlyConnectedSwitches() throws Exception {
+    public void getDirectlyConnectedSwitches() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         networkCache.createSwitch(NetworkTopologyConstants.sw3);
@@ -146,7 +146,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void createOrUpdateIsl() throws Exception {
+    public void createOrUpdateIsl() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         networkCache.createSwitch(NetworkTopologyConstants.sw3);

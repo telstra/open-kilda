@@ -21,7 +21,7 @@ import static org.hamcrest.Matchers.empty;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.converter.SwitchMapper;

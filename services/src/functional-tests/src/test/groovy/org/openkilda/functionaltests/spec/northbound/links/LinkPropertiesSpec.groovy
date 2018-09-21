@@ -2,7 +2,7 @@ package org.openkilda.functionaltests.spec.northbound.links
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.fixture.TestFixture
-import org.openkilda.messaging.model.SwitchId
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.service.northbound.NorthboundService
 

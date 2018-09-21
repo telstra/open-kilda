@@ -19,8 +19,8 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -50,7 +50,7 @@ public interface FlowMapper {
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
     @Mapping(target = "status", source = "state")
-    FlowPayload toFlowOutput(Flow f);
+    FlowPayload toFlowOutput(FlowDto f);
 
     PingOutput toPingOutput(FlowPingResponse response);
 
@@ -65,14 +65,14 @@ public interface FlowMapper {
             @Mapping(source = "flowId", target = "id"),
             @Mapping(source = "state", target = "status")
     })
-    FlowIdStatusPayload toFlowIdStatusPayload(BidirectionalFlow flow);
+    FlowIdStatusPayload toFlowIdStatusPayload(BidirectionalFlowDto flow);
 
     @Mappings({
             @Mapping(source = "flowId", target = "id"),
             @Mapping(source = "forward", target = "forwardPath"),
             @Mapping(source = "reverse", target = "reversePath")
     })
-    FlowPathPayload toFlowPathPayload(BidirectionalFlow flow);
+    FlowPathPayload toFlowPathPayload(BidirectionalFlowDto flow);
 
     @Mapping(target = "latency", source = "meters.networkLatency")
     UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
@@ -82,13 +82,13 @@ public interface FlowMapper {
     }
 
     /**
-     * Makes flow path as list of {@link PathNodePayload} representation by a {@link Flow} instance.
+     * Makes flow path as list of {@link PathNodePayload} representation by a {@link FlowDto} instance.
      * Includes input and output nodes.
      *
-     * @param flow the {@link Flow} instance.
+     * @param flow the {@link FlowDto} instance.
      * @return flow path as list of {@link PathNodePayload} representation.
      */
-    default List<PathNodePayload> toPathNodePayloadList(Flow flow) {
+    default List<PathNodePayload> toPathNodePayloadList(FlowDto flow) {
         List<PathNode> path = new ArrayList<>(flow.getFlowPath().getPath());
         // add input and output nodes
         path.add(0, new PathNode(flow.getSourceSwitch(), flow.getSourcePort(), 0));

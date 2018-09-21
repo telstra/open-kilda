@@ -6,7 +6,7 @@ import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.model.SwitchId
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.floodlight.FloodlightService
 import org.openkilda.testing.service.northbound.NorthboundService

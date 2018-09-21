@@ -10,7 +10,7 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.model.SwitchId
+import org.openkilda.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.switches.PortDto
 import org.openkilda.testing.model.topology.TopologyDefinition

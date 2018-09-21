@@ -15,10 +15,10 @@
 
 package org.openkilda.pce.cache;
 
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.ResourcePool;
+import org.openkilda.model.SwitchId;
 
 import com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
@@ -39,16 +39,6 @@ public class ResourceCache extends Cache {
      * Flow cookie value mask.
      */
     public static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
-
-    /**
-     * Forward flow cookie mask.
-     */
-    public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
-
-    /**
-     * Reverse flow cookie mask.
-     */
-    public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
 
     /**
      * Minimum vlan id value.
@@ -283,7 +273,7 @@ public class ResourceCache extends Cache {
      *
      * @param flow flow
      */
-    public void allocateFlow(FlowPair<Flow, Flow> flow) {
+    public void allocateFlow(FlowPairDto<FlowDto, FlowDto> flow) {
 
         if (flow.left != null) {
             allocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
@@ -312,7 +302,7 @@ public class ResourceCache extends Cache {
      *
      * @param flow flow
      */
-    public void deallocateFlow(FlowPair<Flow, Flow> flow) {
+    public void deallocateFlow(FlowPairDto<FlowDto, FlowDto> flow) {
         deallocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
 
         deallocateVlanId(flow.left.getTransitVlan());

@@ -32,12 +32,12 @@ import static org.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
@@ -98,7 +98,7 @@ public class FlowCrudBasicRunTest {
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is failed$")
     public void failedFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                    final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                                   final int destinationVlan, final int bandwidth) throws Exception {
+                                   final int destinationVlan, final int bandwidth) {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(new SwitchId(sourceSwitch), sourcePort, sourceVlan),
                 new FlowEndpointPayload(new SwitchId(destinationSwitch), destinationPort, destinationVlan),
@@ -113,12 +113,12 @@ public class FlowCrudBasicRunTest {
     public void checkFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                   final int destinationVlan, final long bandwidth) throws Exception {
-        Flow expectedFlow =
-                new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, false, 0, flowId, null,
+        FlowDto expectedFlow =
+                new FlowDto(FlowUtils.getFlowName(flowId), bandwidth, false, false, 0, flowId, null,
                         new SwitchId(sourceSwitch), new SwitchId(destinationSwitch), sourcePort, destinationPort,
                         sourceVlan, destinationVlan, 0, 0, null, null);
 
-        List<Flow> flows = validateFlowStored(expectedFlow);
+        List<FlowDto> flows = validateFlowStored(expectedFlow);
 
         assertFalse(flows.isEmpty());
         assertTrue(flows.contains(expectedFlow));
@@ -127,7 +127,7 @@ public class FlowCrudBasicRunTest {
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be read$")
     public void checkFlowRead(final String flowId, final String sourceSwitch, final int sourcePort,
                               final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                              final int destinationVlan, final int bandwidth) throws Exception {
+                              final int destinationVlan, final int bandwidth) {
         FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(flow);
 
@@ -227,21 +227,21 @@ public class FlowCrudBasicRunTest {
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are installed$")
     public void checkRulesInstall(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                  final int bandwidth) throws Throwable {
+                                  final int bandwidth) {
         // TODO: implement
     }
 
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are updated with (\\d+)$")
     public void checkRulesUpdate(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                  final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                 final int bandwidth, final int newBandwidth) throws Throwable {
+                                 final int bandwidth, final int newBandwidth) {
         // TODO: implement
     }
 
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are deleted$")
     public void checkRulesDeletion(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                    final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                   final int bandwidth) throws Throwable {
+                                   final int bandwidth) {
         // TODO: implement
     }
 
@@ -426,8 +426,8 @@ public class FlowCrudBasicRunTest {
      *      understanding where the request is at, and what an appropriate time to wait is.
      *      One Option is to look at Kafka queues and filter for what we are looking for.
      */
-    private List<Flow> validateFlowStored(Flow expectedFlow) throws Exception {
-        List<Flow> flows = FlowUtils.dumpFlows();
+    private List<FlowDto> validateFlowStored(FlowDto expectedFlow) throws Exception {
+        List<FlowDto> flows = FlowUtils.dumpFlows();
         flows.forEach(this::resetImmaterialFields);
 
         if (!flows.contains(expectedFlow) || flows.size() % 2 != 0) {
@@ -446,7 +446,7 @@ public class FlowCrudBasicRunTest {
      * @return the count, based on dumpFlows().
      */
     private int getFlowCount(int expectedFlowsCount) throws Exception {
-        List<Flow> flows = FlowUtils.dumpFlows();
+        List<FlowDto> flows = FlowUtils.dumpFlows();
 
         // pass in -1 if the count is unknown
         if (expectedFlowsCount >= 0) {
@@ -468,7 +468,7 @@ public class FlowCrudBasicRunTest {
         return flows.size();
     }
 
-    private void resetImmaterialFields(Flow flow) {
+    private void resetImmaterialFields(FlowDto flow) {
         flow.setTransitVlan(0);
         flow.setMeterId(0);
         flow.setCookie(0);

@@ -26,12 +26,11 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -198,7 +197,7 @@ public final class OfeMessageUtils {
      */
     public static String createIslFail(SwitchId switchId, int portId, String correlationId) throws IOException {
         PathNode node = new PathNode(switchId, portId, 0, 0L);
-        InfoData data = new IslInfoData(0L, Collections.singletonList(node), 0L, IslChangeType.FAILED, 0L);
+        InfoData data = new IslInfoData(0L, node, null, 0L, IslChangeType.FAILED, 0L);
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
         return MAPPER.writeValueAsString(message);
     }

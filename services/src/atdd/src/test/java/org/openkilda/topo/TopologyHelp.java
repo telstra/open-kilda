@@ -20,8 +20,8 @@ import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.flow.FlowUtils.getTimeDuration;
 
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 
 import org.glassfish.jersey.client.ClientConfig;
 
@@ -128,7 +128,7 @@ public final class TopologyHelp {
     /**
      * Get TE representation of flow.
      */
-    public static FlowPair<Flow, Flow> getFlow(String flowId) {
+    public static FlowPairDto<FlowDto, FlowDto> getFlow(String flowId) {
         System.out.println("\n==> Topology-Engine Get Flow");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
@@ -146,7 +146,7 @@ public final class TopologyHelp {
             return null;
         }
 
-        FlowPair<Flow, Flow> result = response.readEntity(new GenericType<FlowPair<Flow, Flow>>() {
+        FlowPairDto<FlowDto, FlowDto> result = response.readEntity(new GenericType<FlowPairDto<FlowDto, FlowDto>>() {
         });
         System.out.println(String.format("====> Topology-Engine Get Flow = %s", result));
         return result;

@@ -26,11 +26,11 @@ import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.provider.PathComputer;
@@ -74,8 +74,8 @@ public class CacheService {
         logger.info("Flow Cache: Initializing");
         PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
 
-        for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
-            FlowPair<Flow, Flow> flowPair = new FlowPair<>(
+        for (BidirectionalFlowDto bidirectionalFlow : flowFetcher.getFlows()) {
+            FlowPairDto<FlowDto, FlowDto> flowPair = new FlowPairDto<>(
                     bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
             flowCache.pushFlow(flowPair);
         }
@@ -122,7 +122,7 @@ public class CacheService {
      */
     public void handleSwitchEvent(SwitchInfoData sw, ISender sender, String correlationId) {
         logger.debug("State update switch {} message {}", sw.getSwitchId(), sw.getState());
-        Set<FlowPair<Flow, Flow>> affectedFlows;
+        Set<FlowPairDto<FlowDto, FlowDto>> affectedFlows;
 
         switch (sw.getState()) {
 
@@ -169,7 +169,7 @@ public class CacheService {
      */
     public void handleIslEvent(IslInfoData isl, ISender sender, String correlationId) {
         logger.debug("State update isl {} message cached {}", isl.getId(), isl.getState());
-        Set<FlowPair<Flow, Flow>> affectedFlows;
+        Set<FlowPairDto<FlowDto, FlowDto>> affectedFlows;
 
         switch (isl.getState()) {
             case DISCOVERED:
@@ -223,7 +223,7 @@ public class CacheService {
         switch (port.getState()) {
             case DOWN:
             case DELETE:
-                Set<FlowPair<Flow, Flow>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
+                Set<FlowPairDto<FlowDto, FlowDto>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
                 String reason = String.format("port %s_%s is %s",
                         port.getSwitchId(), port.getPortNo(), port.getState());
                 emitRerouteCommands(sender, affectedFlows, correlationId, reason);
@@ -253,7 +253,7 @@ public class CacheService {
     public void handleNetworkTopologyChange(NetworkTopologyChange topologyChange,
                                             ISender sender,
                                             String correlationId) {
-        Set<FlowPair<Flow, Flow>> affectedFlows;
+        Set<FlowPairDto<FlowDto, FlowDto>> affectedFlows;
 
         switch (topologyChange.getType()) {
             case ENDPOINT_DROP:
@@ -294,17 +294,17 @@ public class CacheService {
         return flowCache.getAllocatedMeters();
     }
 
-    private Set<FlowPair<Flow, Flow>> getFlowsForRerouting() {
-        Set<FlowPair<Flow, Flow>> inactiveFlows = flowCache.dumpFlows().stream()
+    private Set<FlowPairDto<FlowDto, FlowDto>> getFlowsForRerouting() {
+        Set<FlowPairDto<FlowDto, FlowDto>> inactiveFlows = flowCache.dumpFlows().stream()
                 .filter(flow -> FlowState.DOWN.equals(flow.getLeft().getState()))
                 .collect(Collectors.toSet());
 
         return inactiveFlows;
     }
 
-    private void emitRerouteCommands(ISender sender, Set<FlowPair<Flow, Flow>> flows,
+    private void emitRerouteCommands(ISender sender, Set<FlowPairDto<FlowDto, FlowDto>> flows,
                                      String initialCorrelationId, String reason) {
-        for (FlowPair<Flow, Flow> flow : flows) {
+        for (FlowPairDto<FlowDto, FlowDto> flow : flows) {
             final String flowId = flow.getLeft().getFlowId();
 
             String correlationId = format("%s-%s", initialCorrelationId, flowId);

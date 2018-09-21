@@ -67,7 +67,7 @@ public class Ping implements Serializable {
         this(UUID.randomUUID(), sourceVlanId, source, dest);
     }
 
-    public Ping(Flow flow) {
+    public Ping(FlowDto flow) {
         this(UUID.randomUUID(), (short) flow.getSourceVlan(),
                 new NetworkEndpoint(flow.getSourceSwitch(), flow.getSourcePort()),
                 new NetworkEndpoint(flow.getDestinationSwitch(), flow.getDestinationPort()));

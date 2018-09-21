@@ -34,20 +34,20 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.messaging.MessagingChannel;
 
 import org.springframework.stereotype.Component;
@@ -78,17 +78,17 @@ public class TestMessageMock implements MessagingChannel {
     static final List<PathNodePayload> pathPayloadsList =
             Collections.singletonList(new PathNodePayload(SWITCH_ID, 1, 1));
     static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList);
-    static final Flow flowModel = new Flow(FLOW_ID, 10000, false, false, 0L, FLOW_ID, null, SWITCH_ID,
+    static final FlowDto flowModel = new FlowDto(FLOW_ID, 10000, false, false, 0L, FLOW_ID, null, SWITCH_ID,
             SWITCH_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP);
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
     static final FlowReadResponse FLOW_RESPONSE =
-            new FlowReadResponse(new BidirectionalFlow(flowModel, flowModel));
+            new FlowReadResponse(new BidirectionalFlowDto(flowModel, flowModel));
     private static final SwitchRulesResponse switchRulesResponse =
             new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
     static final SwitchInfoData SWITCH_INFO_DATA =
-            new SwitchInfoData(SWITCH_ID, SwitchState.ACTIVATED, "", "", "", "");
+            new SwitchInfoData(SWITCH_ID, SwitchChangeType.ACTIVATED, "", "", "", "");
 
     /**
      * Chooses response by request.

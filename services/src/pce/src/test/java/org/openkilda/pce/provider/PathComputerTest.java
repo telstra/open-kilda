@@ -17,9 +17,9 @@ package org.openkilda.pce.provider;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.algo.SimpleGetShortestPath;
 import org.openkilda.pce.model.AvailableNetwork;
@@ -258,11 +258,11 @@ public class PathComputerTest {
          * simple happy path test .. everything has cost
          */
         createDiamond("active", "active", 10, 20);
-        Flow f = new Flow();
+        FlowDto f = new FlowDto();
         f.setSourceSwitch(new SwitchId("00:01"));
         f.setDestinationSwitch(new SwitchId("00:04"));
         f.setBandwidth(100);
-        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        FlowPairDto<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         //System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -276,11 +276,11 @@ public class PathComputerTest {
          * simple happy path test .. everything has cost
          */
         createDiamondAsString("active", "active", "10", "20", "FF:", 1);
-        Flow f = new Flow();
+        FlowDto f = new FlowDto();
         f.setSourceSwitch(new SwitchId("FF:01"));
         f.setDestinationSwitch(new SwitchId("FF:04"));
         f.setBandwidth(100);
-        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        FlowPairDto<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
         //System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -294,12 +294,12 @@ public class PathComputerTest {
          * verifies that iSL in both directions needs to be active
          */
         createDiamond("inactive", "active", 10, 20, "01:", 1);
-        Flow f = new Flow();
+        FlowDto f = new FlowDto();
         f.setSourceSwitch(new SwitchId("01:01"));
         f.setDestinationSwitch(new SwitchId("01:04"));
         f.setBandwidth(100);
 
-        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        FlowPairDto<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
 
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -313,13 +313,13 @@ public class PathComputerTest {
          * simple happy path test .. but lowest path is inactive
          */
         createTriangleTopo("inactive", 5, 20, "02:", 1);
-        Flow f = new Flow();
+        FlowDto f = new FlowDto();
         f.setSourceSwitch(new SwitchId("02:01"));
         f.setDestinationSwitch(new SwitchId("02:02"));
         f.setBandwidth(100);
 
         AvailableNetwork network = nd.getAvailableNetwork(false, 100);
-        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
+        FlowPairDto<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
         System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -333,13 +333,13 @@ public class PathComputerTest {
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
         createDiamond("active", "active", -1, 2000, "03:", 1);
-        Flow f = new Flow();
+        FlowDto f = new FlowDto();
         f.setSourceSwitch(new SwitchId("03:01"));
         f.setDestinationSwitch(new SwitchId("03:04"));
         f.setBandwidth(100);
 
         AvailableNetwork network = nd.getAvailableNetwork(false, 100);
-        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
+        FlowPairDto<PathInfoData, PathInfoData> path = nd.getPath(f, network, PathComputer.Strategy.COST);
         // System.out.println("path = " + path);
         Assert.assertNotNull(path);
         Assert.assertEquals(4, path.left.getPath().size());
@@ -354,11 +354,11 @@ public class PathComputerTest {
          * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
          */
         createDiamond("inactive", "inactive", 10, 30, "04:", 1);
-        Flow f = new Flow();
+        FlowDto f = new FlowDto();
         f.setSourceSwitch(new SwitchId("04:01"));
         f.setDestinationSwitch(new SwitchId("04:04"));
         f.setBandwidth(100);
-        FlowPair<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
+        FlowPairDto<PathInfoData, PathInfoData> path = nd.getPath(f, PathComputer.Strategy.COST);
     }
 
 
@@ -498,14 +498,14 @@ public class PathComputerTest {
     @Test
     public void verifyConversionToPair() throws UnroutablePathException, RecoverableException {
         createDiamond("active", "active", 10, 20, "09:", 1);
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         SwitchId start = new SwitchId("09:01");
         SwitchId end = new SwitchId("09:04");
         flow.setSourceSwitch(start);      // getPath will find an isl port
         flow.setDestinationSwitch(end);
         flow.setIgnoreBandwidth(false);
         flow.setBandwidth(10);
-        FlowPair<PathInfoData, PathInfoData> result = nd.getPath(flow, PathComputer.Strategy.COST);
+        FlowPairDto<PathInfoData, PathInfoData> result = nd.getPath(flow, PathComputer.Strategy.COST);
         // ensure start/end switches match
         List<PathNode> left = result.left.getPath();
         Assert.assertEquals(start, left.get(0).getSwitchId());
@@ -522,7 +522,7 @@ public class PathComputerTest {
     public void shouldAlwaysFindPathForExistedFlow() throws Exception {
         int flowBandwidth = 1000;
 
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setBandwidth(flowBandwidth);
         flow.setSourceSwitch(new SwitchId("A1:01"));      // getPath will find an isl port
         flow.setDestinationSwitch(new SwitchId("A1:03"));
@@ -533,7 +533,7 @@ public class PathComputerTest {
         createLinearTopoWithFlowSegments(10, "A1:", 1, availableBandwidth, flow.getFlowId(), flow.getBandwidth());
         AvailableNetwork network = nd.getAvailableNetwork(flow.isIgnoreBandwidth(), flow.getBandwidth());
         network.addIslsOccupiedByFlow(flow.getFlowId(), flow.isIgnoreBandwidth(), flow.getBandwidth());
-        FlowPair<PathInfoData, PathInfoData> result = nd.getPath(flow, network, Strategy.COST);
+        FlowPairDto<PathInfoData, PathInfoData> result = nd.getPath(flow, network, Strategy.COST);
 
         Assert.assertEquals(4, result.getLeft().getPath().size());
         Assert.assertEquals(4, result.getRight().getPath().size());
@@ -546,7 +546,7 @@ public class PathComputerTest {
     public void shouldNotFindPathForExistedFlowAndIncreasedBandwidth() throws Exception {
         long originFlowBandwidth = 1000L;
 
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setBandwidth(originFlowBandwidth);
         flow.setSourceSwitch(new SwitchId("A1:01"));
         flow.setDestinationSwitch(new SwitchId("A1:03"));

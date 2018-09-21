@@ -25,7 +25,7 @@ import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.kafka.clients.producer.Callback;
@@ -66,7 +66,7 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
     private Producer<String, String> kafkaProducer = (Producer<String, String>) strictMock(Producer.class);
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         injectMocks(this);
 
         FloodlightModuleContext moduleContext = new FloodlightModuleContext();
@@ -155,7 +155,7 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
         expect(kafkaProducer.send(anyObject(), anyObject(Callback.class)))
                 .andAnswer(new IAnswer<Future<RecordMetadata>>() {
                     @Override
-                    public Future<RecordMetadata> answer() throws Throwable {
+                    public Future<RecordMetadata> answer() {
                         Callback callback = (Callback) getCurrentArguments()[1];
                         callback.onCompletion(null, error);
                         return promise;

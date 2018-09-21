@@ -47,6 +47,23 @@
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
+            <artifactId>kilda-model</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-persistence-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-persistence-neo4j</artifactId>
+            <version>${project.version}</version>
+            <!--TODO(siakovenko): the scope must be changed to runtime on PCE refactoring-->
+            <!--scope>runtime</scope-->
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
             <artifactId>messaging</artifactId>
             <version>${openkilda-messaging.version}</version>
         </dependency>

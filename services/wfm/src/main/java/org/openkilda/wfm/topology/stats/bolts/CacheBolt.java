@@ -24,7 +24,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.NeoDriver;
 import org.openkilda.pce.provider.PathComputer;

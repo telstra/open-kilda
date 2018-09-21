@@ -23,7 +23,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;

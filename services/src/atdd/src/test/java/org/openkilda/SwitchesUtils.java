@@ -10,10 +10,10 @@ import static org.openkilda.DefaultParameters.trafficEndpoint;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
-import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.model.PortStatus;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;

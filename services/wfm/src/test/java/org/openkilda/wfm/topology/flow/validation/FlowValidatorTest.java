@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.flow.validation;
 
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.topology.flow.MockedPathComputerAuth;
@@ -46,7 +46,7 @@ public class FlowValidatorTest {
 
     @BeforeClass
     public static void initCache() {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setFlowId("1");
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setSourcePort(SRC_PORT);
@@ -55,12 +55,12 @@ public class FlowValidatorTest {
         flow.setDestinationSwitch(DST_SWITCH);
         flow.setDestinationPort(DST_PORT);
         flow.setDestinationVlan(DST_VLAN);
-        flowCache.pushFlow(new FlowPair<>(flow, flow));
+        flowCache.pushFlow(new FlowPairDto<>(flow, flow));
     }
 
     @Test(expected = FlowValidationException.class)
     public void shouldFailIfSourceVlanIsZeroAndPortIsOccupied() throws FlowValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setSourcePort(SRC_PORT);
         flow.setSourceVlan(0);
@@ -70,7 +70,7 @@ public class FlowValidatorTest {
 
     @Test(expected = FlowValidationException.class)
     public void shouldFailIfSourceVlanIsAlreadyOccupied() throws FlowValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setSourcePort(SRC_PORT);
         flow.setSourceVlan(SRC_VLAN);
@@ -80,7 +80,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldNotFailIfSourceVlanIsNotOccupied() throws FlowValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setSourcePort(SRC_PORT);
         flow.setSourceVlan(SRC_VLAN + 1);
@@ -90,7 +90,7 @@ public class FlowValidatorTest {
 
     @Test(expected = FlowValidationException.class)
     public void shouldFailIfDestinationVlanIsZeroAndPortIsOccupied() throws FlowValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setSourcePort(SRC_PORT);
         flow.setSourceVlan(SRC_VLAN + 1);
@@ -103,7 +103,7 @@ public class FlowValidatorTest {
 
     @Test(expected = FlowValidationException.class)
     public void shouldFailIfDestinationVlanIsAlreadyOccupied() throws FlowValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setSourcePort(SRC_PORT);
         flow.setSourceVlan(SRC_VLAN + 1);
@@ -116,7 +116,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldNotFailIfDestinationVlanIsNotOccupied() throws FlowValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setSourcePort(SRC_PORT);
         flow.setSourceVlan(SRC_VLAN + 1);
@@ -129,7 +129,7 @@ public class FlowValidatorTest {
 
     @Test(expected = FlowValidationException.class)
     public void shouldFailForNegativeBandwidth() throws FlowValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setBandwidth(-1);
 
         target.checkBandwidth(flow);
@@ -137,7 +137,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldNotFailOnCheckSwitches() throws SwitchValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setDestinationSwitch(DST_SWITCH);
 
@@ -146,7 +146,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldNotFailOnSingleSwitchCheck() throws SwitchValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setDestinationSwitch(SRC_SWITCH);
 
@@ -155,7 +155,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldFailOnSourceSwitchCheck() throws SwitchValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(FAIL_SRC_SWITCH);
         flow.setDestinationSwitch(DST_SWITCH);
         String expectedMessage = String.format("Source switch %s is not connected to the controller", FAIL_SRC_SWITCH);
@@ -168,7 +168,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldFailOnDestinationSwitchCheck() throws SwitchValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setDestinationSwitch(FAIL_DST_SWITCH);
         String expectedMessage =
@@ -182,7 +182,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldFailOnSourceAndDestinationSwitchCheck() throws SwitchValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(FAIL_SRC_SWITCH);
         flow.setDestinationSwitch(FAIL_DST_SWITCH);
         String expectedMessage =
@@ -197,7 +197,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldFailOnOneSwitchFlowWithEqualPortsAndVlans() throws SwitchValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setDestinationSwitch(SRC_SWITCH);
 
@@ -217,7 +217,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldNotFailOnOneSwitchFlowWithEqualPortsButDifferentVlans() throws SwitchValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setDestinationSwitch(SRC_SWITCH);
 
@@ -232,7 +232,7 @@ public class FlowValidatorTest {
 
     @Test
     public void shouldNotFailOnOneSwitchFlowWithEqualVlansButDifferentPorts() throws SwitchValidationException {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setSourceSwitch(SRC_SWITCH);
         flow.setDestinationSwitch(SRC_SWITCH);
 

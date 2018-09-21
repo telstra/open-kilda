@@ -17,7 +17,7 @@ package org.openkilda.wfm;
 
 import org.openkilda.config.KafkaConfig;
 import org.openkilda.wfm.config.ZookeeperConfig;
-import org.openkilda.wfm.config.provider.ConfigurationProvider;
+import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.TestKafkaProducer;
 
@@ -109,7 +109,7 @@ public abstract class AbstractStormTest {
     protected static <T> T makeUnboundConfig(Class<T> configurationType)
             throws ConfigurationException, CmdLineException {
         LaunchEnvironment env = makeLaunchEnvironment();
-        ConfigurationProvider configurationProvider = env.getConfigurationProvider();
+        MultiPrefixConfigurationProvider configurationProvider = env.getConfigurationProvider();
         return configurationProvider.getConfiguration(configurationType);
     }
 

@@ -29,12 +29,12 @@ import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.te.request.LinkPropsDrop;
 import org.openkilda.messaging.te.request.LinkPropsPut;
 import org.openkilda.messaging.te.request.LinkPropsRequest;
 import org.openkilda.messaging.te.response.LinkPropsResponse;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.dto.BatchResults;
@@ -92,7 +92,7 @@ public class LinkServiceTest {
         SwitchId switchId = new SwitchId(1L);
 
         IslInfoData islInfoData = new IslInfoData(
-                Collections.singletonList(new PathNode(switchId, 1, 0)),
+                new PathNode(switchId, 1, 0), new PathNode(switchId, 2, 1),
                 IslChangeType.DISCOVERED);
 
         messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(islInfoData));
@@ -108,7 +108,7 @@ public class LinkServiceTest {
         assertFalse(link.getPath().isEmpty());
         PathDto path = link.getPath().get(0);
         assertEquals(switchId.toString(), path.getSwitchId());
-        assertEquals(1, (int) path.getPortNo());
+        assertEquals(1, path.getPortNo());
     }
 
     @Test
@@ -144,7 +144,7 @@ public class LinkServiceTest {
     }
 
     @Test
-    public void putLinkProps() throws Exception {
+    public void putLinkProps() {
         final String correlationId = getClass().getCanonicalName();
 
         HashMap<String, String> requestProps = new HashMap<>();
@@ -173,7 +173,7 @@ public class LinkServiceTest {
     }
 
     @Test
-    public void dropLinkProps() throws Exception {
+    public void dropLinkProps() {
         final String correlationId = getClass().getCanonicalName();
 
         LinkPropsDto input =  new LinkPropsDto("ff:fe:00:00:00:00:00:01", 8,

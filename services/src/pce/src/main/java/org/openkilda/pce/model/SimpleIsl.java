@@ -15,7 +15,7 @@
 
 package org.openkilda.pce.model;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

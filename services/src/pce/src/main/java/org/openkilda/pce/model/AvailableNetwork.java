@@ -17,7 +17,7 @@ package org.openkilda.pce.model;
 
 import static org.openkilda.pce.Utils.safeAsInt;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.neo4j.driver.v1.AccessMode;
 import org.neo4j.driver.v1.Driver;
@@ -181,9 +181,7 @@ public class AvailableNetwork {
      */
     public AvailableNetwork removeSelfLoops() {
         for (SimpleSwitch sw : switches.values()) {
-            if (sw.outbound.containsKey(sw.dpid)) {
-                sw.outbound.remove(sw.dpid);
-            }
+            sw.outbound.remove(sw.dpid);
         }
         return this;
     }

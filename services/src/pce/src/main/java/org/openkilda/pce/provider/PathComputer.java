@@ -18,9 +18,9 @@ package org.openkilda.pce.provider;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.model.AvailableNetwork;
 
@@ -55,20 +55,20 @@ public interface PathComputer extends Serializable {
     /**
      * Gets path between source and destination switches for specified flow in preloaded network topology.
      *
-     * @param flow {@link Flow} instances
+     * @param flow {@link FlowDto} instances
      * @param network prepared network where searching will be performed.
      * @return {@link PathInfoData} instances
      */
-    FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
+    FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow, AvailableNetwork network, Strategy strategy)
             throws UnroutablePathException, RecoverableException;
 
     /**
      * Gets path between source and destination switch for specified flow.
      *
-     * @param flow {@link Flow} instances
+     * @param flow {@link FlowDto} instances
      * @return {@link PathInfoData} instances
      */
-    FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
+    FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow, Strategy strategy)
             throws UnroutablePathException, RecoverableException;
 
     /**
@@ -86,22 +86,22 @@ public interface PathComputer extends Serializable {
      *
      * @return all flow objects stored in neo4j
      */
-    default List<Flow> getAllFlows() {
+    default List<FlowDto> getAllFlows() {
         return new ArrayList<>();
     }
 
     /**
-     * Read a single flow from Neo4j and convert to our common representation {@link Flow}.
+     * Read a single flow from Neo4j and convert to our common representation {@link FlowDto}.
      * In reality, a single flow will typically be bi-directional, so just represent as a list.
      *
      * @return the Flow if it exists, null otherwise.
      */
-    List<Flow> getFlow(String flowId);
+    List<FlowDto> getFlow(String flowId);
 
     /*
      * @return all flows (forward and reverse) by id, if exist.
      */
-    default List<Flow> getFlows(String flowId) {
+    default List<FlowDto> getFlows(String flowId) {
         return new ArrayList<>();
     }
 

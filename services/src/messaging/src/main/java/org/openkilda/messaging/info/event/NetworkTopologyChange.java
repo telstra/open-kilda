@@ -16,6 +16,7 @@
 package org.openkilda.messaging.info.event;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,7 +26,7 @@ public class NetworkTopologyChange extends InfoData {
     private final NetworkTopologyChangeType type;
 
     @JsonProperty("switch_id")
-    private final String switchId;
+    private final SwitchId switchId;
 
     @JsonProperty("port_number")
     private final int portNumber;
@@ -33,7 +34,7 @@ public class NetworkTopologyChange extends InfoData {
     @JsonCreator
     public NetworkTopologyChange(
             @JsonProperty("type") NetworkTopologyChangeType type,
-            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("port_number") int portNumber) {
         this.type = type;
         this.switchId = switchId;
@@ -44,7 +45,7 @@ public class NetworkTopologyChange extends InfoData {
         return type;
     }
 
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 

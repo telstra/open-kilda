@@ -33,7 +33,7 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.protocol.KafkaMessage;
@@ -42,7 +42,6 @@ import org.openkilda.wfm.topology.event.OfeLinkBolt.State;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -94,7 +93,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
     }
 
     @Test
-    public void invalidJsonForDiscoveryFilter() throws JsonProcessingException {
+    public void invalidJsonForDiscoveryFilter() {
         Tuple tuple = new TupleImpl(context, new Values("{\"corrupted-json"), TASK_ID_BOLT,
                 STREAM_ID_INPUT);
         bolt.doWork(tuple);
@@ -154,7 +153,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
 
         PathNode source = new PathNode(switchId, port, 0);
         PathNode destination = new PathNode(switchId, port, 1);
-        IslInfoData isl = new IslInfoData(Lists.newArrayList(source, destination), IslChangeType.DISCOVERED);
+        IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED);
         InfoMessage inputMessage = new InfoMessage(isl, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);

@@ -18,22 +18,22 @@ package org.openkilda.testing.service.northbound;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
-import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.model.PortStatus;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
@@ -382,14 +382,14 @@ public class NorthboundServiceImpl implements NorthboundService {
                         pathDto.getSeqId(),
                         pathDto.getSegLatency()))
                 .collect(Collectors.toList());
-        return new IslInfoData(0, path, dto.getSpeed(), IslChangeType.from(dto.getState().toString()),
-                dto.getAvailableBandwidth());
+        return new IslInfoData(0, path.get(0), path.get(1), dto.getSpeed(),
+                IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth());
     }
 
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
         return new SwitchInfoData(
                 new SwitchId(dto.getSwitchId()),
-                SwitchState.from(dto.getState()),
+                SwitchChangeType.from(dto.getState()),
                 dto.getAddress(),
                 dto.getHostname(),
                 dto.getDescription(),

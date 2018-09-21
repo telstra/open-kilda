@@ -16,10 +16,8 @@
 package org.openkilda.wfm.topology.ping;
 
 import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
-import org.openkilda.wfm.error.ConfigurationException;
-import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.ping.bolt.Blacklist;
 import org.openkilda.wfm.topology.ping.bolt.ComponentId;
@@ -54,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     private final int scaleFactor;
 
-    protected PingTopology(LaunchEnvironment env) throws ConfigurationException {
+    protected PingTopology(LaunchEnvironment env) {
         super(env, PingTopologyConfig.class);
         scaleFactor = topologyConfig.getScaleFactor();
     }
@@ -66,7 +64,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
      * https://github.com/telstra/open-kilda/tree/master/docs/design/flow-ping/flow-ping.md
      */
     @Override
-    public StormTopology createTopology() throws NameCollisionException {
+    public StormTopology createTopology() {
         TopologyBuilder topology = new TopologyBuilder();
 
         monotonicTick(topology);

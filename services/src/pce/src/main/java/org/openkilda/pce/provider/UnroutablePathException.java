@@ -15,12 +15,12 @@
 
 package org.openkilda.pce.provider;
 
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowDto;
 
 public class UnroutablePathException extends Exception {
-    private final Flow flow;
+    private final FlowDto flow;
 
-    public UnroutablePathException(Flow flow) {
+    public UnroutablePathException(FlowDto flow) {
         super(String.format(
                 "Can't make flow from %s to %s (bandwidth=%d%s)",
                 flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth(),
@@ -29,7 +29,7 @@ public class UnroutablePathException extends Exception {
         this.flow = flow;
     }
 
-    public Flow getFlow() {
+    public FlowDto getFlow() {
         return flow;
     }
 }

@@ -16,11 +16,11 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.provider.Auth;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -69,7 +69,7 @@ public class SwitchOperationsBolt extends NeoOperationsBolt {
             sw.setHostname(record.get("hostname").asString());
 
             String status = record.get("state").asString();
-            SwitchState st = "active".equals(status) ? SwitchState.ACTIVATED : SwitchState.DEACTIVATED;
+            SwitchChangeType st = "active".equals(status) ? SwitchChangeType.ACTIVATED : SwitchChangeType.DEACTIVATED;
             sw.setState(st);
 
             results.add(sw);

@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.nbworker;
 
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;

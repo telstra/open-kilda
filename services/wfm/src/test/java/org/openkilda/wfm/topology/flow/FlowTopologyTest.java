@@ -51,13 +51,13 @@ import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
@@ -143,7 +143,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     }
 
     @Before
-    public void setup() throws Exception {
+    public void setup() {
         nbConsumer.clear();
         ofsConsumer.clear();
         cacheConsumer.clear();
@@ -173,7 +173,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record.value());
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPairDto<FlowDto, FlowDto> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -239,7 +239,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertNotNull(record);
         assertNotNull(record.value());
 
-        Flow payload = deleteFlow(flowId);
+        FlowDto payload = deleteFlow(flowId);
 
         record = cacheConsumer.pollMessage();
         assertNotNull(record);
@@ -247,10 +247,10 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
         assertNotNull(message);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPairDto<FlowDto, FlowDto> flow = getFlowPayload(message);
         assertNotNull(flow);
 
-        Flow flowTePayload = flow.getLeft();
+        FlowDto flowTePayload = flow.getLeft();
         assertEquals(payload.getFlowId(), flowTePayload.getFlowId());
 
         record = nbConsumer.pollMessage();
@@ -295,10 +295,10 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
         assertNotNull(message);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPairDto<FlowDto, FlowDto> flow = getFlowPayload(message);
         assertNotNull(flow);
 
-        Flow flowTePayload = flow.getLeft();
+        FlowDto flowTePayload = flow.getLeft();
 
         record = nbConsumer.pollMessage();
         assertNotNull(record);
@@ -308,7 +308,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowResponse payload = (FlowResponse) infoMessage.getData();
         assertNotNull(payload);
 
-        Flow flowNbPayload = payload.getPayload();
+        FlowDto flowNbPayload = payload.getPayload();
         assertEquals(flowNbPayload, flowTePayload);
     }
 
@@ -378,7 +378,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowReadResponse infoData = (FlowReadResponse) infoMessage.getData();
         assertNotNull(infoData);
 
-        BidirectionalFlow flowPayload = infoData.getPayload();
+        BidirectionalFlowDto flowPayload = infoData.getPayload();
         assertEquals(emptyPath, flowPayload.getForward().getFlowPath());
         assertEquals(emptyPath, flowPayload.getReverse().getFlowPath());
     }
@@ -399,7 +399,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         String flowId = UUID.randomUUID().toString();
         ConsumerRecord<String, String> record;
 
-        Flow flow = createFlow(flowId);
+        FlowDto flow = createFlow(flowId);
         flow.setCookie(1);
         flow.setFlowPath(new PathInfoData(0L, Collections.emptyList()));
         flow.setMeterId(1);
@@ -423,7 +423,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowReadResponse infoData = (FlowReadResponse) infoMessage.getData();
         assertNotNull(infoData);
 
-        Flow flowTePayload = infoData.getPayload().getForward();
+        FlowDto flowTePayload = infoData.getPayload().getForward();
         assertEquals(flow, flowTePayload);
     }
 
@@ -613,7 +613,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         ConsumerRecord<String, String> nbRecord;
         String flowId = UUID.randomUUID().toString();
 
-        Flow payload = getFlowCommand(flowId);
+        FlowDto payload = getFlowCommand(flowId);
 
         nbRecord = nbConsumer.pollMessage();
         assertNotNull(nbRecord);
@@ -698,7 +698,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
         assertNotNull(message);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPairDto<FlowDto, FlowDto> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -742,7 +742,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
         assertNotNull(message);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
+        FlowPairDto<FlowDto, FlowDto> flow = getFlowPayload(message);
         assertNotNull(flow);
 
         record = nbConsumer.pollMessage();
@@ -900,7 +900,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowReadResponse flowResponse = (FlowReadResponse) message.getData();
         assertNotNull(flowResponse);
 
-        BidirectionalFlow flowPayload = flowResponse.getPayload();
+        BidirectionalFlowDto flowPayload = flowResponse.getPayload();
         assertNotNull(flowPayload);
         assertEquals(flowId, flowPayload.getFlowId());
         assertEquals(state, flowPayload.getForward().getState());
@@ -915,9 +915,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertEquals(type, errorMessage.getData().getErrorType());
     }
 
-    private Flow deleteFlow(final String flowId) throws IOException {
+    private FlowDto deleteFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Delete flow");
-        Flow payload = new Flow();
+        FlowDto payload = new FlowDto();
         payload.setFlowId(flowId);
         FlowDeleteRequest commandData = new FlowDeleteRequest(payload);
         CommandMessage message = new CommandMessage(commandData, 0, "delete-flow", Destination.WFM);
@@ -929,10 +929,10 @@ public class FlowTopologyTest extends AbstractStormTest {
         return payload;
     }
 
-    private Flow createFlow(final String flowId) throws IOException {
+    private FlowDto createFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Create flow");
-        Flow flowPayload =
-                new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+        FlowDto flowPayload =
+                new FlowDto(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                         new SwitchId("ff:01"), 1, 2);
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
@@ -941,10 +941,10 @@ public class FlowTopologyTest extends AbstractStormTest {
         return flowPayload;
     }
 
-    private Flow updateFlow(final String flowId) throws IOException {
+    private FlowDto updateFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Update flow");
-        Flow flowPayload =
-                new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+        FlowDto flowPayload =
+                new FlowDto(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                         new SwitchId("ff:01"), 1, 2);
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
@@ -1012,10 +1012,10 @@ public class FlowTopologyTest extends AbstractStormTest {
         return commandData;
     }
 
-    private Flow getFlowCommand(final String flowId) throws IOException {
+    private FlowDto getFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flow");
-        Flow flowPayload =
-                new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+        FlowDto flowPayload =
+                new FlowDto(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                         new SwitchId("ff:00"), 1, 2);
         FlowResponse infoData = new FlowResponse(flowPayload);
         InfoMessage infoMessage = new InfoMessage(infoData, 0, "get-flow", Destination.WFM);
@@ -1025,8 +1025,8 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private List<String> dumpFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Get flows");
-        Flow flow =
-                new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+        FlowDto flow =
+                new FlowDto(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                         new SwitchId("ff:00"), 1, 2);
         List<String> payload = Collections.singletonList(flow.getFlowId());
         FlowsResponse infoData = new FlowsResponse(payload);
@@ -1039,8 +1039,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("TOPOLOGY: Path flow");
         PathInfoData pathInfoData = new PathInfoData(
                 0L, Collections.singletonList(new PathNode(new SwitchId("ff:00"), 1, 0, null)));
-        Flow flow = Flow.builder().flowId(flowId).flowPath(pathInfoData).build();
-        FlowReadResponse infoData = new FlowReadResponse(new BidirectionalFlow(flow, flow));
+        FlowDto flow = FlowDto.builder().flowId(flowId).flowPath(pathInfoData).build();
+        FlowReadResponse infoData = new FlowReadResponse(new BidirectionalFlowDto(flow, flow));
         InfoMessage infoMessage =
                 new InfoMessage(infoData, 0, "path-flow", Destination.WFM);
         sendTopologyEngineMessage(infoMessage);
@@ -1095,7 +1095,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         kProducer.pushMessage(topic, request);
     }
 
-    private FlowPair<Flow, Flow> getFlowPayload(InfoMessage message) {
+    private FlowPairDto<FlowDto, FlowDto> getFlowPayload(InfoMessage message) {
         InfoData data = message.getData();
         FlowInfoData flow = (FlowInfoData) data;
         return flow.getPayload();

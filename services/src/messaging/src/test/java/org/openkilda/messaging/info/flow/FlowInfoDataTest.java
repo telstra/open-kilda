@@ -19,10 +19,10 @@ import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
@@ -46,7 +46,7 @@ public class FlowInfoDataTest implements StringSerializer {
             pathNode.setSeqId(i++);
         }
 
-        Flow forwardFlowThread = Flow.builder()
+        FlowDto forwardFlowThread = FlowDto.builder()
                 .flowId("unit-test-flow0")
                 .bandwidth(1000)
                 .ignoreBandwidth(false)
@@ -60,7 +60,7 @@ public class FlowInfoDataTest implements StringSerializer {
                 .state(FlowState.ALLOCATED)
                 .flowPath(new PathInfoData(20, forwardPath))
                 .build();
-        Flow reverseFlowThread = forwardFlowThread.toBuilder()
+        FlowDto reverseFlowThread = forwardFlowThread.toBuilder()
                 .sourceSwitch(forwardFlowThread.getDestinationSwitch())
                 .sourcePort(forwardFlowThread.getDestinationPort())
                 .sourcePort(forwardFlowThread.getDestinationVlan())
@@ -72,7 +72,7 @@ public class FlowInfoDataTest implements StringSerializer {
 
         FlowInfoData origin = new FlowInfoData(
                 forwardFlowThread.getFlowId(),
-                new FlowPair<>(forwardFlowThread, reverseFlowThread),
+                new FlowPairDto<>(forwardFlowThread, reverseFlowThread),
                 FlowOperation.CREATE, "unit-test-correlation-id");
 
         InfoMessage wrapper = new InfoMessage(origin, System.currentTimeMillis(), origin.getCorrelationId());

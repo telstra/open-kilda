@@ -43,15 +43,15 @@ import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
@@ -130,7 +130,7 @@ public class FlowServiceImpl implements FlowService {
     @Value("${neo4j.user}")
     private String neoUser;
 
-    @Value("${neo4j.pswd}")
+    @Value("${neo4j.password}")
     private String neoPswd;
 
     @Autowired
@@ -162,7 +162,7 @@ public class FlowServiceImpl implements FlowService {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Create flow: {}", input);
 
-        FlowCreateRequest payload = new FlowCreateRequest(new Flow(input));
+        FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input));
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -180,7 +180,7 @@ public class FlowServiceImpl implements FlowService {
         logger.debug("Get flow: {}={}", FLOW_ID, id);
 
         return getBidirectionalFlow(id, RequestCorrelationId.getId())
-                .thenApply(BidirectionalFlow::getForward)
+                .thenApply(BidirectionalFlowDto::getForward)
                 .thenApply(flowMapper::toFlowOutput);
     }
 
@@ -192,7 +192,7 @@ public class FlowServiceImpl implements FlowService {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Update flow: {}={}", FLOW_ID, input.getId());
 
-        FlowUpdateRequest payload = new FlowUpdateRequest(new Flow(input));
+        FlowUpdateRequest payload = new FlowUpdateRequest(new FlowDto(input));
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -216,7 +216,7 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(result -> result.stream()
                         .map(FlowReadResponse.class::cast)
                         .map(FlowReadResponse::getPayload)
-                        .map(BidirectionalFlow::getForward)
+                        .map(BidirectionalFlowDto::getForward)
                         .map(flowMapper::toFlowOutput)
                         .collect(Collectors.toList()));
     }
@@ -270,7 +270,7 @@ public class FlowServiceImpl implements FlowService {
      * @return the request
      */
     private CommandMessage buildDeleteFlowCommand(final String id, final String correlationId) {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setFlowId(id);
         FlowDeleteRequest data = new FlowDeleteRequest(flow);
         return new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -319,10 +319,11 @@ public class FlowServiceImpl implements FlowService {
     }
 
     /**
-     * Reads {@link BidirectionalFlow} flow representation from the Storm.
+     * Reads {@link BidirectionalFlowDto} flow representation from the Storm.
+     *
      * @return the bidirectional flow.
      */
-    private CompletableFuture<BidirectionalFlow> getBidirectionalFlow(String flowId, String correlationId) {
+    private CompletableFuture<BidirectionalFlowDto> getBidirectionalFlow(String flowId, String correlationId) {
         FlowReadRequest data = new FlowReadRequest(flowId);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -428,7 +429,7 @@ public class FlowServiceImpl implements FlowService {
         /**
          * Will convert from the Flow .. FlowPath format to a series of SimpleSwitchRules,
          */
-        public static final List<SimpleSwitchRule> convertFlow(Flow flow) {
+        public static final List<SimpleSwitchRule> convertFlow(FlowDto flow) {
             /*
              * Start with Ingress
              */
@@ -633,7 +634,7 @@ public class FlowServiceImpl implements FlowService {
          * 3) Do the comparison
          */
 
-        List<Flow> flows = pathComputer.getFlow(flowId);
+        List<FlowDto> flows = pathComputer.getFlow(flowId);
         logger.debug("VALIDATE FLOW: Found Flows: count = {}", flows.size());
         if (flows.size() == 0) {
             return null;
@@ -644,7 +645,7 @@ public class FlowServiceImpl implements FlowService {
          */
         List<List<SimpleSwitchRule>> simpleFlowRules = new ArrayList<>();
         Set<SwitchId> switches = new HashSet<>();
-        for (Flow flow : flows) {
+        for (FlowDto flow : flows) {
             if (flow.getFlowPath() != null) {
                 simpleFlowRules.add(SimpleSwitchRule.convertFlow(flow));
                 switches.add(flow.getSourceSwitch());

@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.share.utils;
 
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.pce.provider.PathComputer;
 
 import lombok.Getter;
@@ -33,7 +33,7 @@ public class PathComputerFlowFetcher {
     private static final Logger log = LoggerFactory.getLogger(PathComputerFlowFetcher.class);
 
     @Getter
-    private final Collection<BidirectionalFlow> flows = new ArrayList<>();
+    private final Collection<BidirectionalFlowDto> flows = new ArrayList<>();
 
     public PathComputerFlowFetcher(PathComputer pathComputer) {
         for (FlowCollector collector : fetchFlows(pathComputer)) {
@@ -50,7 +50,7 @@ public class PathComputerFlowFetcher {
 
     private Collection<FlowCollector> fetchFlows(PathComputer pathComputer) {
         Map<String, FlowCollector> flowPairsMap = new HashMap<>();
-        for (Flow flow : pathComputer.getAllFlows()) {
+        for (FlowDto flow : pathComputer.getAllFlows()) {
             if (!flowPairsMap.containsKey(flow.getFlowId())) {
                 flowPairsMap.put(flow.getFlowId(), new FlowCollector());
             }

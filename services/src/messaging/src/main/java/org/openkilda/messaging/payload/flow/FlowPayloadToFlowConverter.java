@@ -15,20 +15,20 @@
 
 package org.openkilda.messaging.payload.flow;
 
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowDto;
 
 /**
  * Northbound utility methods.
  */
 public final class FlowPayloadToFlowConverter {
     /**
-     * Builds {@link Flow} instance by {@link FlowPayload} instance.
+     * Builds {@link FlowDto} instance by {@link FlowPayload} instance.
      *
      * @param flowPayload {@link FlowPayload} instance
-     * @return {@link Flow} instance
+     * @return {@link FlowDto} instance
      */
-    public static Flow buildFlowByFlowPayload(FlowPayload flowPayload) {
-        return new Flow(
+    public static FlowDto buildFlowByFlowPayload(FlowPayload flowPayload) {
+        return new FlowDto(
                 flowPayload.getId(),
                 flowPayload.getMaximumBandwidth(),
                 flowPayload.isIgnoreBandwidth(),

@@ -18,9 +18,9 @@ package org.openkilda.pce.cache;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
@@ -121,12 +121,12 @@ public class NetworkCache extends Cache {
     }
 
     /**
-     * Gets all {@link SwitchInfoData} instances in specified {@link SwitchState} state.
+     * Gets all {@link SwitchInfoData} instances in specified {@link SwitchChangeType} state.
      *
-     * @param state {@link SwitchState} state
+     * @param state {@link SwitchChangeType} state
      * @return {@link Set} of {@link SwitchInfoData} instances
      */
-    public Set<SwitchInfoData> getStateSwitches(SwitchState state) {
+    public Set<SwitchInfoData> getStateSwitches(SwitchChangeType state) {
         logger.debug("Get all switches in {} state", state);
 
         return network.nodes().stream()
@@ -254,7 +254,7 @@ public class NetworkCache extends Cache {
      * @throws CacheException if {@link SwitchInfoData} instance with specified id already exists
      */
     public SwitchInfoData createOrUpdateSwitch(SwitchInfoData newSwitch) {
-        logger.debug("Create Or Update {} switch with {} parameters", newSwitch);
+        logger.debug("Create Or Update {} switch with {} parameters", newSwitch.getSwitchId(), newSwitch);
 
         if (newSwitch ==  null) {
             throw new IllegalArgumentException("SimpleSwitch can't be null in createOrUpdateSwitch");
@@ -319,10 +319,8 @@ public class NetworkCache extends Cache {
      */
     public boolean switchIsOperable(SwitchId switchId) {
         if (cacheContainsSwitch(switchId)) {
-            SwitchState switchState = switchPool.get(switchId).getState();
-            if (SwitchState.ADDED == switchState || SwitchState.ACTIVATED == switchState) {
-                return true;
-            }
+            SwitchChangeType switchState = switchPool.get(switchId).getState();
+            return SwitchChangeType.ADDED == switchState || SwitchChangeType.ACTIVATED == switchState;
         }
         return false;
     }
@@ -396,7 +394,7 @@ public class NetworkCache extends Cache {
      * @throws CacheException if {@link SwitchInfoData} related to {@link IslInfoData} instance do not exist
      */
     public IslInfoData createOrUpdateIsl(IslInfoData isl) {
-        logger.debug("Create or Update {} isl with {} parameters", isl);
+        logger.debug("Create or Update isl with {} parameters", isl);
 
         if (isl == null) {
             throw new IllegalArgumentException("ISL can't be null in createOrUpdateIsl");
@@ -471,7 +469,7 @@ public class NetworkCache extends Cache {
      * @throws CacheException if {@link SwitchInfoData} instances for {@link IslInfoData} instance do not exist
      */
     private EndpointPair<SwitchInfoData> getIslSwitches(IslInfoData isl) throws CacheException {
-        SwitchId srcSwitch = isl.getPath().get(0).getSwitchId();
+        SwitchId srcSwitch = isl.getSource().getSwitchId();
         if (srcSwitch == null) {
             throw new CacheException(ErrorType.PARAMETERS_INVALID, "Can not get isl nodes",
                     "Source switch not specified");
@@ -479,7 +477,7 @@ public class NetworkCache extends Cache {
 
         SwitchInfoData startNode = getSwitch(srcSwitch);
 
-        SwitchId dstSwitch = isl.getPath().get(1).getSwitchId();
+        SwitchId dstSwitch = isl.getDestination().getSwitchId();
         if (dstSwitch == null) {
             throw new CacheException(ErrorType.PARAMETERS_INVALID, "Can not get isl nodes",
                     "Destination switch not specified");

@@ -16,7 +16,7 @@
 package org.openkilda.messaging.info.stats;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;

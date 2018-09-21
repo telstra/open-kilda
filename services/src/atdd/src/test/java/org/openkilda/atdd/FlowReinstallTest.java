@@ -7,10 +7,10 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.SwitchId;
 
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
@@ -35,8 +35,7 @@ public class FlowReinstallTest {
     }
 
     @Then("^flow (.*) is(.*) built through (.*) switch")
-    public void flowPathContainsSwitch(final String flow, final String shouldNotContain, final String switchIdString)
-            throws InterruptedException {
+    public void flowPathContainsSwitch(final String flow, final String shouldNotContain, final String switchIdString) {
         await().atMost(20, TimeUnit.SECONDS)
                 .pollInterval(Duration.ONE_SECOND)
                 .until(() -> {

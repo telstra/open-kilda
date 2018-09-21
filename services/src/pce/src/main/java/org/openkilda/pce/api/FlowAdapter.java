@@ -17,9 +17,9 @@ package org.openkilda.pce.api;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 
 import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Value;
@@ -27,7 +27,7 @@ import org.neo4j.driver.v1.Value;
 import java.io.IOException;
 
 public class FlowAdapter {
-    private final Flow flow;
+    private final FlowDto flow;
 
     public FlowAdapter(Record dbRecord) {
         String pathJson = dbRecord.get("path").asString().trim();
@@ -51,7 +51,7 @@ public class FlowAdapter {
                     "Can\'t deserialize flow path: json=%s", pathJson), e);
         }
 
-        flow = new Flow(
+        flow = new FlowDto(
                 dbRecord.get(Utils.FLOW_ID).asString(),
                 dbRecord.get("bandwidth").asLong(),
                 readBoolean(dbRecord, "ignore_bandwidth", false),
@@ -71,7 +71,7 @@ public class FlowAdapter {
         );
     }
 
-    public Flow getFlow() {
+    public FlowDto getFlow() {
         return flow;
     }
 

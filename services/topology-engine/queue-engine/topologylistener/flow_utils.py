@@ -614,7 +614,7 @@ def build_install_command_from_segment(segment):
         logger.error(msg)
         raise ValueError(msg)
 
-    parent_cookie = segment['parent_cookie']
+    parent_cookie = segment.get('parent_cookie', segment['cookie'])
     flow_id = segment['flowid']
     flow = get_flow_by_id_and_cookie(flow_id, parent_cookie)
     if flow is None:

@@ -20,7 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;

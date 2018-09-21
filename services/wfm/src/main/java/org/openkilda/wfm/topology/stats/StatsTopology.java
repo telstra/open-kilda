@@ -25,8 +25,8 @@ import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
 import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
@@ -53,7 +53,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     /**
      * main.
      */
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
             (new StatsTopology(env)).setup();

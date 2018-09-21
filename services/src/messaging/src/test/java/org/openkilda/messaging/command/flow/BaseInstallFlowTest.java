@@ -21,7 +21,7 @@ import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.outputPort;
 import static org.openkilda.messaging.command.Constants.switchId;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Test;
 
@@ -29,81 +29,81 @@ public class BaseInstallFlowTest {
     private static BaseInstallFlow flow = new BaseInstallFlow(0L, flowName, 0L, switchId, inputPort, outputPort);
 
     @Test
-    public void getFlowName() throws Exception {
+    public void getFlowName() {
         assertEquals(flowName, flow.getId());
     }
 
     @Test
-    public void getSwitchId() throws Exception {
+    public void getSwitchId() {
         assertEquals(switchId, flow.getSwitchId());
     }
 
     @Test
-    public void getInputPort() throws Exception {
+    public void getInputPort() {
         assertEquals(inputPort, flow.getInputPort().intValue());
     }
 
     @Test
-    public void getOutputPort() throws Exception {
+    public void getOutputPort() {
         assertEquals(outputPort, flow.getOutputPort().intValue());
     }
 
     @Test
-    public void setFlowName() throws Exception {
+    public void setFlowName() {
         flow.setId(flowName);
         assertEquals(flowName, flow.getId());
     }
 
     @Test
-    public void setSwitchId() throws Exception {
+    public void setSwitchId() {
         flow.setSwitchId(switchId);
         assertEquals(switchId, flow.getSwitchId());
     }
 
     @Test
-    public void setInputPort() throws Exception {
+    public void setInputPort() {
         flow.setInputPort(inputPort);
         assertEquals(inputPort, flow.getInputPort().intValue());
     }
 
     @Test
-    public void setOutputPort() throws Exception {
+    public void setOutputPort() {
         flow.setOutputPort(outputPort);
         assertEquals(outputPort, flow.getOutputPort().intValue());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullFlowName() throws Exception {
+    public void setNullFlowName() {
         flow.setId(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullSwitchId() throws Exception {
+    public void setNullSwitchId() {
         flow.setSwitchId(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setIncorrectSwitchId() throws Exception {
+    public void setIncorrectSwitchId() {
         flow.setSwitchId(new SwitchId(""));
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullInputPort() throws Exception {
+    public void setNullInputPort() {
         flow.setInputPort(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullOutputPort() throws Exception {
+    public void setNullOutputPort() {
         flow.setOutputPort(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNegativeInputPort() throws Exception {
+    public void setNegativeInputPort() {
         flow.setInputPort(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNegativeOutputPort() throws Exception {
+    public void setNegativeOutputPort() {
         flow.setOutputPort(-1);
     }
 }

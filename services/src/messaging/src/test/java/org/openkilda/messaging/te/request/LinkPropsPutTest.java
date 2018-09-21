@@ -19,7 +19,7 @@ import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Assert;
 import org.junit.Test;

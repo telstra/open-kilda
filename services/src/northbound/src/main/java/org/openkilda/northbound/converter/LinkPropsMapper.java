@@ -21,8 +21,8 @@ import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 
 import org.mapstruct.Mapper;

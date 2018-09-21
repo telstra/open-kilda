@@ -21,10 +21,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.NetworkTopologyConstants;
 
 import org.junit.After;
@@ -42,7 +42,7 @@ import java.util.Set;
 public class ResourceCacheTest {
     private static final SwitchId SWITCH_ID = new SwitchId("ff:00");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("ff:02");
-    private final Flow forwardCreatedFlow = Flow.builder()
+    private final FlowDto forwardCreatedFlow = FlowDto.builder()
             .flowId("created-flow")
             .sourceSwitch(new SwitchId("ff:03")).sourcePort(21).sourceVlan(100)
             .destinationSwitch(new SwitchId("ff:04")).destinationPort(22).destinationVlan(200)
@@ -56,7 +56,7 @@ public class ResourceCacheTest {
             .flowPath(new PathInfoData())
             .state(FlowState.ALLOCATED)
             .build();
-    private final Flow reverseCreatedFlow = forwardCreatedFlow.toBuilder()
+    private final FlowDto reverseCreatedFlow = forwardCreatedFlow.toBuilder()
             .sourceSwitch(forwardCreatedFlow.getDestinationSwitch())
             .sourcePort(forwardCreatedFlow.getDestinationPort())
             .sourceVlan(forwardCreatedFlow.getDestinationVlan())
@@ -70,22 +70,22 @@ public class ResourceCacheTest {
     private ResourceCache resourceCache;
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         resourceCache.clear();
     }
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         resourceCache = new ResourceCache();
     }
 
     @Test
-    public void allocateAll() throws Exception {
+    public void allocateAll() {
         // TODO
     }
 
     @Test
-    public void cookiePool() throws Exception {
+    public void cookiePool() {
         resourceCache.allocateCookie(4);
 
         int first = resourceCache.allocateCookie();
@@ -108,7 +108,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void vlanIdPool() throws Exception {
+    public void vlanIdPool() {
         resourceCache.allocateVlanId(5);
 
         int first = resourceCache.allocateVlanId();
@@ -131,7 +131,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void meterIdPool() throws Exception {
+    public void meterIdPool() {
         resourceCache.allocateMeterId(SWITCH_ID, 4);
         int m1 = ResourceCache.MIN_METER_ID;
 
@@ -186,9 +186,9 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void allocateFlow() throws Exception {
-        resourceCache.allocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
-        resourceCache.allocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
+    public void allocateFlow() {
+        resourceCache.allocateFlow(new FlowPairDto<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.allocateFlow(new FlowPairDto<>(forwardCreatedFlow, reverseCreatedFlow));
 
         Set<Integer> allocatedCookies = resourceCache.getAllCookies();
         Set<Integer> allocatedMeterIds = new HashSet<>();
@@ -219,8 +219,8 @@ public class ResourceCacheTest {
     @Test
     public void deallocateFlow() throws Exception {
         allocateFlow();
-        resourceCache.deallocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
-        resourceCache.deallocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.deallocateFlow(new FlowPairDto<>(forwardCreatedFlow, reverseCreatedFlow));
+        resourceCache.deallocateFlow(new FlowPairDto<>(forwardCreatedFlow, reverseCreatedFlow));
 
         Set<Integer> allocatedCookies = resourceCache.getAllCookies();
         Set<Integer> allocatedVlanIds = resourceCache.getAllVlanIds();

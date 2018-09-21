@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight;
 
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
 
 public final class Constants {
     public static final String flowName = "test_flow";
