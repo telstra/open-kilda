@@ -19,15 +19,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public enum FlowOperation {
-    CREATE("Create"),
-    DELETE("Delete"),
-    UPDATE("Update"),
-    STATE("State"),
     PUSH("Push"),       // used to pre-populate flows
     PUSH_PROPAGATE("Push_Propagate"),       // used to pre-populate flows, and push to switch
     UNPUSH("Unpush"),   // used to un-pre-populate flows
-    UNPUSH_PROPAGATE("Unpush_Propagate"),   // used to un-pre-populate flows, and push to switch
-    CACHE("Cache");
+    UNPUSH_PROPAGATE("Unpush_Propagate");   // used to un-pre-populate flows, and push to switch
 
     @JsonProperty("operation")
     private final String operation;

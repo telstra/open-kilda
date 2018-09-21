@@ -2,7 +2,6 @@ package org.openkilda.messaging.ctrl.state;
 
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.visitor.DumpStateVisitor;
-
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;

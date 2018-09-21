@@ -2,7 +2,7 @@
     "flowid": "vsnsc",
     "payload": {
         "forward": {
-            "last_updated": "0",
+            "last_updated": "2018-01-01T00:00:00.000Z",
             "description": "PUSHED FLOW",
             "state": "UP",
             "flowid": "vsnsc",
@@ -46,7 +46,7 @@
             }
         },
         "reverse": {
-            "last_updated": "0",
+            "last_updated": "2018-01-01T00:00:00.000Z",
             "description": "PUSHED FLOW",
             "state": "UP",
             "flowid": "vsnsc",

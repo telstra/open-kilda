@@ -22,12 +22,8 @@ import org.openkilda.wfm.topology.islstats.bolts.IslStatsBolt;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IslStatsTopology extends AbstractTopology<IslStatsTopologyConfig> {
-    private static final Logger logger = LoggerFactory.getLogger(IslStatsTopology.class);
-
     private static final String ISL_STATS_SPOUT_ID = "islstats-spout";
     private static final String ISL_STATS_OTSDB_BOLT_ID = "islstats-otsdb-bolt";
     private static final String ISL_STATS_BOLT_ID = IslStatsBolt.class.getSimpleName();

@@ -52,7 +52,7 @@ public class RouteAction extends AbstractAction {
         Message payload = input.getPayload();
 
         if (! (payload instanceof CtrlRequest)) {
-            getLogger().debug(String.format(
+            log.debug(String.format(
                     "Skip foreign message (correlation-id: %s timestamp: %s)",
                     payload.getCorrelationId(), payload.getTimestamp()));
             return;

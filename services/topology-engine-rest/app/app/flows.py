@@ -219,6 +219,9 @@ def api_v1_flow(flowid):
 
     if request.method == 'GET':
         result = neo4j_connect.run(query.format(flowid, "return")).data()
+        status = result['status']
+        del result['status']
+        result['state'] = status
     if request.method == 'DELETE':
         producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
         switches =  neo4j_connect.run("MATCH (a:switch)-[r:flow {{flowid: '{}'}}]->(b:switch) return r.flowpath limit 1".format(flowid)).evaluate()

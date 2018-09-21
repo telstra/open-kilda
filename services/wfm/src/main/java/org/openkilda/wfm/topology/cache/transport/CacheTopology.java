@@ -38,7 +38,6 @@ import java.util.List;
 public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
     private static final Logger logger = LoggerFactory.getLogger(CacheTopology.class);
 
-    private static final String BOLT_ID_COMMON_OUTPUT = "common.out";
     private static final String BOLT_ID_OFE = "event.out";
     private static final String BOLT_ID_TOPOLOGY_OUTPUT = "topology.out";
     static final String BOLT_ID_CACHE = "cache";
@@ -87,13 +86,6 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
         // (carmine) as per above comment, only a single input streamt
         //                .shuffleGrouping(SPOUT_ID_TOPOLOGY)
         ctrlTargets.add(new CtrlBoltRef(BOLT_ID_CACHE, cacheBolt, boltSetup));
-
-        /*
-         * Sends network events to storage.
-         */
-        KafkaBolt kafkaTopoEngBolt = createKafkaBolt(topologyConfig.getKafkaTopoEngTopic());
-        builder.setBolt(BOLT_ID_COMMON_OUTPUT, kafkaTopoEngBolt, parallelism)
-                .shuffleGrouping(BOLT_ID_CACHE, StreamType.TPE.toString());
 
         /*
          * Sends cache dump and reroute requests to `flow` topology via throttling bolt.

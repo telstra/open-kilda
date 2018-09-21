@@ -15,6 +15,7 @@
 
 import json
 import logging
+import uuid
 
 from kafka import KafkaProducer
 
@@ -67,7 +68,7 @@ def build_ingress_flow(path_nodes, src_switch, src_port, src_vlan,
 
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallIngressFlow"
-    flow.transaction_id = 0
+    flow.transaction_id = str(uuid.UUID(int=0))
     flow.flowid = flow_id
     flow.cookie = cookie
     flow.switch_id = src_switch
@@ -109,7 +110,7 @@ def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,
 
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallEgressFlow"
-    flow.transaction_id = 0
+    flow.transaction_id = str(uuid.UUID(int=0))
     flow.flowid = flow_id
     flow.cookie = cookie
     flow.switch_id = dst_switch
@@ -140,7 +141,7 @@ def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
 
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallTransitFlow"
-    flow.transaction_id = 0
+    flow.transaction_id = str(uuid.UUID(int=0))
     flow.flowid = flow_id
     flow.cookie = cookie
     flow.switch_id = switch
@@ -160,7 +161,7 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
 
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
-    flow.transaction_id = 0
+    flow.transaction_id = str(uuid.UUID(int=0))
     flow.flowid = flow_id
     flow.cookie = cookie
     flow.switch_id = switch
@@ -178,7 +179,7 @@ def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
 def build_one_switch_flow_from_db(switch, stored_flow, output_action):
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
-    flow.transaction_id = 0
+    flow.transaction_id = str(uuid.UUID(int=0))
     flow.flowid = stored_flow['flowid']
     flow.cookie = stored_flow['cookie']
     flow.switch_id = switch
@@ -196,7 +197,7 @@ def build_one_switch_flow_from_db(switch, stored_flow, output_action):
 def build_delete_flow(path_segment):
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.RemoveFlow"
-    flow.transaction_id = 0
+    flow.transaction_id = str(uuid.UUID(int=0))
     flow.flowid = str(path_segment['flow_id'])
     flow.cookie = path_segment['cookie']
     flow.switch_id = str(path_segment['switch_id'])

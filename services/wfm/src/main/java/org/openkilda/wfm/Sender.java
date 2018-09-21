@@ -39,12 +39,6 @@ public class Sender implements ISender {
     }
 
     @Override
-    public void sendInfoToTopologyEngine(InfoData data, String correlationId) throws JsonProcessingException {
-        Message message = new InfoMessage(data, System.currentTimeMillis(), correlationId, Destination.TOPOLOGY_ENGINE);
-        send(StreamType.TPE.toString(), message);
-    }
-
-    @Override
     public void sendInfoToWfmReroute(InfoData data, String correlationId) throws JsonProcessingException {
         Message message = new InfoMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         send(StreamType.WFM_REROUTE.toString(), message);

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,28 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.cache;
-
-import lombok.extern.slf4j.Slf4j;
-
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
+package org.openkilda.wfm.topology.flow.service;
 
 /**
- * Utils class contains basic utilities and constants.
+ * {@code FlowNotFoundException} indicates that a flow can't be found / doesn't exist.
  */
-@Slf4j
-public final class Utils {
-    /**
-     * Return timestamp.
-     *
-     * @return String timestamp
-     */
-    public static String getIsoTimestamp() {
-        return ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT);
+public class FlowNotFoundException extends Exception {
+
+    public FlowNotFoundException(String flowId) {
+        super(String.format("Flow %s not found", flowId));
     }
 
-    private Utils() {
-        throw new UnsupportedOperationException();
+    public FlowNotFoundException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

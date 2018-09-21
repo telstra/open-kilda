@@ -18,29 +18,30 @@ package org.openkilda.wfm.topology.flow.validation;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.share.cache.FlowCache;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * {@code FlowValidator} performs checks against the flow validation rules.
  */
 public class FlowValidator {
 
-    private final FlowCache flowCache;
+    private final FlowRepository flowRepository;
 
-    private SwitchRepository switchRepository;
+    private final SwitchRepository switchRepository;
 
-    public FlowValidator(FlowCache flowCache, SwitchRepository switchRepository) {
-        this.flowCache = flowCache;
-        this.switchRepository = switchRepository;
+    public FlowValidator(RepositoryFactory repositoryFactory) {
+        this.flowRepository = repositoryFactory.createFlowRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
     }
 
     /**
@@ -49,7 +50,7 @@ public class FlowValidator {
      * @param flow a flow to be validated.
      * @throws FlowValidationException is thrown if a violation is found.
      */
-    public void validate(FlowDto flow) throws FlowValidationException, SwitchValidationException {
+    public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
         checkBandwidth(flow);
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
@@ -57,7 +58,7 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkBandwidth(FlowDto flow) throws FlowValidationException {
+    void checkBandwidth(Flow flow) throws FlowValidationException {
         if (flow.getBandwidth() < 0) {
             throw new FlowValidationException(
                     format("The flow '%s' has invalid bandwidth %d provided.",
@@ -74,54 +75,47 @@ public class FlowValidator {
      * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing flows.
      */
     @VisibleForTesting
-    void checkFlowForEndpointConflicts(FlowDto requestedFlow) throws FlowValidationException {
+    void checkFlowForEndpointConflicts(Flow requestedFlow) throws FlowValidationException {
         // Check the source
-        Set<FlowDto> conflictsOnSource;
-        if (requestedFlow.getSourceVlan() == 0) {
-            conflictsOnSource = flowCache.getFlowsForEndpoint(
-                    requestedFlow.getSourceSwitch(),
-                    requestedFlow.getSourcePort());
-        } else {
-            conflictsOnSource = flowCache.getFlowsForEndpoint(
-                    requestedFlow.getSourceSwitch(),
-                    requestedFlow.getSourcePort(),
-                    requestedFlow.getSourceVlan());
-        }
+        Collection<Flow> conflictsOnSource;
+        conflictsOnSource = flowRepository.findFlowIdsByEndpoint(requestedFlow.getSrcSwitch().getSwitchId(),
+                                                                 requestedFlow.getSrcPort());
 
-        Optional<FlowDto> conflictedFlow = conflictsOnSource.stream()
-                .filter(flow -> !flow.getFlowId().equals(requestedFlow.getFlowId()))
+
+        Optional<String> conflictedFlow = conflictsOnSource.stream()
+                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId())
+                        && (flow.getSrcVlan() == 0 || flow.getSrcVlan() == requestedFlow.getSrcVlan()
+                                || requestedFlow.getSrcVlan() == 0))
+                .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
             throw new FlowValidationException(
                     format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getSourcePort(),
-                            requestedFlow.getSourceSwitch(),
-                            conflictedFlow.get().getFlowId()),
+                            requestedFlow.getSrcPort(),
+                            requestedFlow.getSrcSwitch().getSwitchId(),
+                            conflictedFlow.get()),
                     ErrorType.ALREADY_EXISTS);
         }
 
         // Check the destination
-        Set<FlowDto> conflictsOnDest;
-        if (requestedFlow.getDestinationVlan() == 0) {
-            conflictsOnDest = flowCache.getFlowsForEndpoint(
-                    requestedFlow.getDestinationSwitch(),
-                    requestedFlow.getDestinationPort());
-        } else {
-            conflictsOnDest = flowCache.getFlowsForEndpoint(
-                    requestedFlow.getDestinationSwitch(),
-                    requestedFlow.getDestinationPort(),
-                    requestedFlow.getDestinationVlan());
-        }
+        Collection<Flow> conflictsOnDest;
+        conflictsOnDest = flowRepository.findFlowIdsByEndpoint(
+                    requestedFlow.getDestSwitch().getSwitchId(),
+                    requestedFlow.getDestPort());
+
 
         conflictedFlow = conflictsOnDest.stream()
-                .filter(flow -> !flow.getFlowId().equals(requestedFlow.getFlowId()))
+                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId())
+                        && (flow.getDestVlan() == 0 || flow.getDestVlan() == requestedFlow.getDestVlan()
+                        || requestedFlow.getDestVlan() == 0))
+                .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
             throw new FlowValidationException(
                     format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getDestinationPort(),
-                            requestedFlow.getDestinationSwitch(),
-                            conflictedFlow.get().getFlowId()),
+                            requestedFlow.getDestPort(),
+                            requestedFlow.getDestSwitch().getSwitchId(),
+                            conflictedFlow.get()),
                     ErrorType.ALREADY_EXISTS);
         }
     }
@@ -133,9 +127,9 @@ public class FlowValidator {
      * @throws SwitchValidationException if switch not found.
      */
     @VisibleForTesting
-    void checkSwitchesExists(FlowDto requestedFlow) throws SwitchValidationException {
-        final SwitchId sourceId = requestedFlow.getSourceSwitch();
-        final SwitchId destinationId = requestedFlow.getDestinationSwitch();
+    void checkSwitchesExists(Flow requestedFlow) throws SwitchValidationException {
+        final SwitchId sourceId = requestedFlow.getSrcSwitch().getSwitchId();
+        final SwitchId destinationId = requestedFlow.getDestSwitch().getSwitchId();
 
         boolean source;
         boolean destination;
@@ -164,10 +158,10 @@ public class FlowValidator {
      * Ensure vlans are not equal in the case when there is an attempt to create one-switch flow for a single port.
      */
     @VisibleForTesting
-    void checkOneSwitchFlowHasNoConflicts(FlowDto requestedFlow) throws SwitchValidationException {
-        if (requestedFlow.getSourceSwitch().equals(requestedFlow.getDestinationSwitch())
-                && requestedFlow.getSourcePort() == requestedFlow.getDestinationPort()
-                && requestedFlow.getSourceVlan() == requestedFlow.getDestinationVlan()) {
+    void checkOneSwitchFlowHasNoConflicts(Flow requestedFlow) throws SwitchValidationException {
+        if (requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())
+                && requestedFlow.getSrcPort() == requestedFlow.getDestPort()
+                && requestedFlow.getSrcVlan() == requestedFlow.getDestVlan()) {
 
             throw new SwitchValidationException(
                     "It is not allowed to create one-switch flow for the same ports and vlans");

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,7 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.cache;
+package org.openkilda.wfm.topology.flow.service;
 
-public abstract class Cache {
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowSegment;
+
+import java.util.List;
+
+public interface FlowCommandSender {
+    void sendInstallRulesCommand(Flow flow, List<FlowSegment> segments);
+
+    void sendRemoveRuleCommand(Flow flow, List<FlowSegment> segments);
 }

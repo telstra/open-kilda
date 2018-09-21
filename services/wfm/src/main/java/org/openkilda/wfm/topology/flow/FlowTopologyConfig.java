@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flow;
 
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.sabre.oss.conf4j.annotation.Configuration;
 
 @Configuration
@@ -27,20 +26,11 @@ public interface FlowTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowTopic();
     }
 
-    default String getKafkaTopoCacheTopic() {
-        return getKafkaTopics().getTopoCacheTopic();
-    }
-
     default String getKafkaSpeakerFlowTopic() {
         return getKafkaTopics().getSpeakerFlowTopic();
     }
 
     default String getKafkaNorthboundTopic() {
         return getKafkaTopics().getNorthboundTopic();
-    }
-
-    @VisibleForTesting
-    default String getKafkaTopoEngTopic() {
-        return getKafkaTopics().getTopoEngTopic();
     }
 }

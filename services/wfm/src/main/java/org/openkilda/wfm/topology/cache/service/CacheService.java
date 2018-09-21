@@ -18,35 +18,25 @@ package org.openkilda.wfm.topology.cache.service;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.command.switches.SwitchDeleteRequest;
-import org.openkilda.messaging.ctrl.state.FlowDump;
 import org.openkilda.messaging.ctrl.state.NetworkDump;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.NetworkTopologyChange;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.model.BidirectionalFlowDto;
-import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.model.FlowPairDto;
-import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Sender;
-import org.openkilda.wfm.share.cache.FlowCache;
 import org.openkilda.wfm.share.cache.NetworkCache;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
-import org.openkilda.wfm.share.utils.BidirectionalFlowFetcher;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -59,31 +49,16 @@ public class CacheService {
      */
     private NetworkCache networkCache;
 
-    /**
-     * Flow cache.
-     */
-    private FlowCache flowCache;
+    private FlowRepository flowRepository;
 
-    public CacheService(NetworkCache networkCache, FlowCache flowCache, RepositoryFactory repositoryFactory) {
+    public CacheService(NetworkCache networkCache, RepositoryFactory repositoryFactory) {
         this.networkCache = networkCache;
-        this.flowCache = flowCache;
+
+        flowRepository = repositoryFactory.createFlowRepository();
 
         logger.info("Request initial network state");
 
-        initFlowCache(repositoryFactory.createFlowRepository());
         initNetwork(repositoryFactory.createSwitchRepository(), repositoryFactory.createIslRepository());
-    }
-
-    private void initFlowCache(FlowRepository flowRepository) {
-        logger.info("Flow Cache: Initializing");
-        BidirectionalFlowFetcher flowFetcher = new BidirectionalFlowFetcher(flowRepository);
-
-        for (BidirectionalFlowDto bidirectionalFlow : flowFetcher.getFlows()) {
-            FlowPairDto<FlowDto, FlowDto> flowPair = new FlowPairDto<>(
-                    bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
-            flowCache.pushFlow(flowPair);
-        }
-        logger.info("Flow Cache: Initialized");
     }
 
     private void initNetwork(SwitchRepository switchRepository, IslRepository islRepository) {
@@ -124,13 +99,12 @@ public class CacheService {
     /**
      * Handle switch info event and send according messages to topology if needed.
      *
-     * @param sw the switch info data
-     * @param sender the sender
+     * @param sw            the switch info data
+     * @param sender        the sender
      * @param correlationId the correlation id
      */
     public void handleSwitchEvent(SwitchInfoData sw, ISender sender, String correlationId) {
         logger.debug("State update switch {} message {}", sw.getSwitchId(), sw.getState());
-        Set<FlowPairDto<FlowDto, FlowDto>> affectedFlows;
 
         switch (sw.getState()) {
 
@@ -171,13 +145,12 @@ public class CacheService {
     /**
      * Handle ISL info event and send according messages to topology if needed.
      *
-     * @param isl the ISL info data
-     * @param sender the sender
+     * @param isl           the ISL info data
+     * @param sender        the sender
      * @param correlationId the correlation id
      */
     public void handleIslEvent(IslInfoData isl, ISender sender, String correlationId) {
         logger.debug("State update isl {} message cached {}", isl.getId(), isl.getState());
-        Set<FlowPairDto<FlowDto, FlowDto>> affectedFlows;
 
         switch (isl.getState()) {
             case DISCOVERED:
@@ -200,7 +173,14 @@ public class CacheService {
                     logger.warn("{}:{}", exception.getErrorMessage(), exception.getErrorDescription());
                 }
 
-                affectedFlows = flowCache.getActiveFlowsWithAffectedPath(isl);
+                PathNode node = isl.getSource();
+                if (node.getSeqId() != 0) {
+                    throw new IllegalArgumentException("The first node in path must have seqId = 0.");
+                }
+
+                Iterable<String> affectedFlows =
+                        flowRepository.findActiveFlowIdsWithPortInPath(node.getSwitchId(), node.getPortNo());
+
                 String reason = String.format("isl %s FAILED", isl.getId());
                 emitRerouteCommands(sender, affectedFlows, correlationId, reason);
                 break;
@@ -220,8 +200,8 @@ public class CacheService {
     /**
      * Handle port info event and send according messages to topology if needed.
      *
-     * @param port the port info data
-     * @param sender the sender
+     * @param port          the port info data
+     * @param sender        the sender
      * @param correlationId the correlation id
      */
     public void handlePortEvent(PortInfoData port, ISender sender, String correlationId) {
@@ -231,7 +211,8 @@ public class CacheService {
         switch (port.getState()) {
             case DOWN:
             case DELETE:
-                Set<FlowPairDto<FlowDto, FlowDto>> affectedFlows = flowCache.getActiveFlowsWithAffectedPath(port);
+                Iterable<String> affectedFlows =
+                        flowRepository.findActiveFlowIdsWithPortInPath(port.getSwitchId(), port.getPortNo());
                 String reason = String.format("port %s_%s is %s",
                         port.getSwitchId(), port.getPortNo(), port.getState());
                 emitRerouteCommands(sender, affectedFlows, correlationId, reason);
@@ -255,13 +236,13 @@ public class CacheService {
      * Handle network topology change event and send according messages to topology if needed.
      *
      * @param topologyChange the network topology change event
-     * @param sender the sender
-     * @param correlationId the correlation id
+     * @param sender         the sender
+     * @param correlationId  the correlation id
      */
     public void handleNetworkTopologyChange(NetworkTopologyChange topologyChange,
                                             ISender sender,
                                             String correlationId) {
-        Set<FlowPairDto<FlowDto, FlowDto>> affectedFlows;
+        Iterable<String> affectedFlows;
 
         switch (topologyChange.getType()) {
             case ENDPOINT_DROP:
@@ -269,7 +250,7 @@ public class CacheService {
                 return;
 
             case ENDPOINT_ADD:
-                affectedFlows = getFlowsForRerouting();
+                affectedFlows = flowRepository.findDownFlowIds();
                 break;
 
             default:
@@ -286,41 +267,12 @@ public class CacheService {
         return new NetworkDump(networkCache.dumpSwitches(), networkCache.dumpIsls());
     }
 
-    public FlowDump getFlowDump() {
-        return new FlowDump(flowCache.dumpFlows());
-    }
-
-    public Set<Integer> getAllocatedVlans() {
-        return flowCache.getAllocatedVlans();
-    }
-
-    public Set<Integer> getAllocatedCookies() {
-        return flowCache.getAllocatedCookies();
-    }
-
-    public Map<SwitchId, Set<Integer>> getAllocatedMeters() {
-        return flowCache.getAllocatedMeters();
-    }
-
-    private Set<FlowPairDto<FlowDto, FlowDto>> getFlowsForRerouting() {
-        Set<FlowPairDto<FlowDto, FlowDto>> inactiveFlows = flowCache.dumpFlows().stream()
-                .filter(flow -> FlowState.DOWN.equals(flow.getLeft().getState()))
-                .collect(Collectors.toSet());
-
-        return inactiveFlows;
-    }
-
-    private void emitRerouteCommands(ISender sender, Set<FlowPairDto<FlowDto, FlowDto>> flows,
+    private void emitRerouteCommands(ISender sender, Iterable<String> flows,
                                      String initialCorrelationId, String reason) {
-        for (FlowPairDto<FlowDto, FlowDto> flow : flows) {
-            final String flowId = flow.getLeft().getFlowId();
-
+        for (String flowId : flows) {
             String correlationId = format("%s-%s", initialCorrelationId, flowId);
 
             sender.sendCommandToWfmReroute(flowId, correlationId);
-
-            flow.getLeft().setState(FlowState.DOWN);
-            flow.getRight().setState(FlowState.DOWN);
 
             logger.warn("Flow {} reroute command message sent with correlationId {}, reason {}",
                     flowId, correlationId, reason);
@@ -337,85 +289,10 @@ public class CacheService {
     }
 
     /**
-     * Handle flow info event and send according messages to topology if needed.
-     *
-     * @param flowData the flow info data
-     * @param sender the sender
-     * @param correlationId the correlation id
-     * @throws JsonProcessingException if sending message can't be serialized as json
-     */
-    public void handleFlowEvent(FlowInfoData flowData, ISender sender, String correlationId)
-            throws JsonProcessingException {
-        switch (flowData.getOperation()) {
-            case PUSH:
-            case PUSH_PROPAGATE:
-                logger.debug("Flow {} message received: {}, correlationId: {}", flowData.getOperation(), flowData,
-                        correlationId);
-                flowCache.putFlow(flowData.getPayload());
-                // do not emit to TPE .. NB will send directly
-                break;
-
-            case UNPUSH:
-            case UNPUSH_PROPAGATE:
-                logger.trace("Flow {} message received: {}, correlationId: {}", flowData.getOperation(), flowData,
-                        correlationId);
-                String flowsId2 = flowData.getPayload().getLeft().getFlowId();
-                flowCache.removeFlow(flowsId2);
-                logger.debug("Flow {} message processed: {}, correlationId: {}", flowData.getOperation(), flowData,
-                        correlationId);
-                break;
-
-
-            case CREATE:
-                // TODO: This should be more lenient .. in case of retries
-                logger.trace("Flow create message received: {}, correlationId: {}", flowData, correlationId);
-                flowCache.putFlow(flowData.getPayload());
-                sender.sendInfoToTopologyEngine(flowData, flowData.getCorrelationId());
-                logger.debug("Flow create message sent: {}, correlationId: {}", flowData, correlationId);
-                break;
-
-            case DELETE:
-                // TODO: This should be more lenient .. in case of retries
-                logger.trace("Flow remove message received: {}, correlationId: {}", flowData, correlationId);
-                String flowsId = flowData.getPayload().getLeft().getFlowId();
-                flowCache.removeFlow(flowsId);
-                sender.sendInfoToTopologyEngine(flowData, flowData.getCorrelationId());
-                logger.debug("Flow remove message sent: {}, correlationId: {} ", flowData, correlationId);
-                break;
-
-            case UPDATE:
-                logger.trace("Flow update message received: {}, correlationId: {}", flowData, correlationId);
-                // TODO: This should be more lenient .. in case of retries
-                flowCache.putFlow(flowData.getPayload());
-                sender.sendInfoToTopologyEngine(flowData, flowData.getCorrelationId());
-                logger.debug("Flow update message sent: {}, correlationId: {}", flowData, correlationId);
-                break;
-
-            case STATE:
-                flowCache.putFlow(flowData.getPayload());
-                logger.debug("Flow state changed: {}, correlationId: {}", flowData, correlationId);
-                break;
-
-            case CACHE:
-                logger.debug("Sync flow cache message received: {}, correlationId: {}", flowData, correlationId);
-                if (flowData.getPayload() != null) {
-                    flowCache.putFlow(flowData.getPayload());
-                } else {
-                    flowCache.removeFlow(flowData.getFlowId());
-                }
-                break;
-
-            default:
-                logger.warn("Skip undefined flow operation {}", flowData);
-                break;
-        }
-    }
-
-    /**
      * Deletes a switch from a cache.
      *
-     * @param request the instance of {@link SwitchDeleteRequest}.
-     * @param sender the instance of {@link Sender}.
+     * @param request       the instance of {@link SwitchDeleteRequest}.
+     * @param sender        the instance of {@link Sender}.
      * @param correlationId the log correlation id.
      */
     public void deleteSwitch(SwitchDeleteRequest request, Sender sender, String correlationId) {

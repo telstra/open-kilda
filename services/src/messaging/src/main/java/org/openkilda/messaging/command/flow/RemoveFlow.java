@@ -27,6 +27,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Value;
 
+import java.util.UUID;
+
 /**
  * Class represents flow deletion info.
  */
@@ -59,7 +61,7 @@ public class RemoveFlow extends BaseFlow {
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
     @JsonCreator
-    public RemoveFlow(@JsonProperty(TRANSACTION_ID) Long transactionId,
+    public RemoveFlow(@JsonProperty(TRANSACTION_ID) UUID transactionId,
             @JsonProperty(FLOW_ID) String flowId,
             @JsonProperty("cookie") Long cookie,
             @JsonProperty("switch_id") SwitchId switchId,

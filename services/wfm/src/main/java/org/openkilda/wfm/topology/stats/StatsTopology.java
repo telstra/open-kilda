@@ -37,13 +37,9 @@ import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
-
-    private static final Logger logger = LoggerFactory.getLogger(StatsTopology.class);
 
     public StatsTopology(LaunchEnvironment env) {
         super(env, StatsTopologyConfig.class);

@@ -17,7 +17,6 @@ package org.openkilda.wfm;
 
 import org.openkilda.wfm.error.MessageFormatException;
 import org.openkilda.wfm.error.UnsupportedActionException;
-import org.openkilda.wfm.topology.stats.StatsTopology;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.task.OutputCollector;
@@ -26,13 +25,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class AbstractAction implements Runnable {
-    private final Logger logger;
+    protected final Logger log = LoggerFactory.getLogger(getClass());
     private final IKildaBolt bolt;
     private final Tuple tuple;
 
     public AbstractAction(IKildaBolt bolt, Tuple tuple) {
-        this.logger = LoggerFactory.getLogger(StatsTopology.class);
-
         this.bolt = bolt;
         this.tuple = tuple;
     }
@@ -54,7 +51,7 @@ public abstract class AbstractAction implements Runnable {
             throws MessageFormatException, UnsupportedActionException, JsonProcessingException;
 
     protected Boolean handleError(Exception e) {
-        getLogger().error("Unhandled exception", e);
+        log.error("Unhandled exception", e);
         return false;
     }
 
@@ -76,9 +73,5 @@ public abstract class AbstractAction implements Runnable {
 
     protected OutputCollector getOutputCollector() {
         return bolt.getOutput();
-    }
-
-    protected Logger getLogger() {
-        return logger;
     }
 }

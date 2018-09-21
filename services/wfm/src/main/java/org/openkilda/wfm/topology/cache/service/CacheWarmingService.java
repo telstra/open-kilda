@@ -23,7 +23,6 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
-import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.cache.NetworkCache;
 
@@ -112,7 +111,7 @@ public class CacheWarmingService {
     private CommandData getFlowCommandIfNeeded(FlowDto flow) {
         CommandData request = null;
 
-        if (flow.getState() == FlowState.CACHED && isFlowSwitchesUp(flow)) {
+        if (isFlowSwitchesUp(flow)) {
             request = new FlowCreateRequest(flow);
             LOGGER.info("Created flow create request for flowId {}", flow.getFlowId());
             predefinedFlows.stream()

@@ -27,10 +27,8 @@ import static org.openkilda.DefaultParameters.topologyUsername;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -46,7 +44,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.glassfish.jersey.jackson.JacksonFeature;
 
 import java.io.IOException;
@@ -432,40 +429,6 @@ public final class FlowUtils {
     }
 
     /**
-     * Returns flows through Topology-Engine-Rest service.
-     *
-     * @return The JSON document of all flows
-     */
-    public static List<FlowDto> dumpFlows() {
-        System.out.println("\n==> Topology-Engine Dump Flows");
-
-        long current = System.currentTimeMillis();
-        Client client = clientFactory();
-
-        Response response = client
-                .target(topologyEndpoint)
-                .path("/api/v1/topology/flows")
-                .request()
-                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .get();
-
-        System.out.println(format("===> Response = %s", response.toString()));
-        System.out.println(format("===> Topology-Engine Dump Flows Time: %,.3f", getTimeDuration(current)));
-
-        try {
-            List<FlowDto> flows = new ObjectMapper().readValue(response.readEntity(String.class),
-                    new TypeReference<List<FlowDto>>() {
-                    });
-            System.out.println(format("====> Topology-Engine Dump Flows = %d", flows.size()));
-
-            return flows;
-
-        } catch (IOException ex) {
-            throw new TopologyProcessingException(format("Unable to parse the flows '%s'.", response.toString()), ex);
-        }
-    }
-
-    /**
      * Returns link available bandwidth through Topology-Engine-Rest service.
      *
      * @return The JSON document of all flows
@@ -528,25 +491,21 @@ public final class FlowUtils {
             Set<String> flows = new HashSet<>();
 
             getFlowDump().forEach(flow -> flows.add(flow.getId()));
-            dumpFlows().forEach(flow -> flows.add(flow.getFlowId()));
 
             System.out.println(format("=====> Cleanup Flows - going to drop %d flows", flows.size()));
             flows.forEach(FlowUtils::deleteFlow);
 
             // Wait for them to become zero
             int nbCount = -1;
-            int terCount = -1;
             for (int i = 0; i < 10; ++i) {
                 TimeUnit.SECONDS.sleep(2);
-                nbCount = dumpFlows().size();
-                terCount = getFlowDump().size();
-                if (nbCount == 0 && terCount == 0) {
+                nbCount = getFlowDump().size();
+                if (nbCount == 0) {
                     break;
                 }
             }
 
             assertEquals(0, nbCount);
-            assertEquals(0, terCount);
         } catch (Exception exception) {
             System.out.println(format("Error during flow deletion: %s", exception.getMessage()));
             exception.printStackTrace();
@@ -622,40 +581,9 @@ public final class FlowUtils {
     }
 
     /**
-     * Perform the flow cache synchronization (via Northbound service).
-     */
-    public static FlowCacheSyncResults syncFlowCache() {
-        System.out.println("\n==> Northbound Sync Flow Cache");
-
-        long current = System.currentTimeMillis();
-        Client client = clientFactory();
-        // Enable support of PATCH method
-        client.property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
-
-        Response response = client
-                .target(northboundEndpoint)
-                .path("/api/v1/flows/cache")
-                .request(MediaType.APPLICATION_JSON)
-                .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
-                .header(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()))
-                .method("PATCH");
-
-        System.out.println(format("===> Northbound Sync Flow Cache Time: %,.3f", getTimeDuration(current)));
-
-        if (response.getStatus() != 200) {
-            System.out.println(format("====> Error: Northbound Sync Flow Cache = PATCH status: %s",
-                    response.getStatus()));
-            return null;
-        }
-
-        System.out.println(format("===> Response = %s", response.toString()));
-        return response.readEntity(FlowCacheSyncResults.class);
-    }
-
-    /**
      * Perform the flow cache invalidation (via Northbound service).
      */
-    public static FlowCacheSyncResults invalidateFlowCache() {
+    public static boolean invalidateFlowCache() {
         System.out.println("\n==> Northbound Invalidate Flow Cache");
 
         long current = System.currentTimeMillis();
@@ -673,12 +601,11 @@ public final class FlowUtils {
 
         if (response.getStatus() != 200) {
             System.out.println(
-                    format("====> Error: Northbound Invalidate Flow Cache = PATCH status: %s", response.getStatus()));
-            return null;
+                    format("====> Error: Northbound Invalidate Flow Cache = DELETE status: %s", response.getStatus()));
+            return false;
         }
 
-        System.out.println(format("===> Response = %s", response.toString()));
-        return response.readEntity(FlowCacheSyncResults.class);
+        return true;
     }
 
     /**
@@ -765,7 +692,7 @@ public final class FlowUtils {
 
         Response response = client
                 .target(northboundEndpoint)
-                .path("/api/v1/push/flows")
+                .path("/api/v1/flows/push")
                 .queryParam("propagate", propagate)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)
@@ -798,7 +725,7 @@ public final class FlowUtils {
         System.out.println(String.format("\n==> Northbound verify Flow request (correlationId: %s)", correlationId));
         Response response = client
                 .target(northboundEndpoint)
-                .path("/api/v1/flows/{id}/verify")
+                .path("/api/v1/flows/{id}/ping")
                 .resolveTemplate("id", flowId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, authHeaderValue)

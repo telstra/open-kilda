@@ -29,8 +29,6 @@ import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *  Storm topology to read data from database.
@@ -48,8 +46,6 @@ import org.slf4j.LoggerFactory;
  */
 public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(NbWorkerTopology.class);
-
     private static final String ROUTER_BOLT_NAME = "router-bolt";
     private static final String SWITCHES_BOLT_NAME = "switches-operations-bolt";
     private static final String LINKS_BOLT_NAME = "links-operations-bolt";
@@ -64,7 +60,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
     @Override
     public StormTopology createTopology() {
-        LOGGER.info("Creating NbWorkerTopology - {}", topologyName);
+        logger.info("Creating NbWorkerTopology - {}", topologyName);
 
         TopologyBuilder tb = new TopologyBuilder();
 

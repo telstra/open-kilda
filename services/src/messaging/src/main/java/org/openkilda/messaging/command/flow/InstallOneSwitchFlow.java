@@ -30,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Class represents flow through one switch installation info.
@@ -90,21 +91,21 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     /**
      * Instance constructor.
      *
-     * @param transactionId  transaction id
-     * @param id             id of the flow
-     * @param cookie         flow cookie
-     * @param switchId       switch ID for flow installation
-     * @param inputPort      input port of the flow
-     * @param outputPort     output port of the flow
-     * @param inputVlanId    input vlan id value
-     * @param outputVlanId   output vlan id value
+     * @param transactionId transaction id
+     * @param id id of the flow
+     * @param cookie flow cookie
+     * @param switchId switch ID for flow installation
+     * @param inputPort input port of the flow
+     * @param outputPort output port of the flow
+     * @param inputVlanId input vlan id value
+     * @param outputVlanId output vlan id value
      * @param outputVlanType output vlan tag action
-     * @param bandwidth      flow bandwidth
-     * @param meterId        source meter id
+     * @param bandwidth flow bandwidth
+     * @param meterId source meter id
      * @throws IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
-    public InstallOneSwitchFlow(@JsonProperty(TRANSACTION_ID) final Long transactionId,
+    public InstallOneSwitchFlow(@JsonProperty(TRANSACTION_ID) final UUID transactionId,
                                 @JsonProperty(FLOW_ID) final String id,
                                 @JsonProperty("cookie") final Long cookie,
                                 @JsonProperty("switch_id") final SwitchId switchId,

@@ -28,6 +28,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Represents abstract flow installation info.
@@ -72,7 +73,7 @@ public class BaseInstallFlow extends BaseFlow {
      * @throws IllegalArgumentException if mandatory parameter is null
      */
     @JsonCreator
-    public BaseInstallFlow(@JsonProperty(TRANSACTION_ID) final Long transactionId,
+    public BaseInstallFlow(@JsonProperty(TRANSACTION_ID) final UUID transactionId,
                            @JsonProperty(FLOW_ID) final String id,
                            @JsonProperty("cookie") final Long cookie,
                            @JsonProperty("switch_id") final SwitchId switchId,
