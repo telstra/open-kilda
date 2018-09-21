@@ -64,9 +64,6 @@ public class LinkServiceImpl implements LinkService {
     @Autowired
     private LinkPropsMapper linkPropsMapper;
 
-    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
-    private String topologyEngineTopic;
-
     /**
      * The kafka topic for the nb topology.
      */

@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
+import lombok.ToString;
 import org.neo4j.ogm.annotation.EndNode;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
@@ -44,6 +45,7 @@ import java.util.Objects;
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = "entityId")
 @RelationshipEntity(type = "isl")
+@ToString(exclude = {"srcSwitchId", "destSwitchId"})
 public class Isl implements Serializable {
     private static final long serialVersionUID = 1L;
 

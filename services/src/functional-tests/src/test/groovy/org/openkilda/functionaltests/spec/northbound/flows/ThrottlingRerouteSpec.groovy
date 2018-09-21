@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
+import spock.lang.Ignore
+import spock.lang.Issue
+
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 

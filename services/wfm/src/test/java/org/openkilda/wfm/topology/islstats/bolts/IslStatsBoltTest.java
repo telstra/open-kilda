@@ -35,8 +35,6 @@ import org.openkilda.model.SwitchId;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -69,8 +67,6 @@ public class IslStatsBoltTest {
     private static final String CORRELATION_ID = "system";
     private static final Destination DESTINATION = null;
     private static final InfoMessage MESSAGE = new InfoMessage(ISL_INFO_DATA, TIMESTAMP, CORRELATION_ID, DESTINATION);
-
-    private static Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();

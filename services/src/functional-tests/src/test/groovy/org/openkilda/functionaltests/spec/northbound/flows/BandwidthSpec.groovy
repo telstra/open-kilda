@@ -44,8 +44,7 @@ class BandwidthSpec extends BaseSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
             linksBeforeFlow.every { link ->
-                def switchIds = link.path*.switchId
-                !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
+                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
             }
         } ?: assumeTrue("No suiting switches found", false)
 

@@ -29,6 +29,8 @@
         <lombok.version>1.16.20</lombok.version>
         <aspectj.version>1.8.13</aspectj.version>
         <commons.collection.version>4.1</commons.collection.version>
+        <commons-lang3.version>3.7</commons-lang3.version>
+        <commons-lang.version>2.6</commons-lang.version>
         <hibernate-validator.version>6.0.10.Final</hibernate-validator.version>
         <glassfish-el.version>3.0.1-b09</glassfish-el.version>
         <mapstruct.version>1.2.0.Final</mapstruct.version>
@@ -146,7 +148,13 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.7</version>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+        <!-- commons-lang is required by Apache Storm -->
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>${commons-lang.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -535,6 +543,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.20</version>
                 <configuration>
+                    <useSystemClassLoader>false</useSystemClassLoader>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <reportsDirectory>${project.build.directory}/junit</reportsDirectory>
                     <runOrder>alphabetical</runOrder>
@@ -619,13 +628,13 @@
         <profile>
             <id>local</id>
             <properties>
-                    <provided.scope>compile</provided.scope>
+                <provided.scope>compile</provided.scope>
             </properties>
         </profile>
         <profile>
             <id>remote</id>
             <properties>
-                    <provided.scope>provided</provided.scope>
+                <provided.scope>provided</provided.scope>
             </properties>
         </profile>
     </profiles>

@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache.service;
+package org.openkilda.wfm.topology.reroute.service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;

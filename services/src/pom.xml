@@ -428,6 +428,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven.surefire.version}</version>
                     <configuration>
+                        <useSystemClassLoader>false</useSystemClassLoader>
                         <redirectTestOutputToFile>true</redirectTestOutputToFile>
                         <reportsDirectory>${project.build.directory}/junit</reportsDirectory>
                     </configuration>

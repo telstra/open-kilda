@@ -18,13 +18,15 @@ kafka.topic.speaker.disco = kilda.speaker.disco
 kafka.topic.speaker.flow = kilda.speaker.flow
 kafka.topic.speaker.flow.ping = kilda.speaker.flow.ping
 kafka.topic.stats = kilda.stats
-kafka.topic.topo.cache = kilda.topo.cache
 kafka.topic.topo.disco = kilda.topo.disco
 kafka.topic.topo.eng = kilda.topo.eng
 kafka.topic.topo.nbworker = kilda.topo.nb
+kafka.topic.topo.reroute = kilda.topo.reroute
 
 reroute.throttling.delay.min = 10
 reroute.throttling.delay.max = 600
+
+isl.cost.when.port.down = 10000
 
 opentsdb.hosts = http://opentsdb.pendev:4242
 opentsdb.timeout = 30

@@ -228,7 +228,7 @@ class FlowCrudSpec extends BaseSpecification {
                     flowToConflict.id = dominantFlow.id
                 },
                 getError: { FlowPayload flowToError ->
-                    "Can not create flow: Flow $flowToError.id already exists"
+                    "Could not create flow: Flow $flowToError.id already exists"
                 }
             ]
         ]

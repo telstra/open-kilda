@@ -84,6 +84,12 @@ public interface KafkaTopicsConfig {
     @Default("kilda.stats")
     String getStatsTopic();
 
+    /**
+     * TE incoming topic name.
+     *
+     * @deprecated as TE module is going to be decommissioned / replaced with FlowTopology & NbWorkerTopology.
+     */
+    @Deprecated
     @Key("topo.eng")
     @FallbackKey("kafka.topo.eng.topic")
     @Default("kilda.topo.eng")
@@ -93,12 +99,12 @@ public interface KafkaTopicsConfig {
     @Default("kilda.topo.disco")
     String getTopoDiscoTopic();
 
-    @Key("topo.cache")
-    @Default("kilda.topo.cache")
-    String getTopoCacheTopic();
-
     @Key("topo.nbworker")
     @FallbackKey("kafka.nbworker.topic")
     @Default("kilda.topo.nb")
     String getTopoNbTopic();
+
+    @Key("topo.reroute")
+    @Default("kilda.topo.reroute")
+    String getTopoRerouteTopic();
 }

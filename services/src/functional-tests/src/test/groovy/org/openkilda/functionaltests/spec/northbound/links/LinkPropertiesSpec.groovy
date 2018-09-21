@@ -7,6 +7,7 @@ import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Ignore
 import spock.lang.Shared
 import spock.lang.Unroll
 
@@ -33,6 +34,7 @@ class LinkPropertiesSpec extends BaseSpecification {
         northbound.getAllLinkProps().empty
     }
 
+    @Ignore("This test is not valid in this implementation.")
     def "Valid error response is returned when sending invalid char in link props key"() {
         when: "Send link property request with invalid character"
         def response = northbound.updateLinkProps([new LinkPropsDto("00:00:00:00:00:00:00:01", 1,

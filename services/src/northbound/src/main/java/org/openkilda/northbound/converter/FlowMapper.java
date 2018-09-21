@@ -34,7 +34,6 @@ import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,30 +53,31 @@ public interface FlowMapper {
 
     PingOutput toPingOutput(FlowPingResponse response);
 
-    @Mappings({
-            @Mapping(source = "flowId", target = "id"),
-            @Mapping(source = "path", target = "path"),
-            @Mapping(source = "rerouted", target = "rerouted")
-    })
+    @Mapping(source = "flowId", target = "id")
+    @Mapping(source = "path", target = "path")
+    @Mapping(source = "rerouted", target = "rerouted")
     FlowReroutePayload toReroutePayload(String flowId, PathInfoData path, boolean rerouted);
 
-    @Mappings({
-            @Mapping(source = "flowId", target = "id"),
-            @Mapping(source = "state", target = "status")
-    })
+    @Mapping(source = "flowId", target = "id")
+    @Mapping(source = "state", target = "status")
     FlowIdStatusPayload toFlowIdStatusPayload(BidirectionalFlowDto flow);
 
-    @Mappings({
-            @Mapping(source = "flowId", target = "id"),
-            @Mapping(source = "forward", target = "forwardPath"),
-            @Mapping(source = "reverse", target = "reversePath")
-    })
+    @Mapping(source = "flowId", target = "id")
+    @Mapping(source = "forward", target = "forwardPath")
+    @Mapping(source = "reverse", target = "reversePath")
     FlowPathPayload toFlowPathPayload(BidirectionalFlowDto flow);
 
     @Mapping(target = "latency", source = "meters.networkLatency")
     UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
 
+    /**
+     * Convert {@link FlowState} to {@link String}.
+     */
     default String encodeFlowState(FlowState state) {
+        if (state == null) {
+            return null;
+        }
+
         return state.getState();
     }
 

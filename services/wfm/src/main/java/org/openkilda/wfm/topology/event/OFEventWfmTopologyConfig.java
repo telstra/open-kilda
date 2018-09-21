@@ -31,10 +31,6 @@ public interface OFEventWfmTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoDiscoTopic();
     }
 
-    default String getKafkaTopoEngTopic() {
-        return getKafkaTopics().getTopoEngTopic();
-    }
-
     default String getKafkaSpeakerTopic() {
         return getKafkaTopics().getSpeakerTopic();
     }
@@ -42,6 +38,13 @@ public interface OFEventWfmTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaSpeakerDiscoTopic() {
         return getKafkaTopics().getSpeakerDiscoTopic();
     }
+
+    default String getKafkaTopoRerouteTopic() {
+        return getKafkaTopics().getTopoRerouteTopic();
+    }
+
+    @Key("isl.cost.when.port.down")
+    int getIslCostWhenPortDown();
 
     @Configuration
     @Key("discovery")

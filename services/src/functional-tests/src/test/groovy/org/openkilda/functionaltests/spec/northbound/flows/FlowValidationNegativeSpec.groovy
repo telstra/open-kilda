@@ -143,7 +143,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
 
     boolean findDirectLinks(Switch src, Switch dst, List<IslInfoData> links) {
         def connectingLinks = links.findAll {link ->
-            (link.path[0].switchId == src.dpId) && (link.path[-1].switchId == dst.dpId)
+            (link.source.switchId == src.dpId) && (link.destination.switchId == dst.dpId)
         }
         return connectingLinks.empty
     }

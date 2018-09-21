@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache.service;
+package org.openkilda.wfm.topology.reroute.service;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;

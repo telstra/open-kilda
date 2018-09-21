@@ -13,15 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache.service;
+package org.openkilda.messaging.command.reroute;
 
-import org.openkilda.messaging.info.InfoData;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.Value;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+@Value
+@EqualsAndHashCode(callSuper = false)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class RerouteInactiveFlows extends RerouteFlows {
 
-public interface ISender {
-
-    void sendInfoToWfmReroute(InfoData data, String correlationId) throws JsonProcessingException;
-
-    void sendCommandToWfmReroute(String flowId, String correlationId);
+    @JsonCreator
+    public RerouteInactiveFlows(@NonNull @JsonProperty("reason") String reason) {
+        super(reason);
+    }
 }
