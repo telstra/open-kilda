@@ -262,6 +262,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
     def cleanup() {
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
         db.resetCosts()
+        assert Wrappers.wait(5) { northboundService.getAllLinks().every { it.availableBandwidth == it.speed } }
     }
 
     def blinkPort(SwitchId sw, int port) {
