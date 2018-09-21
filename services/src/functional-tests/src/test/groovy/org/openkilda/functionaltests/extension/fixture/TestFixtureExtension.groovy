@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.extension.fixture
 
+import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractAnnotationDrivenExtension
 import org.spockframework.runtime.extension.AbstractMethodInterceptor
 import org.spockframework.runtime.extension.IMethodInvocation
@@ -9,6 +10,7 @@ import org.spockframework.runtime.model.FeatureInfo
  * Allows to run granular setup/cleanup only once before/after all iterations of test's 'where' sequence.
  * @see {@link TestFixture}
  */
+@Slf4j
 class TestFixtureExtension extends AbstractAnnotationDrivenExtension<TestFixture> {
 
     @Override
@@ -23,6 +25,7 @@ class TestFixtureExtension extends AbstractAnnotationDrivenExtension<TestFixture
                 if (!didRun) {
                     didRun = true
                     try {
+                        log.debug "Running parametrized test setup fixture: ${annotation.setup()}"
                         currentlyRunningSpec."${annotation.setup()}"()
                     } catch (e) {
                         setupFailed = true
@@ -41,6 +44,7 @@ class TestFixtureExtension extends AbstractAnnotationDrivenExtension<TestFixture
                 try {
                     invocation.proceed()
                 } finally {
+                    log.debug "Running parametrized test cleanup fixture: ${annotation.cleanup()}"
                     currentlyRunningSpec."${annotation.cleanup()}"()
                 }
             }

@@ -47,7 +47,7 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
 
     @Override
     void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        log.info("setting app spring context for spock extensions")
+        log.debug("Setting app spring context for spock extensions")
         context = applicationContext
         listeners.each {
             it.notifyContextInitialized(applicationContext)
