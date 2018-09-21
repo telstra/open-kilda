@@ -5,7 +5,6 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
@@ -22,8 +21,6 @@ class PathHelper {
     TopologyDefinition topology
     @Autowired
     NorthboundService northbound
-    @Autowired
-    Database db
     @Autowired
     IslUtils islUtils
 
@@ -101,22 +98,12 @@ class PathHelper {
     }
 
     /**
-     * Get cost of a certain ISL from DB.
-     *
-     * @param isl ISL for which cost should be retrieved
-     * @return ISL cost
-     */
-    int getCost(Isl isl) {
-        return db.getIslCost(isl)
-    }
-
-    /**
      * Get total cost of all ISLs that are involved in a given path.
      *
      * @param path Path in List<PathNode> representation
      * @return ISLs cost
      */
     int getCost(List<PathNode> path) {
-        return getInvolvedIsls(path).sum { getCost(it) }
+        return getInvolvedIsls(path).sum { islUtils.getIslCost(it) } as int
     }
 }

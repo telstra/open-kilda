@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.isl
 
 import static org.junit.Assume.assumeNotNull
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -15,7 +15,7 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 
-class IslMovingSpec extends BaseSpecification {
+class IslMovementSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
