@@ -39,7 +39,6 @@ opentsdb.flush.interval = 1
 opentsdb.workers = 1
 opentsdb.client.chunked-requests.enabled = true
 
-neo4j.hosts = neo4j.pendev:7687
 neo4j.uri = bolt://neo4j.pendev:7687
 neo4j.user = neo4j
 neo4j.password = temppass

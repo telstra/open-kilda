@@ -17,22 +17,21 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.pce.provider.Auth;
+import org.openkilda.persistence.PersistenceManager;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.neo4j.driver.v1.Session;
 
 import java.util.List;
 
-public class FlowOperationsBolt extends NeoOperationsBolt {
-    public FlowOperationsBolt(Auth neoAuth) {
-        super(neoAuth);
+public class FlowOperationsBolt extends PersistenceOperationsBolt {
+    public FlowOperationsBolt(PersistenceManager persistenceManager) {
+        super(persistenceManager);
     }
 
     @Override
-    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, Session session) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         log.warn("Received unsupported Flow Operation");
         return null;
     }

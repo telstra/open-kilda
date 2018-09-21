@@ -19,14 +19,13 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
-import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.pce.provider.PathComputer;
-import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.model.FlowPair;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.share.utils.FlowCollector;
-import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.ping.model.FlowRef;
 import org.openkilda.wfm.topology.ping.model.FlowsHeap;
 import org.openkilda.wfm.topology.ping.model.PingContext;
@@ -37,6 +36,10 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class FlowFetcher extends Abstract {
     public static final String BOLT_ID = ComponentId.FLOW_FETCHER.toString();
@@ -54,12 +57,12 @@ public class FlowFetcher extends Abstract {
             FIELD_ID_ON_DEMAND_RESPONSE, FIELD_ID_CONTEXT);
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
 
-    private final PathComputerAuth pathComputerAuth;
-    private PathComputer pathComputer = null;
+    private final PersistenceManager persistenceManager;
+    private transient FlowRepository flowRepository;
     private FlowsHeap flowsHeap;
 
-    public FlowFetcher(PathComputerAuth pathComputerAuth) {
-        this.pathComputerAuth = pathComputerAuth;
+    public FlowFetcher(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
     }
 
     @Override
@@ -77,11 +80,13 @@ public class FlowFetcher extends Abstract {
 
     private void handlePeriodicRequest(Tuple input) throws PipelineException {
         log.debug("Handle periodic ping request");
-        PathComputerFlowFetcher fetcher = new PathComputerFlowFetcher(pathComputer);
+        final List<BidirectionalFlowDto> flows = flowRepository.findAllFlowPairs().stream()
+                .map(pair -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(pair)))
+                .collect(Collectors.toList());
 
         final CommandContext commandContext = pullContext(input);
         final FlowsHeap heap = new FlowsHeap();
-        for (BidirectionalFlowDto flow : fetcher.getFlows()) {
+        for (BidirectionalFlowDto flow : flows) {
             if (!flow.isPeriodicPings()) {
                 log.debug("Skip flow {} due to isPeriodicPings == false", flow.getFlowId());
                 continue;
@@ -101,17 +106,15 @@ public class FlowFetcher extends Abstract {
         log.debug("Handle on demand ping request");
         FlowPingRequest request = pullOnDemandRequest(input);
         BidirectionalFlowDto flow;
-        try {
-            FlowCollector collector = new FlowCollector();
-            for (FlowDto halfFlow : pathComputer.getFlow(request.getFlowId())) {
-                collector.add(halfFlow);
-            }
-            flow = collector.make();
-        } catch (IllegalArgumentException e) {
+
+        Optional<FlowPair> flowPair = flowRepository.findFlowPairById(request.getFlowId());
+        if (!flowPair.isPresent()) {
             emitOnDemandResponse(input, request, String.format(
-                    "Can't read flow %s: %s", request.getFlowId(), e.getMessage()));
+                    "Flow %s does not exist", request.getFlowId()));
             return;
         }
+
+        flow = new BidirectionalFlowDto(FlowMapper.INSTANCE.map(flowPair.get()));
 
         PingContext pingContext = new PingContext(Kinds.ON_DEMAND, flow).toBuilder()
                 .timeout(request.getTimeout())
@@ -152,7 +155,7 @@ public class FlowFetcher extends Abstract {
 
     @Override
     public void init() {
-        pathComputer = pathComputerAuth.getPathComputer();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowsHeap = new FlowsHeap();
     }
 }

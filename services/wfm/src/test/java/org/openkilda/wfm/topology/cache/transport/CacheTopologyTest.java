@@ -29,6 +29,7 @@ import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.NetworkDump;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -41,14 +42,18 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.wfm.AbstractStormTest;
+import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
@@ -60,10 +65,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 
 public class CacheTopologyTest extends AbstractStormTest {
@@ -87,29 +90,28 @@ public class CacheTopologyTest extends AbstractStormTest {
                     new SwitchId("ff:00"), 1, 2),
             new FlowDto(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2));
-    private static final Set<FlowPairDto<FlowDto, FlowDto>> flows = new HashSet<>();
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
     private static TestKafkaConsumer ctrlConsumer;
 
-    private static Neo4jFixture fakeNeo4jDb;
+    private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
+    private static PersistenceManager persistenceManager;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.setupOnce();
+        AbstractStormTest.startZooKafkaAndStorm();
 
-        Properties configOverlay = new Properties();
-
-        fakeNeo4jDb = new Neo4jFixture(fsData.getRoot().toPath(), NEO4J_LISTEN_ADDRESS);
-        fakeNeo4jDb.start();
-        configOverlay.setProperty("neo4j.hosts", fakeNeo4jDb.getListenAddress());
-
-        flows.add(firstFlow);
-        flows.add(secondFlow);
+        embeddedNeo4jDb = new EmbeddedNeo4jDatabase(fsData.getRoot());
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
+        Properties configOverlay = new Properties();
+        configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
         launchEnvironment.setupOverlay(configOverlay);
+
+        Neo4jConfig neo4jConfig = launchEnvironment.getConfigurationProvider().getConfiguration(Neo4jConfig.class);
+        persistenceManager = new Neo4jPersistenceManager(neo4jConfig);
+
         topology = new CacheTopology(launchEnvironment);
         StormTopology stormTopology = topology.createTopology();
 
@@ -143,11 +145,12 @@ public class CacheTopologyTest extends AbstractStormTest {
         ctrlConsumer.clear();
 
         sendClearState();
+
+        ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession().purgeDatabase();
     }
 
     @AfterClass
     public static void teardownOnce() throws Exception {
-
         flowConsumer.wakeup();
         flowConsumer.join();
         teConsumer.wakeup();
@@ -155,11 +158,10 @@ public class CacheTopologyTest extends AbstractStormTest {
         ctrlConsumer.wakeup();
         ctrlConsumer.join();
 
-        fakeNeo4jDb.stop();
+        embeddedNeo4jDb.stop();
 
-        AbstractStormTest.teardownOnce();
+        AbstractStormTest.stopZooKafkaAndStorm();
     }
-
 
     @Test
     public void cacheReceivesFlowTopologyUpdatesAndSendsToTopologyEngine() throws Exception {
@@ -304,6 +306,12 @@ public class CacheTopologyTest extends AbstractStormTest {
         kProducer.pushMessage(topic, request);
     }
 
+    private static void sendNetworkDump(NetworkInfoData data, String correlationId) throws IOException {
+        System.out.println("Topology-Engine: Send Network Dump");
+        InfoMessage info = new InfoMessage(data, 0, correlationId, Destination.WFM_CACHE);
+        sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
+    }
+
     private static <T extends InfoData> void sendData(T infoData) throws IOException {
         InfoMessage info = new InfoMessage(infoData, 0, UUID.randomUUID().toString(), Destination.WFM_CACHE);
         sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
@@ -327,7 +335,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
-        // assertNotNull(raw);
         if (raw != null) {
             CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
             Assert.assertEquals(request.getCorrelationId(), response.getCorrelationId());

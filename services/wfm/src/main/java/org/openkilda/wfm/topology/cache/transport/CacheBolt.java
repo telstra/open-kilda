@@ -35,15 +35,13 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.pce.cache.Cache;
-import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.cache.NetworkCache;
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.NeoDriver;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.Sender;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.share.cache.Cache;
+import org.openkilda.wfm.share.cache.FlowCache;
+import org.openkilda.wfm.share.cache.NetworkCache;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.cache.StreamType;
 import org.openkilda.wfm.topology.cache.service.CacheService;
@@ -91,15 +89,15 @@ public class CacheBolt
      */
     private InMemoryKeyValueState<String, Cache> state;
 
-    private CacheService cacheService;
+    private transient CacheService cacheService;
 
-    private final Auth pathComputerAuth;
+    private final PersistenceManager persistenceManager;
 
     private TopologyContext context;
     private OutputCollector outputCollector;
 
-    CacheBolt(Auth pathComputerAuth) {
-        this.pathComputerAuth = pathComputerAuth;
+    CacheBolt(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
     }
 
     /**
@@ -119,8 +117,8 @@ public class CacheBolt
             flowCache = new FlowCache();
             state.put(FLOW_CACHE, flowCache);
         }
-        PathComputer pathComputer = new NeoDriver(pathComputerAuth.getDriver());
-        cacheService = new CacheService(networkCache, flowCache, pathComputer);
+
+        cacheService = new CacheService(networkCache, flowCache, persistenceManager.getRepositoryFactory());
     }
 
     /**

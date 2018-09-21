@@ -17,7 +17,6 @@ northbound.messages.expiration.minutes=15
 northbound.kafka.listener.threads=10
 northbound.kafka.session.timeout=30000
 
-neo4j.hosts = neo4j.pendev:7687
 neo4j.uri = bolt://neo4j.pendev:7687
 neo4j.user = neo4j
 neo4j.password = temppass
