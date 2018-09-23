@@ -15,17 +15,18 @@
 
 package org.openkilda.floodlight.pathverification;
 
-import org.easymock.EasyMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
 
+import org.openkilda.floodlight.model.OfInput;
+
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.openkilda.floodlight.model.OfInput;
 
 public class TimestampTests {
     private byte[] t1;

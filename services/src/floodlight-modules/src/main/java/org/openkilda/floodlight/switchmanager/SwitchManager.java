@@ -693,7 +693,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         logger.debug("installing verification rule for {}", dpid);
 
-        Match match = matchVerification(sw, isBroadcast);
+
         ArrayList<OFAction> actionList = new ArrayList<>(2);
         if (isBroadcast) {
             actionList.add(actionAddRxTimestamp(sw, 944));
@@ -703,6 +703,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions instructionApplyActions = ofFactory.instructions()
                 .applyActions(actionList).createBuilder().build();
         final long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
+        Match match = matchVerification(sw, isBroadcast);
         OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, instructionApplyActions,
                 cookie, VERIFICATION_RULE_PRIORITY);
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";

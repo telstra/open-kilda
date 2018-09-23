@@ -487,7 +487,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     }
 
     /**
-     * Calculate latency of the ISL
+     * Calculate latency of the ISL.
      * @param input PacketIn message
      * @param sendTime time packet was sent
      * @param switchT0 timestamp switch0 sent discover packet
