@@ -35,6 +35,7 @@ services/src/api/target/
 /services/src/northbound/src/main/resources/log4j2.xml
 /services/src/northbound/src/main/resources/northbound.properties
 /services/src/openkilda-gui/src/main/resources/application.properties
+/services/src/openkilda-gui/src/main/resources/logback.xml
 /services/storm/log4j2/cluster.xml
 /services/storm/log4j2/worker.xml
 /services/topology-engine-rest/app/log.json

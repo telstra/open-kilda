@@ -39,7 +39,11 @@ public enum ActivityType {
     ADMIN_RESET_PASSWORD(18L),
     RESET_2FA(19L),
     UPDATE_USER_SETTINGS(20L),
-    CONFIGURE_SWITCH_PORT(21L);
+    CONFIGURE_SWITCH_PORT(21L),
+    CREATE_FLOW(22L),
+    UPDATE_FLOW(23L),
+    DELETE_FLOW(24L),
+    RESYNC_FLOW(25L);
 
     private Long id;
     private ActivityTypeEntity activityTypeEntity;

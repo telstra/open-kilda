@@ -33,6 +33,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,37 +110,53 @@ public class KafkaMessageCollector implements IFloodlightModule {
         commandProcessor.init(moduleContext);
         pingService.init(moduleContext);
 
-        initConsumer(moduleContext);
-    }
-
-    private void initConsumer(FloodlightModuleContext moduleContext) {
         KafkaConsumerConfig consumerConfig = configService.getConsumerConfig();
-
-        logger.info("config - executor threads = {}", consumerConfig.getExecutorCount());
-
-        // A thread pool of fixed sized and no work queue.
-        ExecutorService parseRecordExecutor = new ThreadPoolExecutor(consumerConfig.getExecutorCount(),
-                consumerConfig.getExecutorCount(), 0L, TimeUnit.MILLISECONDS,
-                new SynchronousQueue<>(), new RetryableExecutionHandler());
-
         KafkaTopicsConfig topicsConfig = configService.getTopics();
         ConsumerContext context = new ConsumerContext(moduleContext, topicsConfig);
 
-        RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
+        ExecutorService generalExecutor = buildExecutorWithNoQueue(consumerConfig.getGeneralExecutorCount());
+        logger.info("Kafka Consumer: general executor threads = {}", consumerConfig.getGeneralExecutorCount());
 
+        initConsumer(consumerConfig, context, topicsConfig.getSpeakerTopic(), generalExecutor);
+        initConsumer(consumerConfig, context, topicsConfig.getSpeakerFlowTopic(), generalExecutor);
+        initConsumer(consumerConfig, context, topicsConfig.getSpeakerFlowPingTopic(), generalExecutor);
+
+        ExecutorService discoCommandExecutor = buildExecutorWithNoQueue(consumerConfig.getDiscoExecutorCount());
+        logger.info("Kafka Consumer: disco executor threads = {}", consumerConfig.getDiscoExecutorCount());
+
+        initConsumer(consumerConfig, context, topicsConfig.getSpeakerDiscoTopic(), discoCommandExecutor,
+                OffsetResetStrategy.LATEST);
+    }
+
+    private ExecutorService buildExecutorWithNoQueue(int executorCount) {
+        // A thread pool of fixed sized and no work queue.
+        return new ThreadPoolExecutor(executorCount, executorCount, 0L, TimeUnit.MILLISECONDS,
+                new SynchronousQueue<>(), new RetryableExecutionHandler());
+    }
+
+    private void initConsumer(KafkaConsumerConfig consumerConfig, ConsumerContext context, String topic,
+                              ExecutorService handlerExecutor) {
+        initConsumer(consumerConfig, context, topic, handlerExecutor, null);
+    }
+
+    private void initConsumer(KafkaConsumerConfig consumerConfig, ConsumerContext context, String topic,
+                              ExecutorService handlerExecutor, OffsetResetStrategy defaultOffsetStrategy) {
+        logger.info("Kafka Consumer: topic = {}", topic);
+
+        RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
         ISwitchManager switchManager = context.getSwitchManager();
-        String inputTopic = topicsConfig.getSpeakerTopic();
 
         try {
             Consumer consumer;
             if (!consumerConfig.isTestingMode()) {
-                consumer = new Consumer(consumerConfig, parseRecordExecutor, handlerFactory, switchManager,
-                        inputTopic);
+                consumer = new Consumer(consumerConfig, handlerExecutor, handlerFactory,
+                        switchManager, topic, defaultOffsetStrategy);
             } else {
-                consumer = new TestAwareConsumer(context,
-                        consumerConfig, parseRecordExecutor, handlerFactory, switchManager, inputTopic);
+                consumer = new TestAwareConsumer(context, consumerConfig, handlerExecutor, handlerFactory,
+                        switchManager, topic, defaultOffsetStrategy);
             }
-            Executors.newSingleThreadExecutor().execute(consumer);
+            Executors.newSingleThreadScheduledExecutor()
+                    .scheduleWithFixedDelay(consumer, 0, 1, TimeUnit.MILLISECONDS);
         } catch (Exception exception) {
             logger.error("error", exception);
         }

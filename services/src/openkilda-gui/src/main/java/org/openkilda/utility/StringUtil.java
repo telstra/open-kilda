@@ -50,6 +50,21 @@ public final class StringUtil {
     public static boolean isNullOrEmpty(final String data) {
         return data == null || data.trim().isEmpty();
     }
+    
+    /**
+     * Checks if is any null or empty.
+     *
+     * @param elements the elements
+     * @return true, if is any null or empty
+     */
+    public static boolean isAnyNullOrEmpty(final String... elements) {
+        for(String element : elements){
+            if(isNullOrEmpty(element)){
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Encode string.

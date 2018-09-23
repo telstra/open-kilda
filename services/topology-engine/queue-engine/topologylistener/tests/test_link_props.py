@@ -45,6 +45,11 @@ class Abstract(share.AbstractTest):
             command = share.command(isl_info)
             self.assertTrue(messageclasses.MessageItem(command).handle())
 
+    def _ensure_props_match(self, link_props, props):
+        with self.open_neo4j_session() as tx:
+            persistent = link_props_utils.read(tx, link_props)
+            self.assertEqual(props, persistent.props)
+
     def _put(self, subject):
         request = share.link_props_request(subject)
         payload = share.link_props_put_payload(request)
@@ -160,11 +165,8 @@ class TestLinkProps02Occupied(Abstract):
             props={'cost': 1, 'extra': 'new'})
         self._put(link_props)
 
-        with self.open_neo4j_session() as tx:
-            persistent = link_props_utils.read(tx, link_props)
-            self.assertEqual(
-                {'cost': 1, 'extra': 'new', 'name': 'alpha-beta'},
-                persistent.props)
+        self._ensure_props_match(
+            link_props, {'cost': 1, 'extra': 'new', 'name': 'alpha-beta'})
 
     def test_drop(self):
         lookup_mask = model.LinkProps(self.endpoint_alpha, self.endpoint_beta)
@@ -220,6 +222,15 @@ class TestLinkProps02Occupied(Abstract):
             message_utils.MI_LINK_PROPS_RESPONSE, response['clazz'])
         self.assertIsNone(response['link_props'])
         self.assertIsNotNone(response['error'])
+
+    def test_cypher_injection(self):
+        link_props = model.LinkProps(
+            self.endpoint_alpha, self.endpoint_beta,
+            props={'`cost': 1})
+        self._put(link_props)
+
+        self._ensure_props_match(
+            link_props, {'cost': 32, 'name': 'alpha-beta'})
 
     def _ensure_exists(self, *batch):
         with self.open_neo4j_session() as tx:

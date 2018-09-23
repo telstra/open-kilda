@@ -26,17 +26,18 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InterruptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
 public class Consumer implements Runnable {
@@ -47,24 +48,23 @@ public class Consumer implements Runnable {
     private final ExecutorService handlersPool;
     private final RecordHandler.Factory handlerFactory;
     private final ISwitchManager switchManager; // HACK alert.. adding to facilitate safeSwitchTick()
-
+    private final OffsetResetStrategy defaultOffsetStrategy;
 
     public Consumer(KafkaConsumerConfig kafkaConfig, ExecutorService handlersPool,
                     RecordHandler.Factory handlerFactory, ISwitchManager switchManager,
-                    String topic, String... moreTopics) {
-        this.topics = new ArrayList<>(moreTopics.length + 1);
-        this.topics.add(requireNonNull(topic));
-        this.topics.addAll(Arrays.asList(moreTopics));
+                    String topic, OffsetResetStrategy defaultOffsetStrategy) {
+        this.topics = Collections.singletonList(requireNonNull(topic));
 
         this.kafkaConfig = requireNonNull(kafkaConfig);
         this.handlersPool = requireNonNull(handlersPool);
         this.handlerFactory = requireNonNull(handlerFactory);
         this.switchManager = requireNonNull(switchManager);
+        this.defaultOffsetStrategy = defaultOffsetStrategy;
     }
 
     @Override
     public void run() {
-        while (true) {
+        while (!Thread.currentThread().isInterrupted()) {
             /*
              * Ensure we try to keep processing messages. It is possible that the consumer needs
              * to be re-created, either due to internal error, or if it fails to poll within the
@@ -74,9 +74,16 @@ public class Consumer implements Runnable {
              *  - max.poll.interval.ms = 300000 (ie 300 seconds)
              *  - max.poll.records = 500 (must be able to process about 2 records per second
              */
-            try (KafkaConsumer<String, String> consumer =
-                         new KafkaConsumer<>(kafkaConfig.createKafkaConsumerProperties())) {
+
+            Properties consumerProperties = kafkaConfig.createKafkaConsumerProperties();
+            if (defaultOffsetStrategy != null) {
+                // Define what to do when there is no offset in Kafka.
+                consumerProperties.setProperty("auto.offset.reset", defaultOffsetStrategy.toString().toLowerCase());
+            }
+
+            try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties)) {
                 consumer.subscribe(topics);
+                logger.info("Kafka consumer: start. Topics: {}", topics);
 
                 KafkaOffsetRegistry offsetRegistry =
                         new KafkaOffsetRegistry(consumer, kafkaConfig.getAutoCommitInterval());
@@ -103,8 +110,9 @@ public class Consumer implements Runnable {
                     switchManager.safeModeTick(); // HACK alert .. should go in its own timer loop
                 }
             } catch (InterruptException ex) {
-                // Leave if the thread has been interrupted.
-                throw ex;
+                // Gracefully finish loop on thread interruption.
+                logger.warn("Kafka consumer loop has been interrupted");
+                Thread.currentThread().interrupt();
             } catch (Exception e) {
                 // Just log the exception, and start processing again with a new consumer.
                 logger.error("Exception received during main kafka consumer loop: {}", e);

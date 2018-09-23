@@ -1,0 +1,91 @@
+floodlight.modules=\
+  net.floodlightcontroller.storage.memory.MemoryStorageSource,\
+  net.floodlightcontroller.core.internal.FloodlightProvider,\
+  net.floodlightcontroller.threadpool.ThreadPool,\
+  net.floodlightcontroller.debugcounter.DebugCounterServiceImpl,\
+  net.floodlightcontroller.perfmon.PktInProcessingTime,\
+  net.floodlightcontroller.staticentry.StaticEntryPusher,\
+  net.floodlightcontroller.restserver.RestApiServer,\
+  net.floodlightcontroller.ui.web.StaticWebRoutable,\
+  net.floodlightcontroller.statistics.StatisticsCollector,\
+  org.openkilda.floodlight.switchmanager.SwitchEventCollector,\
+  org.openkilda.floodlight.kafka.KafkaMessageProducer,\
+  org.openkilda.floodlight.kafka.KafkaMessageCollector,\
+  org.openkilda.floodlight.switchmanager.SwitchManager,\
+  org.openkilda.floodlight.pathverification.PathVerificationService,\
+  org.openkilda.floodlight.statistics.StatisticsService
+org.sdnplatform.sync.internal.SyncManager.authScheme=CHALLENGE_RESPONSE
+org.sdnplatform.sync.internal.SyncManager.keyStorePath=/etc/floodlight/key2.jceks
+org.sdnplatform.sync.internal.SyncManager.dbPath=/var/lib/floodlight/
+org.sdnplatform.sync.internal.SyncManager.keyStorePassword=PassWord
+org.sdnplatform.sync.internal.SyncManager.port=6009
+org.sdnplatform.sync.internal.SyncManager.thisNodeId=1
+org.sdnplatform.sync.internal.SyncManager.persistenceEnabled=FALSE
+org.sdnplatform.sync.internal.SyncManager.nodes=[\
+{"nodeId": 1, "domainId": 1, "hostname": "192.168.1.100", "port": 6642},\
+{"nodeId": 2, "domainId": 1, "hostname": "192.168.1.100", "port": 6643}\
+]
+net.floodlightcontroller.forwarding.Forwarding.match=in-port, vlan, mac, ip, transport, flag
+net.floodlightcontroller.forwarding.Forwarding.detailed-match=src-mac, dst-mac, src-ip, dst-ip, src-transport, dst-transport
+net.floodlightcontroller.forwarding.Forwarding.flood-arp=NO
+net.floodlightcontroller.forwarding.Forwarding.idle-timeout=5
+net.floodlightcontroller.forwarding.Forwarding.set-send-flow-rem-flag=FALSE
+net.floodlightcontroller.forwarding.Forwarding.remove-flows-on-link-or-port-down=TRUE
+net.floodlightcontroller.core.internal.FloodlightProvider.role=ACTIVE
+net.floodlightcontroller.core.internal.FloodlightProvider.controllerId=1
+net.floodlightcontroller.core.internal.FloodlightProvider.shutdownOnTransitionToStandby=true
+net.floodlightcontroller.core.internal.OFSwitchManager.openFlowPort=6653
+net.floodlightcontroller.core.internal.OFSwitchManager.openFlowAddresses=0.0.0.0
+net.floodlightcontroller.core.internal.OFSwitchManager.workerThreads=16
+net.floodlightcontroller.core.internal.OFSwitchManager.bossThreads=1
+net.floodlightcontroller.core.internal.OFSwitchManager.connectionBacklog=1000
+net.floodlightcontroller.core.internal.OFSwitchManager.connectionTimeoutMs=60000
+net.floodlightcontroller.core.internal.OFSwitchManager.defaultMaxTablesToReceiveTableMissFlow=1
+net.floodlightcontroller.core.internal.OFSwitchManager.maxTablesToReceiveTableMissFlowPerDpid={"00:00:00:00:00:00:00:01":"0","2":"0"}
+net.floodlightcontroller.core.internal.OFSwitchManager.clearTablesOnInitialHandshakeAsMaster=NO
+net.floodlightcontroller.core.internal.OFSwitchManager.clearTablesOnEachTransitionToMaster=NO
+net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePath=/path/to.jecks
+net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePassword=PassFL
+net.floodlightcontroller.core.internal.OFSwitchManager.useSsl=NO
+net.floodlightcontroller.core.internal.OFSwitchManager.supportedOpenFlowVersions=1.2, 1.3
+net.floodlightcontroller.core.internal.OFSwitchManager.switchesInitialState={"00:00:00:00:00:00:00:01":"ROLE_MASTER","00:00:00:00:00:00:00:02":"ROLE_MASTER", "00:00:00:00:00:00:00:03":"ROLE_MASTER", "00:00:00:00:00:00:00:04":"ROLE_MASTER","00:00:00:00:00:00:00:05":"ROLE_MASTER"}
+net.floodlightcontroller.restserver.RestApiServer.keyStorePath=/path/to.jceks
+net.floodlightcontroller.restserver.RestApiServer.keyStorePassword=Password
+net.floodlightcontroller.restserver.RestApiServer.httpsNeedClientAuthentication=NO
+net.floodlightcontroller.restserver.RestApiServer.useHttps=NO
+net.floodlightcontroller.restserver.RestApiServer.useHttp=YES
+net.floodlightcontroller.restserver.RestApiServer.httpsPort=8081
+net.floodlightcontroller.restserver.RestApiServer.httpPort=8080
+net.floodlightcontroller.restserver.RestApiServer.accessControlAllowAllOrigins=TRUE
+net.floodlightcontroller.statistics.StatisticsCollector.enable=FALSE
+net.floodlightcontroller.statistics.StatisticsCollector.collectionIntervalPortStatsSeconds=60
+net.floodlightcontroller.topology.TopologyManager.pathMetric=latency
+net.floodlightcontroller.topology.TopologyManager.maxPathsToCompute=3
+org.openkilda.floodlight.kafka.KafkaMessageCollector.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
+{{ if eq (getv "/kilda_environment_role") "devel" "test" }}
+org.openkilda.floodlight.kafka.KafkaMessageCollector.testing-mode=YES
+{{ end }}
+org.openkilda.floodlight.kafka.KafkaMessageCollector.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
+#org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors=10
+#org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors=10
+#org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-auto-commit-interval=1000
+#org.openkilda.floodlight.kafka.KafkaMessageCollector.command-processor-workers-count = 4
+#org.openkilda.floodlight.kafka.KafkaMessageCollector.command-processor-workers-limit = 32
+#org.openkilda.floodlight.kafka.KafkaMessageCollector.command-processor-deferred-requests-limit = 8
+#org.openkilda.floodlight.kafka.KafkaMessageCollector.command-processor-idle-workers-keep-alive-seconds = 300
+org.openkilda.floodlight.kafka.KafkaMessageProducer.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
+{{ if eq (getv "/kilda_environment_role") "devel" "test" }}
+org.openkilda.floodlight.kafka.KafkaMessageProducer.testing-mode=YES
+{{ end }}
+org.openkilda.floodlight.kafka.KafkaMessageProducer.heart-beat-interval=2
+org.openkilda.floodlight.kafka.KafkaMessageProducer.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
+org.openkilda.floodlight.pathverification.PathVerificationService.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
+org.openkilda.floodlight.pathverification.PathVerificationService.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
+org.openkilda.floodlight.pathverification.PathVerificationService.isl_bandwidth_quotient=1.0
+org.openkilda.floodlight.pathverification.PathVerificationService.hmac256-secret=secret
+org.openkilda.floodlight.statistics.StatisticsService.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
+org.openkilda.floodlight.statistics.StatisticsService.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
+org.openkilda.floodlight.statistics.StatisticsService.interval=60
+org.openkilda.floodlight.switchmanager.SwitchEventCollector.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
+org.openkilda.floodlight.switchmanager.SwitchManager.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
+org.openkilda.floodlight.switchmanager.SwitchManager.connect-mode=AUTO

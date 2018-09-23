@@ -274,24 +274,6 @@ class TestIsl(share.AbstractTest):
         self.ensure_isl_props(
                 neo4j_connect, isl_gamma_beta, ISL_STATUS_PROPS_UP)
 
-    def test_switch_unplug(self):
-        src_endpoint, dst_endpoint = self.src_endpoint, self.dst_endpoint
-        forward = model.InterSwitchLink(src_endpoint, dst_endpoint, None)
-        reverse = forward.reversed()
-
-        self.assertTrue(make_switch_add(src_endpoint.dpid))
-        self.assertTrue(make_switch_add(dst_endpoint.dpid))
-        self.assertTrue(share.feed_isl_discovery(forward))
-        self.assertTrue(share.feed_isl_discovery(reverse))
-
-        self.ensure_isl_props(neo4j_connect, forward, ISL_STATUS_PROPS_UP)
-        self.ensure_isl_props(neo4j_connect, reverse, ISL_STATUS_PROPS_UP)
-
-        self.assertTrue(make_switch_remove(src_endpoint.dpid))
-
-        self.ensure_isl_props(neo4j_connect, forward, ISL_STATUS_PROPS_DOWN)
-        self.ensure_isl_props(neo4j_connect, reverse, ISL_STATUS_PROPS_HALF_UP)
-
     def test_isl_down_without_isl(self):
         sw_alpha = share.make_datapath_id(1)
         sw_beta = share.make_datapath_id(2)

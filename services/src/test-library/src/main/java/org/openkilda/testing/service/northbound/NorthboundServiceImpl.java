@@ -23,6 +23,8 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.switches.PortDescription;
+import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
@@ -32,6 +34,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
@@ -178,6 +182,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public PingOutput pingFlow(String flowId, PingInput pingInput) {
+        HttpEntity<PingInput> httpEntity = new HttpEntity<>(pingInput, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/flows/{flow_id}/ping", HttpMethod.PUT, httpEntity,
+                PingOutput.class, flowId).getBody();
+    }
+
+    @Override
     public FlowReroutePayload rerouteFlow(String flowId) {
         return restTemplate.exchange("/api/v1/flows/{flowId}/reroute", HttpMethod.PATCH,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowReroutePayload.class, flowId).getBody();
@@ -281,14 +292,27 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public PortDto portUp(SwitchId switchId, Integer portNo) {
-        log.info("Bringing port up for switch {}, port {}", switchId, portNo);
+        log.debug("Bringing port up for switch {}, port {}", switchId, portNo);
         return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.UP));
     }
 
     @Override
     public PortDto portDown(SwitchId switchId, Integer portNo) {
-        log.info("Bringing port down for switch {}, port {}", switchId, portNo);
+        log.debug("Bringing port down for switch {}, port {}", switchId, portNo);
         return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.DOWN));
+    }
+
+    @Override
+    public List<PortDescription> getPorts(SwitchId switchId) {
+        SwitchPortsDescription ports = restTemplate.exchange("/api/v1/switches/{switch_id}/ports", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchPortsDescription.class, switchId).getBody();
+        return ports.getPortsDescription();
+    }
+
+    @Override
+    public PortDescription getPort(SwitchId switchId, Integer portNo) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/ports/{port_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PortDescription.class, switchId, portNo).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

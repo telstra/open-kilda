@@ -1,0 +1,5 @@
+[template]
+src = "topology-engine-rest/log.json.tmpl"
+dest = "services/topology-engine-rest/app/log.json"
+keys = [ "/" ]
+mode = "0644"

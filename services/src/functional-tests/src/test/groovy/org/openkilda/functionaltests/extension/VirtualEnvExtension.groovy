@@ -1,10 +1,11 @@
 package org.openkilda.functionaltests.extension
 
-import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.extension.spring.SpringContextExtension
 import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.functionaltests.helpers.MininetTopologyBuilder
 import org.openkilda.testing.service.mininet.Mininet
+
+import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
@@ -28,7 +29,7 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
             //delete any existing mininet topologies
             mininet.deleteTopology()
             mininetTopology.buildVirtualEnvironment()
-            log.info("Virtual environment successfully created")
+            log.info("Virtual topology successfully created")
         }
     }
 

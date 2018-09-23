@@ -5,7 +5,7 @@ All messages transferred via kafka are serialized into json format.
 
 ### Introduction
 Version 0.8 has been refactored with a focus on clear topics per inbound component.
-For instance, the floodlight module should have a clear input topic (eg kilda.speaker),
+For instance, the floodlight module should have a clear input topic (eg kilda.speaker.*),
 and it should understand where to send responses to, within reason (eg kilda.flow, 
 kilda.topo.event, etc).
 
@@ -24,7 +24,7 @@ This involves a request to the NB API, through the FLOW WFM, Topology Engine, an
 
 Process:
 ```
-FlowTopology::  --> kilda.speaker --> Floodlight::KafkaMessageCollector
+FlowTopology::  --> kilda.speaker.flow --> Floodlight::KafkaMessageCollector
 - InstallIngressFlow
 - InstallEgressFlow
 - InstallTransitFlow

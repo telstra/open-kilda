@@ -77,8 +77,8 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         builder.setBolt(statsOfsBolt, speakerBolt, parallelism)
                 .shuffleGrouping(kafkaSpoutId);
 
-        // Spout for listening kilda.speaker topic and collect changes for cache
-        KafkaSpout kafkaSpeakerSpout = createKafkaSpout(topologyConfig.getKafkaSpeakerTopic(),
+        // Spout for listening kilda.speaker.flow topic and collect changes for cache
+        KafkaSpout kafkaSpeakerSpout = createKafkaSpout(topologyConfig.getKafkaSpeakerFlowTopic(),
                 STATS_KILDA_SPEAKER_SPOUT.name());
         builder.setSpout(STATS_KILDA_SPEAKER_SPOUT.name(), kafkaSpeakerSpout, parallelism);
 

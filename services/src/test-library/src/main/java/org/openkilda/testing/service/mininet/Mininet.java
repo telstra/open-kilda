@@ -25,6 +25,8 @@ public interface Mininet {
 
     void knockoutSwitch(String switchName);
 
+    void revive(String switchName, String controller);
+
     void addFlow(String switchName, Integer inPort, Integer outPort);
 
     void removeFlow(String switchName, Integer inPort);

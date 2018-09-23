@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.ModelAndView;
@@ -144,15 +145,21 @@ public class SwitchController extends BaseController {
     }
 
     /**
-     * Get Link Props.
+     * Gets the link props.
      *
-     * @param keys the link properties
-     * @return the link properties
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
+     * @return the link props
      */
     @RequestMapping(path = "/link/props", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody LinkProps getLinkProps(final LinkProps keys) {
-        return serviceSwitch.getLinkProps(keys);
+    public @ResponseBody LinkProps getLinkProps(@RequestParam(value = "src_switch", required = true) String srcSwitch,
+            @RequestParam(value = "src_port", required = true) String srcPort,
+            @RequestParam(value = "dst_switch", required = true) String dstSwitch,
+            @RequestParam(value = "dst_port", required = true) String dstPort) {
+        return serviceSwitch.getLinkProps(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
     /**

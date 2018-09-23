@@ -29,4 +29,8 @@ public interface ASwitchService {
     void portsUp(List<Integer> ports);
 
     void portsDown(List<Integer> ports);
+
+    void knockoutSwitch(String switchId);
+
+    void reviveSwitch(String switchId, String controllerAddress);
 }

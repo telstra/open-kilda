@@ -3,8 +3,17 @@
 var storage = new LocalStorageHandler();
 	
 $(document).ready(function(){
-	
-	$(document).on("click","#flow-list",function(e){
+	if(localStorage.getItem('flowListDisplay')){
+		localStorage.removeItem('flowListDisplay')
+		$(document).find("#flow-list").trigger('click');
+		var FLOWS_LIST = storage.get('FLOWS_LIST');
+		if(FLOWS_LIST){
+			showflowData(FLOWS_LIST);
+		}else{
+			flows();
+		}
+	}
+	$(document).on("click","#flow-list",function(e){ 
 		var FLOWS_LIST = storage.get('FLOWS_LIST');
 		if(FLOWS_LIST){
 			showflowData(FLOWS_LIST);
@@ -27,7 +36,7 @@ $(document).ready(function(){
 		flows();
 	});
 	
-	$(document).on("click",".flowDataRow",function(e){
+	$(document).on("dblclick",".flowDataRow",function(e){
 		setFlowData(this);
 	})
 	var hash = window.location.hash;
@@ -77,7 +86,13 @@ function validateFlowForm(){
     }
 	window.location.href= APP_CONTEXT + "/flows/details#"+flowid;
 }
-
+function goToflowDetail(flowid,isEdit){
+	if(isEdit){
+		localStorage.setItem("flowEdit_"+flowid,true);
+	}
+	var url = "flows/details#" + flowid;
+	window.location = url;
+}
 function showflowData(response){
 	if ( $.fn.DataTable.isDataTable('#flowTable') ) {
 		  $('#flowTable').DataTable().destroy();
@@ -105,10 +120,17 @@ function showflowData(response){
 		 			    +"<td class='divTableCell' title ='"+((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth/1000)+"'> "+ ((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth/1000)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].status === "" || response[i].status == undefined)?"-":response[i].status)+"'>"+((response[i].status === "" || response[i].status == undefined)?"-":response[i].status)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].description === "" || response[i].description == undefined)?"-":response[i].description)+"'>"+((response[i].description === "" || response[i].description == undefined)?"-":response[i].description)+"</td>"
-		 			    +"</tr>";
-		 
+		 			   +"<td class='divTableCell' title ='action'>";
+					   if(USER_SESSION != "" && USER_SESSION != undefined) {
+								var userPermissions = USER_SESSION.permissions;
+								if(userPermissions.includes("fw_flow_update")){
+									tableRow+="<i class='icon icon-edit' title='edit flow' onClick=goToflowDetail('"+response[i].flowid+"',true); style='margin-right:10px;'></i>";
+					 			   	
+								}
+						}
+					   
 		 			   $("#flowTable").append(tableRow);
-		 			   if(response[i].status == "UP" || response[i].status == "ALLOCATED") {
+		 			   if(response[i].status == "UP" || response[i].status == "ALLOCATED" || response[i].status == "CACHED") {
 		 				   	$("#div_"+(i+1)).addClass('up-state');
 		 		        } else {
 		 		        	$("#div_"+(i+1)).addClass('down-state');
@@ -135,7 +157,7 @@ function showflowData(response){
 		                { sWidth: '9%' },
 		                { sWidth: '10%' },
 		                { sWidth: '8%' },
-		                { sWidth: '10%' } ]
+		                { sWidth: '10%' },{ sWidth: '10%' } ]
 	 });
 	 
 	 tableVar.columns().every( function () {

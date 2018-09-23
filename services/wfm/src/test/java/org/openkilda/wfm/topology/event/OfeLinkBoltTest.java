@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
+import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.error.ConfigurationException;
@@ -135,7 +136,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         assertThat(linksAfterSync, contains(
                 allOf(hasProperty("source", hasProperty("datapath", is(new SwitchId("ff:01")))),
                         hasProperty("destination", hasProperty("datapath", is(new SwitchId("ff:02")))),
-                        hasProperty("active", is(true)))));
+                        hasProperty("state", is(LinkState.ACTIVE)))));
     }
 
     @Test
@@ -159,6 +160,6 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.doWork(tuple);
 
-        assertFalse(discoveryLink.isActive());
+        assertFalse(discoveryLink.getState().isActive());
     }
 }

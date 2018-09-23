@@ -665,7 +665,7 @@ public class CrudBolt
                     flow.getLeft().setState(FlowState.DOWN);
                     flow.getRight().setState(FlowState.DOWN);
                     throw new MessageException(correlationId, System.currentTimeMillis(),
-                            ErrorType.UPDATE_FAILURE, "Could not reroute flow", "Path was not found");
+                            ErrorType.NOT_FOUND, "Could not reroute flow", "Path was not found");
                 }
                 break;
 

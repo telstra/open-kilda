@@ -106,7 +106,7 @@ public class FlowTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.NORTHBOUND.toString().getBytes()).toString()));
         nbConsumer.start();
 
-        ofsConsumer = new TestKafkaConsumer(topologyConfig.getKafkaSpeakerTopic(),
+        ofsConsumer = new TestKafkaConsumer(topologyConfig.getKafkaSpeakerFlowTopic(),
                 Destination.CONTROLLER,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CONTROLLER.toString().getBytes()).toString()));
         ofsConsumer.start();
@@ -1058,7 +1058,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private void sendSpeakerMessage(final Message message) throws IOException {
         String request = objectMapper.writeValueAsString(message);
-        kProducer.pushMessage(topologyConfig.getKafkaSpeakerTopic(), request);
+        kProducer.pushMessage(topologyConfig.getKafkaSpeakerFlowTopic(), request);
     }
 
     private Message baseInstallRuleCommand(final Message message) throws IOException {

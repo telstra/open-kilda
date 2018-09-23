@@ -3,16 +3,16 @@ title ISL Disco guaranteed delivery
 
 participant OFELinkBolt
 
-control kilda.speaker
+control kilda.speaker.disco
 control kilda.disco
 
 participant Floodlight
 
 participant Switch
 
-OFELinkBolt -> kilda.speaker: CommandMessage\nDiscoveryIslCommandData
+OFELinkBolt -> kilda.speaker.disco: CommandMessage\nDiscoveryIslCommandData
 
-kilda.speaker -> Floodlight: CommandMessage\nDiscoveryIslCommandData
+kilda.speaker.disco -> Floodlight: CommandMessage\nDiscoveryIslCommandData
 activate Floodlight
 
 Floodlight -> Switch: Send PACKET_OUT

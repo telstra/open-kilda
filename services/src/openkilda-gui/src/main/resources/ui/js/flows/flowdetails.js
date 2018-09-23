@@ -4,14 +4,22 @@ $(document).ready(function() {
 	var flowid = window.location.href.split("#")[1]
 	var tmp_anchor = '<a href="flowdetails#' + flowid + '">' + flowid + '</a>';
 	$("#flow-id-name").parent().append(flowid);
-	$("#loading").css("display", "block");
+	$("#loading").css("display", "block");	
 	common.getData("/flows/"+flowid,"GET").then(function(response) {
 		$("#loading").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		flowObj.setFlow(response);
-		showFlowData(response);
-	},
-	function(error){
+		var isEdit = localStorage.getItem("flowEdit_"+flowid);
+		if(isEdit){
+			$('#flow_detail_div').hide();
+			localStorage.removeItem("flowEdit_"+flowid);
+			flowObj.editFlow();
+		}else{
+			$('#flow_detail_div').show();
+			showFlowData(response);
+		}
+		
+	},function(error){
 		common.infoMessage('Flow does not exists, please try with new flow id','info');
 		setTimeout(function(){ 
 			window.location = APP_CONTEXT+ "/flows"; 
@@ -28,11 +36,35 @@ $(document).ready(function() {
 
 function callValidateFlow(flow_id){
 	$('#validate_json_loader').show();
-	$('#validate_json').html("")
+	$('#validate_json').html("");
+	$('#validate_flow_response').hide();
+	$('#resync_flow_response').hide();
 		common.getData("/flows/" + flow_id+"/validate","GET").then(function(response) { // calling re-route api
 				var responseData = JSON.stringify(response,null,2);
 				$('#validate_json').html(responseData)
+				$('#validate_flow_response').show();
 				$('#validate_json_loader').hide();
+		},function(error){
+			$('#validate_json').html([])
+			$('#validate_flow_response').show();
+			$('#validate_json_loader').hide();
+		})
+}
+
+function callResyncFlow(flow_id){
+	$('#resync_json_loader').show();
+	$('#resync_json').html("");
+	$('#resync_flow_response').hide();
+	$('#validate_flow_response').hide();
+		common.getData("/flows/" + flow_id+"/sync","PATCH").then(function(response) { // calling re-route api
+				var responseData = JSON.stringify(response,null,2);
+				$('#resync_json').html(responseData);
+				$('#resync_flow_response').show();
+				$('#resync_json_loader').hide();
+		},function(error){
+			$('#validate_json').html([])
+			$('#validate_flow_response').show();
+			$('#validate_json_loader').hide();
 		})
 }
 function showFlowData(obj) {
@@ -62,6 +94,18 @@ function showFlowData(obj) {
 		e.preventDefault();
 		callValidateFlow(obj.flowid);
 	});
+	$('#resync_flow_btn').click(function(e){
+		e.preventDefault();
+		callResyncFlow(obj.flowid);
+	})
+	$('#clear_validate').click(function(e){
+		$("#validate_json").html("");
+		$("#validate_flow_response").hide();
+	})
+	$('#clear_resync').click(function(e){
+		$("#resync_json").html("");
+		$("#resync_flow_response").hide();
+	})
 
 }
 

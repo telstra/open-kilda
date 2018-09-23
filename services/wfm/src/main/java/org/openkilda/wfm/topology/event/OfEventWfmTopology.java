@@ -18,14 +18,12 @@ package org.openkilda.wfm.topology.event;
 import org.openkilda.messaging.ServiceType;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.BoltDeclarer;
-import org.apache.storm.topology.IStatefulBolt;
 import org.apache.storm.topology.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +57,7 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
     private static final String DISCO_BOLT_ID = OfeLinkBolt.class.getSimpleName();
     private static final String TOPO_ENG_BOLT_ID = "topo.eng-bolt";
     private static final String SPEAKER_BOLT_ID = "speaker-bolt";
+    private static final String SPEAKER_DISCO_BOLT_ID = "speaker.disco-bolt";
 
     public OfEventWfmTopology(LaunchEnvironment env) {
         super(env, OFEventWfmTopologyConfig.class);
@@ -84,24 +83,25 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
 
         builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
 
-        IStatefulBolt bolt = new OfeLinkBolt(topologyConfig);
-
         // TODO: resolve the comments below; are there any state issues?
         // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
         //      just to pull out switchID.
         // (crimi) - not sure I agree here .. state can be maintained, albeit distributed.
         //
-        BoltDeclarer bd = builder.setBolt(DISCO_BOLT_ID, bolt, topologyConfig.getParallelism())
-                .shuffleGrouping(DISCO_SPOUT_ID);
-
         builder.setBolt(TOPO_ENG_BOLT_ID, createKafkaBolt(kafkaTopoEngTopic),
                 topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.TOPO_ENG_STREAM);
         builder.setBolt(SPEAKER_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerTopic()),
                 topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.SPEAKER_STREAM);
+        builder.setBolt(SPEAKER_DISCO_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerDiscoTopic()),
+                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.SPEAKER_DISCO_STREAM);
+
+        OfeLinkBolt ofeLinkBolt = new OfeLinkBolt(topologyConfig);
+        BoltDeclarer bd = builder.setBolt(DISCO_BOLT_ID, ofeLinkBolt, topologyConfig.getParallelism())
+                .shuffleGrouping(DISCO_SPOUT_ID);
 
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         // TODO: verify this ctrlTarget after refactoring.
-        ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, (ICtrlBolt) bolt, bd));
+        ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, ofeLinkBolt, bd));
         createCtrlBranch(builder, ctrlTargets);
         // TODO: verify WFM_TOPOLOGY health check
         createHealthCheckHandler(builder, ServiceType.WFM_TOPOLOGY.getId());

@@ -29,7 +29,6 @@
 					<li><i class="fa icon-double-angle-right"></i><a
 						th:href="@{/flows}">Flows</a></li>
 					<li><i class="fa icon-double-angle-right" id="flow-id-name"></i></li>
-
 				</ul>
 			</div>
 		</div>
@@ -65,7 +64,7 @@
 		<div class="container-fluid" id="edit_flow_div" style="display: none;">
 
 		</div>
-		<div class="container-fluid" id="flow_detail_div">
+		<div class="container-fluid" id="flow_detail_div" style="display:none;">
 			<div class='form-group  col-lg-12 text-center flow_details'>
 				<div class="col-md-9" style="right: -100px">
 					<label class='col-form-label' style='display: inline-block;'>Flow
@@ -73,12 +72,11 @@
 					<p class='flow_div_flow_id copy_to_clipBoard'
 						style='display: inline-block;'></p>
 				</div>
-
-				<div class="col-md-3 pull-right" style="right: -100px;">
-					<span class="btn kilda_btn hidePermission"
+				<div class="col-md-3 pull-right" style="right: -120px;">
+					<!-- <span class="btn kilda_btn hidePermission"
 						onClick="flowObj.deleteFlowAlert()" id="delete_flow"
-						permission="fw_flow_delete">Delete</span> <span
-						class="btn kilda_btn hidePermission" style="padding: 6px 20px;"
+						permission="fw_flow_delete">Delete</span> -->
+					  <span class="btn kilda_btn hidePermission" style="padding: 6px 20px;"
 						onClick="flowObj.editFlow();" id="edit_flow"
 						permission="fw_flow_update">Edit</span>
 				</div>
@@ -327,40 +325,70 @@
 												class="glyphicon glyphicon-plus"></i></a>
 										</h3>
 									</div>
-									<div class="row" id="forward_graph" style="display: none;">
+									<div class="container-fluid" id="forward_graph" style="display: none;">
 										<div class="col-xs-12">
-										<fieldset class="form-group col-xs-4">
-
-														<label class="col-xs-2 text-label">Timezone:</label>
-														<div class="col-xs-10">
+											<div class="row">
+												<fieldset class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-4 text-label text-right">Timezone:</label>
+														<div class="col-xs-8">
 															<select id="timezoneForward" name="timezoneForward">
 																<option value="UTC">UTC</option>
 																<option value="LOCAL">My Timezone</option>
 															</select>
-
 														</div>
-													</fieldset>
-											<fieldset id="fromforwardId" class="form-group col-xs-4">
+													</div>
+												</fieldset>
+												<fieldset id="fromforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-2 text-label text-right">From:</label>
+														<div class="col-xs-10">
+															<input type="text" id="forwardFromdatepicker"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
+																class="form-control"></input> <span
+																class="from-error-message"></span>
+														</div>
+													</div>
+												</fieldset>
+												<fieldset id="toforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-2 text-label text-right">To:</label>
+														<div class="col-xs-10">
+															<input type="text" id="forwardTodatepicker"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
+																class="form-control"></input> <span
+																class="to-error-message"></span>
+														</div>
+													</div>
+												</fieldset>
+												<fieldset id="metricforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-4 text-label text-right">Metric:</label>
+														<div class="col-xs-8">
+															<select id="forwardMetric" >
+															</select>
+														</div>
+													</div>
+												</fieldset>
+												<!-- <fieldset id="cookieforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-3 text-label text-right">Cookie:</label>
+														<div class="col-xs-8">
+															<select id="cookieforwardIdselect"></select>
+														</div>
+													</div>
+												</fieldset> -->
+											</div>
 
-												<label class="col-xs-2 text-label">From:</label>
-												<div class="col-xs-10">
-													<input type="text" id="forwardFromdatepicker"
-														value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
-														class="form-control"></input> <span
-														class="from-error-message"></span>
-												</div>
-											</fieldset>
 
-
-											<fieldset id="toforwardId" class="form-group col-xs-4">
-												<label class="col-xs-2 text-label">To:</label>
-												<div class="col-xs-10">
-													<input type="text" id="forwardTodatepicker"
-														value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
-														class="form-control"></input> <span
-														class="to-error-message"></span>
-												</div>
-											</fieldset>
+										</div>
+										<div class="col-xs-12" style="margin-left:40px;">
+										<div class="row" >
+											<label class="text-label text-right">Cookie:</label>
+											<div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookieforwardId">
+											 
+											</div>
+										</div>
 										</div>
 										<div class="col-xs-12">
 											<div id="waitforward" class="bg-data-loader"
@@ -369,8 +397,6 @@
 											</div>
 											<div id="forward_path_graph" style="display: none;"></div>
 										</div>
-
-
 									</div>
 
 
@@ -383,40 +409,69 @@
 												class="glyphicon glyphicon-plus"></i></a>
 										</h3>
 									</div>
-									<div class="row" id="reverse_graph" style="display: none;">
+									<div class="container-fluid" id="reverse_graph" style="display: none;">
 										<div class="col-xs-12">
-										<fieldset class="form-group col-xs-4">
-
-														<label class="col-xs-2 text-label">Timezone:</label>
+											<div class="row">
+												<fieldset class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-4 text-label text-right">Timezone:</label>
+															<div class="col-xs-8">
+																<select id="timezoneReverse" name="timezoneReverse">
+																	<option value="UTC">UTC</option>
+																	<option value="LOCAL">My Timezone</option>
+																</select>
+															</div>
+													</div>
+												</fieldset>
+												<fieldset id="fromreverseId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-2 text-label text-right">From:</label>
 														<div class="col-xs-10">
-															<select id="timezoneReverse" name="timezoneReverse">
-																<option value="UTC">UTC</option>
-																<option value="LOCAL">My Timezone</option>
-															</select>
-
+															<input type="text" id="reverseFromdatepicker"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
+																class="form-control"></input> <span
+																class="from-error-message"></span>
 														</div>
-													</fieldset>
-											<fieldset id="fromreverseId" class="form-group col-xs-4">
-
-												<label class="col-xs-2 text-label">From:</label>
-												<div class="col-xs-10">
-													<input type="text" id="reverseFromdatepicker"
-														value="D, l, M, F, Y-m-d H:i:s" placeholder="From"
-														class="form-control"></input> <span
-														class="from-error-message"></span>
-												</div>
-											</fieldset>
-
-
-											<fieldset id="toReverseId" class="form-group col-xs-4">
-												<label class="col-xs-2 text-label">To:</label>
-												<div class="col-xs-10">
-													<input type="text" id="reverseTodatepicker"
-														value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
-														class="form-control"></input> <span
-														class="to-error-message"></span>
-												</div>
-											</fieldset>
+													</div>
+												</fieldset>
+												<fieldset id="toReverseId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-2 text-label text-right">To:</label>
+														<div class="col-xs-10">
+															<input type="text" id="reverseTodatepicker"
+																value="D, l, M, F, Y-m-d H:i:s" placeholder="To"
+																class="form-control"></input> <span
+																class="to-error-message"></span>
+														</div>
+													</div>
+												</fieldset>
+												<fieldset id="metricforwardId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-4 text-label text-right">Metric:</label>
+														<div class="col-xs-8">
+															<select id="reverseMetric" >
+															</select>
+														</div>
+													</div>
+												</fieldset>
+												<!-- <fieldset id="cookiereverseId" class="form-group col-xs-3">
+													<div class="row">
+														<label class="col-xs-3 text-label text-right">Cookie:</label>
+														<div class="col-xs-8">
+															<select id="cookiereverseIdselect"></select>
+														</div>
+													</div>
+													
+												</fieldset> -->
+											</div>
+										</div>
+										<div class="col-xs-12" style="margin-left:40px;">
+										<div class="row" >
+											<label class="text-label text-right">Cookie:</label>
+											<div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookiereverseId">
+											 
+											</div>
+										</div>
 										</div>
 										<div class="col-xs-12">
 											<div id="waitreverse" class="bg-data-loader"
@@ -437,13 +492,31 @@
 									<div class="btn kilda_btn hidePermission"
 										id="validate_flow_btn" permission="fw_permission_validate">Validate
 										Flow</div>
+										<div class="btn kilda_btn hidePermission"
+										id="resync_flow_btn" permission="fw_flow_resync">Resync
+										Flow</div>
 									<div id="validate_json_loader" class="bg-data-loader"
 										style="bottom: 1px; display: none;">
 										<div class="loader"></div>
 									</div>
-									<div class="col-md-12">
-										<pre id="validate_json"
-											class="validate_json copy_to_clipBoard"></pre>
+									<div id="resync_json_loader" class="bg-data-loader"
+										style="bottom: 1px; display: none;">
+										<div class="loader"></div>
+									</div>
+									<div class="col-md-12" id="validate_flow_response" style="display:none;">
+										<pre  class="validate_json ">
+										<label class="response_flow_label">Validate Flow</label>
+										<button class="btn kilda_btn pull-right" style=" margin:-7px 6px; opacity: 0.7; border-radius: 0!important;" id="clear_validate">Clear</button>
+											<div id="validate_json" class="copy_to_clipBoard" style="margin: 18px 5px;"></div>
+										</pre>
+									</div>
+									<div class="col-md-12" id="resync_flow_response" style="display:none;">
+									 	
+										<pre  class="resync_json ">
+										 	<label class="response_flow_label">Resync Flow</label>
+											<button class="btn kilda_btn pull-right" style=" margin:-7px 6px; opacity: 0.7; border-radius: 0!important;"  id="clear_resync">Clear</button>
+											<div id="resync_json" class="copy_to_clipBoard" style="margin: 18px 5px;"></div>
+										</pre>
 									</div>
 
 								</div>

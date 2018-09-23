@@ -5,19 +5,6 @@
 
 <suppressions>
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/OFFlowStatsConverter.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/converter/OFFlowStatsConverter.java" lines="48" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/Consumer.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/Consumer.java" lines="6" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/Consumer.java" lines="25" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/Consumer.java" lines="27" checks="NoWhitespaceBefore"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/ConsumerContext.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/ConsumerContext.java" lines="17" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/ConsumerContext.java" lines="24" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/Context.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/FlowCommandException.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/FlowCommandException.java" lines="11" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/FlowCommandException.java" lines="17" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/HeartBeatAction.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaConfig.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaConfig.java" lines="8" checks="JavadocMethod"/>

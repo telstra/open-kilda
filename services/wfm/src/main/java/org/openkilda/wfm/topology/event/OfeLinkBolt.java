@@ -59,6 +59,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.spout.internal.Timer;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.state.KeyValueState;
@@ -106,6 +107,7 @@ public class OfeLinkBolt
     @VisibleForTesting
     static final String STATE_ID_DISCOVERY = "discovery-manager";
     static final String TOPO_ENG_STREAM = "topo.eng";
+    static final String SPEAKER_DISCO_STREAM = "speaker.disco";
     static final String SPEAKER_STREAM = "speaker";
 
     private final String islDiscoveryTopic;
@@ -148,7 +150,7 @@ public class OfeLinkBolt
         watchDogInterval = discoveryConfig.getDiscoverySpeakerFailureTimeout();
         dumpRequestTimeout = discoveryConfig.getDiscoveryDumpRequestTimeout();
 
-        islDiscoveryTopic = config.getKafkaSpeakerTopic();
+        islDiscoveryTopic = config.getKafkaSpeakerDiscoTopic();
     }
 
     @Override
@@ -280,7 +282,7 @@ public class OfeLinkBolt
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER);
         logger.debug("LINK: Send ISL discovery command: {}", message);
-        collector.emit(SPEAKER_STREAM, tuple, new Values(PAYLOAD, Utils.MAPPER.writeValueAsString(message)));
+        collector.emit(SPEAKER_DISCO_STREAM, tuple, new Values(PAYLOAD, Utils.MAPPER.writeValueAsString(message)));
     }
 
     @Override
@@ -432,16 +434,12 @@ public class OfeLinkBolt
 
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {
         SwitchId switchId = switchData.getSwitchId();
-        String state = switchData.getState().toString();
+        SwitchState state = switchData.getState();
         logger.info("DISCO: Switch Event: switch={} state={}", switchId, state);
 
-        if (SwitchState.DEACTIVATED.getType().equals(state)) {
-            // current logic: switch down means stop checking associated ports/links.
-            // - possible extra steps of validation of switch down should occur elsewhere
-            // - possible extra steps of generating link down messages aren't important since
-            //      the TPE will drop the switch node from its graph.
-            discovery.handleSwitchDown(switchId);
-        } else if (SwitchState.ACTIVATED.getType().equals(state)) {
+        if (state == SwitchState.DEACTIVATED) {
+            passToTopologyEngine(tuple);
+        } else if (state == SwitchState.ACTIVATED) {
             // It's possible that we get duplicated switch up events .. particulary if
             // FL goes down and then comes back up; it'll rebuild its switch / port information.
             // NB: need to account for this, and send along to TE to be conservative.
@@ -588,8 +586,11 @@ public class OfeLinkBolt
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SPEAKER_STREAM, new Fields("key", "message"));
-        declarer.declareStream(TOPO_ENG_STREAM, new Fields("key", "message"));
+        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
+                FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
+        declarer.declareStream(SPEAKER_STREAM, fields);
+        declarer.declareStream(SPEAKER_DISCO_STREAM, fields);
+        declarer.declareStream(TOPO_ENG_STREAM, fields);
         // FIXME(dbogun): use proper tuple format
         declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }

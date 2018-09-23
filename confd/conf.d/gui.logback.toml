@@ -1,0 +1,5 @@
+[template]
+src = "gui/logback.xml.tmpl"
+dest = "services/src/openkilda-gui/src/main/resources/logback.xml"
+keys = [ "/" ]
+mode = "0644"

@@ -5,7 +5,7 @@ Feature: Failsafe Suite
 
   Background:
     Given the reference topology
-    
+
   Scenario: ISL connectivity is lost, system is able to react in expected way and reroute after some timeout
     Given Create 1 flow with A Switch used and at least 1 alternate path between source and destination switch and 500 bandwidth
 
@@ -61,9 +61,9 @@ Feature: Failsafe Suite
     And delete all link properties
 
   Scenario: Replugging cable to some other switch/port should cause old ISL status to be changed to MOVED
-    Given select a random ISL with A-Switch and alias it as 'aswitchIsl'
+    Given select a random not connected A-Switch link and alias it as 'notConnectedLink'
+    And select a random ISL with A-Switch, which doesn't overlap with 'notConnectedLink' and alias it as 'aswitchIsl'
     And select a reverse path ISL for 'aswitchIsl' and alias it as 'aswitchIslReverse'
-    And select a random not connected A-Switch link and alias it as 'notConnectedLink'
     And a potential ISL from 'aswitchIsl' source to 'notConnectedLink' source aliased as 'expectedNewIsl'
     And a potential ISL from 'notConnectedLink' source to 'aswitchIsl' source aliased as 'expectedNewIslReverse'
 

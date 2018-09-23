@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
@@ -28,6 +29,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
@@ -61,6 +64,8 @@ public interface NorthboundService {
 
     List<FlowValidationDto> validateFlow(String flowId);
 
+    PingOutput pingFlow(String flowId, PingInput pingInput);
+
     FlowReroutePayload rerouteFlow(String flowId);
 
     //switches
@@ -82,6 +87,10 @@ public interface NorthboundService {
     PortDto portDown(SwitchId switchId, Integer portNo);
 
     PortDto portUp(SwitchId switchId, Integer portNo);
+
+    List<PortDescription> getPorts(SwitchId switchId);
+
+    PortDescription getPort(SwitchId switchId, Integer portNo);
 
     //links
 

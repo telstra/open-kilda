@@ -62,7 +62,7 @@ unit-java-common: build-base
 unit-java-storm: avoid-port-conflicts
 	mvn -B -f services/wfm/pom.xml test
 unit-py-te:
-	$(MAKE) -C services/topology-engine ARTIFACTS=../../artifact/topology-engine test
+	$(MAKE) -C services/topology-engine ARTIFACTS=../../artifact/topology-engine --keep-going test test-artifacts
 
 .PHONY: avoid-port-conflicts
 avoid-port-conflicts:
@@ -76,10 +76,10 @@ clean-test:
 clean: clean-sources clean-test
 
 update-props:
-	ansible-playbook -D -s config.yml
+	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only
 
 update-props-dryrun:
-	ansible-playbook -D -C -v -s config.yml
+	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only -noop
 
 # NB: To override the default (localhost) kilda location, you can make a call like this:
 #		cd services/src/atdd && \

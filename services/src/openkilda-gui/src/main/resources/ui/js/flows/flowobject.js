@@ -19,7 +19,22 @@ class Flow {
 	setFlowPathObj(obj){
 		this.flowpathObj = obj;
 	}
-	
+	getallmetric() {
+		var metricVarList = ["bits:Bits/sec","bytes:Bytes/sec","packets:Packets/sec","drops:Drops/sec","errors:Errors/sec", "collisions:Collisions","frameerror:Frame Errors","overerror:Overruns","crcerror:CRC Errors"];
+		return metricVarList;
+	}
+	getFlowMetric() {
+		var metricArray =flowObj.getallmetric();
+		var returnmetricArray = [];
+		var optionHTML = "";
+		for (var i = 0; i < metricArray.length ; i++) {
+			
+			if(metricArray[i].includes("bits") || metricArray[i].includes("packets") || metricArray[i].includes("bytes")) {
+				returnmetricArray.push(metricArray[i]);
+			}
+		}
+		return returnmetricArray;
+	}
 	getPorts (id) {
 		 var switch_id = common.toggleSwitchID($("#" + id).val());
 		 var endDate = moment().utc().format("YYYY-MM-DD-HH:mm:ss");
@@ -195,10 +210,12 @@ class Flow {
 	}
 	cancelEditFlow () {
 		$("#edit_flow_div").empty().hide();
-		$('#flow_detail_div').show();
+		localStorage.setItem('flowListDisplay',true);
+		var url = APP_CONTEXT + "/flows";
+		window.location = url;
 	}
 	
-	editFlow () {
+	editFlow() { 
 		var flowData = this.getFlow();
 		this.isEdit = true;
 		$("#editflowconfirmModal").modal('hide');
@@ -237,6 +254,7 @@ class Flow {
 
 					$('#editflowloader').hide();
 					$('#flow_detail_div').hide();
+					$('#edit_flow').addClass('hidePermission').removeClass('showPermission');
 					$("#edit_flow_div").show().load('../ui/templates/flows/editflow.html',function(){
 						$("#edit_flow_div").find("#source_vlan").html(vlanOptions).val(flowData.source['vlan-id']);
 						$("#edit_flow_div").find("#target_vlan").html(vlanOptions).val(flowData.destination['vlan-id']);
@@ -244,7 +262,12 @@ class Flow {
 						$("#edit_flow_div").find("#flowname_read").val(flowData.flowid);
 						$("#edit_flow_div").find("#flow_description").val(flowData.description);
 						$("#edit_flow_div").find("#max_bandwidth").val(flowData['maximum-bandwidth']);
-						
+						if(USER_SESSION != "" && USER_SESSION != undefined) {
+							var userPermissions = USER_SESSION.permissions;
+							if(userPermissions.includes("fw_flow_delete")){ 
+								$('#delete_flow').removeClass('hidePermission').addClass('showPermission');
+							}
+						}
 						$("#source_switch").select2({
 							width: "100%",
 							data:options,

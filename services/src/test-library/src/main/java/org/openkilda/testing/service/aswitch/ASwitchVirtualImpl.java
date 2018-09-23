@@ -16,7 +16,9 @@
 package org.openkilda.testing.service.aswitch;
 
 import static org.openkilda.testing.Constants.ASWITCH_NAME;
+import static org.openkilda.testing.Constants.VIRTUAL_CONTROLLER_ADDRESS;
 
+import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
 import org.openkilda.testing.service.mininet.Mininet;
 
@@ -34,11 +36,13 @@ import java.util.stream.Collectors;
 public class ASwitchVirtualImpl implements ASwitchService {
     @Autowired
     private Mininet mininet;
+    @Autowired
+    private TopologyDefinition topology;
 
     @Override
     public void addFlows(List<ASwitchFlow> flows) {
         flows.forEach(flow -> mininet.addFlow(ASWITCH_NAME, flow.getInPort(), flow.getOutPort()));
-        log.info("Added flows: {}", flows.stream()
+        log.debug("Added flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(Collectors.toList()));
     }
@@ -46,7 +50,7 @@ public class ASwitchVirtualImpl implements ASwitchService {
     @Override
     public void removeFlows(List<ASwitchFlow> flows) {
         flows.forEach(flow -> mininet.removeFlow(ASWITCH_NAME, flow.getInPort()));
-        log.info("Removed flows: {}", flows.stream()
+        log.debug("Removed flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(Collectors.toList()));
     }
@@ -64,5 +68,18 @@ public class ASwitchVirtualImpl implements ASwitchService {
     @Override
     public void portsDown(List<Integer> ports) {
         ports.forEach(port -> mininet.portDown(ASWITCH_NAME, port));
+    }
+
+    @Override
+    public void knockoutSwitch(String switchId) {
+        mininet.knockoutSwitch(topology.getSwitches().stream()
+                .filter(sw -> sw.getDpId().toString().equals(switchId)).findFirst().get().getName());
+    }
+
+    @Override
+    public void reviveSwitch(String switchId, String controllerAddress) {
+        String switchName = topology.getSwitches().stream()
+                .filter(sw -> sw.getDpId().toString().equals(switchId)).findFirst().get().getName();
+        mininet.revive(switchName, VIRTUAL_CONTROLLER_ADDRESS);
     }
 }

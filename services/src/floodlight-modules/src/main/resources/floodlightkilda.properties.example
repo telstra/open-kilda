@@ -65,6 +65,7 @@ org.openkilda.floodlight.kafka.KafkaMessageCollector.environment-naming-prefix=
 org.openkilda.floodlight.kafka.KafkaMessageCollector.testing-mode=YES
 org.openkilda.floodlight.kafka.KafkaMessageCollector.bootstrap-servers=kafka.pendev:9092
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors=10
+#org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors=10
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-auto-commit-interval=1000
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.command-processor-workers-count = 4
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.command-processor-workers-limit = 32

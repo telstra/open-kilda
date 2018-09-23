@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.northbound.flows
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -10,6 +11,7 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
+
 import org.springframework.beans.factory.annotation.Autowired
 
 class IntentionalRerouteSpec extends BaseSpecification {
@@ -51,13 +53,13 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
         def changedIsls = alternativePaths.collect { altPath ->
             def thinIsl = pathHelper.getInvolvedIsls(altPath).find { !currentIsls.contains(it) }
-            db.updateLinkProperty(thinIsl, "max_bandwidth", flow.maximumBandwidth - 1)
-            db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", flow.maximumBandwidth - 1)
-            db.updateLinkProperty(thinIsl, "available_bandwidth", flow.maximumBandwidth - 1)
-            db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "available_bandwidth", flow.maximumBandwidth - 1)
+            def newBw = flow.maximumBandwidth - 1
+            db.updateLinkProperty(thinIsl, "max_bandwidth", newBw)
+            db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", newBw)
+            db.updateLinkProperty(thinIsl, "available_bandwidth", newBw)
+            db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "available_bandwidth", newBw)
             thinIsl
         }
-        sleep(200)
 
         and: "Init a reroute to a more preferable path"
         def rerouteResponse = northboundService.rerouteFlow(flow.id)
@@ -66,10 +68,9 @@ class IntentionalRerouteSpec extends BaseSpecification {
         !rerouteResponse.rerouted
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == currentPath
 
-        and: "Remove flow"
+        and: "Remove flow, restore bw"
         northboundService.deleteFlow(flow.id)
         changedIsls.each { db.revertIslBandwidth(it) }
-        northboundService.deleteLinkProps(northboundService.getAllLinkProps())
     }
 
     def "Should be able to reroute to a better path if it has enough bandwidth"() {
@@ -109,11 +110,15 @@ class IntentionalRerouteSpec extends BaseSpecification {
         pathHelper.getInvolvedIsls(newPath).contains(thinIsl)
 
         and: "'Thin' ISL has 0 available bandwidth left"
-        islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0
+        Wrappers.wait(3) { islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
         and: "Remove flow, restore bw, remove costs"
         northboundService.deleteFlow(flow.id)
         db.revertIslBandwidth(thinIsl)
+    }
+
+    def cleanup() {
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
+        db.resetCosts()
     }
 }

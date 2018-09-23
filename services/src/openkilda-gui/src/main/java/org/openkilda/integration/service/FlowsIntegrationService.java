@@ -15,6 +15,7 @@
 
 package org.openkilda.integration.service;
 
+import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.converter.FlowPathConverter;
@@ -33,10 +34,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpResponse;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -94,8 +93,9 @@ public class FlowsIntegrationService {
      * @throws IntegrationException the integration exception
      */
     public FlowStatus getFlowStatusById(final String flowId) throws IntegrationException {
-        HttpResponse response = restClientManager.invoke(applicationProperties.getFlowStatus() + flowId, HttpMethod.GET,
-                "", "", applicationService.getAuthHeader());
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_STATUS + flowId,
+                HttpMethod.GET, "", "", applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             return restClientManager.getResponse(response, FlowStatus.class);
         }
@@ -111,8 +111,9 @@ public class FlowsIntegrationService {
     public FlowPayload getFlowPath(final String flowId) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getFlowPath().replace("{flow_id}", flowId), HttpMethod.GET, "", "",
-                    applicationService.getAuthHeader());
+                    applicationProperties.getNbBaseUrl()
+                            + IConstants.NorthBoundUrl.GET_FLOW_PATH.replace("{flow_id}", flowId),
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 FlowPayload flowPayload = restClientManager.getResponse(response, FlowPayload.class);
                 return flowPathConverter.getFlowPath(flowId, flowPayload);
@@ -134,7 +135,8 @@ public class FlowsIntegrationService {
      */
     public List<Flow> getAllFlowList() {
         try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(), HttpMethod.GET, "", "",
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW, HttpMethod.GET, "", "",
                     applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, Flow.class);
@@ -155,8 +157,9 @@ public class FlowsIntegrationService {
     public FlowPath rerouteFlow(String flowId) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getFlowReroute().replace("{flow_id}", flowId), HttpMethod.PATCH, "", "",
-                    applicationService.getAuthHeader());
+                    applicationProperties.getNbBaseUrl()
+                            + IConstants.NorthBoundUrl.GET_FLOW_REROUTE.replace("{flow_id}", flowId),
+                    HttpMethod.PATCH, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 FlowPath flowPath = restClientManager.getResponse(response, FlowPath.class);
                 return flowPath;
@@ -179,8 +182,9 @@ public class FlowsIntegrationService {
     public String validateFlow(String flowId) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getFlowValidate().replace("{flow_id}", flowId), HttpMethod.GET, "", "",
-                    applicationService.getAuthHeader());
+                    applicationProperties.getNbBaseUrl()
+                            + IConstants.NorthBoundUrl.GET_FLOW_VALIDATE.replace("{flow_id}", flowId),
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (Exception exception) {
             LOGGER.error("Exception in validateFlow " + exception.getMessage());
@@ -196,7 +200,8 @@ public class FlowsIntegrationService {
      */
     public Flow getFlowById(String flowId) {
         try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getFlows() + "/" + flowId,
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW + "/" + flowId,
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 Flow flow = restClientManager.getResponse(response, Flow.class);
@@ -217,7 +222,8 @@ public class FlowsIntegrationService {
      */
     public Flow createFlow(Flow flow) {
         try {
-            HttpResponse response = restClientManager.invoke(applicationProperties.getFlows(), HttpMethod.PUT,
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW, HttpMethod.PUT,
                     objectMapper.writeValueAsString(flow), "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, Flow.class);
@@ -239,8 +245,10 @@ public class FlowsIntegrationService {
     public Flow updateFlow(String flowId, Flow flow) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getUpdateFlow().replace("{flow_id}", flowId), HttpMethod.PUT,
-                    objectMapper.writeValueAsString(flow), "application/json", applicationService.getAuthHeader());
+                    applicationProperties.getNbBaseUrl()
+                            + IConstants.NorthBoundUrl.UPDATE_FLOW.replace("{flow_id}", flowId),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(flow), "application/json",
+                    applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, Flow.class);
             }
@@ -258,12 +266,32 @@ public class FlowsIntegrationService {
      * @return the flow
      */
     public Flow deleteFlow(String flowId) {
-        HttpResponse response = restClientManager.invoke(
-                applicationProperties.getUpdateFlow().replace("{flow_id}", flowId), HttpMethod.DELETE, "",
-                "application/json", applicationService.getAuthHeader());
-        if (RestClientManager.isValidResponse(response)) {
-            return restClientManager.getResponse(response, Flow.class);
-        }
+    	HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl()
+                        + IConstants.NorthBoundUrl.UPDATE_FLOW.replace("{flow_id}", flowId),
+                HttpMethod.DELETE, "", "application/json", applicationService.getAuthHeader());
+	        if (RestClientManager.isValidResponse(response)) {
+	            return restClientManager.getResponse(response, Flow.class);
+	        }
         return null;
     }
+    
+	/**
+	 * Re sync flow
+	 * 
+	 * @param flowId the flow id
+	 * @return
+	 */
+	public String resyncFlow(String flowId) {
+		try{
+			HttpResponse response = restClientManager.invoke(
+					 applicationProperties.getNbBaseUrl()
+					 		+ IConstants.NorthBoundUrl.RESYNC_FLOW.replace("{flow_id}", flowId),
+					 HttpMethod.PATCH, "", "application/json", applicationService.getAuthHeader());
+			 return IoUtil.toString(response.getEntity().getContent());
+	   } catch (Exception e) {
+           LOGGER.error("Inside resyncFlow  Exception :", e);
+           throw new IntegrationException(e);
+       }
+	}
 }

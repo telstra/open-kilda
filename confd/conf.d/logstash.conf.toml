@@ -1,0 +1,5 @@
+[template]
+src = "logstash/logstash.conf.tmpl"
+dest = "services/logstash/etc/logstash/conf.d/logstash.conf"
+keys = [ "/" ]
+mode = "0644"

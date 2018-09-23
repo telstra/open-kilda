@@ -136,7 +136,7 @@ public class UserService implements UserDetailsService {
         UserEntity userEntity = UserConversionUtil.toUserEntity(userRequest, roleEntities);
         String password = ValidatorUtil.randomAlphaNumeric(16);
         userEntity.setPassword(StringUtil.encodeString(password));
-        userEntity.setIs2FaEnabled(true);
+        userEntity.setIs2FaEnabled(userRequest.getIs2FaEnabled());
         userEntity = userRepository.save(userEntity);
         LOGGER.info("User with username '" + userEntity.getUsername() + "' created successfully.");
 
@@ -167,17 +167,22 @@ public class UserService implements UserDetailsService {
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public UserInfo updateUser(final UserInfo userInfo, final Long userId) {
         UserEntity userEntity = userValidator.validateUpdateUser(userInfo);
-
+        StringBuilder activityMessage = new StringBuilder(userEntity.getUsername() + " updated with:\n");
         if (userInfo.getRoleIds() != null) {
+            StringBuilder roles = new StringBuilder();
             userEntity.getRoles().clear();
             Set<RoleEntity> roleEntities = roleService.getRolesById(userInfo.getRoleIds());
             userEntity.getRoles().addAll(roleEntities);
+            for(RoleEntity role : roleEntities){
+                roles = roles.length() > 0 ? roles.append("," + role.getName()) : roles.append(role.getName());
+            }
+            activityMessage.append("roles:" + roles.toString() + "\n");
         }
-
-        UserConversionUtil.toUpateUserEntity(userInfo, userEntity);
+        
+        UserConversionUtil.toUpateUserEntity(userInfo, userEntity, activityMessage);
         userEntity = userRepository.save(userEntity);
 
-        activityLogger.log(ActivityType.UPDATE_USER, userEntity.getUsername());
+        activityLogger.log(ActivityType.UPDATE_USER, activityMessage.toString());
         LOGGER.info("User updated successfully (id: " + userId + ")");
 
         return UserConversionUtil.toUserInfo(userEntity);
@@ -245,7 +250,9 @@ public class UserService implements UserDetailsService {
             throw new RequestValidationException(messageUtil.getAttributeInvalid("username", userName + ""));
         }
         userEntity.setLoginTime(Calendar.getInstance().getTime());
-        userEntity.setIs2FaConfigured(true);
+        if(userEntity.getIs2FaEnabled()) {
+        	userEntity.setIs2FaConfigured(true);
+        }
         userRepository.save(userEntity);
         LOGGER.info("User last login updated successfully (username: " + userName + ")");
     }

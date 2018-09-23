@@ -129,12 +129,13 @@ public class FlowMetricGenBolt extends MetricGenBolt {
     }
 
     private void emitAnySwitchMetrics(FlowStatsEntry entry, long timestamp, SwitchId switchId, String flowId)
-            throws JsonEncodeException {
+            throws JsonEncodeException, FlowCookieException {
         Map<String, String> tags = new HashMap<>();
         tags.put("switchid", switchId.toOtsdFormat());
         tags.put("cookie", String.valueOf(entry.getCookie()));
         tags.put("tableid", String.valueOf(entry.getTableId()));
         tags.put("flowid", flowId);
+        tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
 
         collector.emit(tuple("pen.flow.raw.packets", timestamp, entry.getPacketCount(), tags));
         collector.emit(tuple("pen.flow.raw.bytes", timestamp, entry.getByteCount(), tags));

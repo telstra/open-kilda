@@ -24,6 +24,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.model.DiscoveryLink;
+import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.SwitchId;
 
@@ -144,21 +145,21 @@ public class DiscoveryManagerTest {
         dm.handleDiscovered(srcNode.getDatapath(), srcNode.getPortNumber(),
                 link.getDestination().getDatapath(), link.getDestination().getPortNumber());
 
-        assertTrue(dm.findBySourceEndpoint(srcNode).get().isActive());
+        assertTrue(dm.findBySourceEndpoint(srcNode).get().getState().isActive());
 
         // 1st attempt
         discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(1, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
         discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleSentDiscoPacket(endpoint));
-        assertTrue(dm.findBySourceEndpoint(srcNode).get().isActive());
+        assertTrue(dm.findBySourceEndpoint(srcNode).get().getState().isActive());
 
         // 2nd attempt and we have only one acknowledged dispatch of disco packet
         discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(1, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
         discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleSentDiscoPacket(endpoint));
-        assertTrue(dm.findBySourceEndpoint(srcNode).get().isActive());
+        assertTrue(dm.findBySourceEndpoint(srcNode).get().getState().isActive());
 
         // 3rd attempt and 1st failure
         // link should be marked as inactive because 2 ackAttempts > current islHealthFailureLimit
@@ -166,21 +167,21 @@ public class DiscoveryManagerTest {
         assertEquals(1, discoveryPlan.needDiscovery.size());
         assertEquals(1, discoveryPlan.discoveryFailure.size());
         discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleSentDiscoPacket(endpoint));
-        assertFalse(dm.findBySourceEndpoint(srcNode).get().isActive());
+        assertFalse(dm.findBySourceEndpoint(srcNode).get().getState().isActive());
 
         // 4th attempt, 1st consecutive failure
         discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(1, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
         discoveryPlan.needDiscovery.forEach(endpoint -> dm.handleSentDiscoPacket(endpoint));
-        assertFalse(dm.findBySourceEndpoint(srcNode).get().isActive());
+        assertFalse(dm.findBySourceEndpoint(srcNode).get().getState().isActive());
 
         // 5th attempt, 2nd consecutive failure
         // should be removed from discovery because consecutiveFailure > consecutiveFailureLimit
         discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(0, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
-        assertFalse(dm.findBySourceEndpoint(srcNode).get().isActive());
+        assertFalse(dm.findBySourceEndpoint(srcNode).get().getState().isActive());
     }
 
     @Test
@@ -252,14 +253,14 @@ public class DiscoveryManagerTest {
     @Test
     public void shouldCheckIslWithInterval() {
         // verify Health Check Interval is working properly.
-        islHealthCheckInterval = 2;
+        islHealthCheckInterval = 3;
         islHealthFailureLimit  = 4; // for testing, failure after 1 tick;
         maxAttemptsLimit = 8;
 
         dm = new DiscoveryManager(new HashMap<>(), islHealthCheckInterval,
                 islHealthFailureLimit, maxAttemptsLimit, minutesKeepRemovedIsl);
         setupThreeLinks();
-        // Initially, given 2 tick interval, nothing should be in the lists
+        // Initially, given 3 tick interval, nothing should be in the lists
         DiscoveryManager.Plan discoveryPlan = dm.makeDiscoveryPlan();
         assertEquals(0, discoveryPlan.needDiscovery.size());
         assertEquals(0, discoveryPlan.discoveryFailure.size());
@@ -343,16 +344,16 @@ public class DiscoveryManagerTest {
                 dstNode3.getDatapath(), dstNode3.getPortNumber());
 
         Set<DiscoveryLink> links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertThat(links, everyItem(hasProperty("active", is(true))));
+        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
         links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertThat(links, everyItem(hasProperty("active", is(true))));
+        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
 
         // now send SwitchUp and confirm sw1 all go back to not found, sw2 unchanged
         dm.handleSwitchUp(srcNode1.getDatapath());
         links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertThat(links, everyItem(hasProperty("active", is(false))));
+        assertThat(links, everyItem(hasProperty("state", is(LinkState.UNKNOWN))));
         links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertThat(links, everyItem(hasProperty("active", is(true))));
+        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
 
         // now confirm they go back to found upon next Discovery.
         dm.handleDiscovered(srcNode1.getDatapath(), srcNode1.getPortNumber(),
@@ -360,28 +361,9 @@ public class DiscoveryManagerTest {
         dm.handleDiscovered(srcNode2.getDatapath(), srcNode2.getPortNumber(),
                 dstNode2.getDatapath(), dstNode2.getPortNumber());
         links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertThat(links, everyItem(hasProperty("active", is(true))));
+        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
         links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertThat(links, everyItem(hasProperty("active", is(true))));
-    }
-
-    @Test
-    public void handleSwitchDown() {
-        // verify all the ISL switch/ports are deleted
-
-        setupThreeLinks();
-        // 3 nodes - 2 in sw1, one in sw2; verify dropping sw1 drops 2 nodes (1 remaining)
-        Set<DiscoveryLink> links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertEquals(2, links.size());
-        links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertEquals(1, links.size());
-
-        // Drop the switch, and then the same 4 lines of code, except 0 size for sw1 nodes.
-        dm.handleSwitchDown(srcNode1.getDatapath());
-        links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertEquals(0, links.size());
-        links = dm.findAllBySwitch((srcNode3.getDatapath()));
-        assertEquals(1, links.size());
+        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
     }
 
     @Test
@@ -502,11 +484,11 @@ public class DiscoveryManagerTest {
 
     private void verifyAllLinks() {
         assertTrue(dm.findBySourceEndpoint(srcNode1).isPresent()
-                && dm.findBySourceEndpoint(srcNode1).get().isActive());
+                && dm.findBySourceEndpoint(srcNode1).get().getState().isActive());
         assertTrue(dm.findBySourceEndpoint(srcNode2).isPresent()
-                && dm.findBySourceEndpoint(srcNode2).get().isActive());
+                && dm.findBySourceEndpoint(srcNode2).get().getState().isActive());
         assertTrue(dm.findBySourceEndpoint(srcNode3).isPresent()
-                && dm.findBySourceEndpoint(srcNode3).get().isActive());
+                && dm.findBySourceEndpoint(srcNode3).get().getState().isActive());
     }
 
     @Test
@@ -521,12 +503,12 @@ public class DiscoveryManagerTest {
         // when
         DiscoveryLink affectedLink = dm.registerPort(srcNode1.getDatapath(), srcNode1.getPortNumber());
         assertEquals(affectedLink.getSource(), srcNode1);
-        assertTrue("The link must be active.", affectedLink.isActive());
+        assertTrue("The link must be active.", affectedLink.getState().isActive());
 
         // then
         Optional<DiscoveryLink> foundAsLink1After = dm.findBySourceEndpoint(srcNode1);
         assertTrue(foundAsLink1After.isPresent());
-        assertTrue("The link must be active.", foundAsLink1After.get().isActive());
+        assertTrue("The link must be active.", foundAsLink1After.get().getState().isActive());
     }
 
     @Test
@@ -542,7 +524,7 @@ public class DiscoveryManagerTest {
         // when
         DiscoveryLink addedLink = dm.registerPort(srcNode4.getDatapath(), srcNode4.getPortNumber());
         assertEquals(addedLink.getSource(), srcNode4);
-        assertFalse("The link must be inactive.", addedLink.isActive());
+        assertFalse("The link must be inactive.", addedLink.getState().isActive());
 
         // then
         Optional<DiscoveryLink> foundAsLink4After = dm.findBySourceEndpoint(srcNode4);
