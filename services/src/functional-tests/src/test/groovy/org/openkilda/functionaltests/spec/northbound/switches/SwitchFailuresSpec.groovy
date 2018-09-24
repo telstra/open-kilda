@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.isl
+package org.openkilda.functionaltests.spec.northbound.switches
 
 import static org.junit.Assume.assumeTrue
 
@@ -86,7 +86,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         //depends whether there are alt paths available
         and: "Flow goes down OR changes path to avoid failed ISL after reroute timeout"
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
-        Wrappers.wait(3) {
+        Wrappers.wait(5) {
             def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
             !pathHelper.getInvolvedIsls(currentPath).contains(isl) ||
                     northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
