@@ -26,6 +26,10 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
+import org.openkilda.floodlight.error.OFInstallException;
+import org.openkilda.floodlight.error.SwitchNotFoundException;
+import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;

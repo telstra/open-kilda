@@ -13,9 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka;
+package org.openkilda.floodlight.error;
 
-import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 

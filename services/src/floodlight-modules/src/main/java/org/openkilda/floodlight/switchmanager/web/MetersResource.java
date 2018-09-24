@@ -17,9 +17,9 @@ package org.openkilda.floodlight.switchmanager.web;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.openkilda.floodlight.switchmanager.SwitchOperationException;
-import org.openkilda.floodlight.switchmanager.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;

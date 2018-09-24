@@ -13,12 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.switchmanager;
+package org.openkilda.floodlight.error;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class UnsupportedSwitchOperationException extends SwitchOperationException {
-    public UnsupportedSwitchOperationException(DatapathId dpId, String message) {
-        super(dpId, message);
+public class SwitchOperationException extends Exception {
+    private final transient DatapathId dpId;
+
+    public SwitchOperationException(DatapathId dpId) {
+        this(dpId, "Switch manipulation has failed");
+    }
+
+    public SwitchOperationException(DatapathId dpId, String message) {
+        super(message);
+        this.dpId = dpId;
+    }
+
+    public DatapathId getDpId() {
+        return dpId;
     }
 }
