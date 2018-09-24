@@ -20,14 +20,11 @@ import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.discovery.HealthCheckCommandData;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
-import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.HealthCheckService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -74,18 +71,6 @@ public class HealthCheckImpl implements HealthCheckService {
      */
     @Value("${service.description}")
     private String serviceDescription;
-
-    /**
-     * Kafka message consumer.
-     */
-    @Autowired
-    private HealthCheckMessageConsumer healthCheckMessageConsumer;
-
-    /**
-     * The Kafka producer instance.
-     */
-    @Autowired
-    private MessageProducer messageProducer;
 
     /**
      * The health-check info bean.
