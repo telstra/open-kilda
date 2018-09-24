@@ -75,7 +75,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make current path less preferable than alternatives"
@@ -97,9 +97,10 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow reroutes (changes path) after window timeout"
-        Wrappers.wait(2 + discoveryInterval) {
+        Wrappers.wait(3 + discoveryInterval) {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
+        Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "do cleanup"
@@ -116,7 +117,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def allPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
@@ -146,7 +147,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         northboundService.getFlowStatus(flow.id).status == FlowState.UP
 
         and: "Flow tries to reroute and goes DOWN after window timeout"
-        Wrappers.wait(2 + discoveryInterval) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(3 + discoveryInterval) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "do cleanup"
@@ -177,7 +178,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def flow2 = flowHelper.randomFlow(srcSwitch2, dstSwitch2)
         def (currentPath1, currentPath2) = [flow1, flow2].collect { flow ->
             northboundService.addFlow(flow)
-            assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+            assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
             PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         def flow1Isls = pathHelper.getInvolvedIsls(currentPath1)
@@ -205,6 +206,9 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         Wrappers.wait(3 + discoveryInterval) {
             currentPath1 != PathHelper.convert(northboundService.getFlowPath(flow1.id))
         }
+        Wrappers.wait(5) {
+            [flow1, flow2].every { northboundService.getFlowStatus(it.id).status == FlowState.UP }
+        }
         //TODO(rtretiak): Check logs that 1 reroute is also issued for flow2
         //TODO(rtretiak): Check logs that only 1 reroute for each flow has been performed
 
@@ -223,7 +227,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make current path less preferable than alternatives"
@@ -250,6 +254,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         blinkingThread.alive
+        Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "do cleanup"

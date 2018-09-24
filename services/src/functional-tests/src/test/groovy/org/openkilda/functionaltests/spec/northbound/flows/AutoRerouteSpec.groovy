@@ -70,7 +70,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Up'"
-        Wrappers.wait(rerouteDelay + discoveryInterval + 3) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + 5) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
@@ -125,11 +125,12 @@ class AutoRerouteSpec extends BaseSpecification {
         and: "Flow was rerouted"
         def reroutedFlowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         flowPath != reroutedFlowPath
+        Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Bring port involved in original path up and delete flow"
         northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
         northboundService.deleteFlow(flow.id)
-        Wrappers.wait(discoveryInterval + 2) {
+        Wrappers.wait(discoveryInterval + 5) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
     }
@@ -160,7 +161,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'FAILED'"
-        Wrappers.wait(discoveryInterval + 3) {
+        Wrappers.wait(discoveryInterval + 5) {
             islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED
         }
 
@@ -168,7 +169,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'DISCOVERED'"
-        Wrappers.wait(discoveryInterval + 3) {
+        Wrappers.wait(discoveryInterval + 5) {
             islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
         }
 
@@ -176,6 +177,7 @@ class AutoRerouteSpec extends BaseSpecification {
         TimeUnit.SECONDS.sleep(rerouteDelay + 3)
         def flowPathAfter = PathHelper.convert(northboundService.getFlowPath(flow.id))
         flowPath == flowPathAfter
+        Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Delete created flow"
         northboundService.deleteFlow(flow.id)

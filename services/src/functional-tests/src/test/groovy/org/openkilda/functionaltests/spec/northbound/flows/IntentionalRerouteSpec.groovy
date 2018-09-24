@@ -5,6 +5,7 @@ import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -70,7 +71,10 @@ class IntentionalRerouteSpec extends BaseSpecification {
 
         and: "Remove flow, restore bw"
         northboundService.deleteFlow(flow.id)
-        changedIsls.each { db.revertIslBandwidth(it) }
+        changedIsls.each { 
+            db.revertIslBandwidth(it)
+            db.revertIslBandwidth(islUtils.reverseIsl(it))
+        }
     }
 
     def "Should be able to reroute to a better path if it has enough bandwidth"() {
@@ -113,8 +117,9 @@ class IntentionalRerouteSpec extends BaseSpecification {
         Wrappers.wait(3) { islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
         and: "Remove flow, restore bw, remove costs"
+        Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.deleteFlow(flow.id)
-        db.revertIslBandwidth(thinIsl)
+        [thinIsl, islUtils.reverseIsl(thinIsl)].each { db.revertIslBandwidth(it) }
     }
 
     def cleanup() {

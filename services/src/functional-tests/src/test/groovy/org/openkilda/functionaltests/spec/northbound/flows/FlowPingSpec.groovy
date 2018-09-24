@@ -47,6 +47,12 @@ class FlowPingSpec extends BaseSpecification {
 
     @Value('${discovery.interval}')
     int discoveryInterval
+    
+    def setupOnce() {
+        //TODO(rtretiak): need to exclude Accton switches for hardware env. depends on #1027
+        //TODO(rtretiak): add hw-only test to verify that pings are disabled for Acctons
+        requireProfiles("virtual")
+    }
 
     @Unroll("Able to ping a flow with vlan between switches #srcSwitch.ofVersion - #dstSwitch.ofVersion")
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
