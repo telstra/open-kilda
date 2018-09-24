@@ -15,13 +15,13 @@
 
 package org.openkilda.northbound.controller;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.northbound.service.FeatureTogglesService;
 
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -31,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * REST Controller for toggle existed feature in kilda without having to re-deploy code.
@@ -58,9 +60,10 @@ public class FeatureTogglesController {
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Operation is successful")
     })
+
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public FeatureTogglePayload getFeatureTogglesState() {
+    public CompletableFuture<FeatureTogglePayload> getFeatureTogglesState() {
         return featureTogglesService.getFeatureTogglesState();
     }
 }

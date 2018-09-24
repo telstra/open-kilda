@@ -15,16 +15,10 @@
 
 package org.openkilda.northbound.controller;
 
-import static org.mockito.Mockito.mock;
-
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
-import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
-import org.openkilda.northbound.messaging.MessageConsumer;
-import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
-import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 
@@ -36,9 +30,6 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
 
 /**
  * The Test configuration.
@@ -59,23 +50,8 @@ import java.util.Map;
 @PropertySource({"classpath:northbound.properties"})
 public class TestConfig {
     @Bean
-    public MessageConsumer messageConsumer() {
+    public MessagingChannel messagingChannel() {
         return new TestMessageMock();
-    }
-
-    @Bean
-    public MessageProducer messageProducer() {
-        return new TestMessageMock();
-    }
-
-    @Bean
-    public HealthCheckMessageConsumer healthCheckMessageConsumer() {
-        return new TestHealthCheckMessageMock();
-    }
-
-    @Bean
-    public RestTemplate restTemplate() {
-        return mock(RestTemplate.class);
     }
 
     @Bean
@@ -83,20 +59,4 @@ public class TestConfig {
         return new TestCorrelationIdFactory();
     }
 
-    @Bean
-    public MessagingChannel messagingChannel() {
-        return new KafkaMessagingChannel();
-    }
-
-    private class TestHealthCheckMessageMock implements HealthCheckMessageConsumer {
-
-        @Override
-        public Map<String, String> poll(String correlationId) {
-            return null;
-        }
-
-        @Override
-        public void onResponse(Map<String, String> message) {
-        }
-    }
 }

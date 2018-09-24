@@ -18,7 +18,6 @@ package org.openkilda.northbound.messaging.kafka;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.northbound.messaging.MessageConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,9 +41,6 @@ public class KafkaMessageListener {
     @Autowired
     private KafkaMessagingChannel messagingChannel;
 
-    @Autowired
-    private MessageConsumer<Message> messageConsumer;
-
     /**
      * Handles all messages from kafka and sends to corresponding component for further processing.
      * <p/>
@@ -55,9 +51,6 @@ public class KafkaMessageListener {
         try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
             logger.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
             messagingChannel.onResponse(message);
-
-            // FIXME: should be removed once KafkaConsumer will be deleted. it is for the support of outdated services.
-            messageConsumer.onResponse(message);
         }
     }
 
