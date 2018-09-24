@@ -96,10 +96,6 @@ public class TestConfig {
         }
 
         @Override
-        public void clear() {
-        }
-
-        @Override
         public void onResponse(Map<String, String> message) {
         }
     }

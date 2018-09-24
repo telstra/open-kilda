@@ -95,10 +95,6 @@ public class KafkaMessageConsumer implements MessageConsumer<Message> {
     }
 
     @Override
-    public void clear() {
-    }
-
-    @Override
     public void onResponse(Message message) {
         messages.put(message.getCorrelationId(), message);
     }

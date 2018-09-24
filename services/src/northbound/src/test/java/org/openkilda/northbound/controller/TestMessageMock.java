@@ -53,6 +53,7 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
 
 import org.springframework.stereotype.Component;
+import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.Collections;
 import java.util.List;
@@ -105,7 +106,7 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
         } else if (data instanceof FlowReadRequest) {
             return getReadFlowResponse(((FlowReadRequest) data).getFlowId(), correlationId);
         } else if (data instanceof FlowsDumpRequest) {
-            return new ChunkedInfoMessage(FLOW_RESPONSE, 0, correlationId, null);
+            return new ChunkedInfoMessage(FLOW_RESPONSE, 0, correlationId, 1, 1);
         } else if (data instanceof SwitchRulesDeleteRequest) {
             return new InfoMessage(switchRulesResponse, 0, correlationId, Destination.NORTHBOUND);
         } else {
@@ -129,15 +130,12 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
     }
 
     @Override
-    public void clear() {
-        messages.clear();
-    }
-
-    @Override
-    public void send(String topic, Message message) {
+    public ListenableFuture send(String topic, Message message) {
         if (message instanceof CommandMessage) {
             messages.put(message.getCorrelationId(), ((CommandMessage) message).getData());
         }
+
+        return null;
     }
 
     @Override

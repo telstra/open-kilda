@@ -15,6 +15,10 @@
 
 package org.openkilda.northbound.messaging;
 
+/**
+ * Allows to read messages from messaging broker.
+ * @deprecated replaced by {@link org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel}
+ * */
 @Deprecated
 public interface MessageConsumer<T> {
     /**
@@ -36,12 +40,7 @@ public interface MessageConsumer<T> {
     T poll(final String correlationId);
 
     /**
-     * Clears message queue.
-     */
-    void clear();
-
-    /**
-     * Processes the response of the request.
+     * Processes the response of the request. It is used for backward compatibility with old versions of consumers.
      */
     void onResponse(T message);
 }

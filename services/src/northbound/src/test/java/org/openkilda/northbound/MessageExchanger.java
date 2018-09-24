@@ -19,6 +19,8 @@ import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 
+import org.springframework.util.concurrent.ListenableFuture;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,16 +44,14 @@ public class MessageExchanger implements MessageConsumer<Message>, MessageProduc
     }
 
     @Override
-    public void clear() {
-    }
-
-    @Override
-    public void send(String topic, Message message) {
+    public ListenableFuture send(String topic, Message message) {
         final String requestId = message.getCorrelationId();
         if (!pendingResponses.containsKey(requestId)) {
             throw new IllegalStateException(String.format(
                     "There is no pending response for request \"%s\"", requestId));
         }
+
+        return null;
     }
 
     @Override

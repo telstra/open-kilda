@@ -25,7 +25,7 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * Kafka message producer.
@@ -47,18 +47,14 @@ public class KafkaMessageProducer implements MessageProducer {
      * {@inheritDoc}
      */
     @Override
-    public void send(final String topic, final Message message) {
-        kafkaTemplate.send(topic, message)
-                .addCallback(new ListenableFutureCallback<SendResult<String, Message>>() {
-                    @Override
-                    public void onSuccess(SendResult<String, Message> result) {
-                        logger.debug("Message sent: topic={}, message={}", topic, message);
-                    }
+    public ListenableFuture<SendResult<String, Message>> send(final String topic, final Message message) {
+        String key = message.getCorrelationId();
+        ListenableFuture<SendResult<String, Message>> future = kafkaTemplate.send(topic, key, message);
+        future.addCallback(
+                result -> logger.debug("Message sent: topic={}, message={}", topic, message),
+                error -> logger.error("Unable to send message: topic={}, message={}", topic, message, error)
+        );
 
-                    @Override
-                    public void onFailure(Throwable exception) {
-                        logger.error("Unable to send message: topic={}, message={}", topic, message, exception);
-                    }
-                });
+        return future;
     }
 }

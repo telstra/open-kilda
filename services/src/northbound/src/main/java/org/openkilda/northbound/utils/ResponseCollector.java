@@ -19,14 +19,19 @@ import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.northbound.messaging.MessageConsumer;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Collects all responses.
+ * @deprecated should be replaced by {@link org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel}.
+ * @param <T> expected type.
+ */
 @Component
+@Deprecated
 public class ResponseCollector<T extends InfoData> {
 
     @Autowired
@@ -45,17 +50,15 @@ public class ResponseCollector<T extends InfoData> {
     public List<T> getResult(String requestId) {
         List<T> result = new ArrayList<>();
         ChunkedInfoMessage message;
-        String nextRequest = requestId;
         do {
-            message = messageConsumer.poll(nextRequest);
-            nextRequest = message.getNextRequestId();
+            message = messageConsumer.poll(requestId);
 
             @SuppressWarnings("unchecked")
             T response = (T) message.getData();
             if (response != null) {
                 result.add(response);
             }
-        } while (StringUtils.isNoneBlank(message.getNextRequestId()));
+        } while (result.size() < message.getTotalMessages());
 
         return result;
     }

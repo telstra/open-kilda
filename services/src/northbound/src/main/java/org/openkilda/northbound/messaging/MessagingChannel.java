@@ -22,17 +22,18 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * The main component for sending messages to internal kilda components.
- * All sent operations will be performed asynchronous and  wrapped into {@link CompletableFuture}.
- * The main purpose of this class is to have one entrypoint for sending messages
- * and receiving them back in one place and doing it in non-blocking way.
+ * The main component for sending messages to internal kilda components. All sent operations will be performed
+ * asynchronous and  wrapped into {@link CompletableFuture}. The main purpose of this class is to have one entrypoint
+ * for sending messages and receiving them back in one place and doing it in non-blocking way.
  */
 public interface MessagingChannel {
 
     /**
      * Sends the message to the specified topic and provides a response wrapped in {@link CompletableFuture}.
-     * Note: this type of request expects to receive back the response,
-     * if you don't need any responses please use {@link MessagingChannel#send(String, Message)}
+     * <p/>
+     * Note: this type of request expects to receive back the response, if you don't need any responses please use
+     * {@link MessagingChannel#send(String, Message)}
+     *
      * @param topic topic where the message should be sent.
      * @param message data to be sent.
      * @return response for the request.
@@ -41,6 +42,7 @@ public interface MessagingChannel {
 
     /**
      * Sends the message to the specified topic and collects all chunked responses for this request into the list.
+     *
      * @param topic topic where the message should be sent.
      * @param message data to be sent.
      * @return response for the request.
@@ -49,6 +51,7 @@ public interface MessagingChannel {
 
     /**
      * Sends the message to the specified topic without waiting for a response.
+     *
      * @param topic topic where the message should be sent to.
      * @param message the data to be sent.
      */

@@ -16,8 +16,11 @@
 package org.openkilda.northbound.config;
 
 import org.openkilda.northbound.utils.ExecutionTimeInterceptor;
-import org.openkilda.northbound.utils.RequestCorrelationFilter;
 import org.openkilda.northbound.utils.ExtraAuthInterceptor;
+import org.openkilda.northbound.utils.RequestCorrelationFilter;
+import org.openkilda.northbound.utils.async.CompletableFutureReturnValueHandler;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,12 +29,17 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import javax.annotation.PostConstruct;
 
 /**
  * The Web Application configuration.
@@ -40,6 +48,25 @@ import java.util.Collections;
 @EnableWebMvc
 @PropertySource({"classpath:northbound.properties"})
 public class WebConfig extends WebMvcConfigurerAdapter {
+
+    @Autowired
+    private RequestMappingHandlerAdapter requestMappingHandlerAdapter;
+
+    /**
+     * Adds instance of {@link CompletableFutureReturnValueHandler} to the list of value handlers and put it on the
+     * first place (thus we override default handler for completable future
+     * {@link org.springframework.web.servlet.mvc.method.annotation.CompletionStageReturnValueHandler}).
+     */
+    @PostConstruct
+    public void init() {
+        CompletableFutureReturnValueHandler futureHandler = new CompletableFutureReturnValueHandler();
+        List<HandlerMethodReturnValueHandler> defaultHandlers =
+                new ArrayList<>(requestMappingHandlerAdapter.getReturnValueHandlers());
+        defaultHandlers.add(0, futureHandler);
+
+        requestMappingHandlerAdapter.setReturnValueHandlers(defaultHandlers);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -47,6 +74,19 @@ public class WebConfig extends WebMvcConfigurerAdapter {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(timeExecutionInterceptor());
         registry.addInterceptor(extraAuthInterceptor());
+    }
+
+    /**
+     * Swagger UI resources.
+     *
+     * @param registry resource registry
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("swagger-ui.html")
+                .addResourceLocations("classpath:/META-INF/resources/");
+        registry.addResourceHandler("/webjars/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/");
     }
 
     /**
@@ -77,21 +117,9 @@ public class WebConfig extends WebMvcConfigurerAdapter {
         return restTemplate;
     }
 
-    /**
-     * Swagger UI resources.
-     *
-     * @param registry resource registry
-     */
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("swagger-ui.html")
-                .addResourceLocations("classpath:/META-INF/resources/");
-        registry.addResourceHandler("/webjars/**")
-                .addResourceLocations("classpath:/META-INF/resources/webjars/");
-    }
-
     @Bean
     public OncePerRequestFilter requestCorrelationIdFilter() {
         return new RequestCorrelationFilter();
     }
+
 }

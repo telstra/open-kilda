@@ -26,17 +26,29 @@ import lombok.ToString;
 
 @Getter
 @ToString(callSuper = true)
-@EqualsAndHashCode
+@EqualsAndHashCode(callSuper = true)
 public class ChunkedInfoMessage extends InfoMessage {
 
-    @JsonProperty("next_request_id")
-    private String nextRequestId;
+    @JsonProperty("message_id")
+    private String messageId;
 
-    public ChunkedInfoMessage(@JsonProperty(PAYLOAD) final InfoData data,
-                              @JsonProperty(TIMESTAMP) final long timestamp,
-                              @JsonProperty(CORRELATION_ID) final String correlationId,
-                              @JsonProperty("next_request_id") String nextRequestId) {
+    @JsonProperty("total_messages")
+    private int totalMessages;
+
+    public ChunkedInfoMessage(@JsonProperty(PAYLOAD) InfoData data,
+                              @JsonProperty(TIMESTAMP) long timestamp,
+                              @JsonProperty(CORRELATION_ID) String correlationId,
+                              @JsonProperty("message_id") String messageId,
+                              @JsonProperty("total_messages") int totalMessages) {
         super(data, timestamp, correlationId);
-        this.nextRequestId = nextRequestId;
+        this.messageId = messageId;
+        this.totalMessages = totalMessages;
+    }
+
+    public ChunkedInfoMessage(InfoData data, long timestamp, String correlationId,
+                              int messageIndex, int totalMessages) {
+        super(data, timestamp, correlationId);
+        this.messageId = correlationId + " : " + messageIndex;
+        this.totalMessages = totalMessages;
     }
 }

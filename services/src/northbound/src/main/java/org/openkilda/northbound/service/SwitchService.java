@@ -35,6 +35,10 @@ import java.util.concurrent.CompletableFuture;
 
 public interface SwitchService extends BasicService {
 
+    /**
+     * Get all available switches.
+     * @return list of switches.
+     */
     CompletableFuture<List<SwitchDto>> getSwitches();
 
     /**
@@ -115,7 +119,7 @@ public interface SwitchService extends BasicService {
      * @param meterId meter to be deleted.
      */
     DeleteMeterResult deleteMeter(SwitchId switchId, long meterId);
-    
+
     /**
      * Configure switch port. <br>
      * Configurations
@@ -123,11 +127,11 @@ public interface SwitchService extends BasicService {
      * <li> UP/DOWN port </li>
      * <li> Change port speed </li>
      * </ul>
-     *  
+     *
      * @param switchId switch whose port is to configure
      * @param port port to configure
-     * @param portConfig port configuration that needs to apply on port 
-     * @return portDto 
+     * @param portConfig port configuration that needs to apply on port
+     * @return portDto
      */
     PortDto configurePort(SwitchId switchId,  int port, PortConfigurationPayload portConfig);
 

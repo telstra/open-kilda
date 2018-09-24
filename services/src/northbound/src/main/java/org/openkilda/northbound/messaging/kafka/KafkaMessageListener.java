@@ -56,7 +56,7 @@ public class KafkaMessageListener {
             logger.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
             messagingChannel.onResponse(message);
 
-            // todo: should be removed once KafkaConsumer will be deleted. it is for the support of outdated services.
+            // FIXME: should be removed once KafkaConsumer will be deleted. it is for the support of outdated services.
             messageConsumer.onResponse(message);
         }
     }

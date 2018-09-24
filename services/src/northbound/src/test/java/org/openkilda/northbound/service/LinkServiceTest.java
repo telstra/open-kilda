@@ -99,7 +99,7 @@ public class LinkServiceTest {
                 Collections.singletonList(new PathNode(switchId, 1, 0)),
                 IslChangeType.DISCOVERED);
 
-        Message message = new ChunkedInfoMessage(islInfoData, 0, correlationId, null);
+        Message message = new ChunkedInfoMessage(islInfoData, 0, correlationId, correlationId, 1);
         messageExchanger.mockResponse(message);
         RequestCorrelationId.create(correlationId);
 
@@ -119,7 +119,7 @@ public class LinkServiceTest {
     @Test
     public void shouldGetEmptyPropsList() {
         final String correlationId = "empty-link-props";
-        Message message = new ChunkedInfoMessage(null, 0, correlationId, null);
+        Message message = new ChunkedInfoMessage(null, 0, correlationId, correlationId + 0, 0);
         messageExchanger.mockResponse(message);
         RequestCorrelationId.create(correlationId);
 
@@ -136,7 +136,7 @@ public class LinkServiceTest {
                         new NetworkEndpoint(new SwitchId("00:00:00:00:00:00:00:02"), 2),
                         Collections.singletonMap("cost", "2"));
         LinkPropsData linkPropsData = new LinkPropsData(linkProps);
-        Message message = new ChunkedInfoMessage(linkPropsData, 0, correlationId, null);
+        Message message = new ChunkedInfoMessage(linkPropsData, 0, correlationId, correlationId, 1);
         messageExchanger.mockResponse(message);
         RequestCorrelationId.create(correlationId);
 
@@ -201,9 +201,9 @@ public class LinkServiceTest {
                 idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId),
                 idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId)};
         messageExchanger.mockResponse(new ChunkedInfoMessage(
-                payload, System.currentTimeMillis(), requestIdBatch[0], requestIdBatch[1]));
+                payload, System.currentTimeMillis(), requestIdBatch[0], requestIdBatch[0], 1));
         messageExchanger.mockResponse(new ChunkedInfoMessage(
-                null, System.currentTimeMillis(), requestIdBatch[1], null));
+                null, System.currentTimeMillis(), requestIdBatch[1], requestIdBatch[1], 1));
 
         RequestCorrelationId.create(correlationId);
         BatchResults result = linkService.delLinkProps(Collections.singletonList(input));

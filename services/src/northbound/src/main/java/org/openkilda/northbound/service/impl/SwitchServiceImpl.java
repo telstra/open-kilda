@@ -114,7 +114,8 @@ public class SwitchServiceImpl implements SwitchService {
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
                 .thenApply(messages -> messages.stream()
-                        .map(data -> switchMapper.toSwitchDto((SwitchInfoData) data))
+                        .map(SwitchInfoData.class::cast)
+                        .map(switchMapper::toSwitchDto)
                         .collect(Collectors.toList()));
     }
 

@@ -130,7 +130,7 @@ public class SwitchController {
      */
     @ApiOperation(value = "Delete switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
     @DeleteMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
@@ -184,7 +184,7 @@ public class SwitchController {
      */
     @ApiOperation(value = "Install switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
-    @ApiResponse(code = 200, response = Long.class, responseContainer = "List" , message = "Operation is successful")
+    @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
     @PutMapping(value = "/switches/{switch-id}/rules",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired

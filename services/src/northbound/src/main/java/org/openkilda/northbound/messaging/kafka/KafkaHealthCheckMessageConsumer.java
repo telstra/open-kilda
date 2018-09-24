@@ -72,13 +72,6 @@ public class KafkaHealthCheckMessageConsumer implements HealthCheckMessageConsum
                 HealthCheckInfoData::getId, HealthCheckInfoData::getState));
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void clear() {
-    }
-
     @Override
     public void onResponse(Map<String, String> message) {
         InfoMessage info = (InfoMessage) message;
