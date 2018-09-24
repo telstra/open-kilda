@@ -22,8 +22,6 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -45,8 +43,7 @@ import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkStatus;
 import org.openkilda.northbound.dto.links.PathDto;
-import org.openkilda.northbound.messaging.MessageConsumer;
-import org.openkilda.northbound.messaging.MessageProducer;
+import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.impl.LinkServiceImpl;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -99,11 +96,10 @@ public class LinkServiceTest {
                 Collections.singletonList(new PathNode(switchId, 1, 0)),
                 IslChangeType.DISCOVERED);
 
-        Message message = new ChunkedInfoMessage(islInfoData, 0, correlationId, correlationId, 1);
-        messageExchanger.mockResponse(message);
+        messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(islInfoData));
         RequestCorrelationId.create(correlationId);
 
-        List<LinkDto> result = linkService.getLinks();
+        List<LinkDto> result = linkService.getLinks().join();
         assertFalse("List of link shouldn't be empty", result.isEmpty());
 
         LinkDto link = result.get(0);
@@ -119,11 +115,10 @@ public class LinkServiceTest {
     @Test
     public void shouldGetEmptyPropsList() {
         final String correlationId = "empty-link-props";
-        Message message = new ChunkedInfoMessage(null, 0, correlationId, correlationId + 0, 0);
-        messageExchanger.mockResponse(message);
+        messageExchanger.mockChunkedResponse(correlationId, Collections.emptyList());
         RequestCorrelationId.create(correlationId);
 
-        List<LinkPropsDto> result = linkService.getLinkProps(null, 0, null, 0);
+        List<LinkPropsDto> result = linkService.getLinkProps(null, 0, null, 0).join();
         assertTrue("List of link props should be empty", result.isEmpty());
     }
 
@@ -136,11 +131,10 @@ public class LinkServiceTest {
                         new NetworkEndpoint(new SwitchId("00:00:00:00:00:00:00:02"), 2),
                         Collections.singletonMap("cost", "2"));
         LinkPropsData linkPropsData = new LinkPropsData(linkProps);
-        Message message = new ChunkedInfoMessage(linkPropsData, 0, correlationId, correlationId, 1);
-        messageExchanger.mockResponse(message);
+        messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(linkPropsData));
         RequestCorrelationId.create(correlationId);
 
-        List<LinkPropsDto> result = linkService.getLinkProps(null, 0, null, 0);
+        List<LinkPropsDto> result = linkService.getLinkProps(null, 0, null, 0).join();
         assertFalse("List of link props shouldn't be empty", result.isEmpty());
 
         LinkPropsDto dto = result.get(0);
@@ -172,7 +166,7 @@ public class LinkServiceTest {
                 requestProps);
 
         RequestCorrelationId.create(correlationId);
-        BatchResults result = linkService.setLinkProps(Collections.singletonList(inputItem));
+        BatchResults result = linkService.setLinkProps(Collections.singletonList(inputItem)).join();
 
         assertThat(result.getFailures(), is(0));
         assertThat(result.getSuccesses(), is(1));
@@ -197,16 +191,11 @@ public class LinkServiceTest {
 
         LinkPropsResponse payload = new LinkPropsResponse(request, linkProps, null);
 
-        String[] requestIdBatch = new String[] {
-                idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId),
-                idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId)};
-        messageExchanger.mockResponse(new ChunkedInfoMessage(
-                payload, System.currentTimeMillis(), requestIdBatch[0], requestIdBatch[0], 1));
-        messageExchanger.mockResponse(new ChunkedInfoMessage(
-                null, System.currentTimeMillis(), requestIdBatch[1], requestIdBatch[1], 1));
+        String requestIdBatch = idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId);
+        messageExchanger.mockChunkedResponse(requestIdBatch, Collections.singletonList(payload));
 
         RequestCorrelationId.create(correlationId);
-        BatchResults result = linkService.delLinkProps(Collections.singletonList(input));
+        BatchResults result = linkService.delLinkProps(Collections.singletonList(input)).join();
 
         assertThat(result.getFailures(), is(0));
         assertThat(result.getSuccesses(), is(1));
@@ -226,18 +215,8 @@ public class LinkServiceTest {
         }
 
         @Bean
-        public MessageExchanger messageExchanger() {
+        public MessagingChannel messagingChannel() {
             return new MessageExchanger();
-        }
-
-        @Bean
-        public MessageConsumer messageConsumer(MessageExchanger messageExchanger) {
-            return messageExchanger;
-        }
-
-        @Bean
-        public MessageProducer messageProducer(MessageExchanger messageExchanger) {
-            return messageExchanger;
         }
 
         @Bean

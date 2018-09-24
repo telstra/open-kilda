@@ -24,6 +24,7 @@ import static org.openkilda.northbound.controller.TestMessageMock.TEST_SWITCH_RU
 import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -73,11 +74,14 @@ public class SwitchControllerTest extends NorthboundBaseTest {
     public void shouldDeleteSwitchRules() throws Exception {
         // given TestMessageMock as kafka topic mocks
         // when
-        MvcResult result = mockMvc.perform(delete("/switches/{switch-id}/rules", TEST_SWITCH_ID)
+        MvcResult mvcResult = mockMvc.perform(delete("/switches/{switch-id}/rules", TEST_SWITCH_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .header(EXTRA_AUTH, System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(119))
                 .contentType(APPLICATION_JSON_VALUE))
-                // then
+                .andReturn();
+
+        // then
+        MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
