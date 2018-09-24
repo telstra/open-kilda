@@ -317,6 +317,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             byte[] dpidTlvValue = new byte[]{0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
             System.arraycopy(dpidArray, 0, dpidTlvValue, 4, 8);
 
+            // TODO: change this such that srcMac is DPID not port MAC
             OFPortDesc ofPortDesc = srcSw.getPort(port);
             byte[] zeroMac = {0, 0, 0, 0, 0, 0};
             byte[] srcMac = ofPortDesc.getHwAddr().getBytes();

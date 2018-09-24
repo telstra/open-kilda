@@ -142,6 +142,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private IRestApiService restApiService;
     private KafkaMessageProducer kafkaProducer;
     private ConnectModeRequest.Mode connectMode;
+    private boolean useSwTimestamps;
 
     private String topoDiscoTopic;
 
@@ -216,6 +217,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
         topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
 
+
+
         String connectModeProperty = provider.getConfiguration(SwitchManagerConfig.class).getConnectMode();
         try {
             connectMode = ConnectModeRequest.Mode.valueOf(connectModeProperty);
@@ -224,6 +227,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     connectModeProperty);
             connectMode = ConnectModeRequest.Mode.AUTO;
         }
+
+        useSwTimestamps = provider.getConfiguration(SwitchManagerConfig.class).getSwTimestamps();
+        logger.info("Switch Timestamps: {}", useSwTimestamps);
         // TODO: Ensure Kafka Topics are created..
     }
 
@@ -695,7 +701,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
 
         ArrayList<OFAction> actionList = new ArrayList<>(2);
-        if (isBroadcast) {
+        if (isBroadcast && useSwTimestamps) {
             actionList.add(actionAddRxTimestamp(sw, 944));
         }
         actionList.add(actionSendToController(sw));
