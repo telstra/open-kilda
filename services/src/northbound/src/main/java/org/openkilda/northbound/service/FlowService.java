@@ -28,6 +28,7 @@ import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * FlowService is for operations on flows, primarily against the Flow Topology.
@@ -39,7 +40,7 @@ public interface FlowService extends BasicService {
      * @param flow          flow
      * @return created flow
      */
-    FlowPayload createFlow(final FlowPayload flow);
+    CompletableFuture<FlowPayload> createFlow(final FlowPayload flow);
 
     /**
      * Deletes flow.
@@ -47,7 +48,7 @@ public interface FlowService extends BasicService {
      * @param id            flow id
      * @return deleted flow
      */
-    FlowPayload deleteFlow(final String id);
+    CompletableFuture<FlowPayload> deleteFlow(final String id);
 
     /**
      * Updates flow.
@@ -55,7 +56,7 @@ public interface FlowService extends BasicService {
      * @param flow          flow
      * @return updated flow
      */
-    FlowPayload updateFlow(final FlowPayload flow);
+    CompletableFuture<FlowPayload> updateFlow(final FlowPayload flow);
 
     /**
      * Gets flow by id.
@@ -63,14 +64,14 @@ public interface FlowService extends BasicService {
      * @param id            flow id
      * @return flow
      */
-    FlowPayload getFlow(final String id);
+    CompletableFuture<FlowPayload> getFlow(final String id);
 
     /**
      * Gets all the flows.
      *
      * @return the list of all flows with specified status
      */
-    List<FlowPayload> getFlows();
+    CompletableFuture<List<FlowPayload>> getFlows();
 
     /**
      * Deletes all flows. Primarily this is a combination of getFlows and deleteFlow.
@@ -78,7 +79,7 @@ public interface FlowService extends BasicService {
      *
      * @return the list of all deleted flows
      */
-    List<FlowPayload> deleteFlows();
+    CompletableFuture<List<FlowPayload>> deleteFlows();
 
     /**
      * Gets flow status by id.
@@ -86,7 +87,7 @@ public interface FlowService extends BasicService {
      * @param id            flow id
      * @return flow status
      */
-    FlowIdStatusPayload statusFlow(final String id);
+    CompletableFuture<FlowIdStatusPayload> statusFlow(final String id);
 
     /**
      * Gets flow path by id.
@@ -94,7 +95,7 @@ public interface FlowService extends BasicService {
      * @param id            flow id
      * @return Flow path
      */
-    FlowPathPayload pathFlow(final String id);
+    CompletableFuture<FlowPathPayload> pathFlow(final String id);
 
     /**
      * Use this to push flows that may not be in the database / caches but they should be.
@@ -105,7 +106,8 @@ public interface FlowService extends BasicService {
      *
      * @return
      */
-    BatchResults pushFlows(final List<FlowInfoData> externalFlows, Boolean propagate, Boolean verify);
+    CompletableFuture<BatchResults> pushFlows(final List<FlowInfoData> externalFlows, Boolean propagate,
+                                              Boolean verify);
 
     /**
      * Use this to unpush flows .. ie undo a push
@@ -115,7 +117,8 @@ public interface FlowService extends BasicService {
      * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
      * @return
      */
-    BatchResults unpushFlows(final List<FlowInfoData> externalFlows, Boolean propagate, Boolean verify);
+    CompletableFuture<BatchResults> unpushFlows(final List<FlowInfoData> externalFlows, Boolean propagate,
+                                                Boolean verify);
 
     /**
      * Performs rerouting of specific flow.
@@ -123,7 +126,7 @@ public interface FlowService extends BasicService {
      * @param flowId id of flow to be rerouted.
      * @return updated flow path information with the result whether or not path was changed.
      */
-    FlowReroutePayload rerouteFlow(final String flowId);
+    CompletableFuture<FlowReroutePayload> rerouteFlow(final String flowId);
 
     /**
      * Performs synchronization (reinstalling) of specific flow.
@@ -131,7 +134,7 @@ public interface FlowService extends BasicService {
      * @param flowId id of flow to be synchronized.
      * @return updated flow.
      */
-    FlowReroutePayload syncFlow(final String flowId);
+    CompletableFuture<FlowReroutePayload> syncFlow(final String flowId);
 
     /**
      * Performs validation of specific flow - ie comparing what is in the database with what is
@@ -141,9 +144,9 @@ public interface FlowService extends BasicService {
      * @return the results of the comparison, or null if the flow isn't found.
      * @throws java.nio.file.InvalidPathException if the flow doesn't return a path and it should.
      */
-    List<FlowValidationDto> validateFlow(final String flowId);
+    CompletableFuture<List<FlowValidationDto>> validateFlow(final String flowId);
 
-    PingOutput pingFlow(String flowId, PingInput payload);
+    CompletableFuture<PingOutput> pingFlow(String flowId, PingInput payload);
 
     /**
      * Sync the FlowCache in the flow topology (in case it is out of sync.
@@ -151,5 +154,5 @@ public interface FlowService extends BasicService {
      * @param syncCacheAction describes how to synchronize the cache.
      * @return details on performed updates.
      */
-    FlowCacheSyncResults syncFlowCache(SynchronizeCacheAction syncCacheAction);
+    CompletableFuture<FlowCacheSyncResults> syncFlowCache(SynchronizeCacheAction syncCacheAction);
 }
