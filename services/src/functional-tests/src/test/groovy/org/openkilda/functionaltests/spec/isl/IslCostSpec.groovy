@@ -40,7 +40,7 @@ class IslCostSpec extends BaseSpecification {
         aswitch.removeFlows(rulesToRemove)
 
         then: "Link status becomes 'FAILED'"
-        Wrappers.wait(discoveryTimeout + 3) { islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
+        Wrappers.wait(discoveryTimeout + 5) { islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         and: "ISL cost after connection loss is not increased"
         islUtils.getIslCost(isl) == islCost
