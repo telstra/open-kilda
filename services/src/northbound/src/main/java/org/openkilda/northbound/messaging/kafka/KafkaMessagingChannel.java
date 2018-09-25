@@ -40,8 +40,10 @@ import org.springframework.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -70,6 +72,13 @@ public class KafkaMessagingChannel implements MessagingChannel {
      */
     private Map<String, List<ChunkedInfoMessage>> messagesChains;
 
+    /**
+     * The storage for received chunked message ids. it is needed identify whether we have already received specific
+     * chunked message or not in order to do not have duplicates, because current version of kafka do not guarantee
+     * exactly once delivery.
+     */
+    private Map<String, Set<String>> chunkedMessageIdsPerRequest = new HashMap<>();
+
     @Autowired
     private MessageProducer messageProducer;
 
@@ -87,10 +96,11 @@ public class KafkaMessagingChannel implements MessagingChannel {
     @Override
     public CompletableFuture<InfoData> sendAndGet(String topic, Message message) {
         CompletableFuture<InfoData> future = new CompletableFuture<>();
+        pendingRequests.put(message.getCorrelationId(), future);
 
         ListenableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
         futureResult.addCallback(
-                sentResult -> pendingRequests.put(message.getCorrelationId(), future),
+                success -> { },
                 error -> future.completeExceptionally(new MessageNotSentException(error.getMessage()))
         );
 
@@ -103,17 +113,21 @@ public class KafkaMessagingChannel implements MessagingChannel {
     @Override
     public CompletableFuture<List<InfoData>> sendAndGetChunked(String topic, Message message) {
         CompletableFuture<List<InfoData>> future = new CompletableFuture<>();
+        pendingChunkedRequests.put(message.getCorrelationId(), future);
 
         ListenableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
         futureResult.addCallback(
                 sentResult -> {
-                    pendingChunkedRequests.put(message.getCorrelationId(), future);
                     messagesChains.put(message.getCorrelationId(), new ArrayList<>());
+                    chunkedMessageIdsPerRequest.put(message.getCorrelationId(), new HashSet<>());
                 },
                 error -> future.completeExceptionally(new MessageNotSentException(error.getMessage()))
         );
 
-        return future.whenComplete((response, error) -> pendingChunkedRequests.remove(message.getCorrelationId()));
+        return future.whenComplete((response, error) -> {
+            pendingChunkedRequests.remove(message.getCorrelationId());
+            chunkedMessageIdsPerRequest.remove(message.getCorrelationId());
+        });
     }
 
     /**
@@ -144,12 +158,14 @@ public class KafkaMessagingChannel implements MessagingChannel {
 
             completeWithError(error);
         } else if (message instanceof InfoMessage) {
-            if (pendingChunkedRequests.containsKey(message.getCorrelationId())) {
+            if (isChunkedPendingResponse(message)) {
                 processChunkedMessage((ChunkedInfoMessage) message);
             } else if (pendingRequests.containsKey(message.getCorrelationId())) {
                 InfoMessage infoMessage = (InfoMessage) message;
-                pendingRequests.remove(message.getCorrelationId())
-                        .complete(infoMessage.getData());
+                CompletableFuture<InfoData> request = pendingRequests.remove(message.getCorrelationId());
+                if (request != null) {
+                    request.complete(infoMessage.getData());
+                }
             } else {
                 logger.trace("Received non-pending message");
             }
@@ -160,6 +176,12 @@ public class KafkaMessagingChannel implements MessagingChannel {
      * Performs searching and collecting all chunked messages into one chain if possible.
      */
     private synchronized void processChunkedMessage(ChunkedInfoMessage received) {
+        Set<String> associatedMessages = chunkedMessageIdsPerRequest.get(received.getCorrelationId());
+        if (!associatedMessages.add(received.getMessageId())) {
+            logger.debug("Skipping chunked message, it is already received: {}", received);
+            return;
+        }
+
         List<ChunkedInfoMessage> chain = messagesChains.get(received.getCorrelationId());
         chain.add(received);
 
@@ -197,15 +219,18 @@ public class KafkaMessagingChannel implements MessagingChannel {
     /**
      * Completes a request with an error response.
      */
-    private void completeWithError(ErrorMessage error) {
+    private synchronized void completeWithError(ErrorMessage error) {
         String correlationId = error.getCorrelationId();
 
+        CompletableFuture request = null;
         if (pendingRequests.containsKey(correlationId)) {
-            pendingRequests.remove(correlationId)
-                    .completeExceptionally(new MessageException(error));
+            request = pendingRequests.remove(correlationId);
         } else if (pendingChunkedRequests.containsKey(correlationId)) {
-            pendingChunkedRequests.remove(correlationId)
-                    .completeExceptionally(new MessageException(error));
+            request = pendingChunkedRequests.remove(correlationId);
+        }
+
+        if (request != null) {
+            request.completeExceptionally(new MessageException(error));
         }
     }
 
@@ -218,12 +243,16 @@ public class KafkaMessagingChannel implements MessagingChannel {
             return false;
         }
 
-        if (message instanceof InfoMessage || message instanceof ErrorMessage) {
-            return true;
-        } else {
+        if (!(message instanceof InfoMessage) && !(message instanceof ErrorMessage)) {
             logger.warn("Received message has unsupported format: {}", message);
             return false;
         }
+
+        return true;
+    }
+
+    private boolean isChunkedPendingResponse(Message message) {
+        return message instanceof ChunkedInfoMessage && pendingChunkedRequests.containsKey(message.getCorrelationId());
     }
 
     @VisibleForTesting
