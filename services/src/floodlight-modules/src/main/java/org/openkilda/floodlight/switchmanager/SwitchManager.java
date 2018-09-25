@@ -23,6 +23,7 @@ import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
+import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
@@ -679,6 +680,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
+     * Determines if switch supports timestamps.
+     * TODO: change to use features in TableFeatures but Noviflow currently not returning experimenters
+     *
+     * @param sw Switch Object
+     * @return boolean
+     */
+    public boolean supportsTimestamp(IOFSwitch sw) {
+        return containsIgnoreCase(sw.getSwitchDescription().getManufacturerDescription(), "novi");
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -701,7 +713,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
 
         ArrayList<OFAction> actionList = new ArrayList<>(2);
-        if (isBroadcast && useSwTimestamps) {
+        if (isBroadcast && useSwTimestamps && supportsTimestamp(sw)) {
             actionList.add(actionAddRxTimestamp(sw, 944));
         }
         actionList.add(actionSendToController(sw));
