@@ -32,7 +32,9 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.hamcrest.core.Every.everyItem;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.openkilda.floodlight.Constants.bandwidth;
 import static org.openkilda.floodlight.Constants.burstSize;
 import static org.openkilda.floodlight.Constants.inputPort;
@@ -628,6 +630,16 @@ public class SwitchManagerTest {
         assertEquals(0L, actual.getCookie().getValue());
         assertEquals(0L, actual.getCookieMask().getValue());
         assertThat(deletedRules, containsInAnyOrder(cookie));
+    }
+
+    @Test
+    public void supportsTimestamp() throws Exception {
+        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(switchDescription.getManufacturerDescription()).andReturn("Noviflow").once();
+        expect(switchDescription.getManufacturerDescription()).andReturn("OVS").once();
+        replay(iofSwitch, switchDescription);
+        assertTrue(switchManager.supportsTimestamp(iofSwitch));
+        assertFalse(switchManager.supportsTimestamp(iofSwitch));
     }
 
     private void mockBarrierRequest() throws InterruptedException, ExecutionException, TimeoutException {
