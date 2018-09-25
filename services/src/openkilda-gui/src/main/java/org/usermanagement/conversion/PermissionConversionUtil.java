@@ -63,10 +63,6 @@ public final class PermissionConversionUtil {
     public static PermissionEntity toPermissionEntity(final Permission permission) {
         PermissionEntity permissionEntity = new PermissionEntity();
         permissionEntity.setName(permission.getName());
-        permissionEntity.setCreatedBy(1L);
-        permissionEntity.setUpdatedBy(1L);
-        permissionEntity.setCreatedDate(new Date());
-        permissionEntity.setUpdatedDate(new Date());
         permissionEntity.setDescription(permission.getDescription());
         permissionEntity.setIsEditable(permission.getIsEditable());
         permissionEntity.setIsAdminPermission(permission.getIsAdminPermission());

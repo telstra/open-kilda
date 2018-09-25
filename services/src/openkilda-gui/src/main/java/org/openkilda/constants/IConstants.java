@@ -165,6 +165,9 @@ public abstract class IConstants {
         public static final String FW_FLOW_RESYNC = "fw_flow_resync";
         
         public static final String SW_PORT_CONFIG = "sw_port_config";
+        
+        public static final String STORE_SETTING = "store_setting";
+        
     }
 
     public final class Settings {
@@ -212,7 +215,8 @@ public abstract class IConstants {
         
         public static final String SWITCH_LIST = "switch/switch";
         
-        public static final String USERMANAGEMENT = "usermanagement/usermanagement";
+        public static final String USER_MANAGEMENT = "usermanagement/usermanagement";
+        public static final String STORE_SETTING = "storesetting/storesetting";
         
         public static final String TWO_FA_GENERATOR = "login/twofa";
         

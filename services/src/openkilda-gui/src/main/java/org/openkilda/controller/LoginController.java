@@ -103,11 +103,12 @@ public class LoginController extends BaseController {
      * @return the model and view
      */
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
-    public ModelAndView authenticate(@RequestParam("username") final String username,
+    public ModelAndView authenticate(@RequestParam("username") String username,
             @RequestParam("password") final String password, final HttpServletRequest request) {
         LOGGER.info("[authenticate] - start");
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
         String error = null;
+        username = username != null ? username.toLowerCase() : null;
         UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, password);
         CustomWebAuthenticationDetails customWebAuthenticationDetails = new CustomWebAuthenticationDetails(request);
         token.setDetails(customWebAuthenticationDetails);
