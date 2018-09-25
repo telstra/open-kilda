@@ -158,7 +158,6 @@
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="61" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="62" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="63" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="66" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="97" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="0" checks="NewlineAtEndOfFile"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="1" checks="RegexpHeader"/>

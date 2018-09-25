@@ -59,10 +59,12 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -304,6 +306,11 @@ public class SwitchManagerTest {
         final OFMeterMod meterMod = capture.getValue();
         assertEquals(meterMod.getCommand(), OFMeterModCommand.DELETE);
         assertEquals(meterMod.getMeterId(), meterId);
+    }
+
+    @Test(expected = InvalidMeterIdException.class)
+    public void deleteMeterWithInvalidId() throws SwitchOperationException {
+        switchManager.deleteMeter(dpid, -1);
     }
 
     @Test
