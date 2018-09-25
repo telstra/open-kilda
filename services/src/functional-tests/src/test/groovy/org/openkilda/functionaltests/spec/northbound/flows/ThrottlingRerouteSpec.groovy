@@ -294,6 +294,37 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         db.countFlows() == 0
     }
 
+    def "Auto-reroute on the flow which is already deleted should not revive the flow"() {
+        given: "A flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        northboundService.addFlow(flow)
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
+
+        when: "Remove the flow"
+        northboundService.deleteFlow(flow.id)
+
+        and: "Immediately break the path to init all flows on that path to reroute"
+        def islToBreak = pathHelper.getInvolvedIsls(path).first()
+        northboundService.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+
+        then: "Flow is not present in the system after reroute timeout"
+        TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
+        !northboundService.getAllFlows().find { it.id == flow.id }
+        northboundService.getAllLinks().every { it.availableBandwidth == it.speed }
+
+        and: "No rule discrepancies observed"
+        topology.activeSwitches.every {
+            def rules = northboundService.validateSwitchRules(it.dpId)
+            rules.missingRules.empty && rules.excessRules.empty
+        }
+
+        and: "Bring port back up"
+        northboundService.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
+    }
+
     def cleanup() {
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
         db.resetCosts()
