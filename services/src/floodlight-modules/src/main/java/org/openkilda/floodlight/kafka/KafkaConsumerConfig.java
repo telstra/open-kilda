@@ -42,7 +42,12 @@ public interface KafkaConsumerConfig extends KafkaFloodlightConfig, KafkaConsume
     @Key("consumer-executors")
     @Default("10")
     @Min(1)
-    int getExecutorCount();
+    int getGeneralExecutorCount();
+
+    @Key("consumer-disco-executors")
+    @Default("10")
+    @Min(1)
+    int getDiscoExecutorCount();
 
     @Key("consumer-auto-commit-interval")
     @Default("1000")

@@ -22,6 +22,7 @@ import org.openkilda.messaging.ctrl.KafkaBreakTarget;
 import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,8 +37,9 @@ public class TestAwareConsumer extends Consumer {
     private List<KafkaBreakTrigger> expectedTriggers;
 
     public TestAwareConsumer(ConsumerContext context, KafkaConsumerConfig kafkaConfig, ExecutorService handlersPool,
-                             Factory handlerFactory, ISwitchManager switchManager, String topic, String... moreTopics) {
-        super(kafkaConfig, handlersPool, handlerFactory, switchManager, topic, moreTopics);
+                             Factory handlerFactory, ISwitchManager switchManager, String topic,
+                             OffsetResetStrategy defaultOffsetStrategy) {
+        super(kafkaConfig, handlersPool, handlerFactory, switchManager, topic, defaultOffsetStrategy);
 
         breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_CONSUMER);
 

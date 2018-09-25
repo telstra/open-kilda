@@ -51,7 +51,7 @@ public class ASwitchServiceImpl implements ASwitchService {
     public void addFlows(List<ASwitchFlow> flows) {
         restTemplate.exchange("/flows", HttpMethod.POST,
                 new HttpEntity<>(flows, buildJsonHeaders()), String.class);
-        LOGGER.info("Added flows: {}", flows.stream()
+        LOGGER.debug("Added flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(Collectors.toList()));
     }
@@ -60,7 +60,7 @@ public class ASwitchServiceImpl implements ASwitchService {
     public void removeFlows(List<ASwitchFlow> flows) {
         restTemplate.exchange("/flows", HttpMethod.DELETE,
                 new HttpEntity<>(flows, buildJsonHeaders()), String.class);
-        LOGGER.info("Removed flows: {}", flows.stream()
+        LOGGER.debug("Removed flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(Collectors.toList()));
     }
@@ -76,14 +76,14 @@ public class ASwitchServiceImpl implements ASwitchService {
     public void portsUp(List<Integer> ports) {
         restTemplate.exchange("/ports", HttpMethod.POST,
                 new HttpEntity<>(ports, buildJsonHeaders()), String.class);
-        LOGGER.info("Brought up ports: {}", ports);
+        LOGGER.debug("Brought up ports: {}", ports);
     }
 
     @Override
     public void portsDown(List<Integer> ports) {
         restTemplate.exchange("/ports", HttpMethod.DELETE,
                 new HttpEntity<>(ports, buildJsonHeaders()), String.class);
-        LOGGER.info("Brought down ports: {}", ports);
+        LOGGER.debug("Brought down ports: {}", ports);
     }
 
     @Override

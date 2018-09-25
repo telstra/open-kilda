@@ -12,7 +12,7 @@ participant Floodlight
 
 participant Switch
 
-Client -> Northbound : GET /switches/{switch-id}/port_desc
+Client -> Northbound : GET /switches/{switch-id}/ports
 
 activate Northbound
 Northbound -> kilda.speaker: CommandMessage\nDumpSwitchPortsDescriptionRequest
@@ -21,6 +21,7 @@ kilda.speaker -> Floodlight: CommandMessage\nDumpSwitchPortsDescriptionRequest
 activate Floodlight
 Floodlight -> Switch: Get switch information
 Switch -> Floodlight: IOFSwitch
+
 alt normal flow
     Floodlight -> kilda.northbound: InfoData\nSwitchPortsDescription
     kilda.northbound -> Northbound: InfoData\nSwitchPortsDescription

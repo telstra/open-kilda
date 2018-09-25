@@ -38,6 +38,14 @@ public class StatusEntity extends BaseEntity {
 
     @Column(name = "status", nullable = false)
     private String status;
+    
+    /* (non-Javadoc)
+     * @see org.openkilda.entity.BaseEntity#id()
+     */
+    @Override
+    public Long id() {
+        return statusId != null ? Long.valueOf(statusId) : null;
+    }
 
     public Integer getStatusId() {
         return statusId;

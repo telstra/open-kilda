@@ -1,13 +1,14 @@
 package org.openkilda.functionaltests.helpers
 
-import groovy.util.logging.Slf4j
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.tools.IslUtils
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
@@ -21,7 +22,7 @@ class PathHelper {
     @Autowired
     NorthboundService northbound
     @Autowired
-    Database db
+    IslUtils islUtils
 
     /**
      * Selects ISL that is present only in less preferable path and is not present in more preferable one. Then
@@ -46,7 +47,7 @@ class PathHelper {
 
     /**
      * Get list of ISLs that are involved in given path.
-     * Note: will only return one-way isls. You'll have to reverse them yourself if required via IslUtils.
+     * Note: will only return forward-way isls. You'll have to reverse them yourself if required via IslUtils.
      * Note2: will try to search for an ISL in given topology.yaml. If not found, will create a new ISL object
      * with 0 bandwidth and null a-switch (which may not be the actual value)
      * Note3: poorly handle situation if switchId is not present in toppology.yaml at all (will create
@@ -63,13 +64,14 @@ class PathHelper {
         for (int i = 1; i < path.size(); i += 2) {
             def src = path[i - 1]
             def dst = path[i]
-            def involvedIsl = topology.isls.find {
-                (it.srcSwitch?.dpId == src.switchId && it?.srcPort == src.portNo &&
-                        it.dstPort == dst.portNo && it.dstSwitch.dpId == dst.switchId) ||
-                        (it.dstSwitch?.dpId == src.switchId && it?.dstPort == src.portNo &&
-                                it.srcPort == dst.portNo && it.srcSwitch.dpId == dst.switchId)
-            } ?: Isl.factory(topology.switches.find { it.dpId == src.switchId },
-                    src.portNo, topology.switches.find { it.dpId == dst.switchId }, dst.portNo, 0, null)
+            def matchingIsl = {
+                it.srcSwitch?.dpId == src.switchId && it?.srcPort == src.portNo &&
+                        it.dstPort == dst.portNo && it.dstSwitch.dpId == dst.switchId
+            }
+            def involvedIsl = topology.isls.find(matchingIsl) ?:
+                    topology.isls.collect { islUtils.reverseIsl(it) }.find(matchingIsl) ?:
+                            Isl.factory(topology.switches.find { it.dpId == src.switchId },
+                                    src.portNo, topology.switches.find { it.dpId == dst.switchId }, dst.portNo, 0, null)
             involvedIsls << involvedIsl
         }
         return involvedIsls
@@ -96,22 +98,12 @@ class PathHelper {
     }
 
     /**
-     * Get cost of a certain ISL from DB.
-     *
-     * @param isl ISL for which cost should be retrieved
-     * @return ISL cost
-     */
-    int getCost(Isl isl) {
-        return db.getIslCost(isl)
-    }
-
-    /**
      * Get total cost of all ISLs that are involved in a given path.
      *
      * @param path Path in List<PathNode> representation
      * @return ISLs cost
      */
     int getCost(List<PathNode> path) {
-        return getInvolvedIsls(path).sum { getCost(it) }
+        return getInvolvedIsls(path).sum { islUtils.getIslCost(it) } as int
     }
 }

@@ -165,6 +165,9 @@ public abstract class IConstants {
         public static final String FW_FLOW_RESYNC = "fw_flow_resync";
         
         public static final String SW_PORT_CONFIG = "sw_port_config";
+        
+        public static final String STORE_SETTING = "store_setting";
+        
     }
 
     public final class Settings {
@@ -212,7 +215,8 @@ public abstract class IConstants {
         
         public static final String SWITCH_LIST = "switch/switch";
         
-        public static final String USERMANAGEMENT = "usermanagement/usermanagement";
+        public static final String USER_MANAGEMENT = "usermanagement/usermanagement";
+        public static final String STORE_SETTING = "storesetting/storesetting";
         
         public static final String TWO_FA_GENERATOR = "login/twofa";
         
@@ -232,6 +236,10 @@ public abstract class IConstants {
         PEN_FLOW_INGRESS_PACKETS("Flow_ingress_packets", "pen.flow.ingress.packets"),
 
         PEN_FLOW_RAW_PACKETS("Flow_raw_packets", "pen.flow.raw.packets"),
+        
+        PEN_FLOW_RAW_BITS("Flow_raw_bits", "pen.flow.raw.bits"),
+        
+        PEN_FLOW_RAW_BYTES("Flow_raw_bytes", "pen.flow.raw.bytes"),
 
         PEN_FLOW_TABLEID("Flow_tableid", "pen.flow.tableid"),
 
@@ -338,7 +346,23 @@ public abstract class IConstants {
             }
             return list;
         }
-
+        
+        /**
+         * Flow raw value.
+         *
+         * @param tag the tag
+         * @return the list
+         */
+        public static List<String> flowRawValue(String tag) {
+            List<String> list = new ArrayList<String>();
+            tag = "Flow_raw_" + tag;
+            for (Metrics metric : values()) {
+                if (metric.getTag().equalsIgnoreCase(tag)) {
+                    list.add(metric.getDisplayTag());
+                }
+            }
+            return list;
+        }
         /**
          * Switch value.
          *

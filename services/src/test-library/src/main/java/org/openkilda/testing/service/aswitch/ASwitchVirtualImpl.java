@@ -42,7 +42,7 @@ public class ASwitchVirtualImpl implements ASwitchService {
     @Override
     public void addFlows(List<ASwitchFlow> flows) {
         flows.forEach(flow -> mininet.addFlow(ASWITCH_NAME, flow.getInPort(), flow.getOutPort()));
-        log.info("Added flows: {}", flows.stream()
+        log.debug("Added flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(Collectors.toList()));
     }
@@ -50,7 +50,7 @@ public class ASwitchVirtualImpl implements ASwitchService {
     @Override
     public void removeFlows(List<ASwitchFlow> flows) {
         flows.forEach(flow -> mininet.removeFlow(ASWITCH_NAME, flow.getInPort()));
-        log.info("Removed flows: {}", flows.stream()
+        log.debug("Removed flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(Collectors.toList()));
     }

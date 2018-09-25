@@ -44,6 +44,10 @@ function callValidateFlow(flow_id){
 				$('#validate_json').html(responseData)
 				$('#validate_flow_response').show();
 				$('#validate_json_loader').hide();
+		},function(error){
+			$('#validate_json').html([])
+			$('#validate_flow_response').show();
+			$('#validate_json_loader').hide();
 		})
 }
 
@@ -57,6 +61,10 @@ function callResyncFlow(flow_id){
 				$('#resync_json').html(responseData);
 				$('#resync_flow_response').show();
 				$('#resync_json_loader').hide();
+		},function(error){
+			$('#validate_json').html([])
+			$('#validate_flow_response').show();
+			$('#validate_json_loader').hide();
 		})
 }
 function showFlowData(obj) {

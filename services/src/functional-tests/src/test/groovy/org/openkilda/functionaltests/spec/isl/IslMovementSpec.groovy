@@ -1,4 +1,9 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.isl
+
+import static org.junit.Assume.assumeNotNull
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -7,12 +12,10 @@ import org.openkilda.testing.service.aswitch.ASwitchService
 import org.openkilda.testing.service.aswitch.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
+
 import org.springframework.beans.factory.annotation.Autowired
 
-import static org.junit.Assume.assumeNotNull
-import static org.openkilda.messaging.info.event.IslChangeType.*
-
-class IslMovingSpec extends BaseSpecification {
+class IslMovementSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
@@ -30,7 +33,9 @@ class IslMovingSpec extends BaseSpecification {
         assert isl
 
         and: "A non-connected a-switch link"
-        def notConnectedIsl = topology.notConnectedIsls.first()
+        def notConnectedIsl = topology.notConnectedIsls.find {
+            it.srcSwitch != isl.srcSwitch && it.srcSwitch != isl.dstSwitch
+        }
 
         when: "Replug one end of connected link to the not connected one"
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)

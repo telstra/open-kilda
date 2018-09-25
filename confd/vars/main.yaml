@@ -2,6 +2,7 @@
 # defaults file for templates
 kilda_environment_naming_prefix: ""
 kilda_environment_role: "devel"
+kilda_test_profile: "virtual"
 
 kilda_neo4j_host: "neo4j.pendev"
 kilda_neo4j_bolt_port: "7687"
@@ -46,6 +47,9 @@ kilda_topology_engine_rest_password: "kilda"
 kilda_kafka_topic_flow: "kilda.flow"
 kilda_kafka_topic_topo_cache: "kilda.topo.cache"
 kilda_kafka_topic_speaker: "kilda.speaker"
+kilda_kafka_topic_speaker_disco: "kilda.speaker.disco"
+kilda_kafka_topic_speaker_flow: "kilda.speaker.flow"
+kilda_kafka_topic_speaker_flow_ping: "kilda.speaker.flow.ping"
 kilda_kafka_topic_topo_eng: "kilda.topo.eng"
 kilda_kafka_topic_northbound: "kilda.northbound"
 

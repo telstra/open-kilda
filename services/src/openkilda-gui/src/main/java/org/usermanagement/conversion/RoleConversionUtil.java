@@ -53,10 +53,6 @@ public final class RoleConversionUtil {
         RoleEntity roleEntity = new RoleEntity();
         roleEntity.setName(role.getName());
         roleEntity.setPermissions(permissionEntitySet);
-        roleEntity.setCreatedBy(1L);
-        roleEntity.setCreatedDate(new Date());
-        roleEntity.setUpdatedBy(1L);
-        roleEntity.setUpdatedDate(new Date());
         roleEntity.setDescription(role.getDescription());
 
         StatusEntity statusEntity = Status.ACTIVE.getStatusEntity();

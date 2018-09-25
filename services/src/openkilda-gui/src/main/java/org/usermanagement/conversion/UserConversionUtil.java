@@ -54,16 +54,12 @@ public final class UserConversionUtil {
 
         UserEntity userEntity = new UserEntity();
 
-        userEntity.setUsername(userInfo.getUsername());
+        userEntity.setUsername(userInfo.getUsername().toLowerCase());
         userEntity.setPassword(StringUtil.encodeString(password));
-        userEntity.setEmail(userInfo.getEmail());
+        userEntity.setEmail(userInfo.getEmail().toLowerCase());
         userEntity.setName(userInfo.getName());
         userEntity.setRoles(roleEntities);
         userEntity.setActiveFlag(true);
-        userEntity.setCreatedBy(1L);
-        userEntity.setCreatedDate(new Date());
-        userEntity.setUpdatedBy(1L);
-        userEntity.setUpdatedDate(new Date());
         userEntity.setLoginTime(new Timestamp(System.currentTimeMillis()));
         userEntity.setLogoutTime(new Timestamp(System.currentTimeMillis()));
         userEntity.setIsAuthorized(true);
@@ -83,8 +79,8 @@ public final class UserConversionUtil {
     public static UserInfo toUserInfo(final UserEntity userEntity) {
         UserInfo userInfo = new UserInfo();
         userInfo.setName(userEntity.getName());
-        userInfo.setEmail(userEntity.getEmail());
-        userInfo.setUsername(userEntity.getUsername());
+        userInfo.setEmail(userEntity.getEmail().toLowerCase());
+        userInfo.setUsername(userEntity.getUsername().toLowerCase());
         userInfo.setIs2FaEnabled(userEntity.getIs2FaEnabled());
         userInfo.setStatus(userEntity.getStatusEntity().getStatus());
         userInfo.setUserId(userEntity.getUserId());

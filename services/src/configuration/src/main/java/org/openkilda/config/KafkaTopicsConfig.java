@@ -65,6 +65,21 @@ public interface KafkaTopicsConfig {
     @Default("kilda.speaker")
     String getSpeakerTopic();
 
+    @Key("speaker.disco")
+    @FallbackKey("kafka.speaker.disco")
+    @Default("kilda.speaker.disco")
+    String getSpeakerDiscoTopic();
+
+    @Key("speaker.flow")
+    @FallbackKey("kafka.speaker.flow")
+    @Default("kilda.speaker.flow")
+    String getSpeakerFlowTopic();
+
+    @Key("speaker.flow.ping")
+    @FallbackKey("kafka.speaker.flow.ping")
+    @Default("kilda.speaker.flow.ping")
+    String getSpeakerFlowPingTopic();
+
     @Key("ping")
     @Default("kilda.ping")
     String getPingTopic();

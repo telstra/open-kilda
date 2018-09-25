@@ -39,6 +39,10 @@ public interface OFEventWfmTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getSpeakerTopic();
     }
 
+    default String getKafkaSpeakerDiscoTopic() {
+        return getKafkaTopics().getSpeakerDiscoTopic();
+    }
+
     @Configuration
     @Key("discovery")
     interface DiscoveryConfig {

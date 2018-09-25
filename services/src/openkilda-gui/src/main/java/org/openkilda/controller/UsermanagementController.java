@@ -41,6 +41,6 @@ public class UsermanagementController extends BaseController {
      */
     @RequestMapping
     public ModelAndView usermanagement(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.USERMANAGEMENT);
+        return validateAndRedirect(request, IConstants.View.USER_MANAGEMENT);
     }
 }

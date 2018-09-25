@@ -31,8 +31,8 @@ public interface FlowTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoCacheTopic();
     }
 
-    default String getKafkaSpeakerTopic() {
-        return getKafkaTopics().getSpeakerTopic();
+    default String getKafkaSpeakerFlowTopic() {
+        return getKafkaTopics().getSpeakerFlowTopic();
     }
 
     default String getKafkaNorthboundTopic() {

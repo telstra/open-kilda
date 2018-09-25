@@ -28,6 +28,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.ASwitch;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.aswitch.ASwitchService;
 import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
+import org.openkilda.testing.service.database.Database;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
 import net.jodah.failsafe.Failsafe;
@@ -50,6 +51,9 @@ public class IslUtils {
 
     @Autowired
     private ASwitchService aswitchService;
+
+    @Autowired
+    private Database db;
 
     /**
      * Waits until all passed isls have the specified status. Fails after defined timeout.
@@ -107,6 +111,9 @@ public class IslUtils {
      * @param isl isl to reverse
      */
     public Isl reverseIsl(Isl isl) {
+        if (isl.getDstSwitch() == null) {
+            return isl; //don't reverse not connected ISL
+        }
         ASwitch reversedAsw = null;
         if (isl.getAswitch() != null) {
             reversedAsw = ASwitch.factory(isl.getAswitch().getOutPort(), isl.getAswitch().getInPort());
@@ -135,9 +142,11 @@ public class IslUtils {
 
         //change flow on aSwitch
         //delete old flow
-        aswitchService.removeFlows(Arrays.asList(
-                new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
-                new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
+        if (srcASwitch.getInPort() != null && srcASwitch.getOutPort() != null) {
+            aswitchService.removeFlows(Arrays.asList(
+                    new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
+                    new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
+        }
         //create new flow
         ASwitchFlow aswFlowForward = new ASwitchFlow(srcASwitch.getInPort(),
                 plugIntoSource ? dstASwitch.getInPort() : dstASwitch.getOutPort());
@@ -154,6 +163,16 @@ public class IslUtils {
                 replugSource ? srcIsl.getDstPort() : (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()),
                 0,
                 new TopologyDefinition.ASwitch(aswFlowForward.getInPort(), aswFlowForward.getOutPort()));
+    }
+
+    /**
+     * Get cost of a certain ISL from DB.
+     *
+     * @param isl ISL for which cost should be retrieved
+     * @return ISL cost
+     */
+    public int getIslCost(Isl isl) {
+        return db.getIslCost(isl);
     }
 
     private RetryPolicy retryPolicy() {

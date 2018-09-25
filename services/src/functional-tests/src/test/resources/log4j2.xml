@@ -4,16 +4,23 @@
         <Console name="STDOUT" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
         </Console>
-        <File name="File" fileName="target/logs/request_logs.log">
+        <File name="RequestLogsFile" fileName="target/logs/request_logs.log">
+            <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
+        </File>
+        <File name="KildaLogFile" fileName="target/logs/logs.log">
             <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
         </File>
     </Appenders>
     <Loggers>
-        <Logger name="org.openkilda.testing.tools.LoggingRequestInterceptor" level="DEBUG" additivity="false">
-            <AppenderRef ref="File"/>
+        <Logger name="org.openkilda" level="DEBUG" additivity="false">
+            <AppenderRef ref="KildaLogFile" level="DEBUG"/>
+            <AppenderRef ref="STDOUT" level="INFO"/>
         </Logger>
-        <Root level="INFO">
-            <AppenderRef ref="STDOUT"/>
+        <Logger name="org.openkilda.testing.tools.LoggingRequestInterceptor" level="DEBUG" additivity="false">
+            <AppenderRef ref="RequestLogsFile" level="DEBUG"/>
+        </Logger>
+        <Root>
+            <AppenderRef ref="STDOUT" level="ERROR"/>
         </Root>
     </Loggers>
 </Configuration>

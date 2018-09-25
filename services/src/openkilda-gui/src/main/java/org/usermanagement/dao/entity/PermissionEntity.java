@@ -66,6 +66,14 @@ public class PermissionEntity extends BaseEntity implements Serializable {
             @JoinColumn(name = "role_id") })
     private Set<RoleEntity> roles = new HashSet<RoleEntity>();
 
+    /* (non-Javadoc)
+     * @see org.openkilda.entity.BaseEntity#id()
+     */
+    @Override
+    public Long id() {
+        return permissionId;
+    }
+    
     public Long getPermissionId() {
         return permissionId;
     }

@@ -63,6 +63,14 @@ public class RoleEntity extends BaseEntity implements Serializable {
     @JoinTable(name = "user_role", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
             @JoinColumn(name = "user_id") })
     private Set<UserEntity> users = new HashSet<UserEntity>();
+    
+    /* (non-Javadoc)
+     * @see org.openkilda.entity.BaseEntity#id()
+     */
+    @Override
+    public Long id() {
+        return roleId;
+    }
 
     /**
      * Gets the role id.

@@ -246,7 +246,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         topology.setBolt(SpeakerEncoder.BOLT_ID, bolt, scaleFactor)
                 .shuffleGrouping(TimeoutManager.BOLT_ID, TimeoutManager.STREAM_REQUEST_ID);
 
-        KafkaBolt output = createKafkaBolt(topologyConfig.getKafkaSpeakerTopic());
+        KafkaBolt output = createKafkaBolt(topologyConfig.getKafkaSpeakerFlowPingTopic());
         topology.setBolt(ComponentId.SPEAKER_OUTPUT.toString(), output, scaleFactor)
                 .shuffleGrouping(SpeakerEncoder.BOLT_ID);
     }

@@ -8,9 +8,11 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 
@@ -28,6 +30,8 @@ class BandwidthSpec extends BaseSpecification {
     PathHelper pathHelper
     @Autowired
     IslUtils islUtils
+    @Autowired
+    Database db
 
     def "Available bandwidth on ISLs changes respectively when creating/updating a flow"() {
         given: "Two active not neighboring switches"
@@ -86,8 +90,8 @@ class BandwidthSpec extends BaseSpecification {
             }
         }
 
-        cleanup: "Delete created flow"
-        flow?.id && northboundService.deleteFlow(flow.id)
+        and: "Delete created flow"
+        northboundService.deleteFlow(flow.id)
     }
 
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
@@ -132,10 +136,8 @@ class BandwidthSpec extends BaseSpecification {
         def flow2Path = PathHelper.convert(northboundService.getFlowPath(flow2.id))
         pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
 
-        cleanup: "Delete created flows and link props"
-        flow1?.id && northboundService.deleteFlow(flow1.id)
-        flow2?.id && northboundService.deleteFlow(flow2.id)
-        northboundService.deleteLinkProps(northboundService.getAllLinkProps())
+        and: "Delete created flows and link props"
+        [flow1.id, flow2.id].every { northboundService.deleteFlow(it) }
     }
 
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
@@ -184,7 +186,7 @@ class BandwidthSpec extends BaseSpecification {
 
         when: "Update a flow with a bandwidth that exceeds available bandwidth on ISL"
         def possibleFlowPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
-        def involvedBandwidths = []
+        List<Long> involvedBandwidths = []
 
         possibleFlowPaths.each { path ->
             pathHelper.getInvolvedIsls(path).each { link ->
@@ -192,15 +194,15 @@ class BandwidthSpec extends BaseSpecification {
             }
         }
 
-        flow.maximumBandwidth = involvedBandwidths.max() + 1
+        flow.maximumBandwidth += involvedBandwidths.max() + 1
         northboundService.updateFlow(flow.id, flow)
 
         then: "Flow is not updated because flow path should not be found"
         def e = thrown(HttpClientErrorException)
         e.rawStatusCode == 404
 
-        cleanup: "Delete created flow"
-        flow?.id && northboundService.deleteFlow(flow.id)
+        and: "Delete created flow"
+        northboundService.deleteFlow(flow.id)
     }
 
     def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth = true"() {
@@ -228,8 +230,8 @@ class BandwidthSpec extends BaseSpecification {
         Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE
 
-        cleanup: "Delete created flow"
-        flow?.id && northboundService.deleteFlow(flow.id)
+        and: "Delete created flow"
+        northboundService.deleteFlow(flow.id)
     }
 
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
@@ -269,7 +271,12 @@ class BandwidthSpec extends BaseSpecification {
         def flowPathUpdated = PathHelper.convert(northboundService.getFlowPath(flow.id))
         flowPathUpdated == flowPath
 
-        cleanup: "Delete created flow"
-        flow?.id && northboundService.deleteFlow(flow.id)
+        and: "Delete created flow"
+        northboundService.deleteFlow(flow.id)
+    }
+
+    def cleanup() {
+        northboundService.deleteLinkProps(northboundService.getAllLinkProps())
+        db.resetCosts()
     }
 }
