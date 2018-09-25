@@ -6,12 +6,15 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.topology.TopologyEngineService
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 
 class LinkSpec extends BaseSpecification {
@@ -24,8 +27,15 @@ class LinkSpec extends BaseSpecification {
     PathHelper pathHelper
     @Autowired
     NorthboundService northboundService
+    @Autowired
+    TopologyEngineService topologyEngineService
 
-    def "Get all flows going through a particular existing link"() {
+    @Value('${reroute.delay}')
+    int rerouteDelay
+    @Value('${discovery.interval}')
+    int discoveryInterval
+
+    def "Get all flows (UP/DOWN) going through a particular existing link"() {
         given: "Two active not neighboring switches"
         def switches = topology.getActiveSwitches()
         def allLinks = northboundService.getAllLinks()
@@ -67,19 +77,60 @@ class LinkSpec extends BaseSpecification {
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow4.id).status == FlowState.UP }
 
         when: "Get all flows going through the link from source switch to 'internal' switch"
-        def isl = pathHelper.getInvolvedIsls(PathHelper.convert(northboundService.getFlowPath(flow3.id))).first()
-        def linkFlows = northboundService.getLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
+        def islToInternal = pathHelper.getInvolvedIsls(
+                PathHelper.convert(northboundService.getFlowPath(flow3.id))).first()
+        def linkFlows = northboundService.getLinkFlows(islToInternal.srcSwitch.dpId, islToInternal.srcPort,
+                islToInternal.dstSwitch.dpId, islToInternal.dstPort)
 
         then: "All created flows are in the response list"
         [flow1, flow2, flow3, flow4].every { it in linkFlows }
 
         when: "Get all flows going through the link from some 'internal' switch to destination switch"
-        isl = pathHelper.getInvolvedIsls(PathHelper.convert(northboundService.getFlowPath(flow1.id))).last()
-        linkFlows = northboundService.getLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
+        def islFromInternal = pathHelper.getInvolvedIsls(
+                PathHelper.convert(northboundService.getFlowPath(flow1.id))).last()
+        linkFlows = northboundService.getLinkFlows(islFromInternal.srcSwitch.dpId, islFromInternal.srcPort,
+                islFromInternal.dstSwitch.dpId, islFromInternal.dstPort)
 
-        then: "Only the first and second flows are the in response list"
+        then: "Only the first and second flows are in the response list"
         [flow1, flow2].every { it in linkFlows }
         [flow3, flow4].every { !(it in linkFlows) }
+
+        when: "Bring all ports down on source switch that are involved in current and alternative paths"
+        List<List<PathNode>> possibleFlowPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        List<PathNode> broughtDownPorts = []
+        possibleFlowPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northboundService.portDown(src.switchId, src.portNo)
+        }
+
+        then: "All flows go to 'Down' status"
+        Wrappers.wait(rerouteDelay + 2) {
+            [flow1, flow2, flow3, flow4].every { northboundService.getFlowStatus(it.id).status == FlowState.DOWN }
+        }
+
+        when: "Get all flows going through the link from source switch to 'internal' switch"
+        linkFlows = northboundService.getLinkFlows(islToInternal.srcSwitch.dpId, islToInternal.srcPort,
+                islToInternal.dstSwitch.dpId, islToInternal.dstPort)
+
+        then: "All created flows are in the response list"
+        [flow1, flow2, flow3, flow4].every { it in linkFlows }
+
+        when: "Get all flows going through the link from 'internal' switch to destination switch"
+        linkFlows = northboundService.getLinkFlows(islFromInternal.srcSwitch.dpId, islFromInternal.srcPort,
+                islFromInternal.dstSwitch.dpId, islFromInternal.dstPort)
+
+        then: "Only the first and second flows are in the response list"
+        [flow1, flow2].every { it in linkFlows }
+        [flow3, flow4].every { !(it in linkFlows) }
+
+        when: "Bring ports up"
+        broughtDownPorts.each { northboundService.portUp(it.switchId, it.portNo) }
+
+        then: "All flows go to 'Up' status"
+        Wrappers.wait(rerouteDelay + discoveryInterval + 5) {
+            [flow1, flow2, flow3, flow4].every { northboundService.getFlowStatus(flow1.id).status == FlowState.UP }
+        }
 
         and: "Delete all created flows"
         [flow1, flow2, flow3, flow4].every { northboundService.deleteFlow(it.id) }
