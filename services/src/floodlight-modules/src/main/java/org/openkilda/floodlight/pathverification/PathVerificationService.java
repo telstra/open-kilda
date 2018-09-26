@@ -310,9 +310,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
             LLDPTLV dpidTlv = new LLDPTLV().setType((byte) 127).setLength((short) dpidTlvValue.length)
                     .setValue(dpidTlvValue);
-            vp.getOptionalTLVList().add(dpidTlv);
+            vp.getOptionalTlvList().add(dpidTlv);
             // Add the controller identifier to the TLV value.
-            //    vp.getOptionalTLVList().add(controllerTLV);
+            //    vp.getOptionalTlvList().add(controllerTLV);
 
             // Add T0 based on format from Floodlight LLDP
             long time = System.currentTimeMillis();
@@ -326,7 +326,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             LLDPTLV timestampTlv = new LLDPTLV().setType((byte) 127)
                     .setLength((short) timestampTlvValue.length).setValue(timestampTlvValue);
 
-            vp.getOptionalTLVList().add(timestampTlv);
+            vp.getOptionalTlvList().add(timestampTlv);
 
             // Type
             byte[] typeTlvValue = ByteBuffer.allocate(Integer.SIZE / 8 + 4).put((byte) 0x00)
@@ -335,7 +335,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     .putInt(PathType.ISL.ordinal()).array();
             LLDPTLV typeTlv = new LLDPTLV().setType((byte) 127)
                     .setLength((short) typeTlvValue.length).setValue(typeTlvValue);
-            vp.getOptionalTLVList().add(typeTlv);
+            vp.getOptionalTlvList().add(typeTlv);
 
             if (sign) {
                 String token = JWT.create()
@@ -352,7 +352,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 LLDPTLV tokenTlv = new LLDPTLV().setType((byte) 127)
                         .setLength((short) tokenTlvValue.length).setValue(tokenTlvValue);
 
-                vp.getOptionalTLVList().add(tokenTlv);
+                vp.getOptionalTlvList().add(tokenTlv);
             }
 
             MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
@@ -436,7 +436,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             int pathOrdinal = 10;
             IOFSwitch remoteSwitch = null;
             boolean signed = false;
-            for (LLDPTLV lldptlv : verificationPacket.getOptionalTLVList()) {
+            for (LLDPTLV lldptlv : verificationPacket.getOptionalTlvList()) {
                 if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
