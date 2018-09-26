@@ -15,13 +15,14 @@
 
 package org.openkilda.northbound.controller;
 
+import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.northbound.service.HealthCheckService;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.northbound.service.HealthCheckService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
