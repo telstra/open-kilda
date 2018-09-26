@@ -38,9 +38,9 @@ public interface LockKeeperService {
 
     void reviveSwitch(String switchId, String controllerAddress);
 
-    void stopController();
+    void stopFloodlight();
 
-    void startController();
+    void startFloodlight();
 
-    void restartController();
+    void restartFloodlight();
 }

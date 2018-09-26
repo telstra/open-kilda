@@ -103,7 +103,7 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
     }
 
     @Override
-    public void stopController() {
+    public void stopFloodlight() {
         try {
             dockerClient.stopContainer(floodlight.id(), 5);
         } catch (DockerException | InterruptedException e) {
@@ -112,7 +112,7 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
     }
 
     @Override
-    public void startController() {
+    public void startFloodlight() {
         try {
             dockerClient.startContainer(floodlight.id());
         } catch (DockerException | InterruptedException e) {
@@ -121,7 +121,7 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
     }
 
     @Override
-    public void restartController() {
+    public void restartFloodlight() {
         try {
             dockerClient.restartContainer(floodlight.id(), 5);
         } catch (DockerException | InterruptedException e) {
