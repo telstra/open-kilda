@@ -47,8 +47,4 @@ public interface AbstractTopologyConfig {
     default String getKafkaCtrlTopic() {
         return getKafkaTopics().getCtrlTopic();
     }
-
-    default String getKafkaHealthCheckTopic() {
-        return getKafkaTopics().getHealthCheckTopic();
-    }
 }

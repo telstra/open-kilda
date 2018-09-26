@@ -71,7 +71,7 @@ public class HealthCheckController {
         logger.debug("getHealthCheck");
 
         HealthCheck healthCheck = healthCheckService.getHealthCheck();
-        HttpStatus status = healthCheck.hasNonOperational() ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.OK;
+        HttpStatus status = healthCheck.hasNonOperational() ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.OK;
 
         return new ResponseEntity<>(healthCheck, new HttpHeaders(), status);
     }

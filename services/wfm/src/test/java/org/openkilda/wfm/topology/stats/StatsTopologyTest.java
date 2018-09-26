@@ -49,7 +49,6 @@ import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.testing.FixedTuple;
 import org.apache.storm.testing.MockedSources;
-import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Values;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -317,10 +316,6 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         @Override
         protected void checkAndCreateTopic(String topic) {
-        }
-
-        @Override
-        protected void createHealthCheckHandler(TopologyBuilder builder, String prefix) {
         }
 
         @Override

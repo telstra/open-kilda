@@ -28,7 +28,6 @@ import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
-import org.openkilda.wfm.topology.utils.HealthCheckBolt;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -255,27 +254,6 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
             ref.getDeclarer().allGrouping(BOLT_ID_CTRL_ROUTE, route.registerEndpoint(boltId));
             outputSetup.shuffleGrouping(boltId, ref.getBolt().getCtrlStreamId());
         }
-    }
-
-    /**
-     * Creates health-check handler spout and bolts.
-     *
-     * @param builder topology builder
-     * @param prefix  component id
-     */
-    protected void createHealthCheckHandler(TopologyBuilder builder, String prefix) {
-        String healthCheckTopic = topologyConfig.getKafkaHealthCheckTopic();
-
-        checkAndCreateTopic(healthCheckTopic);
-
-        KafkaSpout healthCheckKafkaSpout = createKafkaSpout(healthCheckTopic, prefix);
-        builder.setSpout(prefix + "HealthCheckKafkaSpout", healthCheckKafkaSpout, 1);
-        HealthCheckBolt healthCheckBolt = new HealthCheckBolt(prefix, healthCheckTopic);
-        builder.setBolt(prefix + "HealthCheckBolt", healthCheckBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckKafkaSpout");
-        KafkaBolt healthCheckKafkaBolt = createKafkaBolt(healthCheckTopic);
-        builder.setBolt(prefix + "HealthCheckKafkaBolt", healthCheckKafkaBolt, 1)
-                .shuffleGrouping(prefix + "HealthCheckBolt", healthCheckTopic);
     }
 
     protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId, String topic) {
