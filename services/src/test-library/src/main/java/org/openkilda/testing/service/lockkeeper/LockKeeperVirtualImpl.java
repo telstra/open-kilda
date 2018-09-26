@@ -18,6 +18,7 @@ package org.openkilda.testing.service.lockkeeper;
 import static org.openkilda.testing.Constants.ASWITCH_NAME;
 import static org.openkilda.testing.Constants.VIRTUAL_CONTROLLER_ADDRESS;
 
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.mininet.Mininet;
@@ -90,15 +91,15 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
     }
 
     @Override
-    public void knockoutSwitch(String switchId) {
+    public void knockoutSwitch(SwitchId switchId) {
         mininet.knockoutSwitch(topology.getSwitches().stream()
-                .filter(sw -> sw.getDpId().toString().equals(switchId)).findFirst().get().getName());
+                .filter(sw -> sw.getDpId().equals(switchId)).findFirst().get().getName());
     }
 
     @Override
-    public void reviveSwitch(String switchId, String controllerAddress) {
+    public void reviveSwitch(SwitchId switchId) {
         String switchName = topology.getSwitches().stream()
-                .filter(sw -> sw.getDpId().toString().equals(switchId)).findFirst().get().getName();
+                .filter(sw -> sw.getDpId().equals(switchId)).findFirst().get().getName();
         mininet.revive(switchName, VIRTUAL_CONTROLLER_ADDRESS);
     }
 
