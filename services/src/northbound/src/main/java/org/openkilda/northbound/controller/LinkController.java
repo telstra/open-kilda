@@ -29,16 +29,16 @@ import io.swagger.annotations.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * REST Controller for links.
@@ -67,7 +67,7 @@ public class LinkController {
     @ApiOperation(value = "Get all links", response = LinkDto.class, responseContainer = "List")
     @GetMapping(path = "/links")
     @ResponseStatus(HttpStatus.OK)
-    public List<LinkDto> getLinks() {
+    public CompletableFuture<List<LinkDto>> getLinks() {
         return linkService.getLinks();
     }
 
@@ -78,14 +78,13 @@ public class LinkController {
      */
     @ApiOperation(value = "Get all link properties (static), based on arguments.", response = LinkPropsDto.class,
             responseContainer = "List")
-    @RequestMapping(path = "/link/props",
-            method = RequestMethod.GET,
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(path = "/link/props")
     @ResponseStatus(HttpStatus.OK)
-    public List<LinkPropsDto> getLinkProps(@RequestParam(value = "src_switch", required = false) SwitchId srcSwitch,
-                                           @RequestParam(value = "src_port", required = false) Integer srcPort,
-                                           @RequestParam(value = "dst_switch", required = false) SwitchId dstSwitch,
-                                           @RequestParam(value = "dst_port", required = false) Integer dstPort) {
+    public CompletableFuture<List<LinkPropsDto>> getLinkProps(
+            @RequestParam(value = "src_switch", required = false) SwitchId srcSwitch,
+            @RequestParam(value = "src_port", required = false) Integer srcPort,
+            @RequestParam(value = "dst_switch", required = false) SwitchId dstSwitch,
+            @RequestParam(value = "dst_port", required = false) Integer dstPort) {
         return linkService.getLinkProps(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
@@ -96,12 +95,9 @@ public class LinkController {
      * @return result of the processing.
      */
     @ApiOperation(value = "Create/Update link properties", response = BatchResults.class)
-    @RequestMapping(path = "/link/props",
-            method = RequestMethod.PUT,
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PutMapping(path = "/link/props")
     @ResponseStatus(HttpStatus.OK)
-    public BatchResults putLinkProps(
-            @RequestBody List<LinkPropsDto> keysAndProps) {
+    public CompletableFuture<BatchResults> putLinkProps(@RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.setLinkProps(keysAndProps);
     }
 
@@ -112,12 +108,9 @@ public class LinkController {
      * @return result of the processing.
      */
     @ApiOperation(value = "Delete link properties (static), based on arguments.", response = BatchResults.class)
-    @RequestMapping(path = "/link/props",
-            method = RequestMethod.DELETE,
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @DeleteMapping(path = "/link/props")
     @ResponseStatus(HttpStatus.OK)
-    public BatchResults delLinkProps(
-            @RequestBody List<LinkPropsDto> keysAndProps) {
+    public CompletableFuture<BatchResults> delLinkProps(@RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.delLinkProps(keysAndProps);
     }
 }

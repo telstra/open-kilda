@@ -93,12 +93,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
@@ -733,19 +731,16 @@ public class CrudBolt
 
         String requestId = message.getCorrelationId();
         if (flows.isEmpty()) {
-            Message response = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, null);
+            Message response = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, requestId,
+                    flows.size());
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
         } else {
-            Iterator<BidirectionalFlow> iterator = flows.iterator();
-            do {
-                BidirectionalFlow flow = iterator.next();
-                String nextRequestId = iterator.hasNext() ? UUID.randomUUID().toString() : null;
+            for (int i = 0; i < flows.size(); i++) {
+                Message response = new ChunkedInfoMessage(new FlowReadResponse(flows.get(i)),
+                        System.currentTimeMillis(), requestId, i, flows.size());
 
-                Message response = new ChunkedInfoMessage(
-                        new FlowReadResponse(flow), System.currentTimeMillis(), requestId, nextRequestId);
                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
-                requestId = nextRequestId;
-            } while (iterator.hasNext());
+            }
         }
     }
 

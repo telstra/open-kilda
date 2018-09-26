@@ -16,7 +16,7 @@
 package org.openkilda.northbound.service.impl;
 
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpointMask;
@@ -32,12 +32,10 @@ import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
-import org.openkilda.northbound.messaging.MessageConsumer;
-import org.openkilda.northbound.messaging.MessageProducer;
+import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
-import org.openkilda.northbound.utils.ResponseCollector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +45,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -73,112 +72,108 @@ public class LinkServiceImpl implements LinkService {
     private String nbworkerTopic;
 
     @Autowired
-    private MessageConsumer messageConsumer;
-    @Autowired
-    private MessageProducer messageProducer;
-
-    @Autowired
-    private ResponseCollector<IslInfoData> linksCollector;
-    @Autowired
-    private ResponseCollector<LinkPropsResponse> teLinksCollector;
-    @Autowired
-    private ResponseCollector<LinkPropsData> linksPropsCollector;
+    private MessagingChannel messagingChannel;
 
     @Override
-    public List<LinkDto> getLinks() {
+    public CompletableFuture<List<LinkDto>> getLinks() {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get links request received");
         CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
-        messageProducer.send(nbworkerTopic, request);
-        List<IslInfoData> links = linksCollector.getResult(correlationId);
 
-        return links.stream()
-                .map(linkMapper::toLinkDto)
-                .collect(Collectors.toList());
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(response -> response.stream()
+                        .map(IslInfoData.class::cast)
+                        .map(linkMapper::toLinkDto)
+                        .collect(Collectors.toList()));
     }
 
     @Override
-    public List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
+    public CompletableFuture<List<LinkPropsDto>> getLinkProps(SwitchId srcSwitch, Integer srcPort,
+                                                              SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get link properties request received");
         LinkPropsGet request = new LinkPropsGet(new NetworkEndpointMask(srcSwitch, srcPort),
                 new NetworkEndpointMask(dstSwitch, dstPort));
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
-        messageProducer.send(nbworkerTopic, message);
-        List<LinkPropsData> links = linksPropsCollector.getResult(correlationId);
 
-        logger.debug("Found link props items: {}", links.size());
-        return links.stream()
-                .map(linkPropsMapper::toDto)
-                .collect(Collectors.toList());
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(LinkPropsData.class::cast)
+                        .map(linkPropsMapper::toDto)
+                        .collect(Collectors.toList()));
     }
 
     @Override
-    public BatchResults setLinkProps(List<LinkPropsDto> linkPropsList) {
+    public CompletableFuture<BatchResults> setLinkProps(List<LinkPropsDto> linkPropsList) {
         logger.debug("Link props \"SET\" request received (consists of {} records)", linkPropsList.size());
 
-        ArrayList<String> pendingRequest = new ArrayList<>(linkPropsList.size());
-        ArrayList<String> errors = new ArrayList<>();
-        for (LinkPropsDto requestItem : linkPropsList) {
-            LinkProps linkProps;
-            try {
-                linkProps = linkPropsMapper.toLinkProps(requestItem);
-            } catch (IllegalArgumentException e) {
-                errors.add(e.getMessage());
-                continue;
+        List<String> errors = new ArrayList<>();
+
+        return CompletableFuture.supplyAsync(() -> {
+            List<CompletableFuture<InfoData>> pendingRequest = new ArrayList<>(linkPropsList.size());
+
+            for (LinkPropsDto requestItem : linkPropsList) {
+                LinkProps linkProps;
+                try {
+                    linkProps = linkPropsMapper.toLinkProps(requestItem);
+                } catch (IllegalArgumentException e) {
+                    errors.add(e.getMessage());
+                    continue;
+                }
+                LinkPropsPut teRequest = new LinkPropsPut(linkProps);
+                String requestId = idFactory.produceChained(RequestCorrelationId.getId());
+                CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
+
+                pendingRequest.add(messagingChannel.sendAndGet(topologyEngineTopic, message));
             }
-            LinkPropsPut teRequest = new LinkPropsPut(linkProps);
-            String requestId = idFactory.produceChained(RequestCorrelationId.getId());
-            CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
-            messageProducer.send(topologyEngineTopic, message);
 
-            pendingRequest.add(requestId);
-        }
+            return pendingRequest;
+        }).thenApply(pendingRequest -> {
+            int successCount = 0;
 
-        if (!errors.isEmpty()) {
-            return new BatchResults(errors.size(), 0, errors);
-        }
+            for (CompletableFuture<InfoData> request : pendingRequest) {
+                LinkPropsResponse response = (LinkPropsResponse) request.join();
 
-        int successCount = 0;
-        for (String requestId : pendingRequest) {
-            InfoMessage message = (InfoMessage) messageConsumer.poll(requestId);
-            LinkPropsResponse response = (LinkPropsResponse) message.getData();
-
-            if (response.isSuccess()) {
-                successCount += 1;
-            } else {
-                errors.add(response.getError());
-            }
-        }
-
-        return new BatchResults(linkPropsList.size() - successCount, successCount, errors);
-    }
-
-    @Override
-    public BatchResults delLinkProps(List<LinkPropsDto> linkPropsList) {
-        ArrayList<String> pendingChains = new ArrayList<>();
-        for (LinkPropsDto requestItem : linkPropsList) {
-            LinkPropsDrop teRequest = new LinkPropsDrop(linkPropsMapper.toLinkPropsMask(requestItem));
-            String requestId = idFactory.produceChained(RequestCorrelationId.getId());
-            CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
-            messageProducer.send(topologyEngineTopic, message);
-
-            pendingChains.add(requestId);
-        }
-
-        int successCount = 0;
-        ArrayList<String> errors = new ArrayList<>();
-        for (String requestId : pendingChains) {
-            List<LinkPropsResponse> responseBatch = teLinksCollector.getResult(requestId);
-            for (LinkPropsResponse response : responseBatch) {
                 if (response.isSuccess()) {
                     successCount += 1;
                 } else {
                     errors.add(response.getError());
                 }
             }
-        }
+            return new BatchResults(linkPropsList.size() - successCount, successCount, errors);
+        });
+    }
 
-        return new BatchResults(errors.size(), successCount, errors);
+    @Override
+    public CompletableFuture<BatchResults> delLinkProps(List<LinkPropsDto> linkPropsList) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<CompletableFuture<List<InfoData>>> pendingRequest = new ArrayList<>(linkPropsList.size());
+
+            for (LinkPropsDto requestItem : linkPropsList) {
+                LinkPropsDrop teRequest = new LinkPropsDrop(linkPropsMapper.toLinkPropsMask(requestItem));
+                String requestId = idFactory.produceChained(RequestCorrelationId.getId());
+                CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
+
+                pendingRequest.add(messagingChannel.sendAndGetChunked(topologyEngineTopic, message));
+            }
+            return pendingRequest;
+        }).thenApply(pendingRequests -> {
+            int successCount = 0;
+            ArrayList<String> errors = new ArrayList<>();
+            for (CompletableFuture<List<InfoData>> request : pendingRequests) {
+                List<InfoData> responseBatch = request.join();
+                for (InfoData response : responseBatch) {
+
+                    LinkPropsResponse linkProps = (LinkPropsResponse) response;
+                    if (linkProps.isSuccess()) {
+                        successCount += 1;
+                    } else {
+                        errors.add(linkProps.getError());
+                    }
+                }
+            }
+
+            return new BatchResults(errors.size(), successCount, errors);
+        });
     }
 }

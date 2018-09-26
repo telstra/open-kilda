@@ -13,13 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.utils;
+package org.openkilda.northbound.messaging.exception;
 
-import org.openkilda.messaging.info.event.SwitchInfoData;
+public class MessageNotSentException extends RuntimeException {
 
-public class ResponseCollectorTest {
+    public MessageNotSentException(String message) {
+        super(message);
+    }
 
-    private ResponseCollector<SwitchInfoData> target = new ResponseCollector<>();
-
-
+    public MessageNotSentException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

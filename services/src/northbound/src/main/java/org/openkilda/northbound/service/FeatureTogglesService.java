@@ -17,6 +17,8 @@ package org.openkilda.northbound.service;
 
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * Service to handle feature toggles requests.
  */
@@ -32,5 +34,5 @@ public interface FeatureTogglesService extends BasicService {
      * Method to get information about current feature toggles.
      * @return {@link FeatureTogglePayload} that shows what features are enabled and disabled.
      */
-    FeatureTogglePayload getFeatureTogglesState();
+    CompletableFuture<FeatureTogglePayload> getFeatureTogglesState();
 }
