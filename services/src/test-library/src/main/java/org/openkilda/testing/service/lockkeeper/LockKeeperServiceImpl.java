@@ -102,19 +102,19 @@ public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Override
     public void stopController() {
-        restTemplate.exchange("/floodlight/stop", HttpMethod.GET,
+        restTemplate.exchange("/floodlight/stop", HttpMethod.POST,
                 new HttpEntity(buildJsonHeaders()), String.class);
     }
 
     @Override
     public void startController() {
-        restTemplate.exchange("/floodlight/start", HttpMethod.GET,
+        restTemplate.exchange("/floodlight/start", HttpMethod.POST,
                 new HttpEntity(buildJsonHeaders()), String.class);
     }
 
     @Override
     public void restartController() {
-        restTemplate.exchange("/floodlight/restart", HttpMethod.GET,
+        restTemplate.exchange("/floodlight/restart", HttpMethod.POST,
                 new HttpEntity(buildJsonHeaders()), String.class);
     }
 
