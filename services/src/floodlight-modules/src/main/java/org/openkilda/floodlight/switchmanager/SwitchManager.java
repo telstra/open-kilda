@@ -32,23 +32,21 @@ import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -139,15 +137,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
     private static short OF10_VLAN_MASK = 0x0FFF;
 
-    private IFloodlightProviderService floodlightProvider;
     private IOFSwitchService ofSwitchService;
-    private IRestApiService restApiService;
     private IKafkaProducerService producerService;
+    private SwitchTrackingService switchTracking;
+
     private ConnectModeRequest.Mode connectMode;
-
-    private String topoDiscoTopic;
-
-    // IFloodlightModule Methods
 
     /**
      * Create an OFInstructionApplyActions which applies actions.
@@ -172,14 +166,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return ofFactory.actions().buildNiciraLegacyMeter().setMeterId(meterId).build();
     }
 
+    // IFloodlightModule Methods
+
     /**
      * {@inheritDoc}
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
-        services.add(ISwitchManager.class);
-        return services;
+        return ImmutableList.of(
+                ISwitchManager.class,
+                SwitchTrackingService.class);
     }
 
     /**
@@ -187,9 +183,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        Map<Class<? extends IFloodlightService>, IFloodlightService> map = new HashMap<>();
-        map.put(ISwitchManager.class, this);
-        return map;
+        return ImmutableMap.<Class<? extends IFloodlightService>, IFloodlightService>builder()
+                .put(ISwitchManager.class, this)
+                .put(SwitchTrackingService.class, new SwitchTrackingService())
+                .build();
     }
 
     /**
@@ -210,10 +207,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
-        restApiService = context.getServiceImpl(IRestApiService.class);
         producerService = context.getServiceImpl(IKafkaProducerService.class);
+        switchTracking = context.getServiceImpl(SwitchTrackingService.class);
 
         ConfigurationProvider provider = ConfigurationProvider.of(context, this);
         String connectModeProperty = provider.getConfiguration(SwitchManagerConfig.class).getConnectMode();
@@ -231,12 +227,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        logger.info("Starting {}", SwitchEventCollector.class.getCanonicalName());
+        logger.info("Module {} - start up", SwitchTrackingService.class.getName());
 
-        topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
+        context.getServiceImpl(SwitchTrackingService.class).setup(context);
 
-        restApiService.addRestletRoutable(new SwitchManagerWebRoutable());
-        floodlightProvider.addOFMessageListener(OFType.ERROR, this);
+        context.getServiceImpl(IFloodlightProviderService.class).addOFMessageListener(OFType.ERROR, this);
+        context.getServiceImpl(IRestApiService.class).addRestletRoutable(new SwitchManagerWebRoutable());
     }
 
     /**
@@ -267,6 +263,25 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     // ISwitchManager Methods
+
+    @Override
+    public void activate(DatapathId dpid) throws SwitchOperationException {
+        if (connectMode == ConnectModeRequest.Mode.SAFE) {
+            // the bulk of work below is done as part of the safe protocol
+            startSafeMode(dpid);
+            return;
+        }
+
+        if (connectMode == ConnectModeRequest.Mode.AUTO) {
+            installDefaultRules(dpid);
+        }
+        switchTracking.completeSwitchActivation(dpid);
+    }
+
+    @Override
+    public void deactivate(DatapathId dpid) {
+        stopSafeMode(dpid);
+    }
 
     /**
      * {@inheritDoc}
@@ -1220,14 +1235,36 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      *
      * @param  dpId switch identifier
      * @return open flow switch descriptor
-     * @throws SwitchOperationException switch operation exception
+     * @throws SwitchNotFoundException switch operation exception
      */
-    private IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchNotFoundException {
-        IOFSwitch swInfo = ofSwitchService.getSwitch(dpId);
-        if (swInfo == null) {
+    @Override
+    public IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchNotFoundException {
+        IOFSwitch sw = ofSwitchService.getActiveSwitch(dpId);
+        if (sw == null) {
             throw new SwitchNotFoundException(dpId);
         }
-        return swInfo;
+        return sw;
+    }
+
+    @Override
+    public List<OFPortDesc> getEnabledPhysicalPorts(DatapathId dpId) throws SwitchNotFoundException {
+        return getPhysicalPorts(dpId).stream()
+                .filter(OFPortDesc::isEnabled)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OFPortDesc> getPhysicalPorts(DatapathId dpId) throws SwitchNotFoundException {
+        IOFSwitch sw = lookupSwitch(dpId);
+
+        final Collection<OFPortDesc> ports = sw.getPorts();
+        if (ports == null) {
+            return ImmutableList.of();
+        }
+
+        return ports.stream()
+                .filter(ISwitchManager::isPhysicalPort)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -1266,7 +1303,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // Used to filter out rules with low packet counts .. only test rules with more packets than this
         private static final int PACKET_COUNT_MIN = 5;
 
-        DatapathId dpid;
+        private final DatapathId dpid;
 
         /**
          * The time of data collections may be inconsistent .. so if we try to see whether the rate
@@ -1279,6 +1316,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         int dropRuleStage;
         int broadcastRuleStage;
         int unicastRuleStage;
+
+        SafeData(DatapathId dpid) {
+            this.dpid = dpid;
+        }
 
         void consumeData(long timestamp, List<OFFlowStatsEntry> flowEntries) {
             timestamps.add(timestamp);
@@ -1343,24 +1384,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private Map<DatapathId, SafeData> safeSwitches = new HashMap<>();
     private long lastRun = 0L;
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void startSafeMode(final DatapathId dpid) {
+    private void startSafeMode(final DatapathId dpid) {
         // Don't create a new object if one already exists .. ie, don't restart the process of
         // installing base rules.
-        if (!safeSwitches.containsKey(dpid)) {
-            SafeData safeData = safeSwitches.put(dpid, new SafeData());
-            safeData.dpid = dpid;
-        }
+        safeSwitches.computeIfAbsent(dpid, SafeData::new);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void stopSafeMode(final DatapathId dpid) {
+    private void stopSafeMode(final DatapathId dpid) {
         safeSwitches.remove(dpid);
     }
 
@@ -1464,8 +1494,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     // and that ports up.
                     logger.info("SAFE MODE: COMPLETED base rules for '{}' ", safeData.dpid);
                     IOFSwitch sw = lookupSwitch(safeData.dpid);
-                    sendSwitchActivate(sw);
-                    sendPortUpEvents(sw);
+                    switchTracking.completeSwitchActivation(sw.getId());
                     // WE ARE DONE!! Remove ourselves from the list.
                     values.remove(safeData);  // will be reflected in safeSwitches
                 }
@@ -1473,32 +1502,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 logger.error("Error while switch {} was in safe mode. Removing switch from safe "
                         + "mode and NOT SENDING ACTIVATION. \nERROR: {}", safeData.dpid, e);
                 values.remove(safeData);
-            }
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException {
-        Message message = SwitchEventCollector.buildSwitchMessage(sw, SwitchState.ACTIVATED);
-        producerService.sendMessageAndTrack(topoDiscoTopic, message);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException {
-        if (sw.getEnabledPortNumbers() != null) {
-            for (OFPort p : sw.getEnabledPortNumbers()) {
-                if (SwitchEventCollector.isPhysicalPort(p)) {
-                    producerService.sendMessageAndTrack(topoDiscoTopic,
-                            SwitchEventCollector.buildPortMessage(sw.getId(), p,
-                                    PortChangeType.UP));
-                }
             }
         }
     }

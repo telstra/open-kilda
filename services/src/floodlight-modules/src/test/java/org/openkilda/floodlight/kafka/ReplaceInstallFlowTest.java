@@ -32,8 +32,8 @@ import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
-import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchTrackingService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.CommandData;
@@ -101,7 +101,7 @@ public class ReplaceInstallFlowTest {
 
         context.addService(IOFSwitchService.class, ofSwitchService);
         context.addService(IRestApiService.class, null);
-        context.addService(SwitchEventCollector.class, null);
+        context.addService(SwitchTrackingService.class, null);
         context.addService(IKafkaProducerService.class, createMock(IKafkaProducerService.class));
         context.addService(IPathVerificationService.class, pathVerificationService);
         context.addService(ISwitchManager.class, switchManager);
@@ -302,7 +302,7 @@ public class ReplaceInstallFlowTest {
                               boolean needCheckReverseFlow, boolean needCheckReverseMeter) {
         IOFSwitch iofSwitch = createMock(IOFSwitch.class);
 
-        expect(ofSwitchService.getSwitch(anyObject(DatapathId.class))).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(anyObject(DatapathId.class))).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
 

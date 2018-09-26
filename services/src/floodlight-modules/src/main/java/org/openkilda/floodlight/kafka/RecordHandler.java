@@ -26,9 +26,9 @@ import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
-import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
 import org.openkilda.floodlight.switchmanager.SwitchNotFoundException;
 import org.openkilda.floodlight.switchmanager.SwitchOperationException;
+import org.openkilda.floodlight.switchmanager.SwitchTrackingService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.messaging.Destination;
@@ -64,10 +64,6 @@ import org.openkilda.messaging.error.rule.DumpRulesErrorData;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
-import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
-import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -93,7 +89,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -130,6 +126,8 @@ class RecordHandler implements Runnable {
 
         try {
             handleCommand(message, replyToTopic, replyDestination);
+        } catch (SwitchOperationException e) {
+            logger.error("Unable to handle request {}: {}", message.getData().getClass().getName(), e.getMessage());
         } catch (FlowCommandException e) {
             ErrorMessage error = new ErrorMessage(
                     e.makeErrorResponse(),
@@ -141,7 +139,7 @@ class RecordHandler implements Runnable {
     }
 
     private void handleCommand(CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
+            throws FlowCommandException, SwitchOperationException {
         CommandData data = message.getData();
         CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
@@ -434,58 +432,11 @@ class RecordHandler implements Runnable {
      *
      * @param message NetworkCommandData
      */
-    private void doNetworkDump(final CommandMessage message) {
+    private void doNetworkDump(final CommandMessage message) throws SwitchOperationException {
+        logger.debug("Processing dump switches request");
 
-        String correlationId = message.getCorrelationId();
-        String outputDiscoTopic = context.getKafkaTopoDiscoTopic();
-
-        logger.debug("Processing request from WFM to dump switches. {}", correlationId);
-
-        IKafkaProducerService producerService = getKafkaProducer();
-        producerService.enableGuaranteedOrder(outputDiscoTopic);
-        try {
-
-            producerService.sendMessageAndTrack(outputDiscoTopic,
-                    new InfoMessage(new NetworkDumpBeginMarker(), System.currentTimeMillis(), correlationId));
-
-            Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
-
-            allSwitchMap.values().stream()
-                    .map(this::buildNetworkDumpSwitchData)
-                    .forEach(sw ->
-                            producerService.sendMessageAndTrack(outputDiscoTopic,
-                                    new InfoMessage(sw, System.currentTimeMillis(), correlationId)));
-
-            allSwitchMap.values().stream()
-                    .flatMap(sw -> sw.getEnabledPorts().stream()
-                            .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
-                            .map(port -> buildNetworkDumpPortData(sw, port)))
-                    .forEach(port ->
-                            producerService.sendMessageAndTrack(outputDiscoTopic,
-                                    new InfoMessage(port, System.currentTimeMillis(), correlationId)));
-
-            producerService.sendMessageAndTrack(
-                    outputDiscoTopic,
-                    new InfoMessage(
-                            new NetworkDumpEndMarker(), System.currentTimeMillis(),
-                            correlationId));
-        } finally {
-            producerService.disableGuaranteedOrder(outputDiscoTopic);
-        }
-    }
-
-    /**
-     * Builds {@link NetworkDumpSwitchData} representation of {@link IOFSwitch}.
-     */
-    protected NetworkDumpSwitchData buildNetworkDumpSwitchData(IOFSwitch sw) {
-        return new NetworkDumpSwitchData(new SwitchId(sw.getId().getLong()));
-    }
-
-    /**
-     * Builds {@link NetworkDumpPortData} representation of {@link OFPortDesc}.
-     */
-    private NetworkDumpPortData buildNetworkDumpPortData(IOFSwitch sw, OFPortDesc port) {
-        return new NetworkDumpPortData(new SwitchId(sw.getId().getLong()), port.getPortNo().getPortNumber());
+        SwitchTrackingService switchTracking = context.getModuleContext().getServiceImpl(SwitchTrackingService.class);
+        switchTracking.dumpAllSwitches(message.getCorrelationId());
     }
 
     private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
@@ -691,6 +642,8 @@ class RecordHandler implements Runnable {
     }
 
     private void doPortsCommandDataRequest(CommandMessage message) {
+        ISwitchManager switchManager = context.getModuleContext().getServiceImpl(ISwitchManager.class);
+
         try {
             PortsCommandData request = (PortsCommandData) message.getData();
             Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
@@ -698,19 +651,16 @@ class RecordHandler implements Runnable {
                 SwitchId switchId = new SwitchId(entry.getKey().toString());
                 try {
                     IOFSwitch sw = entry.getValue();
-                    Collection<OFPort> enabledPortNumbers = sw.getEnabledPortNumbers();
 
-                    Set<PortStatus> portsStatus = sw.getPorts().stream()
-                            .filter(port -> SwitchEventCollector.isPhysicalPort(port.getPortNo()))
-                            .map(port -> PortStatus.builder()
-                                    .id(port.getPortNo().getPortNumber())
-                                    .status(enabledPortNumbers.contains(port.getPortNo())
-                                            ? PortChangeType.UP : PortChangeType.DOWN)
-                                    .build()
-                            ).collect(Collectors.toSet());
+                    Set<PortStatus> statuses = new HashSet<>();
+                    for (OFPortDesc portDesc : switchManager.getPhysicalPorts(sw.getId())) {
+                        statuses.add(new PortStatus(portDesc.getPortNo().getPortNumber(),
+                                                    portDesc.isEnabled() ? PortChangeType.UP : PortChangeType.DOWN));
+                    }
+
                     SwitchPortStatusData response = SwitchPortStatusData.builder()
                             .switchId(switchId)
-                            .ports(portsStatus)
+                            .ports(statuses)
                             .requester(request.getRequester())
                             .build();
 

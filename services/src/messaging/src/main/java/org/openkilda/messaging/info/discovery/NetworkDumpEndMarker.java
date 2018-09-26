@@ -17,5 +17,7 @@ package org.openkilda.messaging.info.discovery;
 
 import org.openkilda.messaging.info.InfoData;
 
-public class NetworkDumpEndMarker extends InfoData {
-}
+import lombok.EqualsAndHashCode;
+
+@EqualsAndHashCode(callSuper = false)
+public class NetworkDumpEndMarker extends InfoData {}
