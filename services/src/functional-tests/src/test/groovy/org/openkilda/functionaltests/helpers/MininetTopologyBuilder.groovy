@@ -4,6 +4,7 @@ import static org.openkilda.testing.Constants.ASWITCH_NAME
 
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchState
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
