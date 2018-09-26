@@ -19,3 +19,4 @@ spring.profiles.active=virtual
 reroute.delay=10
 reroute.hardtimeout=30
 discovery.interval=2
+discovery.timeout=10

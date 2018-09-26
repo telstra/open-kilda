@@ -33,12 +33,18 @@ Pre-setup: Mark `groovy` subdirectory in `functional-tests` module as a test sou
 make build-latest 
 make up-test-mode
 ```
-- Check your `kilda.properties`. It should point to your localhost environments.  
-`spring.profiles.active` should be set to `virtual`.
+- Create file `kilda.properties` in `functional-tests` directory
+- Copy all properties from `kilda.properties.example` to `kilda.properties`
+- Change endpoint properties (url, user and password) if needed. It should point 
+to your localhost environments. `spring.profiles.active` should be set to `virtual`.
 - Check your `topology.yaml`. This is a file which will be used to spawn a virtual
 topology used by all the tests.
 - You can now run tests from IDE or run  
 `mvn clean test -Pfunctional`
+- If you want to run single test from terminal you can use following command  
+`mvn clean test -Pfunctional -Dtest="<path_to_test_file>#<test_name>"`  
+For example:  
+`mvn clean test -Pfunctional -Dtest="spec.northbound.flows.FlowsSpec#Able to create a single-switch flow"`
 
 ### Hardware (Staging)
 - Check your `kilda.properties`. It should point to your staging environments.  
