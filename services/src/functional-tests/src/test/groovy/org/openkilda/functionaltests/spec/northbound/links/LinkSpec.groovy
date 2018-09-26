@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.links
 
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -40,13 +42,13 @@ class LinkSpec extends BaseSpecification {
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow1.maximumBandwidth = 1000
         flow1 = northboundService.addFlow(flow1)
-        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow1.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Reverse flow from destination switch to source switch"
         def flow2 = flowHelper.randomFlow(dstSwitch, srcSwitch)
         flow2.maximumBandwidth = 1000
         flow2 = northboundService.addFlow(flow2)
-        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow2.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow2.id).status == FlowState.UP }
 
         and: "Forward flow from source switch to some 'internal' switch"
         def internalSwitch = switches.find {
@@ -56,13 +58,13 @@ class LinkSpec extends BaseSpecification {
         def flow3 = flowHelper.randomFlow(srcSwitch, internalSwitch)
         flow3.maximumBandwidth = 1000
         flow3 = northboundService.addFlow(flow3)
-        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow3.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow3.id).status == FlowState.UP }
 
         and: "Reverse flow from 'internal' switch to source switch"
         def flow4 = flowHelper.randomFlow(internalSwitch, srcSwitch)
         flow4.maximumBandwidth = 1000
         flow4 = northboundService.addFlow(flow4)
-        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow4.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow4.id).status == FlowState.UP }
 
         when: "Get all flows going through the link from source switch to 'internal' switch"
         def isl = pathHelper.getInvolvedIsls(PathHelper.convert(northboundService.getFlowPath(flow3.id))).first()
