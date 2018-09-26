@@ -12,8 +12,8 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
-package org.openkilda.messaging.info;
 
+package org.openkilda.messaging.info;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -45,8 +45,8 @@ public class CacheTimeTag extends InfoData {
         return createdInCache;
     }
 
-    public void setCreatedInCache(Long created_in_cache) {
-        this.createdInCache = created_in_cache;
+    public void setCreatedInCache(Long createdInCache) {
+        this.createdInCache = createdInCache;
     }
 
     public void setCreatedInCacheNow() {
@@ -57,8 +57,8 @@ public class CacheTimeTag extends InfoData {
         return updatedInCache;
     }
 
-    public void setUpdatedInCache(Long updated_in_cache) {
-        this.updatedInCache = updated_in_cache;
+    public void setUpdatedInCache(Long updatedInCache) {
+        this.updatedInCache = updatedInCache;
     }
 
     public void setUpdatedInCacheNow() {
@@ -79,8 +79,8 @@ public class CacheTimeTag extends InfoData {
             return false;
         }
         CacheTimeTag that = (CacheTimeTag) o;
-        return Objects.equal(createdInCache, that.createdInCache) &&
-                Objects.equal(updatedInCache, that.updatedInCache);
+        return Objects.equal(createdInCache, that.createdInCache)
+                && Objects.equal(updatedInCache, that.updatedInCache);
     }
 
     @Override
@@ -89,8 +89,7 @@ public class CacheTimeTag extends InfoData {
     }
 
 
-    private Long getUnixTimestamp()
-    {
+    private Long getUnixTimestamp() {
         return System.currentTimeMillis() / 1000L;
     }
 }
