@@ -4,6 +4,7 @@ import static org.junit.Assume.assumeNotNull
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -100,7 +101,7 @@ class IslMovementSpec extends BaseSpecification {
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true)
 
         then: "The potential self-loop ISL is not present in list of isls (wait for 5 sec)"
-        !Wrappers.wait(5) {
+        !Wrappers.wait(WAIT_OFFSET) {
             def allLinks = northbound.getAllLinks()
             islUtils.getIslInfo(allLinks, expectedIsl).present ||
                     islUtils.getIslInfo(allLinks, islUtils.reverseIsl(expectedIsl)).present

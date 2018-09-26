@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
@@ -57,7 +58,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Two neighbouring switches of the flow go down simultaneously"
         lockKeeperService.knockoutSwitch(isl.srcSwitch.dpId.toString())
@@ -86,7 +87,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         //depends whether there are alt paths available
         and: "Flow goes down OR changes path to avoid failed ISL after reroute timeout"
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
-        Wrappers.wait(5) {
+        Wrappers.wait(WAIT_OFFSET) {
             def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
             !pathHelper.getInvolvedIsls(currentPath).contains(isl) ||
                     northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
@@ -96,7 +97,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         lockKeeperService.addFlows([isl, islUtils.reverseIsl(isl)]
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
         northboundService.deleteFlow(flow.id)
-        Wrappers.wait(discoveryInterval + 2) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
     }

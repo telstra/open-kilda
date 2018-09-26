@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
@@ -64,20 +65,20 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Down'"
-        Wrappers.wait(rerouteDelay + 3) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "ISL goes back up"
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow becomes 'Up'"
-        Wrappers.wait(rerouteDelay + discoveryInterval + 5) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
         and: "Restore topology to original state, remove flow"
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
         northboundService.deleteFlow(flow.id)
-        Wrappers.wait(discoveryInterval + 2) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
     }
@@ -97,7 +98,7 @@ class AutoRerouteSpec extends BaseSpecification {
         flow.maximumBandwidth = 1000
         northboundService.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
-        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Bring all ports down on source switch that are involved in current and alternate paths"
         List<PathNode> broughtDownPorts = []
@@ -108,7 +109,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         then: "Flow goes to 'Down' status"
-        Wrappers.wait(rerouteDelay + 3) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "Bring all ports up on source switch that are involved in alternate paths"
         broughtDownPorts.findAll {
@@ -118,19 +119,19 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         then: "Flow goes to 'Up' status"
-        Wrappers.wait(rerouteDelay + discoveryInterval + 5) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
         and: "Flow was rerouted"
         def reroutedFlowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         flowPath != reroutedFlowPath
-        Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Bring port involved in original path up and delete flow"
         northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
         northboundService.deleteFlow(flow.id)
-        Wrappers.wait(discoveryInterval + 5) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
     }
@@ -150,7 +151,7 @@ class AutoRerouteSpec extends BaseSpecification {
         flow.maximumBandwidth = 1000
         northboundService.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
-        assert Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Make current flow path less preferable than others"
         possibleFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
@@ -161,7 +162,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'FAILED'"
-        Wrappers.wait(discoveryInterval + 5) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED
         }
 
@@ -169,15 +170,15 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'DISCOVERED'"
-        Wrappers.wait(discoveryInterval + 5) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
         }
 
         and: "Flow is not rerouted and doesn't use more preferable path"
-        TimeUnit.SECONDS.sleep(rerouteDelay + 3)
+        TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
         def flowPathAfter = PathHelper.convert(northboundService.getFlowPath(flow.id))
         flowPath == flowPathAfter
-        Wrappers.wait(5) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Delete created flow"
         northboundService.deleteFlow(flow.id)

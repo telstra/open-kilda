@@ -19,6 +19,7 @@ public final class Constants {
     public static final String ASWITCH_NAME = "aswitch";
     public static final String VIRTUAL_CONTROLLER_ADDRESS = "tcp:kilda:6653";
     public static final Integer DEFAULT_COST = 700;
+    public static final Integer WAIT_OFFSET = 5;
 
     private Constants() {
         throw new UnsupportedOperationException();

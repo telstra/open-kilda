@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
@@ -55,5 +56,6 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
 
         and: "remove the flow"
         northbound.deleteFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().every { it.availableBandwidth == it.speed } }
     }
 }

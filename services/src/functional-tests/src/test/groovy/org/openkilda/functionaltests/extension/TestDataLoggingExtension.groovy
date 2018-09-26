@@ -25,7 +25,7 @@ class TestDataLoggingExtension extends AbstractGlobalExtension {
                 invocation.proceed()
             }
         })
-        spec.features*.addIterationInterceptor(new IMethodInterceptor() {
+        spec.allFeatures*.addIterationInterceptor(new IMethodInterceptor() {
             @Override
             void intercept(IMethodInvocation invocation) throws Throwable {
                 log.info "Running test: ${invocation.iteration.name}"
