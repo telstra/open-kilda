@@ -108,19 +108,19 @@ def ports_down():
     return jsonify({'status': 'ok'})
 
 
-@app.route('/floodlight/stop', methods=['GET'])
+@app.route('/floodlight/stop', methods=['POST'])
 def fl_stop():
     docker.from_env().containers.get(FL_CONTAINER_NAME).stop()
     return jsonify({'status': 'ok'})
 
 
-@app.route('/floodlight/start', methods=['GET'])
+@app.route('/floodlight/start', methods=['POST'])
 def fl_start():
     docker.from_env().containers.get(FL_CONTAINER_NAME).start()
     return jsonify({'status': 'ok'})
 
 
-@app.route('/floodlight/restart', methods=['GET'])
+@app.route('/floodlight/restart', methods=['POST'])
 def fl_restart():
     docker.from_env().containers.get(FL_CONTAINER_NAME).restart()
     return jsonify({'status': 'ok'})
