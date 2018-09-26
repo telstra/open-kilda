@@ -14,7 +14,7 @@
 #
 
 FROM python:3.6-slim
-RUN pip install flask paramiko
+RUN pip install flask paramiko docker
 ADD lockkeeper.py /lockkeeper.py
 ENV FLASK_APP=lockkeeper.py
 CMD ["flask", "run", "--host=0.0.0.0", "--port=5001"]
