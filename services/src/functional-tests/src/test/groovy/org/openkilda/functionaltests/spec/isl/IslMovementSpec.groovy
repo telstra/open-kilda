@@ -8,8 +8,8 @@ import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.aswitch.ASwitchService
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
@@ -23,7 +23,7 @@ class IslMovementSpec extends BaseSpecification {
     @Autowired
     NorthboundService northbound
     @Autowired
-    ASwitchService aswitchService
+    LockKeeperService lockKeeperService
 
     def "ISL status changes to MOVED when replugging"() {
         given: "A connected a-switch link"
@@ -107,7 +107,7 @@ class IslMovementSpec extends BaseSpecification {
         }
 
         and: "Unplug the link how it was before"
-        aswitchService.removeFlows([
+        lockKeeperService.removeFlows([
                 new ASwitchFlow(expectedIsl.aswitch.getInPort(), expectedIsl.aswitch.getOutPort()),
                 new ASwitchFlow(expectedIsl.aswitch.getOutPort(), expectedIsl.aswitch.getInPort())])
     }
