@@ -15,11 +15,12 @@
 
 package org.openkilda.messaging.info.stats;
 
+import org.openkilda.messaging.info.event.PortChangeType;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
-import org.openkilda.messaging.info.event.PortChangeType;
 
 import java.io.Serializable;
 
