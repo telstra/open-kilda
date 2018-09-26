@@ -5,54 +5,6 @@
 
 <suppressions>
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/HeartBeatAction.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaConfig.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaConfig.java" lines="8" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="18" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="41" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaMessageCollector.java" lines="85" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="12" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="31" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="42" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="55" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="56" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="57" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/kafka/KafkaTopicOrderDescriptor.java" lines="58" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="32" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="44" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="51" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="59" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="66" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="74" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="81" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="89" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="92" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="96" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="99" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="99" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="104" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="105" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="108" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="118" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="125" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="132" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="175" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="177" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="179" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="183" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="185" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="187" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="190" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="192" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="195" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="197" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/VerificationPacket.java" lines="211" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathDiscover.java" lines="31" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathDiscover.java" lines="34" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathDiscover.java" lines="40" checks="LineLength"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathVerificationServiceWebRoutable.java" lines="19" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathVerificationServiceWebRoutable.java" lines="31" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/statistics/StatisticsService.java" lines="143" checks="MultipleVariableDeclarations"/>

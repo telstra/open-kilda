@@ -24,20 +24,24 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class PathDiscover extends ServerResource {
     protected static Logger logger = LoggerFactory.getLogger(PathDiscover.class);
 
+    /**
+     * Sends a discover packet.
+     */
     @Put("json")
     public String sendDiscoverPacket() {
         IPathVerificationService pvs =
-                (IPathVerificationService) getContext().getAttributes().get(IPathVerificationService.class.getCanonicalName());
+                (IPathVerificationService) getContext().getAttributes()
+                        .get(IPathVerificationService.class.getCanonicalName());
 
         String srcSwitch = (String) getRequestAttributes().get("src_switch");
         String port = (String) getRequestAttributes().get("src_port");
         String dstSwitch = (String) getRequestAttributes().get("dst_switch");
 
-        logger.debug("asking {} to send a discovery packet out port {} with destination {}.", new Object[]{srcSwitch, port, dstSwitch});
+        logger.debug("asking {} to send a discovery packet out port {} with destination {}.",
+                srcSwitch, port, dstSwitch);
 
         if (dstSwitch == null) {
             DatapathId d = DatapathId.of(srcSwitch);
