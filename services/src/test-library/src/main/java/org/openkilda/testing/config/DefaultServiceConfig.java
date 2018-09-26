@@ -80,6 +80,11 @@ public class DefaultServiceConfig {
         return buildLoggingRestTemplate(endpoint);
     }
 
+    @Bean(name = "otsdbRestTemplate")
+    public RestTemplate otsdbRestTemplate(@Value("${otsdb.host}") String host, @Value("${otsdb.port}") int port) {
+        return buildLoggingRestTemplate(String.format("http://%s:%s", host, port));
+    }
+
     private RestTemplate buildLoggingRestTemplate(String endpoint) {
         final RestTemplate restTemplate = buildLoggingRestTemplate();
         restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
