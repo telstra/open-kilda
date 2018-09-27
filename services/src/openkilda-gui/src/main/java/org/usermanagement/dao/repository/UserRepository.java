@@ -37,7 +37,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @param userName the user name
      * @return the user entity
      */
-    UserEntity findByUsername(String userName);
+    UserEntity findByUsernameIgnoreCase(String userName);
 
     /**
      * Find by active flag.
