@@ -46,7 +46,7 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
         CustomWebAuthenticationDetails customWebAuthenticationDetails = ((CustomWebAuthenticationDetails) auth
                 .getDetails());
         String verificationCode = customWebAuthenticationDetails.getVerificationCode();
-        UserEntity user = userRepository.findByUsername(auth.getName());
+        UserEntity user = userRepository.findByUsernameIgnoreCase(auth.getName());
         if (user == null || !user.getActiveFlag()) {
             throw new BadCredentialsException("Invalid username or password");
         }

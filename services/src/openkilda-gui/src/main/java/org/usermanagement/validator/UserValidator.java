@@ -72,7 +72,7 @@ public class UserValidator {
             throw new RequestValidationException(messageUtil.getAttributeNotNull("role"));
         }
 
-        UserEntity userEntityTemp = userRepository.findByUsername(userInfo.getUsername());
+        UserEntity userEntityTemp = userRepository.findByUsernameIgnoreCase(userInfo.getUsername());
         if (userEntityTemp != null) {
             LOGGER.error("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
                     + messageUtil.getAttributeUnique("username"));
@@ -109,7 +109,7 @@ public class UserValidator {
         }
 
         if (!ValidatorUtil.isNull(userInfo.getUsername())) {
-            UserEntity userEntityTemp = userRepository.findByUsername(userInfo.getUsername());
+            UserEntity userEntityTemp = userRepository.findByUsernameIgnoreCase(userInfo.getUsername());
             if (userEntityTemp != null && !userEntityTemp.getUserId().equals(userInfo.getUserId())) {
                 LOGGER.error("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
                         + messageUtil.getAttributeUnique("username"));
