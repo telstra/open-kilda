@@ -23,7 +23,6 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FI
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
-import org.openkilda.messaging.ServiceType;
 import org.openkilda.pce.provider.AuthNeo4j;
 import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -51,6 +50,9 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         super(env, StatsTopologyConfig.class);
     }
 
+    /**
+     * main.
+     */
     public static void main(String[] args) throws Exception {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
@@ -115,8 +117,6 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name());
-
-        createHealthCheckHandler(builder, ServiceType.STATS_TOPOLOGY.getId());
 
         return builder.createTopology();
     }

@@ -34,6 +34,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.flows.PingInput;
+import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
@@ -93,6 +95,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     @Override
     public FlowPayload addFlow(FlowPayload payload) {
         HttpEntity<FlowPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        log.debug("Adding flow {}", payload.getId());
 
         return restTemplate.exchange("/api/v1/flows", HttpMethod.PUT, httpEntity, FlowPayload.class).getBody();
     }
@@ -177,6 +180,13 @@ public class NorthboundServiceImpl implements NorthboundService {
         FlowValidationDto[] flowValidations = restTemplate.exchange("/api/v1/flows/{flow_id}/validate", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowValidationDto[].class, flowId).getBody();
         return Arrays.asList(flowValidations);
+    }
+
+    @Override
+    public PingOutput pingFlow(String flowId, PingInput pingInput) {
+        HttpEntity<PingInput> httpEntity = new HttpEntity<>(pingInput, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/flows/{flow_id}/ping", HttpMethod.PUT, httpEntity,
+                PingOutput.class, flowId).getBody();
     }
 
     @Override
@@ -283,13 +293,13 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public PortDto portUp(SwitchId switchId, Integer portNo) {
-        log.info("Bringing port up for switch {}, port {}", switchId, portNo);
+        log.debug("Bringing port up for switch {}, port {}", switchId, portNo);
         return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.UP));
     }
 
     @Override
     public PortDto portDown(SwitchId switchId, Integer portNo) {
-        log.info("Bringing port down for switch {}, port {}", switchId, portNo);
+        log.debug("Bringing port down for switch {}, port {}", switchId, portNo);
         return configurePort(switchId, portNo, ImmutableMap.of("status", PortStatus.DOWN));
     }
 

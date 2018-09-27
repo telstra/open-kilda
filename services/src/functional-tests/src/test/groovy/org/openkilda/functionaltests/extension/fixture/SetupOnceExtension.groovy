@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.extension.fixture
 
+import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.extension.IMethodInterceptor
 import org.spockframework.runtime.extension.IMethodInvocation
@@ -12,6 +13,7 @@ import org.spockframework.runtime.model.SpecInfo
  * to Spring context.
  * @see {@link SetupOnce}
  */
+@Slf4j
 class SetupOnceExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo specInfo) {
         def setupRan = false
@@ -21,6 +23,7 @@ class SetupOnceExtension extends AbstractGlobalExtension {
                 if (!setupRan && invocation.method.kind == MethodKind.SETUP) {
                     def spec = invocation.sharedInstance
                     if (spec instanceof SetupOnce) {
+                        log.debug "Running fixture: setupOnce"
                         spec.setupOnce()
                         setupRan = true
                     }

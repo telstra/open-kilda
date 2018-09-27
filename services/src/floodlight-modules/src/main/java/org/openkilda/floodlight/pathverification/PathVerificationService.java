@@ -416,7 +416,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     void handlePacketIn(OfInput input) {
         logger.debug("{} - {}", getClass().getCanonicalName(), input);
 
-        if (isCookieMismatch(input)) {
+        if (input.packetInCookieMismatch(OF_CATCH_RULE_COOKIE, logger)) {
             return;
         }
 
@@ -527,15 +527,6 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             logger.error(String.format("Unhandled exception %s", input), exception);
             throw exception;
         }
-    }
-
-    private boolean isCookieMismatch(OfInput input) {
-        U64 cookie = input.packetInCookie();
-        final boolean isFiltered = cookie != null && !OF_CATCH_RULE_COOKIE.equals(cookie);
-        if (isFiltered) {
-            logger.debug("{} - cookie mismatch ({} != {})", input, OF_CATCH_RULE_COOKIE, cookie);
-        }
-        return isFiltered;
     }
 
     private long measureLatency(OfInput input, long sendTime) {

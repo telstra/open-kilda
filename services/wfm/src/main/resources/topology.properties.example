@@ -10,7 +10,6 @@ kafka.topic.ctrl = kilda.ctrl
 kafka.topic.flow = kilda.flow
 kafka.topic.flow.status = kilda.flow.status
 kafka.topic.ping = kilda.ping
-kafka.topic.health.check = kilda.health.check
 kafka.topic.northbound = kilda.northbound
 kafka.topic.opentsdb = kilda.otsdb
 kafka.topic.simulator = kilda.simulator

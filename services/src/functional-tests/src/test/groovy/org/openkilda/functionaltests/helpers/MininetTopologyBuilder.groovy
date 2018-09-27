@@ -4,9 +4,10 @@ import static org.openkilda.testing.Constants.ASWITCH_NAME
 
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchState
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.aswitch.ASwitchService
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.mininet.Mininet
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Component
 @Component
 class MininetTopologyBuilder {
     @Autowired
-    ASwitchService aswitch
+    LockKeeperService lockKeeper
     @Autowired
     Mininet mininet
     @Autowired
@@ -37,8 +38,8 @@ class MininetTopologyBuilder {
         mininet.knockoutSwitch(ASWITCH_NAME)
         topologyDefinition.islsForActiveSwitches.each { isl ->
             if (isl.aswitch) {
-                aswitch.addFlows([new ASwitchFlow(isl.aswitch.inPort, isl.aswitch.outPort),
-                                  new ASwitchFlow(isl.aswitch.outPort, isl.aswitch.inPort)])
+                lockKeeper.addFlows([new ASwitchFlow(isl.aswitch.inPort, isl.aswitch.outPort),
+                                     new ASwitchFlow(isl.aswitch.outPort, isl.aswitch.inPort)])
             }
         }
         //turn on all features

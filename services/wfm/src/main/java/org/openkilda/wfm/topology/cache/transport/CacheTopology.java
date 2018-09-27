@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.cache.transport;
 
-import org.openkilda.messaging.ServiceType;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.CtrlBoltRef;
@@ -123,8 +122,6 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
                 .shuffleGrouping(BOLT_ID_CACHE, StreamType.OFE.toString());
 
         createCtrlBranch(builder, ctrlTargets);
-        createHealthCheckHandler(builder, ServiceType.CACHE_TOPOLOGY.getId());
-
         return builder.createTopology();
     }
 

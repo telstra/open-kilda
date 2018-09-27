@@ -29,4 +29,6 @@ public interface Database {
     boolean resetCosts();
 
     int getIslCost(Isl isl);
+
+    int countFlows();
 }

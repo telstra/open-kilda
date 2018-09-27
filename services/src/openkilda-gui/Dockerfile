@@ -81,6 +81,7 @@ RUN mv select2.min.js src/main/resources/lib/javascript/
 RUN mv jquery.multi-select.js src/main/resources/lib/javascript/
 RUN ls -la 
 RUN mvn clean install
-
+RUN cp /app/src/main/resources/application.properties /app/target/ && \
+    cp /app/src/main/resources/logback.xml /app/target/
 
 CMD ["java","-jar","target/openkilda-gui.jar"]

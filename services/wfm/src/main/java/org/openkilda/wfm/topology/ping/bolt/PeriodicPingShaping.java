@@ -67,7 +67,7 @@ public class PeriodicPingShaping extends Abstract {
         Values output = extract(input);
 
         if (burstCalculator == null) {
-            // silent proxy record, due to disabled shaping
+            // ping-shaping disabled, silently proxying
             emit(input, output);
             return;
         }
@@ -75,6 +75,7 @@ public class PeriodicPingShaping extends Abstract {
         PingContext ping = pullPingContext(input);
         if (ping.getKind() != Kinds.PERIODIC) {
             emit(input, output);
+            return;
         }
 
         burstCalculator.increment();
@@ -83,6 +84,10 @@ public class PeriodicPingShaping extends Abstract {
     }
 
     private void handleMonotonicTick(Tuple input) {
+        if (burstCalculator == null) {
+            return;
+        }
+
         burstCalculator.slide();
         proxyAllowance = calcProxyAllowance();
         proxyCounter = 0;
