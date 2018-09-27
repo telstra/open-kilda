@@ -1,0 +1,46 @@
+@startuml
+title FLOW Delete
+
+participant Client
+participant NorthBound as NB
+control kilda.northbound
+control kilda.flow
+participant "FLOW SplitterBolt" as SplitterBolt
+participant "FLOW CrudBolt" as CrudBolt
+participant "FLOW ErrorBolt" as ErrorBolt
+participant "FLOW NorthboundReplyBolt" as NorthboundReplyBolt
+participant FlowService
+participant DAO
+participant "FLOW TransactionBolt" as TransactionBolt
+participant "FLOW SpeakerBolt" as SpeakerBolt
+
+Client -> NB: /flows PUT
+NB -> kilda.flow: CommandMessage\nFlowDeleteRequest
+kilda.flow -> SplitterBolt: CommandMessage\nFlowDeleteRequest
+SplitterBolt -> CrudBolt: CommandMessage\nFlowDeleteRequest
+loop in forward, reverse
+  opt
+    CrudBolt -> FlowService: delete flow
+    FlowService -> DAO: delete flow
+    FlowService -> DAO: delete flow segments
+    FlowService -> DAO: update bandwidth on isls
+  alt error
+	CrudBolt -> ErrorBolt: ErrorMessage
+	ErrorBolt -> NorthboundReplyBolt: ErrorMessage
+  end
+end
+
+CrudBolt -> NorthboundReplyBolt:  FlowInfoData
+
+
+loop in forward, reverse
+  loop in segments
+    CrudBolt -> TransactionBolt: RemoveFlow
+    SPEAKER -> SpeakerBolt: RemoveFlow
+    SpeakerBolt -> TransactionBolt: RemoveFlow
+  end
+end
+
+
+
+@enduml
