@@ -394,7 +394,7 @@ public class FlowServiceImpl implements FlowService {
                     externalFlows.size() - flowFailures.size() + externalFlows.size() - teFailures.size(),
                     ListUtils.sum(flowFailures, teFailures));
 
-            LOGGER.debug("Returned: ", batchResults);
+            LOGGER.debug("Returned: {}", batchResults);
             return batchResults;
 
         });
@@ -693,7 +693,7 @@ public class FlowServiceImpl implements FlowService {
                 rulesAmount += (sfe != null && sfe.getFlowEntries() != null) ? sfe.getFlowEntries().size() : 0;
             }
             return rulesAmount;
-        }).thenApply((totalRules) -> compareRules(switchRules, simpleFlowRules, flowId, totalRules));
+        }).thenApply(totalRules -> compareRules(switchRules, simpleFlowRules, flowId, totalRules));
     }
 
     private List<FlowValidationDto> compareRules(
