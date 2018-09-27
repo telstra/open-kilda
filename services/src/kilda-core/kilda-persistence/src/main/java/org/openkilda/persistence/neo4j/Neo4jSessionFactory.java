@@ -20,7 +20,10 @@ import org.neo4j.ogm.config.Configuration;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 
-public class Neo4jSessionFactory {
+/**
+ * Used to create {@link Session} instances for interacting with Neo4J OGM.
+ */
+public final class Neo4jSessionFactory {
     public static final Neo4jSessionFactory INSTANCE = new Neo4jSessionFactory();
 
     private final SessionFactory sessionFactory;
@@ -41,7 +44,7 @@ public class Neo4jSessionFactory {
     }
 
     /**
-     * Get the existing session if available, or create a new one.
+     * Get the existing session if there's an active transaction, otherwise create a new session.
      *
      * @return the session.
      */

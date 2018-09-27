@@ -19,13 +19,14 @@ import org.openkilda.persistence.PersistenceException;
 
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.transaction.Transaction;
+import org.neo4j.ogm.transaction.Transaction.Status;
 
 import java.util.Optional;
 
 /**
- * A simple transaction context holder. Designed to isolate transaction management from the implementation providers.
+ * Neo4J OGM implementation of TransactionManager. Used to manage transaction boundaries.
  */
-public class Neo4jTransactionManager {
+public final class Neo4jTransactionManager {
     public static final Neo4jTransactionManager INSTANCE = new Neo4jTransactionManager();
 
     private final Neo4jSessionHolder sessionHolder = Neo4jSessionHolder.INSTANCE;
@@ -34,29 +35,43 @@ public class Neo4jTransactionManager {
     }
 
     /**
-     * Begin a new transaction. If an existing transaction already exists, users must decide whether to commit or
-     * rollback. Only one transaction can be bound to a thread at any time, so active transactions that have not been
-     * closed but are no longer bound to the thread must be handled by client code.
+     * Begin a new transaction. Only one transaction can be bound to a thread at any time, so calling this method
+     * within an active transactions causes extending of transaction.
+     * See {@link org.neo4j.ogm.transaction.AbstractTransaction#extend}.
      */
-    public void beginTransaction() {
-        if (!sessionHolder.hasSession()) {
-            Session session = Neo4jSessionFactory.INSTANCE.openSession();
-            session.beginTransaction();
-
+    public void begin() {
+        Session session = sessionHolder.getSession();
+        if (session == null) {
+            session = Neo4jSessionFactory.INSTANCE.openSession();
             sessionHolder.setSession(session);
-        } else {
-            throw new PersistenceException("Unable to begin transaction: cannot start a transaction within a transaction.");
         }
 
+        try {
+            session.beginTransaction();
+        } catch (Exception ex) {
+            throw new PersistenceException("Unable to begin transaction.", ex);
+        }
     }
 
     /**
      * Commit the existing transaction.
      */
     public void commit() {
-        Optional<Transaction> tx = Optional.ofNullable(sessionHolder.getSession()).map(Session::getTransaction);
-        if (tx.isPresent()) {
-            tx.ifPresent(Transaction::commit);
+        Optional<Transaction> currentTx = Optional.ofNullable(sessionHolder.getSession()).map(Session::getTransaction);
+        if (currentTx.isPresent()) {
+            Transaction transaction = currentTx.get();
+            try {
+                transaction.commit();
+                // Complete the transaction.
+                transaction.close();
+            } catch (Exception ex) {
+                throw new PersistenceException("Unable to commit transaction.", ex);
+            }
+
+            if (transaction.status() == Status.COMMITTED || transaction.status() == Status.CLOSED) {
+                // Release the session associated with the transaction and the current thread.
+                sessionHolder.clean();
+            }
         } else {
             throw new PersistenceException("Unable to commit transaction: there's no active Neo4j transaction.");
         }
@@ -66,25 +81,23 @@ public class Neo4jTransactionManager {
      * Rollback the existing transaction.
      */
     public void rollback() {
-        Optional<Transaction> tx = Optional.ofNullable(sessionHolder.getSession()).map(Session::getTransaction);
-        if (tx.isPresent()) {
-            tx.ifPresent(Transaction::rollback);
+        Optional<Transaction> currentTx = Optional.ofNullable(sessionHolder.getSession()).map(Session::getTransaction);
+        if (currentTx.isPresent()) {
+            Transaction transaction = currentTx.get();
+            try {
+                transaction.rollback();
+                // Complete the transaction.
+                transaction.close();
+            } catch (Exception ex) {
+                throw new PersistenceException("Unable to rollback transaction.", ex);
+            }
+
+            if (transaction.status() == Status.ROLLEDBACK || transaction.status() == Status.CLOSED) {
+                // Release the session associated with the transaction and the current thread.
+                sessionHolder.clean();
+            }
         } else {
             throw new PersistenceException("Unable to rollback transaction: there's no active Neo4j transaction.");
         }
-    }
-
-    /**
-     * Close the existing transaction. The method releases the session associated with the current thread.
-     */
-    public void closeTransaction() {
-        Optional<Session> session = Optional.ofNullable(sessionHolder.getSession());
-        if (session.isPresent()) {
-            session.map(Session::getTransaction).ifPresent(Transaction::close);
-        } else {
-            throw new PersistenceException("Unable to close transaction: there's no active Neo4j session.");
-        }
-
-        sessionHolder.clean();
     }
 }

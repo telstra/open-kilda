@@ -16,8 +16,10 @@
 package org.openkilda.persistence.neo4j;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.openkilda.model.Switch;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.SwitchRepositoryImpl;
 
@@ -46,12 +48,13 @@ public class Neo4jTransactionManagerTest {
 
     @Test
     public void shouldCommitTx() {
+        // given
         Switch origSwitch = new Switch();
         origSwitch.setName(TEST_SWITCH_NAME);
         origSwitch.setDescription("Some description");
 
-
-        txManager.beginTransaction();
+        // when
+        txManager.begin();
         try {
             repository.createOrUpdate(origSwitch);
 
@@ -59,10 +62,38 @@ public class Neo4jTransactionManagerTest {
         } catch (Exception ex) {
             txManager.rollback();
             throw ex;
-        } finally {
-            txManager.closeTransaction();
         }
 
+        // then
+        Switch foundSwitch = repository.findByName(TEST_SWITCH_NAME);
+        assertEquals(origSwitch.getDescription(), foundSwitch.getDescription());
+
+        repository.delete(foundSwitch);
+        assertEquals(0, repository.findAll().size());
+    }
+
+    @Test
+    public void shouldCommitExtendedTx() {
+        // given
+        Switch origSwitch = new Switch();
+        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setDescription("Some description");
+
+        // when
+
+        // Start the root Tx.
+        txManager.begin();
+        // Start the extended Tx.
+        txManager.begin();
+
+        repository.createOrUpdate(origSwitch);
+
+        // Commit the extended Tx.
+        txManager.commit();
+        // Commit the root Tx.
+        txManager.commit();
+
+        // then
         Switch foundSwitch = repository.findByName(TEST_SWITCH_NAME);
         assertEquals(origSwitch.getDescription(), foundSwitch.getDescription());
 
@@ -72,19 +103,75 @@ public class Neo4jTransactionManagerTest {
 
     @Test
     public void shouldRollbackTx() {
+        // given
         Switch origSwitch = new Switch();
         origSwitch.setName(TEST_SWITCH_NAME);
         origSwitch.setDescription("Some description");
 
-        txManager.beginTransaction();
+        // when
+        txManager.begin();
+
+        repository.createOrUpdate(origSwitch);
+
+        txManager.rollback();
+
+        // then
+        assertEquals(0, repository.findAll().size());
+    }
+
+    @Test(expected = PersistenceException.class)
+    public void shouldRollbackExtendedTx() {
+        // given
+        Switch origSwitch = new Switch();
+        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setDescription("Some description");
+
+        // when
+
+        // Start the root Tx.
+        txManager.begin();
+        // Start the extended Tx.
+        txManager.begin();
+
+        repository.createOrUpdate(origSwitch);
+
+        // Rollback the extended Tx.
+        txManager.rollback();
+
         try {
-            repository.createOrUpdate(origSwitch);
-
+            // Trying to commit the root Tx.
+            txManager.commit();
+            // And shouldn't be allowed.
+            fail();
+        } catch (Exception ex) {
             txManager.rollback();
-        } finally {
-            txManager.closeTransaction();
+            throw ex;
         }
+    }
 
+    @Test
+    public void shouldRollbackExtendedAndRootTx() {
+        // given
+        Switch origSwitch = new Switch();
+        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setDescription("Some description");
+
+        // when
+
+        // Start the root Tx.
+        txManager.begin();
+        // Start the extended Tx.
+        txManager.begin();
+
+        repository.createOrUpdate(origSwitch);
+
+        // Rollback the extended Tx.
+        txManager.rollback();
+
+        // Rollback the root Tx.
+        txManager.rollback();
+
+        // then
         assertEquals(0, repository.findAll().size());
     }
 }

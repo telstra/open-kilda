@@ -17,7 +17,10 @@ package org.openkilda.persistence.neo4j;
 
 import org.neo4j.ogm.session.Session;
 
-class Neo4jSessionHolder {
+/**
+ * A simple holder for shared sessions bound to a transaction.
+ */
+final class Neo4jSessionHolder {
     static final Neo4jSessionHolder INSTANCE = new Neo4jSessionHolder();
 
     private final ThreadLocal<Session> sessionHolder = new ThreadLocal<>();
@@ -31,10 +34,6 @@ class Neo4jSessionHolder {
 
     void setSession(Session session) {
         sessionHolder.set(session);
-    }
-
-    boolean hasSession() {
-        return sessionHolder.get() != null;
     }
 
     void clean() {

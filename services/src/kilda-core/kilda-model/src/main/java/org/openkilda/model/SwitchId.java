@@ -25,13 +25,13 @@ import java.util.Objects;
 @Value
 public class SwitchId implements Comparable<SwitchId> {
 
-    private final long switchId;
+    private final long id;
 
     /**
      * Construct an instance based on the long value representation of a switch id.AttributeConverter
      */
     public SwitchId(long switchId) {
-        this.switchId = switchId;
+        this.id = switchId;
     }
 
     /**
@@ -41,7 +41,7 @@ public class SwitchId implements Comparable<SwitchId> {
         Objects.requireNonNull(switchId, "Switch id must not be null");
 
         try {
-            this.switchId = Long.parseUnsignedLong(switchId.replaceAll("[-:]", ""), 16);
+            this.id = Long.parseUnsignedLong(switchId.replaceAll("[-:]", ""), 16);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(String.format("Can not parse input string: \"%s\"", switchId));
         }
@@ -53,7 +53,7 @@ public class SwitchId implements Comparable<SwitchId> {
      * @return the switch id in long.
      */
     public long toLong() {
-        return switchId;
+        return id;
     }
 
     /**
@@ -82,7 +82,7 @@ public class SwitchId implements Comparable<SwitchId> {
         return "SW" + new String(toHexArray()).toUpperCase();
     }
 
-    //TODO: @VisibleForTesting
+    //@VisibleForTesting
     String colonSeparatedBytes(char[] hex, int offset) {
         if (offset < 0 || offset % 2 != 0 || offset >= hex.length) {
             throw new IllegalArgumentException(String.format(
@@ -104,7 +104,7 @@ public class SwitchId implements Comparable<SwitchId> {
     }
 
     private char[] toHexArray() {
-        String hexString = String.format("%016x", switchId);
+        String hexString = String.format("%016x", id);
         return hexString.toCharArray();
     }
 
@@ -113,6 +113,6 @@ public class SwitchId implements Comparable<SwitchId> {
      */
     @Override
     public int compareTo(SwitchId other) {
-        return Long.compareUnsigned(switchId, other.switchId);
+        return Long.compareUnsigned(id, other.id);
     }
 }
