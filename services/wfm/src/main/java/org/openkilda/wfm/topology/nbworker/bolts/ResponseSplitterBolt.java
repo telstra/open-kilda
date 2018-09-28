@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import static org.openkilda.wfm.topology.AbstractTopology.KEY_FIELD;
-import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
+import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_KEY;
+import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -78,6 +78,6 @@ public class ResponseSplitterBolt extends AbstractBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields(KEY_FIELD, MESSAGE_FIELD));
+        declarer.declare(new Fields(BOLT_KEY, BOLT_MESSAGE));
     }
 }

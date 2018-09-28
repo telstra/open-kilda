@@ -58,9 +58,6 @@ public class KafkaMessagingChannel implements MessagingChannel {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessagingChannel.class);
 
-    @Value("${northbound.messages.expiration.minutes}")
-    private int expiredTime;
-
     /**
      * Requests that are in progress of processing.
      */
@@ -73,11 +70,14 @@ public class KafkaMessagingChannel implements MessagingChannel {
     private Map<String, List<ChunkedInfoMessage>> messagesChains;
 
     /**
-     * The storage for received chunked message ids. it is needed identify whether we have already received specific
+     * The storage for received chunked message ids. It is needed to identify whether we have already received specific
      * chunked message or not in order to do not have duplicates, because current version of kafka do not guarantee
      * exactly once delivery.
      */
     private Map<String, Set<String>> chunkedMessageIdsPerRequest = new HashMap<>();
+
+    @Value("${northbound.messages.expiration.minutes}")
+    private int expiredTime;
 
     @Autowired
     private MessageProducer messageProducer;

@@ -63,7 +63,6 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     public static final String BOLT_ID_CTRL_ROUTE = "ctrl.route";
     public static final String BOLT_ID_CTRL_OUTPUT = "ctrl.out";
 
-    public static final String KEY_FIELD = "key";
     public static final String MESSAGE_FIELD = "message";
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
 
