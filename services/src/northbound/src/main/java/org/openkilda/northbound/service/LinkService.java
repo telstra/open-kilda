@@ -21,13 +21,14 @@ import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public interface LinkService extends BasicService {
 
     /**
      * Returns all links at the controller.
      */
-    List<LinkDto> getLinks();
+    CompletableFuture<List<LinkDto>> getLinks();
 
     /**
      * These results are not related to the ISL links per se .. they are based on any link
@@ -39,7 +40,8 @@ public interface LinkService extends BasicService {
      * @param dstPort destination port number.
      * @return one or more link properties from the static link_props table.
      */
-    List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
+    CompletableFuture<List<LinkPropsDto>> getLinkProps(SwitchId srcSwitch, Integer srcPort,
+                                                       SwitchId dstSwitch, Integer dstPort);
 
     /**
      * All linkPropsList link properties will be created/updated, and pushed to ISL links if they exit.
@@ -47,7 +49,7 @@ public interface LinkService extends BasicService {
      * @param linkPropsList the list of link properties to create / update
      * @return the number of successes, failures, and any failure messages
      */
-    BatchResults setLinkProps(List<LinkPropsDto> linkPropsList);
+    CompletableFuture<BatchResults> setLinkProps(List<LinkPropsDto> linkPropsList);
 
     /**
      * All linkPropsList link properties will be deleted, and deleted from ISL links if they exist.
@@ -55,5 +57,5 @@ public interface LinkService extends BasicService {
      * @param linkPropsList the list of link properties to delete
      * @return the number of successes (rows affected), failures, and any failure messages
      */
-    BatchResults delLinkProps(List<LinkPropsDto> linkPropsList);
+    CompletableFuture<BatchResults> delLinkProps(List<LinkPropsDto> linkPropsList);
 }

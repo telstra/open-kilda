@@ -18,6 +18,7 @@ package org.openkilda.northbound.controller;
 import static org.openkilda.messaging.error.ErrorType.PARAMETERS_INVALID;
 
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
+import org.openkilda.messaging.command.switches.ConnectModeRequest.Mode;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria.DeleteRulesCriteriaBuilder;
@@ -49,12 +50,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -67,6 +68,7 @@ import java.util.concurrent.CompletableFuture;
  * REST Controller for switches.
  */
 @RestController
+@RequestMapping(path = "/switches", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
 @PropertySource("classpath:northbound.properties")
 @Api
 @ApiResponses(value = {
@@ -90,7 +92,7 @@ public class SwitchController {
      * @return list of switches.
      */
     @ApiOperation(value = "Get all available switches", response = SwitchDto.class, responseContainer = "List")
-    @GetMapping(path = "/switches")
+    @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<SwitchDto>> getSwitches() {
         return switchService.getSwitches();
@@ -104,16 +106,14 @@ public class SwitchController {
      * @return list of the cookies of the rules that have been deleted
      */
     @ApiOperation(value = "Get switch rules from the switch", response = SwitchFlowEntries.class)
-    @GetMapping(value = "/switches/{switch-id}/rules",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = "/{switch-id}/rules")
     @ResponseStatus(HttpStatus.OK)
-    public SwitchFlowEntries getSwitchRules(
+    public CompletableFuture<SwitchFlowEntries> getSwitchRules(
             @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "Results will be filtered based on matching the cookie.",
                     required = false)
             @RequestParam(value = "cookie", required = false) Optional<Long> cookie) {
-        SwitchFlowEntries response = switchService.getRules(switchId, cookie.orElse(0L));
-        return response;
+        return switchService.getRules(switchId, cookie.orElse(0L));
     }
 
 
@@ -131,10 +131,10 @@ public class SwitchController {
     @ApiOperation(value = "Delete switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
     @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
-    @DeleteMapping(value = "/switches/{switch-id}/rules",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @DeleteMapping(value = "/{switch-id}/rules")
     @ExtraAuthRequired
-    public ResponseEntity<List<Long>> deleteSwitchRules(
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<Long>> deleteSwitchRules(
             @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: "
                     + "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS,"
@@ -147,7 +147,7 @@ public class SwitchController {
             @RequestParam(value = "priority", required = false) Optional<Integer> priority,
             @RequestParam(value = "out-port", required = false) Optional<Integer> outPort) {
 
-        List<Long> result;
+        CompletableFuture<List<Long>> result;
 
         //TODO: "priority" can't be used as a standalone criterion - because currently it's ignored in OFFlowDelete.
         if (cookie.isPresent() || inPort.isPresent() || inVlan.isPresent() /*|| priority.isPresent()*/
@@ -172,7 +172,7 @@ public class SwitchController {
 
             result = switchService.deleteRules(switchId, deleteRulesAction);
         }
-        return ResponseEntity.ok(result);
+        return result;
     }
 
     /**
@@ -185,18 +185,16 @@ public class SwitchController {
     @ApiOperation(value = "Install switch rules. Requires special authorization",
             response = Long.class, responseContainer = "List")
     @ApiResponse(code = 200, response = Long.class, responseContainer = "List", message = "Operation is successful")
-    @PutMapping(value = "/switches/{switch-id}/rules",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PutMapping(value = "/{switch-id}/rules")
     @ExtraAuthRequired
-    public ResponseEntity<List<Long>> installSwitchRules(
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<Long>> installSwitchRules(
             @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
                     + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
                     required = false)
             @RequestParam(value = "install-action", required = false) Optional<InstallRulesAction> installAction) {
-        List<Long> response = switchService
-                .installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS));
-        return ResponseEntity.ok(response);
+        return switchService.installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS));
     }
 
 
@@ -213,12 +211,10 @@ public class SwitchController {
      */
     @ApiOperation(value = "Set the connect mode if mode is specified. If mode is null, this is effectively a get.",
             response = ConnectModeRequest.Mode.class)
-    @PutMapping(value = "/switches/toggle-connect-mode",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<ConnectModeRequest.Mode> toggleSwitchConnectMode(
-            @RequestParam("mode") ConnectModeRequest.Mode mode) {
-        ConnectModeRequest.Mode response = switchService.connectMode(mode);
-        return ResponseEntity.ok(response);
+    @PutMapping(value = "/toggle-connect-mode")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<Mode> toggleSwitchConnectMode(@RequestParam("mode") ConnectModeRequest.Mode mode) {
+        return switchService.connectMode(mode);
     }
 
     /**
@@ -227,9 +223,9 @@ public class SwitchController {
      * @return the validation details.
      */
     @ApiOperation(value = "Validate the rules installed on the switch", response = RulesValidationResult.class)
-    @GetMapping(path = "/switches/{switch_id}/rules/validate")
+    @GetMapping(path = "/{switch_id}/rules/validate")
     @ResponseStatus(HttpStatus.OK)
-    public RulesValidationResult validateRules(@PathVariable(name = "switch_id") SwitchId switchId) {
+    public CompletableFuture<RulesValidationResult> validateRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.validateRules(switchId);
     }
 
@@ -239,9 +235,9 @@ public class SwitchController {
      * @return the synchronization result.
      */
     @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
-    @GetMapping(path = "/switches/{switch_id}/rules/synchronize")
+    @GetMapping(path = "/{switch_id}/rules/synchronize")
     @ResponseStatus(HttpStatus.OK)
-    public RulesSyncResult syncRules(@PathVariable(name = "switch_id") SwitchId switchId) {
+    public CompletableFuture<RulesSyncResult> syncRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.syncRules(switchId);
     }
 
@@ -252,10 +248,10 @@ public class SwitchController {
      * @return result of the operation wrapped into {@link DeleteMeterResult}. True means no errors is occurred.
      */
     @ApiOperation(value = "Delete meter from the switch", response = DeleteMeterResult.class)
-    @DeleteMapping(path = "/switches/{switch_id}/meter/{meter_id}")
+    @DeleteMapping(path = "/{switch_id}/meter/{meter_id}")
     @ResponseStatus(HttpStatus.OK)
-    public DeleteMeterResult deleteMeter(@PathVariable(name = "switch_id") SwitchId switchId,
-                                         @PathVariable(name = "meter_id") long meterId) {
+    public CompletableFuture<DeleteMeterResult> deleteMeter(@PathVariable(name = "switch_id") SwitchId switchId,
+                                                            @PathVariable(name = "meter_id") long meterId) {
         return switchService.deleteMeter(switchId, meterId);
     }
 
@@ -269,9 +265,8 @@ public class SwitchController {
      */
     @ApiOperation(value = "Configure port on the switch", response = PortDto.class)
     @ApiResponse(code = 200, response = PortDto.class, message = "Operation is successful")
-    @PutMapping(value = "/switches/{switch_id}/port/{port_no}/config",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public PortDto configurePort(
+    @PutMapping(value = "/{switch_id}/port/{port_no}/config")
+    public CompletableFuture<PortDto> configurePort(
             @PathVariable(name = "switch_id") SwitchId switchId,
             @PathVariable(name = "port_no") int portNo,
             @RequestBody PortConfigurationPayload portConfig) {
@@ -286,10 +281,9 @@ public class SwitchController {
      * @return switch ports description.
      */
     @ApiOperation(value = "Get switch ports description from the switch", response = SwitchPortsDescription.class)
-    @GetMapping(value = "/switches/{switch-id}/ports",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = "/{switch-id}/ports")
     @ResponseStatus(HttpStatus.OK)
-    public SwitchPortsDescription getSwitchPortsDescription(
+    public CompletableFuture<SwitchPortsDescription> getSwitchPortsDescription(
             @PathVariable("switch-id") SwitchId switchId) {
         return switchService.getSwitchPortsDescription(switchId);
     }
@@ -302,10 +296,9 @@ public class SwitchController {
      * @return port description.
      */
     @ApiOperation(value = "Get port description from the switch", response = PortDescription.class)
-    @GetMapping(value = "/switches/{switch-id}/ports/{port}",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = "/{switch-id}/ports/{port}")
     @ResponseStatus(HttpStatus.OK)
-    public PortDescription getPortDescription(
+    public CompletableFuture<PortDescription> getPortDescription(
             @PathVariable("switch-id") SwitchId switchId,
             @PathVariable("port") int port) {
         return switchService.getPortDescription(switchId, port);
