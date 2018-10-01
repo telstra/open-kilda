@@ -18,12 +18,17 @@ package org.openkilda.persistence.repositories.impl;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.Switch;
+import org.openkilda.persistence.TestConfigurationProvider;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.neo4j.ogm.testutil.TestServer;
+
+import java.io.IOException;
 
 public class SwitchRepositoryImplTest {
     static final String TEST_SWITCH_NAME = "TestSwitch";
@@ -32,9 +37,13 @@ public class SwitchRepositoryImplTest {
     static SwitchRepository repository;
 
     @BeforeClass
-    public static void setUp() {
+    public static void setUp() throws IOException {
         testServer = new TestServer(true, true, 5, 7687);
-        repository = new SwitchRepositoryImpl();
+
+        Neo4jConfig neo4jConfig = new TestConfigurationProvider().getConfiguration(Neo4jConfig.class);
+        Neo4jTransactionManager txManager = new Neo4jTransactionManager(neo4jConfig);
+
+        repository = new SwitchRepositoryImpl(txManager);
     }
 
     @AfterClass

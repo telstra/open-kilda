@@ -26,15 +26,17 @@ public class SwitchIdConverter implements AttributeConverter<SwitchId, Long> {
 
     @Override
     public Long toGraphProperty(SwitchId value) {
-        if (value == null)
+        if (value == null) {
             return null;
+        }
         return value.toLong();
     }
 
     @Override
     public SwitchId toEntityAttribute(Long value) {
-        if (value == null)
+        if (value == null) {
             return null;
-        return new SwitchId(value.longValue());
+        }
+        return new SwitchId(value);
     }
 }

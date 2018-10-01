@@ -16,8 +16,11 @@
 package org.openkilda.persistence.neo4j;
 
 import org.openkilda.persistence.PersistenceException;
+import org.openkilda.persistence.TransactionManager;
 
+import org.neo4j.ogm.config.Configuration.Builder;
 import org.neo4j.ogm.session.Session;
+import org.neo4j.ogm.session.SessionFactory;
 import org.neo4j.ogm.transaction.Transaction;
 import org.neo4j.ogm.transaction.Transaction.Status;
 
@@ -26,24 +29,50 @@ import java.util.Optional;
 /**
  * Neo4J OGM implementation of TransactionManager. Used to manage transaction boundaries.
  */
-public final class Neo4jTransactionManager {
-    public static final Neo4jTransactionManager INSTANCE = new Neo4jTransactionManager();
+public final class Neo4jTransactionManager implements TransactionManager, Neo4jSessionFactory {
+    private static final ThreadLocal<Session> SESSION_HOLDER = new ThreadLocal<>();
 
-    private final Neo4jSessionHolder sessionHolder = Neo4jSessionHolder.INSTANCE;
+    private final SessionFactory sessionFactory;
 
-    private Neo4jTransactionManager() {
+    public Neo4jTransactionManager(Neo4jConfig config) {
+        Builder configBuilder = new Builder()
+                .uri(config.getUri())
+                .credentials(config.getLogin(), config.getPassword());
+        if (config.getConnectionPoolSize() > 0) {
+            configBuilder.connectionPoolSize(config.getConnectionPoolSize());
+        }
+
+        sessionFactory = new SessionFactory(configBuilder.build(), "org.openkilda.model");
     }
 
     /**
-     * Begin a new transaction. Only one transaction can be bound to a thread at any time, so calling this method
+     * Get the existing session if there's an active transaction, otherwise create a new session.
+     *
+     * @return the session.
+     */
+    @Override
+    public Session getSession() {
+        Session session = SESSION_HOLDER.get();
+        if (session != null) {
+            return session;
+        }
+        return sessionFactory.openSession();
+    }
+
+    /**
+     * Begin a new transaction.
+     * <p/>
+     * Only one transaction can be bound to a thread at any time, so calling this method
      * within an active transactions causes extending of transaction.
+     * <p/>
      * See {@link org.neo4j.ogm.transaction.AbstractTransaction#extend}.
      */
+    @Override
     public void begin() {
-        Session session = sessionHolder.getSession();
+        Session session = SESSION_HOLDER.get();
         if (session == null) {
-            session = Neo4jSessionFactory.INSTANCE.openSession();
-            sessionHolder.setSession(session);
+            session = sessionFactory.openSession();
+            SESSION_HOLDER.set(session);
         }
 
         try {
@@ -56,8 +85,10 @@ public final class Neo4jTransactionManager {
     /**
      * Commit the existing transaction.
      */
+    @Override
     public void commit() {
-        Optional<Transaction> currentTx = Optional.ofNullable(sessionHolder.getSession()).map(Session::getTransaction);
+        Optional<Transaction> currentTx = Optional.ofNullable(SESSION_HOLDER.get())
+                .map(Session::getTransaction);
         if (currentTx.isPresent()) {
             Transaction transaction = currentTx.get();
             try {
@@ -70,7 +101,7 @@ public final class Neo4jTransactionManager {
 
             if (transaction.status() == Status.COMMITTED || transaction.status() == Status.CLOSED) {
                 // Release the session associated with the transaction and the current thread.
-                sessionHolder.clean();
+                SESSION_HOLDER.remove();
             }
         } else {
             throw new PersistenceException("Unable to commit transaction: there's no active Neo4j transaction.");
@@ -80,8 +111,10 @@ public final class Neo4jTransactionManager {
     /**
      * Rollback the existing transaction.
      */
+    @Override
     public void rollback() {
-        Optional<Transaction> currentTx = Optional.ofNullable(sessionHolder.getSession()).map(Session::getTransaction);
+        Optional<Transaction> currentTx = Optional.ofNullable(SESSION_HOLDER.get())
+                .map(Session::getTransaction);
         if (currentTx.isPresent()) {
             Transaction transaction = currentTx.get();
             try {
@@ -94,7 +127,7 @@ public final class Neo4jTransactionManager {
 
             if (transaction.status() == Status.ROLLEDBACK || transaction.status() == Status.CLOSED) {
                 // Release the session associated with the transaction and the current thread.
-                sessionHolder.clean();
+                SESSION_HOLDER.remove();
             }
         } else {
             throw new PersistenceException("Unable to rollback transaction: there's no active Neo4j transaction.");

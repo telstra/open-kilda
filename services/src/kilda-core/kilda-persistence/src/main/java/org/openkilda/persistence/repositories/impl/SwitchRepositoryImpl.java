@@ -16,12 +16,20 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.model.Switch;
+import org.openkilda.persistence.neo4j.Neo4jSessionFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Neo4J OGM implementation of {@link SwitchRepository}.
+ */
 public class SwitchRepositoryImpl extends GenericRepository<Switch> implements SwitchRepository {
+    public SwitchRepositoryImpl(Neo4jSessionFactory sessionFactory) {
+        super(sessionFactory);
+    }
+
     @Override
     public Switch findByName(String name) {
         Map<String, Object> parameters = new HashMap<>();

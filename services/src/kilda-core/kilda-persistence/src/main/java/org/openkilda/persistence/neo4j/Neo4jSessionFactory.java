@@ -15,44 +15,11 @@
 
 package org.openkilda.persistence.neo4j;
 
-import org.neo4j.ogm.config.ClasspathConfigurationSource;
-import org.neo4j.ogm.config.Configuration;
 import org.neo4j.ogm.session.Session;
-import org.neo4j.ogm.session.SessionFactory;
 
 /**
- * Used to create {@link Session} instances for interacting with Neo4J OGM.
+ * Used to obtain {@link Session} instances for interacting with Neo4J OGM.
  */
-public final class Neo4jSessionFactory {
-    public static final Neo4jSessionFactory INSTANCE = new Neo4jSessionFactory();
-
-    private final SessionFactory sessionFactory;
-
-    private Neo4jSessionFactory() {
-        ClasspathConfigurationSource configurationSource = new ClasspathConfigurationSource("neo4j.properties");
-        Configuration configuration = new Configuration.Builder(configurationSource).build();
-        sessionFactory = new SessionFactory(configuration, "org.openkilda.model");
-    }
-
-    /**
-     * Create a new session.
-     *
-     * @return the newly created session.
-     */
-    Session openSession() {
-        return sessionFactory.openSession();
-    }
-
-    /**
-     * Get the existing session if there's an active transaction, otherwise create a new session.
-     *
-     * @return the session.
-     */
-    public Session getSession() {
-        Session session = Neo4jSessionHolder.INSTANCE.getSession();
-        if (session != null) {
-            return session;
-        }
-        return sessionFactory.openSession();
-    }
+public interface Neo4jSessionFactory {
+    Session getSession();
 }

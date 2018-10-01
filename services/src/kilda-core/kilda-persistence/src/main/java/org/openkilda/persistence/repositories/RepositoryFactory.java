@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.provider;
+package org.openkilda.persistence.repositories;
 
-public class PathComputerAuth extends AuthNeo4j {
+/**
+ * Used to obtain different {@link Repository} instances.
+ */
+public interface RepositoryFactory {
+    FlowRepository getFlowRepository();
 
-    public PathComputerAuth(String host, String login, String password) {
-        super(host, login, password);
-    }
+    FlowSegmentRepository getFlowSegmentRepository();
 
-    public PathComputer getPathComputer() {
-        return new NeoDriver(getDriver());
-    }
+    IslRepository getIslRepository();
+
+    SwitchRepository getSwitchRepository();
 }

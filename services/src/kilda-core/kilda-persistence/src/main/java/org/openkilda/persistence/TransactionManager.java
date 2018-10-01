@@ -13,30 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.neo4j;
-
-import org.neo4j.ogm.session.Session;
+package org.openkilda.persistence;
 
 /**
- * A simple holder for shared sessions bound to a transaction.
+ * Used to manage transaction boundaries.
  */
-final class Neo4jSessionHolder {
-    static final Neo4jSessionHolder INSTANCE = new Neo4jSessionHolder();
+public interface TransactionManager {
+    /**
+     * Begin a new transaction.
+     */
+    void begin();
 
-    private final ThreadLocal<Session> sessionHolder = new ThreadLocal<>();
+    /**
+     * Commit the existing transaction.
+     */
+    void commit();
 
-    private Neo4jSessionHolder() {
-    }
-
-    Session getSession() {
-        return sessionHolder.get();
-    }
-
-    void setSession(Session session) {
-        sessionHolder.set(session);
-    }
-
-    void clean() {
-        sessionHolder.remove();
-    }
+    /**
+     * Rollback the existing transaction.
+     */
+    void rollback();
 }

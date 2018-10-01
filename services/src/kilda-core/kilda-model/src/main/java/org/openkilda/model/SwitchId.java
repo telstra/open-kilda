@@ -86,7 +86,8 @@ public class SwitchId implements Comparable<SwitchId> {
     String colonSeparatedBytes(char[] hex, int offset) {
         if (offset < 0 || offset % 2 != 0 || offset >= hex.length) {
             throw new IllegalArgumentException(String.format(
-                    "Illegal offset value %d (expect offset > 0 and offset %% 2 == 0 and offset < hex.length)", offset));
+                    "Illegal offset value %d (expect offset > 0 and offset %% 2 == 0 and offset < hex.length)",
+                    offset));
         }
 
         int length = hex.length - offset;

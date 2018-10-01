@@ -20,6 +20,9 @@ import static org.junit.Assert.assertEquals;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.TestConfigurationProvider;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -28,6 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.neo4j.ogm.testutil.TestServer;
 
+import java.io.IOException;
 import java.util.Collection;
 
 public class FlowRepositoryImplTest {
@@ -39,10 +43,14 @@ public class FlowRepositoryImplTest {
     static SwitchRepository switchRepository;
 
     @BeforeClass
-    public static void setUp() {
+    public static void setUp() throws IOException {
         testServer = new TestServer(true, true, 5, 7687);
-        flowRepository = new FlowRepositoryImpl();
-        switchRepository = new SwitchRepositoryImpl();
+
+        Neo4jConfig neo4jConfig = new TestConfigurationProvider().getConfiguration(Neo4jConfig.class);
+        Neo4jTransactionManager txManager = new Neo4jTransactionManager(neo4jConfig);
+
+        flowRepository = new FlowRepositoryImpl(txManager);
+        switchRepository = new SwitchRepositoryImpl(txManager);
     }
 
     @AfterClass
@@ -52,18 +60,18 @@ public class FlowRepositoryImplTest {
 
     @Test
     public void shouldCreateAndFindFlow() {
-        Switch aSwitch = new Switch();
-        aSwitch.setSwitchId(new SwitchId(1));
-        aSwitch.setName(TEST_SWITCH_A_NAME);
-        aSwitch.setDescription("Some description");
+        Switch switchA = new Switch();
+        switchA.setSwitchId(new SwitchId(1));
+        switchA.setName(TEST_SWITCH_A_NAME);
+        switchA.setDescription("Some description");
 
-        Switch bSwitch = new Switch();
-        bSwitch.setSwitchId(new SwitchId(2));
-        bSwitch.setName(TEST_SWITCH_B_NAME);
+        Switch switchB = new Switch();
+        switchB.setSwitchId(new SwitchId(2));
+        switchB.setName(TEST_SWITCH_B_NAME);
 
         Flow flow = new Flow();
-        flow.setSrcSwitch(aSwitch);
-        flow.setDestSwitch(bSwitch);
+        flow.setSrcSwitch(switchA);
+        flow.setDestSwitch(switchB);
 
         flowRepository.createOrUpdate(flow);
 
@@ -71,12 +79,12 @@ public class FlowRepositoryImplTest {
         assertEquals(1, allFlows.size());
         Flow foundFlow = allFlows.iterator().next();
 
-        assertEquals(aSwitch.getSwitchId(), foundFlow.getSrcSwitchId());
+        assertEquals(switchA.getSwitchId(), foundFlow.getSrcSwitchId());
         assertEquals(2, switchRepository.findAll().size());
 
         Switch foundSwitch = switchRepository.findByName(TEST_SWITCH_A_NAME);
-        assertEquals(aSwitch.getSwitchId(), foundSwitch.getSwitchId());
-        assertEquals(aSwitch.getDescription(), foundSwitch.getDescription());
+        assertEquals(switchA.getSwitchId(), foundSwitch.getSwitchId());
+        assertEquals(switchA.getDescription(), foundSwitch.getDescription());
 
         flowRepository.delete(flow);
         assertEquals(0, flowRepository.findAll().size());

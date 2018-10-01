@@ -13,22 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories.impl;
-
-import org.openkilda.model.Isl;
-import org.openkilda.persistence.neo4j.Neo4jSessionFactory;
-import org.openkilda.persistence.repositories.IslRepository;
+package org.openkilda.config.provider;
 
 /**
- * Neo4J OGM implementation of {@link IslRepository}.
+ * Used to obtain a configuration instance.
  */
-public class IslRepositoryImpl extends GenericRepository<Isl> implements IslRepository {
-    public IslRepositoryImpl(Neo4jSessionFactory sessionFactory) {
-        super(sessionFactory);
-    }
-
-    @Override
-    Class<Isl> getEntityType() {
-        return Isl.class;
-    }
+public interface ConfigurationProvider {
+    <T> T getConfiguration(Class<T> configurationType);
 }

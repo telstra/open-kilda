@@ -19,6 +19,9 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
+import org.openkilda.persistence.TestConfigurationProvider;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -26,6 +29,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.neo4j.ogm.testutil.TestServer;
+
+import java.io.IOException;
 
 public class IslRepositoryImplTest {
     static final String TEST_SWITCH_A_NAME = "SwitchA";
@@ -36,10 +41,14 @@ public class IslRepositoryImplTest {
     static SwitchRepository switchRepository;
 
     @BeforeClass
-    public static void setUp() {
+    public static void setUp() throws IOException {
         testServer = new TestServer(true, true, 5, 7687);
-        islRepository = new IslRepositoryImpl();
-        switchRepository = new SwitchRepositoryImpl();
+
+        Neo4jConfig neo4jConfig = new TestConfigurationProvider().getConfiguration(Neo4jConfig.class);
+        Neo4jTransactionManager txManager = new Neo4jTransactionManager(neo4jConfig);
+
+        islRepository = new IslRepositoryImpl(txManager);
+        switchRepository = new SwitchRepositoryImpl(txManager);
     }
 
     @AfterClass
@@ -49,16 +58,16 @@ public class IslRepositoryImplTest {
 
     @Test
     public void shouldCreateAndFindIsl() {
-        Switch aSwitch = new Switch();
-        aSwitch.setName(TEST_SWITCH_A_NAME);
-        aSwitch.setDescription("Some description");
+        Switch switchA = new Switch();
+        switchA.setName(TEST_SWITCH_A_NAME);
+        switchA.setDescription("Some description");
 
-        Switch bSwitch = new Switch();
-        bSwitch.setName(TEST_SWITCH_B_NAME);
+        Switch switchB = new Switch();
+        switchB.setName(TEST_SWITCH_B_NAME);
 
         Isl isl = new Isl();
-        isl.setSrcSwitch(aSwitch);
-        isl.setDestSwitch(bSwitch);
+        isl.setSrcSwitch(switchA);
+        isl.setDestSwitch(switchB);
 
         islRepository.createOrUpdate(isl);
 
@@ -66,7 +75,7 @@ public class IslRepositoryImplTest {
         assertEquals(2, switchRepository.findAll().size());
 
         Switch foundSwitch = switchRepository.findByName(TEST_SWITCH_A_NAME);
-        assertEquals(aSwitch.getDescription(), foundSwitch.getDescription());
+        assertEquals(switchA.getDescription(), foundSwitch.getDescription());
 
         islRepository.delete(isl);
         assertEquals(0, islRepository.findAll().size());

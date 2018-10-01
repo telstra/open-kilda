@@ -16,12 +16,20 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.model.Flow;
+import org.openkilda.persistence.neo4j.Neo4jSessionFactory;
 import org.openkilda.persistence.repositories.FlowRepository;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Neo4J OGM implementation of {@link FlowRepository}.
+ */
 public class FlowRepositoryImpl extends GenericRepository<Flow> implements FlowRepository {
+    public FlowRepositoryImpl(Neo4jSessionFactory sessionFactory) {
+        super(sessionFactory);
+    }
+
     @Override
     public Iterable<Flow> findById(String flowId) {
         Map<String, Object> parameters = new HashMap<>();
