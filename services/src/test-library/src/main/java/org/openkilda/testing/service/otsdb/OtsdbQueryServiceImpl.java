@@ -17,6 +17,7 @@ package org.openkilda.testing.service.otsdb;
 
 import static java.util.stream.Collectors.toList;
 
+import org.openkilda.testing.service.otsdb.model.Aggregator;
 import org.openkilda.testing.service.otsdb.model.StatsResult;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,20 +41,30 @@ public class OtsdbQueryServiceImpl implements OtsdbQueryService {
     private RestTemplate restTemplate;
 
     @Override
-    public StatsResult query(Date start, Date end, String metric, Map<String, String> tags) {
+    public StatsResult query(Date start, Date end, Aggregator aggregator, String metric, Map<String, Object> tags) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/query");
         uriBuilder.queryParam("start", start.getTime());
         uriBuilder.queryParam("end", end.getTime());
         List<String> tagParts = tags.entrySet().stream().map(entry -> entry.getKey() + "=" + entry.getValue())
                 .collect(toList());
         String tagsString = "{" + String.join(",", tagParts) + "}";
-        uriBuilder.queryParam("m", String.format("sum:%s{tags}", metric));
+        uriBuilder.queryParam("m", String.format("%s:%s{tags}", aggregator.toString(), metric));
         return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
                 new HttpEntity<>(new HttpHeaders()), StatsResult[].class, tagsString).getBody()[0];
     }
 
     @Override
-    public StatsResult query(Date start, String metric, Map<String, String> tags) {
-        return query(start, new Date(), metric, tags);
+    public StatsResult query(Date start, Aggregator aggregator, String metric, Map<String, Object> tags) {
+        return query(start, new Date(), aggregator, metric, tags);
+    }
+
+    @Override
+    public StatsResult query(Date start, String metric, Map<String, Object> tags) {
+        return query(start, new Date(), Aggregator.SUM, metric, tags);
+    }
+
+    @Override
+    public StatsResult query(Date start, Date end, String metric, Map<String, Object> tags) {
+        return query(start, end, Aggregator.SUM, metric, tags);
     }
 }

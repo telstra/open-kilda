@@ -15,13 +15,18 @@
 
 package org.openkilda.testing.service.otsdb;
 
+import org.openkilda.testing.service.otsdb.model.Aggregator;
 import org.openkilda.testing.service.otsdb.model.StatsResult;
 
 import java.util.Date;
 import java.util.Map;
 
 public interface OtsdbQueryService {
-    StatsResult query(Date start, Date end, String metric, Map<String, String> tags);
+    StatsResult query(Date start, Date end, Aggregator aggregator, String metric, Map<String, Object> tags);
 
-    StatsResult query(Date start, String metric, Map<String, String> tags);
+    StatsResult query(Date start, Aggregator aggregator, String metric, Map<String, Object> tags);
+
+    StatsResult query(Date start, String metric, Map<String, Object> tags);
+
+    StatsResult query(Date start, Date end, String metric, Map<String, Object> tags);
 }
