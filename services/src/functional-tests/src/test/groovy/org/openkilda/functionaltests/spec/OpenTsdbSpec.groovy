@@ -11,26 +11,27 @@ import spock.util.mop.Use
 
 @Use(TimeCategory)
 class OpenTsdbSpec extends BaseSpecification {
-    
+
     @Autowired
     OtsdbQueryService otsdb
     @Autowired
     TopologyDefinition topology
 
-    @Unroll("Switch stats are being logged for metric:#metric, tags:#tags")
-    def "Switch stats are being logged"(metric, tags) {
-        expect: "At least 1 rx/tx result in the past 5 minutes"
-        otsdb.query(5.minutes.ago, metric, tags).dps.size() > 0
+    @Unroll("Stats are being logged for metric:#metric, tags:#tags")
+    def "Basic stats are being logged"(metric, tags) {
+        expect: "At least 1 result in the past 2 minutes"
+        otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
 
         where:
-        [metric, tags] << [["pen.switch.rx-bytes", "pen.switch.rx-bits", "pen.switch.rx-packets",
-                            "pen.switch.tx-bytes", "pen.switch.tx-bits","pen.switch.tx-packets"],
-                           getSwitchIdTags()].combinations()
+        [metric, tags] << ([
+                ["pen.switch.rx-bytes", "pen.switch.rx-bits", "pen.switch.rx-packets",
+                 "pen.switch.tx-bytes", "pen.switch.tx-bits", "pen.switch.tx-packets"],
+                uniqueSwitches.collect { [switchid: it.dpId.toOtsdFormat()] }].combinations()
+                + [["pen.isl.latency"], uniqueSwitches.collect { [src_switch: it.dpId.toOtsdFormat()] }].combinations()
+                + [["pen.isl.latency"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations())
     }
 
-    def getSwitchIdTags() {
-        topology.activeSwitches.unique{it.ofVersion}.collect {
-            [switchid: it.dpId.toOtsdFormat()]
-        }
+    def getUniqueSwitches() {
+        topology.activeSwitches.unique { it.ofVersion }
     }
 }
