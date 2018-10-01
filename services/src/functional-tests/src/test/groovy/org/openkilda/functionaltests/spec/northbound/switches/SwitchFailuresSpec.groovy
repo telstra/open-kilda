@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
-import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -51,8 +50,7 @@ class SwitchFailuresSpec extends BaseSpecification {
     PathHelper pathHelper
 
     def "ISL is still able to properly fail even after switches where reconnected"() {
-        assumeTrue("Unable to run on hardware topology. Missing ability to disconnect a certain switch",
-                profile == "virtual")
+        requireProfiles("virtual")
 
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
@@ -63,8 +61,8 @@ class SwitchFailuresSpec extends BaseSpecification {
         when: "Two neighbouring switches of the flow go down simultaneously"
         lockKeeperService.knockoutSwitch(isl.srcSwitch.dpId.toString())
         lockKeeperService.knockoutSwitch(isl.dstSwitch.dpId.toString())
-        def timeIslBroke = System.currentTimeMillis()
-        def untilIslShouldFail = { timeIslBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
+        def timeSwitchesBroke = System.currentTimeMillis()
+        def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
         lockKeeperService.removeFlows([isl, islUtils.reverseIsl(isl)]
