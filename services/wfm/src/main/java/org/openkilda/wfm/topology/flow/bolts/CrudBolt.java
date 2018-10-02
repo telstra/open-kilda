@@ -468,7 +468,7 @@ public class CrudBolt
                 .map(repositoryFactory.createFlowRepository()::findById)
                 .map(flows -> {
                     FlowCollector flowPair = new FlowCollector();
-                    flows.forEach(flow -> flowPair.add(FlowMapper.INSTANCE.map(flow)));
+                    flows.forEach(flow -> flowPair.add(FlowMapper.INSTANCE.flowToDto(flow)));
                     return flowPair;
                 })
                 .forEach(flowPair -> {
@@ -597,7 +597,7 @@ public class CrudBolt
             flowValidator.validate(requestedFlow);
 
 
-            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(requestedFlow), Strategy.COST);
+            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.flowFromDto(requestedFlow), Strategy.COST);
             logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), pathPair,
                     message.getCorrelationId());
         } catch (FlowValidationException e) {
@@ -645,7 +645,7 @@ public class CrudBolt
                 try {
                     logger.warn("Origin flow {} path: {} correlationId {}", flowId, flowForward.getFlowPath(),
                             correlationId);
-                    PathPair pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(flow.getLeft()),
+                    PathPair pathPair = pathComputer.getPath(FlowMapper.INSTANCE.flowFromDto(flow.getLeft()),
                             Strategy.COST, true);
                     logger.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {} correlationId {}",
                             flowId, pathPair.getForward(), pathPair.getReverse(), correlationId);
@@ -717,7 +717,7 @@ public class CrudBolt
         try {
             flowValidator.validate(requestedFlow);
 
-            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(requestedFlow),
+            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.flowFromDto(requestedFlow),
                     Strategy.COST, true);
 
             logger.info("Updated flow path: {}, correlationId {}", pathPair, correlationId);
@@ -733,15 +733,11 @@ public class CrudBolt
                     ErrorType.NOT_FOUND, errorType, "Path was not found");
         }
 
-<<<<<<< bed8f391a573a96e49f73ff648765559ece77daa
         FlowPair<PathInfoData, PathInfoData> pathInfoPair = new FlowPair<>(
                 PathMapper.INSTANCE.map(pathPair.getForward()),
                 PathMapper.INSTANCE.map(pathPair.getReverse()));
 
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, pathInfoPair);
-=======
-        FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
->>>>>>> refactor CRUD topology to handle tpe crud ops by itself
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
         flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,

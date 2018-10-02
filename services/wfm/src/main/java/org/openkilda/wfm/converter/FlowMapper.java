@@ -24,9 +24,12 @@ import org.openkilda.model.Path;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.factory.Mappers;
 
 @Mapper(uses = SwitchIdMapper.class)
 public interface FlowMapper {
+
+    FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
     Node pathNodeFromDto(PathNode p);
 
