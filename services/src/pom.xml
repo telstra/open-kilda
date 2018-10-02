@@ -31,6 +31,8 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
+        <project.checkstyle.root>${project.parent.basedir}/checkstyle</project.checkstyle.root>
+
         <apache.kafka.version>0.10.2.1</apache.kafka.version>
         <commons.cli.version>1.4</commons.cli.version>
         <commons.codec.version>1.10</commons.codec.version>
@@ -322,8 +324,8 @@
                     </executions>
                     <configuration>
                         <consoleOutput>true</consoleOutput>
-                        <configLocation>${project.parent.basedir}/checkstyle/checkstyle.xml</configLocation>
-                        <headerLocation>${project.parent.basedir}/checkstyle/checkstyle-header.txt</headerLocation>
+                        <configLocation>${project.checkstyle.root}/checkstyle.xml</configLocation>
+                        <headerLocation>${project.checkstyle.root}/checkstyle-header.txt</headerLocation>
                         <suppressionsLocation>src/checkstyle/checkstyle-suppress-known-issues.xml</suppressionsLocation>
                         <failOnViolation>true</failOnViolation>
                         <violationSeverity>warning</violationSeverity>
