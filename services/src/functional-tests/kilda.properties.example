@@ -15,8 +15,7 @@ neo.uri=bolt://localhost:7687
 mininet.endpoint=http://localhost:38080
 mininet-flowtool.endpoint=http://localhost:17191
 
-otsdb.host=localhost
-otsdb.port=4242
+otsdb.endpoint=http://localhost:4242
 
 spring.profiles.active=virtual
 

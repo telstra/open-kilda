@@ -81,8 +81,8 @@ public class DefaultServiceConfig {
     }
 
     @Bean(name = "otsdbRestTemplate")
-    public RestTemplate otsdbRestTemplate(@Value("${otsdb.host}") String host, @Value("${otsdb.port}") int port) {
-        return buildLoggingRestTemplate(String.format("http://%s:%s", host, port));
+    public RestTemplate otsdbRestTemplate(@Value("${otsdb.endpoint}") String endpoint) {
+        return buildLoggingRestTemplate(endpoint);
     }
 
     private RestTemplate buildLoggingRestTemplate(String endpoint) {
