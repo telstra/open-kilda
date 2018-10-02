@@ -15,8 +15,15 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowSegment;
 
 public interface FlowSegmentRepository extends Repository<FlowSegment> {
     Iterable<FlowSegment> findByFlowId(String flowId);
+
+    long deleteFlowSegments(Flow flow);
+
+    void mergeFlowSegments(Flow flow);
+
+    Iterable<FlowSegment> findByFlowIdAndCookie(String flowId, long cookie);
 }

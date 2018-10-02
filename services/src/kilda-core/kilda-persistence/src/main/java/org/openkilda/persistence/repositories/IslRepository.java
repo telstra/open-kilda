@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 
@@ -24,4 +25,6 @@ public interface IslRepository extends Repository<Isl> {
     Collection<Isl> findAllOrderedBySrcSwitch();
 
     Isl findByEndpoint(SwitchId switchId, int port);
+
+    void updateIslBandwidth(Flow flow);
 }

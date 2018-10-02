@@ -13,12 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.converter;
 
-import org.openkilda.model.Flow;
+import org.openkilda.messaging.model.SwitchId;
 
-public interface FlowRepository extends Repository<Flow> {
-    Iterable<Flow> findById(String flowId);
+import org.mapstruct.Mapper;
 
-    void mergeFlowRelationships(Flow flow);
+@Mapper
+public interface SwitchIdMapper {
+    default SwitchId toDto(org.openkilda.model.SwitchId switchId) {
+        return new SwitchId(switchId.getId());
+    }
+
+    default org.openkilda.model.SwitchId fromDto(SwitchId switchId) {
+        return new org.openkilda.model.SwitchId(switchId.toLong());
+    }
 }

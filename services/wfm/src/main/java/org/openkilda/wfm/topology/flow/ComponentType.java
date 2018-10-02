@@ -70,6 +70,11 @@ public enum ComponentType {
     SPLITTER_BOLT,
 
     /**
+     * Command bolt to handle Speaker commands execution.
+     */
+    COMMAND_BOLT,
+
+    /**
      * Crud bolt. Processes CRUD flow operations.
      */
     CRUD_BOLT,

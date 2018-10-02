@@ -49,6 +49,9 @@ public class FlowSegment implements Serializable {
     @Property(name = "cookie_id")
     private long cookieId;
 
+    @Property(name = "parent_cookie")
+    private long parentCookieId;
+
     @StartNode
     private Switch srcSwitch;
 

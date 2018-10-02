@@ -66,6 +66,11 @@ import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputer.Strategy;
 import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.pce.provider.UnroutablePathException;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
+import org.openkilda.wfm.converter.FlowMapper;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.share.utils.FlowCollector;
@@ -74,6 +79,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 
@@ -86,6 +92,7 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.mapstruct.factory.Mappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,6 +126,8 @@ public class CrudBolt
      */
     private static final String FLOW_CACHE = "flow";
 
+    private static final FlowMapper FLOW_MAPPER = Mappers.getMapper(FlowMapper.class);
+
     /**
      * Path computation instance.
      */
@@ -140,13 +149,18 @@ public class CrudBolt
 
     private FlowValidator flowValidator;
 
+    private Neo4jConfig neo4jConfig;
+
+    private transient FlowService flowService;
+
     /**
      * Instance constructor.
      *
      * @param pathComputerAuth {@link Auth} instance
      */
-    public CrudBolt(PathComputerAuth pathComputerAuth) {
+    public CrudBolt(PathComputerAuth pathComputerAuth, Neo4jConfig neo4jConfig) {
         this.pathComputerAuth = pathComputerAuth;
+        this.neo4jConfig = neo4jConfig;
     }
 
     /**
@@ -178,7 +192,6 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
@@ -193,6 +206,9 @@ public class CrudBolt
         this.outputCollector = outputCollector;
 
         pathComputer = pathComputerAuth.getPathComputer();
+        Neo4jTransactionManager transactionManager = new Neo4jTransactionManager(neo4jConfig);
+        RepositoryFactory repositoryFactory = new RepositoryFactoryImpl(transactionManager);
+        flowService = new FlowService(transactionManager, repositoryFactory);
     }
 
     /**
@@ -283,7 +299,7 @@ public class CrudBolt
                     }
                     break;
 
-                case TOPOLOGY_ENGINE_BOLT:
+                case COMMAND_BOLT:
 
                     ErrorMessage errorMessage = (ErrorMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
 
@@ -348,6 +364,7 @@ public class CrudBolt
         }
     }
 
+    // TODO(tdurakov): need to be deleted
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
         logger.debug("CACHE SYNCE: {}", message);
 
@@ -566,10 +583,10 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
         logger.info("Deleted flow: {}", flowId);
-
+        flowService.deleteFlow(flowId);
         FlowInfoData data = new FlowInfoData(flowId, flow, DELETE, message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        Values topology = new Values(infoMessage);
         outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -600,10 +617,11 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
         logger.info("Created flow: {}, correlationId: {}", flow, message.getCorrelationId());
 
+        flowService.createFlow(FLOW_MAPPER.flowPairFromDto(flow));
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
                 message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        Values topology = new Values(infoMessage);
         outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -712,7 +730,7 @@ public class CrudBolt
 
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
-
+        flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
                 message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());

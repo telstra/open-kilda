@@ -18,12 +18,14 @@ package org.openkilda.persistence.repositories.impl;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.TestConfigurationProvider;
 import org.openkilda.persistence.neo4j.Neo4jConfig;
 import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.junit.AfterClass;
@@ -34,23 +36,27 @@ import org.neo4j.ogm.testutil.TestServer;
 import java.io.IOException;
 import java.util.Collection;
 
-public class FlowRepositoryImplTest {
-    static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
-    static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
+public class FlowSegmentRepositoryImplTest {
+    static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1L);
+    static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2L);
+    static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3L);
+    static final long COOKIE_ID = 1L;
+    static final String FLOW_ID = "12";
 
     static TestServer testServer;
+
+    static FlowSegmentRepository flowSegmentRepository;
     static FlowRepository flowRepository;
     static SwitchRepository switchRepository;
 
     @BeforeClass
     public static void setUp() throws IOException {
         testServer = new TestServer(true, true, 5, 7687);
-
         Neo4jConfig neo4jConfig = new TestConfigurationProvider().getConfiguration(Neo4jConfig.class);
         Neo4jTransactionManager txManager = new Neo4jTransactionManager(neo4jConfig);
-
         flowRepository = new FlowRepositoryImpl(txManager);
         switchRepository = new SwitchRepositoryImpl(txManager);
+        flowSegmentRepository = new FlowSegmentRepositoryImpl(txManager);
     }
 
     @AfterClass
@@ -61,66 +67,40 @@ public class FlowRepositoryImplTest {
     @Test
     public void shouldCreateAndFindFlow() {
         Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
         switchA.setSwitchId(TEST_SWITCH_A_ID);
-        switchA.setDescription("Some description");
 
         Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
         switchB.setSwitchId(TEST_SWITCH_B_ID);
+
+        Switch switchC = new Switch();
+        switchC.setSwitchId(TEST_SWITCH_C_ID);
 
         Flow flow = new Flow();
         flow.setSrcSwitch(switchA);
-        flow.setDestSwitch(switchB);
-
+        flow.setDestSwitch(switchC);
+        flow.setFlowId(FLOW_ID);
+        flow.setCookie(COOKIE_ID);
         flowRepository.createOrUpdate(flow);
-
-        Collection<Flow> allFlows = flowRepository.findAll();
-        assertEquals(1, allFlows.size());
-        Flow foundFlow = allFlows.iterator().next();
-
-        assertEquals(switchA.getSwitchId(), foundFlow.getSrcSwitchId());
-        assertEquals(2, switchRepository.findAll().size());
-
-        Switch foundSwitch = switchRepository.findBySwitchId(TEST_SWITCH_A_ID);
-        assertEquals(switchA.getSwitchId(), foundSwitch.getSwitchId());
-        assertEquals(switchA.getDescription(), foundSwitch.getDescription());
-
-        flowRepository.delete(flow);
-        assertEquals(0, flowRepository.findAll().size());
-        assertEquals(2, switchRepository.findAll().size());
-        switchRepository.delete(flow.getSrcSwitch());
-        switchRepository.delete(flow.getDestSwitch());
-
+        FlowSegment flowSegment = new FlowSegment();
+        flowSegment.setCookieId(COOKIE_ID);
+        flowSegment.setParentCookieId(COOKIE_ID);
+        flowSegment.setFlowId(FLOW_ID);
+        flowSegment.setSrcSwitch(switchA);
+        flowSegment.setDestSwitch(switchB);
+        flowSegmentRepository.createOrUpdate(flowSegment);
+        flowSegment = new FlowSegment();
+        flowSegment.setCookieId(COOKIE_ID);
+        flowSegment.setParentCookieId(COOKIE_ID);
+        flowSegment.setFlowId(FLOW_ID);
+        flowSegment.setSrcSwitch(switchB);
+        flowSegment.setDestSwitch(switchC);
+        flowSegmentRepository.createOrUpdate(flowSegment);
+        Collection<FlowSegment> allSegments = flowSegmentRepository.findAll();
+        assertEquals(2, allSegments.size());
+        long removedSegmentsCount = flowSegmentRepository.deleteFlowSegments(flow);
+        assertEquals(2L, removedSegmentsCount);
+        allSegments = flowSegmentRepository.findAll();
+        assertEquals(0, allSegments.size());
     }
 
-    @Test
-    public void testUpdateFlowRelationship() {
-        Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
-        switchA.setSwitchId(TEST_SWITCH_A_ID);
-        switchA.setDescription("Some description");
-
-        Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
-        switchB.setSwitchId(TEST_SWITCH_B_ID);
-
-        Flow flow = new Flow();
-        flow.setSrcSwitch(switchA);
-        flow.setSrcPort(1);
-        flow.setSrcVlan(1);
-        flow.setDestSwitch(switchB);
-        flow.setDestPort(1);
-        flow.setDestVlan(1);
-        flow.setFlowId("12");
-        flow.setBandwidth(10000);
-        flow.setCookie(10222);
-        flow.setIgnoreBandwidth(false);
-        flowRepository.createOrUpdate(flow);
-        Collection<Switch> switches = switchRepository.findAll();
-        assertEquals(2, switches.size());
-        flowRepository.delete(flow);
-        switchRepository.delete(flow.getSrcSwitch());
-        switchRepository.delete(flow.getDestSwitch());
-    }
 }
