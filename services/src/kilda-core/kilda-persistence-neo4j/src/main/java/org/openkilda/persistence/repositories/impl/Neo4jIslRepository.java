@@ -43,7 +43,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         parameters.put("src_port", port);
 
         return getSession().queryForObject(Isl.class, "MATCH (src:switch)-[target:isl]->(:switch)\n"
-                + " WHERE src.name=$src_switch AND target.src_port=$src_port\n"
+                + " WHERE src.name={src_switch} AND target.src_port=$src_port\n"
                 + " RETURN target", parameters);
     }
 
