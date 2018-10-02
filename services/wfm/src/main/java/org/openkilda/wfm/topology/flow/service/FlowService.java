@@ -25,6 +25,8 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import java.time.Instant;
+
 public class FlowService {
     private TransactionManager transactionManager;
     private FlowRepository flowRepository;
@@ -69,7 +71,7 @@ public class FlowService {
         Switch dstSwitch = switchRepository.findBySwitchId(flow.getDestSwitchId());
         flow.setSrcSwitch(srcSwitch);
         flow.setDestSwitch(dstSwitch);
-        flow.setLastUpdated(Long.valueOf(System.currentTimeMillis() / 1000).toString());
+        flow.setLastUpdated(Instant.now());
         flowRepository.createOrUpdate(flow);
         flowSegmentRepository.mergeFlowSegments(flow);
         islRepository.updateIslBandwidth(flow);

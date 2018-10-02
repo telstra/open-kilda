@@ -66,9 +66,9 @@ import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.impl.PathComputerImpl;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.converter.FlowMapper;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
-import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.PathMapper;
 import org.openkilda.wfm.share.utils.BidirectionalFlowFetcher;
 import org.openkilda.wfm.share.utils.FlowCollector;
@@ -157,6 +157,7 @@ public class CrudBolt
         this.persistenceManager = persistenceManager;
     }
 
+
     /**
      * {@inheritDoc}
      */
@@ -202,8 +203,7 @@ public class CrudBolt
         repositoryFactory = persistenceManager.getRepositoryFactory();
 
         pathComputer = new PathComputerImpl(repositoryFactory.createIslRepository());
-        flowService = new FlowService(transactionManager, repositoryFactory);
->>>>>>> refactor CRUD topology to handle tpe crud ops by itself
+        flowService = new FlowService(persistenceManager.getTransactionManager(), repositoryFactory);
     }
 
     /**
@@ -733,11 +733,15 @@ public class CrudBolt
                     ErrorType.NOT_FOUND, errorType, "Path was not found");
         }
 
+<<<<<<< bed8f391a573a96e49f73ff648765559ece77daa
         FlowPair<PathInfoData, PathInfoData> pathInfoPair = new FlowPair<>(
                 PathMapper.INSTANCE.map(pathPair.getForward()),
                 PathMapper.INSTANCE.map(pathPair.getReverse()));
 
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, pathInfoPair);
+=======
+        FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
+>>>>>>> refactor CRUD topology to handle tpe crud ops by itself
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
         flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,

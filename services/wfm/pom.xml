@@ -85,6 +85,14 @@
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
+<<<<<<< bed8f391a573a96e49f73ff648765559ece77daa
+=======
+            <artifactId>kilda-persistence</artifactId>
+            <version>${openkilda-messaging.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+>>>>>>> refactor CRUD topology to handle tpe crud ops by itself
             <artifactId>pce</artifactId>
             <version>${openkilda-pce.version}</version>
         </dependency>

@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -34,7 +35,6 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
     public Switch findBySwitchId(SwitchId switchId) {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("name", switchId.toString());
-
         return getSession().queryForObject(Switch.class, "MATCH (sw:switch{name: {name}}) RETURN sw", parameters);
     }
 
