@@ -15,6 +15,7 @@
 
 package org.openkilda.model;
 
+import org.openkilda.model.converters.FlowPathConverter;
 import org.openkilda.model.converters.SwitchIdConverter;
 
 import lombok.AccessLevel;
@@ -29,7 +30,6 @@ import org.neo4j.ogm.annotation.RelationshipEntity;
 import org.neo4j.ogm.annotation.StartNode;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -78,7 +78,8 @@ public class Flow {
     private int destVlan;
 
     @Property(name = "flow_path")
-    private List<String> flowPath;
+    @Convert(FlowPathConverter.class)
+    private Path flowPath;
 
     private long bandwidth;
 
@@ -92,6 +93,9 @@ public class Flow {
 
     @Property(name = "flow_type")
     private OutputVlanType flowType;
+
+    @Property(name = "status")
+    private FlowStatus status;
 
     public void setSrcSwitch(Switch srcSwitch) {
         this.srcSwitch = Objects.requireNonNull(srcSwitch);

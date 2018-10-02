@@ -18,4 +18,5 @@ package org.openkilda.persistence.repositories;
 import org.openkilda.model.Isl;
 
 public interface IslRepository extends Repository<Isl> {
+    Isl findByEndpoint(long switchId, int port);
 }

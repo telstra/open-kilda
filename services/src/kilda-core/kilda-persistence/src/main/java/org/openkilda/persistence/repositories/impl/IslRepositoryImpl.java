@@ -19,12 +19,26 @@ import org.openkilda.model.Isl;
 import org.openkilda.persistence.neo4j.Neo4jSessionFactory;
 import org.openkilda.persistence.repositories.IslRepository;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Neo4J OGM implementation of {@link IslRepository}.
  */
 public class IslRepositoryImpl extends GenericRepository<Isl> implements IslRepository {
     public IslRepositoryImpl(Neo4jSessionFactory sessionFactory) {
         super(sessionFactory);
+    }
+
+    @Override
+    public Isl findByEndpoint(long switchId, int port) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("src_switch", switchId);
+        parameters.put("src_port", port);
+
+        return getSession().queryForObject(Isl.class, "MATCH (src:switch)-[target:isl]->(:switch)\n"
+                + " WHERE src.name=$src_switch AND target.src_port=$src_port\n"
+                + " RETURN target", parameters);
     }
 
     @Override

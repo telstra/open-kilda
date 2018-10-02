@@ -86,6 +86,9 @@ public class Isl {
     @Property(name = "available_bandwidth")
     private long availableBandwidth;
 
+    @Property(name = "status")
+    private IslStatus status;
+
     public void setSrcSwitch(Switch srcSwitch) {
         this.srcSwitch = Objects.requireNonNull(srcSwitch);
         this.srcSwitchId = srcSwitch.getSwitchId();

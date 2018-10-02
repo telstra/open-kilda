@@ -15,46 +15,44 @@
 
 package org.openkilda.model;
 
-import java.util.Arrays;
-
 /**
- * Represents ISL statuses.
+ * Represents flow statuses.
  */
-public enum IslStatus {
+public enum FlowStatus {
 
     /**
-     * ISL is in active state.
+     * Flow creating/deleting state.
      */
-    ACTIVE("Active"),
+    IN_PROGRESS("In progress"),
 
     /**
-     * ISL is in failed state.
+     * Flow is in up state.
      */
-    FAILED("Failed"),
+    UP("Up"),
 
     /**
-     * ISL is in moved state.
+     * Flow is in down state.
      */
-    MOVED("Moved");
+    DOWN("Down");
 
     /**
-     * ISL status.
+     * Flow status.
      */
     private final String status;
 
     /**
      * Instance constructor.
      *
-     * @param status ISL status.
+     * @param status flow state
      */
-    IslStatus(final String status) {
+    FlowStatus(String status) {
         this.status = status;
     }
 
     /**
-     * Returns ISL status.
+     * Returns flow status.
      *
-     * @return ISL status.
+     * @return flow status.
      */
     public String getStatus() {
         return this.status;
@@ -68,15 +66,12 @@ public enum IslStatus {
         return status;
     }
 
-    /**
-     * Find corresponding value for string representation of status.
-     * @param status ISL status.
-     * @return {@link IslStatus} value.
-     */
-    public static IslStatus from(String status) {
-        return Arrays.stream(IslStatus.values())
-                .filter(item -> item.status.equalsIgnoreCase(status))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(String.format("Incorrect isl status: %s", status)));
+    public boolean isActive() {
+        return this == UP;
+    }
+
+    public boolean isActiveOrCached() {
+        return this == UP;
     }
 }
+
