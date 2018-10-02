@@ -73,6 +73,39 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         flowRepository.delete(flow);
         assertEquals(0, flowRepository.findAll().size());
         assertEquals(2, switchRepository.findAll().size());
+        switchRepository.delete(flow.getSrcSwitch());
+        switchRepository.delete(flow.getDestSwitch());
+
+    }
+
+    @Test
+    public void testUpdateFlowRelationship() {
+        Switch switchA = new Switch();
+        switchA.setSwitchId(new SwitchId(1));
+        switchA.setSwitchId(TEST_SWITCH_A_ID);
+        switchA.setDescription("Some description");
+
+        Switch switchB = new Switch();
+        switchB.setSwitchId(new SwitchId(2));
+        switchB.setSwitchId(TEST_SWITCH_B_ID);
+
+        Flow flow = new Flow();
+        flow.setSrcSwitch(switchA);
+        flow.setSrcPort(1);
+        flow.setSrcVlan(1);
+        flow.setDestSwitch(switchB);
+        flow.setDestPort(1);
+        flow.setDestVlan(1);
+        flow.setFlowId("12");
+        flow.setBandwidth(10000);
+        flow.setCookie(10222);
+        flow.setIgnoreBandwidth(false);
+        flowRepository.createOrUpdate(flow);
+        Collection<Switch> switches = switchRepository.findAll();
+        assertEquals(2, switches.size());
+        flowRepository.delete(flow);
+        switchRepository.delete(flow.getSrcSwitch());
+        switchRepository.delete(flow.getDestSwitch());
     }
 
     @Test

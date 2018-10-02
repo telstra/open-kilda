@@ -23,15 +23,15 @@ public enum SwitchStatus {
     /**
      * Switch is in active state.
      */
-    ACTIVE,
+    active,
 
     /**
      * Switch is in inactive state.
      */
-    INACTIVE,
+    inactive,
 
     /**
      * Switch is removed.
      */
-    REMOVED
+    removed
 }

@@ -76,6 +76,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
@@ -89,6 +90,7 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.mapstruct.factory.Mappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,6 +128,10 @@ public class CrudBolt
     private final PersistenceManager persistenceManager;
 
     private transient RepositoryFactory repositoryFactory;
+
+    private static final FlowMapper FLOW_MAPPER = Mappers.getMapper(FlowMapper.class);
+
+    private transient FlowService flowService;
 
     /**
      * Path computation instance.
@@ -180,7 +186,6 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
@@ -197,6 +202,8 @@ public class CrudBolt
         repositoryFactory = persistenceManager.getRepositoryFactory();
 
         pathComputer = new PathComputerImpl(repositoryFactory.createIslRepository());
+        flowService = new FlowService(transactionManager, repositoryFactory);
+>>>>>>> refactor CRUD topology to handle tpe crud ops by itself
     }
 
     /**
@@ -287,7 +294,7 @@ public class CrudBolt
                     }
                     break;
 
-                case TOPOLOGY_ENGINE_BOLT:
+                case COMMAND_BOLT:
 
                     ErrorMessage errorMessage = (ErrorMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
 
@@ -352,6 +359,7 @@ public class CrudBolt
         }
     }
 
+    // TODO(tdurakov): need to be deleted
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
         logger.debug("CACHE SYNCE: {}", message);
 
@@ -569,10 +577,10 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
         logger.info("Deleted flow: {}", flowId);
-
+        flowService.deleteFlow(flowId);
         FlowInfoData data = new FlowInfoData(flowId, flow, DELETE, message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        Values topology = new Values(infoMessage);
         outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -611,10 +619,11 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, pathInfoPair);
         logger.info("Created flow: {}, correlationId: {}", flow, message.getCorrelationId());
 
+        flowService.createFlow(FLOW_MAPPER.flowPairFromDto(flow));
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
                 message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        Values topology = new Values(infoMessage);
         outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -730,7 +739,7 @@ public class CrudBolt
 
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, pathInfoPair);
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
-
+        flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
                 message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());

@@ -60,7 +60,6 @@ public class Flow implements Serializable {
     @EndNode
     private Switch destSwitch;
 
-    //@Setter(AccessLevel.NONE)
     @Property(name = "src_switch")
     @Convert(graphPropertyType = String.class)
     private SwitchId srcSwitchId;
@@ -71,7 +70,6 @@ public class Flow implements Serializable {
     @Property(name = "src_vlan")
     private int srcVlan;
 
-    //@Setter(AccessLevel.NONE)
     @Property(name = "dst_switch")
     @Convert(graphPropertyType = String.class)
     private SwitchId destSwitchId;
@@ -102,6 +100,9 @@ public class Flow implements Serializable {
 
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
+
+    @Property(name = "periodic-pings")
+    private boolean periodicPings;
 
     @Property(name = "flow_type")
     private OutputVlanType flowType;

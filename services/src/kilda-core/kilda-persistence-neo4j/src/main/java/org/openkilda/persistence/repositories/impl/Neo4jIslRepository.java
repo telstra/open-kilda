@@ -15,7 +15,9 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.Isl;
+import org.openkilda.model.Node;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.IslRepository;
 
@@ -23,6 +25,7 @@ import org.neo4j.ogm.cypher.query.SortOrder;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -79,6 +82,42 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
 
     public Collection<Isl> findAllOrderedBySrcSwitch() {
         return getSession().loadAll(getEntityType(), new SortOrder("src_switch"));
+    }
+
+    /**
+     * Update bandwidth for isl related to flow.
+     * @param flow flow's Isls to be updated
+     */
+    public void updateIslBandwidth(Flow flow) {
+        String query = "MATCH "
+                + " (src:switch {name: $src_switch}), "
+                + " (dst:switch {name: $dst_switch}) "
+                + "WITH src,dst "
+                + "MATCH (src) - [i:isl { "
+                + " src_port: $src_port, "
+                + " dst_port: $dst_port "
+                + "}] -> (dst) "
+                + "WITH src,dst,i "
+                + "OPTIONAL MATCH (src) - [fs:flow_segment { "
+                + " src_port: $src_port, "
+                + " dst_port: $dst_port, "
+                + " ignore_bandwidth: false "
+                + "}] -> (dst) "
+                + "WITH sum(fs.bandwidth) AS used_bandwidth, i as i "
+                + "SET i.available_bandwidth = i.max_bandwidth - used_bandwidth ";
+
+        List<Node> nodes = flow.getFlowPath().getNodes();
+        for (int i = 0; i < nodes.size(); i += 2) {
+            Map<String, Object> parameters = new HashMap<>();
+
+            Node src = nodes.get(i);
+            Node dst = nodes.get(i + 1);
+            parameters.put("src_switch", src.getSwitchId());
+            parameters.put("src_port", src.getPortNo());
+            parameters.put("dst_switch", dst.getSwitchId());
+            parameters.put("dst_port", dst.getPortNo());
+            getSession().query(Isl.class, query, parameters);
+        }
     }
 
     @Override
