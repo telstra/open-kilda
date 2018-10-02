@@ -25,7 +25,8 @@ import org.mapstruct.factory.Mappers;
 /**
  * Convert {@link org.openkilda.model.Switch} to {@link SwitchInfoData} and back.
  */
-@Mapper
+@SuppressWarnings("squid:S1214")
+@Mapper(uses = SwitchIdMapper.class)
 public interface SwitchMapper {
 
     SwitchMapper INSTANCE = Mappers.getMapper(SwitchMapper.class);
@@ -36,27 +37,6 @@ public interface SwitchMapper {
     @Mapping(source = "state", target = "status")
     org.openkilda.model.Switch map(SwitchInfoData sw);
 
-    /**
-     * Convert {@link org.openkilda.model.SwitchId} to {@link org.openkilda.messaging.model.SwitchId}.
-     */
-    default org.openkilda.messaging.model.SwitchId map(org.openkilda.model.SwitchId value) {
-        if (value == null) {
-            return null;
-        }
-
-        return new org.openkilda.messaging.model.SwitchId(value.toString());
-    }
-
-    /**
-     * Convert {@link org.openkilda.messaging.model.SwitchId} to {@link org.openkilda.model.SwitchId}.
-     */
-    default org.openkilda.model.SwitchId map(org.openkilda.messaging.model.SwitchId value) {
-        if (value == null) {
-            return null;
-        }
-
-        return new org.openkilda.model.SwitchId(value.toString());
-    }
 
     /**
      * Convert {@link org.openkilda.model.SwitchStatus} to {@link SwitchState}.

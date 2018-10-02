@@ -19,18 +19,22 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.Switch;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 /**
  * Convert {@link org.openkilda.model.Isl} to {@link IslInfoData} and back.
  */
+@SuppressWarnings("squid:S1214")
 @Mapper
 public interface IslMapper {
 
@@ -56,8 +60,37 @@ public interface IslMapper {
                 map(isl.getStatus()), timeCreateMillis, timeModifyMillis);
     }
 
+    /**
+     * Convert {@link IslInfoData} to {@link org.openkilda.model.Isl}.
+     */
+    default org.openkilda.model.Isl map(IslInfoData islInfoData) {
+        Isl isl = new Isl();
 
-    org.openkilda.model.Isl map(IslInfoData isl);
+        List<PathNode> path = islInfoData.getPath();
+
+        if (!path.isEmpty()) {
+            PathNode sourcePathNode = path.get(0);
+            Switch sourceSwitch = new Switch();
+            sourceSwitch.setSwitchId(SwitchIdMapper.INSTANCE.map(sourcePathNode.getSwitchId()));
+            isl.setSrcSwitch(sourceSwitch);
+            isl.setSrcPort(sourcePathNode.getPortNo());
+        }
+
+        if (path.size() > 1) {
+            PathNode destinationPathNode = path.get(1);
+            Switch destinationSwitch = new Switch();
+            destinationSwitch.setSwitchId(SwitchIdMapper.INSTANCE.map(destinationPathNode.getSwitchId()));
+            isl.setDestSwitch(destinationSwitch);
+            isl.setDestPort(destinationPathNode.getPortNo());
+        }
+
+        isl.setLatency((int) islInfoData.getLatency());
+        isl.setSpeed(islInfoData.getSpeed());
+        isl.setAvailableBandwidth(islInfoData.getAvailableBandwidth());
+        isl.setStatus(map(islInfoData.getState()));
+
+        return isl;
+    }
 
     /**
      * Convert {@link org.openkilda.model.IslStatus} to {@link IslChangeType}.

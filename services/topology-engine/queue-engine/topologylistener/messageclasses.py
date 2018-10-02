@@ -191,7 +191,7 @@ class MessageItem(model.JsonSerializable):
                                                  self.correlation_id)
                 self.handle_topology_change()
 
-            elif self.get_message_type() == MT_FLOW_INFODATA:
+            if self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
 
             elif self.get_command() == CD_FLOWS_SYNC_REQUEST:

@@ -53,6 +53,11 @@ public enum Destination {
     WFM_CACHE("WFM_CACHE"),
 
     /**
+     * WorkFlow Manager reroute handling bolt.
+     */
+    WFM_REROUTE("WFM_REROUTE"),
+
+    /**
      * WorkFlow Manager transactions handling bolt.
      */
     WFM_TRANSACTION("WFM_TRANSACTION"),

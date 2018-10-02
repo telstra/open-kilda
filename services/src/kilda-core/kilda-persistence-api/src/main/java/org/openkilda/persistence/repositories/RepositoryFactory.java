@@ -26,4 +26,6 @@ public interface RepositoryFactory {
     IslRepository createIslRepository();
 
     SwitchRepository createSwitchRepository();
+
+    LinkPropsRepository createLinkPropsRepository();
 }

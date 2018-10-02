@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.event;
 
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.StreamNameCollisionException;
@@ -57,6 +59,8 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
     private static final String TOPO_ENG_BOLT_ID = "topo.eng-bolt";
     private static final String SPEAKER_BOLT_ID = "speaker-bolt";
     private static final String SPEAKER_DISCO_BOLT_ID = "speaker.disco-bolt";
+    private static final String NETWORK_TOPOLOGY_BOLT_ID = "network-topology-bolt";
+    private static final String REROUTE_BOLT_ID = "reroute-bolt";
 
     public OfEventWfmTopology(LaunchEnvironment env) {
         super(env, OFEventWfmTopologyConfig.class);
@@ -95,10 +99,23 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
         BoltDeclarer bd = builder.setBolt(DISCO_BOLT_ID, ofeLinkBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(DISCO_SPOUT_ID);
 
+        PersistenceManager persistenceManager =  PersistenceProvider.getInstance()
+                .createPersistenceManager(configurationProvider);
+
+        NetworkTopologyBolt networkTopologyBolt = new NetworkTopologyBolt(persistenceManager,
+                (int) topologyConfig.getIslCostWhenPortDown());
+        builder.setBolt(NETWORK_TOPOLOGY_BOLT_ID, networkTopologyBolt, topologyConfig.getParallelism())
+                .shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.NETWORK_TOPOLOGY_CHANGE_STREAM);
+
+        builder.setBolt(REROUTE_BOLT_ID,
+                createKafkaBolt(topologyConfig.getKafkaTopoRerouteTopic()), topologyConfig.getParallelism())
+                .shuffleGrouping(NETWORK_TOPOLOGY_BOLT_ID, NetworkTopologyBolt.REROUTE_STREAM);
+
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         // TODO: verify this ctrlTarget after refactoring.
         ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, ofeLinkBolt, bd));
         createCtrlBranch(builder, ctrlTargets);
+
         return builder.createTopology();
     }
 

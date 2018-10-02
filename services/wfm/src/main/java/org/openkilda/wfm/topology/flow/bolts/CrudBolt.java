@@ -661,12 +661,16 @@ public class CrudBolt
                         flow.getRight().setState(FlowState.DOWN);
 
                         flow = flowCache.updateFlow(flow.getLeft(), pathInfoPair);
+                        FlowPair<Flow, Flow> currentFlowState = FlowMapper.INSTANCE.map(
+                                flowService.getFlowPair(flow.getLeft().getFlowId()));
+                        processDeleteFlow(message.getCorrelationId(), tuple, currentFlowState.getLeft());
+                        processDeleteFlow(message.getCorrelationId(), tuple, currentFlowState.getRight());
                         logger.warn("Rerouted flow with new path: {}, correlationId {}", flow, correlationId);
+                        flowService.updateFlow(FlowMapper.INSTANCE.map(flow));
 
-                        FlowInfoData data = new FlowInfoData(flowId, flow, UPDATE, correlationId);
-                        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
-                        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-                        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
+                        processCreateFlow(message.getCorrelationId(), tuple, flow.getLeft());
+                        processCreateFlow(message.getCorrelationId(), tuple, flow.getRight());
+
                     } else {
                         logger.warn("Reroute {} is unsuccessful: can't find new path. CorrelationId: {}",
                                 flowId, correlationId);

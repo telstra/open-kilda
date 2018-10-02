@@ -19,6 +19,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowStatus;
+import org.openkilda.model.Node;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jBasedTest;
@@ -29,6 +31,7 @@ import org.hamcrest.Matchers;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -126,5 +129,68 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         List<Flow> foundFlow = StreamSupport.stream(flowRepository.findById(TEST_FLOW_ID).spliterator(), false)
                 .collect(Collectors.toList());
         assertThat(foundFlow, Matchers.hasSize(1));
+    }
+
+    @Test
+    public void testFindActiveFlowsByNode() {
+        Switch switchA = new Switch();
+        switchA.setSwitchId(new SwitchId(1));
+        switchA.setSwitchId(TEST_SWITCH_A_ID);
+
+        Switch switchB = new Switch();
+        switchB.setSwitchId(new SwitchId(2));
+        switchB.setSwitchId(TEST_SWITCH_B_ID);
+
+        Flow flow = new Flow();
+        flow.setSrcSwitch(switchA);
+        flow.setSrcPort(1);
+        flow.setDestSwitch(switchB);
+        flow.setDestPort(2);
+        flow.setStatus(FlowStatus.UP);
+
+        flowRepository.createOrUpdate(flow);
+
+        Node node = new Node();
+        node.setSwitchId(switchA.getSwitchId());
+        node.setPortNo(1);
+        List<Flow> flows = new ArrayList<>();
+        flowRepository.findActiveFlowsByNode(node).forEach(flows::add);
+        assertEquals(1, flows.size());
+
+        assertEquals(switchA.getSwitchId(), flows.get(0).getSrcSwitchId());
+        assertEquals(2, switchRepository.findAll().size());
+
+        flowRepository.delete(flow);
+        switchRepository.delete(flow.getSrcSwitch());
+        switchRepository.delete(flow.getDestSwitch());
+    }
+
+    @Test
+    public void testFindInactiveFlows() {
+        Switch switchA = new Switch();
+        switchA.setSwitchId(new SwitchId(1));
+        switchA.setSwitchId(TEST_SWITCH_A_ID);
+
+        Switch switchB = new Switch();
+        switchB.setSwitchId(new SwitchId(2));
+        switchB.setSwitchId(TEST_SWITCH_B_ID);
+
+        Flow flow = new Flow();
+        flow.setSrcSwitch(switchA);
+        flow.setDestSwitch(switchB);
+        flow.setStatus(FlowStatus.DOWN);
+
+        flowRepository.createOrUpdate(flow);
+
+        List<Flow> flows = new ArrayList<>();
+        flowRepository.findInactiveFlows().forEach(flows::add);
+        assertEquals(1, flows.size());
+
+        assertEquals(switchA.getSwitchId(), flows.get(0).getSrcSwitchId());
+        assertEquals(2, switchRepository.findAll().size());
+
+        flowRepository.delete(flow);
+        switchRepository.delete(flow.getSrcSwitch());
+        switchRepository.delete(flow.getDestSwitch());
     }
 }

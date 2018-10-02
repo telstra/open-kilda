@@ -109,6 +109,7 @@ public class OfeLinkBolt
     static final String TOPO_ENG_STREAM = "topo.eng";
     static final String SPEAKER_DISCO_STREAM = "speaker.disco";
     static final String SPEAKER_STREAM = "speaker";
+    static final String NETWORK_TOPOLOGY_CHANGE_STREAM = "network-topology-change-stream";
 
     private final String islDiscoveryTopic;
 
@@ -402,10 +403,10 @@ public class OfeLinkBolt
         InfoData data = infoMessage.getData();
         if (data instanceof SwitchInfoData) {
             handleSwitchEvent(tuple, (SwitchInfoData) data);
-            passToTopologyEngine(tuple);
+            passToNetworkTopologyBolt(tuple);
         } else if (data instanceof PortInfoData) {
             handlePortEvent(tuple, (PortInfoData) data);
-            passToTopologyEngine(tuple);
+            passToNetworkTopologyBolt(tuple);
         } else if (data instanceof IslInfoData) {
             handleIslEvent(tuple, (IslInfoData) data, infoMessage.getCorrelationId());
         } else if (data instanceof DiscoPacketSendingConfirmation) {
@@ -438,7 +439,7 @@ public class OfeLinkBolt
         logger.info("DISCO: Switch Event: switch={} state={}", switchId, state);
 
         if (state == SwitchState.DEACTIVATED) {
-            passToTopologyEngine(tuple);
+            passToNetworkTopologyBolt(tuple);
         } else if (state == SwitchState.ACTIVATED) {
             // It's possible that we get duplicated switch up events .. particulary if
             // FL goes down and then comes back up; it'll rebuild its switch / port information.
@@ -450,18 +451,15 @@ public class OfeLinkBolt
         }
     }
 
-    /**
-     * Pass the original message along, to the Topology Engine topic.
-     */
-    private void passToTopologyEngine(Tuple tuple) {
+    private void passToNetworkTopologyBolt(Tuple tuple) {
         String json = tuple.getString(0);
-        collector.emit(TOPO_ENG_STREAM, tuple, new Values(PAYLOAD, json));
+        collector.emit(NETWORK_TOPOLOGY_CHANGE_STREAM, tuple, new Values(PAYLOAD, json));
     }
 
-    private void passToTopologyEngine(Tuple tuple, InfoMessage message) {
+    private void passToNetworkTopologyBolt(Tuple tuple, InfoMessage message) {
         try {
             String json = Utils.MAPPER.writeValueAsString(message);
-            collector.emit(TOPO_ENG_STREAM, tuple, new Values(PAYLOAD, json));
+            collector.emit(NETWORK_TOPOLOGY_CHANGE_STREAM, tuple, new Values(PAYLOAD, json));
         } catch (JsonProcessingException e) {
             logger.error("Error during json processing", e);
         }
@@ -524,7 +522,7 @@ public class OfeLinkBolt
         if (stateChanged) {
             // If the state changed, notify the TE.
             logger.info("DISCO: ISL Event: switch={} port={} state={}", srcSwitch, srcPort, state);
-            passToTopologyEngine(tuple);
+            passToNetworkTopologyBolt(tuple);
         }
     }
 
@@ -542,7 +540,7 @@ public class OfeLinkBolt
         String discoFail = OfeMessageUtils.createIslFail(switchId, portId, correlationId);
         //        Values dataVal = new Values(PAYLOAD, discoFail, switchId, portId, OfeMessageUtils.LINK_DOWN);
         //        collector.emit(topoEngTopic, tuple, dataVal);
-        collector.emit(TOPO_ENG_STREAM, tuple, new Values(PAYLOAD, discoFail));
+        collector.emit(NETWORK_TOPOLOGY_CHANGE_STREAM, tuple, new Values(PAYLOAD, discoFail));
         discovery.handleFailed(switchId, portId);
         logger.warn("LINK: Send ISL discovery failure message={}", discoFail);
     }
@@ -569,14 +567,14 @@ public class OfeLinkBolt
         PathNode dstNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 1);
         IslInfoData infoData = new IslInfoData(Lists.newArrayList(srcNode, dstNode), IslChangeType.MOVED);
         InfoMessage message = new InfoMessage(infoData, System.currentTimeMillis(), correlationId);
-        passToTopologyEngine(tuple, message);
+        passToNetworkTopologyBolt(tuple, message);
 
         // we should send reverse link as well to modify status in TE
         srcNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 0);
         dstNode = new PathNode(srcSwitch, srcPort, 1);
         IslInfoData reverseLink = new IslInfoData(Lists.newArrayList(srcNode, dstNode), IslChangeType.MOVED);
         message = new InfoMessage(reverseLink, System.currentTimeMillis(), correlationId);
-        passToTopologyEngine(tuple, message);
+        passToNetworkTopologyBolt(tuple, message);
     }
 
     private void handleSentDiscoPacket(DiscoPacketSendingConfirmation confirmation) {
@@ -591,6 +589,7 @@ public class OfeLinkBolt
         declarer.declareStream(SPEAKER_STREAM, fields);
         declarer.declareStream(SPEAKER_DISCO_STREAM, fields);
         declarer.declareStream(TOPO_ENG_STREAM, fields);
+        declarer.declareStream(NETWORK_TOPOLOGY_CHANGE_STREAM, fields);
         // FIXME(dbogun): use proper tuple format
         declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }

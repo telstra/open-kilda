@@ -32,7 +32,8 @@ import java.time.Instant;
 /**
  * Convert {@link org.openkilda.model.Flow} to {@link Flow} and back.
  */
-@Mapper
+@SuppressWarnings("squid:S1214")
+@Mapper(uses = SwitchIdMapper.class)
 public interface FlowMapper {
 
     FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
@@ -60,28 +61,6 @@ public interface FlowMapper {
     @Mapping(source = "destinationSwitch", target = "destSwitchId")
     @Mapping(source = "state", target = "status")
     org.openkilda.model.Flow map(Flow flow);
-
-    /**
-     * Convert {@link org.openkilda.model.SwitchId} to {@link org.openkilda.messaging.model.SwitchId}.
-     */
-    default org.openkilda.messaging.model.SwitchId map(org.openkilda.model.SwitchId value) {
-        if (value == null) {
-            return null;
-        }
-
-        return new org.openkilda.messaging.model.SwitchId(value.toString());
-    }
-
-    /**
-     * Convert {@link org.openkilda.messaging.model.SwitchId} to {@link org.openkilda.model.SwitchId}.
-     */
-    default org.openkilda.model.SwitchId map(org.openkilda.messaging.model.SwitchId value) {
-        if (value == null) {
-            return null;
-        }
-
-        return new org.openkilda.model.SwitchId(value.toString());
-    }
 
     /**
      * Convert {@link org.openkilda.messaging.info.event.PathNode} to {@link org.openkilda.model.Node}.

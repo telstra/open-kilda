@@ -16,9 +16,14 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.Node;
 
 public interface FlowRepository extends Repository<Flow> {
     Iterable<Flow> findById(String flowId);
+
+    Iterable<Flow> findActiveFlowsByNode(Node node);
+
+    Iterable<Flow> findInactiveFlows();
 
     long deleteByFlowId(String flowId);
 

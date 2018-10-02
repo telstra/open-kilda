@@ -29,7 +29,7 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
-import org.openkilda.wfm.share.mappers.FlowMapper;
+import org.openkilda.wfm.share.mappers.SwitchIdMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -116,7 +116,7 @@ public class CommandFactory {
             criteria = new DeleteRulesCriteria(cookie, f.getDestPort(), flow.getTransitVlan(),
                     0, dstPort);
             command = new RemoveFlow(UUID.randomUUID().getLeastSignificantBits(), flowId, cookie,
-                    FlowMapper.INSTANCE.map(f.getDestSwitchId()),
+                    SwitchIdMapper.INSTANCE.map(f.getDestSwitchId()),
                     0L, criteria);
             commands.add(command);
         }

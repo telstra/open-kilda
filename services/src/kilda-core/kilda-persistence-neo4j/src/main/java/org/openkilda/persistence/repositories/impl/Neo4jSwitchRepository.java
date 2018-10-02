@@ -34,7 +34,8 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
     public Switch findBySwitchId(SwitchId switchId) {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("name", switchId.toString());
-        return getSession().queryForObject(Switch.class, "MATCH (sw:switch{name: {name}}) RETURN sw", parameters);
+
+        return getSession().queryForObject(Switch.class, "MATCH (sw:switch{name: $name}) RETURN sw", parameters);
     }
 
     @Override

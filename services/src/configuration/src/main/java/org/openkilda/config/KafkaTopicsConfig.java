@@ -101,4 +101,9 @@ public interface KafkaTopicsConfig {
     @FallbackKey("kafka.nbworker.topic")
     @Default("kilda.topo.nb")
     String getTopoNbTopic();
+
+    @Key("topo.reroute")
+    @FallbackKey("kafka.reroute.topic")
+    @Default("kilda.topo.reroute")
+    String getTopoRerouteTopic();
 }

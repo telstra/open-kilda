@@ -43,6 +43,13 @@ public interface OFEventWfmTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getSpeakerDiscoTopic();
     }
 
+    default String getKafkaTopoRerouteTopic() {
+        return getKafkaTopics().getTopoRerouteTopic();
+    }
+
+    @Key("isl.cost.when.port.down")
+    long getIslCostWhenPortDown();
+
     @Configuration
     @Key("discovery")
     interface DiscoveryConfig {

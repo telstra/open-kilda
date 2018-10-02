@@ -24,7 +24,8 @@ import org.mapstruct.factory.Mappers;
 /**
  * Convert {@link org.openkilda.model.Path} to {@link PathInfoData} and back.
  */
-@Mapper
+@SuppressWarnings("squid:S1214")
+@Mapper(uses = SwitchIdMapper.class)
 public interface PathMapper {
 
     PathMapper INSTANCE = Mappers.getMapper(PathMapper.class);
@@ -35,25 +36,4 @@ public interface PathMapper {
     @Mapping(source = "path", target = "nodes")
     org.openkilda.model.Path map(PathInfoData path);
 
-    /**
-     * Convert {@link org.openkilda.model.SwitchId} to {@link org.openkilda.messaging.model.SwitchId}.
-     */
-    default org.openkilda.messaging.model.SwitchId map(org.openkilda.model.SwitchId value) {
-        if (value == null) {
-            return null;
-        }
-
-        return new org.openkilda.messaging.model.SwitchId(value.toString());
-    }
-
-    /**
-     * Convert {@link org.openkilda.messaging.model.SwitchId} to {@link org.openkilda.model.SwitchId}.
-     */
-    default org.openkilda.model.SwitchId map(org.openkilda.messaging.model.SwitchId value) {
-        if (value == null) {
-            return null;
-        }
-
-        return new org.openkilda.model.SwitchId(value.toString());
-    }
 }

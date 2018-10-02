@@ -35,9 +35,10 @@ import java.util.List;
  * Switch entity.
  */
 @Data
-@EqualsAndHashCode(exclude = {"entityId", "incomingLinks", "outgoingLinks", "flows", "flowSegments"})
-@ToString(exclude = "flows")
+@EqualsAndHashCode(exclude = {"entityId", "maxMeter", "maxRule",
+        "incomingLinks", "outgoingLinks", "flows", "flowSegments"})
 @NodeEntity(label = "switch")
+@ToString(exclude = {"flows", "incomingLinks", "outgoingLinks"})
 public class Switch implements Serializable {
     private static final long serialVersionUID = 1L;
 

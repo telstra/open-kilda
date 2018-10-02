@@ -24,7 +24,11 @@ import java.util.Collection;
 public interface IslRepository extends Repository<Isl> {
     Collection<Isl> findAllOrderedBySrcSwitch();
 
-    Isl findByEndpoint(SwitchId switchId, int port);
+    Isl findByEndpoints(SwitchId sourceSwitchId, int sourcePort, SwitchId destinationSwitchId, int destinationPort);
+
+    Iterable<Isl> findByEndpoint(SwitchId switchId, int port);
+
+    void setLinkPropsToIsl(Isl isl);
 
     /**
      * Finds ISLs occupied by the flow, filtering out ISLs that don't have enough available bandwidth.
@@ -48,4 +52,8 @@ public interface IslRepository extends Repository<Isl> {
      * @param flow flow's Isls to be updated
      */
     void updateIslBandwidth(Flow flow);
+
+    void updateIslBandwidth(SwitchId sourceSwitchId, int sourcePort, SwitchId destinationSwitchId, int destinationPort);
+
+    void updateStatus(Isl isl);
 }

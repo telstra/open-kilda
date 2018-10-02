@@ -27,6 +27,9 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
@@ -63,38 +66,65 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         islRepository.delete(isl);
         assertEquals(0, islRepository.findAll().size());
         assertEquals(2, switchRepository.findAll().size());
-        switchRepository.delete(flow.getSrcSwitch());
-        switchRepository.delete(flow.getDestSwitch());
 
+        switchRepository.delete(switchA);
+        switchRepository.delete(switchB);
     }
 
     @Test
-    public void testUpdateFlowRelationship() {
+    public void shouldCreateAndFindIslByEndpoint() {
         Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
         switchA.setSwitchId(TEST_SWITCH_A_ID);
-        switchA.setDescription("Some description");
 
         Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
         switchB.setSwitchId(TEST_SWITCH_B_ID);
 
-        Flow flow = new Flow();
-        flow.setSrcSwitch(switchA);
-        flow.setSrcPort(1);
-        flow.setSrcVlan(1);
-        flow.setDestSwitch(switchB);
-        flow.setDestPort(1);
-        flow.setDestVlan(1);
-        flow.setFlowId("12");
-        flow.setBandwidth(10000);
-        flow.setCookie(10222);
-        flow.setIgnoreBandwidth(false);
-        flowRepository.createOrUpdate(flow);
-        Collection<Switch> switches = switchRepository.findAll();
-        assertEquals(2, switches.size());
-        flowRepository.delete(flow);
-        switchRepository.delete(flow.getSrcSwitch());
-        switchRepository.delete(flow.getDestSwitch());
+        Isl isl = new Isl();
+        isl.setSrcSwitch(switchA);
+        isl.setSrcPort(1);
+        isl.setDestSwitch(switchB);
+        isl.setDestPort(1);
+
+        islRepository.createOrUpdate(isl);
+
+        assertEquals(1, islRepository.findAll().size());
+        assertEquals(2, switchRepository.findAll().size());
+
+        List<Isl> foundIsls = new ArrayList<>();
+        islRepository.findByEndpoint(TEST_SWITCH_A_ID, 1).forEach(foundIsls::add);
+
+        assertEquals(switchB, foundIsls.get(0).getDestSwitch());
+
+        islRepository.delete(isl);
+        switchRepository.delete(switchA);
+        switchRepository.delete(switchB);
+    }
+
+    @Test
+    public void shouldCreateAndFindIslByEndpoints() {
+        Switch switchA = new Switch();
+        switchA.setSwitchId(TEST_SWITCH_A_ID);
+
+        Switch switchB = new Switch();
+        switchB.setSwitchId(TEST_SWITCH_B_ID);
+
+        Isl isl = new Isl();
+        isl.setSrcSwitch(switchA);
+        isl.setSrcPort(1);
+        isl.setDestSwitch(switchB);
+        isl.setDestPort(1);
+
+        islRepository.createOrUpdate(isl);
+
+        assertEquals(1, islRepository.findAll().size());
+        assertEquals(2, switchRepository.findAll().size());
+
+        Isl foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 1);
+
+        assertEquals(switchB, foundIsl.getDestSwitch());
+
+        islRepository.delete(isl);
+        switchRepository.delete(switchA);
+        switchRepository.delete(switchB);
     }
 }

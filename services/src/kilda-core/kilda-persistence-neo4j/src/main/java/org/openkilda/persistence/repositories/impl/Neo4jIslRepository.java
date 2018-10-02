@@ -23,6 +23,8 @@ import org.openkilda.persistence.repositories.IslRepository;
 
 import org.neo4j.ogm.cypher.query.SortOrder;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -31,20 +33,71 @@ import java.util.Map;
 /**
  * Neo4J OGM implementation of {@link IslRepository}.
  */
+@SuppressWarnings("squid:S1192")
 public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements IslRepository {
     public Neo4jIslRepository(Neo4jSessionFactory sessionFactory) {
         super(sessionFactory);
     }
 
     @Override
-    public Isl findByEndpoint(SwitchId switchId, int port) {
+    public Isl findByEndpoints(SwitchId sourceSwitchId, int sourcePort,
+                               SwitchId destinationSwitchId, int destinationPort) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("src_switch", sourceSwitchId.toString());
+        parameters.put("src_port", sourcePort);
+        parameters.put("dst_switch", destinationSwitchId.toString());
+        parameters.put("dst_port", destinationPort);
+
+        String query = "MATCH"
+                + "(src:switch {name: $src_switch})"
+                + "-"
+                + "[target:isl { "
+                + "src_switch: $src_switch, "
+                + "src_port: $src_port, "
+                + "dst_switch: $dst_switch, "
+                + "dst_port: $dst_port "
+                + "}]"
+                + "->"
+                + "(dst:switch {name: $dst_switch}) "
+                + "RETURN src, target, dst";
+
+        return getSession().queryForObject(Isl.class, query, parameters);
+    }
+
+    @Override
+    public Iterable<Isl> findByEndpoint(SwitchId switchId, int port) {
+        String query = "MATCH (src:switch)-[target:isl]-(dst:switch) "
+                + "WHERE target.src_switch=$src_switch AND target.src_port=$src_port "
+                + "RETURN src, target, dst";
+
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("src_switch", switchId.toString());
         parameters.put("src_port", port);
 
-        return getSession().queryForObject(Isl.class, "MATCH (src:switch)-[target:isl]->(:switch)\n"
-                + " WHERE src.name={src_switch} AND target.src_port=$src_port\n"
-                + " RETURN target", parameters);
+        return getSession().query(Isl.class, query, parameters);
+    }
+
+    @Override
+    public void setLinkPropsToIsl(Isl isl) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("src_switch", isl.getSrcSwitchId().toString());
+        parameters.put("src_port", isl.getSrcPort());
+        parameters.put("dst_switch", isl.getDestSwitchId().toString());
+        parameters.put("dst_port", isl.getDestPort());
+
+        String query = "MATCH (src:switch)-[i:isl]->(dst:switch) "
+                + "WHERE i.src_switch = $src_switch "
+                + "AND i.src_port = $src_port "
+                + "AND i.dst_switch = $dst_switch "
+                + "AND i.dst_port = $dst_port "
+                + "MATCH (lp:link_props) "
+                + "WHERE lp.src_switch = $src_switch "
+                + "AND lp.src_port = $src_port "
+                + "AND lp.dst_switch = $dst_switch "
+                + "AND lp.dst_port = $dst_port "
+                + "SET i += lp ";
+
+        getSession().query(Isl.class, query, parameters);
     }
 
     @Override
@@ -79,11 +132,36 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         return getSession().query(Isl.class, query, parameters);
     }
 
+
+    public Collection<Isl> findAllOrderedBySrcSwitch() {
+        return getSession().loadAll(getEntityType(), new SortOrder("src_switch"));
+    }
+
+
     /**
      * Update bandwidth for isl related to flow.
      * @param flow flow's Isls to be updated
      */
+    @Override
     public void updateIslBandwidth(Flow flow) {
+        List<Node> nodes = flow.getFlowPath().getNodes();
+        for (int i = 0; i < nodes.size(); i += 2) {
+            Node src = nodes.get(i);
+            Node dst = nodes.get(i + 1);
+            updateIslBandwidth(src.getSwitchId(), src.getPortNo(), dst.getSwitchId(), dst.getPortNo());
+        }
+    }
+
+    @Override
+    public void updateIslBandwidth(SwitchId sourceSwitchId, int sourcePort,
+                                   SwitchId destinationSwitchId, int destinationPort) {
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("src_switch", sourceSwitchId.toString());
+        parameters.put("src_port", sourcePort);
+        parameters.put("dst_switch", destinationSwitchId.toString());
+        parameters.put("dst_port", destinationPort);
+
         String query = "MATCH "
                 + " (src:switch {name: $src_switch}), "
                 + " (dst:switch {name: $dst_switch}) "
@@ -101,22 +179,61 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 + "WITH sum(fs.bandwidth) AS used_bandwidth, i as i "
                 + "SET i.available_bandwidth = i.max_bandwidth - used_bandwidth ";
 
-        List<Node> nodes = flow.getFlowPath().getNodes();
-        for (int i = 0; i < nodes.size(); i += 2) {
-            Map<String, Object> parameters = new HashMap<>();
-
-            Node src = nodes.get(i);
-            Node dst = nodes.get(i + 1);
-            parameters.put("src_switch", src.getSwitchId());
-            parameters.put("src_port", src.getPortNo());
-            parameters.put("dst_switch", dst.getSwitchId());
-            parameters.put("dst_port", dst.getPortNo());
-            getSession().query(Isl.class, query, parameters);
-        }
+        getSession().query(Isl.class, query, parameters);
     }
 
-    public Collection<Isl> findAllOrderedBySrcSwitch() {
-        return getSession().loadAll(getEntityType(), new SortOrder("src_switch"));
+    @Override
+    public void updateStatus(Isl isl) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("status_up", "active");
+        parameters.put("status_moved", "moved");
+        parameters.put("status_down", "inactive");
+        parameters.put("src_switch", isl.getSrcSwitchId().toString());
+        parameters.put("src_port", isl.getSrcPort());
+        parameters.put("dst_switch", isl.getDestSwitchId().toString());
+        parameters.put("dst_port", isl.getDestPort());
+        parameters.put("peer_src_switch", isl.getDestSwitchId().toString());
+        parameters.put("peer_src_port", isl.getDestPort());
+        parameters.put("peer_dst_switch", isl.getSrcSwitchId().toString());
+        parameters.put("peer_dst_port", isl.getSrcPort());
+        parameters.put("mtime", Instant.now(Clock.systemUTC()).toString());
+
+        String query = "MATCH "
+                + "  (:switch {name: $src_switch}) "
+                + "  - "
+                + "  [self:isl { "
+                + "    src_switch: $src_switch, "
+                + "    src_port: $src_port, "
+                + "    dst_switch: $dst_switch, "
+                + "    dst_port: $dst_port "
+                + "  }] "
+                + "  -> "
+                + "  (:switch {name: $dst_switch}) "
+                + "MATCH "
+                + "  (:switch {name: $peer_src_switch}) "
+                + "  - "
+                + "  [peer:isl { "
+                + "    src_switch: $peer_src_switch, "
+                + "    src_port: $peer_src_port, "
+                + "    dst_switch: $peer_dst_switch, "
+                + "    dst_port: $peer_dst_port "
+                + "  }] "
+                + "  -> "
+                + "  (:switch {name: $peer_dst_switch}) "
+                + " "
+                + "WITH self, peer, CASE "
+                + "  WHEN self.actual = $status_up AND peer.actual = $status_up "
+                + "    THEN $status_up "
+                + "  WHEN self.actual = $status_moved OR peer.actual = $status_moved "
+                + "    THEN $status_moved "
+                + "  ELSE $status_down "
+                + "END AS isl_status  "
+                + " "
+                + "SET self.status=isl_status "
+                + "SET peer.status=isl_status "
+                + "SET self.time_modify=$mtime, peer.time_modify=$mtime ";
+
+        getSession().query(Isl.class, query, parameters);
     }
 
     @Override

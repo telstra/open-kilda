@@ -91,6 +91,9 @@ public class Isl implements Serializable {
     @Property(name = "max_bandwidth")
     private long maxBandwidth;
 
+    @Property(name = "default_max_bandwidth")
+    private long defaultMaxBandwidth;
+
     @Property(name = "available_bandwidth")
     private long availableBandwidth;
 

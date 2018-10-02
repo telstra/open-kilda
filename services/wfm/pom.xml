@@ -362,36 +362,36 @@
     <build>
         <pluginManagement>
             <plugins>
-                <!--<plugin>-->
-                    <!--<groupId>org.apache.maven.plugins</groupId>-->
-                    <!--<artifactId>maven-checkstyle-plugin</artifactId>-->
-                    <!--<version>${maven-checkstyle-plugin.version}</version>-->
-                    <!--<dependencies>-->
-                        <!--<dependency>-->
-                            <!--<groupId>com.puppycrawl.tools</groupId>-->
-                            <!--<artifactId>checkstyle</artifactId>-->
-                            <!--<version>${puppycrawl-tools-checkstyle.version}</version>-->
-                        <!--</dependency>-->
-                    <!--</dependencies>-->
-                    <!--<executions>-->
-                        <!--<execution>-->
-                            <!--<id>checkstyle-validation</id>-->
-                            <!--<phase>validate</phase>-->
-                            <!--<goals>-->
-                                <!--<goal>check</goal>-->
-                            <!--</goals>-->
-                        <!--</execution>-->
-                    <!--</executions>-->
-                    <!--<configuration>-->
-                        <!--<consoleOutput>true</consoleOutput>-->
-                        <!--<configLocation>src/checkstyle/checkstyle.xml</configLocation>-->
-                        <!--<headerLocation>src/checkstyle/checkstyle-header.txt</headerLocation>-->
-                        <!--<suppressionsLocation>src/checkstyle/checkstyle-suppress-known-issues.xml</suppressionsLocation>-->
-                        <!--<failOnViolation>true</failOnViolation>-->
-                        <!--<violationSeverity>warning</violationSeverity>-->
-                        <!--<includeTestSourceDirectory>true</includeTestSourceDirectory>-->
-                    <!--</configuration>-->
-                <!--</plugin>-->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${maven-checkstyle-plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.puppycrawl.tools</groupId>
+                            <artifactId>checkstyle</artifactId>
+                            <version>${puppycrawl-tools-checkstyle.version}</version>
+                        </dependency>
+                    </dependencies>
+                    <executions>
+                        <execution>
+                            <id>checkstyle-validation</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <consoleOutput>true</consoleOutput>
+                        <configLocation>src/checkstyle/checkstyle.xml</configLocation>
+                        <headerLocation>src/checkstyle/checkstyle-header.txt</headerLocation>
+                        <suppressionsLocation>src/checkstyle/checkstyle-suppress-known-issues.xml</suppressionsLocation>
+                        <failOnViolation>true</failOnViolation>
+                        <violationSeverity>warning</violationSeverity>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -439,80 +439,80 @@
                     </archive>
                 </configuration>
                 <!--<dependencySets>-->
-                    <!--<dependencySet>-->
-                        <!--<excludes>-->
-                            <!--<exclude>log4j:log4j</exclude>-->
-                        <!--</excludes>-->
-                    <!--</dependencySet>-->
+                <!--<dependencySet>-->
+                <!--<excludes>-->
+                <!--<exclude>log4j:log4j</exclude>-->
+                <!--</excludes>-->
+                <!--</dependencySet>-->
                 <!--</dependencySets>-->
             </plugin>
 
             <!-- build an uber jar -->
             <!--<plugin>-->
-                <!--<groupId>org.apache.maven.plugins</groupId>-->
-                <!--<artifactId>maven-shade-plugin</artifactId>-->
-                <!--<version>2.3</version>-->
-                <!--<configuration>-->
-                    <!--<createDependencyReducedPom>true</createDependencyReducedPom>-->
-                <!--</configuration>-->
-                <!--<executions>-->
-                    <!--<execution>-->
-                        <!--<phase>package</phase>-->
-                        <!--<goals>-->
-                            <!--<goal>shade</goal>-->
-                        <!--</goals>-->
-                        <!--<configuration>-->
-                            <!--<transformers>-->
-                                <!--<transformer-->
-                                        <!--implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>-->
-                                <!--<transformer-->
-                                        <!--implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
-                                    <!--<mainClass>org.apache.storm.flux.Flux</mainClass>-->
-                                <!--</transformer>-->
-                            <!--</transformers>-->
-                        <!--</configuration>-->
-                    <!--</execution>-->
-                <!--</executions>-->
+            <!--<groupId>org.apache.maven.plugins</groupId>-->
+            <!--<artifactId>maven-shade-plugin</artifactId>-->
+            <!--<version>2.3</version>-->
+            <!--<configuration>-->
+            <!--<createDependencyReducedPom>true</createDependencyReducedPom>-->
+            <!--</configuration>-->
+            <!--<executions>-->
+            <!--<execution>-->
+            <!--<phase>package</phase>-->
+            <!--<goals>-->
+            <!--<goal>shade</goal>-->
+            <!--</goals>-->
+            <!--<configuration>-->
+            <!--<transformers>-->
+            <!--<transformer-->
+            <!--implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>-->
+            <!--<transformer-->
+            <!--implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
+            <!--<mainClass>org.apache.storm.flux.Flux</mainClass>-->
+            <!--</transformer>-->
+            <!--</transformers>-->
+            <!--</configuration>-->
+            <!--</execution>-->
+            <!--</executions>-->
             <!--</plugin>-->
 
 
             <!--<plugin>-->
-                <!--<groupId>org.apache.maven.plugins</groupId>-->
-                <!--<artifactId>maven-shade-plugin</artifactId>-->
-                <!--<version>2.3</version>-->
-                <!--<configuration>-->
-                    <!--<transformers>-->
-                        <!--&lt;!&ndash; Keep us from getting a "can't overwrite file error" &ndash;&gt;-->
-                        <!--<transformer-->
-                                <!--implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>-->
-                        <!--<transformer-->
-                                <!--implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>-->
-                        <!--&lt;!&ndash; We're using Flux, so refer to it as main &ndash;&gt;-->
-                        <!--<transformer-->
-                                <!--implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
-                            <!--<mainClass>org.apache.storm.flux.Flux</mainClass>-->
-                        <!--</transformer>-->
-                    <!--</transformers>-->
-                    <!--&lt;!&ndash; Keep us from getting a bad signature error &ndash;&gt;-->
-                    <!--<filters>-->
-                        <!--<filter>-->
-                            <!--<artifact>*:*</artifact>-->
-                            <!--<excludes>-->
-                                <!--<exclude>META-INF/*.SF</exclude>-->
-                                <!--<exclude>META-INF/*.DSA</exclude>-->
-                                <!--<exclude>META-INF/*.RSA</exclude>-->
-                            <!--</excludes>-->
-                        <!--</filter>-->
-                    <!--</filters>-->
-                <!--</configuration>-->
-                <!--<executions>-->
-                    <!--<execution>-->
-                        <!--<phase>package</phase>-->
-                        <!--<goals>-->
-                            <!--<goal>shade</goal>-->
-                        <!--</goals>-->
-                    <!--</execution>-->
-                <!--</executions>-->
+            <!--<groupId>org.apache.maven.plugins</groupId>-->
+            <!--<artifactId>maven-shade-plugin</artifactId>-->
+            <!--<version>2.3</version>-->
+            <!--<configuration>-->
+            <!--<transformers>-->
+            <!--&lt;!&ndash; Keep us from getting a "can't overwrite file error" &ndash;&gt;-->
+            <!--<transformer-->
+            <!--implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>-->
+            <!--<transformer-->
+            <!--implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>-->
+            <!--&lt;!&ndash; We're using Flux, so refer to it as main &ndash;&gt;-->
+            <!--<transformer-->
+            <!--implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
+            <!--<mainClass>org.apache.storm.flux.Flux</mainClass>-->
+            <!--</transformer>-->
+            <!--</transformers>-->
+            <!--&lt;!&ndash; Keep us from getting a bad signature error &ndash;&gt;-->
+            <!--<filters>-->
+            <!--<filter>-->
+            <!--<artifact>*:*</artifact>-->
+            <!--<excludes>-->
+            <!--<exclude>META-INF/*.SF</exclude>-->
+            <!--<exclude>META-INF/*.DSA</exclude>-->
+            <!--<exclude>META-INF/*.RSA</exclude>-->
+            <!--</excludes>-->
+            <!--</filter>-->
+            <!--</filters>-->
+            <!--</configuration>-->
+            <!--<executions>-->
+            <!--<execution>-->
+            <!--<phase>package</phase>-->
+            <!--<goals>-->
+            <!--<goal>shade</goal>-->
+            <!--</goals>-->
+            <!--</execution>-->
+            <!--</executions>-->
             <!--</plugin>-->
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -628,13 +628,13 @@
         <profile>
             <id>local</id>
             <properties>
-                    <provided.scope>compile</provided.scope>
+                <provided.scope>compile</provided.scope>
             </properties>
         </profile>
         <profile>
             <id>remote</id>
             <properties>
-                    <provided.scope>provided</provided.scope>
+                <provided.scope>provided</provided.scope>
             </properties>
         </profile>
     </profiles>

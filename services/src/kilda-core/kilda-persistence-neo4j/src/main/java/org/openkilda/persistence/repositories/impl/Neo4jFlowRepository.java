@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.Node;
 import org.openkilda.persistence.repositories.FlowRepository;
 
 import org.neo4j.ogm.cypher.ComparisonOperator;
@@ -37,16 +38,36 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     public Iterable<Flow> findById(String flowId) {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("flowid", flowId);
-        return getSession().query(Flow.class,
-                "MATCH (src:switch)-[f:flow{flowid: {flowid}}]->(dst:switch) RETURN f, src, dst", parameters);
+
+        return getSession().query(Flow.class, "MATCH (a)-[f:flow{flowid: $flowid}]->(b) RETURN a,f,b", parameters);
+    }
+
+    @Override
+    public Iterable<Flow> findActiveFlowsByNode(Node node) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("switch_id", node.getSwitchId().toString());
+        parameters.put("port", node.getPortNo());
+
+        String query = "MATCH (src:switch)-[f:flow]->(dst:switch) "
+                + "OPTIONAL MATCH (src:switch)-[fs:flow_segment]->(dst:switch) "
+                + "WHERE ((fs.src_switch = $switch_id AND fs.src_port = $port ) "
+                + "    OR (fs.dst_switch = $switch_id AND fs.dst_port = $port )) "
+                + "    AND f.status=\"UP\""
+                + "RETURN src,f,dst";
+
+        return getSession().query(Flow.class, query, parameters);
+    }
+
+    @Override
+    public Iterable<Flow> findInactiveFlows() {
+        Map<String, Object> parameters = new HashMap<>();
+        return getSession().query(Flow.class, "MATCH (a)-[f:flow{status: \"DOWN\"}]->(b) RETURN a,f,b", parameters);
     }
 
     @Override
     public long deleteByFlowId(String flowId) {
-        Map<String, Object> parameters = new HashMap<>();
         Filter flowIdFilter = new Filter("flowid", ComparisonOperator.EQUALS, flowId);
-        Long count = (Long) getSession().delete(Flow.class, Collections.singletonList(flowIdFilter), false);
-        return count;
+        return  (Long) getSession().delete(Flow.class, Collections.singletonList(flowIdFilter), false);
     }
 
     @Override
@@ -66,7 +87,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         parameters.put("periodic_pings", flow.isPeriodicPings());
         parameters.put("transit_vlan", flow.getTransitVlan());
         parameters.put("description", flow.getDescription());
-        parameters.put("last_updated", new Long(System.currentTimeMillis()).toString());
+        parameters.put("last_updated", Long.toString(System.currentTimeMillis()));
         parameters.put("flowpath", flow.getFlowPath());
         String query = "MERGE (src:switch {name: $src_switch}) "
                 + " ON CREATE SET src.state = 'inactive' "

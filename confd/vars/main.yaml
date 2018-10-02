@@ -5,12 +5,12 @@ kilda_environment_role: "devel"
 kilda_test_profile: "virtual"
 
 kilda_neo4j_host: "neo4j.pendev"
+kilda_neo4j_uri: "bolt://neo4j.pendev"
 kilda_neo4j_bolt_port: "7687"
 kilda_neo4j_rest_port: "7474"
 kilda_neo4j_user: "neo4j"
 kilda_neo4j_password: "temppass"
 kilda_neo4j_cypher_path: "/db/data/cypher"
-kilda_neo4j_uri: "bolt://neo4j.pendev"
 
 kilda_kafka_hosts: "kafka.pendev:9092"
 kilda_zookeeper_hosts: "zookeeper.pendev:2181"
@@ -53,6 +53,7 @@ kilda_kafka_topic_speaker_flow: "kilda.speaker.flow"
 kilda_kafka_topic_speaker_flow_ping: "kilda.speaker.flow.ping"
 kilda_kafka_topic_topo_eng: "kilda.topo.eng"
 kilda_kafka_topic_northbound: "kilda.northbound"
+kilda_kafka_topic_topo_reroute: "kilda.topo.reroute"
 
 kilda_kafka_te_consumer_group: "kilda-tpe"
 
@@ -79,6 +80,8 @@ kilda_production_fileserver: "http://127.0.0.1"
 
 kilda_reroute_throttling_delay_min: 10
 kilda_reroute_throttling_delay_max: 30
+
+isl_cost_when_port_down: 10000
 
 kilda_logging_json_file: False
 kilda_logging_logstash: True

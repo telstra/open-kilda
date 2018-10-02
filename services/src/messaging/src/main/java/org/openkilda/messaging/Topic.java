@@ -32,5 +32,6 @@ public interface Topic {
     public static final String TOPO_CACHE = "kilda.topo.cache";
     public static final String TOPO_DISCO = "kilda.topo.disco";
     public static final String TOPO_ENG = "kilda.topo.eng";
+    public static final String TOPO_REROUTE = "kilda.topo.reroute";
 
 }

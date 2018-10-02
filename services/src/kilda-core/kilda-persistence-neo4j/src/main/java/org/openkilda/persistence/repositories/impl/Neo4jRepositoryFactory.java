@@ -18,6 +18,7 @@ package org.openkilda.persistence.repositories.impl;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -50,5 +51,10 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public SwitchRepository createSwitchRepository() {
         return new Neo4jSwitchRepository(sessionFactory);
+    }
+
+    @Override
+    public LinkPropsRepository createLinkPropsRepository() {
+        return new Neo4jLinkPropsRepository(sessionFactory);
     }
 }
