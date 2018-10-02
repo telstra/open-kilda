@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 
@@ -41,4 +42,6 @@ public interface IslRepository extends Repository<Isl> {
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
      */
     Iterable<Isl> findActiveWithAvailableBandwidth(boolean ignoreBandwidth, long requiredBandwidth);
+
+    void updateIslBandwidth(Flow flow);
 }

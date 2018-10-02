@@ -33,7 +33,7 @@
         <commons.collection.version>4.1</commons.collection.version>
         <hibernate-validator.version>6.0.10.Final</hibernate-validator.version>
         <glassfish-el.version>3.0.1-b09</glassfish-el.version>
-
+        <mapstruct.version>1.2.0.Final</mapstruct.version>
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <puppycrawl-tools-checkstyle.version>8.10</puppycrawl-tools-checkstyle.version>
@@ -48,6 +48,16 @@
         <dependency>
             <groupId>org.openkilda</groupId>
             <artifactId>messaging</artifactId>
+            <version>${openkilda-messaging.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-model</artifactId>
+            <version>${openkilda-messaging.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-persistence</artifactId>
             <version>${openkilda-messaging.version}</version>
         </dependency>
         <dependency>
@@ -311,6 +321,17 @@
             <artifactId>javax.el</artifactId>
             <version>${glassfish-el.version}</version>
         </dependency>
+                <dependency>
+                    <groupId>org.mapstruct</groupId>
+                    <artifactId>mapstruct-jdk8</artifactId>
+                    <version>${mapstruct.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.mapstruct</groupId>
+                    <artifactId>mapstruct-processor</artifactId>
+                    <version>${mapstruct.version}</version>
+                </dependency>
+
     </dependencies>
 
     <build>

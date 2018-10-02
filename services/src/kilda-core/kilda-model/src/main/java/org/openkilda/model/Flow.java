@@ -103,6 +103,9 @@ public class Flow implements Serializable {
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
 
+    @Property(name = "periodic-pings")
+    private boolean periodicPings;
+
     @Property(name = "flow_type")
     private OutputVlanType flowType;
 

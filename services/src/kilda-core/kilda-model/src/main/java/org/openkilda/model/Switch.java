@@ -18,8 +18,12 @@ package org.openkilda.model;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+<<<<<<< 3ce724d26a10f8e54375cbf1bf7075e79b7c4c9c
 import lombok.Getter;
 import lombok.Setter;
+=======
+import lombok.ToString;
+>>>>>>> refactor CRUD topology to handle tpe crud ops by itself
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
@@ -35,6 +39,7 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(exclude = {"entityId", "incomingLinks", "outgoingLinks", "flows", "flowSegments"})
+@ToString(exclude = "flows")
 @NodeEntity(label = "switch")
 public class Switch implements Serializable {
     private static final long serialVersionUID = 1L;
