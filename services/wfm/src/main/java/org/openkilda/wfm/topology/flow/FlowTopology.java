@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flow;
 
-import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
 import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.CtrlBoltRef;
@@ -229,7 +228,6 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), StreamType.RESPONSE.toString());
 
         createCtrlBranch(builder, ctrlTargets);
-        createHealthCheckHandler(builder, ServiceType.FLOW_TOPOLOGY.getId());
 
         // builder.setBolt(
         //         ComponentType.TOPOLOGY_ENGINE_OUTPUT.toString(), createKafkaBolt(config.getKafkaTopoEngTopic()), 1)

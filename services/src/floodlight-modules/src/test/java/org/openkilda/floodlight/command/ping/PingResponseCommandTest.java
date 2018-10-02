@@ -85,14 +85,12 @@ public class PingResponseCommandTest extends PingCommandTest {
 
     @Test
     public void skipByCookie() throws Exception {
-        expect(pingService.isCookieMismatch(anyObject())).andReturn(true);
-
         replayAll();
 
         OFFactory ofFactory = new OFFactoryVer13();
         OFMessage message = ofFactory.buildPacketIn()
                 .setReason(OFPacketInReason.ACTION).setXid(1)
-                .setCookie(U64.of(1))
+                .setCookie(U64.of(PingService.OF_CATCH_RULE_COOKIE.hashCode() + 1))
                 .build();
         FloodlightContext floodlightContext = new FloodlightContext();
         OfInput input = new OfInput(iofSwitch, message, floodlightContext);
@@ -103,10 +101,10 @@ public class PingResponseCommandTest extends PingCommandTest {
 
     @Test
     public void foreignPackage() throws Exception {
-        expect(pingService.isCookieMismatch(anyObject())).andReturn(false);
         expect(pingService.unwrapData(eq(dpId), anyObject())).andReturn(null);
 
         OfInput input = createMock(OfInput.class);
+        expect(input.packetInCookieMismatch(anyObject(), anyObject())).andReturn(false);
         expect(input.getPacketInPayload()).andReturn(new Ethernet());
         expect(input.getDpId()).andReturn(dpId);
 

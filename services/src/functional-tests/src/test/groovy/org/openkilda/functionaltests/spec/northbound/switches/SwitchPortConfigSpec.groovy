@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -30,7 +32,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
         northboundService.portDown(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "ISL between switches becomes 'FAILED'"
-        Wrappers.wait(discoveryInterval + 3) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED &&
                     islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
         }
@@ -39,7 +41,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
         northboundService.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "ISL between switches becomes 'DISCOVERED'"
-        Wrappers.wait(discoveryInterval + 3) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED &&
                     islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
         }

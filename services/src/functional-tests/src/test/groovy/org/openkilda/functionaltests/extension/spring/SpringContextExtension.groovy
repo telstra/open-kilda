@@ -13,7 +13,6 @@ import org.springframework.context.ApplicationContextAware
 
 @Slf4j
 class SpringContextExtension extends AbstractGlobalExtension implements ApplicationContextAware {
-    static final String DUMMY_TEST_NAME = "Prepare spring context.."
     public static ApplicationContext context;
     public static List<SpringContextListener> listeners = []
 
@@ -22,9 +21,9 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
         //dummy test lets Spring context to be initialized before running actual features to allow accessing context
         //from 'where' block
         //it will always be first in the execution order
-        specInfo.getAllFeatures().find { it.name == DUMMY_TEST_NAME }?.excluded = !specInfo.getAllFeatures().find {
-            it.parameterized
-        } as boolean
+        specInfo.getAllFeatures().find {
+            it.featureMethod.getAnnotation(PreparesSpringContextDummy)
+        }?.excluded = !specInfo.getFeatures().find { it.parameterized } as boolean
 
         specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {
             boolean autowired = false
@@ -38,9 +37,10 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
                     autowired = true
                 }
                 //do not invoke any fixtures for the dummy test
-                if (invocation?.getFeature()?.name != DUMMY_TEST_NAME) {
-                    invocation.proceed()
+                if (invocation?.getFeature()?.featureMethod?.getAnnotation(PreparesSpringContextDummy)) {
+                    return
                 }
+                invocation.proceed()
             }
         })
     }

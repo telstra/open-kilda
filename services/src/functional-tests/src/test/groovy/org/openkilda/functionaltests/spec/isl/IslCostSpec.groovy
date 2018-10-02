@@ -1,13 +1,14 @@
 package org.openkilda.functionaltests.spec.isl
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.aswitch.ASwitchService
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,7 +20,7 @@ class IslCostSpec extends BaseSpecification {
     @Autowired
     IslUtils islUtils
     @Autowired
-    ASwitchService aswitch
+    LockKeeperService lockKeeper
 
     @Value('${discovery.interval}')
     int discoveryInterval
@@ -37,16 +38,20 @@ class IslCostSpec extends BaseSpecification {
         def rulesToRemove = [new ASwitchFlow(isl.aswitch.inPort, isl.aswitch.outPort),
                              new ASwitchFlow(isl.aswitch.outPort, isl.aswitch.inPort)]
 
-        aswitch.removeFlows(rulesToRemove)
+        lockKeeper.removeFlows(rulesToRemove)
 
         then: "Link status becomes 'FAILED'"
-        Wrappers.wait(discoveryTimeout + 3) { islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
+        Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
+            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
 
         and: "ISL cost after connection loss is not increased"
         islUtils.getIslCost(isl) == islCost
 
         and: "Add a-switch rules to restore connection"
-        aswitch.addFlows(rulesToRemove)
-        Wrappers.wait(discoveryInterval + 3) { islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED }
+        lockKeeper.addFlows(rulesToRemove)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        }
     }
 }

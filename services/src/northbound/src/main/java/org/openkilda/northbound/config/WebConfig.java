@@ -16,8 +16,9 @@
 package org.openkilda.northbound.config;
 
 import org.openkilda.northbound.utils.ExecutionTimeInterceptor;
-import org.openkilda.northbound.utils.RequestCorrelationFilter;
 import org.openkilda.northbound.utils.ExtraAuthInterceptor;
+import org.openkilda.northbound.utils.RequestCorrelationFilter;
+
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

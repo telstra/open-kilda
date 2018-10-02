@@ -38,11 +38,11 @@ import java.util.Collections;
 /**
  * Apache Storm topology for sending metrics into Open TSDB.
  */
-public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
+public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OpenTSDBTopology.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenTsdbTopology.class);
 
-    public OpenTSDBTopology(LaunchEnvironment env) {
+    public OpenTsdbTopology(LaunchEnvironment env) {
         super(env, OpenTsdbTopologyConfig.class);
     }
 
@@ -54,7 +54,7 @@ public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
     @Override
     public StormTopology createTopology() {
-        LOGGER.info("Creating OpenTSDBTopology - {}", topologyName);
+        LOGGER.info("Creating OpenTsdbTopology - {}", topologyName);
 
         TopologyBuilder tb = new TopologyBuilder();
 
@@ -71,7 +71,6 @@ public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
                 .newBuilder(openTsdbConfig.getHosts())
-                // .sync(config.getOpenTsdbTimeout())
                 .returnDetails();
         if (openTsdbConfig.getClientChunkedRequestsEnabled()) {
             tsdbBuilder.enableChunkedEncoding();
@@ -80,7 +79,6 @@ public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
                 Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
         openTsdbBolt.withBatchSize(openTsdbConfig.getBatchSize()).withFlushInterval(openTsdbConfig.getFlushInterval());
-        //        .failTupleForFailedMetrics();
         tb.setBolt(OTSDB_BOLT_ID, openTsdbBolt, openTsdbConfig.getBoltExecutors())
                 .setNumTasks(openTsdbConfig.getBoltWorkers())
                 .shuffleGrouping(OTSDB_FILTER_BOLT_ID);
@@ -107,7 +105,7 @@ public class OpenTSDBTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
-            (new OpenTSDBTopology(env)).setup();
+            (new OpenTsdbTopology(env)).setup();
         } catch (Exception e) {
             System.exit(handleLaunchException(e));
         }

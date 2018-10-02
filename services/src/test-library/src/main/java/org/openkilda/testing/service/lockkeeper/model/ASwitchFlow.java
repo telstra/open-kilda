@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.aswitch.model;
+package org.openkilda.testing.service.lockkeeper.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;

@@ -95,6 +95,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     @Override
     public FlowPayload addFlow(FlowPayload payload) {
         HttpEntity<FlowPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        log.debug("Adding flow {}", payload.getId());
 
         return restTemplate.exchange("/api/v1/flows", HttpMethod.PUT, httpEntity, FlowPayload.class).getBody();
     }

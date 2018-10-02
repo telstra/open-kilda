@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
@@ -9,8 +10,8 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.aswitch.ASwitchService
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
@@ -43,7 +44,7 @@ class SwitchFailuresSpec extends BaseSpecification {
     @Autowired
     NorthboundService northboundService
     @Autowired
-    ASwitchService aSwitchService
+    LockKeeperService lockKeeperService
     @Autowired
     IslUtils islUtils
     @Autowired
@@ -57,21 +58,21 @@ class SwitchFailuresSpec extends BaseSpecification {
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
         northboundService.addFlow(flow)
-        Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Two neighbouring switches of the flow go down simultaneously"
-        aSwitchService.knockoutSwitch(isl.srcSwitch.dpId.toString())
-        aSwitchService.knockoutSwitch(isl.dstSwitch.dpId.toString())
+        lockKeeperService.knockoutSwitch(isl.srcSwitch.dpId.toString())
+        lockKeeperService.knockoutSwitch(isl.dstSwitch.dpId.toString())
         def timeIslBroke = System.currentTimeMillis()
         def untilIslShouldFail = { timeIslBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
-        aSwitchService.removeFlows([isl, islUtils.reverseIsl(isl)]
+        lockKeeperService.removeFlows([isl, islUtils.reverseIsl(isl)]
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
 
         and: "Switches go back UP"
-        aSwitchService.reviveSwitch(isl.srcSwitch.dpId.toString(), floodlightEndpoint)
-        aSwitchService.reviveSwitch(isl.dstSwitch.dpId.toString(), floodlightEndpoint)
+        lockKeeperService.reviveSwitch(isl.srcSwitch.dpId.toString(), floodlightEndpoint)
+        lockKeeperService.reviveSwitch(isl.dstSwitch.dpId.toString(), floodlightEndpoint)
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2000)
@@ -86,17 +87,17 @@ class SwitchFailuresSpec extends BaseSpecification {
         //depends whether there are alt paths available
         and: "Flow goes down OR changes path to avoid failed ISL after reroute timeout"
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
-        Wrappers.wait(5) {
+        Wrappers.wait(WAIT_OFFSET) {
             def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
             !pathHelper.getInvolvedIsls(currentPath).contains(isl) ||
                     northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
         and: "Cleanup, restore connection, remove flow"
-        aSwitchService.addFlows([isl, islUtils.reverseIsl(isl)]
+        lockKeeperService.addFlows([isl, islUtils.reverseIsl(isl)]
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
         northboundService.deleteFlow(flow.id)
-        Wrappers.wait(discoveryInterval + 2) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
     }

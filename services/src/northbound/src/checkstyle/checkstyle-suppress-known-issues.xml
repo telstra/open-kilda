@@ -5,48 +5,6 @@
 
 <suppressions>
     <suppress files="src/main/java/org/openkilda/northbound/Application.java" lines="27" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/main/java/org/openkilda/northbound/config/WebConfig.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/config/WebConfig.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FeatureTogglesController.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FeatureTogglesController.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/FeatureTogglesController.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/HealthCheckController.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/HealthCheckController.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/controller/HealthCheckController.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="5" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="6" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="7" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="8" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="13" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="13" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="13" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="14" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="14" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="14" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="15" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="15" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="16" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="17" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="17" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="19" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="20" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="20" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="21" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="21" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="22" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="22" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="24" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="24" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="24" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="25" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="25" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="25" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="26" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="26" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="27" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="28" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/northbound/converter/FeatureTogglesMapper.java" lines="28" checks="FileTabCharacter"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaHealthCheckMessageConsumer.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaHealthCheckMessageConsumer.java" lines="23" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/northbound/messaging/kafka/KafkaHealthCheckMessageConsumer.java" lines="24" checks="CustomImportOrder"/>

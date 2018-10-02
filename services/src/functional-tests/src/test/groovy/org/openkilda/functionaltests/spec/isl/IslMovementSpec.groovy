@@ -4,12 +4,13 @@ import static org.junit.Assume.assumeNotNull
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.aswitch.ASwitchService
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
@@ -23,7 +24,7 @@ class IslMovementSpec extends BaseSpecification {
     @Autowired
     NorthboundService northbound
     @Autowired
-    ASwitchService aswitchService
+    LockKeeperService lockKeeperService
 
     def "ISL status changes to MOVED when replugging"() {
         given: "A connected a-switch link"
@@ -100,14 +101,14 @@ class IslMovementSpec extends BaseSpecification {
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true)
 
         then: "The potential self-loop ISL is not present in list of isls (wait for 5 sec)"
-        !Wrappers.wait(5) {
+        !Wrappers.wait(WAIT_OFFSET) {
             def allLinks = northbound.getAllLinks()
             islUtils.getIslInfo(allLinks, expectedIsl).present ||
                     islUtils.getIslInfo(allLinks, islUtils.reverseIsl(expectedIsl)).present
         }
 
         and: "Unplug the link how it was before"
-        aswitchService.removeFlows([
+        lockKeeperService.removeFlows([
                 new ASwitchFlow(expectedIsl.aswitch.getInPort(), expectedIsl.aswitch.getOutPort()),
                 new ASwitchFlow(expectedIsl.aswitch.getOutPort(), expectedIsl.aswitch.getInPort())])
     }
