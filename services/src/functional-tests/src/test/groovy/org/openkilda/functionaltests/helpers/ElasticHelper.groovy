@@ -16,7 +16,7 @@
 package org.openkilda.functionaltests.helpers
 
 import groovy.util.logging.Slf4j
-import org.openkilda.testing.service.elastic.ElasticHelper
+import org.openkilda.testing.service.elastic.ElasticService
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpEntity
@@ -30,16 +30,37 @@ import org.springframework.stereotype.Component
 
 @Component
 @Slf4j
-class KibanaHelper {
+class ElasticHelper {
 
     @Autowired
-    private ElasticHelper elasticHelper
+    private ElasticService elasticService
+
+    /**
+     * Builder interface for getLogs.
+     * @param queryBuilder - Closure
+     * @return Empty map in case of error
+     * Deserialized JSON in case of success
+     */
+    Map getLogs(ElasticQueryBuilder q) {
+        this.appId = queryBuilder.appId
+        this.tags = queryBuilder.tags
+        this.level = ""
+        this.timeRange = 60
+        this.resultCount = 100
+        this.defaultField = "_source"
+        this.index = "_all"
+        queryBuilder(this)
+
+        return getLogs(q.appId, q.tags, q.level, q.keywords, q.timeRange, q.resultCount, q.defaultField, q.index)
+    }
+
 
     /**
      * Searches Elastic Search database for a specific log entries
      * @param app_id - application ID to lookup (either app_id or tags should be speficied)
      * @param tags - one or more tag, delimited by OR operator, to lookup (either app_id or tags should be specified)
      * @param level - log level (can be null)
+     * @param keywods - keywords to look at (WIP, not handled at the moment)
      * @param timeRange - search depth (in seconds, set to 0 to search all).
      * @param resultCount - max number of returned documents (100 default)
      * @param defaultField - field in log entry to search at (_source by default)
@@ -47,18 +68,21 @@ class KibanaHelper {
      *
      * In case you need to lookup multiple application IDs, tags or log levels, pass parameters as:
      * "VALUE1 OR VALUE2 OR ... OR VALUE_N"
+     *
+     * Returns:
+     *  Empty Map in case of Elastic Service error
+     *  Deserialized JSON in case of success (even if no log entries fetched)
      */
-    def getLogs(String app_id=null, String tags=null, String level="INFO OR WARN OR ERROR", Map<String,
-            List<String>> keywords=[:], long timeRange=60, int resultCount=100, String defaultField = "_source",
-                String index = "_all") {
-        if ((!app_id && !tags)) {
+    Map getLogs(String appId, String tags, String level, Map<String, List<String>> keywords=[:], long timeRange=60,
+                long resultCount=100, String defaultField = "_source", String index = "_all") {
+        if ((!appId && !tags)) {
             throw new IllegalArgumentException("Either app_id or tags should be specified")
         }
         def time = System.currentTimeMillis()
         def queryString = ""
 
-        if (app_id) {
-            queryString = "app_id: (${app_id})"
+        if (appId) {
+            queryString = "app_id: (${appId})"
         }
 
         if (tags) {
@@ -91,7 +115,7 @@ class KibanaHelper {
 
 
         String uri = "/${index}/_search/?size=${resultCount}"
-        log.info("Issuing elastic query: ${jsonBuilder.toString()}")
+        log.debug("Issuing elastic query: ${jsonBuilder.toString()}")
         HttpHeaders headers = new HttpHeaders()
         headers.add("content-type", "application/json")
         def rawQuery = new HttpEntity(jsonBuilder.toString(), headers)
@@ -100,12 +124,12 @@ class KibanaHelper {
              * Elasticsearch is not guaranteed to be reachable at all times. Therefore, results from it should not be
              * relied upon.
              */
-            def queryResult = elasticHelper.getLogs(uri, rawQuery)
+            def queryResult = elasticService.getLogs(uri, rawQuery)
             return queryResult
         } catch (Exception e) {
             log.warn("An error occured during communication with Elastic Search: ${e.toString()}. " +
                      "Empty result set will be returned.")
-            return []
+            return [:]
         }
     }
 }

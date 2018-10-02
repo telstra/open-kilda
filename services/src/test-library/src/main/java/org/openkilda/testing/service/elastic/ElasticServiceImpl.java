@@ -24,6 +24,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.Map;
 
 
 /**
@@ -34,7 +35,7 @@ import java.util.HashMap;
  */
 
 @Component
-public class ElasticHelperImpl implements ElasticHelper {
+public class ElasticServiceImpl implements ElasticService {
 
     @Autowired
     @Qualifier("elasticSearchRestTemplate")
@@ -46,7 +47,7 @@ public class ElasticHelperImpl implements ElasticHelper {
      * @param query - Search query (with headers and ES/Lucene JSON query body)
      * @return HTTP response from ES
      */
-    public HashMap getLogs(String uri, HttpEntity query) {
+    public Map getLogs(String uri, HttpEntity query) {
         return restTemplate.exchange(uri, HttpMethod.POST, query, HashMap.class).getBody();
     }
 }

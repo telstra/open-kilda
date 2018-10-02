@@ -17,8 +17,8 @@ package org.openkilda.testing.service.elastic;
 
 import org.springframework.http.HttpEntity;
 
-import java.util.HashMap;
+import java.util.Map;
 
-public interface ElasticHelper {
-    HashMap getLogs(String uri, HttpEntity query);
+public interface ElasticService {
+    Map getLogs(String uri, HttpEntity query);
 }

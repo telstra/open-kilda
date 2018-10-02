@@ -16,14 +16,14 @@
 package org.openkilda.functionaltests.spec.samples
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.helpers.KibanaHelper
+import org.openkilda.functionaltests.helpers.ElasticHelper
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Ignore
 
 @Ignore("This is an example specification")
 class KibanaSpec extends BaseSpecification {
     @Autowired
-    KibanaHelper kibanaHelper
+    ElasticHelper kibanaHelper
 
     def "Test framework should be able to extract logs from Storm Worker"() {
         when: "Kibana Helper is initialized"
