@@ -19,9 +19,11 @@ import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
+import java.io.Serializable;
+
 @Configuration
 @Key("neo4j")
-public interface Neo4jConfig {
+public interface Neo4jConfig extends Serializable {
     @Key("uri")
     String getUri();
 

@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Implementation of {@link ConversionCallback} that looks up for converters in provided packages to perform conversion.
+ * Implementation of {@link ConversionCallback} that looks up for converter in provided packages to perform conversion.
  */
 class SimpleConversionCallback implements ConversionCallback {
     private final Map<ParameterizedType, Class<? extends AttributeConverter>> converters;
@@ -38,7 +38,7 @@ class SimpleConversionCallback implements ConversionCallback {
     SimpleConversionCallback(String... packages) {
         Reflections reflections = new Reflections((Object[]) packages);
 
-        // Scan the packages for the converters.
+        // Scan the packages for the converter.
         this.converters = reflections.getSubTypesOf(AttributeConverter.class).stream()
                 .collect(Collectors.toMap(
                         converter -> (ParameterizedType) Arrays.stream(converter.getGenericInterfaces())
