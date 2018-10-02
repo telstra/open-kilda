@@ -170,6 +170,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     }
 
     @Test
+@Ignore
     public void createFlowCommandBoltTest() throws Exception {
         ConsumerRecord<String, String> record;
         String flowId = UUID.randomUUID().toString();
