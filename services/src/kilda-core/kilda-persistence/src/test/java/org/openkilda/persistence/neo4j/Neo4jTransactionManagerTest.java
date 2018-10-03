@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TestConfigurationProvider;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -32,7 +33,7 @@ import org.neo4j.ogm.testutil.TestServer;
 import java.io.IOException;
 
 public class Neo4jTransactionManagerTest {
-    static final String TEST_SWITCH_NAME = "TxTestSwitch";
+    static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
 
     static TestServer testServer;
     static Neo4jTransactionManager txManager;
@@ -57,7 +58,7 @@ public class Neo4jTransactionManagerTest {
     public void shouldCommitTx() {
         // given
         Switch origSwitch = new Switch();
-        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setSwitchId(TEST_SWITCH_ID);
         origSwitch.setDescription("Some description");
 
         // when
@@ -72,7 +73,7 @@ public class Neo4jTransactionManagerTest {
         }
 
         // then
-        Switch foundSwitch = repository.findByName(TEST_SWITCH_NAME);
+        Switch foundSwitch = repository.findBySwitchId(TEST_SWITCH_ID);
         assertEquals(origSwitch.getDescription(), foundSwitch.getDescription());
 
         repository.delete(foundSwitch);
@@ -83,7 +84,7 @@ public class Neo4jTransactionManagerTest {
     public void shouldCommitExtendedTx() {
         // given
         Switch origSwitch = new Switch();
-        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setSwitchId(TEST_SWITCH_ID);
         origSwitch.setDescription("Some description");
 
         // when
@@ -101,7 +102,7 @@ public class Neo4jTransactionManagerTest {
         txManager.commit();
 
         // then
-        Switch foundSwitch = repository.findByName(TEST_SWITCH_NAME);
+        Switch foundSwitch = repository.findBySwitchId(TEST_SWITCH_ID);
         assertEquals(origSwitch.getDescription(), foundSwitch.getDescription());
 
         repository.delete(foundSwitch);
@@ -112,7 +113,7 @@ public class Neo4jTransactionManagerTest {
     public void shouldRollbackTx() {
         // given
         Switch origSwitch = new Switch();
-        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setSwitchId(TEST_SWITCH_ID);
         origSwitch.setDescription("Some description");
 
         // when
@@ -130,7 +131,7 @@ public class Neo4jTransactionManagerTest {
     public void shouldRollbackExtendedTx() {
         // given
         Switch origSwitch = new Switch();
-        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setSwitchId(TEST_SWITCH_ID);
         origSwitch.setDescription("Some description");
 
         // when
@@ -160,7 +161,7 @@ public class Neo4jTransactionManagerTest {
     public void shouldRollbackExtendedAndRootTx() {
         // given
         Switch origSwitch = new Switch();
-        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setSwitchId(TEST_SWITCH_ID);
         origSwitch.setDescription("Some description");
 
         // when

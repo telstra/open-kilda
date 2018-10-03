@@ -13,9 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model.converters;
+package org.openkilda.persistence.converters;
 
 import org.openkilda.model.Path;
+import org.openkilda.persistence.PersistenceException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +25,7 @@ import org.neo4j.ogm.typeconversion.AttributeConverter;
 import java.io.IOException;
 
 /**
- * Converter to convert {@link Path} to {@link String}.
+ * Converter to convert {@link Path} to JSON String representation.
  */
 public class FlowPathConverter implements AttributeConverter<Path, String> {
 
@@ -35,13 +36,12 @@ public class FlowPathConverter implements AttributeConverter<Path, String> {
         }
 
         ObjectMapper objectMapper = new ObjectMapper();
-        String path = null;
+
         try {
-            path = objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException ex) {
+            throw new PersistenceException("Unable to convert Flow Path.", ex);
         }
-        return path;
     }
 
     @Override
@@ -49,13 +49,13 @@ public class FlowPathConverter implements AttributeConverter<Path, String> {
         if (value == null) {
             return null;
         }
+
         ObjectMapper objectMapper = new ObjectMapper();
-        Path path = null;
+
         try {
-            path = objectMapper.readValue(value, Path.class);
-        } catch (IOException e) {
-            e.printStackTrace();
+            return objectMapper.readValue(value, Path.class);
+        } catch (IOException ex) {
+            throw new PersistenceException("Unable to convert to Flow Path.", ex);
         }
-        return path;
     }
 }

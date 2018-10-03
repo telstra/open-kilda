@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,139 +15,39 @@
 
 package org.openkilda.model;
 
-import lombok.Value;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-import java.util.Objects;
+import java.io.Serializable;
 
 /**
  * Defines the payload payload of a Message representing a path node info.
  */
-@Value
-public class Node {
-    /**
-     * Serialization version number constant.
-     */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(exclude = {"segmentLatency", "cookie"})
+public class Node implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Switch id.
-     */
+    @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    /**
-     * Port number.
-     */
+    @JsonProperty("port_no")
     private int portNo;
 
-    /**
-     * Sequence id.
-     */
+    @JsonProperty("seq_id")
     private int seqId;
 
-    /**
-     * Segment latency.
-     */
+    @JsonProperty("segment_latency")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Long segmentLatency;
 
-    /**
-     * If a per segment cookie is set.
-     */
+    @JsonProperty("cookie")
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT) // Needed to exclude when not set
     private Long cookie;
-
-    /**
-     * Instance creator.
-     *
-     * @param switchId       switch id
-     * @param portNo         port number
-     * @param seqId          sequence id
-     * @param segmentLatency segment latency
-     */
-    public Node(SwitchId switchId, int portNo, int seqId, final Long cookie, Long segmentLatency) {
-        this.switchId = switchId;
-        this.portNo = portNo;
-        this.seqId = seqId;
-        this.cookie = cookie;
-        this.segmentLatency = segmentLatency;
-    }
-
-    /**
-     * Instance creator without segment latency value.
-     *
-     * @param switchId switch id
-     * @param portNo   port number
-     * @param seqId    sequence id
-     */
-    public Node(final SwitchId switchId, final int portNo, final int seqId) {
-        this.switchId = switchId;
-        this.portNo = portNo;
-        this.seqId = seqId;
-        this.segmentLatency = null;
-        this.cookie = null;
-    }
-
-    /**
-     * Returns switch id.
-     *
-     * @return switch id
-     */
-    public SwitchId getSwitchId() {
-        return switchId;
-    }
-
-    /**
-     * Returns port number.
-     *
-     * @return port number
-     */
-    public int getPortNo() {
-        return portNo;
-    }
-
-    /**
-     * Returns sequence id.
-     *
-     * @return sequence id
-     */
-    public int getSeqId() {
-        return seqId;
-    }
-
-    /**
-     * Returns segment latency.
-     *
-     * @return segment latency
-     */
-    public Long getSegLatency() {
-        return segmentLatency;
-    }
-
-
-    public Long getCookie() {
-        return cookie;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(switchId, portNo);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        Node that = (Node) object;
-        return Objects.equals(getSwitchId(), that.getSwitchId())
-                && Objects.equals(getPortNo(), that.getPortNo());
-    }
 }

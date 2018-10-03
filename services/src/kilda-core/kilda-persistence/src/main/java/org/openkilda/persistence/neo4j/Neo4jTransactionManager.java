@@ -43,6 +43,8 @@ public final class Neo4jTransactionManager implements TransactionManager, Neo4jS
         }
 
         sessionFactory = new SessionFactory(configBuilder.build(), "org.openkilda.model");
+        sessionFactory.metaData()
+                .registerConversionCallback(new SimpleConversionCallback("org.openkilda.persistence.converters"));
     }
 
     /**

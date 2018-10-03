@@ -15,15 +15,18 @@
 
 package org.openkilda.model;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
  * Represents a switch id entity.
  */
 @Value
-public class SwitchId implements Comparable<SwitchId> {
+public class SwitchId implements Comparable<SwitchId>, Serializable {
+    private static final long serialVersionUID = 1L;
 
     private final long id;
 
@@ -68,6 +71,7 @@ public class SwitchId implements Comparable<SwitchId> {
     /**
      * {@inheritDoc }
      */
+    @JsonValue
     @Override
     public String toString() {
         return colonSeparatedBytes(toHexArray(), 0);

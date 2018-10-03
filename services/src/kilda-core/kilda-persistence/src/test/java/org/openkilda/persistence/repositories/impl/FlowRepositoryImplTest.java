@@ -35,8 +35,8 @@ import java.io.IOException;
 import java.util.Collection;
 
 public class FlowRepositoryImplTest {
-    static final String TEST_SWITCH_A_NAME = "SwitchA";
-    static final String TEST_SWITCH_B_NAME = "SwitchB";
+    static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
+    static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
 
     static TestServer testServer;
     static FlowRepository flowRepository;
@@ -62,12 +62,12 @@ public class FlowRepositoryImplTest {
     public void shouldCreateAndFindFlow() {
         Switch switchA = new Switch();
         switchA.setSwitchId(new SwitchId(1));
-        switchA.setName(TEST_SWITCH_A_NAME);
+        switchA.setSwitchId(TEST_SWITCH_A_ID);
         switchA.setDescription("Some description");
 
         Switch switchB = new Switch();
         switchB.setSwitchId(new SwitchId(2));
-        switchB.setName(TEST_SWITCH_B_NAME);
+        switchB.setSwitchId(TEST_SWITCH_B_ID);
 
         Flow flow = new Flow();
         flow.setSrcSwitch(switchA);
@@ -82,7 +82,7 @@ public class FlowRepositoryImplTest {
         assertEquals(switchA.getSwitchId(), foundFlow.getSrcSwitchId());
         assertEquals(2, switchRepository.findAll().size());
 
-        Switch foundSwitch = switchRepository.findByName(TEST_SWITCH_A_NAME);
+        Switch foundSwitch = switchRepository.findBySwitchId(TEST_SWITCH_A_ID);
         assertEquals(switchA.getSwitchId(), foundSwitch.getSwitchId());
         assertEquals(switchA.getDescription(), foundSwitch.getDescription());
 

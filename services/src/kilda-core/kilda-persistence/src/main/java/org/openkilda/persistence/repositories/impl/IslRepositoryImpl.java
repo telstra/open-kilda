@@ -19,6 +19,9 @@ import org.openkilda.model.Isl;
 import org.openkilda.persistence.neo4j.Neo4jSessionFactory;
 import org.openkilda.persistence.repositories.IslRepository;
 
+import org.neo4j.ogm.cypher.query.SortOrder;
+
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +42,10 @@ public class IslRepositoryImpl extends GenericRepository<Isl> implements IslRepo
         return getSession().queryForObject(Isl.class, "MATCH (src:switch)-[target:isl]->(:switch)\n"
                 + " WHERE src.name=$src_switch AND target.src_port=$src_port\n"
                 + " RETURN target", parameters);
+    }
+
+    public Collection<Isl> findAllOrderedBySrcSwitch() {
+        return getSession().loadAll(getEntityType(), new SortOrder("src_switch"));
     }
 
     @Override

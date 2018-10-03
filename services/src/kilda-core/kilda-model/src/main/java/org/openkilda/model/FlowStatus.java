@@ -21,57 +21,18 @@ package org.openkilda.model;
 public enum FlowStatus {
 
     /**
-     * Flow creating/deleting state.
+     * Flow is in creating/deleting state.
      */
-    IN_PROGRESS("In progress"),
+    IN_PROGRESS,
 
     /**
-     * Flow is in up state.
+     * Flow is in UP state.
      */
-    UP("Up"),
+    UP,
 
     /**
      * Flow is in down state.
      */
-    DOWN("Down");
-
-    /**
-     * Flow status.
-     */
-    private final String status;
-
-    /**
-     * Instance constructor.
-     *
-     * @param status flow state
-     */
-    FlowStatus(String status) {
-        this.status = status;
-    }
-
-    /**
-     * Returns flow status.
-     *
-     * @return flow status.
-     */
-    public String getStatus() {
-        return this.status;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return status;
-    }
-
-    public boolean isActive() {
-        return this == UP;
-    }
-
-    public boolean isActiveOrCached() {
-        return this == UP;
-    }
+    DOWN
 }
 

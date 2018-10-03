@@ -17,11 +17,15 @@ package org.openkilda.model;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 /**
  * Port entity.
  */
 @Data
-public class Port {
+public class Port implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private SwitchId switchId;
 
     private int portNo;

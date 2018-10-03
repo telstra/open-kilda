@@ -70,6 +70,7 @@ public enum IslStatus {
 
     /**
      * Find corresponding value for string representation of status.
+     *
      * @param status ISL status.
      * @return {@link IslStatus} value.
      */

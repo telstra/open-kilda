@@ -15,8 +15,6 @@
 
 package org.openkilda.model;
 
-import java.util.Arrays;
-
 /**
  * Represents switch statuses.
  */
@@ -25,61 +23,15 @@ public enum SwitchStatus {
     /**
      * Switch is in active state.
      */
-    ACTIVE("Active"),
+    ACTIVE,
 
     /**
      * Switch is in inactive state.
      */
-    INACTIVE("Inactive"),
+    INACTIVE,
 
     /**
      * Switch is removed.
      */
-    REMOVED("Removed");
-
-    /**
-     * Switch status.
-     */
-    private final String status;
-
-    /**
-     * Instance constructor.
-     *
-     * @param status switch status.
-     */
-    SwitchStatus(final String status) {
-        this.status = status;
-    }
-
-    /**
-     * Returns switch status.
-     *
-     * @return switch status.
-     */
-    public String getState() {
-        return this.status;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return status;
-    }
-
-    /**
-     * Converts a switch status string representation to the instance of {@link SwitchStatus}.
-     *
-     * @param status the switch state string representation.
-     * @return the instance of {@link SwitchStatus}.
-     * @throws IllegalArgumentException if the incorrect switch status string representation is passed.
-     */
-    public static SwitchStatus from(String status) {
-        return Arrays.stream(SwitchStatus.values())
-                .filter(item -> item.status.equalsIgnoreCase(status))
-                .findFirst()
-                .orElseThrow(
-                        () -> new IllegalArgumentException(String.format("Incorrect switch state: %s", status)));
-    }
+    REMOVED
 }

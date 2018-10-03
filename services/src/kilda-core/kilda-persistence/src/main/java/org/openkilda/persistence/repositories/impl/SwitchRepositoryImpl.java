@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.neo4j.Neo4jSessionFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -31,9 +32,9 @@ public class SwitchRepositoryImpl extends GenericRepository<Switch> implements S
     }
 
     @Override
-    public Switch findByName(String name) {
+    public Switch findBySwitchId(SwitchId switchId) {
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("name", name);
+        parameters.put("name", switchId.toString());
 
         return getSession().queryForObject(Switch.class, "MATCH (sw:switch{name: {name}}) RETURN sw", parameters);
     }

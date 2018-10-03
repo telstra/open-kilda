@@ -15,9 +15,6 @@
 
 package org.openkilda.model;
 
-import org.openkilda.model.converters.FlowPathConverter;
-import org.openkilda.model.converters.SwitchIdConverter;
-
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -30,6 +27,7 @@ import org.neo4j.ogm.annotation.RelationshipEntity;
 import org.neo4j.ogm.annotation.StartNode;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
@@ -38,7 +36,9 @@ import java.util.Objects;
 @Data
 @EqualsAndHashCode(exclude = "entityId")
 @RelationshipEntity(type = "flow")
-public class Flow {
+public class Flow implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue
     private Long entityId;
@@ -46,8 +46,8 @@ public class Flow {
     @Property(name = "flow_id")
     private String flowId;
 
-    @Property(name = "cookie_id")
-    private long cookieId;
+    @Property(name = "cookie")
+    private long cookie;
 
     @StartNode
     private Switch srcSwitch;
@@ -57,7 +57,7 @@ public class Flow {
 
     @Setter(AccessLevel.NONE)
     @Property(name = "src_switch")
-    @Convert(SwitchIdConverter.class)
+    @Convert(graphPropertyType = String.class)
     private SwitchId srcSwitchId;
 
     @Property(name = "src_port")
@@ -68,7 +68,7 @@ public class Flow {
 
     @Setter(AccessLevel.NONE)
     @Property(name = "dst_switch")
-    @Convert(SwitchIdConverter.class)
+    @Convert(graphPropertyType = String.class)
     private SwitchId destSwitchId;
 
     @Property(name = "dst_port")
@@ -78,7 +78,7 @@ public class Flow {
     private int destVlan;
 
     @Property(name = "flow_path")
-    @Convert(FlowPathConverter.class)
+    @Convert(graphPropertyType = String.class)
     private Path flowPath;
 
     private long bandwidth;
@@ -90,6 +90,12 @@ public class Flow {
 
     @Property(name = "transit_vlan")
     private int transitVlan;
+
+    @Property(name = "meter_id")
+    private int meterId;
+
+    @Property(name = "ignore_bandwidth")
+    private boolean ignoreBandwidth;
 
     @Property(name = "flow_type")
     private OutputVlanType flowType;

@@ -18,6 +18,7 @@ package org.openkilda.persistence.repositories.impl;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.TestConfigurationProvider;
 import org.openkilda.persistence.neo4j.Neo4jConfig;
 import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
@@ -31,7 +32,7 @@ import org.neo4j.ogm.testutil.TestServer;
 import java.io.IOException;
 
 public class SwitchRepositoryImplTest {
-    static final String TEST_SWITCH_NAME = "TestSwitch";
+    static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
 
     static TestServer testServer;
     static SwitchRepository repository;
@@ -54,14 +55,14 @@ public class SwitchRepositoryImplTest {
     @Test
     public void shouldCreateAndFindSwitch() {
         Switch origSwitch = new Switch();
-        origSwitch.setName(TEST_SWITCH_NAME);
+        origSwitch.setSwitchId(TEST_SWITCH_ID);
         origSwitch.setDescription("Some description");
 
         repository.createOrUpdate(origSwitch);
 
         assertEquals(1, repository.findAll().size());
 
-        Switch foundSwitch = repository.findByName(TEST_SWITCH_NAME);
+        Switch foundSwitch = repository.findBySwitchId(TEST_SWITCH_ID);
         assertEquals(origSwitch.getDescription(), foundSwitch.getDescription());
 
         repository.delete(foundSwitch);

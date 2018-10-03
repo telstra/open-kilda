@@ -26,16 +26,16 @@ import java.util.Collection;
  * Base Neo4J OGM implementation of {@link Repository}.
  */
 abstract class GenericRepository<T> implements Repository<T> {
-    private static final int DEPTH_LIST = 1;
-    private static final int DEPTH_ENTITY = 1;
+    static final int DEPTH_LIST = 1;
+    static final int DEPTH_ENTITY = 1;
 
     private final Neo4jSessionFactory sessionFactory;
 
-    public GenericRepository(Neo4jSessionFactory sessionFactory) {
+    GenericRepository(Neo4jSessionFactory sessionFactory) {
         this.sessionFactory = sessionFactory;
     }
 
-    protected Session getSession() {
+    Session getSession() {
         return sessionFactory.getSession();
     }
 

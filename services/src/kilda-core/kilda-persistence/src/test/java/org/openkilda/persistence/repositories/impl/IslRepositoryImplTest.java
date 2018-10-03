@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.TestConfigurationProvider;
 import org.openkilda.persistence.neo4j.Neo4jConfig;
 import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
@@ -33,8 +34,8 @@ import org.neo4j.ogm.testutil.TestServer;
 import java.io.IOException;
 
 public class IslRepositoryImplTest {
-    static final String TEST_SWITCH_A_NAME = "SwitchA";
-    static final String TEST_SWITCH_B_NAME = "SwitchB";
+    static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
+    static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
 
     static TestServer testServer;
     static IslRepository islRepository;
@@ -59,11 +60,11 @@ public class IslRepositoryImplTest {
     @Test
     public void shouldCreateAndFindIsl() {
         Switch switchA = new Switch();
-        switchA.setName(TEST_SWITCH_A_NAME);
+        switchA.setSwitchId(TEST_SWITCH_A_ID);
         switchA.setDescription("Some description");
 
         Switch switchB = new Switch();
-        switchB.setName(TEST_SWITCH_B_NAME);
+        switchB.setSwitchId(TEST_SWITCH_B_ID);
 
         Isl isl = new Isl();
         isl.setSrcSwitch(switchA);
@@ -74,7 +75,7 @@ public class IslRepositoryImplTest {
         assertEquals(1, islRepository.findAll().size());
         assertEquals(2, switchRepository.findAll().size());
 
-        Switch foundSwitch = switchRepository.findByName(TEST_SWITCH_A_NAME);
+        Switch foundSwitch = switchRepository.findBySwitchId(TEST_SWITCH_A_ID);
         assertEquals(switchA.getDescription(), foundSwitch.getDescription());
 
         islRepository.delete(isl);

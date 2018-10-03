@@ -16,7 +16,8 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 
 public interface SwitchRepository extends Repository<Switch> {
-    Switch findByName(String name);
+    Switch findBySwitchId(SwitchId switchId);
 }

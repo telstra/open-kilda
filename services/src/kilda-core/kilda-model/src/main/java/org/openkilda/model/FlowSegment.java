@@ -15,8 +15,6 @@
 
 package org.openkilda.model;
 
-import org.openkilda.model.converters.SwitchIdConverter;
-
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -29,6 +27,7 @@ import org.neo4j.ogm.annotation.RelationshipEntity;
 import org.neo4j.ogm.annotation.StartNode;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
@@ -37,7 +36,9 @@ import java.util.Objects;
 @Data
 @EqualsAndHashCode(exclude = "entityId")
 @RelationshipEntity(type = "flow_segment")
-public class FlowSegment {
+public class FlowSegment implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue
     private Long entityId;
@@ -56,7 +57,7 @@ public class FlowSegment {
 
     @Setter(AccessLevel.NONE)
     @Property(name = "src_switch")
-    @Convert(SwitchIdConverter.class)
+    @Convert(graphPropertyType = String.class)
     private SwitchId srcSwitchId;
 
     @Property(name = "src_port")
@@ -67,7 +68,7 @@ public class FlowSegment {
 
     @Setter(AccessLevel.NONE)
     @Property(name = "dst_switch")
-    @Convert(SwitchIdConverter.class)
+    @Convert(graphPropertyType = String.class)
     private SwitchId destSwitchId;
 
     @Property(name = "dst_port")

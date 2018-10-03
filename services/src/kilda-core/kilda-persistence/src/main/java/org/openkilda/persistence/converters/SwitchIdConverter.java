@@ -13,27 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model.converters;
+package org.openkilda.persistence.converters;
 
 import org.openkilda.model.SwitchId;
 
 import org.neo4j.ogm.typeconversion.AttributeConverter;
 
 /**
- * Converter to convert {@link SwitchId} to {@link Long}.
+ * Converter to convert {@link SwitchId} to {@link String}.
  */
-public class SwitchIdConverter implements AttributeConverter<SwitchId, Long> {
+public class SwitchIdConverter implements AttributeConverter<SwitchId, String> {
 
     @Override
-    public Long toGraphProperty(SwitchId value) {
+    public String toGraphProperty(SwitchId value) {
         if (value == null) {
             return null;
         }
-        return value.toLong();
+        return value.toString();
     }
 
     @Override
-    public SwitchId toEntityAttribute(Long value) {
+    public SwitchId toEntityAttribute(String value) {
         if (value == null) {
             return null;
         }

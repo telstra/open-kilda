@@ -13,14 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.model;
 
-import org.openkilda.model.Isl;
+import lombok.Value;
 
-import java.util.Collection;
+import java.io.Serializable;
 
-public interface IslRepository extends Repository<Isl> {
-    Collection<Isl> findAllOrderedBySrcSwitch();
+@Value
+public class FlowPair implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    Isl findByEndpoint(long switchId, int port);
+    public final Flow forward;
+
+    public final Flow reverse;
 }

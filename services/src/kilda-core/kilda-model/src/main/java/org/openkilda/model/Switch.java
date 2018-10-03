@@ -15,16 +15,16 @@
 
 package org.openkilda.model;
 
-import org.openkilda.model.converters.SwitchIdConverter;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -33,16 +33,18 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(exclude = {"entityId", "incomingLinks", "outgoingLinks", "flows", "flowSegments"})
 @NodeEntity(label = "switch")
-public class Switch {
+public class Switch implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue
     private Long entityId;
 
-    @Convert(SwitchIdConverter.class)
+    @Property(name = "name")
+    @Convert(graphPropertyType = String.class)
     private SwitchId switchId;
 
-    private String name;
-
+    @Property(name = "state")
     private SwitchStatus status;
 
     private String address;

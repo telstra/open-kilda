@@ -15,94 +15,30 @@
 
 package org.openkilda.model;
 
-import lombok.Value;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-import java.util.Comparator;
+import java.io.Serializable;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * Defines the payload payload of a Message representing a path info.
  */
-@Value
-public class Path {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(exclude = {"latency"})
+public class Path implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     /**
      * Latency value in nseconds.
      */
+    @JsonProperty("latency_ns")
     private long latency;
 
-    /**
-     * Path.
-     */
     private List<Node> nodes;
-
-    /**
-     * Instance constructor.
-     *
-     * @param latency latency
-     * @param nodes    path
-     */
-    public Path(long latency, List<Node> nodes) {
-        this.latency = latency;
-        this.nodes = nodes;
-    }
-
-    /**
-     * Returns latency.
-     *
-     * @return latency
-     */
-    public long getLatency() {
-        return latency;
-    }
-
-    /**
-     * Returns path.
-     *
-     * @return path
-     */
-    public List<Node> getPath() {
-        return nodes;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(nodes);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        Path that = (Path) object;
-        if (this.getPath() == null || that.getPath() == null) {
-            return this.getPath() == that.getPath();
-        }
-
-        if (this.getPath().size() != that.getPath().size()) {
-            return false;
-        }
-
-        List<Node> thisPath = this.getPath().stream()
-                .sorted(Comparator.comparing(Node::getSeqId))
-                .collect(Collectors.toList());
-
-        List<Node> thatPath = that.getPath().stream()
-                .sorted(Comparator.comparing(Node::getSeqId))
-                .collect(Collectors.toList());
-        return Objects.equals(thisPath, thatPath);
-    }
 }
