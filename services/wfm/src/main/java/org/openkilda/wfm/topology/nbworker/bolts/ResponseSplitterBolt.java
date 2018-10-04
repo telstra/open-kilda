@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import static org.openkilda.wfm.topology.AbstractTopology.KEY_FIELD;
-import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
+import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_KEY;
+import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -50,16 +50,17 @@ public class ResponseSplitterBolt extends AbstractBolt {
     }
 
     private void sendChunkedResponse(List<InfoData> responses, Tuple input, String requestId) {
-        List<Message> messages = new ArrayList<>();
+        List<Message> messages = new ArrayList<>(responses.size());
         if (CollectionUtils.isEmpty(responses)) {
             LOGGER.debug("No records found in the database");
             Message message = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, requestId,
                     responses.size());
             messages.add(message);
         } else {
-            for (int i = 0; i < responses.size(); i++) {
-                Message message = new ChunkedInfoMessage(responses.get(i), System.currentTimeMillis(), requestId,
-                        i, responses.size());
+            int i = 0;
+            for (InfoData data : responses) {
+                Message message = new ChunkedInfoMessage(data, System.currentTimeMillis(), requestId, i++,
+                        responses.size());
                 messages.add(message);
             }
 
@@ -78,6 +79,6 @@ public class ResponseSplitterBolt extends AbstractBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields(KEY_FIELD, MESSAGE_FIELD));
+        declarer.declare(new Fields(BOLT_KEY, BOLT_MESSAGE));
     }
 }

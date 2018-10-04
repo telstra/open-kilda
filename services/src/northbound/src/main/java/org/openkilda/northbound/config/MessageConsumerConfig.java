@@ -16,10 +16,8 @@
 package org.openkilda.northbound.config;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessagingChannel;
-import org.openkilda.northbound.messaging.kafka.KafkaHealthCheckMessageConsumer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
 import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
@@ -133,18 +131,6 @@ public class MessageConsumerConfig {
     @Bean
     public MessageConsumer messageConsumer() {
         return new KafkaMessageConsumer();
-    }
-
-    /**
-     * Kafka message consumer bean. Instance of {@link KafkaHealthCheckMessageConsumer} contains {@link
-     * org.springframework.kafka.annotation.KafkaListener} to be run in
-     * {@link org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
-     *
-     * @return kafka health-check message consumer
-     */
-    @Bean
-    public HealthCheckMessageConsumer healthCheckMessageConsumer() {
-        return new KafkaHealthCheckMessageConsumer();
     }
 
     @Bean

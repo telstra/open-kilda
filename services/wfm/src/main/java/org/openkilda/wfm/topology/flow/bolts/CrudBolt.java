@@ -735,9 +735,10 @@ public class CrudBolt
                     flows.size());
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
         } else {
-            for (int i = 0; i < flows.size(); i++) {
-                Message response = new ChunkedInfoMessage(new FlowReadResponse(flows.get(i)),
-                        System.currentTimeMillis(), requestId, i, flows.size());
+            int i = 0;
+            for (BidirectionalFlow flow : flows) {
+                Message response = new ChunkedInfoMessage(new FlowReadResponse(flow), System.currentTimeMillis(),
+                        requestId, i++, flows.size());
 
                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
             }

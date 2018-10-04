@@ -19,11 +19,9 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 
@@ -38,8 +36,7 @@ import java.io.Serializable;
  *
  * Initial base member will have a timestamp field.
  */
-@JsonSerialize
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@EqualsAndHashCode
 @JsonTypeInfo(use=JsonTypeInfo.Id.CLASS, include=JsonTypeInfo.As.PROPERTY, property="clazz")
 public abstract class BaseMessage implements Serializable {
     /**

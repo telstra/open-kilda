@@ -17,9 +17,6 @@ package org.openkilda.northbound.messaging.kafka;
 
 import static org.openkilda.messaging.Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS;
 import static org.openkilda.messaging.Utils.HEALTH_CHECK_OPERATIONAL_STATUS;
-import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.messaging.error.ErrorType.DATA_INVALID;
-import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.MessageProducer;
@@ -58,7 +55,7 @@ public class KafkaMessageProducer implements MessageProducer {
      */
     @Override
     public ListenableFuture<SendResult<String, Message>> send(final String topic, final Message message) {
-        ListenableFuture<SendResult<String, Message>> future = kafkaTemplate.send(topic, key, message);
+        ListenableFuture<SendResult<String, Message>> future = kafkaTemplate.send(topic, message);
         future.addCallback(
                 success -> {
                     healthCheckService.updateKafkaStatus(HEALTH_CHECK_OPERATIONAL_STATUS);
@@ -66,7 +63,7 @@ public class KafkaMessageProducer implements MessageProducer {
                 },
                 error -> {
                     healthCheckService.updateKafkaStatus(HEALTH_CHECK_NON_OPERATIONAL_STATUS);
-                    logger.error("Unable to send message: topic={}, message={}", topic, message, error)
+                    logger.error("Unable to send message: topic={}, message={}", topic, message, error);
                 }
         );
 
