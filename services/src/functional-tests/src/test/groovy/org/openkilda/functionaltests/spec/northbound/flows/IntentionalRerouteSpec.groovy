@@ -74,7 +74,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
 
         and: "Remove flow, restore bw"
         northboundService.deleteFlow(flow.id)
-        changedIsls.each { 
+        changedIsls.each {
             db.revertIslBandwidth(it)
             db.revertIslBandwidth(islUtils.reverseIsl(it))
         }

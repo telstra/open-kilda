@@ -20,6 +20,8 @@ public final class Constants {
     public static final String VIRTUAL_CONTROLLER_ADDRESS = "tcp:kilda:6653";
     public static final Integer DEFAULT_COST = 700;
     public static final Integer WAIT_OFFSET = 5;
+    public static final Integer TOPOLOGY_DISCOVERING_TIME = 120;
+    public static final Integer SWITCHES_ACTIVATION_TIME = 5;
 
     private Constants() {
         throw new UnsupportedOperationException();

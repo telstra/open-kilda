@@ -1,14 +1,15 @@
 package org.openkilda.functionaltests.helpers
 
 import static org.openkilda.testing.Constants.ASWITCH_NAME
+import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
+import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchState
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
-import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.mininet.Mininet
 import org.openkilda.testing.service.northbound.NorthboundService
 
@@ -52,12 +53,12 @@ class MininetTopologyBuilder {
         northbound.toggleFeature(features)
 
         //wait until topology is discovered
-        assert Wrappers.wait(120) {
+        assert Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
             northbound.getAllLinks().findAll {
                 it.state == IslChangeType.DISCOVERED
             }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
         }
-        assert Wrappers.wait(3) {
+        assert Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
             northbound.getAllSwitches().findAll {
                 it.state == SwitchState.ACTIVATED
             }.size() == topologyDefinition.activeSwitches.size()

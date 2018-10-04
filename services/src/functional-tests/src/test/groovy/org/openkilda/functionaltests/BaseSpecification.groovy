@@ -44,7 +44,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         assumeTrue("This test required one of these profiles: ${profiles.join(',')}; " +
                 "but current active profile is '${this.profile}'", this.profile in profiles)
     }
-    
+
     @HealthCheck
     def "Create casual flow to ensure Kilda's up state"() {
         when: "Create a flow"
@@ -52,7 +52,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         northbound.addFlow(flow)
 
         then: "Flow switches to UP state in a reasonable amount of time"
-        Wrappers.wait(15) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET * 3) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "remove the flow"
         northbound.deleteFlow(flow.id)
