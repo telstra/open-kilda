@@ -19,10 +19,11 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Collections.unmodifiableList;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
+import org.openkilda.messaging.info.InfoData;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.openkilda.messaging.info.InfoData;
 
 import java.util.List;
 import java.util.Objects;
