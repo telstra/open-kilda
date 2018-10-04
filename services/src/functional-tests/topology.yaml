@@ -1,6 +1,6 @@
 switches:
     - name: ofsw1
-      dp_id: 00:00:00:00:00:00:00:01
+      dp_id: 00:00:00:22:3d:6b:00:04
       of_version: OF_13
       status: active
       out_ports:
@@ -8,7 +8,7 @@ switches:
           vlan_range: 101..150
 
     - name: ofsw2
-      dp_id: 00:00:00:00:00:00:00:02
+      dp_id: 00:00:00:22:3d:6c:00:b8
       of_version: OF_13
       status: active
       out_ports:
@@ -16,7 +16,7 @@ switches:
           vlan_range: 101..150
 
     - name: ofsw3
-      dp_id: 00:00:00:00:00:00:00:03
+      dp_id: 00:00:00:22:3d:5a:04:87
       of_version: OF_13
       status: active
       out_ports:
@@ -24,7 +24,7 @@ switches:
           vlan_range: 101..150
 
     - name: ofsw7
-      dp_id: 00:00:b0:00:00:00:00:07
+      dp_id: 00:00:b0:d2:f5:00:5a:b8
       of_version: OF_13
       status: active
       out_ports:
@@ -32,7 +32,7 @@ switches:
           vlan_range: 101..150
 
     - name: ofsw8
-      dp_id: 00:00:00:00:00:00:00:08
+      dp_id: 00:00:70:72:cf:d2:47:a6
       of_version: OF_12
       status: active
       out_ports:
@@ -40,7 +40,7 @@ switches:
           vlan_range: 101..150
 
     - name: ofsw9
-      dp_id: 00:00:00:00:00:00:00:09
+      dp_id: 00:00:70:72:cf:d2:48:6c
       of_version: OF_12
       status: active
       out_ports:
@@ -52,6 +52,11 @@ isls:
       dst_switch: ofsw1
       dst_port: 2
       max_bandwidth: 40000000
+#    - src_switch: ofsw1
+#      src_port: 2
+#      dst_switch: ofsw2
+#      dst_port: 4
+#      max_bandwidth: 36000000
     - src_switch: ofsw1
       src_port: 1
       dst_switch: ofsw2
@@ -140,8 +145,38 @@ isls:
       a_switch:
         in_port: 20
 
-traffgens: []
+traffgens:
+    - name: tg1
+      iface: eth0
+      control_endpoint: http://172.28.10.136:4041
+      switch: ofsw3
+      switch_port: 10
+      status: active
+    - name: tg2
+      iface: eth0
+      control_endpoint: http://172.28.10.136:4042
+      switch: ofsw8
+      switch_port: 10
+      status: active
+    - name: tg3
+      iface: eth0
+      control_endpoint: http://172.28.10.136:4043
+      switch: ofsw1
+      switch_port: 12
+      status: inactive
+    - name: tg4
+      iface: eth0
+      control_endpoint: http://172.28.10.136:4044
+      switch: ofsw7
+      switch_port: 10
+      status: active
+    - name: tg5
+      iface: eth0
+      control_endpoint: http://172.28.10.136:4045
+      switch: ofsw2
+      switch_port: 10
+      status: active
 
 traffgen_config:
-    address_pool_base: 0.0.0.0
+    address_pool_base: 172.16.80.0
     address_pool_prefix_len: 20
