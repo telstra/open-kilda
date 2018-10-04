@@ -1,6 +1,26 @@
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 package org.openkilda.neo;
 
-import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
 
 import java.util.Map;
 
@@ -11,19 +31,19 @@ import java.util.Map;
  */
 public class OkNode implements Node {
 
-    private Node n;
+    private Node node;
 
-    public OkNode(Node node){
-        this.n = node;
+    public OkNode(Node node) {
+        this.node = node;
     }
 
     public OkNode property(String s, Object o) {
-        n.setProperty(s,o);
+        node.setProperty(s, o);
         return this;
     }
 
     public NeoUtils.OkEdge edge(RelationshipType r, OkNode other) {
-        return new NeoUtils.OkEdge(this.n.createRelationshipTo(other.n,r));
+        return new NeoUtils.OkEdge(this.node.createRelationshipTo(other.node, r));
     }
 
 
@@ -33,22 +53,17 @@ public class OkNode implements Node {
 
     @Override
     public long getId() {
-        return n.getId();
+        return node.getId();
     }
 
     @Override
     public void delete() {
-        n.delete();
+        node.delete();
     }
 
     @Override
     public Iterable<Relationship> getRelationships() {
-        return n.getRelationships();
-    }
-
-    @Override
-    public boolean hasRelationship() {
-        return n.hasRelationship();
+        return node.getRelationships();
     }
 
     @Override
@@ -62,6 +77,21 @@ public class OkNode implements Node {
     }
 
     @Override
+    public Iterable<Relationship> getRelationships(Direction dir) {
+        return null;
+    }
+
+    @Override
+    public Iterable<Relationship> getRelationships(RelationshipType type, Direction dir) {
+        return null;
+    }
+
+    @Override
+    public boolean hasRelationship() {
+        return node.hasRelationship();
+    }
+
+    @Override
     public boolean hasRelationship(RelationshipType... types) {
         return false;
     }
@@ -72,18 +102,8 @@ public class OkNode implements Node {
     }
 
     @Override
-    public Iterable<Relationship> getRelationships(Direction dir) {
-        return null;
-    }
-
-    @Override
     public boolean hasRelationship(Direction dir) {
         return false;
-    }
-
-    @Override
-    public Iterable<Relationship> getRelationships(RelationshipType type, Direction dir) {
-        return null;
     }
 
     @Override
