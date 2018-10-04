@@ -112,7 +112,6 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        checkAndCreateTopic(openTsdbTopic);
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())

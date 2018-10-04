@@ -88,7 +88,6 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
     private void attachInput(TopologyBuilder topology) {
         String otsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        checkAndCreateTopic(otsdbTopic);
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 

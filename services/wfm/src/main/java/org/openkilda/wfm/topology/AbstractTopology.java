@@ -197,15 +197,6 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     /**
-     * Creates Kafka topic if it does not exist.
-     *
-     * @param topic Kafka topic
-     */
-    protected void checkAndCreateTopic(final String topic) {
-        // FIXME(nmarchenko): do we need this? need check
-    }
-
-    /**
      * Creates Kafka spout.
      *
      * @param topic Kafka topic
@@ -234,8 +225,6 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected void createCtrlBranch(TopologyBuilder builder, List<CtrlBoltRef> targets)
             throws StreamNameCollisionException {
         String ctrlTopic = topologyConfig.getKafkaCtrlTopic();
-
-        checkAndCreateTopic(ctrlTopic);
 
         KafkaSpout kafkaSpout;
         kafkaSpout = createKafkaSpout(ctrlTopic, SPOUT_ID_CTRL);
