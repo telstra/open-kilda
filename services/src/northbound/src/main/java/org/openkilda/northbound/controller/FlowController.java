@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.controller;
 
-import static org.openkilda.messaging.Utils.EXTRA_AUTH;
-
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -49,7 +47,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -184,17 +181,7 @@ public class FlowController {
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ExtraAuthRequired
-    @SuppressWarnings("unchecked") // the error is unchecked
-    public ResponseEntity<List<FlowPayload>> deleteFlows(
-            @RequestHeader(value = EXTRA_AUTH, defaultValue = "0") long extraAuth) {
-        long currentAuth = System.currentTimeMillis();
-        if (Math.abs(currentAuth - extraAuth) > 120 * 1000) {
-            /*
-             * The request needs to be within 120 seconds of the system clock.
-             */
-            return new ResponseEntity("Invalid Auth: " + currentAuth, new HttpHeaders(), HttpStatus.UNAUTHORIZED);
-        }
-
+    public ResponseEntity<List<FlowPayload>> deleteFlows() {
         List<FlowPayload> response = flowService.deleteFlows();
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.OK);
     }
