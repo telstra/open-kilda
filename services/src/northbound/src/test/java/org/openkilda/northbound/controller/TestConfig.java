@@ -23,6 +23,7 @@ import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
+import org.openkilda.northbound.utils.ResponseCollector;
 import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 
 import org.springframework.boot.test.context.TestConfiguration;
@@ -71,5 +72,10 @@ public class TestConfig {
     @Bean
     public CorrelationIdFactory idFactory() {
         return new TestCorrelationIdFactory();
+    }
+
+    @Bean
+    public ResponseCollector responseCollector() {
+        return mock(ResponseCollector.class);
     }
 }
