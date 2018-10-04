@@ -15,8 +15,6 @@
 
 package org.openkilda.model;
 
-import java.util.Arrays;
-
 /**
  * Represents ISL statuses.
  */
@@ -25,59 +23,15 @@ public enum IslStatus {
     /**
      * ISL is in active state.
      */
-    ACTIVE("Active"),
+    ACTIVE,
 
     /**
      * ISL is in failed state.
      */
-    FAILED("Failed"),
+    FAILED,
 
     /**
      * ISL is in moved state.
      */
-    MOVED("Moved");
-
-    /**
-     * ISL status.
-     */
-    private final String status;
-
-    /**
-     * Instance constructor.
-     *
-     * @param status ISL status.
-     */
-    IslStatus(final String status) {
-        this.status = status;
-    }
-
-    /**
-     * Returns ISL status.
-     *
-     * @return ISL status.
-     */
-    public String getStatus() {
-        return this.status;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return status;
-    }
-
-    /**
-     * Find corresponding value for string representation of status.
-     *
-     * @param status ISL status.
-     * @return {@link IslStatus} value.
-     */
-    public static IslStatus from(String status) {
-        return Arrays.stream(IslStatus.values())
-                .filter(item -> item.status.equalsIgnoreCase(status))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(String.format("Incorrect isl status: %s", status)));
-    }
+    MOVED
 }

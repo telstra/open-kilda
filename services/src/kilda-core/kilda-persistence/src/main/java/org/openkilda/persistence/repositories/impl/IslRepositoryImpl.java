@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.model.Isl;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.neo4j.Neo4jSessionFactory;
 import org.openkilda.persistence.repositories.IslRepository;
 
@@ -34,9 +35,9 @@ public class IslRepositoryImpl extends GenericRepository<Isl> implements IslRepo
     }
 
     @Override
-    public Isl findByEndpoint(long switchId, int port) {
+    public Isl findByEndpoint(SwitchId switchId, int port) {
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("src_switch", switchId);
+        parameters.put("src_switch", switchId.toString());
         parameters.put("src_port", port);
 
         return getSession().queryForObject(Isl.class, "MATCH (src:switch)-[target:isl]->(:switch)\n"

@@ -16,11 +16,12 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Isl;
+import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 
 public interface IslRepository extends Repository<Isl> {
     Collection<Isl> findAllOrderedBySrcSwitch();
 
-    Isl findByEndpoint(long switchId, int port);
+    Isl findByEndpoint(SwitchId switchId, int port);
 }
