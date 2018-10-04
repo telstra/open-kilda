@@ -109,7 +109,7 @@ public class FlowPathTest {
         }
 
         preStart = System.currentTimeMillis();
-        assertTrue(TopologyHelp.CreateMininetTopology(json));
+        assertTrue(TopologyHelp.createMininetTopology(json));
         start = System.currentTimeMillis();
     }
 
@@ -199,7 +199,7 @@ public class FlowPathTest {
 
     @When("^delete mininet topology$")
     public void deleteMininetTopology() {
-        TopologyHelp.DeleteMininetTopology();
+        TopologyHelp.deleteMininetTopology();
     }
 
     @When("^(\\d+) seconds passed$")

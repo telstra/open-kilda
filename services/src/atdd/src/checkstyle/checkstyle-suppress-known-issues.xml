@@ -295,25 +295,6 @@
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="96" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="97" checks="WhitespaceAfter"/>
     <suppress files="src/test/java/org/openkilda/topo/TopologyTests.java" lines="97" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="39" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="40" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="40" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="62" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="79" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="79" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="89" checks="NeedBraces"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="106" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="111" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="130" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="135" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="153" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="153" checks="MethodName"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="158" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="159" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="160" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="161" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="162" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/topo/TopologyHelp.java" lines="177" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/topo/BasicTopoTests.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/topo/BasicTopoTests.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/topo/BasicTopoTests.java" lines="26" checks="CustomImportOrder"/>

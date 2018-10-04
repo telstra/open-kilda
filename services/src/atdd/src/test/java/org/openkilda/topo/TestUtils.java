@@ -97,7 +97,7 @@ public class TestUtils {
         }
         doc = doc.replaceAll("\"dpid\": \"SW", "\"dpid\": \""); // remove any SW characters
         doc = doc.replaceAll("([0-9A-Fa-f]{2}):", "$1");         // remove ':' in id
-        TopologyHelp.CreateMininetTopology(doc);
+        TopologyHelp.createMininetTopology(doc);
         return doc;
     }
 
@@ -139,7 +139,7 @@ public class TestUtils {
         for (int i = 0; i < 4; i++) {
             Thread.yield(); // let other threads do something ..
             TimeUnit.SECONDS.sleep(10);
-            String jsonFromTE = TopologyHelp.GetTopology();
+            String jsonFromTE = TopologyHelp.getTopology();
             Thread.yield(); // let other threads do something ..
 
             tTE = TeTopologyParser.parseTopologyEngineJson(jsonFromTE);
@@ -184,17 +184,17 @@ public class TestUtils {
      */
     public static void clearEverything(String endpoint) throws InterruptedException, IOException {
         String expected = "{\"nodes\": []}";
-        TopologyHelp.DeleteMininetTopology();
+        TopologyHelp.deleteMininetTopology();
         // Give Mininet some time to clear things naturally
         TimeUnit.MILLISECONDS.sleep(3000);
 
         // verify it is empty
-        String entity = TopologyHelp.ClearTopology();
+        String entity = TopologyHelp.clearTopology();
 
         for (int i = 0; i < 2; i++) {
             if (!expected.equals(entity)) {
                 TimeUnit.MILLISECONDS.sleep(2000);
-                entity = TopologyHelp.ClearTopology();
+                entity = TopologyHelp.clearTopology();
                 assertEquals("Default, initial, response from TopologyEngine", expected, entity);
             } else {
                 break;
