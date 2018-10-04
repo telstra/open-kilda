@@ -1,0 +1,78 @@
+@startuml
+title Sending gRPC request to a switch
+
+control kilda.grpc.client
+box "gRPC Client Topology" #LightBlue
+    participant GrpcClientSpout
+    participant RequestBuilderBolt
+    collections RequestSenderBolt
+    note right of RequestSenderBolt: we can create any number of RequestSenderBolt \nand ask storm to group requests by switch
+end box
+database Database
+collections Switches
+control kilda.grpc.response
+
+kilda.grpc.client -> GrpcClientSpout: Create port 2020 on sw A request
+GrpcClientSpout -> RequestBuilderBolt: Create port 2020 on sw A request
+activate RequestBuilderBolt
+RequestBuilderBolt -> Database: get credentials for the switch
+Database -> RequestBuilderBolt: search result
+
+RequestBuilderBolt -> RequestSenderBolt: prepared request with creds
+deactivate RequestBuilderBolt
+
+activate RequestSenderBolt
+RequestSenderBolt -> RequestSenderBolt: check if there is pending requests to the switch
+note right: Queue for requests per switch will be created, so Topology \nsends simultaneously limited (configurable) amount of requests
+
+RequestSenderBolt -> Switches: send create port 2020 command
+activate Switches
+note right: gRPC clients are able to send both sync and async type of requests.
+RequestSenderBolt -> RequestSenderBolt: store sent request
+
+note right: once we have sent the request we release current thread
+
+deactivate RequestSenderBolt
+
+kilda.grpc.client -> GrpcClientSpout: Create port 2021 on sw A request
+GrpcClientSpout -> RequestBuilderBolt: Create port 2021 on sw A request
+activate RequestBuilderBolt
+
+RequestBuilderBolt -> Database: get credentials for the switch
+Database -> RequestBuilderBolt: search result
+RequestBuilderBolt -> RequestSenderBolt: prepared request with creds
+deactivate RequestBuilderBolt
+
+activate RequestSenderBolt
+RequestSenderBolt -> RequestSenderBolt: check if there is pending requests to the switch A
+RequestSenderBolt -> RequestSenderBolt: add to the queue
+deactivate RequestSenderBolt
+
+alt Response received:
+    Switches -> RequestSenderBolt: a result of creation port 2020
+    deactivate Switches
+    activate RequestSenderBolt
+    RequestSenderBolt -> kilda.grpc.response: send the response from the switch
+
+    RequestSenderBolt -> RequestSenderBolt: check if there is any pending requests \nfor switch A in the queue
+    RequestSenderBolt -> Switches: send create port 2021 command
+    activate Switches
+    RequestSenderBolt -> RequestSenderBolt: store sent request
+    deactivate RequestSenderBolt
+
+    Switches -> RequestSenderBolt: a result of creation port 2021
+    deactivate Switches
+    activate RequestSenderBolt
+    RequestSenderBolt -> kilda.grpc.response: send the response from the switch
+    RequestSenderBolt -> RequestSenderBolt: check if there is pending requests to the switch A
+    deactivate RequestSenderBolt
+
+else Timeout exceeded:
+    deactivate Switches
+    RequestSenderBolt -> RequestSenderBolt: check if timeout for request is exceeded
+    RequestSenderBolt -> RequestSenderBolt: check if number of retries is not exceeded
+    RequestSenderBolt -> GrpcClientSpout: retry sending the request
+    note right: we can fail the tuple and it will be reprocessed again
+end
+
+@enduml
