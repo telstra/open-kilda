@@ -27,7 +27,6 @@ import org.apache.storm.tuple.Values;
 import org.neo4j.driver.v1.AccessMode;
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.Session;
-import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Map;
@@ -50,7 +49,7 @@ public abstract class NeoOperationsBolt extends AbstractBolt {
     protected void handleInput(Tuple input) {
         BaseRequest request = (BaseRequest) input.getValueByField("request");
         final String correlationId = input.getStringByField("correlationId");
-        getLogger().debug("Received operation request");
+        log.debug("Received operation request");
 
         try (Session session = driver.session(request.isReadRequest() ? AccessMode.READ : AccessMode.WRITE)) {
             List<? extends InfoData> result = processRequest(input, request, session);
@@ -59,8 +58,6 @@ public abstract class NeoOperationsBolt extends AbstractBolt {
     }
 
     abstract List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, Session session);
-
-    abstract Logger getLogger();
 
     @Override
     public void cleanup() {

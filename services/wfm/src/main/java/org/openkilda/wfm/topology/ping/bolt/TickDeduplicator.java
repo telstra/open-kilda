@@ -19,7 +19,6 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -28,7 +27,6 @@ import org.apache.storm.utils.Utils;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class TickDeduplicator extends AbstractBolt {
     public static final String BOLT_ID = ComponentId.TICK_DEDUPLICATOR.toString();
 
@@ -65,7 +63,7 @@ public class TickDeduplicator extends AbstractBolt {
 
         if (activeSourceTask == null) {
             activeSourceTask = taskId;
-            log.debug("Set {} as active source (no previous)");
+            log.debug("Set {} as active source (no previous)", activeSourceTask);
         } else {
             Long lastActiveTick = lastTick.get(activeSourceTask);
             if (lastActiveTick + tickPeriod * 2 < tick) {
