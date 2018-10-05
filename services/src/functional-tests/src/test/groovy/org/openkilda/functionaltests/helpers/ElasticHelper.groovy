@@ -42,15 +42,6 @@ class ElasticHelper {
      * Deserialized JSON in case of success
      */
     Map getLogs(ElasticQueryBuilder q) {
-        this.appId = queryBuilder.appId
-        this.tags = queryBuilder.tags
-        this.level = ""
-        this.timeRange = 60
-        this.resultCount = 100
-        this.defaultField = "_source"
-        this.index = "_all"
-        queryBuilder(this)
-
         return getLogs(q.appId, q.tags, q.level, q.keywords, q.timeRange, q.resultCount, q.defaultField, q.index)
     }
 
