@@ -21,8 +21,13 @@ import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.event.bolt.ComponentId;
+import org.openkilda.wfm.topology.event.bolt.FlMonitor;
+import org.openkilda.wfm.topology.event.bolt.MonotonicTick;
+import org.openkilda.wfm.topology.event.bolt.OfeLinkBolt;
+import org.openkilda.wfm.topology.event.bolt.SpeakerDecoder;
+import org.openkilda.wfm.topology.ping.bolt.SpeakerEncoder;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
@@ -73,23 +78,31 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
 
         String kafkaTopoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
 
+        final List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
+        // monotonic tick
+        builder.setBolt(MonotonicTick.BOLT_ID, new MonotonicTick());
 
-        // TODO: resolve the comments below; are there any state issues?
-        // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
-        //      just to pull out switchID.
-        // (crimi) - not sure I agree here .. state can be maintained, albeit distributed.
-        //
-        builder.setBolt(SPEAKER_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerTopic()),
-                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.SPEAKER_STREAM);
-        builder.setBolt(SPEAKER_DISCO_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerDiscoTopic()),
-                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.SPEAKER_DISCO_STREAM);
+        // speaker spout
+        builder.setSpout(ComponentId.SPEAKER_SPOUT.toString(),
+                createKafkaSpout(kafkaTopoDiscoTopic, ComponentId.SPEAKER_SPOUT.toString()));
+        // speaker decoder
+        builder.setBolt(SpeakerDecoder.BOLT_ID, new SpeakerDecoder())
+                .shuffleGrouping(ComponentId.SPEAKER_SPOUT.toString());
 
+        // speaker monitor
+        builder.setBolt(FlMonitor.BOLT_ID, new FlMonitor(topologyConfig))
+                .shuffleGrouping(MonotonicTick.BOLT_ID)
+                .shuffleGrouping(SpeakerDecoder.BOLT_ID);
+
+        // ISL discovery
         OfeLinkBolt ofeLinkBolt = new OfeLinkBolt(topologyConfig);
-        BoltDeclarer bd = builder.setBolt(DISCO_BOLT_ID, ofeLinkBolt, topologyConfig.getParallelism())
-                .shuffleGrouping(DISCO_SPOUT_ID);
+        BoltDeclarer boltDeclarer = builder.setBolt(OfeLinkBolt.BOLT_ID, ofeLinkBolt, topologyConfig.getParallelism())
+                .allGrouping(MonotonicTick.BOLT_ID)
+                .shuffleGrouping(FlMonitor.BOLT_ID)
+                .shuffleGrouping(FlMonitor.BOLT_ID, FlMonitor.STREAM_SYNC_ID);
+        ctrlTargets.add(new CtrlBoltRef(OfeLinkBolt.BOLT_ID, ofeLinkBolt, boltDeclarer));
 
         PersistenceManager persistenceManager =  PersistenceProvider.getInstance()
                 .createPersistenceManager(configurationProvider);
@@ -103,9 +116,16 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
                 createKafkaBolt(topologyConfig.getKafkaTopoRerouteTopic()), topologyConfig.getParallelism())
                 .shuffleGrouping(NETWORK_TOPOLOGY_BOLT_ID, NetworkTopologyBolt.REROUTE_STREAM);
 
-        List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
-        // TODO: verify this ctrlTarget after refactoring.
-        ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, ofeLinkBolt, bd));
+        // speaker encoder
+        builder.setBolt(SpeakerEncoder.BOLT_ID, new SpeakerEncoder())
+                .shuffleGrouping(FlMonitor.BOLT_ID, FlMonitor.STREAM_SPEAKER_ID)
+                .shuffleGrouping(OfeLinkBolt.BOLT_ID, OfeLinkBolt.SPEAKER_DISCO_STREAM);
+
+        // kafka exporters
+        builder.setBolt(SPEAKER_DISCO_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerDiscoTopic()),
+                topologyConfig.getParallelism())
+                .shuffleGrouping(SpeakerEncoder.BOLT_ID);
+
         createCtrlBranch(builder, ctrlTargets);
 
         return builder.createTopology();

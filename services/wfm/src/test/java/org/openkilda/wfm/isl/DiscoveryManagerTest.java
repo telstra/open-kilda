@@ -299,7 +299,7 @@ public class DiscoveryManagerTest {
                 dstNode.getSwitchDpId(), dstNode.getPortId()));
 
         // Let it fail, then succeed .. both are state changes
-        assertEquals(true, dm.handleFailed(srcNode2.getSwitchDpId(), srcNode2.getPortId()));
+        assertEquals(true, dm.handleFailed(srcNode2));
         assertEquals(true, dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
                 dstNode.getSwitchDpId(), dstNode.getPortId()));
         assertEquals(false, dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
@@ -315,14 +315,14 @@ public class DiscoveryManagerTest {
         setupThreeLinks();
 
         // After a PortUP, a failure isn't a state change, the default is to assume it isn't an ISL
-        assertEquals(false, dm.handleFailed(srcNode2.getSwitchDpId(), srcNode2.getPortId()));
+        assertEquals(false, dm.handleFailed(srcNode2));
         // A success after a failure is state change
         assertEquals(true, dm.handleDiscovered(srcNode2.getSwitchDpId(), srcNode2.getPortId(),
                 dstNode2.getSwitchDpId(), dstNode2.getPortId()));
         // A failure after a success is state change
-        assertEquals(true, dm.handleFailed(srcNode2.getSwitchDpId(), srcNode2.getPortId()));
+        assertEquals(true, dm.handleFailed(srcNode2));
         // Repeated failures isn't a state change.
-        assertEquals(false, dm.handleFailed(srcNode2.getSwitchDpId(), srcNode2.getPortId()));
+        assertEquals(false, dm.handleFailed(srcNode2));
     }
 
     @Test

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm;
+package org.openkilda.wfm.topology.event;
 
 import static org.mockito.Mockito.when;
 import static org.openkilda.messaging.Utils.MAPPER;
@@ -34,15 +34,15 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.OutputCollectorMock;
-import org.openkilda.wfm.topology.event.OFEventWfmTopologyConfig;
-import org.openkilda.wfm.topology.event.OfEventWfmTopology;
-import org.openkilda.wfm.topology.event.OfeLinkBolt;
+import org.openkilda.wfm.AbstractStormTest;
+import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.OfeMessageUtils;
+import org.openkilda.wfm.topology.event.bolt.ComponentId;
+import org.openkilda.wfm.topology.event.bolt.OfeLinkBolt;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import org.apache.storm.Constants;
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Fields;
@@ -198,13 +198,11 @@ public class OfEventWfmTest extends AbstractStormTest {
         OFEventWfmTopologyConfig config = manager.getConfig();
         String topoInputTopic = config.getKafkaTopoDiscoTopic();
 
-        KeyValueState<String, Object> state = new InMemoryKeyValueState<>();
         initMocks(topoInputTopic);
 
         OfeLinkBolt linkBolt = new OfeLinkBolt(config);
 
         linkBolt.prepare(stormConfig(), topologyContext, outputCollector);
-        linkBolt.initState(state);
 
         ArrayList<DiscoveryFilterEntity> skipNodes = new ArrayList<>(1);
         skipNodes.add(new DiscoveryFilterEntity(new SwitchId("ff:01"), 1));
@@ -304,9 +302,9 @@ public class OfEventWfmTest extends AbstractStormTest {
         when(topologyContext.getComponentOutputFields(topoInputTopic,
                 topoInputTopic)).thenReturn(islSchema);
 
-        when(topologyContext.getComponentId(4)).thenReturn(OfEventWfmTopology.DISCO_SPOUT_ID);
+        when(topologyContext.getComponentId(4)).thenReturn(ComponentId.SPEAKER_ENCODER.toString());
         when(topologyContext.getComponentOutputFields(
-                OfEventWfmTopology.DISCO_SPOUT_ID, AbstractTopology.MESSAGE_FIELD))
+                ComponentId.SPEAKER_ENCODER.toString(), AbstractTopology.MESSAGE_FIELD))
                 .thenReturn(AbstractTopology.fieldMessage);
     }
 }

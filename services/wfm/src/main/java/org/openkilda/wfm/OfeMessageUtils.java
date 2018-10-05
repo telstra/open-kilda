@@ -15,18 +15,7 @@
 
 package org.openkilda.wfm;
 
-import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
-
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.IslChangeType;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -184,39 +173,5 @@ public final class OfeMessageUtils {
             root = (Map<String, ?>) root.get(PAYLOAD);
         }
         return root;
-    }
-
-    /**
-     * Return ISL discovery failure message.
-     *
-     * @param switchId switch id.
-     * @param portId port id.
-     * @param correlationId correlation id.
-     * @return isl discovery failure message.
-     * @throws IOException error writing message as string.
-     */
-    public static String createIslFail(SwitchId switchId, int portId, String correlationId) throws IOException {
-        PathNode node = new PathNode(switchId, portId, 0, 0L);
-        InfoData data = new IslInfoData(0L, node, null, 0L, IslChangeType.FAILED, 0L);
-        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
-        return MAPPER.writeValueAsString(message);
-    }
-
-    // ==============  ==============  ==============  ==============  ==============
-    // ISL Discovery
-    // ==============  ==============  ==============  ==============  ==============
-
-    /**
-     * Return a JSON string that can be used to for link event.
-     *
-     * @return a JSON string that can be used to for link event
-     */
-    public static String createIslDiscovery(SwitchId switchId, int portId, String correlationId) throws IOException {
-        CommandMessage message = new CommandMessage(
-                new DiscoverIslCommandData(switchId, Integer.valueOf(portId)), // Payload
-                System.currentTimeMillis(),
-                correlationId, Destination.CONTROLLER
-        );
-        return MAPPER.writeValueAsString(message);
     }
 }

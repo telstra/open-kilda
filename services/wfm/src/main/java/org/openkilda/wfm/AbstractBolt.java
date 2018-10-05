@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.List;
 import java.util.Map;
 
 public abstract class AbstractBolt extends BaseRichBolt {
@@ -47,6 +48,16 @@ public abstract class AbstractBolt extends BaseRichBolt {
         } finally {
             output.ack(input);
         }
+    }
+
+    void emit(Tuple anchor, List<Object> payload) {
+        log.debug("emit tuple into default stream: {}", payload);
+        output.emit(anchor, payload);
+    }
+
+    void emit(String stream, Tuple anchor, List<Object> payload) {
+        log.debug("emit tuple into {} stream: {}", stream, payload);
+        output.emit(stream, anchor, payload);
     }
 
     protected abstract void handleInput(Tuple input) throws AbstractException;
