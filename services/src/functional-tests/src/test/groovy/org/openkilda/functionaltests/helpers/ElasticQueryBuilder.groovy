@@ -35,7 +35,7 @@ class ElasticQueryBuilder {
     }
 
     /**
-     * Elastic Search Query Builer - set _app_id field
+     * Sets app_id field value (to search by app_id)
      * @param appId Application ID in following format: APP1 OR APP2 OR ... OR APP_N
      * @return this
      */
@@ -45,7 +45,7 @@ class ElasticQueryBuilder {
     }
 
     /**
-     * Elastic Search Query Builder - set tags field
+     * Set tags field (to search by tags)
      * @param tags record tags in following format: TAG1 OR TAG2 OR ... OR TAG_N
      * @return this
      */
@@ -55,7 +55,7 @@ class ElasticQueryBuilder {
     }
 
     /**
-     * Elastic Search Query Builder - set log level filter
+     * Sets log level filter (INFO OR WARN OR ERROR by default)
      * @param levels log levels in following format: DEBUG OR INFO OR WARN OR ERROR
      * @return this
      */
@@ -65,7 +65,7 @@ class ElasticQueryBuilder {
     }
 
     /**
-     * Elastic Search Query Builder - set keywords filter (WIP)
+     * Sets query keywords filter (WIP)
      * @param keywords - WIP, do not use
      * @return this
      */
@@ -75,25 +75,40 @@ class ElasticQueryBuilder {
     }
 
     /**
-     *
+     * Sets search depth from a current time (in seconds, 60 by default)
      * @param timeRange
      * @return
      */
     def addTimeRange(long timeRange) {
-        this.timeRange = 60
+        this.timeRange = timeRange
         return this
     }
 
+    /**
+     * Sets desired maximum number of documents returned by ElasticSearch
+     * @param resultCount - number of documents
+     * @return this
+     */
     def addResultCount(long resultCount) {
         this.resultCount = resultCount
         return this
     }
 
+    /**
+     * Sets default lookup field for ElasticSearch (_source by default)
+     * @param defaultField - field name
+     * @return this
+     */
     def addDefaultField(String defaultField) {
         this.defaultField = defaultField
         return this
     }
 
+    /**
+     * Sets lookup index for ElasticSearch (may be useful in narrowing down search scope, _all by default)
+     * @param index - index name
+     * @return this
+     */
     def addIndex(String index) {
         this.index = index
         return this
