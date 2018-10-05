@@ -16,9 +16,9 @@ mininet.endpoint={{ getv "/kilda_mininet_endpoint" }}:{{ getv "/kilda_mininet_re
 mininet-flowtool.endpoint={{ getv "/kilda_mininet_endpoint" }}:17191
 
 # ElasticSearch EP address in Hiera doesn't have protocol specified, specifying in template
-elasticsearch.endpoint = http://{{ getv /kilda_elasticsearch_host }}:9200
-elasticsearch.username = {{ getv /kilda_elasticsearch_user }}
-elasticsearch.password = {{ getv /kilda_elasticsearch_pass }}
+elasticsearch.endpoint = http://{{ getv "/kilda_elasticsearch_host" }}:9200
+elasticsearch.username = {{ getv "/kilda_elasticsearch_user" }}
+elasticsearch.password = {{ getv "/kilda_elasticsearch_pass" }}
 
 spring.profiles.active={{ getv "/kilda_test_profile" }}
 
