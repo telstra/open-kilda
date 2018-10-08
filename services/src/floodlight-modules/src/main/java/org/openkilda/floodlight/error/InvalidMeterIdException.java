@@ -13,23 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.provider;
+package org.openkilda.floodlight.error;
 
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.floodlight.switchmanager.SwitchOperationException;
 
-public class UnroutablePathException extends Exception {
-    private final Flow flow;
+import org.projectfloodlight.openflow.types.DatapathId;
 
-    public UnroutablePathException(Flow flow) {
-        super(String.format(
-                "Can't make flow from %s to %s (bandwidth=%d%s)",
-                flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth(),
-                flow.isIgnoreBandwidth() ? " ignored" : ""));
-
-        this.flow = flow;
-    }
-
-    public Flow getFlow() {
-        return flow;
+public class InvalidMeterIdException extends SwitchOperationException {
+    public InvalidMeterIdException(DatapathId dpId, String message) {
+        super(dpId, message);
     }
 }

@@ -15,6 +15,8 @@ neo.uri=bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }
 mininet.endpoint={{ getv "/kilda_mininet_endpoint" }}:{{ getv "/kilda_mininet_rest_port" }}
 mininet-flowtool.endpoint={{ getv "/kilda_mininet_endpoint" }}:17191
 
+otsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
+
 spring.profiles.active={{ getv "/kilda_test_profile" }}
 
 reroute.delay={{ getv "/kilda_reroute_throttling_delay_min" }}

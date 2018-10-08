@@ -14,8 +14,12 @@ lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
 mininet.endpoint=http://localhost:38080
 mininet-flowtool.endpoint=http://localhost:17191
+
+otsdb.endpoint=http://localhost:4242
+
 spring.profiles.active=virtual
 
 reroute.delay=10
 reroute.hardtimeout=30
-discovery.interval=2
+discovery.interval=3
+discovery.timeout = 9

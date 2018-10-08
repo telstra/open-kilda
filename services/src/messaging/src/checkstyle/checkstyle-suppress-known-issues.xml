@@ -5,30 +5,12 @@
 
 <suppressions>
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/messaging/info/InfoMessage.java" lines="121" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/InfoMessage.java" lines="122" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/InfoMessage.java" lines="124" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/InfoMessage.java" lines="125" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/InfoMessage.java" lines="126" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/CacheTimeTag.java" lines="15" checks="EmptyLineSeparator"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/CacheTimeTag.java" lines="18" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/CacheTimeTag.java" lines="48" checks="ParameterName"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/CacheTimeTag.java" lines="60" checks="ParameterName"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/CacheTimeTag.java" lines="82" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/CacheTimeTag.java" lines="93" checks="LeftCurly"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/rule/FlowInstructions.java" lines="36" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/rule/FlowEntry.java" lines="58" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/rule/FlowApplyActions.java" lines="42" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/rule/FlowMatchField.java" lines="46" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/stats/PortStatsEntry.java" lines="67" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/stats/PortStatus.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/stats/FlowStatsEntry.java" lines="39" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/switches/SwitchRulesResponse.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/switches/SwitchRulesResponse.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/switches/SwitchRulesResponse.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/switches/SwitchRulesResponse.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/switches/SwitchRulesResponse.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/switches/SwitchRulesResponse.java" lines="28" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/switches/SyncRulesResponse.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/switches/SyncRulesResponse.java" lines="40" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/messaging/info/switches/ConnectModeResponse.java" lines="19" checks="CustomImportOrder"/>

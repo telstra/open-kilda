@@ -118,13 +118,17 @@ public class InfoMessage extends Message {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof InfoMessage)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof InfoMessage)) {
+            return false;
+        }
         InfoMessage that = (InfoMessage) o;
-        return Objects.equals(data, that.data) &&
-                timestamp == that.timestamp &&
-                correlationId.equals(that.correlationId) &&
-                destination == that.destination;
+        return Objects.equals(data, that.data)
+                && timestamp == that.timestamp
+                && correlationId.equals(that.correlationId)
+                && destination == that.destination;
     }
 
     @Override

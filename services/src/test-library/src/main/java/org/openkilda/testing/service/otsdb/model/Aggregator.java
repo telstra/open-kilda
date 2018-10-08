@@ -13,23 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.provider;
+package org.openkilda.testing.service.otsdb.model;
 
-import org.openkilda.messaging.model.Flow;
+public enum Aggregator {
+    MIN, MAX, SUM, AVG, MULT, DEV;
 
-public class UnroutablePathException extends Exception {
-    private final Flow flow;
-
-    public UnroutablePathException(Flow flow) {
-        super(String.format(
-                "Can't make flow from %s to %s (bandwidth=%d%s)",
-                flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth(),
-                flow.isIgnoreBandwidth() ? " ignored" : ""));
-
-        this.flow = flow;
-    }
-
-    public Flow getFlow() {
-        return flow;
+    @Override
+    public String toString() {
+        return this.name().toLowerCase();
     }
 }

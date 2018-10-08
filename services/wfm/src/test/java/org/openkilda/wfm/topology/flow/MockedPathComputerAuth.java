@@ -19,7 +19,7 @@ import org.openkilda.pce.provider.PathComputerAuth;
 
 public class MockedPathComputerAuth extends PathComputerAuth {
 
-    MockedPathComputerAuth() {
+    public MockedPathComputerAuth() {
         super(null, null, null);
     }
 

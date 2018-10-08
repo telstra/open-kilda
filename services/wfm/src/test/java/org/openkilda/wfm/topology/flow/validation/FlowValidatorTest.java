@@ -19,20 +19,30 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.cache.FlowCache;
+import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.wfm.topology.flow.MockedPathComputerAuth;
 
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 public class FlowValidatorTest {
-    private FlowValidator target = new FlowValidator(flowCache);
+    private FlowValidator target = new FlowValidator(flowCache, pathComputerAuth.getPathComputer());
 
     private static final FlowCache flowCache = new FlowCache();
+    private static final PathComputerAuth pathComputerAuth = new MockedPathComputerAuth();
     private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:00:00:00:00:01");
     private static final int SRC_PORT = 1;
     private static final int SRC_VLAN = 1;
     private static final SwitchId DST_SWITCH = new SwitchId("00:00:00:00:00:00:00:02");
     private static final int DST_PORT = 5;
     private static final int DST_VLAN = 5;
+    private static final SwitchId FAIL_SRC_SWITCH = new SwitchId("00:00:00:00:00:00:00:03");
+    private static final SwitchId FAIL_DST_SWITCH = new SwitchId("00:00:00:00:00:00:00:04");
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @BeforeClass
     public static void initCache() {
@@ -123,5 +133,65 @@ public class FlowValidatorTest {
         flow.setBandwidth(-1);
 
         target.checkBandwidth(flow);
+    }
+
+    @Test
+    public void shouldNotFailOnCheckSwitches() throws SwitchValidationException {
+        Flow flow = new Flow();
+        flow.setSourceSwitch(SRC_SWITCH);
+        flow.setDestinationSwitch(DST_SWITCH);
+
+        target.checkSwitchesExists(flow);
+    }
+
+    @Test
+    public void shouldNotFailOnSingleSwitchCheck() throws SwitchValidationException {
+        Flow flow = new Flow();
+        flow.setSourceSwitch(SRC_SWITCH);
+        flow.setDestinationSwitch(SRC_SWITCH);
+
+        target.checkSwitchesExists(flow);
+    }
+
+    @Test
+    public void shouldFailOnSourceSwitchCheck() throws SwitchValidationException {
+        Flow flow = new Flow();
+        flow.setSourceSwitch(FAIL_SRC_SWITCH);
+        flow.setDestinationSwitch(DST_SWITCH);
+        String expectedMessage = String.format("Source switch %s is not connected to the controller", FAIL_SRC_SWITCH);
+
+        thrown.expect(SwitchValidationException.class);
+        thrown.expectMessage(expectedMessage);
+
+        target.checkSwitchesExists(flow);
+    }
+
+    @Test
+    public void shouldFailOnDestinationSwitchCheck() throws SwitchValidationException {
+        Flow flow = new Flow();
+        flow.setSourceSwitch(SRC_SWITCH);
+        flow.setDestinationSwitch(FAIL_DST_SWITCH);
+        String expectedMessage =
+                String.format("Destination switch %s is not connected to the controller", FAIL_DST_SWITCH);
+
+        thrown.expect(SwitchValidationException.class);
+        thrown.expectMessage(expectedMessage);
+
+        target.checkSwitchesExists(flow);
+    }
+
+    @Test
+    public void shouldFailOnSourceAndDestinationSwitchCheck() throws SwitchValidationException {
+        Flow flow = new Flow();
+        flow.setSourceSwitch(FAIL_SRC_SWITCH);
+        flow.setDestinationSwitch(FAIL_DST_SWITCH);
+        String expectedMessage =
+                String.format("Source switch %s and Destination switch %s are not connected to the controller",
+                FAIL_SRC_SWITCH, FAIL_DST_SWITCH);
+
+        thrown.expect(SwitchValidationException.class);
+        thrown.expectMessage(expectedMessage);
+
+        target.checkSwitchesExists(flow);
     }
 }

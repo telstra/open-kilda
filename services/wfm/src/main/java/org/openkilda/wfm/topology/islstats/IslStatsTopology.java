@@ -42,7 +42,6 @@ public class IslStatsTopology extends AbstractTopology<IslStatsTopologyConfig> {
         TopologyBuilder builder = new TopologyBuilder();
 
         String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
-        checkAndCreateTopic(topoDiscoTopic);
 
         logger.debug("connecting to {} topic", topoDiscoTopic);
         builder.setSpout(ISL_STATS_SPOUT_ID, createKafkaSpout(topoDiscoTopic, ISL_STATS_SPOUT_ID));
@@ -53,7 +52,6 @@ public class IslStatsTopology extends AbstractTopology<IslStatsTopologyConfig> {
                 .shuffleGrouping(ISL_STATS_SPOUT_ID);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        checkAndCreateTopic(openTsdbTopic);
         KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
         builder.setBolt(ISL_STATS_OTSDB_BOLT_ID, openTsdbBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(ISL_STATS_BOLT_ID);
@@ -61,6 +59,9 @@ public class IslStatsTopology extends AbstractTopology<IslStatsTopologyConfig> {
         return builder.createTopology();
     }
 
+    /**
+     * Entry point for local run of the topology.
+     */
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);

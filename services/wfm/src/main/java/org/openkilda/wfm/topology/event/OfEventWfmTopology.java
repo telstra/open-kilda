@@ -75,9 +75,6 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
         String kafkaTopoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
         String kafkaTopoEngTopic = topologyConfig.getKafkaTopoEngTopic();
 
-        checkAndCreateTopic(kafkaTopoDiscoTopic);
-        checkAndCreateTopic(kafkaTopoEngTopic);
-
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
