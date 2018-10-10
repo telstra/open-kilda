@@ -17,21 +17,21 @@ package org.openkilda.functionaltests.spec.samples
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.ElasticHelper
-import org.openkilda.functionaltests.helpers.ElasticQueryBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Ignore
 
 @Ignore("This is an example specification")
 class KibanaSpec extends BaseSpecification {
+
     @Autowired
-    ElasticHelper kibanaHelper
+    ElasticHelper elasticHelper
 
     def "Test framework should be able to extract logs from Storm Worker"() {
         when: "Kibana Helper is initialized"
-        assert kibanaHelper
+        assert elasticHelper
 
         then: "STORM would generate at least 1 INFO message per 5 minutes"
-        def logs = kibanaHelper.getLogs(ElasticQueryBuilder.buildQuery().addAppId("storm-worker_log").addTimeRange(300))
+        def logs = elasticHelper.buildQuery().addAppId("storm-worker_log").addTimeRange(300).getLogs()
         assert logs
         assert logs?.hits?.total > 0
 

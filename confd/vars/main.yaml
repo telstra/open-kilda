@@ -16,7 +16,6 @@ kilda_zookeeper_hosts: "zookeeper.pendev:2181"
 kilda_opentsdb_hosts: "opentsdb.pendev"
 kilda_opentsdb_port: "4242"
 kilda_storm_numbus_hosts: "nimbus.pendev"
-kilda_elasticsearch_host: "127.0.0.1"
 kilda_elasticsearch_user: "kilda"
 kilda_elasticsearch_pass: "kilda"
 

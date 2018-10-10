@@ -15,15 +15,20 @@
 
 package org.openkilda.testing.service.elastic;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -35,6 +40,7 @@ import java.util.Map;
  */
 
 @Component
+@Slf4j
 public class ElasticServiceImpl implements ElasticService {
 
     @Autowired
@@ -42,12 +48,77 @@ public class ElasticServiceImpl implements ElasticService {
     private RestTemplate restTemplate;
 
     /**
-     * Inquiry ElasticSearch for logs. Not intended to be used directly.
-     * @param uri - Search address and parame
-     * @param query - Search query (with headers and ES/Lucene JSON query body)
-     * @return HTTP response from ES
+     * Searches the Elastic Search database for a specific log entries.
+     * In case you need to lookup multiple application IDs, tags or log levels, pass parameters as:
+     * "VALUE1 OR VALUE2 OR ... OR VALUE_N"
+     *
+     * @param appId - application ID to lookup (either app_id or tags should be speficied)
+     * @param tags - one or more tag, delimited by OR operator, to lookup (either app_id or tags should be specified)
+     * @param level - log level (can be null)
+     * @param keywords - keywords to look at (WIP, not handled at the moment)
+     * @param timeRange - search depth (in seconds, set to 0 to search all).
+     * @param resultCount - max number of returned documents (100 default)
+     * @param defaultField - field in log entry to search at (_source by default)
+     * @param index - Elastic Search index to lookup (_all by default)
+     *
+     * @return Empty map in case of failure, HashMap with deserialized JSON otherwise.
      */
-    public Map getLogs(String uri, HttpEntity query) {
-        return restTemplate.exchange(uri, HttpMethod.POST, query, HashMap.class).getBody();
+    public Map getLogs(String appId, String tags, String level, Map<String, List<String>> keywords, long timeRange,
+                long resultCount, String defaultField, String index) {
+        if (("".equals(appId) && "".equals(tags))) {
+            throw new IllegalArgumentException("Either app_id or tags should be specified");
+        }
+        Long time = System.currentTimeMillis();
+        String queryString = "";
+
+        if (!"".equals(appId)) {
+            queryString = "app_id: (" + appId + ")";
+        }
+
+        if (!"".equals(tags)) {
+            if (!"".equals(queryString)) {
+                queryString += " AND ";
+            }
+            queryString += "tags: (" + tags + ")";
+        }
+
+        if (!"".equals(level)) {
+            queryString += " AND level: (" + level + ")";
+        }
+
+        if (timeRange > 0) {
+            queryString += " AND timeMillis: [" + (time - timeRange * 1000) + " TO " + time + "]";
+        }
+
+        if (!keywords.isEmpty()) {
+            throw new UnsupportedOperationException("Keywords are not supported in current implementation");
+            //TODO: Investigate how to efficiently query _source.message field for multiple keywords
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode query = mapper.createObjectNode();
+        query.put("query", queryString);
+        query.put("default_field", defaultField);
+
+        ObjectNode topLevelQuery = mapper.createObjectNode();
+        topLevelQuery.set("query", mapper.createObjectNode().set("query_string", query));
+
+        String uri = "/" + index + "/_search/?size=" + resultCount;
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("content-type", "application/json");
+        try {
+            /*
+             * Elasticsearch is not guaranteed to be reachable at all times. Therefore, results from it should not be
+             * relied upon.
+             */
+            HttpEntity rawQuery = new HttpEntity<>(topLevelQuery.toString(), headers);
+            return restTemplate.exchange(uri, HttpMethod.POST, rawQuery, HashMap.class).getBody();
+
+        } catch (Exception e) {
+            log.warn("An error occured during communication with Elastic Search: " + e.toString()
+                    + "Empty result set will be returned.");
+            return new HashMap<String, Object>();
+        }
     }
+
 }

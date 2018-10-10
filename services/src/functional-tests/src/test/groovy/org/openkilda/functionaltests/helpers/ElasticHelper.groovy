@@ -17,110 +17,129 @@ package org.openkilda.functionaltests.helpers
 
 import groovy.util.logging.Slf4j
 import org.openkilda.testing.service.elastic.ElasticService
-
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
-import groovy.json.JsonBuilder
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Service
 
-/**
- * A set of helper methods to access, read and filter log entries from the log management system
- */
-
-@Component
+@Service
 @Slf4j
 class ElasticHelper {
 
     @Autowired
     private ElasticService elasticService
 
-    /**
-     * Builder interface for getLogs.
-     * @param queryBuilder - Closure
-     * @return Empty map in case of error
-     * Deserialized JSON in case of success
-     */
-    Map getLogs(ElasticQueryBuilder q) {
-        return getLogs(q.appId, q.tags, q.level, q.keywords, q.timeRange, q.resultCount, q.defaultField, q.index)
-    }
-
+    public String appId
+    public String tags
+    public String level
+    public long timeRange
+    public long resultCount
+    public Map<String, List<String>> keywords
+    public String defaultField
+    public String index
 
     /**
-     * Searches Elastic Search database for a specific log entries
-     * @param app_id - application ID to lookup (either app_id or tags should be speficied)
-     * @param tags - one or more tag, delimited by OR operator, to lookup (either app_id or tags should be specified)
-     * @param level - log level (can be null)
-     * @param keywods - keywords to look at (WIP, not handled at the moment)
-     * @param timeRange - search depth (in seconds, set to 0 to search all).
-     * @param resultCount - max number of returned documents (100 default)
-     * @param defaultField - field in log entry to search at (_source by default)
-     * @param index - Elastic Search index to lookup (_all by default)
-     *
-     * In case you need to lookup multiple application IDs, tags or log levels, pass parameters as:
-     * "VALUE1 OR VALUE2 OR ... OR VALUE_N"
-     *
-     * Returns:
-     *  Empty Map in case of Elastic Service error
-     *  Deserialized JSON in case of success (even if no log entries fetched)
+     * Returns an instance of ElasticHelper. Use add* methods chaining to set query parameters.
+     * At least one of (app_id, tags) fields should be specified in the query.
+     * @return this
      */
-    Map getLogs(String appId, String tags, String level, Map<String, List<String>> keywords=[:], long timeRange=60,
-                long resultCount=100, String defaultField = "_source", String index = "_all") {
-        if ((!appId && !tags)) {
-            throw new IllegalArgumentException("Either app_id or tags should be specified")
-        }
-        def time = System.currentTimeMillis()
-        def queryString = ""
+    ElasticHelper buildQuery() {
+        this.appId = ""
+        this.tags = ""
+        this.level = "INFO OR WARN OR ERROR"
+        this.timeRange = 60
+        this.resultCount = 100
+        this.keywords = [:]
+        this.defaultField = "source"
+        this.index = "_all"
 
-        if (appId) {
-            queryString = "app_id: (${appId})"
-        }
-
-        if (tags) {
-            if (queryString) {
-                queryString += " AND "
-            }
-            queryString += "tags: (${tags})"
-        }
-
-        if (level) {
-            queryString += " AND level: (${level})"
-        }
-
-        if (timeRange) {
-            queryString += " AND timeMillis: [${time - timeRange * 1000} TO ${time}]"
-        }
-
-        if (keywords) {
-            //TODO: Investigate how to efficiently query _source.message field for multiple keywords
-        }
-
-        def query = ["query": [
-                "query_string": [
-                        "default_field": defaultField,
-                        "query": queryString
-                ]
-        ]]
-
-        def jsonBuilder = new JsonBuilder(query)
-
-
-        String uri = "/${index}/_search/?size=${resultCount}"
-        log.debug("Issuing elastic query: ${jsonBuilder.toString()}")
-        HttpHeaders headers = new HttpHeaders()
-        headers.add("content-type", "application/json")
-        def rawQuery = new HttpEntity(jsonBuilder.toString(), headers)
-        try {
-            /**
-             * Elasticsearch is not guaranteed to be reachable at all times. Therefore, results from it should not be
-             * relied upon.
-             */
-            def queryResult = elasticService.getLogs(uri, rawQuery)
-            return queryResult
-        } catch (Exception e) {
-            log.warn("An error occured during communication with Elastic Search: ${e.toString()}. " +
-                     "Empty result set will be returned.")
-            return [:]
-        }
+        return this
     }
+
+    /**
+     * Sets app_id field value (to search by app_id)
+     * @param appId Application ID in following format: APP1 OR APP2 OR ... OR APP_N
+     * @return this
+     */
+    def addAppId(String appId) {
+        this.appId = appId
+        return this
+    }
+
+    /**
+     * Set tags field (to search by tags)
+     * @param tags record tags in following format: TAG1 OR TAG2 OR ... OR TAG_N
+     * @return this
+     */
+    def addTags(String tags) {
+        this.tags = tags
+        return this
+    }
+
+    /**
+     * Sets log level filter (INFO OR WARN OR ERROR by default)
+     * @param levels log levels in following format: DEBUG OR INFO OR WARN OR ERROR
+     * @return this
+     */
+    def addLevel(String levels="INFO OR WARN OR ERROR") {
+        this.level = levels
+        return this
+    }
+
+    /**
+     * Sets query keywords filter (WIP)
+     * @param keywords - WIP, do not use
+     * @return this
+     */
+    def addKeywords(Map<String, List<String>> keywords) {
+        this.keywords = keywords
+        return this
+    }
+
+    /**
+     * Sets search depth from a current time (in seconds, 60 by default)
+     * @param timeRange
+     * @return
+     */
+    def addTimeRange(long timeRange) {
+        this.timeRange = timeRange
+        return this
+    }
+
+    /**
+     * Sets desired maximum number of documents returned by ElasticSearch
+     * @param resultCount - number of documents
+     * @return this
+     */
+    def addResultCount(long resultCount) {
+        this.resultCount = resultCount
+        return this
+    }
+
+    /**
+     * Sets default lookup field for ElasticSearch (_source by default)
+     * @param defaultField - field name
+     * @return this
+     */
+    def addDefaultField(String defaultField) {
+        this.defaultField = defaultField
+        return this
+    }
+
+    /**
+     * Sets lookup index for ElasticSearch (may be useful in narrowing down search scope, _all by default)
+     * @param index - index name
+     * @return this
+     */
+    def addIndex(String index) {
+        this.index = index
+        return this
+    }
+
+    /**
+     * Returns log entries from ElasticSearch in accordance to the query parameters.
+     * @return Map<String, Object>. In case of ElasticSearch communication failure, an empty map will be returned.
+     */
+    def getLogs() {
+        return elasticService.getLogs(appId, tags, level, keywords, timeRange, resultCount, defaultField, index)
+    }
+
 }

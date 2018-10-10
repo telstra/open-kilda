@@ -15,10 +15,10 @@
 
 package org.openkilda.testing.service.elastic;
 
-import org.springframework.http.HttpEntity;
-
+import java.util.List;
 import java.util.Map;
 
 public interface ElasticService {
-    Map getLogs(String uri, HttpEntity query);
+    Map getLogs(String appId, String tags, String level, Map<String, List<String>> keywords, long timeRange,
+                long resultCount, String defaultField, String index);
 }
