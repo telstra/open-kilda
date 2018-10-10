@@ -16,36 +16,17 @@
     <modules>
         <module>kilda-model</module>
         <module>kilda-persistence</module>
+        <module>kilda-persistence-test</module>
     </modules>
 
     <properties>
         <project.checkstyle.root>${basedir}/../../checkstyle</project.checkstyle.root>
 
-        <neo4j-ogm.version>3.1.3</neo4j-ogm.version>
         <reflections.version>0.9.11</reflections.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.neo4j</groupId>
-                <artifactId>neo4j-ogm-core</artifactId>
-                <version>${neo4j-ogm.version}</version>
-                <scope>compile</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.neo4j</groupId>
-                <artifactId>neo4j-ogm-bolt-driver</artifactId>
-                <version>${neo4j-ogm.version}</version>
-                <scope>runtime</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.neo4j</groupId>
-                <artifactId>neo4j-ogm-test</artifactId>
-                <version>${neo4j-ogm.version}</version>
-                <scope>test</scope>
-            </dependency>
-
             <dependency>
                 <groupId>org.reflections</groupId>
                 <artifactId>reflections</artifactId>

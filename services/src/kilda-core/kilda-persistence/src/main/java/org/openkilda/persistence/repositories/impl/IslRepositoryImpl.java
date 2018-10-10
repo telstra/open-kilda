@@ -45,6 +45,39 @@ public class IslRepositoryImpl extends GenericRepository<Isl> implements IslRepo
                 + " RETURN target", parameters);
     }
 
+    @Override
+    public Iterable<Isl> findOccupiedByFlow(String flowId, boolean ignoreBandwidth, long requiredBandwidth) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("flow_id", flowId);
+        parameters.put("ignore_bandwidth", ignoreBandwidth);
+        parameters.put("requested_bandwidth", requiredBandwidth);
+
+        String query = "MATCH (src:switch)-[fs:flow_segment{flowid: $flow_id}]->(dst:switch) "
+                + "MATCH (src)-[link:isl]->(dst) "
+                + "WHERE src.state = 'active' AND dst.state = 'active' AND link.status = 'active' "
+                + " AND link.src_port = fs.src_port AND link.dst_port = fs.dst_port "
+                + " AND ($ignore_bandwidth OR link.available_bandwidth + fs.bandwidth >= $requested_bandwidth) "
+                + "RETURN src, link, dst";
+
+        return getSession().query(Isl.class, query, parameters);
+    }
+
+    @Override
+    public Iterable<Isl> findActiveWithAvailableBandwidth(boolean ignoreBandwidth, long requiredBandwidth) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("ignore_bandwidth", ignoreBandwidth);
+        parameters.put("requested_bandwidth", requiredBandwidth);
+
+        String query = "MATCH (src:switch)-[link:isl]->(dst:switch) "
+                + "WHERE src.state = 'active' AND dst.state = 'active' AND link.status = 'active' "
+                + " AND src.name IS NOT NULL AND dst.name IS NOT NULL "
+                + " AND ($ignore_bandwidth OR link.available_bandwidth >= $requested_bandwidth) "
+                + " RETURN src, link, dst";
+
+        return getSession().query(Isl.class, query, parameters);
+    }
+
+
     public Collection<Isl> findAllOrderedBySrcSwitch() {
         return getSession().loadAll(getEntityType(), new SortOrder("src_switch"));
     }

@@ -43,7 +43,7 @@ public class Flow implements Serializable {
     @GeneratedValue
     private Long entityId;
 
-    @Property(name = "flow_id")
+    @Property(name = "flowid")
     private String flowId;
 
     @Property(name = "cookie")

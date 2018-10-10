@@ -77,9 +77,11 @@ public class Isl implements Serializable {
     @Property(name = "dst_latency")
     private long destLatency;
 
-    private long latency;
+    private int latency;
 
     private long speed;
+
+    private int cost;
 
     @Property(name = "max_bandwidth")
     private long maxBandwidth;
@@ -88,7 +90,12 @@ public class Isl implements Serializable {
     private long availableBandwidth;
 
     @Property(name = "status")
+    @Convert(graphPropertyType = String.class)
     private IslStatus status;
+
+    @Property(name = "actual")
+    @Convert(graphPropertyType = String.class)
+    private IslStatus actualStatus;
 
     public void setSrcSwitch(Switch srcSwitch) {
         this.srcSwitch = Objects.requireNonNull(srcSwitch);

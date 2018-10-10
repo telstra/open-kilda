@@ -45,6 +45,7 @@ public class Switch implements Serializable {
     private SwitchId switchId;
 
     @Property(name = "state")
+    @Convert(graphPropertyType = String.class)
     private SwitchStatus status;
 
     private String address;

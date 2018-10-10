@@ -43,10 +43,10 @@ public class FlowSegment implements Serializable {
     @GeneratedValue
     private Long entityId;
 
-    @Property(name = "flow_id")
+    @Property(name = "flowid")
     private String flowId;
 
-    @Property(name = "cookie_id")
+    @Property(name = "cookie")
     private long cookieId;
 
     @StartNode
@@ -79,6 +79,8 @@ public class FlowSegment implements Serializable {
 
     @Property(name = "transit_vlan")
     private int transitVlan;
+
+    private long bandwidth;
 
     public void setSrcSwitch(Switch srcSwitch) {
         this.srcSwitch = Objects.requireNonNull(srcSwitch);

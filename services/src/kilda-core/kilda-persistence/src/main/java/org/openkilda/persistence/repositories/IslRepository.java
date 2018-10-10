@@ -24,4 +24,21 @@ public interface IslRepository extends Repository<Isl> {
     Collection<Isl> findAllOrderedBySrcSwitch();
 
     Isl findByEndpoint(SwitchId switchId, int port);
+
+    /**
+     * Finds ISLs occupied by the flow, filtering out ISLs that don't have enough available bandwidth.
+     *
+     * @param flowId            the flow ID.
+     * @param ignoreBandwidth   defines whether bandwidth of links should be ignored.
+     * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
+     */
+    Iterable<Isl> findOccupiedByFlow(String flowId, boolean ignoreBandwidth, long requiredBandwidth);
+
+    /**
+     * Finds all active ISLs.
+     *
+     * @param ignoreBandwidth   defines whether bandwidth of links should be ignored.
+     * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
+     */
+    Iterable<Isl> findActiveWithAvailableBandwidth(boolean ignoreBandwidth, long requiredBandwidth);
 }
