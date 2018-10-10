@@ -38,7 +38,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.openkilda.atdd.staging.helpers.FlowSet;
-import org.openkilda.atdd.staging.helpers.FlowTrafficExamBuilder;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -64,6 +63,7 @@ import org.openkilda.testing.service.traffexam.TraffExamService;
 import org.openkilda.testing.service.traffexam.model.Exam;
 import org.openkilda.testing.service.traffexam.model.ExamReport;
 import org.openkilda.testing.service.traffexam.model.ExamResources;
+import org.openkilda.testing.tools.FlowTrafficExamBuilder;
 import org.openkilda.testing.tools.SoftAssertions;
 
 import com.google.common.collect.ContiguousSet;

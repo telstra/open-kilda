@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.atdd.staging.helpers;
+package org.openkilda.testing.tools;
 
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
