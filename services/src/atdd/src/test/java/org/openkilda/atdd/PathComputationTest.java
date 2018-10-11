@@ -71,7 +71,7 @@ public class PathComputationTest {
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File(classLoader.getResource(fileName).getFile());
         String json = new String(Files.readAllBytes(file.toPath()));
-        assertTrue(TopologyHelp.CreateMininetTopology(json));
+        assertTrue(TopologyHelp.createMininetTopology(json));
         // Should also wait for some of this to come up
 
     }

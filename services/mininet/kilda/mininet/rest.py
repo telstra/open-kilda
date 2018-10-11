@@ -24,6 +24,7 @@ from mininet.node import RemoteController, OVSKernelSwitch, Host, OVSSwitch
 from mininet.clean import cleanup
 from mininet.link import TCLink
 from mininet.util import errRun
+from mininet.topolib import TorusTopo
 
 from jsonschema import validate
 import logging
@@ -267,6 +268,51 @@ controllers_schema = {
   ]
 }
 
+torus_topo_schema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "controller": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "name",
+                "host",
+                "port"
+            ]
+        },
+        "torus": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "x",
+                "y"
+            ]
+        }
+    },
+    "required": [
+        "controller",
+        "torus"
+    ]
+}
+
 
 def controller_info(controller):
     return {"name": controller.name,
@@ -373,168 +419,16 @@ def new_topology():
     return result
 
 
-#
-# Create a linear topology with random links between the switches.
-# - create N switches
-# - create a random set of M links amongst the switches
-#
-@post('/create_random_linear_topology')
-def create_topology():
-
-    #
-    # This code needs to be refactored to match the rest of this class.
-    # What changed? We moved off of local collections of controllers / switches / links and
-    #   onto the Mininet way of doing things.  This method used threading to add a bunch of
-    #   switches and links in parallel .. we could look at Mininet's batch mechanism (I don't
-    #   think it is any faster - it may just loop through things - so we'd need to figure out
-    #   how to accelerate, if at all.
-    #
-    # Another possibility is to just delete this method, rely on the code above.
-    # In addition, we've implemented a simulator .. so as to remove the need for mininet/floodlight
-    # completely for scale tests (scale testing of everything except floodlight)
-    #
-    needs_to_be_refactored = True
-    if needs_to_be_refactored:
-        return json.dumps({'status': 'refactor me'})
-
-    _switch_threads=[]
-    _link_threads=[]
-
-    switch_count = request.json['switches']
-    link_count = request.json['links']
-    num_worker_threads = request.json.get('threads', 10)
-    logger.debug("==> switch count={}; link count={};  num threads = {}".
-                 format(switch_count,link_count, num_worker_threads))
-
-    add_controllers(request.json['controllers'])
-
-    ##############
-    # ADD SWITCHES
-    ##############
-    names = Queue.Queue()
-    for i in range(switch_count):
-        name = "s" + str(i+1)
-        names.put(name)
-
-    def add_switch_worker():
-        while True:
-            name = names.get()
-            switch = OVSKernelSwitch(name, protocols='OpenFlow13', inNamespace=False)
-            switches[name] = switch
-            switch.start(controllers)
-            # time to here, 5 switches : 0.88s,  50sw : 2.8 (15),    200 : 22s (33)
-            logger.debug("==> added switch name={}".format(name))
-            names.task_done()
-
-    if num_worker_threads > len(_switch_threads):
-        logger.debug("==> Starting Switch Threads {} .. {}".
-                     format(len(_switch_threads),num_worker_threads))
-        for i in range(len(_switch_threads), num_worker_threads):
-            t = threading.Thread(target=add_switch_worker)
-            t.daemon = True
-            _switch_threads.append(t)
-            t.start()
-    else:
-        logger.debug("==> Num Switch Threads is >= num_worker_threads {},{}".
-                     format(len(_switch_threads),num_worker_threads))
-
-    names.join()       # block until all tasks are done
-
-
-    #############
-    # ADD LINKS #
-    #############
-    ep_tuples = Queue.Queue()
-    # for i in range(link_count):
-    #     ep1 = "s" + str(random.randint(1,switch_count));
-    #     ep2 = "s" + str(random.randint(1,switch_count));
-    #     ept = (ep1,ep2)  # end point tuple
-    #     ep_tuples.put(ept)
-
-    for i in range(switch_count-1):
-        ep1 = "s" + str(i+1);
-        ep2 = "s" + str(i+2);
-        ept = (ep1,ep2)  # end point tuple
-        ep_tuples.put(ept)
-
-    lock = threading.Lock()
-    switch_locks = {}
-    for i in range(switch_count):
-        sid = "s" + str(i+1);
-        switch_locks[sid] = threading.Lock()
-
-    def add_link_worker():
-        while True:
-            if ep_tuples.qsize() == 0:
-                time.sleep(5)
-                break
-
-            success1 = success2 = False
-            ept = None
-            lock.acquire()
-            logger.debug("==> ++++ lock {}".format(threading.current_thread().getName()))
-            for _ in range (ep_tuples.qsize()):
-                ept = ep_tuples.get()
-                if ept:
-                    success1 = switch_locks[ept[0]].acquire(False)
-                    success2 = switch_locks[ept[1]].acquire(False)
-                    logger.debug("==> switches ???? {} {} {} {}".format(ept[0],ept[1],success1, success2))
-                    # if successful, process the tuple. Otherwise release the locks
-                    if success1 and success2:
-                        break
-                    if success1: switch_locks[ept[0]].release()
-                    if success2: switch_locks[ept[1]].release()
-                    ep_tuples.put(ept) # put it back
-                    ep_tuples.task_done()  # since put increases the count; this round is "done"
-
-            lock.release()
-            logger.debug("==> ---- lock {}".format(threading.current_thread().getName()))
-
-            # if both are true, then we'll need to release locks at the end.
-            # if either aren't true, the resources will have already been released
-
-            if success1 and success2:
-                placed = False
-                try:
-                    link = TCLink(switches[ept[0]], switches[ept[1]])
-                    link.intf1.node.attach(link.intf1)
-                    link.intf2.node.attach(link.intf2)
-                    links[link_name(link)] = link
-                    placed = True
-                    logger.debug("==> switches ++++ {} {}".format(ept[0],ept[1]))
-                except:
-                    # Release the locks on the switches
-                    logger.debug("==>==> ## ERROR adding link, putting back on queue={}".format(
-                        ept))
-
-                if not placed:
-                    ep_tuples.put(ept)
-
-                switch_locks[ept[0]].release()
-                switch_locks[ept[1]].release()
-                ep_tuples.task_done()
-            time.sleep(1)
-
-    if num_worker_threads > len(_link_threads):
-        logger.debug("==> Starting Link Threads {} .. {}".
-                     format(len(_link_threads),num_worker_threads))
-        for i in range(len(_link_threads),num_worker_threads):
-            t = threading.Thread(target=add_link_worker)
-            t.daemon = True
-            _link_threads.append(t)
-            t.start()
-    else:
-        logger.debug("==> Num Link Threads is >= num_worker_threads {},{}".
-            format(len(_link_threads),num_worker_threads))
-
-
-    while not ep_tuples.empty():
-        ep_tuples.join()       # block until all tasks are done
-        logger.debug("==> LINKS: {} ".format(len(links)))
-        logger.debug("==> QUEUE: {} {}".format(ep_tuples.qsize(), ep_tuples.empty()))
-
-    response.content_type = 'application/json'
-    return json.dumps({'status': 'ok'})
+@post('/torus_topology')
+def create_torus_topology():
+    validate(request.json, torus_topo_schema)
+    controller = RemoteController(name=request.json['controller']['name'],
+                                  ip=socket.gethostbyname(request.json['controller']['host']),
+                                  port=request.json['controller']['port'])
+    topo = TorusTopo(x=request.json['torus']['x'],y=request.json['torus']['y'])
+    net = Mininet(topo=topo, switch=OVSSwitch, controller=controller)
+    net.start()
+    return json.dumps({'status': 'Created Torus topology of requested size'})
 
 
 @get('/switch/<name>')
