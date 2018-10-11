@@ -24,7 +24,7 @@ switches:
           vlan_range: 101..150
 
     - name: ofsw7
-      dp_id: 00:00:b0:00:00:00:00:07
+      dp_id: 00:00:00:00:00:00:00:07
       of_version: OF_13
       status: active
       out_ports:
@@ -33,7 +33,7 @@ switches:
 
     - name: ofsw8
       dp_id: 00:00:00:00:00:00:00:08
-      of_version: OF_12
+      of_version: OF_13
       status: active
       out_ports:
         - port: 10
@@ -41,7 +41,7 @@ switches:
 
     - name: ofsw9
       dp_id: 00:00:00:00:00:00:00:09
-      of_version: OF_12
+      of_version: OF_13
       status: active
       out_ports:
         - port: 10
