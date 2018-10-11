@@ -19,6 +19,6 @@ import java.util.List;
 import java.util.Map;
 
 public interface ElasticService {
-    Map getLogs(String appId, String tags, String level, Map<String, List<String>> keywords, long timeRange,
+    Map getLogs(String appId, String tags, String level, long timeRange,
                 long resultCount, String defaultField, String index);
 }

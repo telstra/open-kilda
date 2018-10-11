@@ -55,15 +55,14 @@ public class ElasticServiceImpl implements ElasticService {
      * @param appId - application ID to lookup (either app_id or tags should be speficied)
      * @param tags - one or more tag, delimited by OR operator, to lookup (either app_id or tags should be specified)
      * @param level - log level (can be null)
-     * @param keywords - keywords to look at (WIP, not handled at the moment)
      * @param timeRange - search depth (in seconds, set to 0 to search all).
      * @param resultCount - max number of returned documents (100 default)
      * @param defaultField - field in log entry to search at (_source by default)
      * @param index - Elastic Search index to lookup (_all by default)
      *
-     * @return Empty map in case of failure, HashMap with deserialized JSON otherwise.
+     * @return HashMap with deserialized JSON otherwise.
      */
-    public Map getLogs(String appId, String tags, String level, Map<String, List<String>> keywords, long timeRange,
+    public Map getLogs(String appId, String tags, String level, long timeRange,
                 long resultCount, String defaultField, String index) {
         if (("".equals(appId) && "".equals(tags))) {
             throw new IllegalArgumentException("Either app_id or tags should be specified");
@@ -90,11 +89,6 @@ public class ElasticServiceImpl implements ElasticService {
             queryString += " AND timeMillis: [" + (time - timeRange * 1000) + " TO " + time + "]";
         }
 
-        if (!keywords.isEmpty()) {
-            throw new UnsupportedOperationException("Keywords are not supported in current implementation");
-            //TODO: Investigate how to efficiently query _source.message field for multiple keywords
-        }
-
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode query = mapper.createObjectNode();
         query.put("query", queryString);
@@ -107,18 +101,14 @@ public class ElasticServiceImpl implements ElasticService {
         HttpHeaders headers = new HttpHeaders();
         headers.add("content-type", "application/json");
         try {
-            /*
-             * Elasticsearch is not guaranteed to be reachable at all times. Therefore, results from it should not be
-             * relied upon.
-             */
+            log.debug("Issuing ElasticSearch query: " + topLevelQuery.toString());
+            log.debug("Using ElasticSearch URI: " + uri);
             HttpEntity rawQuery = new HttpEntity<>(topLevelQuery.toString(), headers);
             return restTemplate.exchange(uri, HttpMethod.POST, rawQuery, HashMap.class).getBody();
 
         } catch (Exception e) {
-            log.warn("An error occured during communication with Elastic Search: " + e.toString()
-                    + "Empty result set will be returned.");
-            return new HashMap<String, Object>();
+            log.error("Exception occured during communication with ElasticSearch", e);
+            throw e;
         }
     }
-
 }
