@@ -5,6 +5,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
@@ -95,6 +96,13 @@ class PathHelper {
         pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
         pathNodes.each { it.seqId = seqId++ } //set valid seqId indexes
         return pathNodes
+    }
+
+    /**
+     * Get list of Switches involved in given path.
+     */
+    List<Switch> getInvolvedSwitches(List<PathNode> path) {
+        return getInvolvedIsls(path).collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique()
     }
 
     /**
