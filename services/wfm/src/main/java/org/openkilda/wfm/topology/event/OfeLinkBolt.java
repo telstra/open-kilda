@@ -54,6 +54,7 @@ import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.event.OFEventWfmTopologyConfig.DiscoveryConfig;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.openkilda.wfm.topology.utils.KibanaLogWrapper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
@@ -100,6 +101,7 @@ public class OfeLinkBolt
         extends AbstractTickStatefulBolt<KeyValueState<String, Object>>
         implements ICtrlBolt {
     private static final Logger logger = LoggerFactory.getLogger(OfeLinkBolt.class);
+    private static final KibanaLogWrapper logWrapper = new KibanaLogWrapper();
     private static final int BOLT_TICK_INTERVAL = 1;
 
     private static final String STREAM_ID_CTRL = "ctrl";
@@ -436,6 +438,7 @@ public class OfeLinkBolt
         SwitchId switchId = switchData.getSwitchId();
         SwitchChangeType switchState = switchData.getState();
         logger.info("DISCO: Switch Event: switch={} state={}", switchId, switchState);
+        logWrapper.onSwitchDiscovery(switchId, switchState);
 
         if (switchState == SwitchChangeType.DEACTIVATED) {
             passToNetworkTopologyBolt(tuple, infoMessage);
@@ -459,6 +462,7 @@ public class OfeLinkBolt
         final int portId = portData.getPortNo();
         String updown = portData.getState().toString();
         logger.info("DISCO: Port Event: switch={} port={} state={}", switchId, portId, updown);
+        logWrapper.onPortDiscovery(switchId, portId, updown);
 
         if (isPortUpOrCached(updown)) {
             discovery.handlePortUp(switchId, portId);
@@ -494,9 +498,9 @@ public class OfeLinkBolt
             if (discoveredIsl.isSelfLooped()) {
                 logger.info("DISCO: ISL Event: loop detected: switch={} srcPort={} dstPort={}",
                         srcSwitch, srcPort, dstPort);
+                logWrapper.onIslDiscoveryLoop(srcSwitch, srcPort, dstPort, islState);
                 return;
             }
-
             if (discovery.isIslMoved(srcSwitch, srcPort, dstSwitch, dstPort)) {
                 handleMovedIsl(tuple, srcSwitch, srcPort, dstSwitch, dstPort, correlationId);
             }
@@ -514,6 +518,7 @@ public class OfeLinkBolt
         if (stateChanged) {
             // If the state changed, notify the TE.
             logger.info("DISCO: ISL Event: switch={} port={} state={}", srcSwitch, srcPort, islState);
+            logWrapper.onIslDiscovery(srcSwitch, srcPort, dstPort, islState);
             passToNetworkTopologyBolt(tuple, infoMessage);
         }
     }
