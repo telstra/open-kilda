@@ -55,7 +55,7 @@ public class PingServiceTest extends EasyMockSupport {
 
         replayAll();
 
-        pingService.init(moduleContext);
+        pingService.setup(moduleContext);
 
         DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
         DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);

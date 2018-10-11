@@ -19,6 +19,7 @@ import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.InputDispatchCommand;
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 
@@ -28,7 +29,6 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.slf4j.Logger;
@@ -42,7 +42,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class InputService implements IFloodlightService, IOFMessageListener {
+public class InputService implements IService, IOFMessageListener {
     private static Logger log = LoggerFactory.getLogger(InputService.class);
 
     private final HashMap<OFType, List<IInputTranslator>> translators = new HashMap<>();
@@ -61,7 +61,8 @@ public class InputService implements IFloodlightService, IOFMessageListener {
     /**
      * Service initialize(late) method.
      */
-    public void init(FloodlightModuleContext moduleContext) {
+    @Override
+    public void setup(FloodlightModuleContext moduleContext) {
         flProviderService = moduleContext.getServiceImpl(IFloodlightProviderService.class);
         commandProcessor = moduleContext.getServiceImpl(CommandProcessorService.class);
     }
