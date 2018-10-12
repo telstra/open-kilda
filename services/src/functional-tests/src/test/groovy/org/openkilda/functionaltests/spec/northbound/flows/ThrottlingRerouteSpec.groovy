@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
@@ -75,7 +76,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make current path less preferable than alternatives"
@@ -97,9 +98,10 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow reroutes (changes path) after window timeout"
-        Wrappers.wait(2 + discoveryInterval) {
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
+        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "do cleanup"
@@ -116,7 +118,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def allPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
@@ -146,14 +148,16 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         northboundService.getFlowStatus(flow.id).status == FlowState.UP
 
         and: "Flow tries to reroute and goes DOWN after window timeout"
-        Wrappers.wait(2 + discoveryInterval) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "do cleanup"
         northboundService.deleteFlow(flow.id)
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.each { northboundService.portUp(new SwitchId(it.switchId), it.portNumber) }
-        Wrappers.wait(5) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
+        Wrappers.wait(WAIT_OFFSET) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
     }
 
     def "Reroute timer is refreshed even if another flow reroute is issued"() {
@@ -177,7 +181,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def flow2 = flowHelper.randomFlow(srcSwitch2, dstSwitch2)
         def (currentPath1, currentPath2) = [flow1, flow2].collect { flow ->
             northboundService.addFlow(flow)
-            assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+            assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
             PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         def flow1Isls = pathHelper.getInvolvedIsls(currentPath1)
@@ -193,17 +197,20 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         2.times { blinkPort(isl1.dstSwitch.dpId, isl1.dstPort) }
 
         and: "Right before timeout ends the flow2 ISL blinks twice"
-        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 1)
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 2)
         def isl2 = flow2Isls.find { !flow1Isls.contains(it) }
         2.times { blinkPort(isl2.dstSwitch.dpId, isl2.dstPort) }
 
         then: "Flow1 is still on its path right before the updated timeout runs out"
-        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 1)
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 2)
         currentPath1 == PathHelper.convert(northboundService.getFlowPath(flow1.id))
 
         and: "Flow1 reroutes (changes path) after window timeout"
-        Wrappers.wait(3 + discoveryInterval) {
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             currentPath1 != PathHelper.convert(northboundService.getFlowPath(flow1.id))
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            [flow1, flow2].every { northboundService.getFlowStatus(it.id).status == FlowState.UP }
         }
         //TODO(rtretiak): Check logs that 1 reroute is also issued for flow2
         //TODO(rtretiak): Check logs that only 1 reroute for each flow has been performed
@@ -223,7 +230,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(3) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make current path less preferable than alternatives"
@@ -246,10 +253,11 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow rerouted after hard timeout despite ISL is still blinking"
-        Wrappers.wait(hardTimeoutTime - System.currentTimeSeconds() + 3) {
+        Wrappers.wait(hardTimeoutTime - System.currentTimeSeconds() + WAIT_OFFSET) {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         blinkingThread.alive
+        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "do cleanup"
@@ -259,10 +267,70 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         blinkingThread && blinkingThread.join()
     }
 
+    def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
+        given: "A flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        northboundService.addFlow(flow)
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+
+        when: "Init a flow reroute by blinking a port"
+        def islToBreak = pathHelper.getInvolvedIsls(pathHelper.convert(northboundService.getFlowPath(flow.id))).first()
+        blinkPort(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
+
+        and: "Immediately remove the flow before reroute delay runs out and flow is actually rerouted"
+        northboundService.deleteFlow(flow.id)
+
+        and: "Refresh the reroute by blinking the port again"
+        blinkPort(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
+
+        and: "Wait until reroute delay runs out"
+        TimeUnit.SECONDS.sleep(rerouteDelay + 1)
+
+        then: "Flow is not present in NB"
+        northboundService.getAllFlows().every { it.id != flow.id }
+
+        and: "Flow is not present in Database"
+        db.countFlows() == 0
+    }
+
+    def "Auto-reroute on the flow which is already deleted should not revive the flow"() {
+        given: "A flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        northboundService.addFlow(flow)
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
+
+        when: "Remove the flow"
+        northboundService.deleteFlow(flow.id)
+
+        and: "Immediately break the path to init all flows on that path to reroute"
+        def islToBreak = pathHelper.getInvolvedIsls(path).first()
+        northboundService.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+
+        then: "Flow is not present in the system after reroute timeout"
+        TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
+        !northboundService.getAllFlows().find { it.id == flow.id }
+        northboundService.getAllLinks().every { it.availableBandwidth == it.speed }
+
+        and: "No rule discrepancies observed"
+        topology.activeSwitches.every {
+            def rules = northboundService.validateSwitchRules(it.dpId)
+            rules.missingRules.empty && rules.excessRules.empty
+        }
+
+        and: "Bring port back up"
+        northboundService.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { northboundService.getAllLinks().every { it.state != IslChangeType.FAILED } }
+    }
+
     def cleanup() {
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
         db.resetCosts()
-        assert Wrappers.wait(5) { northboundService.getAllLinks().every { it.availableBandwidth == it.speed } }
+        assert Wrappers.wait(WAIT_OFFSET) {
+            northboundService.getAllLinks().every { it.availableBandwidth == it.speed }
+        }
     }
 
     def blinkPort(SwitchId sw, int port) {

@@ -67,7 +67,6 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
 
         // Setup spout and bolt for TOPO_DISCO_SPOUT line
         String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
-        checkAndCreateTopic(topoDiscoTopic);
         logger.debug("connecting to {} topic", topoDiscoTopic);
         builder.setSpout(TOPO_DISCO_SPOUT, createKafkaSpout(topoDiscoTopic, TOPO_DISCO_SPOUT));
 
@@ -81,14 +80,12 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
                 .shuffleGrouping(WFM_STATS_PARSE_BOLT_NAME, WfmStatsParseBolt.WFM_TO_PARSE_PORT_INFO_STREAM);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        checkAndCreateTopic(openTsdbTopic);
         KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
         builder.setBolt(OTSDB_KAFKA_BOLT_NAME, openTsdbBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(PARSE_PORT_INFO_BOLT_NAME);
 
         // Setup spout and bolt for WFM_STATS_SPOUT line
         String wfmStatsTopic = topologyConfig.getKafkaStatsTopic();
-        checkAndCreateTopic(wfmStatsTopic);
         logger.debug("connecting to {} topic", wfmStatsTopic);
         builder.setSpout(WFM_STATS_SPOUT, createKafkaSpout(wfmStatsTopic, WFM_STATS_SPOUT));
         
@@ -101,7 +98,6 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         builder.setSpout(SWITCH_PORTS_SPOUT_NAME, switchPortsSpout);
 
         String speakerTopic = topologyConfig.getKafkaSpeakerTopic();
-        checkAndCreateTopic(speakerTopic);
         KafkaBolt speakerBolt = createKafkaBolt(speakerTopic);
         builder.setBolt(SPEAKER_KAFKA_BOLT_NAME, speakerBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(SWITCH_PORTS_SPOUT_NAME);
@@ -109,6 +105,9 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         return builder.createTopology();
     }
 
+    /**
+     * Entry point for local run of the topology.
+     */
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);

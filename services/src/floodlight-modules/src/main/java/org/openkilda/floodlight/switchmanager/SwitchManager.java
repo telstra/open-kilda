@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
@@ -563,6 +564,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (meterId == 0) {
             logger.info("skip deleting meter {} from switch {}", meterId, dpid);
             return 0L;
+        }
+
+        if (meterId < 0) {
+            String message = String.format("Could not delete meter '%d' from switch '%s'. Meter id is Invalid. "
+                    + "It must be a not negative.", meterId, dpid);
+            logger.info(message);
+            throw new InvalidMeterIdException(dpid, message);
         }
 
         IOFSwitch sw = lookupSwitch(dpid);

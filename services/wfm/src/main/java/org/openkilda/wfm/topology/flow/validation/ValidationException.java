@@ -13,24 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.aswitch;
+package org.openkilda.wfm.topology.flow.validation;
 
-import org.openkilda.testing.service.aswitch.model.ASwitchFlow;
+/**
+ * {@code ValidationException} indicates that an error has occurred while passing a flow validation rule.
+ */
+public class ValidationException extends Exception {
 
-import java.util.List;
+    public ValidationException(String message) {
+        super(message);
+    }
 
-public interface ASwitchService {
-    void addFlows(List<ASwitchFlow> flows);
-
-    void removeFlows(List<ASwitchFlow> flows);
-
-    List<ASwitchFlow> getAllFlows();
-
-    void portsUp(List<Integer> ports);
-
-    void portsDown(List<Integer> ports);
-
-    void knockoutSwitch(String switchId);
-
-    void reviveSwitch(String switchId, String controllerAddress);
+    public ValidationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

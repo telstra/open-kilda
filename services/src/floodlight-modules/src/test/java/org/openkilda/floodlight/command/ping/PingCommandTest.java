@@ -17,9 +17,11 @@ package org.openkilda.floodlight.command.ping;
 
 import static org.easymock.EasyMock.anyString;
 import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.newCapture;
 
+import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.command.AbstractCommandTest;
 import org.openkilda.floodlight.kafka.KafkaMessageProducer;
 import org.openkilda.floodlight.service.ping.PingService;
@@ -31,6 +33,8 @@ import org.easymock.Mock;
 import org.junit.Before;
 
 public abstract class PingCommandTest extends AbstractCommandTest {
+    protected static final String PING_KAFKA_TOPIC = "ping.topic";
+
     protected Capture<Message> kafkaMessageCatcher = newCapture(CaptureType.ALL);
 
     @Mock
@@ -39,6 +43,9 @@ public abstract class PingCommandTest extends AbstractCommandTest {
     @Mock
     protected PingService pingService;
 
+    @Mock
+    protected KafkaTopicsConfig topics;
+
     @Override
     @Before
     public void setUp() throws Exception {
@@ -46,6 +53,9 @@ public abstract class PingCommandTest extends AbstractCommandTest {
 
         moduleContext.addService(KafkaMessageProducer.class, kafkaProducer);
         moduleContext.addService(PingService.class, pingService);
+
+        expect(topics.getPingTopic()).andReturn(PING_KAFKA_TOPIC).anyTimes();
+        expect(kafkaProducer.getTopics()).andReturn(topics).anyTimes();
 
         kafkaProducer.postMessage(anyString(), capture(kafkaMessageCatcher));
         expectLastCall().andVoid().anyTimes();

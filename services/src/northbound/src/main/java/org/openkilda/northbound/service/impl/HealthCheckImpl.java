@@ -15,48 +15,23 @@
 
 package org.openkilda.northbound.service.impl;
 
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.ServiceType;
 import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.discovery.HealthCheckCommandData;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.northbound.messaging.HealthCheckMessageConsumer;
-import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.HealthCheckService;
-import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manages health-check operation.
  */
 @Service
 public class HealthCheckImpl implements HealthCheckService {
-    /**
-     * The logger.
-     */
-    private static final Logger logger = LoggerFactory.getLogger(HealthCheckImpl.class);
-
-    /**
-     * Health-Check topic.
-     */
-    @Value("#{kafkaTopicsConfig.getHealthCheckTopic()}")
-    private String topic;
-
-    /**
-     * Health-Check dump command requester.
-     */
-    private static final HealthCheckCommandData NORTHBOUND_REQUESTER =
-            new HealthCheckCommandData(Destination.NORTHBOUND.toString());
-
+    private static final String KAFKA_STATUS_KEY = "kafka";
     /**
      * The service name.
      */
@@ -76,16 +51,9 @@ public class HealthCheckImpl implements HealthCheckService {
     private String serviceDescription;
 
     /**
-     * Kafka message consumer.
+     * Interal status.
      */
-    @Autowired
-    private HealthCheckMessageConsumer healthCheckMessageConsumer;
-
-    /**
-     * The Kafka producer instance.
-     */
-    @Autowired
-    private MessageProducer messageProducer;
+    private Map<String, String> status = new ConcurrentHashMap<>();
 
     /**
      * The health-check info bean.
@@ -94,33 +62,18 @@ public class HealthCheckImpl implements HealthCheckService {
      */
     @Override
     public HealthCheck getHealthCheck() {
-        final String correlationId = RequestCorrelationId.getId();
+        Map<String, String> currentStatus = new HashMap<>();
+        currentStatus.put(KAFKA_STATUS_KEY, Utils.HEALTH_CHECK_OPERATIONAL_STATUS);
+        currentStatus.putAll(status);
+        return new HealthCheck(serviceName, serviceVersion, serviceDescription, currentStatus);
+    }
 
-        // FIXME(surabujin): restore health check operation
-        /*
-        healthCheckMessageConsumer.clear();
-
-        messageProducer.send(topic, new CommandMessage(
-                NORTHBOUND_REQUESTER, System.currentTimeMillis(), correlationId, null));
-
-        Map<String, String> status = healthCheckMessageConsumer.poll(correlationId);
-
-        Arrays.stream(ServiceType.values())
-           .forEach(service -> status.putIfAbsent(service.getSwitchId(), Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS));
-        */
-
-        // FIXME(surabujin): hack to restore "operational" despite actual state of services
-        // hack start
-        Map<String, String> status = new HashMap<>();
-
-        Arrays.stream(ServiceType.values())
-                .forEach(service -> status.putIfAbsent(service.getId(), Utils.HEALTH_CHECK_OPERATIONAL_STATUS));
-        // hack end
-
-        HealthCheck healthCheck = new HealthCheck(serviceName, serviceVersion, serviceDescription, status);
-
-        logger.info("Health-Check Status: {}", healthCheck);
-
-        return healthCheck;
+    /**
+     * The health-check info bean.
+     *
+     */
+    @Override
+    public void updateKafkaStatus(String status) {
+        this.status.put(KAFKA_STATUS_KEY, status);
     }
 }

@@ -132,6 +132,16 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
         return cost != NULL ? cost.asInt() : DEFAULT_COST;
     }
 
+    @Override
+    public int countFlows() {
+        String query = "MATCH ()-[f:flow]-() RETURN count(f)";
+        StatementResult result;
+        try (Session session = neo.session()) {
+            result = session.run(query);
+        }
+        return result.single().get("count(f)").asInt();
+    }
+
     private Map<String, Object> getParams(Isl isl) {
         Map<String, Object> params = new HashMap<>(4);
         params.put("srcPort", isl.getSrcPort());

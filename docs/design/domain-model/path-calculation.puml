@@ -1,0 +1,40 @@
+@startuml
+title Path Calculation with transaction resource allocation
+
+participant FlowService
+participant FlowDataMapper
+database FlowDB
+participant PathComputer 
+participant ResourcePullService
+participant ResourceDataMapper
+database ResourceDB
+
+
+==STEP: Path Calculation==
+FlowService -> PathComputer : path calculation
+activate FlowService
+
+alt DB transaction success
+  loop try to allocate resources X times in case of failure
+    PathComputer -> PathComputer : find path
+    group DB transaction
+    PathComputer -> ResourcePullService : alloc resources
+    ResourcePullService -> ResourceDataMapper : alloc flow
+    ResourcePullService -> ResourceDataMapper : alloc meter
+    ResourcePullService -> ResourceDataMapper : alloc bandwidth
+    ResourcePullService -> ResourceDataMapper : alloc transit_vlan
+    ResourceDataMapper -> ResourceDB
+    end
+    ResourcePullService <-- ResourceDB
+    PathComputer <-- ResourcePullService
+  end
+FlowService <-- PathComputer : path
+FlowService -> FlowDataMapper : store flow path
+FlowDataMapper -> FlowDB :
+
+else path not found
+FlowService <-- PathComputer : can't find path
+end
+
+deactivate FlowService
+@enduml

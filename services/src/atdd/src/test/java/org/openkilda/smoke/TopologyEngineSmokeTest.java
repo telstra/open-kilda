@@ -37,7 +37,7 @@ public class TopologyEngineSmokeTest  {
      *      - ```match (n) detach delete n```
      */
     public void testServiceUp(){
-        String entity = TopologyHelp.ClearTopology();
+        String entity = TopologyHelp.clearTopology();
         assertEquals("Default, initial, response from TopologyEngine", "{\"nodes\": []}",entity);
     }
 

@@ -15,9 +15,6 @@
 
 package org.openkilda.floodlight.command;
 
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
-import org.openkilda.floodlight.kafka.KafkaMessageCollector;
-import org.openkilda.floodlight.service.ConfigService;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -28,16 +25,12 @@ import org.junit.Before;
 public abstract class AbstractCommandTest extends EasyMockSupport {
     protected final CommandContextFactory commandContextFactory = new CommandContextFactory();
     protected final FloodlightModuleContext moduleContext = new FloodlightModuleContext();
-    protected final ConfigService configService = new ConfigService();
 
     @Before
     public void setUp() throws Exception {
         injectMocks(this);
 
-        moduleContext.addService(ConfigService.class, configService);
-
         commandContextFactory.init(moduleContext);
-        configService.init(ConfigurationProvider.of(moduleContext, new KafkaMessageCollector()));
     }
 
     @After

@@ -42,13 +42,17 @@ import org.neo4j.driver.v1.Value;
 import org.neo4j.driver.v1.Values;
 import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.TransientException;
+import org.neo4j.driver.v1.types.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
+@SuppressWarnings("squid:S1192")
 public class NeoDriver implements PathComputer {
     private static final Logger logger = LoggerFactory.getLogger(NeoDriver.class);
 
@@ -223,38 +227,47 @@ public class NeoDriver implements PathComputer {
     }
 
     @Override
-    public  List<SwitchInfoData> getSwitches() {
-        String q =
-                "MATCH (sw:switch) "
-                        + "RETURN "
-                        + "sw.name as name, "
-                        + "sw.address as address, "
-                        + "sw.hostname as hostname, "
-                        + "sw.description as description, "
-                        + "sw.controller as controller, "
-                        + "sw.state as state "
-                        + "order by sw.name";
+    public List<SwitchInfoData> getSwitches() {
+        String q = "MATCH (sw:switch) RETURN sw ORDER BY sw.name";
         logger.debug("Executing getSwitches Query: {}", q);
-
-        List<SwitchInfoData> results = new LinkedList<>();
         try (Session session = driver.session(AccessMode.READ)) {
             StatementResult queryResults = session.run(q);
-            for (Record record : queryResults.list()) {
-                SwitchInfoData sw = new SwitchInfoData();
-                sw.setAddress(record.get("address").asString());
-                sw.setController(record.get("controller").asString());
-                sw.setDescription(record.get("description").asString());
-                sw.setHostname(record.get("hostname").asString());
-
-                String status = record.get("state").asString();
-                SwitchState st = ("active".equals(status)) ? SwitchState.ACTIVATED : SwitchState.CACHED;
-                sw.setState(st);
-
-                sw.setSwitchId(new SwitchId(record.get("name").asString()));
-                results.add(sw);
-            }
+            return queryResults.list()
+                    .stream()
+                    .map(record -> record.get("sw"))
+                    .map(Value::asEntity)
+                    .map(this::toSwitchInfoData)
+                    .collect(Collectors.toList());
         }
-        return results;
+    }
+
+    @Override
+    public Optional<SwitchInfoData> getSwitchById(SwitchId id) {
+        String q = "MATCH (sw:switch) WHERE sw.name = {switchId} RETURN sw ORDER BY sw.name";
+        logger.debug("Executing getSwitchById Query: {}", q);
+        try (Session session = driver.session(AccessMode.READ)) {
+            StatementResult results = session.run(q, Values.parameters("switchId", id.toString()));
+            return results.list()
+                    .stream()
+                    .map(record -> record.get("sw"))
+                    .map(Value::asEntity)
+                    .map(this::toSwitchInfoData)
+                    .findFirst();
+        }
+    }
+
+    private SwitchInfoData toSwitchInfoData(Entity entity) {
+        SwitchInfoData sw = new SwitchInfoData();
+        sw.setAddress(entity.get("address").asString());
+        sw.setController(entity.get("controller").asString());
+        sw.setDescription(entity.get("description").asString());
+        sw.setHostname(entity.get("hostname").asString());
+        String status = entity.get("state").asString();
+        SwitchState st = ("active".equals(status)) ? SwitchState.ACTIVATED : SwitchState.CACHED;
+        sw.setState(st);
+
+        sw.setSwitchId(new SwitchId(entity.get("name").asString()));
+        return sw;
     }
 
     @Override

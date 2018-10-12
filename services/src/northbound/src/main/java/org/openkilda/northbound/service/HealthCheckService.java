@@ -21,10 +21,16 @@ import org.openkilda.messaging.model.HealthCheck;
  * HealthCheckService is for getting info about components status.
  */
 public interface HealthCheckService {
+
     /**
      * Gets health-check status.
      *
      * @return {@link HealthCheckService} instance
      */
     HealthCheck getHealthCheck();
+
+    /**
+     * Update kafka health-check.
+     */
+    void updateKafkaStatus(String status);
 }

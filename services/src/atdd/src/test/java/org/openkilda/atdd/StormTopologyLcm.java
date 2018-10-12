@@ -101,7 +101,7 @@ public class StormTopologyLcm {
         // Load topo from file and send to mininet
         String topology = IOUtils.toString(this.getClass().getResourceAsStream(
                 "/topologies/simple-topology.json"), UTF_8);
-        assertTrue(TopologyHelp.CreateMininetTopology(topology));
+        assertTrue(TopologyHelp.createMininetTopology(topology));
 
         // Create and check flow
         FlowPayload flowPayload = new FlowPayload(flowId,

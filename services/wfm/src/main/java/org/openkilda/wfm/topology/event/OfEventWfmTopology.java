@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.event;
 
-import org.openkilda.messaging.ServiceType;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.StreamNameCollisionException;
@@ -76,9 +75,6 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
         String kafkaTopoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
         String kafkaTopoEngTopic = topologyConfig.getKafkaTopoEngTopic();
 
-        checkAndCreateTopic(kafkaTopoDiscoTopic);
-        checkAndCreateTopic(kafkaTopoEngTopic);
-
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
@@ -103,9 +99,6 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
         // TODO: verify this ctrlTarget after refactoring.
         ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, ofeLinkBolt, bd));
         createCtrlBranch(builder, ctrlTargets);
-        // TODO: verify WFM_TOPOLOGY health check
-        createHealthCheckHandler(builder, ServiceType.WFM_TOPOLOGY.getId());
-
         return builder.createTopology();
     }
 

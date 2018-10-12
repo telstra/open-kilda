@@ -1,0 +1,122 @@
+@startuml
+
+title Kilda Domain Model
+
+class SwitchId {
+  int id
+}
+
+SwitchId <-- Switch
+
+class Switch {
+  controller : string
+  hostname : string
+  address : string
+  id : SwitchId
+  description : string
+  status : SwitchStatus
+  meter_max : int
+  rule_max int
+  Port[] ports()
+  ISL[] isl()
+}
+
+enum SwitchStatus {
+  Active
+  Inactive
+  Removed
+}
+
+Switch <--> ISL
+Switch <--> Port
+Switch --> SwitchStatus
+
+note "rules for solving whois src and dst\nsrc_switch < dst_switch\n if src_switch == dst_switch use src_port < dst_port" as ISL_id_note
+
+class ISL {
+  id = src_switch+src_port+dst_switch+dst_port :  for simplify where clause
+  cost
+  src_switch
+  src_port
+  src_status
+  scr_latency
+  dst_switch
+  dst_port
+  dst_status
+  dst_latency
+  speed
+  max_bandwidth
+  available_bandwidth
+  constraint = src_switch+src_port+dst_switch+dst_port
+}
+
+ISL_id_note .. ISL
+
+enum PortStatus {
+  UP, DOWN
+}
+
+class Port {
+  SwitchId switchId
+  int port_no
+  PortStatus status
+  ISl isl
+}
+
+Port <--> ISL
+Port --> PortStatus
+
+class Flow {
+  string flow_id
+  FlowSegment[] flowSegments()
+  int cookie_id
+
+  uniq = flow_id, cookie_id
+  flow_data # all others data from current flow TBD
+}
+
+Flow <--> FlowSegment
+Flow <--> ISL
+Flow --> TransitVlan
+
+class FlowSegment {
+   Flow flow
+   ISL isl
+   # src dst calculation the same as in ISL
+   TransitVlan src_vlan_id # openflow match
+   TransitVlan dst_vlan_id # openflow out
+}
+
+FlowSegment <--> ISL
+
+class Meter {
+   Switch sw
+   meter_id
+   Flow flow
+   constraint = switch_id+meter_id
+}
+
+Meter <--> Switch
+Meter <--> Flow
+
+class TransitVlan {
+  switch_id
+  port_id
+  transit_vlan
+  flow_id
+  isl_id
+  constraint = switch_id+port_id+transit_vlan
+}
+
+class Rule {
+ switch_id
+ meter_id
+ match_port
+ match_vlan
+ out_port
+ out_vlan
+ flow_segment_id
+ flow_id
+}
+
+@enduml

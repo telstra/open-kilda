@@ -255,7 +255,7 @@ public class TopologyDefinition {
         @Override
         public String toString() {
             return String.format("%s-%s -> %s-%s", srcSwitch.dpId.toString(), srcPort,
-                    dstSwitch.dpId.toString(), dstPort);
+                    dstSwitch != null ? dstSwitch.dpId.toString() : "null", dstSwitch != null ? dstPort : "null");
         }
     }
 

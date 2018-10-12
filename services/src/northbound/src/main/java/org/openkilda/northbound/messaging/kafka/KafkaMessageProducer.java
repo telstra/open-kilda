@@ -15,14 +15,18 @@
 
 package org.openkilda.northbound.messaging.kafka;
 
+import static org.openkilda.messaging.Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS;
+import static org.openkilda.messaging.Utils.HEALTH_CHECK_OPERATIONAL_STATUS;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.error.ErrorType.DATA_INVALID;
 import static org.openkilda.messaging.error.ErrorType.INTERNAL_ERROR;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.northbound.messaging.MessageProducer;
+import org.openkilda.northbound.service.HealthCheckService;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +57,9 @@ public class KafkaMessageProducer implements MessageProducer {
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
+    @Autowired
+    private HealthCheckService healthCheckService;
+
     /**
      * {@inheritDoc}
      */
@@ -74,11 +81,13 @@ public class KafkaMessageProducer implements MessageProducer {
         future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
             @Override
             public void onSuccess(SendResult<String, String> result) {
+                healthCheckService.updateKafkaStatus(HEALTH_CHECK_OPERATIONAL_STATUS);
                 logger.debug("Message sent: topic={}, message={}", topic, messageToSend);
             }
 
             @Override
             public void onFailure(Throwable exception) {
+                healthCheckService.updateKafkaStatus(HEALTH_CHECK_NON_OPERATIONAL_STATUS);
                 logger.error("Unable to send message: topic={}, message={}", topic, messageToSend, exception);
             }
         });

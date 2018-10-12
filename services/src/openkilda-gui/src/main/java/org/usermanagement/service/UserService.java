@@ -110,7 +110,7 @@ public class UserService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException {
-        UserEntity user = userRepository.findByUsername(username);
+        UserEntity user = userRepository.findByUsernameIgnoreCase(username);
 
         Set<GrantedAuthority> authorities = new HashSet<GrantedAuthority>(0);
         if (user == null) {
@@ -219,7 +219,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
     public UserEntity getUserByUsername(final String userName) {
-        return userRepository.findByUsername(userName);
+        return userRepository.findByUsernameIgnoreCase(userName);
     }
 
     /**
@@ -230,7 +230,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public void updateUser2FaKey(final String userName, final String secretKey) {
-        UserEntity userEntity = userRepository.findByUsername(userName);
+        UserEntity userEntity = userRepository.findByUsernameIgnoreCase(userName);
         userEntity.setTwoFaKey(secretKey);
         userRepository.save(userEntity);
         LOGGER.info("User 2FA updated successfully (username: " + userName + ")");
@@ -243,7 +243,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public void updateLoginDetail(final String userName) {
-        UserEntity userEntity = userRepository.findByUsername(userName);
+        UserEntity userEntity = userRepository.findByUsernameIgnoreCase(userName);
         if (ValidatorUtil.isNull(userEntity)) {
             LOGGER.error("User with username '" + userName + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("username", userName + ""));

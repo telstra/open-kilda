@@ -15,16 +15,26 @@
 
 package org.openkilda.wfm.topology.flow.validation;
 
+import org.openkilda.messaging.error.ErrorType;
+
 /**
  * {@code FlowValidationException} indicates that an error has occurred while passing a flow validation rule.
  */
-public class FlowValidationException extends Exception {
+public class FlowValidationException extends ValidationException {
 
-    public FlowValidationException(String message) {
+    private final ErrorType type;
+
+    public FlowValidationException(String message, ErrorType type) {
         super(message);
+        this.type = type;
     }
 
-    public FlowValidationException(String message, Throwable cause) {
+    public FlowValidationException(String message, Throwable cause, ErrorType type) {
         super(message, cause);
+        this.type = type;
+    }
+
+    public ErrorType getType() {
+        return type;
     }
 }

@@ -65,8 +65,8 @@ public class DefaultServiceConfig {
         return buildLoggingRestTemplate();
     }
 
-    @Bean(name = "aSwitchRestTemplate")
-    public RestTemplate aswitchRestTemplate(@Value("${aswitch.endpoint}") String endpoint) {
+    @Bean(name = "lockKeeperRestTemplate")
+    public RestTemplate lockKeeperRestTemplate(@Value("${lockkeeper.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 
@@ -77,6 +77,11 @@ public class DefaultServiceConfig {
 
     @Bean(name = "mininetFlowToolRestTemplate")
     public RestTemplate mininetFlowToolRestTemplate(@Value("${mininet-flowtool.endpoint}") String endpoint) {
+        return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean(name = "otsdbRestTemplate")
+    public RestTemplate otsdbRestTemplate(@Value("${otsdb.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 

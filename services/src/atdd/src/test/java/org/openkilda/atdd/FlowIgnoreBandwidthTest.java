@@ -101,7 +101,7 @@ public class FlowIgnoreBandwidthTest {
             + "and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag in TE$")
     public void flowHaveIgnoreBandwidthFlagInTe(String source, String dest) {
         String flowId = lookupCreatedFlowId(source, dest);
-        FlowPair<Flow, Flow> flowPair = TopologyHelp.GetFlow(flowId);
+        FlowPair<Flow, Flow> flowPair = TopologyHelp.getFlow(flowId);
 
         Assert.assertNotNull(flowPair);
         Assert.assertTrue(
