@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -42,4 +44,7 @@ public class Path implements Serializable {
 
     @JsonProperty("path")
     private List<Node> nodes;
+
+    @JsonInclude(Include.NON_NULL)
+    private Long timestamp;
 }

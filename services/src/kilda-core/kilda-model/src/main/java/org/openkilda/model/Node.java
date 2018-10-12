@@ -16,6 +16,7 @@
 package org.openkilda.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -46,10 +47,10 @@ public class Node implements Serializable {
     private int seqId;
 
     @JsonProperty("segment_latency")
-    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonInclude(Include.NON_NULL)
     private Long segmentLatency;
 
     @JsonProperty("cookie")
-    @JsonInclude(JsonInclude.Include.NON_DEFAULT) // Needed to exclude when not set
+    @JsonInclude(Include.NON_DEFAULT) // Needed to exclude when not set
     private Long cookie;
 }

@@ -18,11 +18,11 @@ package org.openkilda.persistence.repositories.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import org.openkilda.model.Flow;
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.neo4j.Neo4jBasedTest;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.hamcrest.Matchers;
@@ -34,22 +34,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-public class FlowRepositoryImplTest extends Neo4jBasedTest {
+public class FlowSegmentRepositoryImplTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
 
-    static FlowRepository flowRepository;
+    static FlowSegmentRepository flowSegmentRepository;
     static SwitchRepository switchRepository;
 
     @BeforeClass
     public static void setUp() {
-        flowRepository = new FlowRepositoryImpl(txManager);
+        flowSegmentRepository = new FlowSegmentRepositoryImpl(txManager);
         switchRepository = new SwitchRepositoryImpl(txManager);
     }
 
     @Test
-    public void shouldCreateFindAndDeleteFlow() {
+    public void shouldCreateFindAndDeleteSegment() {
         Switch switchA = new Switch();
         switchA.setSwitchId(new SwitchId(1));
         switchA.setSwitchId(TEST_SWITCH_A_ID);
@@ -58,27 +58,27 @@ public class FlowRepositoryImplTest extends Neo4jBasedTest {
         switchB.setSwitchId(new SwitchId(2));
         switchB.setSwitchId(TEST_SWITCH_B_ID);
 
-        Flow flow = new Flow();
-        flow.setSrcSwitch(switchA);
-        flow.setDestSwitch(switchB);
+        FlowSegment segment = new FlowSegment();
+        segment.setSrcSwitch(switchA);
+        segment.setDestSwitch(switchB);
+        segment.setFlowId(TEST_FLOW_ID);
 
-        flowRepository.createOrUpdate(flow);
+        flowSegmentRepository.createOrUpdate(segment);
 
-        Collection<Flow> allFlows = flowRepository.findAll();
-        assertEquals(1, allFlows.size());
-        Flow foundFlow = allFlows.iterator().next();
+        Collection<FlowSegment> allSegments = flowSegmentRepository.findAll();
+        assertEquals(1, allSegments.size());
+        FlowSegment foundSegment = allSegments.iterator().next();
 
-        assertEquals(switchA.getSwitchId(), foundFlow.getSrcSwitchId());
-        assertEquals(switchB.getSwitchId(), foundFlow.getDestSwitchId());
-        assertEquals(2, switchRepository.findAll().size());
+        assertEquals(switchA.getSwitchId(), foundSegment.getSrcSwitchId());
+        assertEquals(switchB.getSwitchId(), foundSegment.getDestSwitchId());
 
-        flowRepository.delete(flow);
-        assertEquals(0, flowRepository.findAll().size());
+        flowSegmentRepository.delete(foundSegment);
+        assertEquals(0, flowSegmentRepository.findAll().size());
         assertEquals(2, switchRepository.findAll().size());
     }
 
     @Test
-    public void shouldCreateAndFindFlowById() {
+    public void shouldCreateAndFindSegmentByFlowId() {
         Switch switchA = new Switch();
         switchA.setSwitchId(new SwitchId(1));
         switchA.setSwitchId(TEST_SWITCH_A_ID);
@@ -87,15 +87,16 @@ public class FlowRepositoryImplTest extends Neo4jBasedTest {
         switchB.setSwitchId(new SwitchId(2));
         switchB.setSwitchId(TEST_SWITCH_B_ID);
 
-        Flow flow = new Flow();
-        flow.setFlowId(TEST_FLOW_ID);
-        flow.setSrcSwitch(switchA);
-        flow.setDestSwitch(switchB);
+        FlowSegment segment = new FlowSegment();
+        segment.setSrcSwitch(switchA);
+        segment.setDestSwitch(switchB);
+        segment.setFlowId(TEST_FLOW_ID);
 
-        flowRepository.createOrUpdate(flow);
+        flowSegmentRepository.createOrUpdate(segment);
 
-        List<Flow> foundFlow = StreamSupport.stream(flowRepository.findById(TEST_FLOW_ID).spliterator(), false)
-                .collect(Collectors.toList());
-        assertThat(foundFlow, Matchers.hasSize(1));
+        List<FlowSegment> foundSegment =
+                StreamSupport.stream(flowSegmentRepository.findByFlowId(TEST_FLOW_ID).spliterator(), false)
+                        .collect(Collectors.toList());
+        assertThat(foundSegment, Matchers.hasSize(1));
     }
 }
