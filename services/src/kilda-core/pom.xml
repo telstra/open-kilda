@@ -16,21 +16,20 @@
     <modules>
         <module>kilda-model</module>
         <module>kilda-persistence</module>
-        <module>kilda-persistence-test</module>
     </modules>
 
     <properties>
         <project.checkstyle.root>${basedir}/../../checkstyle</project.checkstyle.root>
 
-        <reflections.version>0.9.11</reflections.version>
+        <classgraph.version>LATEST</classgraph.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.reflections</groupId>
-                <artifactId>reflections</artifactId>
-                <version>${reflections.version}</version>
+                <groupId>io.github.classgraph</groupId>
+                <artifactId>classgraph</artifactId>
+                <version>${classgraph.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

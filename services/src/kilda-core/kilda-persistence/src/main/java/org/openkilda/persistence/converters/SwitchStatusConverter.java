@@ -34,7 +34,7 @@ public class SwitchStatusConverter implements AttributeConverter<SwitchStatus, S
 
     @Override
     public SwitchStatus toEntityAttribute(String value) {
-        if (value == null) {
+        if (value == null || value.trim().isEmpty()) {
             return null;
         }
         return SwitchStatus.valueOf(value.toUpperCase());

@@ -15,10 +15,8 @@
 
 package org.openkilda.model;
 
-import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Setter;
 import org.neo4j.ogm.annotation.EndNode;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
@@ -55,7 +53,7 @@ public class Flow implements Serializable {
     @EndNode
     private Switch destSwitch;
 
-    @Setter(AccessLevel.NONE)
+    //@Setter(AccessLevel.NONE)
     @Property(name = "src_switch")
     @Convert(graphPropertyType = String.class)
     private SwitchId srcSwitchId;
@@ -66,7 +64,7 @@ public class Flow implements Serializable {
     @Property(name = "src_vlan")
     private int srcVlan;
 
-    @Setter(AccessLevel.NONE)
+    //@Setter(AccessLevel.NONE)
     @Property(name = "dst_switch")
     @Convert(graphPropertyType = String.class)
     private SwitchId destSwitchId;
@@ -77,7 +75,7 @@ public class Flow implements Serializable {
     @Property(name = "dst_vlan")
     private int destVlan;
 
-    @Property(name = "flow_path")
+    @Property(name = "flowpath")
     @Convert(graphPropertyType = String.class)
     private Path flowPath;
 

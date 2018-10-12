@@ -19,6 +19,9 @@ import lombok.Value;
 
 import java.io.Serializable;
 
+/**
+ * A pair (forward & reverse) of flows.
+ */
 @Value
 public class FlowPair implements Serializable {
     private static final long serialVersionUID = 1L;

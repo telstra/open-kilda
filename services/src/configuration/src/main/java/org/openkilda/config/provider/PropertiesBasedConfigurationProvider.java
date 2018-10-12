@@ -13,9 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence;
-
-import org.openkilda.config.provider.ConfigurationProvider;
+package org.openkilda.config.provider;
 
 import com.sabre.oss.conf4j.factory.ConfigurationFactory;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
@@ -25,13 +23,21 @@ import com.sabre.oss.conf4j.source.PropertiesConfigurationSource;
 import java.io.IOException;
 import java.util.Properties;
 
-public class TestConfigurationProvider implements ConfigurationProvider {
+/**
+ * Simple implementation of {@link ConfigurationProvider} based on a properties resource.
+ * <p/>
+ *
+ * @see Properties
+ * @see PropertiesConfigurationSource
+ * @see JdkProxyStaticConfigurationFactory
+ */
+public class PropertiesBasedConfigurationProvider implements ConfigurationProvider {
     private ConfigurationSource source;
     private ConfigurationFactory factory;
 
-    public TestConfigurationProvider() throws IOException {
+    public PropertiesBasedConfigurationProvider(String propertiesResource) throws IOException {
         Properties properties = new Properties();
-        properties.load(this.getClass().getClassLoader().getResourceAsStream("test.properties"));
+        properties.load(this.getClass().getClassLoader().getResourceAsStream(propertiesResource));
         source = new PropertiesConfigurationSource(properties);
         factory = new JdkProxyStaticConfigurationFactory();
     }

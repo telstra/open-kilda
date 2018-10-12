@@ -46,7 +46,7 @@ public class FlowPathConverter implements AttributeConverter<Path, String> {
 
     @Override
     public Path toEntityAttribute(String value) {
-        if (value == null) {
+        if (value == null || value.trim().isEmpty()) {
             return null;
         }
 

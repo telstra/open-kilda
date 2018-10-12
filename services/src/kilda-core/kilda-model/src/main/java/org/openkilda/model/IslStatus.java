@@ -26,9 +26,9 @@ public enum IslStatus {
     ACTIVE,
 
     /**
-     * ISL is in failed state.
+     * ISL is in inactive / failed state.
      */
-    FAILED,
+    INACTIVE,
 
     /**
      * ISL is in moved state.

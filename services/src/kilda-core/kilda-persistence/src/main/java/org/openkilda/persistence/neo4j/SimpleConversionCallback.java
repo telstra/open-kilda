@@ -19,13 +19,16 @@ import static java.lang.String.format;
 
 import org.openkilda.persistence.PersistenceException;
 
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
 import org.neo4j.ogm.typeconversion.AttributeConverter;
 import org.neo4j.ogm.typeconversion.ConversionCallback;
-import org.reflections.Reflections;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -35,22 +38,27 @@ import java.util.stream.Collectors;
 class SimpleConversionCallback implements ConversionCallback {
     private final Map<ParameterizedType, Class<? extends AttributeConverter>> converters;
 
+    @SuppressWarnings("unchecked")
     SimpleConversionCallback(String... packages) {
-        Reflections reflections = new Reflections((Object[]) packages);
-
         // Scan the packages for the converters.
-        this.converters = reflections.getSubTypesOf(AttributeConverter.class).stream()
-                .collect(Collectors.toMap(
-                        converter -> (ParameterizedType) Arrays.stream(converter.getGenericInterfaces())
-                                .filter(type -> type instanceof ParameterizedType)
-                                .filter(type ->
-                                        ((ParameterizedType) type).getRawType().equals(AttributeConverter.class))
-                                .findFirst()
-                                .orElseThrow(() -> new IllegalArgumentException(
-                                        format("The converter %s must implement AttributeConverter interface",
-                                                converter.getSimpleName()))),
-                        converter -> converter
-                ));
+        try (ScanResult scanResult = new ClassGraph().enableAllInfo().whitelistPackages(packages).scan()) {
+            ClassInfoList controlClasses = scanResult.getClassesImplementing(AttributeConverter.class.getName());
+            List<Class<?>> controlClassRefs = controlClasses.loadClasses();
+
+            this.converters = controlClassRefs.stream()
+                    .map(clazz -> (Class<AttributeConverter>) clazz)
+                    .collect(Collectors.toMap(
+                            converter -> (ParameterizedType) Arrays.stream(converter.getGenericInterfaces())
+                                    .filter(type -> type instanceof ParameterizedType)
+                                    .filter(type ->
+                                            ((ParameterizedType) type).getRawType().equals(AttributeConverter.class))
+                                    .findFirst()
+                                    .orElseThrow(() -> new IllegalArgumentException(
+                                            format("The converter %s must implement AttributeConverter interface",
+                                                    converter.getSimpleName()))),
+                            converter -> converter
+                    ));
+        }
     }
 
     @SuppressWarnings("unchecked")

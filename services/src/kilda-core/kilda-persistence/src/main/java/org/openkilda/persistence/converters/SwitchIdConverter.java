@@ -34,7 +34,7 @@ public class SwitchIdConverter implements AttributeConverter<SwitchId, String> {
 
     @Override
     public SwitchId toEntityAttribute(String value) {
-        if (value == null) {
+        if (value == null || value.trim().isEmpty()) {
             return null;
         }
         return new SwitchId(value);

@@ -26,8 +26,10 @@ import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.RelationshipEntity;
 import org.neo4j.ogm.annotation.StartNode;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
+import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -61,7 +63,7 @@ public class Isl implements Serializable {
     private String srcStatus;
 
     @Property(name = "src_latency")
-    private long srcLatency;
+    private Long srcLatency;
 
     @Setter(AccessLevel.NONE)
     @Property(name = "dst_switch")
@@ -75,7 +77,7 @@ public class Isl implements Serializable {
     private String destStatus;
 
     @Property(name = "dst_latency")
-    private long destLatency;
+    private Long destLatency;
 
     private int latency;
 
@@ -96,6 +98,14 @@ public class Isl implements Serializable {
     @Property(name = "actual")
     @Convert(graphPropertyType = String.class)
     private IslStatus actualStatus;
+
+    @Property(name = "time_create")
+    @Convert(InstantStringConverter.class)
+    private Instant timeCreate;
+
+    @Property(name = "time_modify")
+    @Convert(InstantStringConverter.class)
+    private Instant timeModify;
 
     public void setSrcSwitch(Switch srcSwitch) {
         this.srcSwitch = Objects.requireNonNull(srcSwitch);

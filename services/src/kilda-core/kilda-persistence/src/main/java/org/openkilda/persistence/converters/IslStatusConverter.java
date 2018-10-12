@@ -34,7 +34,7 @@ public class IslStatusConverter implements AttributeConverter<IslStatus, String>
 
     @Override
     public IslStatus toEntityAttribute(String value) {
-        if (value == null) {
+        if (value == null || value.trim().isEmpty()) {
             return null;
         }
         return IslStatus.valueOf(value.toUpperCase());

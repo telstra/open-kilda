@@ -40,5 +40,6 @@ public class Path implements Serializable {
     @JsonProperty("latency_ns")
     private long latency;
 
+    @JsonProperty("path")
     private List<Node> nodes;
 }

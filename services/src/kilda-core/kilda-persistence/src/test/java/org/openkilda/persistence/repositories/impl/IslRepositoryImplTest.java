@@ -20,41 +20,24 @@ import static org.junit.Assert.assertEquals;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.TestConfigurationProvider;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.neo4j.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.neo4j.ogm.testutil.TestServer;
 
-import java.io.IOException;
-
-public class IslRepositoryImplTest {
+public class IslRepositoryImplTest extends Neo4jBasedTest {
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
 
-    static TestServer testServer;
     static IslRepository islRepository;
     static SwitchRepository switchRepository;
 
     @BeforeClass
-    public static void setUp() throws IOException {
-        testServer = new TestServer(true, true, 5, 7687);
-
-        Neo4jConfig neo4jConfig = new TestConfigurationProvider().getConfiguration(Neo4jConfig.class);
-        Neo4jTransactionManager txManager = new Neo4jTransactionManager(neo4jConfig);
-
+    public static void setUp() {
         islRepository = new IslRepositoryImpl(txManager);
         switchRepository = new SwitchRepositoryImpl(txManager);
-    }
-
-    @AfterClass
-    public static void tearDown() {
-        testServer.shutdown();
     }
 
     @Test
