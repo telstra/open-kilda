@@ -25,7 +25,6 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.pce.NetworkTopologyConstants;
 
 import org.junit.After;
 import org.junit.Before;
@@ -70,22 +69,22 @@ public class ResourceCacheTest {
     private ResourceCache resourceCache;
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         resourceCache.clear();
     }
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         resourceCache = new ResourceCache();
     }
 
     @Test
-    public void allocateAll() throws Exception {
+    public void allocateAll() {
         // TODO
     }
 
     @Test
-    public void cookiePool() throws Exception {
+    public void cookiePool() {
         resourceCache.allocateCookie(4);
 
         int first = resourceCache.allocateCookie();
@@ -108,7 +107,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void vlanIdPool() throws Exception {
+    public void vlanIdPool() {
         resourceCache.allocateVlanId(5);
 
         int first = resourceCache.allocateVlanId();
@@ -131,7 +130,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void meterIdPool() throws Exception {
+    public void meterIdPool() {
         resourceCache.allocateMeterId(SWITCH_ID, 4);
         int m1 = ResourceCache.MIN_METER_ID;
 
@@ -186,7 +185,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void allocateFlow() throws Exception {
+    public void allocateFlow() {
         resourceCache.allocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
         resourceCache.allocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
 
@@ -217,7 +216,7 @@ public class ResourceCacheTest {
     }
 
     @Test
-    public void deallocateFlow() throws Exception {
+    public void deallocateFlow() {
         allocateFlow();
         resourceCache.deallocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));
         resourceCache.deallocateFlow(new FlowPair<>(forwardCreatedFlow, reverseCreatedFlow));

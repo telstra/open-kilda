@@ -13,15 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.algo;
+package org.openkilda.pce.impl.algo;
 
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.pce.model.AvailableNetwork;
-import org.openkilda.pce.model.SimpleIsl;
+import org.openkilda.model.SwitchId;
+import org.openkilda.pce.impl.model.AvailableNetwork;
+import org.openkilda.pce.impl.model.SimpleIsl;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.LinkedList;
+import java.util.List;
 
 public class SimpleGetShortestPathTest {
 
@@ -29,7 +30,7 @@ public class SimpleGetShortestPathTest {
      * Build test network.
      */
     public AvailableNetwork buildNetwork1() {
-        AvailableNetwork network = new AvailableNetwork(null);
+        AvailableNetwork network = new AvailableNetwork();
         network.addLink(new SwitchId("00:00:00:22:3d:5a:04:87"), new SwitchId("00:00:b0:d2:f5:00:5a:b8"),
                 7, 60, 0, 3);
         network.addLink(new SwitchId("00:00:00:22:3d:5a:04:87"), new SwitchId("00:00:70:72:cf:d2:48:6c"),
@@ -69,7 +70,6 @@ public class SimpleGetShortestPathTest {
         return network;
     }
 
-
     @Test
     public void getPath() {
 
@@ -78,13 +78,14 @@ public class SimpleGetShortestPathTest {
         SimpleGetShortestPath forward = new SimpleGetShortestPath(network, new SwitchId("00:00:70:72:cf:d2:47:a6"),
                 new SwitchId("00:00:b0:d2:f5:00:5a:b8"), 35);
 
-        LinkedList<SimpleIsl> fpath = forward.getPath();
+        List<SimpleIsl> fpath = forward.getPath();
         System.out.println("forward.getPath() = " + fpath);
+        Assert.assertNotNull(fpath);
+
         SimpleGetShortestPath reverse = new SimpleGetShortestPath(network, new SwitchId("00:00:b0:d2:f5:00:5a:b8"),
                 new SwitchId("00:00:70:72:cf:d2:47:a6"), 35);
-        LinkedList<SimpleIsl> rpath = reverse.getPath(fpath);
+        List<SimpleIsl> rpath = reverse.getPath(fpath);
         System.out.println("reverse.getPath() = " + rpath);
-
-
+        Assert.assertNotNull(rpath);
     }
 }

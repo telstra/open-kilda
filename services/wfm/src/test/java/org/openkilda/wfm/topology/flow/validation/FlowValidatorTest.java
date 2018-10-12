@@ -18,20 +18,23 @@ package org.openkilda.wfm.topology.flow.validation;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.Switch;
 import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.provider.PathComputerAuth;
-import org.openkilda.wfm.topology.flow.MockedPathComputerAuth;
+import org.openkilda.persistence.repositories.SwitchRepository;
 
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.util.Collection;
+import java.util.Collections;
+
 public class FlowValidatorTest {
-    private FlowValidator target = new FlowValidator(flowCache, pathComputerAuth.getPathComputer());
+    private FlowValidator target;
 
     private static final FlowCache flowCache = new FlowCache();
-    private static final PathComputerAuth pathComputerAuth = new MockedPathComputerAuth();
     private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:00:00:00:00:01");
     private static final int SRC_PORT = 1;
     private static final int SRC_VLAN = 1;
@@ -56,6 +59,38 @@ public class FlowValidatorTest {
         flow.setDestinationPort(DST_PORT);
         flow.setDestinationVlan(DST_VLAN);
         flowCache.pushFlow(new FlowPair<>(flow, flow));
+    }
+
+    @Before
+    public void setUp() {
+        target = new FlowValidator(flowCache, new SwitchRepository() {
+            @Override
+            public Switch findBySwitchId(org.openkilda.model.SwitchId switchId) {
+                if (switchId.toString().equals(SRC_SWITCH.toString())) {
+                    return new Switch();
+                }
+
+                if (switchId.toString().equals(DST_SWITCH.toString())) {
+                    return new Switch();
+                }
+                return null;
+            }
+
+            @Override
+            public Collection<Switch> findAll() {
+                return Collections.emptyList();
+            }
+
+            @Override
+            public void createOrUpdate(Switch entity) {
+
+            }
+
+            @Override
+            public void delete(Switch entity) {
+
+            }
+        });
     }
 
     @Test(expected = FlowValidationException.class)
@@ -187,7 +222,7 @@ public class FlowValidatorTest {
         flow.setDestinationSwitch(FAIL_DST_SWITCH);
         String expectedMessage =
                 String.format("Source switch %s and Destination switch %s are not connected to the controller",
-                FAIL_SRC_SWITCH, FAIL_DST_SWITCH);
+                        FAIL_SRC_SWITCH, FAIL_DST_SWITCH);
 
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);

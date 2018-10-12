@@ -22,6 +22,8 @@
         <module>atdd</module>
         <module>functional-tests</module>
         <module>atdd-staging</module>
+        <module>kilda-pce</module>
+        <module>kilda-utils</module>
     </modules>
 
     <properties>

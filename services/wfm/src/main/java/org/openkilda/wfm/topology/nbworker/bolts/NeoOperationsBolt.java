@@ -17,16 +17,16 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.pce.provider.Auth;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
 import org.openkilda.wfm.AbstractBolt;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.neo4j.driver.v1.AccessMode;
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.Session;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -34,16 +34,19 @@ import java.util.Map;
 
 public abstract class NeoOperationsBolt extends AbstractBolt {
 
-    private Driver driver;
-    private final Auth neoAuth;
+    private final Neo4jConfig neo4jConfig;
+    protected Neo4jTransactionManager transactionManager;
+    private RepositoryFactory repositoryFactory;
 
-    NeoOperationsBolt(Auth neoAuth) {
-        this.neoAuth = neoAuth;
+    NeoOperationsBolt(Neo4jConfig neo4jConfig) {
+        this.neo4jConfig = neo4jConfig;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        this.driver = neoAuth.getDriver();
+        transactionManager = new Neo4jTransactionManager(neo4jConfig);
+        repositoryFactory = new RepositoryFactoryImpl(transactionManager);
+
         super.prepare(stormConf, context, collector);
     }
 
@@ -52,18 +55,12 @@ public abstract class NeoOperationsBolt extends AbstractBolt {
         final String correlationId = input.getStringByField("correlationId");
         getLogger().debug("Received operation request");
 
-        try (Session session = driver.session(request.isReadRequest() ? AccessMode.READ : AccessMode.WRITE)) {
-            List<? extends InfoData> result = processRequest(input, request, session);
-            getOutput().emit(input, new Values(result, correlationId));
-        }
+        List<? extends InfoData> result = processRequest(input, request, repositoryFactory);
+        getOutput().emit(input, new Values(result, correlationId));
     }
 
-    abstract List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, Session session);
+    abstract List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request,
+                                                     RepositoryFactory repositoryFactory);
 
     abstract Logger getLogger();
-
-    @Override
-    public void cleanup() {
-        driver.close();
-    }
 }

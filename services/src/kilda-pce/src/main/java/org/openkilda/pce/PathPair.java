@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,26 +15,19 @@
 
 package org.openkilda.pce;
 
-import lombok.extern.slf4j.Slf4j;
+import org.openkilda.model.Path;
 
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
+import lombok.Builder;
+import lombok.Value;
 
-/**
- * Utils class contains basic utilities and constants.
- */
-@Slf4j
-public final class Utils {
-    /**
-     * Return timestamp.
-     *
-     * @return String timestamp
-     */
-    public static String getIsoTimestamp() {
-        return ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT);
-    }
+import java.io.Serializable;
 
-    private Utils() {
-        throw new UnsupportedOperationException();
-    }
+@Value
+@Builder
+public class PathPair implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    public final Path forward;
+
+    public final Path reverse;
 }

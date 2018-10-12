@@ -33,15 +33,18 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Sender;
+import org.openkilda.wfm.share.mappers.IslMapper;
+import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -60,19 +63,22 @@ public class CacheService {
      */
     private FlowCache flowCache;
 
-    public CacheService(NetworkCache networkCache, FlowCache flowCache, PathComputer pathComputer) {
+    public CacheService(NetworkCache networkCache, FlowCache flowCache,
+                        FlowRepository flowRepository,
+                        SwitchRepository switchRepository,
+                        IslRepository islRepository) {
         this.networkCache = networkCache;
         this.flowCache = flowCache;
 
         logger.info("Request initial network state");
 
-        initFlowCache(pathComputer);
-        initNetwork(pathComputer);
+        initFlowCache(flowRepository);
+        initNetwork(switchRepository, islRepository);
     }
 
-    private void initFlowCache(PathComputer pathComputer) {
+    private void initFlowCache(FlowRepository flowRepository) {
         logger.info("Flow Cache: Initializing");
-        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
+        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(flowRepository);
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
             FlowPair<Flow, Flow> flowPair = new FlowPair<>(
@@ -82,10 +88,14 @@ public class CacheService {
         logger.info("Flow Cache: Initialized");
     }
 
-    private void initNetwork(PathComputer pathComputer) {
+    private void initNetwork(SwitchRepository switchRepository, IslRepository islRepository) {
         logger.info("Network Cache: Initializing");
-        Set<SwitchInfoData> switches = new HashSet<>(pathComputer.getSwitches());
-        Set<IslInfoData> links = new HashSet<>(pathComputer.getIsls());
+        Set<SwitchInfoData> switches = switchRepository.findAll().stream()
+                .map(SwitchMapper.INSTANCE::map)
+                .collect(Collectors.toSet());
+        Set<IslInfoData> links = islRepository.findAll().stream()
+                .map(IslMapper.INSTANCE::map)
+                .collect(Collectors.toSet());
 
         logger.info("Network Cache: Initializing - {} Switches (size)", switches.size());
         logger.info("Network Cache: Initializing - {} ISLs (size)", links.size());

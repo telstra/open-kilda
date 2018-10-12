@@ -13,26 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.provider;
+package org.openkilda.pce;
 
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.pce.RecoverableException;
-import org.openkilda.pce.model.AvailableNetwork;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import org.openkilda.model.Flow;
 
 /**
  * PathComputation interface represent operations on flow path.
  */
-public interface PathComputer extends Serializable {
+public interface PathComputer {
 
     /**
      * The Strategy is used for getting a Path - ie what filters to apply.
@@ -43,86 +31,25 @@ public interface PathComputer extends Serializable {
     }
 
     /**
-     * Gets isl weight.
+     * Gets path between source and destination switch for specified flow.
      *
-     * @param isl isl instance
-     * @return isl weight
+     * @param flow     the {@link Flow} instance
+     * @param strategy the path find strategy.
+     * @return {@link PathPair} instances
      */
-    default Long getWeight(IslInfoData isl) {
-        return 1L;
+    default PathPair getPath(Flow flow, Strategy strategy)
+            throws UnroutableFlowException, RecoverableException {
+        return getPath(flow, strategy, false);
     }
-
-    /**
-     * Gets path between source and destination switches for specified flow in preloaded network topology.
-     *
-     * @param flow {@link Flow} instances
-     * @param network prepared network where searching will be performed.
-     * @return {@link PathInfoData} instances
-     */
-    FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
-            throws UnroutablePathException, RecoverableException;
 
     /**
      * Gets path between source and destination switch for specified flow.
      *
-     * @param flow {@link Flow} instances
-     * @return {@link PathInfoData} instances
+     * @param flow              the {@link Flow} instance.
+     * @param strategy          the path find strategy.
+     * @param allowSameFlowPath whether to allow the existing flow path to be a potential new path or not.
+     * @return {@link PathPair} instances
      */
-    FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
-            throws UnroutablePathException, RecoverableException;
-
-    /**
-     * Interact with the PathComputer to get the FlowInfo for all flows.
-     *
-     * @return a list containing the "key" flow info for all flows.
-     */
-    default List<FlowInfo> getFlowInfo() {
-        return new ArrayList<>();
-    }
-
-    /**
-     * Read flows from Neo4j and covert them in our common representation
-     * org.openkilda.messaging.model.Flow
-     *
-     * @return all flow objects stored in neo4j
-     */
-    default List<Flow> getAllFlows() {
-        return new ArrayList<>();
-    }
-
-    /**
-     * Read a single flow from Neo4j and convert to our common representation {@link Flow}.
-     * In reality, a single flow will typically be bi-directional, so just represent as a list.
-     *
-     * @return the Flow if it exists, null otherwise.
-     */
-    List<Flow> getFlow(String flowId);
-
-    /*
-     * @return all flows (forward and reverse) by id, if exist.
-     */
-    default List<Flow> getFlows(String flowId) {
-        return new ArrayList<>();
-    }
-
-    default List<SwitchInfoData> getSwitches() {
-        return new ArrayList<>();
-    }
-
-    default Optional<SwitchInfoData> getSwitchById(SwitchId id) {
-        return Optional.empty();
-    }
-
-    default List<IslInfoData> getIsls() {
-        return new ArrayList<>();
-    }
-
-    /**
-     * Loads network and ignores all ISLs with not enough available bandwidth if ignoreBandwidth is false.
-     *
-     * @param ignoreBandwidth defines if available bandwidth of links should be taken into account for calculations.
-     * @param requestedBandwidth links in path should have enough amount of available bandwidth.
-     * @return built network.
-     */
-    AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth);
+    PathPair getPath(Flow flow, Strategy strategy, boolean allowSameFlowPath)
+            throws UnroutableFlowException, RecoverableException;
 }

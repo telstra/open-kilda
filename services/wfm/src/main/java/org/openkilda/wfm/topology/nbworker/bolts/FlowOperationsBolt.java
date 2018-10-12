@@ -17,12 +17,12 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.pce.provider.Auth;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.neo4j.driver.v1.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,12 +32,12 @@ public class FlowOperationsBolt extends NeoOperationsBolt {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowOperationsBolt.class);
 
-    public FlowOperationsBolt(Auth neoAuth) {
-        super(neoAuth);
+    public FlowOperationsBolt(Neo4jConfig neo4jConfig) {
+        super(neo4jConfig);
     }
 
     @Override
-    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, Session session) {
+    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, RepositoryFactory repositoryFactory) {
         LOGGER.warn("Received unsupported Flow Operation");
         return null;
     }

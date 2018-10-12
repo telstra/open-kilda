@@ -13,25 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.model;
+package org.openkilda.pce.impl.model;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
+
+import lombok.NonNull;
+import lombok.Value;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 /**
  * This class is just a summary of what a switch is; sufficient for path computation.
- *
  */
-public class SimpleSwitch implements Comparable<SimpleSwitch> {
+@Value
+public class SimpleSwitch {
 
     /**
      * The DPID is used as the primary key in most/all places.
      */
+    @NonNull
     public final SwitchId dpid;
 
     /**
@@ -40,57 +43,9 @@ public class SimpleSwitch implements Comparable<SimpleSwitch> {
      * <p/>
      * key (String) = The destination switch dpid.
      */
-    public final Map<SwitchId, Set<SimpleIsl>> outbound;
+    public final Map<SwitchId, Set<SimpleIsl>> outbound = new HashMap<>();
 
-    /**
-     * The default contructor is private to prevent null dpid / outboud scenarios.
-     */
-    private SimpleSwitch() {
-        this(new SwitchId("00"));
-    }
-
-    public SimpleSwitch(SwitchId dpid) {
-        this.dpid = dpid;
-        this.outbound = new HashMap<>();
-    }
-
-    public SimpleSwitch addOutbound(SimpleIsl isl) {
+    public void addOutbound(SimpleIsl isl) {
         outbound.computeIfAbsent(isl.getDstDpid(), newSet -> new HashSet<>()).add(isl);
-        return this;
-    }
-
-    @Override
-    public int compareTo(SimpleSwitch other) {
-        return dpid != null
-                ? dpid.toString().compareTo(other.dpid.toString())
-                : (other.dpid == null) ? 0 : -1;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof SimpleSwitch)) {
-            return false;
-        }
-        SimpleSwitch that = (SimpleSwitch) o;
-        return Objects.equals(dpid, that.dpid)
-                && Objects.equals(outbound, that.outbound);
-    }
-
-    @Override
-    public int hashCode() {
-
-        return Objects.hash(dpid, outbound);
-    }
-
-    @Override
-    public String toString() {
-        String result = "\n\tdpid='" + dpid + '\'' + ", outbound=";
-        for (SwitchId dst : outbound.keySet()) {
-            result += "\n\t\tdestination: " + dst + ", isls(" + outbound.get(dst).size() + "): " + outbound.get(dst);
-        }
-        return result;
     }
 }

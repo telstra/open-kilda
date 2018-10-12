@@ -21,7 +21,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="84" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="39" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="64" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/nbworker/NbWorkerTopology.java" lines="109" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/nbworker/NbWorkerTopology.java" lines="105" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="41" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="41" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/PortStateTopology.java" lines="112" checks="JavadocMethod"/>
@@ -32,7 +32,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/FlowDirectionHelper.java" lines="63" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/FlowDirectionHelper.java" lines="71" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/FlowDirectionHelper.java" lines="84" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/StatsTopology.java" lines="54" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/stats/StatsTopology.java" lines="52" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/AbstractTickStatefulBolt.java" lines="46" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FilerBolt.java" lines="53" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FileUtil.java" lines="44" checks="JavadocMethod"/>
@@ -42,8 +42,8 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/LoggerBolt.java" lines="40" checks="MissingSwitchDefault"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/LoggerContextInitializer.java" lines="36" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/WatchDog.java" lines="46" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="90" checks="AvoidEscapedUnicodeCharacters"/>
-    <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="103" checks="AvoidEscapedUnicodeCharacters"/>
+    <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="89" checks="AvoidEscapedUnicodeCharacters"/>
+    <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="102" checks="AvoidEscapedUnicodeCharacters"/>
     <suppress files="src/test/java/org/openkilda/wfm/StableAbstractStormTest.java" lines="28" checks="AvoidEscapedUnicodeCharacters"/>
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="39" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="47" checks="JavadocMethod"/>

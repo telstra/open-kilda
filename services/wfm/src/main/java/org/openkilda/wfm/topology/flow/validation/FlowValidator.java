@@ -21,7 +21,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -36,11 +36,11 @@ public class FlowValidator {
 
     private final FlowCache flowCache;
 
-    private PathComputer pathComputer;
+    private SwitchRepository switchRepository;
 
-    public FlowValidator(FlowCache flowCache, PathComputer pathComputer) {
+    public FlowValidator(FlowCache flowCache, SwitchRepository switchRepository) {
         this.flowCache = flowCache;
-        this.pathComputer = pathComputer;
+        this.switchRepository = switchRepository;
     }
 
     /**
@@ -140,10 +140,13 @@ public class FlowValidator {
         boolean destination;
 
         if (Objects.equals(sourceId, destinationId)) {
-            source = destination = pathComputer.getSwitchById(sourceId).isPresent();
+            source = destination =
+                    switchRepository.findBySwitchId(new org.openkilda.model.SwitchId(sourceId.toString())) != null;
         } else {
-            source = pathComputer.getSwitchById(sourceId).isPresent();
-            destination = pathComputer.getSwitchById(destinationId).isPresent();
+            source =
+                    switchRepository.findBySwitchId(new org.openkilda.model.SwitchId(sourceId.toString())) != null;
+            destination =
+                    switchRepository.findBySwitchId(new org.openkilda.model.SwitchId(destinationId.toString())) != null;
         }
 
         if (!source && !destination) {

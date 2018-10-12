@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.provider;
+package org.openkilda.pce.cache;
 
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorType;
@@ -23,7 +23,6 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.pce.model.AvailableNetwork;
 
 import com.google.common.graph.MutableNetwork;
 
@@ -38,22 +37,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PathComputerMock implements PathComputer {
+class TestNetworkTopology {
     private MutableNetwork<SwitchInfoData, IslInfoData> network;
 
-    @Override
     public Long getWeight(IslInfoData isl) {
         return 1L;
     }
 
-    @Override
-    public List<Flow> getFlow(String flowId) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork currentNetwork,
-                                                        Strategy strategy) {
+    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow) {
         /*
          * TODO: Implement other strategies? Default is HOPS ...
          * TODO: Is PathComputerMock necessary, since we can embed Neo4J?
@@ -75,21 +66,6 @@ public class PathComputerMock implements PathComputer {
         return new FlowPair<>(
                 path(source, destination, flow.getBandwidth()),
                 path(destination, source, flow.getBandwidth()));
-    }
-
-    @Override
-    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
-        return getPath(flow, null, strategy);
-    }
-
-    @Override
-    public List<FlowInfo> getFlowInfo() {
-        return new ArrayList<>();
-    }
-
-    @Override
-    public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth) {
-        return null;
     }
 
     private PathInfoData path(SwitchInfoData srcSwitch, SwitchInfoData dstSwitch, long bandwidth) {
@@ -162,7 +138,7 @@ public class PathComputerMock implements PathComputer {
         return path;
     }
 
-    public PathComputer withNetwork(MutableNetwork<SwitchInfoData, IslInfoData> network) {
+    public TestNetworkTopology withNetwork(MutableNetwork<SwitchInfoData, IslInfoData> network) {
         this.network = network;
         return this;
     }

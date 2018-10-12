@@ -56,18 +56,22 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.pce.PathComputer;
+import org.openkilda.pce.PathComputer.Strategy;
+import org.openkilda.pce.PathPair;
 import org.openkilda.pce.RecoverableException;
+import org.openkilda.pce.UnroutableFlowException;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
-import org.openkilda.pce.model.AvailableNetwork;
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.FlowInfo;
-import org.openkilda.pce.provider.PathComputer;
-import org.openkilda.pce.provider.PathComputer.Strategy;
-import org.openkilda.pce.provider.PathComputerAuth;
-import org.openkilda.pce.provider.UnroutablePathException;
+import org.openkilda.pce.impl.PathComputerImpl;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.share.mappers.FlowMapper;
+import org.openkilda.wfm.share.mappers.PathMapper;
 import org.openkilda.wfm.share.utils.FlowCollector;
 import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -92,6 +96,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -120,11 +125,14 @@ public class CrudBolt
      */
     private static final String FLOW_CACHE = "flow";
 
+    private final Neo4jConfig neo4jConfig;
+
+    private RepositoryFactory repositoryFactory;
+
     /**
      * Path computation instance.
      */
     private PathComputer pathComputer;
-    private final PathComputerAuth pathComputerAuth;
 
     /**
      * Flows state.
@@ -141,13 +149,8 @@ public class CrudBolt
 
     private FlowValidator flowValidator;
 
-    /**
-     * Instance constructor.
-     *
-     * @param pathComputerAuth {@link Auth} instance
-     */
-    public CrudBolt(PathComputerAuth pathComputerAuth) {
-        this.pathComputerAuth = pathComputerAuth;
+    public CrudBolt(Neo4jConfig neo4jConfig) {
+        this.neo4jConfig = neo4jConfig;
     }
 
     /**
@@ -166,7 +169,7 @@ public class CrudBolt
         }
         initFlowCache();
 
-        flowValidator = new FlowValidator(flowCache, pathComputerAuth.getPathComputer());
+        flowValidator = new FlowValidator(flowCache, repositoryFactory.getSwitchRepository());
     }
 
     /**
@@ -193,7 +196,10 @@ public class CrudBolt
         this.context = topologyContext;
         this.outputCollector = outputCollector;
 
-        pathComputer = pathComputerAuth.getPathComputer();
+        Neo4jTransactionManager transactionManager = new Neo4jTransactionManager(neo4jConfig);
+        repositoryFactory = new RepositoryFactoryImpl(transactionManager);
+
+        pathComputer = new PathComputerImpl(repositoryFactory.getIslRepository());
     }
 
     /**
@@ -360,16 +366,16 @@ public class CrudBolt
         List<String> modifiedFlowIds = new ArrayList<>();
         List<String> unchangedFlows = new ArrayList<>();
 
-        List<FlowInfo> flowInfos = pathComputer.getFlowInfo();
+        Collection<org.openkilda.model.Flow> flowInfos = repositoryFactory.getFlowRepository().findAll();
 
         // Instead of determining left/right .. store based on flowid_& cookie
-        HashMap<String, FlowInfo> flowToInfo = new HashMap<>();
-        for (FlowInfo fi : flowInfos) {
+        HashMap<String, org.openkilda.model.Flow> flowToInfo = new HashMap<>();
+        for (org.openkilda.model.Flow fi : flowInfos) {
             flowToInfo.put(fi.getFlowId() + fi.getCookie(), fi);
         }
 
         // We first look at comparing what is in the DB to what is in the Cache
-        for (FlowInfo fi : flowInfos) {
+        for (org.openkilda.model.Flow fi : flowInfos) {
             String flowid = fi.getFlowId();
             if (flowCache.cacheContainsFlow(flowid)) {
                 // TODO: better, more holistic comparison
@@ -389,10 +395,10 @@ public class CrudBolt
                             .add("meter: " + flowid + ":" + fi.getMeterId() + ":" + fc.left.getMeterId() + ":"
                                     + fc.right.getMeterId());
                 }
-                if (fi.getTransitVlanId() != fc.left.getTransitVlan() && fi.getTransitVlanId() != fc.right
+                if (fi.getTransitVlan() != fc.left.getTransitVlan() && fi.getTransitVlan() != fc.right
                         .getTransitVlan()) {
                     modifiedFlowChanges
-                            .add("transit: " + flowid + ":" + fi.getTransitVlanId() + ":" + fc.left.getTransitVlan()
+                            .add("transit: " + flowid + ":" + fi.getTransitVlan() + ":" + fc.left.getTransitVlan()
                                     + ":" + fc.right.getTransitVlan());
                 }
                 if (!fi.getSrcSwitchId().equals(fc.left.getSourceSwitch()) && !fi.getSrcSwitchId()
@@ -454,11 +460,10 @@ public class CrudBolt
 
         // override added/modified flows in the cache
         Stream.concat(addedFlowIds.stream(), modifiedFlowIds.stream())
-                .map(pathComputer::getFlows)
-                .filter(flows -> !flows.isEmpty())
+                .map(repositoryFactory.getFlowRepository()::findById)
                 .map(flows -> {
                     FlowCollector flowPair = new FlowCollector();
-                    flows.forEach(flowPair::add);
+                    flows.forEach(flow -> flowPair.add(FlowMapper.INSTANCE.map(flow)));
                     return flowPair;
                 })
                 .forEach(flowPair -> {
@@ -581,13 +586,15 @@ public class CrudBolt
     private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
 
-        FlowPair<PathInfoData, PathInfoData> path;
+        PathPair pathPair;
         final String errorType = "Could not create flow";
         try {
             flowValidator.validate(requestedFlow);
 
-            path = pathComputer.getPath(requestedFlow, Strategy.COST);
-            logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), path,
+
+
+            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(requestedFlow), Strategy.COST);
+            logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), pathPair,
                     message.getCorrelationId());
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -595,13 +602,17 @@ public class CrudBolt
         } catch (SwitchValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.DATA_INVALID, errorType, e.getMessage());
-        } catch (UnroutablePathException e) {
+        } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType,
                     "Not enough bandwidth found or path not found");
         }
 
-        FlowPair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
+        FlowPair<PathInfoData, PathInfoData> pathInfoPair = new FlowPair<>(
+                PathMapper.INSTANCE.map(pathPair.getForward()),
+                PathMapper.INSTANCE.map(pathPair.getReverse()));
+
+        FlowPair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, pathInfoPair);
         logger.info("Created flow: {}, correlationId: {}", flow, message.getCorrelationId());
 
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
@@ -629,16 +640,17 @@ public class CrudBolt
                 try {
                     logger.warn("Origin flow {} path: {} correlationId {}", flowId, flowForward.getFlowPath(),
                             correlationId);
-                    AvailableNetwork network = pathComputer.getAvailableNetwork(flowForward.isIgnoreBandwidth(),
-                            flowForward.getBandwidth());
-                    network.addIslsOccupiedByFlow(flowId, flowForward.isIgnoreBandwidth(), flowForward.getBandwidth());
-                    FlowPair<PathInfoData, PathInfoData> path =
-                            pathComputer.getPath(flow.getLeft(), network, Strategy.COST);
+                    PathPair pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(flow.getLeft()),
+                            Strategy.COST, true);
                     logger.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {} correlationId {}",
-                            flowId, path.getLeft(), path.getRight(), correlationId);
+                            flowId, pathPair.getForward(), pathPair.getReverse(), correlationId);
+                    FlowPair<PathInfoData, PathInfoData> pathInfoPair = new FlowPair<>(
+                            PathMapper.INSTANCE.map(pathPair.getForward()),
+                            PathMapper.INSTANCE.map(pathPair.getReverse()));
+
                     boolean isFoundNewPath = (
-                            !path.getLeft().equals(flow.getLeft().getFlowPath())
-                                       || !path.getRight().equals(flow.getRight().getFlowPath())
+                            !pathInfoPair.getLeft().equals(flow.getLeft().getFlowPath())
+                                       || !pathInfoPair.getRight().equals(flow.getRight().getFlowPath())
                                        || !isFlowActive(flow));
                     //no need to emit changes if path wasn't changed and flow is active.
                     //force means to update flow even if path is not changed.
@@ -646,7 +658,7 @@ public class CrudBolt
                         flow.getLeft().setState(FlowState.DOWN);
                         flow.getRight().setState(FlowState.DOWN);
 
-                        flow = flowCache.updateFlow(flow.getLeft(), path);
+                        flow = flowCache.updateFlow(flow.getLeft(), pathInfoPair);
                         logger.warn("Rerouted flow with new path: {}, correlationId {}", flow, correlationId);
 
                         FlowInfoData data = new FlowInfoData(flowId, flow, UPDATE, correlationId);
@@ -663,7 +675,7 @@ public class CrudBolt
                     Values values = new Values(new InfoMessage(response, message.getTimestamp(),
                             correlationId, Destination.NORTHBOUND));
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
-                } catch (UnroutablePathException e) {
+                } catch (UnroutableFlowException e) {
                     logger.warn("There is no path available for the flow {}, correlationId: {}", flowId,
                             correlationId);
                     flow.getLeft().setState(FlowState.DOWN);
@@ -695,17 +707,15 @@ public class CrudBolt
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
         String correlationId = message.getCorrelationId();
 
-        FlowPair<PathInfoData, PathInfoData> path;
+        PathPair pathPair;
         final String errorType = "Could not update flow";
         try {
             flowValidator.validate(requestedFlow);
 
-            AvailableNetwork network = pathComputer.getAvailableNetwork(requestedFlow.isIgnoreBandwidth(),
-                    requestedFlow.getBandwidth());
-            network.addIslsOccupiedByFlow(requestedFlow.getFlowId(),
-                    requestedFlow.isIgnoreBandwidth(), requestedFlow.getBandwidth());
-            path = pathComputer.getPath(requestedFlow, network, Strategy.COST);
-            logger.info("Updated flow path: {}, correlationId {}", path, correlationId);
+            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(requestedFlow),
+                    Strategy.COST, true);
+
+            logger.info("Updated flow path: {}, correlationId {}", pathPair, correlationId);
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -713,12 +723,16 @@ public class CrudBolt
         } catch (SwitchValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.DATA_INVALID, errorType, e.getMessage());
-        } catch (UnroutablePathException e) {
+        } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Path was not found");
         }
 
-        FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
+        FlowPair<PathInfoData, PathInfoData> pathInfoPair = new FlowPair<>(
+                PathMapper.INSTANCE.map(pathPair.getForward()),
+                PathMapper.INSTANCE.map(pathPair.getReverse()));
+
+        FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, pathInfoPair);
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
 
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
@@ -851,7 +865,7 @@ public class CrudBolt
     }
 
     private void initFlowCache() {
-        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
+        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(repositoryFactory.getFlowRepository());
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
             FlowPair<Flow, Flow> flowPair = new FlowPair<>(

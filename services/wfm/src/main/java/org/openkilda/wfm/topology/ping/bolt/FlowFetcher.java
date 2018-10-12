@@ -19,12 +19,15 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.pce.provider.PathComputer;
-import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.utils.FlowCollector;
 import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.ping.model.FlowRef;
@@ -56,12 +59,12 @@ public class FlowFetcher extends Abstract {
             FIELD_ID_ON_DEMAND_RESPONSE, FIELD_ID_CONTEXT);
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
 
-    private final PathComputerAuth pathComputerAuth;
-    private PathComputer pathComputer = null;
+    private final Neo4jConfig neo4jConfig;
+    private FlowRepository flowRepository;
     private FlowsHeap flowsHeap;
 
-    public FlowFetcher(PathComputerAuth pathComputerAuth) {
-        this.pathComputerAuth = pathComputerAuth;
+    public FlowFetcher(Neo4jConfig neo4jConfig) {
+        this.neo4jConfig = neo4jConfig;
     }
 
     @Override
@@ -79,7 +82,7 @@ public class FlowFetcher extends Abstract {
 
     private void handlePeriodicRequest(Tuple input) throws PipelineException {
         log.debug("Handle periodic ping request");
-        PathComputerFlowFetcher fetcher = new PathComputerFlowFetcher(pathComputer);
+        PathComputerFlowFetcher fetcher = new PathComputerFlowFetcher(flowRepository);
 
         final CommandContext commandContext = pullContext(input);
         final FlowsHeap heap = new FlowsHeap();
@@ -105,8 +108,8 @@ public class FlowFetcher extends Abstract {
         BidirectionalFlow flow;
         try {
             FlowCollector collector = new FlowCollector();
-            for (Flow halfFlow : pathComputer.getFlow(request.getFlowId())) {
-                collector.add(halfFlow);
+            for (org.openkilda.model.Flow halfFlow : flowRepository.findById(request.getFlowId())) {
+                collector.add(FlowMapper.INSTANCE.map(halfFlow));
             }
             flow = collector.make();
         } catch (IllegalArgumentException e) {
@@ -154,7 +157,9 @@ public class FlowFetcher extends Abstract {
 
     @Override
     public void init() {
-        pathComputer = pathComputerAuth.getPathComputer();
+        Neo4jTransactionManager transactionManager = new Neo4jTransactionManager(neo4jConfig);
+        RepositoryFactory repositoryFactory = new RepositoryFactoryImpl(transactionManager);
+        flowRepository = repositoryFactory.getFlowRepository();
         flowsHeap = new FlowsHeap();
     }
 }

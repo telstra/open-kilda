@@ -23,10 +23,8 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FI
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
-import org.openkilda.pce.provider.AuthNeo4j;
-import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
@@ -53,7 +51,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     /**
      * main.
      */
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
             (new StatsTopology(env)).setup();
@@ -92,9 +90,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
 
         // Cache bolt get data from NEO4J on start
         Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        AuthNeo4j pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
-                neo4jConfig.getLogin(), neo4jConfig.getPassword());
-        builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(pathComputerAuth), parallelism)
+        builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(neo4jConfig), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 

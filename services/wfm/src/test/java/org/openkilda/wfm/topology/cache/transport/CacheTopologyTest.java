@@ -44,7 +44,6 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,6 +58,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.neo4j.ogm.testutil.TestServer;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -97,7 +97,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static TestKafkaConsumer flowConsumer;
     private static TestKafkaConsumer ctrlConsumer;
 
-    private static Neo4jFixture fakeNeo4jDb;
+    private static TestServer testServer;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
@@ -105,9 +105,9 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         Properties configOverlay = new Properties();
 
-        fakeNeo4jDb = new Neo4jFixture(fsData.getRoot().toPath(), NEO4J_LISTEN_ADDRESS);
-        fakeNeo4jDb.start();
-        configOverlay.setProperty("neo4j.hosts", fakeNeo4jDb.getListenAddress());
+        testServer = new TestServer(true, true, 5);
+
+        configOverlay.setProperty("neo4j.uri", testServer.getUri());
 
         flows.add(firstFlow);
         flows.add(secondFlow);
@@ -159,7 +159,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         ctrlConsumer.wakeup();
         ctrlConsumer.join();
 
-        fakeNeo4jDb.stop();
+        testServer.shutdown();
 
         AbstractStormTest.teardownOnce();
     }
@@ -344,7 +344,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         }
     }
 
-    private static void sendNetworkDumpRequest() throws IOException, InterruptedException {
+    private static void sendNetworkDumpRequest() throws IOException {
         CtrlRequest request = new CtrlRequest("cachetopology/cache", new RequestData("dump"),
                 System.currentTimeMillis(), UUID.randomUUID().toString(), Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());

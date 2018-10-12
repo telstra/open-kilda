@@ -13,29 +13,32 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.model;
+package org.openkilda.pce.impl.model;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.NonNull;
+import lombok.Value;
 
 /**
  * The ISL is directed and connects to a pair of EndPoints.
  * <p/>
  * For equals and hashcode, only the src and dst information are used, not the properties.
  */
-@Getter
-@Setter
-@ToString
+@Value
 @EqualsAndHashCode(exclude = {"cost", "latency"})
+@Builder
 public class SimpleIsl {
-    /** If another default is desired, you can control that at object creation. */
+    /**
+     * If another default is desired, you can control that at object creation.
+     */
     private static final int DEFAULT_COST = 700;
 
+    @NonNull
     private SwitchId srcDpid;
+    @NonNull
     private SwitchId dstDpid;
     private int srcPort;
     private int dstPort;

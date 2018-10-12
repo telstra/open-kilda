@@ -20,7 +20,6 @@ import static org.junit.Assert.assertEquals;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.pce.NetworkTopologyConstants;
 
 import org.junit.After;
 import org.junit.Before;
@@ -35,16 +34,16 @@ public class NetworkCacheTest {
     private final NetworkCache networkCache = new NetworkCache();
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         networkCache.clear();
     }
 
     @Test
-    public void getSwitch() throws Exception {
+    public void getSwitch() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         assertEquals(NetworkTopologyConstants.sw1,
@@ -54,14 +53,14 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void createSwitch() throws Exception {
+    public void createSwitch() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         assertEquals(2, networkCache.dumpSwitches().size());
     }
 
     @Test
-    public void updateSwitch() throws Exception {
+    public void updateSwitch() {
         SwitchId swId = new SwitchId("ff:07");
         SwitchInfoData sw7 = new SwitchInfoData(swId, SwitchState.ACTIVATED, "", "", "", "");
         networkCache.createSwitch(sw7);
@@ -77,7 +76,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void createOrUpdateSwitch() throws Exception {
+    public void createOrUpdateSwitch() {
         networkCache.createOrUpdateSwitch(NetworkTopologyConstants.sw1);
         networkCache.createOrUpdateSwitch(NetworkTopologyConstants.sw2);
 
@@ -90,7 +89,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void deleteSwitch() throws Exception {
+    public void deleteSwitch() {
         createSwitch();
         networkCache.deleteSwitch(NetworkTopologyConstants.sw1.getSwitchId());
         networkCache.deleteSwitch(NetworkTopologyConstants.sw2.getSwitchId());
@@ -98,7 +97,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void dumpSwitches() throws Exception {
+    public void dumpSwitches() {
         createSwitch();
         Set<SwitchInfoData> switches = networkCache.dumpSwitches();
         assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.sw1,
@@ -106,7 +105,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void getStateSwitches() throws Exception {
+    public void getStateSwitches() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         networkCache.createSwitch(NetworkTopologyConstants.sw3);
@@ -116,7 +115,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void getControllerSwitches() throws Exception {
+    public void getControllerSwitches() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         networkCache.createSwitch(NetworkTopologyConstants.sw3);
@@ -126,7 +125,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void getDirectlyConnectedSwitches() throws Exception {
+    public void getDirectlyConnectedSwitches() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         networkCache.createSwitch(NetworkTopologyConstants.sw3);
@@ -146,7 +145,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void createOrUpdateIsl() throws Exception {
+    public void createOrUpdateIsl() {
         networkCache.createSwitch(NetworkTopologyConstants.sw1);
         networkCache.createSwitch(NetworkTopologyConstants.sw2);
         networkCache.createSwitch(NetworkTopologyConstants.sw3);
@@ -167,7 +166,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void deleteIsl() throws Exception {
+    public void deleteIsl() {
         createOrUpdateIsl();
 
         networkCache.deleteIsl(NetworkTopologyConstants.isl12.getId());
@@ -179,7 +178,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void getIsl() throws Exception {
+    public void getIsl() {
         createOrUpdateIsl();
         assertEquals(NetworkTopologyConstants.isl12, networkCache.getIsl(NetworkTopologyConstants.isl12.getId()));
         assertEquals(NetworkTopologyConstants.isl21, networkCache.getIsl(NetworkTopologyConstants.isl21.getId()));
@@ -188,14 +187,14 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void dumpIsls() throws Exception {
+    public void dumpIsls() {
         createOrUpdateIsl();
         assertEquals(new HashSet<>(Arrays.asList(NetworkTopologyConstants.isl12, NetworkTopologyConstants.isl21,
                 NetworkTopologyConstants.isl23, NetworkTopologyConstants.isl32)), networkCache.dumpIsls());
     }
 
     @Test
-    public void getIslsBySwitch() throws Exception {
+    public void getIslsBySwitch() {
         createOrUpdateIsl();
         networkCache.createSwitch(NetworkTopologyConstants.sw4);
         networkCache.createOrUpdateIsl(NetworkTopologyConstants.isl14);
@@ -209,7 +208,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void getIslsBySource() throws Exception {
+    public void getIslsBySource() {
         createOrUpdateIsl();
         networkCache.createSwitch(NetworkTopologyConstants.sw4);
         networkCache.createOrUpdateIsl(NetworkTopologyConstants.isl14);
@@ -222,7 +221,7 @@ public class NetworkCacheTest {
     }
 
     @Test
-    public void getIslsByDestination() throws Exception {
+    public void getIslsByDestination() {
         createOrUpdateIsl();
         networkCache.createSwitch(NetworkTopologyConstants.sw4);
         networkCache.createOrUpdateIsl(NetworkTopologyConstants.isl14);

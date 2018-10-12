@@ -43,7 +43,6 @@ import java.util.Properties;
  */
 public abstract class AbstractStormTest {
     protected static String CONFIG_NAME = "class-level-overlay.properties";
-    protected static String NEO4J_LISTEN_ADDRESS = "localhost:27600";
 
     protected static TestKafkaProducer kProducer;
     protected static LocalCluster cluster;

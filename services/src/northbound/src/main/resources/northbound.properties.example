@@ -15,6 +15,6 @@ server.contextPath=/api/v1
 topology.engine.rest.endpoint=http://topology-engine-rest.pendev:80
 northbound.messages.expiration.minutes=15
 
-neo4j.hosts=neo4j.pendev:7687
+neo4j.uri=bolt://neo4j.pendev:7687
 neo4j.user=neo4j
 neo4j.pswd=temppass

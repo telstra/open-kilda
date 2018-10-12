@@ -15,11 +15,8 @@
 
 package org.openkilda.wfm.topology.ping;
 
-import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
-import org.openkilda.wfm.error.ConfigurationException;
-import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.ping.bolt.Blacklist;
 import org.openkilda.wfm.topology.ping.bolt.ComponentId;
@@ -54,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     private final int scaleFactor;
 
-    protected PingTopology(LaunchEnvironment env) throws ConfigurationException {
+    protected PingTopology(LaunchEnvironment env) {
         super(env, PingTopologyConfig.class);
         scaleFactor = topologyConfig.getScaleFactor();
     }
@@ -66,7 +63,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
      * https://github.com/telstra/open-kilda/tree/master/docs/design/flow-ping/flow-ping.md
      */
     @Override
-    public StormTopology createTopology() throws NameCollisionException {
+    public StormTopology createTopology() {
         TopologyBuilder topology = new TopologyBuilder();
 
         monotonicTick(topology);
@@ -127,10 +124,8 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
 
     private void flowFetcher(TopologyBuilder topology) {
         Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        PathComputerAuth auth = new PathComputerAuth(neo4jConfig.getHost(),
-                neo4jConfig.getLogin(), neo4jConfig.getPassword());
 
-        FlowFetcher bolt = new FlowFetcher(auth);
+        FlowFetcher bolt = new FlowFetcher(neo4jConfig);
         topology.setBolt(FlowFetcher.BOLT_ID, bolt, scaleFactor)
                 .globalGrouping(TickDeduplicator.BOLT_ID, TickDeduplicator.STREAM_PING_ID)
                 .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_REQUEST_ID);

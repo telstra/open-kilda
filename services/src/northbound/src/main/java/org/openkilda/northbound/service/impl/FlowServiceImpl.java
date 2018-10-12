@@ -31,7 +31,6 @@ import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
@@ -65,10 +64,10 @@ import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.northbound.utils.ResponseCollector;
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.AuthNeo4j;
-import org.openkilda.pce.provider.NeoDriver;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.impl.FlowRepositoryImpl;
 
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
@@ -88,6 +87,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.annotation.PostConstruct;
 
 /**
@@ -105,8 +105,7 @@ public class FlowServiceImpl implements FlowService {
      */
     private static final Long IGNORE_COOKIE_FILTER = 0L;
 
-    private PathComputer pathComputer;
-    private Auth pathComputerAuth;
+    private FlowRepository flowRepository;
 
     /**
      * The kafka topic for the flow topology.
@@ -126,8 +125,8 @@ public class FlowServiceImpl implements FlowService {
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
 
-    @Value("${neo4j.hosts}")
-    private String neoHost;
+    @Value("${neo4j.uri}")
+    private String neoUri;
 
     @Value("${neo4j.user}")
     private String neoUser;
@@ -179,8 +178,28 @@ public class FlowServiceImpl implements FlowService {
 
     @PostConstruct
     void init() {
-        pathComputerAuth = new AuthNeo4j(neoHost, neoUser, neoPswd);
-        pathComputer = new NeoDriver(pathComputerAuth.getDriver());
+        Neo4jTransactionManager txManager = new Neo4jTransactionManager(new Neo4jConfig() {
+            @Override
+            public String getUri() {
+                return neoUri;
+            }
+
+            @Override
+            public String getLogin() {
+                return neoUser;
+            }
+
+            @Override
+            public String getPassword() {
+                return neoPswd;
+            }
+
+            @Override
+            public int getConnectionPoolSize() {
+                return 50;
+            }
+        });
+        flowRepository = new FlowRepositoryImpl(txManager);
     }
 
     /**
@@ -215,6 +234,7 @@ public class FlowServiceImpl implements FlowService {
 
     /**
      * Non-blocking primitive .. just create and send delete request.
+     *
      * @return the request
      */
     private CommandMessage sendDeleteFlow(final String id, final String correlationId) {
@@ -228,6 +248,7 @@ public class FlowServiceImpl implements FlowService {
 
     /**
      * Blocking primitive .. waits for the response .. and then converts to FlowPayload.
+     *
      * @return the deleted flow.
      */
     private FlowPayload deleteFlowResponse(final String correlationId, CommandMessage request) {
@@ -356,6 +377,7 @@ public class FlowServiceImpl implements FlowService {
 
     /**
      * Reads {@link BidirectionalFlow} flow representation from the Storm.
+     *
      * @return the bidirectional flow.
      */
     private BidirectionalFlow getBidirectionalFlow(String flowId, String correlationId) {
@@ -428,7 +450,7 @@ public class FlowServiceImpl implements FlowService {
                 Message teMessage = (Message) messageConsumer.poll(teCorrelation);
                 FlowStatusResponse response =
                         (FlowStatusResponse) validateInfoMessage(teRequests.get(i), teMessage, correlationId);
-                FlowIdStatusPayload status =  response.getPayload();
+                FlowIdStatusPayload status = response.getPayload();
                 if (status.getStatus() == expectedState) {
                     teSuccess++;
                 } else {
@@ -489,22 +511,22 @@ public class FlowServiceImpl implements FlowService {
         /**
          * Will convert from the Flow .. FlowPath format to a series of SimpleSwitchRules,
          */
-        public static final List<SimpleSwitchRule> convertFlow(Flow flow) {
+        public static final List<SimpleSwitchRule> convertFlow(org.openkilda.model.Flow flow) {
             /*
              * Start with Ingress
              */
             SimpleSwitchRule rule = new SimpleSwitchRule();
-            rule.switchId = flow.getSourceSwitch();
+            rule.switchId = new SwitchId(flow.getSrcSwitchId().toString());
             rule.cookie = flow.getCookie();
-            rule.inPort = flow.getSourcePort();
-            rule.inVlan = flow.getSourceVlan();
+            rule.inPort = flow.getSrcPort();
+            rule.inVlan = flow.getSrcVlan();
             rule.meterId = flow.getMeterId();
-            List<PathNode> path = flow.getFlowPath().getPath();
+            List<org.openkilda.model.Node> path = flow.getFlowPath().getNodes();
             // TODO: ensure path is sorted by sequence
             if (path.size() == 0) {
                 // single switch rule.
-                rule.outPort = flow.getDestinationPort();
-                rule.outVlan = flow.getDestinationVlan();
+                rule.outPort = flow.getDestPort();
+                rule.outVlan = flow.getDestVlan();
             } else {
                 // flows with two switches or more will have at least 2 in getPath()
                 rule.outPort = path.get(0).getPortNo();
@@ -523,11 +545,10 @@ public class FlowServiceImpl implements FlowService {
             if (path.size() > 2) {
                 for (int i = 1; i < path.size() - 1; i = i + 2) {
                     // eg .. size 4, means 1 transit .. start at 1,2 .. don't process 3
-                    final PathNode inNode = path.get(i);
-                    final PathNode outNode = path.get(i + 1);
+                    org.openkilda.model.Node inNode = path.get(i);
 
                     rule = new SimpleSwitchRule();
-                    rule.switchId = inNode.getSwitchId();
+                    rule.switchId = new SwitchId(inNode.getSwitchId().toString());
                     rule.inPort = inNode.getPortNo();
 
                     rule.cookie = Optional.ofNullable(inNode.getCookie())
@@ -536,6 +557,8 @@ public class FlowServiceImpl implements FlowService {
                     rule.inVlan = flow.getTransitVlan();
                     //TODO: out vlan is not set for transit flows. Is it correct behavior?
                     //rule.outVlan = flow.getTransitVlan();
+
+                    org.openkilda.model.Node outNode = path.get(i + 1);
                     rule.outPort = outNode.getPortNo();
                     result.add(rule);
                 }
@@ -546,9 +569,9 @@ public class FlowServiceImpl implements FlowService {
              */
             if (path.size() > 0) {
                 rule = new SimpleSwitchRule();
-                rule.switchId = flow.getDestinationSwitch();
-                rule.outPort = flow.getDestinationPort();
-                rule.outVlan = flow.getDestinationVlan();
+                rule.switchId = new SwitchId(flow.getDestSwitchId().toString());
+                rule.outPort = flow.getDestPort();
+                rule.outVlan = flow.getDestVlan();
                 rule.inVlan = flow.getTransitVlan();
                 rule.inPort = path.get(path.size() - 1).getPortNo();
                 rule.cookie = Optional.ofNullable(path.get(path.size() - 1).getCookie())
@@ -602,7 +625,8 @@ public class FlowServiceImpl implements FlowService {
 
         /**
          * Finds discrepancy between list of expected and actual rules.
-         * @param pktCounts If we find the rule, add its pktCounts. Otherwise, add -1.
+         *
+         * @param pktCounts  If we find the rule, add its pktCounts. Otherwise, add -1.
          * @param byteCounts If we find the rule, add its pktCounts. Otherwise, add -1.
          */
         static List<PathDiscrepancyDto> findDiscrepancy(
@@ -692,7 +716,9 @@ public class FlowServiceImpl implements FlowService {
          * 3) Do the comparison
          */
 
-        List<Flow> flows = pathComputer.getFlow(flowId);
+        List<org.openkilda.model.Flow> flows =
+                StreamSupport.stream(flowRepository.findById(flowId).spliterator(), false)
+                        .collect(Collectors.toList());
         logger.debug("VALIDATE FLOW: Found Flows: count = {}", flows.size());
         if (flows.size() == 0) {
             return null;
@@ -703,13 +729,13 @@ public class FlowServiceImpl implements FlowService {
          */
         List<List<SimpleSwitchRule>> simpleFlowRules = new ArrayList<>();
         Set<SwitchId> switches = new HashSet<>();
-        for (Flow flow : flows) {
+        for (org.openkilda.model.Flow flow : flows) {
             if (flow.getFlowPath() != null) {
                 simpleFlowRules.add(SimpleSwitchRule.convertFlow(flow));
-                switches.add(flow.getSourceSwitch());
-                switches.add(flow.getDestinationSwitch());
-                for (PathNode node : flow.getFlowPath().getPath()) {
-                    switches.add(node.getSwitchId());
+                switches.add(new SwitchId(flow.getSrcSwitchId().toString()));
+                switches.add(new SwitchId(flow.getDestSwitchId().toString()));
+                for (org.openkilda.model.Node node : flow.getFlowPath().getNodes()) {
+                    switches.add(new SwitchId(node.getSwitchId().toString()));
                 }
             } else {
                 throw new InvalidPathException(flowId, "Flow Path was not returned.");
@@ -757,8 +783,8 @@ public class FlowServiceImpl implements FlowService {
                 discrepancies.addAll(
                         SimpleSwitchRule.findDiscrepancy(simpleRule,
                                 simpleRules.get(simpleRule.switchId),
-                        pktCounts, byteCounts
-                ));
+                                pktCounts, byteCounts
+                        ));
             }
 
             FlowValidationDto result = new FlowValidationDto();

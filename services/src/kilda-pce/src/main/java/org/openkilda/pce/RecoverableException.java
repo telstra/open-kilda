@@ -13,20 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.config;
+package org.openkilda.pce;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Key;
+public class RecoverableException extends Exception {
+    public RecoverableException(String message) {
+        super(message);
+    }
 
-@Configuration
-@Key("neo4j")
-public interface Neo4jConfig {
-    @Key("hosts")
-    String getHost();
-
-    @Key("user")
-    String getLogin();
-
-    @Key("pswd")
-    String getPassword();
+    public RecoverableException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

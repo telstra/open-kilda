@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce;
+package org.openkilda.pce.cache;
 
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -24,7 +24,7 @@ import org.openkilda.messaging.model.SwitchId;
 
 import java.util.Arrays;
 
-public final class NetworkTopologyConstants {
+final class NetworkTopologyConstants {
     public static final SwitchInfoData sw1 = new SwitchInfoData(new SwitchId("ff:01"), SwitchState.ACTIVATED,
             "", "", "", "localhost");
     public static final SwitchInfoData sw2 = new SwitchInfoData(new SwitchId("ff:02"), SwitchState.ACTIVATED,

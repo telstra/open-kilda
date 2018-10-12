@@ -38,9 +38,14 @@ import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.Flow;
+import org.openkilda.model.Path;
+import org.openkilda.model.Switch;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.StableAbstractStormTest;
+import org.openkilda.wfm.config.provider.ConfigurationProvider;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
 
@@ -55,12 +60,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Label;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.ogm.testutil.TestServer;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -80,26 +80,31 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     private final long cookie = 0x4000000000000001L;
     private final String flowId = "f253423454343";
 
-    private static Neo4jFixture fakeNeo4jDb;
+    private static TestServer testServer;
 
     private static LaunchEnvironment launchEnvironment;
+    private static Neo4jConfig neo4jConfig;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
         StableAbstractStormTest.setupOnce();
-        fakeNeo4jDb = new Neo4jFixture(fsData.getRoot().toPath(), NEO4J_LISTEN_ADDRESS);
-        fakeNeo4jDb.start();
+
+        testServer = new TestServer(true, true, 5);
+
         launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
-        configOverlay.setProperty("neo4j.hosts", fakeNeo4jDb.getListenAddress());
+        configOverlay.setProperty("neo4j.uri", testServer.getUri());
 
         launchEnvironment.setupOverlay(configOverlay);
+
+        ConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
+        neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
     }
 
 
     @AfterClass
-    public static void teardownOnce() throws Exception {
-        fakeNeo4jDb.stop();
+    public static void teardownOnce() {
+        testServer.shutdown();
     }
 
     @Ignore
@@ -186,29 +191,28 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         //mock kafka spout
         MockedSources sources = new MockedSources();
 
-        GraphDatabaseService graphDatabaseService = fakeNeo4jDb.getGraphDatabaseService();
+        Neo4jTransactionManager txManager = new Neo4jTransactionManager(neo4jConfig);
 
-        try (Transaction tx = graphDatabaseService.beginTx()) {
-            Node node1 = graphDatabaseService.createNode(Label.label("switch"));
-            node1.setProperty("name", switchId.toString());
-            Relationship rel1 = node1.createRelationshipTo(node1, RelationshipType.withName("flow"));
-            rel1.setProperty("flowid", flowId);
-            rel1.setProperty("cookie", cookie);
-            rel1.setProperty("meter_id", 2);
-            rel1.setProperty("transit_vlan", 1);
-            rel1.setProperty("src_switch", switchId.toString());
-            rel1.setProperty("dst_switch", switchId.toString());
-            rel1.setProperty("src_port", 1);
-            rel1.setProperty("dst_port", 2);
-            rel1.setProperty("src_vlan", 5);
-            rel1.setProperty("dst_vlan", 5);
-            rel1.setProperty("path", "\"{\"path\": [], \"latency_ns\": 0, \"timestamp\": 1522528031909}\"");
-            rel1.setProperty("bandwidth", 200);
-            rel1.setProperty("ignore_bandwidth", true);
-            rel1.setProperty("description", "description");
-            rel1.setProperty("last_updated", "last_updated");
-            tx.success();
-        }
+        Switch sw = new Switch();
+        sw.setSwitchId(new org.openkilda.model.SwitchId(switchId.toString()));
+        Flow flow = new Flow();
+        flow.setFlowId(flowId);
+        flow.setCookie(cookie);
+        flow.setMeterId(2);
+        flow.setTransitVlan(1);
+        flow.setSrcSwitch(sw);
+        flow.setSrcPort(1);
+        flow.setSrcVlan(5);
+        flow.setDestSwitch(sw);
+        flow.setDestPort(2);
+        flow.setDestVlan(5);
+        flow.setBandwidth(200);
+        flow.setIgnoreBandwidth(true);
+        flow.setDescription("description");
+        flow.setLastUpdated("last_updated");
+        flow.setFlowPath(new Path(0, Collections.emptyList()));
+
+        txManager.getSession().save(flow);
 
         List<FlowStatsEntry> entries = Collections.singletonList(
                 new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
@@ -308,8 +312,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         private KafkaBolt kafkaBolt;
 
-        TestingTargetTopology(LaunchEnvironment launchEnvironment, KafkaBolt kafkaBolt)
-                throws Exception {
+        TestingTargetTopology(LaunchEnvironment launchEnvironment, KafkaBolt kafkaBolt) {
             super(launchEnvironment);
             this.kafkaBolt = kafkaBolt;
         }

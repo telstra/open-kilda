@@ -16,10 +16,9 @@
 package org.openkilda.wfm.topology.flow;
 
 import org.openkilda.messaging.Utils;
-import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
@@ -30,7 +29,6 @@ import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
 import org.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 
-import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
@@ -61,20 +59,8 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
 
     private static final Logger logger = LoggerFactory.getLogger(FlowTopology.class);
 
-    private final PathComputerAuth pathComputerAuth;
-
     public FlowTopology(LaunchEnvironment env) {
         super(env, FlowTopologyConfig.class);
-
-        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
-                neo4jConfig.getLogin(), neo4jConfig.getPassword());
-    }
-
-    public FlowTopology(LaunchEnvironment env, PathComputerAuth pathComputerAuth) {
-        super(env, FlowTopologyConfig.class);
-
-        this.pathComputerAuth = pathComputerAuth;
     }
 
     @Override
@@ -118,8 +104,9 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          * Bolt handles flow CRUD operations.
          * It groups requests by flow-id.
          */
-        CrudBolt crudBolt = new CrudBolt(pathComputerAuth);
-        ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
+        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
+        CrudBolt crudBolt = new CrudBolt(neo4jConfig);
+        //ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
 
         BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)

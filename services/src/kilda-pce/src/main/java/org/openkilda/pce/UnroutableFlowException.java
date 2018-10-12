@@ -13,23 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.provider;
+package org.openkilda.pce;
 
-import org.openkilda.messaging.model.Flow;
+public class UnroutableFlowException extends Exception {
+    private final String flowId;
 
-public class UnroutablePathException extends Exception {
-    private final Flow flow;
+    public UnroutableFlowException(String message, String flowId) {
+        super(message);
 
-    public UnroutablePathException(Flow flow) {
-        super(String.format(
-                "Can't make flow from %s to %s (bandwidth=%d%s)",
-                flow.getSourceSwitch(), flow.getDestinationSwitch(), flow.getBandwidth(),
-                flow.isIgnoreBandwidth() ? " ignored" : ""));
-
-        this.flow = flow;
+        this.flowId = flowId;
     }
 
-    public Flow getFlow() {
-        return flow;
+    public String getFlowId() {
+        return flowId;
     }
 }

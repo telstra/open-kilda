@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
+import com.google.common.collect.ImmutableList;
 import lombok.Value;
-import org.parboiled.common.ImmutableList;
 
 import java.io.Serializable;
 import java.util.List;

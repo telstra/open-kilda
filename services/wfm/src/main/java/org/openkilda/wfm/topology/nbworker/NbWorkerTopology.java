@@ -15,10 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker;
 
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.neo4j.Neo4jConfig;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
@@ -78,18 +76,16 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(NB_SPOUT_ID);
 
         Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        Auth pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
-                neo4jConfig.getLogin(), neo4jConfig.getPassword());
 
-        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(pathComputerAuth);
+        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(neo4jConfig);
         tb.setBolt(SWITCHES_BOLT_NAME, switchesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.SWITCH.toString());
 
-        LinkOperationsBolt linksBolt = new LinkOperationsBolt(pathComputerAuth);
+        LinkOperationsBolt linksBolt = new LinkOperationsBolt(neo4jConfig);
         tb.setBolt(LINKS_BOLT_NAME, linksBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ISL.toString());
 
-        FlowOperationsBolt flowsBolt = new FlowOperationsBolt(pathComputerAuth);
+        FlowOperationsBolt flowsBolt = new FlowOperationsBolt(neo4jConfig);
         tb.setBolt(FLOWS_BOLT_NAME, flowsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FLOW.toString());
 

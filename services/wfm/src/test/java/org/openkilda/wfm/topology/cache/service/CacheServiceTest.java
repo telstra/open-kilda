@@ -16,18 +16,18 @@
 package org.openkilda.wfm.topology.cache.service;
 
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.Isl;
+import org.openkilda.model.Switch;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
-import org.openkilda.pce.model.AvailableNetwork;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.TestSender;
 import org.openkilda.wfm.topology.cache.StreamType;
 
@@ -35,6 +35,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -51,41 +52,83 @@ public class CacheServiceTest {
 
     @Before
     public void init() {
-        cacheService = new CacheService(new NetworkCache(), new FlowCache(), new TestPathComputer());
+        cacheService = new CacheService(new NetworkCache(), new FlowCache(), new TestFlowRepository(),
+                new TestSwitchRepository(), new TestIslRepository());
         sender = new TestSender();
     }
 
-    private class TestPathComputer implements PathComputer {
-
+    private class TestFlowRepository implements FlowRepository {
         @Override
-        public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow,
-                                                                 AvailableNetwork network, Strategy strategy) {
-            return null;
-        }
-
-        @Override
-        public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
-            return null;
-        }
-
-        @Override
-        public List<Flow> getFlow(String flowId) {
-            return null;
-        }
-
-        @Override
-        public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth) {
-            return null;
-        }
-
-        @Override
-        public List<SwitchInfoData> getSwitches() {
+        public Iterable<org.openkilda.model.Flow> findById(String flowId) {
             return Collections.emptyList();
         }
 
         @Override
-        public List<IslInfoData> getIsls() {
+        public Collection<org.openkilda.model.Flow> findAll() {
             return Collections.emptyList();
+        }
+
+        @Override
+        public void createOrUpdate(org.openkilda.model.Flow entity) {
+        }
+
+        @Override
+        public void delete(org.openkilda.model.Flow entity) {
+        }
+    }
+
+    private class TestIslRepository implements IslRepository {
+        @Override
+        public Collection<Isl> findAllOrderedBySrcSwitch() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public Isl findByEndpoint(org.openkilda.model.SwitchId switchId, int port) {
+            return null;
+        }
+
+        @Override
+        public Iterable<Isl> findOccupiedByFlow(String flowId, boolean ignoreBandwidth, long requiredBandwidth) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public Iterable<Isl> findActiveWithAvailableBandwidth(boolean ignoreBandwidth, long requiredBandwidth) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public Collection<Isl> findAll() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public void createOrUpdate(Isl entity) {
+        }
+
+        @Override
+        public void delete(Isl entity) {
+        }
+    }
+
+    private class TestSwitchRepository implements SwitchRepository {
+        @Override
+        public Switch findBySwitchId(org.openkilda.model.SwitchId switchId) {
+            return null;
+        }
+
+        @Override
+        public Collection<Switch> findAll() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public void createOrUpdate(Switch entity) {
+        }
+
+        @Override
+        public void delete(Switch entity) {
         }
     }
 
