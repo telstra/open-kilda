@@ -33,9 +33,9 @@ public class FlowRepositoryImpl extends GenericRepository<Flow> implements FlowR
     @Override
     public Iterable<Flow> findById(String flowId) {
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("flow_id", flowId);
+        parameters.put("flowid", flowId);
 
-        return getSession().query(Flow.class, "MATCH (a)-[f:flow{flow_id: {flow_id}}]-(b) RETURN a,f,b", parameters);
+        return getSession().query(Flow.class, "MATCH (a)-[f:flow{flowid: {flowid}}]-(b) RETURN a,f,b", parameters);
     }
 
     @Override
