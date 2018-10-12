@@ -126,7 +126,7 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
         parameters.put("flow_id", flowId);
         parameters.put("cookie", cookie);
         return getSession().query(FlowSegment.class,
-                "MATCH ()-[fs:flow_segment{flow_id: {flow_id}, cookie: {cookie}]-() RETURN fs", parameters);
+                "MATCH ()-[fs:flow_segment{flowid: {flow_id}, cookie: {cookie}]-() RETURN fs", parameters);
     }
 
     @Override
@@ -134,7 +134,7 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
         String flowId = flow.getFlowId();
         long flowCookie = flow.getCookie();
         Map<String, Object> parameters = new HashMap<>();
-        Filter flowIdFilter = new Filter("flow_id", ComparisonOperator.EQUALS, flowId);
+        Filter flowIdFilter = new Filter("flowId", ComparisonOperator.EQUALS, flowId);
         Filter cookieFilter = new Filter("parent_cookie", ComparisonOperator.EQUALS, flowCookie);
         Filters filters = flowIdFilter.and(cookieFilter);
         Long count = (Long) getSession().delete(FlowSegment.class, filters, false);
@@ -153,7 +153,7 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
                 + " (dst:switch {name: $dst_switch}) "
                 + "ON CREATE SET dst.state='inactive' "
                 + "MERGE (src) - [fs:flow_segment {"
-                + " flow_id: $flowid, "
+                + " flowid: $flowid, "
                 + " parent_cookie: $parent_cookie "
                 + "}] -> (dst) "
                 + "SET "
