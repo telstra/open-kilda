@@ -32,10 +32,9 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     @Override
     public Iterable<Flow> findById(String flowId) {
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("flow_id", flowId);
+        parameters.put("flowid", flowId);
 
-        return getSession().query(Flow.class,
-                "MATCH (src:switch)-[f:flow{flowid: {flow_id}}]->(dst:switch) RETURN f, src, dst", parameters);
+        return getSession().query(Flow.class, "MATCH (a)-[f:flow{flowid: {flowid}}]-(b) RETURN a,f,b", parameters);
     }
 
     @Override
