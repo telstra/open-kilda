@@ -36,7 +36,8 @@ public class FlowSegmentRepositoryImpl extends GenericRepository<FlowSegment> im
         parameters.put("flow_id", flowId);
 
         return getSession().query(FlowSegment.class,
-                "MATCH ()-[fs:flow_segment{flow_id: {flow_id}}]-() RETURN fs", parameters);
+                "MATCH (src:switch)-[fs:flow_segment{flowid: {flow_id}}]->(dst:switch) RETURN fs, src, dst",
+                parameters);
     }
 
     @Override

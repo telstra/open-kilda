@@ -35,7 +35,8 @@ public class FlowRepositoryImpl extends GenericRepository<Flow> implements FlowR
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("flow_id", flowId);
 
-        return getSession().query(Flow.class, "MATCH ()-[f:flow{flow_id: {flow_id}}]-() RETURN f", parameters);
+        return getSession().query(Flow.class,
+                "MATCH (src:switch)-[f:flow{flowid: {flow_id}}]->(dst:switch) RETURN f, src, dst", parameters);
     }
 
     @Override
