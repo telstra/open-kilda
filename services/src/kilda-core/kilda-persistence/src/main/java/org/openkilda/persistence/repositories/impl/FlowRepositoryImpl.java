@@ -43,7 +43,7 @@ public class FlowRepositoryImpl extends GenericRepository<Flow> implements FlowR
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("src_switch", flow.getSrcSwitchId());
         parameters.put("dst_switch", flow.getDestSwitch());
-        parameters.put("flowId", flow.getFlowId());
+        parameters.put("flowid", flow.getFlowId());
         parameters.put("cookie", flow.getCookie());
         parameters.put("src_port", flow.getSrcPort());
         parameters.put("src_vlan", flow.getSrcVlan());
