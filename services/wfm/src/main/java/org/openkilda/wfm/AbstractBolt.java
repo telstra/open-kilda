@@ -18,19 +18,22 @@ package org.openkilda.wfm;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.Map;
 
-@Slf4j
 public abstract class AbstractBolt extends BaseRichBolt {
     public static final String FIELD_ID_CONTEXT = "context";
 
-    private OutputCollector output;
+    protected transient Logger log = makeLog();
+    private transient OutputCollector output;
 
     @Override
     public void execute(Tuple input) {
@@ -90,5 +93,15 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected OutputCollector getOutput() {
         return output;
+    }
+
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+
+        log = makeLog();
+    }
+
+    private Logger makeLog() {
+        return LoggerFactory.getLogger(getClass());
     }
 }

@@ -31,8 +31,6 @@ import org.apache.storm.tuple.Tuple;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
 import org.neo4j.driver.v1.Value;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -41,9 +39,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends NeoOperationsBolt {
-
-    private static final Logger logger = LoggerFactory.getLogger(LinkOperationsBolt.class);
-
     public LinkOperationsBolt(Auth neoAuth) {
         super(neoAuth);
     }
@@ -63,7 +58,7 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
     }
 
     private List<IslInfoData> getAllLinks(Session session) {
-        logger.debug("Processing get all links request");
+        log.debug("Processing get all links request");
         String q =
                 "MATCH (:switch)-[isl:isl]->(:switch) "
                         + "RETURN isl";
@@ -75,12 +70,12 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
                 .map(Value::asRelationship)
                 .map(LinksConverter::toIslInfoData)
                 .collect(Collectors.toList());
-        logger.debug("Found {} links in the database", results.size());
+        log.debug("Found {} links in the database", results.size());
         return results;
     }
 
     private List<LinkPropsData> getLinkProps(LinkPropsGet request, Session session) {
-        logger.debug("Processing get link props request");
+        log.debug("Processing get link props request");
         String q = "MATCH (props:link_props) "
                 + "WHERE ({src_switch} IS NULL OR props.src_switch={src_switch}) "
                 + "AND ({src_port} IS NULL OR props.src_port={src_port}) "
@@ -108,7 +103,7 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
                 .map(LinksConverter::toLinkPropsData)
                 .collect(Collectors.toList());
 
-        logger.debug("Found {} link props in the database", results.size());
+        log.debug("Found {} link props in the database", results.size());
         return results;
     }
 
@@ -116,10 +111,4 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("response", "correlationId"));
     }
-
-    @Override
-    Logger getLogger() {
-        return logger;
-    }
-
 }
