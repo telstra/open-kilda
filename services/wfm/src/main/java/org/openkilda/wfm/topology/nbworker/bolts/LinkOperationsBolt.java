@@ -64,6 +64,7 @@ public class LinkOperationsBolt extends NeoOperationsBolt {
                 .collect(Collectors.toList());
     }
 
+    // TODO: should be fixed in the scope of TE refactoring.
     private List<LinkPropsData> getLinkProps(LinkPropsGet request, IslRepository islRepository) {
         //        logger.debug("Processing get link props request");
         //        String q = "MATCH (props:link_props) "

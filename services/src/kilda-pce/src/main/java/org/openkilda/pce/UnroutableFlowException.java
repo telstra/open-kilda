@@ -15,6 +15,9 @@
 
 package org.openkilda.pce;
 
+/**
+ * Indicates that a path can't be found for a flow.
+ */
 public class UnroutableFlowException extends Exception {
     private final String flowId;
 

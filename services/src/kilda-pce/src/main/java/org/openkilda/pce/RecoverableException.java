@@ -15,6 +15,9 @@
 
 package org.openkilda.pce;
 
+/**
+ * Indicates an exception that may be overcome using the retry approach.
+ */
 public class RecoverableException extends Exception {
     public RecoverableException(String message) {
         super(message);
