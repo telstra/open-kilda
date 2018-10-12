@@ -38,7 +38,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -93,9 +92,6 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         final IOFSwitch sw = switchService.getSwitch(switchId);
         logger.info("ACTIVATING SWITCH: {}", switchId);
 
-        // Message message = buildExtendedSwitchMessage(sw, SwitchState.ACTIVATED,
-        // switchManager.dumpFlowTable(switchId));
-        // kafkaProducer.postMessage(topoDiscoTopic, message);
         ConnectModeRequest.Mode mode = switchManager.connectMode(null);
 
         try {
@@ -273,19 +269,6 @@ public class SwitchEventCollector implements IFloodlightModule, IOFSwitchListene
         InfoData data = new SwitchInfoData(new SwitchId(switchId.getLong()), eventType,
                 unknown, unknown, unknown, unknown);
         return buildMessage(data);
-    }
-
-    /**
-     * Builds a switch message type with flows.
-     *
-     * @param sw switch instance.
-     * @param eventType type of event.
-     * @param flowStats flows one the switch.
-     * @return Message
-     */
-    private Message buildExtendedSwitchMessage(final IOFSwitch sw, final SwitchState eventType,
-            OFFlowStatsReply flowStats) {
-        return buildMessage(IofSwitchConverter.buildSwitchInfoDataExtended(sw, eventType, flowStats));
     }
 
     /**
