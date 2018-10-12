@@ -40,7 +40,7 @@ setup left requirements inside virtualenv and assembled before wheel
  .. code :: bash
 
     pip install 'pyroute2>=0.4.21'
-    pip install dist/kilda_traffexam-0.1.dev0-py3-none-any.whl
+    pip install dist/kilda_traffexam-0.1.dev12-py3-none-any.whl
 
 Now traffexam can be started. It require 2 CLI argument - first target interface (this
 interface will be used to send/receive traffic by iperf). Second argument - address:port

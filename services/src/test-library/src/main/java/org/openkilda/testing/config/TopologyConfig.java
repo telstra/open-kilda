@@ -33,11 +33,17 @@ public class TopologyConfig {
     @Value("file:${topology.definition.file:topology.yaml}")
     private Resource topologyDefinitionFile;
 
+    @Value("${floodlight.controller.uri}")
+    private String controllerHost;
+
     @Bean
     public TopologyDefinition topologyDefinition() throws IOException {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
 
-        return mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
+        TopologyDefinition topologyDefinition =
+                mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
+        topologyDefinition.setController(controllerHost);
+        return topologyDefinition;
     }
 }

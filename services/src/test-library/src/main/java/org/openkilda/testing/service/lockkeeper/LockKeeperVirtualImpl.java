@@ -15,13 +15,9 @@
 
 package org.openkilda.testing.service.lockkeeper;
 
-import static org.openkilda.testing.Constants.ASWITCH_NAME;
-import static org.openkilda.testing.Constants.VIRTUAL_CONTROLLER_ADDRESS;
-
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
-import org.openkilda.testing.service.mininet.Mininet;
+import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
 
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient;
@@ -30,14 +26,22 @@ import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.Container;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Simulates the same functionality as {@link LockKeeperServiceImpl} but for virtual Mininet network.
+ * Simulates the same functionality as {@link LockKeeperServiceImpl} but for virtual network.
  */
 @Service
 @Profile("virtual")
@@ -45,10 +49,15 @@ import java.util.stream.Collectors;
 public class LockKeeperVirtualImpl implements LockKeeperService {
     private static final String FL_CONTAINER_NAME = "/floodlight";
 
+    @SuppressWarnings("squid:S1075")
+    private static final String FLOWS_PATH = "/flows";
+
     @Autowired
-    private Mininet mininet;
-    @Autowired
-    private TopologyDefinition topology;
+    @Qualifier("lockKeeperRestTemplate")
+    private RestTemplate restTemplate;
+
+    @Value("${floodlight.controller.uri}")
+    private String controllerHost;
 
     private DockerClient dockerClient;
     private Container floodlight;
@@ -61,7 +70,8 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
 
     @Override
     public void addFlows(List<ASwitchFlow> flows) {
-        flows.forEach(flow -> mininet.addFlow(ASWITCH_NAME, flow.getInPort(), flow.getOutPort()));
+        restTemplate.exchange(FLOWS_PATH, HttpMethod.POST,
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Added flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(Collectors.toList()));
@@ -69,7 +79,8 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
 
     @Override
     public void removeFlows(List<ASwitchFlow> flows) {
-        flows.forEach(flow -> mininet.removeFlow(ASWITCH_NAME, flow.getInPort()));
+        restTemplate.exchange(FLOWS_PATH, HttpMethod.DELETE,
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Removed flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(Collectors.toList()));
@@ -77,30 +88,38 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
 
     @Override
     public List<ASwitchFlow> getAllFlows() {
-        throw new UnsupportedOperationException("getAllFlows operation for a-switch is not available on virtual env");
+        ASwitchFlow[] flows = restTemplate.exchange(FLOWS_PATH, HttpMethod.GET,
+                new HttpEntity(buildJsonHeaders()), ASwitchFlow[].class).getBody();
+        return Arrays.asList(flows);
     }
 
     @Override
     public void portsUp(List<Integer> ports) {
-        ports.forEach(port -> mininet.portUp(ASWITCH_NAME, port));
+        restTemplate.exchange("/ports", HttpMethod.POST,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
+        log.debug("Brought up ports: {}", ports);
     }
 
     @Override
     public void portsDown(List<Integer> ports) {
-        ports.forEach(port -> mininet.portDown(ASWITCH_NAME, port));
+        restTemplate.exchange("/ports", HttpMethod.DELETE,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
+        log.debug("Brought down ports: {}", ports);
     }
 
     @Override
-    public void knockoutSwitch(SwitchId switchId) {
-        mininet.knockoutSwitch(topology.getSwitches().stream()
-                .filter(sw -> sw.getDpId().equals(switchId)).findFirst().get().getName());
+    public void knockoutSwitch(Switch switchDef) {
+        restTemplate.exchange("/knockoutswitch", HttpMethod.POST,
+                new HttpEntity<>(new SwitchModify(switchDef.getName(), null), buildJsonHeaders()), String.class);
+        log.debug("Knocking out switch: {}", switchDef.getName());
     }
 
     @Override
-    public void reviveSwitch(SwitchId switchId) {
-        String switchName = topology.getSwitches().stream()
-                .filter(sw -> sw.getDpId().equals(switchId)).findFirst().get().getName();
-        mininet.revive(switchName, VIRTUAL_CONTROLLER_ADDRESS);
+    public void reviveSwitch(Switch switchDef) {
+        restTemplate.exchange("/reviveswitch", HttpMethod.POST,
+                new HttpEntity<>(new SwitchModify(switchDef.getName(), controllerHost),
+                        buildJsonHeaders()), String.class);
+        log.debug("Revive switch: {}", switchDef.getName());
     }
 
     @Override
@@ -128,5 +147,11 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
         } catch (DockerException | InterruptedException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private HttpHeaders buildJsonHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+        return headers;
     }
 }

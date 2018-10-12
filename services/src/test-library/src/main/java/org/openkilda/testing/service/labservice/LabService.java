@@ -13,16 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing;
+package org.openkilda.testing.service.labservice;
 
-public final class Constants {
-    public static final String ASWITCH_NAME = "aswitch";
-    public static final Integer DEFAULT_COST = 700;
-    public static final Integer WAIT_OFFSET = 5;
-    public static final Integer TOPOLOGY_DISCOVERING_TIME = 120;
-    public static final Integer SWITCHES_ACTIVATION_TIME = 5;
+import org.openkilda.testing.service.labservice.model.LabInstance;
 
-    private Constants() {
-        throw new UnsupportedOperationException();
-    }
+public interface LabService {
+
+    LabInstance getLab();
 }

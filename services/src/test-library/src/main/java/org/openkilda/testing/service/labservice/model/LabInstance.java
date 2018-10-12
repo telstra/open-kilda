@@ -13,16 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing;
+package org.openkilda.testing.service.labservice.model;
 
-public final class Constants {
-    public static final String ASWITCH_NAME = "aswitch";
-    public static final Integer DEFAULT_COST = 700;
-    public static final Integer WAIT_OFFSET = 5;
-    public static final Integer TOPOLOGY_DISCOVERING_TIME = 120;
-    public static final Integer SWITCHES_ACTIVATION_TIME = 5;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
 
-    private Constants() {
-        throw new UnsupportedOperationException();
+@Getter
+public class LabInstance {
+
+    Long labId;
+
+    @JsonCreator
+    public LabInstance(@JsonProperty("lab_id") Long labId) {
+        this.labId = labId;
     }
 }

@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.config;
 
+import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -66,8 +67,10 @@ public class DefaultServiceConfig {
     }
 
     @Bean(name = "lockKeeperRestTemplate")
-    public RestTemplate lockKeeperRestTemplate(@Value("${lockkeeper.endpoint}") String endpoint) {
-        return buildLoggingRestTemplate(endpoint);
+    public RestTemplate lockKeeperRestTemplate(
+            @Value("${lab-api.endpoint}") String baseEndpoint,
+            LabService labService) {
+        return buildLoggingRestTemplate(baseEndpoint + "/api/" + labService.getLab().getLabId() + "/lock-keeper");
     }
 
     @Bean(name = "mininetRestTemplate")
@@ -82,6 +85,11 @@ public class DefaultServiceConfig {
 
     @Bean(name = "otsdbRestTemplate")
     public RestTemplate otsdbRestTemplate(@Value("${otsdb.endpoint}") String endpoint) {
+        return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean(name = "labApiRestTemplate")
+    public RestTemplate labApiRestTemplate(@Value("${lab-api.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 

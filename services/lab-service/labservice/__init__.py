@@ -1,5 +1,4 @@
-#!/bin/bash
-# Copyright 2017 Telstra Open Source
+# Copyright 2018 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,8 +13,4 @@
 #   limitations under the License.
 #
 
-mvn package -DskipTests=true
-java -Dlogback.configurationFile=src/main/resources/logback.xml \
-    -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5055 \
-    -cp run-deps/floodlight.jar:target/floodlight-modules.jar net.floodlightcontroller.core.Main \
-    -cf src/main/resources/floodlightkilda.properties
+__import__('pkg_resources').declare_namespace(__name__)

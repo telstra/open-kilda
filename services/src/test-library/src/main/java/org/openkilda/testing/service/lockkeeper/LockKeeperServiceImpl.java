@@ -15,7 +15,7 @@
 
 package org.openkilda.testing.service.lockkeeper;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 
 import org.slf4j.Logger;
@@ -90,13 +90,13 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     }
 
     @Override
-    public void knockoutSwitch(SwitchId switchId) {
+    public void knockoutSwitch(Switch switchDef) {
         throw new UnsupportedOperationException(
                 "knockoutSwitch operation for a-switch is not available on hardware env");
     }
 
     @Override
-    public void reviveSwitch(SwitchId switchId) {
+    public void reviveSwitch(Switch switchDef) {
         throw new UnsupportedOperationException(
                 "reviveSwitch operation for a-switch is not available on hardware env");
     }
