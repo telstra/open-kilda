@@ -71,6 +71,10 @@ public interface FlowMapper {
      * Convert {@link org.openkilda.model.FlowStatus} to {@link FlowState}.
      */
     default FlowState map(org.openkilda.model.FlowStatus status) {
+        if (status == null) {
+            return null;
+        }
+
         switch (status) {
             default:
             case IN_PROGRESS:

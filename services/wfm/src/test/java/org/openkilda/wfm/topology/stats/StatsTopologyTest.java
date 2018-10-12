@@ -210,7 +210,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         flow.setIgnoreBandwidth(true);
         flow.setDescription("description");
         flow.setLastUpdated("last_updated");
-        flow.setFlowPath(new Path(0, Collections.emptyList()));
+        flow.setFlowPath(new Path(0, Collections.emptyList(), null));
 
         txManager.getSession().save(flow);
 

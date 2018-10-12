@@ -138,8 +138,8 @@ public class PathComputerImpl implements PathComputer {
         }
 
         return PathPair.builder()
-                .forward(new Path(latency, forwardNodes))
-                .reverse(new Path(latency, reverseNodes))
+                .forward(new Path(latency, forwardNodes, null))
+                .reverse(new Path(latency, reverseNodes, null))
                 .build();
     }
 
