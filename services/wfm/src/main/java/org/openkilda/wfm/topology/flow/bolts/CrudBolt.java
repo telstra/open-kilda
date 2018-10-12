@@ -709,7 +709,7 @@ public class CrudBolt
 
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.ALREADY_EXISTS, errorType, e.getMessage());
+                    e.getType(), errorType, e.getMessage());
         } catch (SwitchValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.DATA_INVALID, errorType, e.getMessage());
