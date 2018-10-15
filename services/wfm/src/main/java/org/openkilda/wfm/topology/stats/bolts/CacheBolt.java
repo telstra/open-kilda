@@ -25,11 +25,9 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
@@ -66,7 +64,7 @@ public class CacheBolt extends BaseRichBolt {
     /**
      * Path computation instance.
      */
-    private final Neo4jConfig neo4jConfig;
+    private final PersistenceManager persistenceManager;
 
     private TopologyContext context;
     private OutputCollector outputCollector;
@@ -76,8 +74,8 @@ public class CacheBolt extends BaseRichBolt {
      */
     private Map<Long, CacheFlowEntry> cookieToFlow = new HashMap<>();
 
-    public CacheBolt(Neo4jConfig neo4jConfig) {
-        this.neo4jConfig = neo4jConfig;
+    public CacheBolt(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
     }
 
     private void initFlowCache(FlowRepository flowRepository) {
@@ -103,10 +101,9 @@ public class CacheBolt extends BaseRichBolt {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
 
-        Neo4jTransactionManager transactionManager = new Neo4jTransactionManager(neo4jConfig);
-        RepositoryFactory repositoryFactory = new RepositoryFactoryImpl(transactionManager);
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
-        initFlowCache(repositoryFactory.getFlowRepository());
+        initFlowCache(repositoryFactory.createFlowRepository());
     }
 
     /**

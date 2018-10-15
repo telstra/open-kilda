@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
@@ -35,7 +36,6 @@ import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Tuple;
-import org.neo4j.driver.v1.exceptions.ServiceUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,7 +87,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
                 }
             }
             collector.ack(input);
-        } catch (ServiceUnavailableException e) {
+        } catch (PersistenceException e) {
             LOGGER.error("Error process: {}", input.toString(), e);
             collector.ack(input); // If we can't connect to Neo then don't know if valid input,
             // but if NEO is down puts a loop to kafka, so fail the request.

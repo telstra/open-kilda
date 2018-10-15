@@ -38,10 +38,8 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.cache.Cache;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
 import org.openkilda.wfm.Sender;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
@@ -94,13 +92,13 @@ public class CacheBolt
 
     private CacheService cacheService;
 
-    private final Neo4jConfig neo4jConfig;
+    private final PersistenceManager persistenceManager;
 
     private TopologyContext context;
     private OutputCollector outputCollector;
 
-    CacheBolt(Neo4jConfig neo4jConfig) {
-        this.neo4jConfig = neo4jConfig;
+    CacheBolt(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
     }
 
     /**
@@ -121,10 +119,9 @@ public class CacheBolt
             state.put(FLOW_CACHE, flowCache);
         }
 
-        Neo4jTransactionManager transactionManager = new Neo4jTransactionManager(neo4jConfig);
-        RepositoryFactory repositoryFactory = new RepositoryFactoryImpl(transactionManager);
-        cacheService = new CacheService(networkCache, flowCache, repositoryFactory.getFlowRepository(),
-                repositoryFactory.getSwitchRepository(), repositoryFactory.getIslRepository());
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        cacheService = new CacheService(networkCache, flowCache, repositoryFactory.createFlowRepository(),
+                repositoryFactory.createSwitchRepository(), repositoryFactory.createIslRepository());
     }
 
     /**

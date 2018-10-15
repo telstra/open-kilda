@@ -19,7 +19,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
@@ -33,19 +33,19 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SwitchOperationsBolt extends NeoOperationsBolt {
+public class SwitchOperationsBolt extends PersistenceOperationsBolt {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SwitchOperationsBolt.class);
 
-    public SwitchOperationsBolt(Neo4jConfig neo4jConfig) {
-        super(neo4jConfig);
+    public SwitchOperationsBolt(PersistenceManager persistenceManager) {
+        super(persistenceManager);
     }
 
     @Override
     List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, RepositoryFactory repositoryFactory) {
         List<? extends InfoData> result = null;
         if (request instanceof GetSwitchesRequest) {
-            result = getSwitches(repositoryFactory.getSwitchRepository());
+            result = getSwitches(repositoryFactory.createSwitchRepository());
         } else {
             unhandledInput(tuple);
         }

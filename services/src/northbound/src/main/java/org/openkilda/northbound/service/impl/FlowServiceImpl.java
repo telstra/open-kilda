@@ -18,6 +18,7 @@ package org.openkilda.northbound.service.impl;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
+import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -64,10 +65,10 @@ import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.northbound.utils.ResponseCollector;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.impl.FlowRepositoryImpl;
+import org.openkilda.persistence.spi.PersistenceProvider;
 
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
@@ -178,28 +179,40 @@ public class FlowServiceImpl implements FlowService {
 
     @PostConstruct
     void init() {
-        Neo4jTransactionManager txManager = new Neo4jTransactionManager(new Neo4jConfig() {
-            @Override
-            public String getUri() {
-                return neoUri;
-            }
+        PersistenceManager persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(
+                new ConfigurationProvider() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public <T> T getConfiguration(Class<T> configurationType) {
+                        if (configurationType.equals(Neo4jConfig.class)) {
+                            return (T) new Neo4jConfig() {
+                                @Override
+                                public String getUri() {
+                                    return neoUri;
+                                }
 
-            @Override
-            public String getLogin() {
-                return neoUser;
-            }
+                                @Override
+                                public String getLogin() {
+                                    return neoUser;
+                                }
 
-            @Override
-            public String getPassword() {
-                return neoPswd;
-            }
+                                @Override
+                                public String getPassword() {
+                                    return neoPswd;
+                                }
 
-            @Override
-            public int getConnectionPoolSize() {
-                return 50;
-            }
-        });
-        flowRepository = new FlowRepositoryImpl(txManager);
+                                @Override
+                                public int getConnectionPoolSize() {
+                                    return 50;
+                                }
+                            };
+                        } else {
+                            throw new UnsupportedOperationException("Unsupported configurationType "
+                                    + configurationType);
+                        }
+                    }
+                });
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
     }
 
     /**
@@ -626,7 +639,7 @@ public class FlowServiceImpl implements FlowService {
         /**
          * Finds discrepancy between list of expected and actual rules.
          *
-         * @param pktCounts  If we find the rule, add its pktCounts. Otherwise, add -1.
+         * @param pktCounts If we find the rule, add its pktCounts. Otherwise, add -1.
          * @param byteCounts If we find the rule, add its pktCounts. Otherwise, add -1.
          */
         static List<PathDiscrepancyDto> findDiscrepancy(

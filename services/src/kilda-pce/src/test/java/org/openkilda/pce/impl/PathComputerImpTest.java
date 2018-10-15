@@ -15,6 +15,7 @@
 
 package org.openkilda.pce.impl;
 
+import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Isl;
@@ -28,11 +29,15 @@ import org.openkilda.pce.PathComputer.Strategy;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.UnroutableFlowException;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.repositories.impl.IslRepositoryImpl;
-import org.openkilda.persistence.repositories.impl.SwitchRepositoryImpl;
+import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
+import org.openkilda.persistence.spi.PersistenceProvider;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -52,7 +57,10 @@ import java.util.List;
 public class PathComputerImpTest {
 
     static TestServer testServer;
-    static Neo4jTransactionManager txManager;
+    static TransactionManager txManager;
+    static SwitchRepository switchRepository;
+    static IslRepository islRepository;
+    static FlowSegmentRepository flowSegmentRepository;
     static PathComputerImpl pathComputer;
 
     @Rule
@@ -62,28 +70,46 @@ public class PathComputerImpTest {
     public static void setUpOnce() {
         testServer = new TestServer(true, true, 5);
 
-        txManager = new Neo4jTransactionManager(new Neo4jConfig() {
-            @Override
-            public String getUri() {
-                return testServer.getUri();
-            }
+        PersistenceManager persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(
+                new ConfigurationProvider() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public <T> T getConfiguration(Class<T> configurationType) {
+                        if (configurationType.equals(Neo4jConfig.class)) {
+                            return (T) new Neo4jConfig() {
+                                @Override
+                                public String getUri() {
+                                    return testServer.getUri();
+                                }
 
-            @Override
-            public String getLogin() {
-                return testServer.getUsername();
-            }
+                                @Override
+                                public String getLogin() {
+                                    return testServer.getUsername();
+                                }
 
-            @Override
-            public String getPassword() {
-                return testServer.getPassword();
-            }
+                                @Override
+                                public String getPassword() {
+                                    return testServer.getPassword();
+                                }
 
-            @Override
-            public int getConnectionPoolSize() {
-                return 50;
-            }
-        });
-        pathComputer = new PathComputerImpl(new IslRepositoryImpl(txManager));
+                                @Override
+                                public int getConnectionPoolSize() {
+                                    return 50;
+                                }
+                            };
+                        } else {
+                            throw new UnsupportedOperationException("Unsupported configurationType "
+                                    + configurationType);
+                        }
+                    }
+                });
+
+        txManager = persistenceManager.getTransactionManager();
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        switchRepository = repositoryFactory.createSwitchRepository();
+        islRepository = repositoryFactory.createIslRepository();
+        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        pathComputer = new PathComputerImpl(islRepository);
     }
 
     @AfterClass
@@ -93,7 +119,7 @@ public class PathComputerImpTest {
 
     @After
     public void cleanUp() {
-        txManager.getSession().purgeDatabase();
+        ((Neo4jSessionFactory) txManager).getSession().purgeDatabase();
     }
 
     private Switch createSwitch(String name) {
@@ -101,7 +127,7 @@ public class PathComputerImpTest {
         sw.setSwitchId(new SwitchId(name));
         sw.setStatus(SwitchStatus.ACTIVE);
 
-        txManager.getSession().save(sw);
+        switchRepository.createOrUpdate(sw);
         return sw;
     }
 
@@ -120,7 +146,7 @@ public class PathComputerImpTest {
         isl.setSrcPort(port);
         isl.setDestPort(port);
 
-        txManager.getSession().save(isl);
+        islRepository.createOrUpdate(isl);
         return isl;
     }
 
@@ -184,7 +210,6 @@ public class PathComputerImpTest {
         txManager.begin();
         // A - B - D
         //   + C +
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch nodeA = switchRepository.findBySwitchId(switchA);
         Switch nodeB = switchRepository.findBySwitchId(switchB);
         createIsl(nodeA, nodeB, status, status, cost, 1000, port);
@@ -225,7 +250,6 @@ public class PathComputerImpTest {
          */
         createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("00:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("00:04"));
 
@@ -248,7 +272,6 @@ public class PathComputerImpTest {
          */
         createDiamondAsString(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "FF:", 1);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("FF:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("FF:04"));
 
@@ -271,7 +294,6 @@ public class PathComputerImpTest {
          */
         createDiamond(IslStatus.INACTIVE, IslStatus.ACTIVE, 10, 20, "01:", 1);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("01:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("01:04"));
 
@@ -295,7 +317,6 @@ public class PathComputerImpTest {
          */
         createTriangleTopo(IslStatus.INACTIVE, 5, 20, "02:", 1);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("02:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("02:02"));
 
@@ -319,7 +340,6 @@ public class PathComputerImpTest {
          */
         createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, -1, 2000, "03:", 1);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("03:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("03:04"));
 
@@ -343,7 +363,6 @@ public class PathComputerImpTest {
          */
         createDiamond(IslStatus.INACTIVE, IslStatus.INACTIVE, 10, 30, "04:", 1);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("04:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("04:04"));
 
@@ -365,7 +384,6 @@ public class PathComputerImpTest {
     public void getPathTest_InitState() throws RecoverableException, UnroutableFlowException {
         createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "05:", 1);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch1 = switchRepository.findBySwitchId(new SwitchId("05:01"));
         Switch destSwitch1 = switchRepository.findBySwitchId(new SwitchId("05:03"));
 
@@ -408,7 +426,6 @@ public class PathComputerImpTest {
         createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "06:", 1);
         createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "07:", 1);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch1 = switchRepository.findBySwitchId(new SwitchId("06:01"));
         Switch destSwitch1 = switchRepository.findBySwitchId(new SwitchId("06:03"));
 
@@ -473,7 +490,6 @@ public class PathComputerImpTest {
         connectDiamonds(new SwitchId("12:99"), new SwitchId("13:22"), IslStatus.ACTIVE, 20, 50);
         connectDiamonds(new SwitchId("13:99"), new SwitchId("10:22"), IslStatus.ACTIVE, 20, 50);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch1 = switchRepository.findBySwitchId(new SwitchId("10:01"));
         Switch destSwitch1 = switchRepository.findBySwitchId(new SwitchId("11:03"));
 
@@ -519,7 +535,6 @@ public class PathComputerImpTest {
     public void verifyConversionToPair() throws UnroutableFlowException, RecoverableException {
         createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "09:", 1);
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("09:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("09:04"));
 
@@ -552,7 +567,6 @@ public class PathComputerImpTest {
         createLinearTopoWithFlowSegments(10, "A1:", 1, 0L,
                 flow.getFlowId(), flow.getBandwidth());
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("A1:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("A1:03"));
 
@@ -582,7 +596,6 @@ public class PathComputerImpTest {
         createLinearTopoWithFlowSegments(10, "A1:", 1, 0,
                 flow.getFlowId(), flow.getBandwidth());
 
-        SwitchRepository switchRepository = new SwitchRepositoryImpl(txManager);
         Switch srcSwitch = switchRepository.findBySwitchId(new SwitchId("A1:01"));
         Switch destSwitch = switchRepository.findBySwitchId(new SwitchId("A1:03"));
 
@@ -624,7 +637,6 @@ public class PathComputerImpTest {
         fs.setDestSwitch(dst);
         fs.setDestPort(dstPort);
         fs.setBandwidth(flowBandwidth);
-        txManager.getSession().save(fs);
+        flowSegmentRepository.createOrUpdate(fs);
     }
-
 }

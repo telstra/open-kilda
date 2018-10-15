@@ -64,10 +64,8 @@ import org.openkilda.pce.UnroutableFlowException;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.impl.PathComputerImpl;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.share.mappers.FlowMapper;
@@ -125,7 +123,7 @@ public class CrudBolt
      */
     private static final String FLOW_CACHE = "flow";
 
-    private final Neo4jConfig neo4jConfig;
+    private final PersistenceManager persistenceManager;
 
     private RepositoryFactory repositoryFactory;
 
@@ -149,8 +147,8 @@ public class CrudBolt
 
     private FlowValidator flowValidator;
 
-    public CrudBolt(Neo4jConfig neo4jConfig) {
-        this.neo4jConfig = neo4jConfig;
+    public CrudBolt(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
     }
 
     /**
@@ -169,7 +167,7 @@ public class CrudBolt
         }
         initFlowCache();
 
-        flowValidator = new FlowValidator(flowCache, repositoryFactory.getSwitchRepository());
+        flowValidator = new FlowValidator(flowCache, repositoryFactory.createSwitchRepository());
     }
 
     /**
@@ -196,10 +194,9 @@ public class CrudBolt
         this.context = topologyContext;
         this.outputCollector = outputCollector;
 
-        Neo4jTransactionManager transactionManager = new Neo4jTransactionManager(neo4jConfig);
-        repositoryFactory = new RepositoryFactoryImpl(transactionManager);
+        repositoryFactory = persistenceManager.getRepositoryFactory();
 
-        pathComputer = new PathComputerImpl(repositoryFactory.getIslRepository());
+        pathComputer = new PathComputerImpl(repositoryFactory.createIslRepository());
     }
 
     /**
@@ -366,7 +363,7 @@ public class CrudBolt
         List<String> modifiedFlowIds = new ArrayList<>();
         List<String> unchangedFlows = new ArrayList<>();
 
-        Collection<org.openkilda.model.Flow> flowInfos = repositoryFactory.getFlowRepository().findAll();
+        Collection<org.openkilda.model.Flow> flowInfos = repositoryFactory.createFlowRepository().findAll();
 
         // Instead of determining left/right .. store based on flowid_& cookie
         HashMap<String, org.openkilda.model.Flow> flowToInfo = new HashMap<>();
@@ -452,7 +449,7 @@ public class CrudBolt
      * Synchronize the cache, propagate updates further (i.e. emit FlowOperation.CACHE)
      */
     private void synchronizeCache(List<String> addedFlowIds, List<String> modifiedFlowIds, List<String> droppedFlowIds,
-            Tuple tuple, String correlationId) {
+                                  Tuple tuple, String correlationId) {
         logger.info("Synchronizing the flow cache data: {} dropped, {} added, {} modified.",
                 droppedFlowIds.size(), addedFlowIds.size(), modifiedFlowIds.size());
 
@@ -460,7 +457,7 @@ public class CrudBolt
 
         // override added/modified flows in the cache
         Stream.concat(addedFlowIds.stream(), modifiedFlowIds.stream())
-                .map(repositoryFactory.getFlowRepository()::findById)
+                .map(repositoryFactory.createFlowRepository()::findById)
                 .map(flows -> {
                     FlowCollector flowPair = new FlowCollector();
                     flows.forEach(flow -> flowPair.add(FlowMapper.INSTANCE.map(flow)));
@@ -484,7 +481,7 @@ public class CrudBolt
      * Purge and re-initialize the cache, propagate updates further (i.e. emit FlowOperation.CACHE)
      */
     private void invalidateCache(List<String> addedFlowIds, List<String> modifiedFlowIds, List<String> droppedFlowIds,
-            Tuple tuple, String correlationId) {
+                                 Tuple tuple, String correlationId) {
         logger.info("Invalidating the flow cache data: {} dropped, {} added, {} modified.",
                 droppedFlowIds.size(), addedFlowIds.size(), modifiedFlowIds.size());
 
@@ -516,7 +513,7 @@ public class CrudBolt
     }
 
     private void emitCacheSyncInfoMessage(String flowId, @Nullable FlowPair<Flow, Flow> flow,
-            Tuple tuple, String correlationId) {
+                                          Tuple tuple, String correlationId) {
         String subCorrelationId = format("%s-%s", correlationId, flowId);
         FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.CACHE, subCorrelationId);
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), subCorrelationId);
@@ -592,7 +589,6 @@ public class CrudBolt
             flowValidator.validate(requestedFlow);
 
 
-
             pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(requestedFlow), Strategy.COST);
             logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), pathPair,
                     message.getCorrelationId());
@@ -650,8 +646,8 @@ public class CrudBolt
 
                     boolean isFoundNewPath = (
                             !pathInfoPair.getLeft().equals(flow.getLeft().getFlowPath())
-                                       || !pathInfoPair.getRight().equals(flow.getRight().getFlowPath())
-                                       || !isFlowActive(flow));
+                                    || !pathInfoPair.getRight().equals(flow.getRight().getFlowPath())
+                                    || !isFlowActive(flow));
                     //no need to emit changes if path wasn't changed and flow is active.
                     //force means to update flow even if path is not changed.
                     if (isFoundNewPath || request.isForce()) {
@@ -786,10 +782,9 @@ public class CrudBolt
     }
 
     /**
-     * This method changes the state of the Flow. It sets the state of both left and right to the
-     * same state.
-     * It is currently called from 2 places - a failed update (set flow to DOWN), and a STATUS
-     * update from the TransactionBolt.
+     * This method changes the state of the Flow. It sets the state of both left and right to the same state. It is
+     * currently called from 2 places - a failed update (set flow to DOWN), and a STATUS update from the
+     * TransactionBolt.
      */
     private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId)
             throws IOException {
@@ -865,7 +860,7 @@ public class CrudBolt
     }
 
     private void initFlowCache() {
-        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(repositoryFactory.getFlowRepository());
+        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(repositoryFactory.createFlowRepository());
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
             FlowPair<Flow, Flow> flowPair = new FlowPair<>(

@@ -21,7 +21,7 @@ import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.mappers.IslMapper;
@@ -36,21 +36,21 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class LinkOperationsBolt extends NeoOperationsBolt {
+public class LinkOperationsBolt extends PersistenceOperationsBolt {
 
     private static final Logger logger = LoggerFactory.getLogger(LinkOperationsBolt.class);
 
-    public LinkOperationsBolt(Neo4jConfig neo4jConfig) {
-        super(neo4jConfig);
+    public LinkOperationsBolt(PersistenceManager persistenceManager) {
+        super(persistenceManager);
     }
 
     @Override
     List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, RepositoryFactory repositoryFactory) {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
-            result = getAllLinks(repositoryFactory.getIslRepository());
+            result = getAllLinks(repositoryFactory.createIslRepository());
         } else if (request instanceof LinkPropsGet) {
-            result = getLinkProps((LinkPropsGet) request, repositoryFactory.getIslRepository());
+            result = getLinkProps((LinkPropsGet) request, repositoryFactory.createIslRepository());
         } else {
             unhandledInput(tuple);
         }

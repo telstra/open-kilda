@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.topology.cache.transport;
 
-import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.NameCollisionException;
@@ -77,8 +78,10 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
         /*
          * Stores network cache.
          */
-        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        CacheBolt cacheBolt = new CacheBolt(neo4jConfig);
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+
+        CacheBolt cacheBolt = new CacheBolt(persistenceManager);
         //ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
         BoltDeclarer boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
                 .shuffleGrouping(SPOUT_ID_COMMON);

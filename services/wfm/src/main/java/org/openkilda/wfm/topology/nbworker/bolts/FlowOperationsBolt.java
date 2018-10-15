@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -28,12 +28,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public class FlowOperationsBolt extends NeoOperationsBolt {
+public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowOperationsBolt.class);
 
-    public FlowOperationsBolt(Neo4jConfig neo4jConfig) {
-        super(neo4jConfig);
+    public FlowOperationsBolt(PersistenceManager persistenceManager) {
+        super(persistenceManager);
     }
 
     @Override

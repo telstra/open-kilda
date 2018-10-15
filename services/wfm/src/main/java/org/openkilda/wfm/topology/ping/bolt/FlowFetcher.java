@@ -19,11 +19,8 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
@@ -59,12 +56,12 @@ public class FlowFetcher extends Abstract {
             FIELD_ID_ON_DEMAND_RESPONSE, FIELD_ID_CONTEXT);
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
 
-    private final Neo4jConfig neo4jConfig;
+    private final PersistenceManager persistenceManager;
     private FlowRepository flowRepository;
     private FlowsHeap flowsHeap;
 
-    public FlowFetcher(Neo4jConfig neo4jConfig) {
-        this.neo4jConfig = neo4jConfig;
+    public FlowFetcher(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
     }
 
     @Override
@@ -157,9 +154,7 @@ public class FlowFetcher extends Abstract {
 
     @Override
     public void init() {
-        Neo4jTransactionManager transactionManager = new Neo4jTransactionManager(neo4jConfig);
-        RepositoryFactory repositoryFactory = new RepositoryFactoryImpl(transactionManager);
-        flowRepository = repositoryFactory.getFlowRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowsHeap = new FlowsHeap();
     }
 }

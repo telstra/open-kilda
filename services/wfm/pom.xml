@@ -58,8 +58,14 @@
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
-            <artifactId>kilda-persistence</artifactId>
+            <artifactId>kilda-persistence-api</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-persistence-neo4j</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>

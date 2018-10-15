@@ -17,10 +17,8 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
 import org.openkilda.wfm.AbstractBolt;
 
 import org.apache.storm.task.OutputCollector;
@@ -32,20 +30,18 @@ import org.slf4j.Logger;
 import java.util.List;
 import java.util.Map;
 
-public abstract class NeoOperationsBolt extends AbstractBolt {
+public abstract class PersistenceOperationsBolt extends AbstractBolt {
 
-    private final Neo4jConfig neo4jConfig;
-    protected Neo4jTransactionManager transactionManager;
+    private final PersistenceManager persistenceManager;
     private RepositoryFactory repositoryFactory;
 
-    NeoOperationsBolt(Neo4jConfig neo4jConfig) {
-        this.neo4jConfig = neo4jConfig;
+    PersistenceOperationsBolt(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        transactionManager = new Neo4jTransactionManager(neo4jConfig);
-        repositoryFactory = new RepositoryFactoryImpl(transactionManager);
+        repositoryFactory = persistenceManager.getRepositoryFactory();
 
         super.prepare(stormConf, context, collector);
     }

@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.topology.ping;
 
-import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.ping.bolt.Blacklist;
@@ -123,9 +124,10 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void flowFetcher(TopologyBuilder topology) {
-        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
 
-        FlowFetcher bolt = new FlowFetcher(neo4jConfig);
+        FlowFetcher bolt = new FlowFetcher(persistenceManager);
         topology.setBolt(FlowFetcher.BOLT_ID, bolt, scaleFactor)
                 .globalGrouping(TickDeduplicator.BOLT_ID, TickDeduplicator.STREAM_PING_ID)
                 .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_REQUEST_ID);

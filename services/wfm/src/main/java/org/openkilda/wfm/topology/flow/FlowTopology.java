@@ -16,7 +16,8 @@
 package org.openkilda.wfm.topology.flow;
 
 import org.openkilda.messaging.Utils;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.NameCollisionException;
@@ -104,8 +105,9 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          * Bolt handles flow CRUD operations.
          * It groups requests by flow-id.
          */
-        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        CrudBolt crudBolt = new CrudBolt(neo4jConfig);
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        CrudBolt crudBolt = new CrudBolt(persistenceManager);
         //ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
 
         BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)

@@ -23,7 +23,8 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FI
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
-import org.openkilda.persistence.neo4j.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
@@ -89,8 +90,9 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(STATS_KILDA_SPEAKER_SPOUT.name());
 
         // Cache bolt get data from NEO4J on start
-        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(neo4jConfig), parallelism)
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(persistenceManager), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 

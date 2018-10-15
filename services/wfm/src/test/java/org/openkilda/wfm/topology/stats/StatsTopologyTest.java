@@ -41,8 +41,9 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Path;
 import org.openkilda.model.Switch;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.StableAbstractStormTest;
 import org.openkilda.wfm.config.provider.ConfigurationProvider;
@@ -83,7 +84,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     private static TestServer testServer;
 
     private static LaunchEnvironment launchEnvironment;
-    private static Neo4jConfig neo4jConfig;
+    private static PersistenceManager persistenceManager;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
@@ -98,7 +99,8 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         launchEnvironment.setupOverlay(configOverlay);
 
         ConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
-        neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
+        persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
     }
 
 
@@ -191,7 +193,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         //mock kafka spout
         MockedSources sources = new MockedSources();
 
-        Neo4jTransactionManager txManager = new Neo4jTransactionManager(neo4jConfig);
+        FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
 
         Switch sw = new Switch();
         sw.setSwitchId(new org.openkilda.model.SwitchId(switchId.toString()));
@@ -212,7 +214,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         flow.setLastUpdated("last_updated");
         flow.setFlowPath(new Path(0, Collections.emptyList(), null));
 
-        txManager.getSession().save(flow);
+        flowRepository.createOrUpdate(flow);
 
         List<FlowStatsEntry> entries = Collections.singletonList(
                 new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
