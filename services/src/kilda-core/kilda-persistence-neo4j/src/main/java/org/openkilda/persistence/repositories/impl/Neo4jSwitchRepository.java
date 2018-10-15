@@ -15,7 +15,6 @@
 
 package org.openkilda.persistence.repositories.impl;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.SwitchRepository;

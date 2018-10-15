@@ -27,10 +27,9 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.model.FlowSegment;
-import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.converter.SwitchIdMapper;
 
 import org.mapstruct.factory.Mappers;
@@ -45,16 +44,16 @@ public class CommandService {
     private static final SwitchIdMapper SWITCH_ID_MAPPER = Mappers.getMapper(SwitchIdMapper.class);
 
 
-    private TransactionManager transactionManager;
+    private PersistenceManager transactionManager;
     private FlowRepository flowRepository;
     private FlowSegmentRepository flowSegmentRepository;
 
 
 
-    public CommandService(TransactionManager transactionManager, RepositoryFactory repositoryFactory) {
+    public CommandService(PersistenceManager transactionManager) {
         this.transactionManager = transactionManager;
-        flowRepository = repositoryFactory.getFlowRepository();
-        flowSegmentRepository = repositoryFactory.getFlowSegmentRepository();
+        flowRepository = transactionManager.getRepositoryFactory().createFlowRepository();
+        flowSegmentRepository = transactionManager.getRepositoryFactory().createFlowSegmentRepository();
     }
 
     /**

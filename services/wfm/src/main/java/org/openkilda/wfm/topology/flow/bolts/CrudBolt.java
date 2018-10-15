@@ -185,7 +185,6 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
@@ -203,7 +202,7 @@ public class CrudBolt
         repositoryFactory = persistenceManager.getRepositoryFactory();
 
         pathComputer = new PathComputerImpl(repositoryFactory.createIslRepository());
-        flowService = new FlowService(persistenceManager.getTransactionManager(), repositoryFactory);
+        flowService = new FlowService(persistenceManager);
     }
 
     /**
@@ -275,41 +274,6 @@ public class CrudBolt
                             break;
                     }
                     break;
-
-                case SPEAKER_BOLT:
-                case TRANSACTION_BOLT:
-
-                    FlowState newStatus = (FlowState) tuple.getValueByField(FlowTopology.STATUS_FIELD);
-
-                    logger.info("Flow {} status {}: component={}, stream={}", flowId, newStatus, componentId, streamId);
-
-                    switch (streamId) {
-                        case STATUS:
-                            //TODO: SpeakerBolt & TransactionBolt don't supply a tuple with correlationId
-                            handleStateRequest(flowId, newStatus, tuple, correlationId);
-                            break;
-                        default:
-                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
-                            break;
-                    }
-                    break;
-
-                case COMMAND_BOLT:
-
-                    ErrorMessage errorMessage = (ErrorMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
-
-                    logger.info("Flow {} error: component={}, stream={}", flowId, componentId, streamId);
-
-                    switch (streamId) {
-                        case STATUS:
-                            handleErrorRequest(flowId, errorMessage, tuple);
-                            break;
-                        default:
-                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
-                            break;
-                    }
-                    break;
-
                 case LCM_FLOW_SYNC_BOLT:
                     logger.debug("Got network dump from TE");
 
@@ -752,9 +716,9 @@ public class CrudBolt
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<BidirectionalFlow> flows = flowCache.dumpFlows().stream()
-                .map(BidirectionalFlow::new)
-                .collect(Collectors.toList());
+        List<BidirectionalFlow> flows = (List<BidirectionalFlow>) flowService.getFlows().stream().map(x -> {
+            return new BidirectionalFlow(FLOW_MAPPER.flowPairToDto(x));
+        }).collect(Collectors.toList());
 
         logger.debug("Dump flows: found {} items", flows.size());
 
@@ -777,7 +741,7 @@ public class CrudBolt
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        BidirectionalFlow flow = new BidirectionalFlow(flowCache.getFlow(flowId));
+        BidirectionalFlow flow = new BidirectionalFlow(FLOW_MAPPER.flowPairToDto(flowService.getFlowPair(flowId)));
 
         logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 

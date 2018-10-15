@@ -10,6 +10,7 @@ kilda_neo4j_rest_port: "7474"
 kilda_neo4j_user: "neo4j"
 kilda_neo4j_password: "temppass"
 kilda_neo4j_cypher_path: "/db/data/cypher"
+kilda_neo4j_uri: "bolt://neo4j.pendev"
 
 kilda_kafka_hosts: "kafka.pendev:9092"
 kilda_zookeeper_hosts: "zookeeper.pendev:2181"

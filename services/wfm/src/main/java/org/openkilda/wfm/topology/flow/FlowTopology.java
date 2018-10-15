@@ -22,12 +22,12 @@ import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.flow.bolts.CommandBolt;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
 import org.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
+import org.openkilda.wfm.topology.flow.bolts.StatusBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 
 import org.apache.storm.generated.StormTopology;
@@ -122,10 +122,16 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
                 // tackle during multi instance testing
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId);
+
         //        .shuffleGrouping(
         //                ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
+
+        StatusBolt statusBolt = new StatusBolt(persistenceManager);
+        builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString())
+                .shuffleGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString());
 
         /*
          * Spout receives Speaker responses
@@ -169,7 +175,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         ErrorBolt errorProcessingBolt = new ErrorBolt();
         builder.setBolt(ComponentType.ERROR_BOLT.toString(), errorProcessingBolt, parallelism)
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.ERROR.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.ERROR.toString());
+                .shuffleGrouping(ComponentType.COMMAND_BOLT.toString(), StreamType.ERROR.toString());
 
         /*
          * Bolt forms Northbound responses

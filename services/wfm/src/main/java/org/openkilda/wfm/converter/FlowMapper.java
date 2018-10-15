@@ -17,19 +17,33 @@ package org.openkilda.wfm.converter;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Node;
 import org.openkilda.model.Path;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ValueMapping;
+import org.mapstruct.ValueMappings;
 import org.mapstruct.factory.Mappers;
+
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 
 @Mapper(uses = SwitchIdMapper.class)
 public interface FlowMapper {
 
     FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
+    default String map(Instant value) {
+        return value.toString();
+    }
+
+    default Instant map(String value) {
+        return (Instant) DateTimeFormatter.ISO_INSTANT.parse(value);
+    }
 
     Node pathNodeFromDto(PathNode p);
 
@@ -41,12 +55,27 @@ public interface FlowMapper {
     @Mapping(source = "path", target = "nodes")
     Path pathInfoDataFromDto(PathInfoData p);
 
+    @ValueMappings({
+            @ValueMapping(source = "UP", target = "UP"),
+            @ValueMapping(source = "DOWN", target = "DOWN"),
+            @ValueMapping(source = "IN_PROGRESS", target = "IN_PROGRESS")
+    })
+    FlowState flowstatusToDto(FlowStatus status);
+
+    @ValueMappings({
+            @ValueMapping(source = "UP", target = "UP"),
+            @ValueMapping(source = "DOWN", target = "DOWN"),
+            @ValueMapping(source = "IN_PROGRESS", target = "IN_PROGRESS")
+    })
+    FlowStatus flowStateFromDto(FlowState state);
+
     @Mapping(source = "srcPort", target = "sourcePort")
     @Mapping(source = "srcVlan", target = "sourceVlan")
     @Mapping(source = "destPort", target = "destinationPort")
     @Mapping(source = "destVlan", target = "destinationVlan")
     @Mapping(source = "srcSwitchId", target = "sourceSwitch")
     @Mapping(source = "destSwitchId", target = "destinationSwitch")
+    @Mapping(source = "status", target = "state")
     org.openkilda.messaging.model.Flow flowToDto(Flow flow);
 
     @Mapping(source = "sourcePort", target = "srcPort")
@@ -55,6 +84,7 @@ public interface FlowMapper {
     @Mapping(source = "destinationVlan", target = "destVlan")
     @Mapping(source = "sourceSwitch", target = "srcSwitchId")
     @Mapping(source = "destinationSwitch", target = "destSwitchId")
+    @Mapping(source = "state", target = "status")
     Flow flowFromDto(org.openkilda.messaging.model.Flow flow);
 
 
@@ -63,8 +93,15 @@ public interface FlowMapper {
                 flowToDto(flowPair.getReverse()));
     }
 
+    /**
+     * Converts messaging DTO to model.
+     * @param flowPair messaging object
+     * @return model FlowPair object
+     */
     default FlowPair flowPairFromDto(org.openkilda.messaging.model.FlowPair<org.openkilda.messaging.model.Flow,
             org.openkilda.messaging.model.Flow> flowPair) {
-        return new FlowPair(flowFromDto(flowPair.getLeft()), flowFromDto(flowPair.getRight()));
+
+        return FlowPair.builder().forward(flowFromDto(flowPair.getLeft()))
+                                             .reverse(flowFromDto(flowPair.getRight())).build();
     }
 }

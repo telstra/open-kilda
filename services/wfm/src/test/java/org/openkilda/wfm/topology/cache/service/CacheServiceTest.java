@@ -64,6 +64,11 @@ public class CacheServiceTest {
         }
 
         @Override
+        public void mergeFlowRelationships(org.openkilda.model.Flow flow) {
+
+        }
+
+        @Override
         public Collection<org.openkilda.model.Flow> findAll() {
             return Collections.emptyList();
         }
@@ -96,6 +101,11 @@ public class CacheServiceTest {
         @Override
         public Iterable<Isl> findActiveWithAvailableBandwidth(boolean ignoreBandwidth, long requiredBandwidth) {
             return Collections.emptyList();
+        }
+
+        @Override
+        public void updateIslBandwidth(org.openkilda.model.Flow flow) {
+
         }
 
         @Override

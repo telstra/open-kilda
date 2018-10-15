@@ -119,4 +119,52 @@ public class Flow implements Serializable {
         this.destSwitch = Objects.requireNonNull(destSwitch);
         this.destSwitchId = destSwitch.getSwitchId();
     }
+
+    /**
+     * Checks whether a flow is forward.
+     *
+     * @return boolean flag
+     */
+    public boolean isForward() {
+        boolean isForward = cookieMarkedAsFroward();
+        boolean isReversed = cookieMarkedAsReversed();
+
+        if (isForward && isReversed) {
+            throw new IllegalArgumentException(
+                    "Invalid cookie flags combinations - it mark as forward and reverse flow at same time.");
+        }
+
+        return isForward;
+    }
+
+    /**
+     * Checks whether a flow is reverse.
+     *
+     * @return boolean flag
+     */
+    public boolean isReverse() {
+        return !isForward();
+    }
+
+    private boolean cookieMarkedAsFroward() {
+        boolean isMatch;
+
+        if ((cookie & 0xE000000000000000L) != 0) {
+            isMatch = (cookie & 0x4000000000000000L) != 0;
+        } else {
+            isMatch = (cookie & 0x0080000000000000L) == 0;
+        }
+        return isMatch;
+
+    }
+
+    private boolean cookieMarkedAsReversed() {
+        boolean isMatch;
+        if ((cookie & 0xE000000000000000L) != 0) {
+            isMatch = (cookie & 0x2000000000000000L) != 0;
+        } else {
+            isMatch = (cookie & 0x0080000000000000L) != 0;
+        }
+        return isMatch;
+    }
 }

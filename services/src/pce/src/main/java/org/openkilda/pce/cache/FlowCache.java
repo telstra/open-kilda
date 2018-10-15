@@ -133,7 +133,7 @@ public class FlowCache extends Cache {
                         || flow.getRight().getFlowPath().getPath().stream()
                         .anyMatch(node -> node.getSwitchId().equals(switchId))
                         || isOneSwitchFlow(flow) && flow.getLeft().getSourceSwitch().equals(switchId))
-                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
+                .filter(flow -> flow.getLeft().getState().isActive())
                 .collect(Collectors.toSet());
     }
 
@@ -147,7 +147,7 @@ public class FlowCache extends Cache {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(islData.getPath().get(0))
                         || flow.getRight().getFlowPath().getPath().contains(islData.getPath().get(0)))
-                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
+                .filter(flow -> flow.getLeft().getState().isActive())
                 .collect(Collectors.toSet());
     }
 
@@ -162,7 +162,7 @@ public class FlowCache extends Cache {
         return flowPool.values().stream()
                 .filter(flow -> flow.getLeft().getFlowPath().getPath().contains(node)
                         || flow.getRight().getFlowPath().getPath().contains(node))
-                .filter(flow -> flow.getLeft().getState().isActiveOrCached())
+                .filter(flow -> flow.getLeft().getState().isActive())
                 .collect(Collectors.toSet());
     }
 
@@ -407,7 +407,7 @@ public class FlowCache extends Cache {
                 .lastUpdated(timestamp)
                 .transitVlan(forwardVlan)
                 .flowPath(path.getLeft())
-                .state(FlowState.ALLOCATED);
+                .state(FlowState.IN_PROGRESS);
         setBandwidthAndMeter(forwardBuilder, flow.getBandwidth(), flow.isIgnoreBandwidth(),
                 () -> resourceCache.allocateMeterId(flow.getSourceSwitch()));
         Flow forward = forwardBuilder.build();
@@ -417,7 +417,7 @@ public class FlowCache extends Cache {
                 .lastUpdated(timestamp)
                 .transitVlan(reverseVlan)
                 .flowPath(path.getRight())
-                .state(FlowState.ALLOCATED)
+                .state(FlowState.IN_PROGRESS)
                 .sourceSwitch(flow.getDestinationSwitch())
                 .sourcePort(flow.getDestinationPort())
                 .sourceVlan(flow.getDestinationVlan())

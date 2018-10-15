@@ -15,6 +15,7 @@
 
 package org.openkilda.model;
 
+import lombok.Builder;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -23,6 +24,7 @@ import java.io.Serializable;
  * A pair (forward & reverse) of flows.
  */
 @Value
+@Builder
 public class FlowPair implements Serializable {
     private static final long serialVersionUID = 1L;
 

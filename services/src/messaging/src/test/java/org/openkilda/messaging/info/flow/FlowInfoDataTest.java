@@ -57,7 +57,7 @@ public class FlowInfoDataTest implements StringSerializer {
                 .destinationSwitch(dpIdBeta).destinationPort(20).destinationVlan(200)
                 .meterId(1)
                 .transitVlan(1024)
-                .state(FlowState.ALLOCATED)
+                .state(FlowState.IN_PROGRESS)
                 .flowPath(new PathInfoData(20, forwardPath))
                 .build();
         Flow reverseFlowThread = forwardFlowThread.toBuilder()

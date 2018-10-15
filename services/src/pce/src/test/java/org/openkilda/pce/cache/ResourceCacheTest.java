@@ -53,7 +53,7 @@ public class ResourceCacheTest {
             .lastUpdated("timestamp")
             .meterId(4).transitVlan(4)
             .flowPath(new PathInfoData())
-            .state(FlowState.ALLOCATED)
+            .state(FlowState.IN_PROGRESS)
             .build();
     private final Flow reverseCreatedFlow = forwardCreatedFlow.toBuilder()
             .sourceSwitch(forwardCreatedFlow.getDestinationSwitch())
