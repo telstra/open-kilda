@@ -25,7 +25,6 @@ import java.util.Properties;
 
 /**
  * Simple implementation of {@link ConfigurationProvider} based on a properties resource.
- * <p/>
  *
  * @see Properties
  * @see PropertiesConfigurationSource

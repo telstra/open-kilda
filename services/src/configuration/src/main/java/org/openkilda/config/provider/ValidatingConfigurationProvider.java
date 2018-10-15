@@ -28,9 +28,8 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 
 /**
- * This class creates a configuration instance, fills it with values from the source
- * and validates against the constraints using validation-api.
- * <p/>
+ * This class creates a configuration instance, fills it with values from the source and validates against the
+ * constraints using validation-api.
  *
  * @see ConfigurationSource
  * @see ConfigurationFactory
