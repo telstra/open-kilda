@@ -17,29 +17,40 @@ package org.openkilda.wfm.topology.flow.service;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPair.FlowPairBuilder;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
-import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.Neo4jPersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class FlowService {
-    private TransactionManager transactionManager;
+    private Neo4jPersistenceManager transactionManager;
     private FlowRepository flowRepository;
     private FlowSegmentRepository flowSegmentRepository;
     private SwitchRepository switchRepository;
     private IslRepository islRepository;
 
-    public FlowService(TransactionManager transactionManager, RepositoryFactory repositoryFactory) {
+    public FlowService(Neo4jPersistenceManager transactionManager) {
         this.transactionManager = transactionManager;
-        flowRepository = repositoryFactory.getFlowRepository();
-        flowSegmentRepository = repositoryFactory.getFlowSegmentRepository();
-        switchRepository = repositoryFactory.getSwitchRepository();
-        islRepository = repositoryFactory.getIslRepository();
+        flowRepository = transactionManager.getRepositoryFactory().createFlowRepository();
+        flowSegmentRepository = transactionManager.getRepositoryFactory().createFlowSegmentRepository();
+        switchRepository = transactionManager.getRepositoryFactory().createSwitchRepository();
+        islRepository = transactionManager.getRepositoryFactory().createIslRepository();
     }
 
+    public Iterable<Flow> getFlow(String flowId) {
+        return flowRepository.findById(flowId);
+    }
 
     /**
      * Stores flow and it's segments into DB.
@@ -47,12 +58,12 @@ public class FlowService {
      * @param flowPair - forward and reverse flows to be saved.
      */
     public void createFlow(FlowPair flowPair) {
-        transactionManager.begin();
+        transactionManager.getTransactionManager().begin();
         try {
             createFlowForPair(flowPair);
-            transactionManager.commit();
+            transactionManager.getTransactionManager().commit();
         } catch (Exception e) {
-            transactionManager.rollback();
+            transactionManager.getTransactionManager().rollback();
         }
     }
 
@@ -69,7 +80,7 @@ public class FlowService {
         Switch dstSwitch = switchRepository.findBySwitchId(flow.getDestSwitchId());
         flow.setSrcSwitch(srcSwitch);
         flow.setDestSwitch(dstSwitch);
-        flow.setLastUpdated(Long.valueOf(System.currentTimeMillis() / 1000).toString());
+        flow.setLastUpdated(Instant.now());
         flowRepository.createOrUpdate(flow);
         flowSegmentRepository.mergeFlowSegments(flow);
         islRepository.updateIslBandwidth(flow);
@@ -81,16 +92,88 @@ public class FlowService {
      * @param flowId - flow id to be removed.
      */
     public void deleteFlow(String flowId) {
-        transactionManager.begin();
+        transactionManager.getTransactionManager().begin();
         try {
             Iterable<Flow> flows = flowRepository.findById(flowId);
             for (Flow flow : flows) {
                 processDeleteFlow(flow);
             }
-            transactionManager.commit();
+            transactionManager.getTransactionManager().commit();
 
         } catch (Exception e) {
-            transactionManager.rollback();
+            transactionManager.getTransactionManager().rollback();
+        }
+    }
+
+    /**
+     * Get FlowPair by the FlowId.
+     * @param flowId - flow identificator
+     * @return FlowPair object
+     */
+    public FlowPair getFlowPair(String flowId) {
+        Iterable<Flow> flows = flowRepository.findById(flowId);
+        FlowPair.FlowPairBuilder flowPairBuilder = FlowPair.builder();
+        for (Flow flow: flows) {
+            if (flow.isForward()) {
+                flowPairBuilder.forward(flow);
+            } else {
+                flowPairBuilder.reverse(flow);
+            }
+        }
+        return flowPairBuilder.build();
+    }
+
+    /**
+     * Get all flows grouped in FlowPairs.
+     * @return List of flow pairs
+     */
+    public List<FlowPair> getFlows() {
+        Collection<Flow> flows = flowRepository.findAll();
+        Map<String, FlowPairBuilder> flowPairs = new HashMap<>();
+        for (Flow f : flows) {
+            String flowId = f.getFlowId();
+            FlowPair.FlowPairBuilder flowPairBuilder;
+            if (flowPairs.containsKey(flowId)) {
+                flowPairBuilder = flowPairs.get(flowId);
+            } else {
+                flowPairBuilder = FlowPair.builder();
+                flowPairs.put(flowId, flowPairBuilder);
+            }
+            if (f.isForward()) {
+                flowPairBuilder.forward(f);
+            } else {
+                flowPairBuilder.reverse(f);
+            }
+
+        }
+        List<FlowPair> flowPairList = new ArrayList<>();
+        for (FlowPairBuilder builder :flowPairs.values()) {
+            flowPairList.add(builder.build());
+        }
+        return flowPairList;
+    }
+
+    /**
+     * Update status for selected flow.
+     * @param flowId - target flow to update
+     * @param flowStatus - new status
+     * @return target FlowPair
+     */
+    public FlowPair updateFlowStatus(String flowId, FlowStatus flowStatus) {
+        transactionManager.getTransactionManager().begin();
+        try {
+            FlowPair pair = getFlowPair(flowId);
+            Flow forward = pair.getForward();
+            forward.setStatus(flowStatus);
+            flowRepository.createOrUpdate(forward);
+            Flow reverse = pair.getReverse();
+            reverse.setStatus(flowStatus);
+            flowRepository.createOrUpdate(reverse);
+            transactionManager.getTransactionManager().commit();
+            return pair;
+        } catch (Exception e) {
+            transactionManager.getTransactionManager().rollback();
+            return null;
         }
     }
 
@@ -112,12 +195,12 @@ public class FlowService {
      * @param flowPair - forward and reverse pairs to be processed
      */
     public void updateFlow(FlowPair flowPair) {
-        transactionManager.begin();
+        transactionManager.getTransactionManager().begin();
         try {
             deleteFlowForPair(flowPair);
             createFlowForPair(flowPair);
         } catch (Exception e) {
-            transactionManager.rollback();
+            transactionManager.getTransactionManager().rollback();
         }
     }
 }

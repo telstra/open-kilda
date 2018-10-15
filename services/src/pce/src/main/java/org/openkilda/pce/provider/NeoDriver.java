@@ -211,7 +211,8 @@ public class NeoDriver implements PathComputer {
                 + "       f.dst_vlan as dst_vlan,\n"
                 + "       f.flowpath as path,\n"
                 + "       f.meter_id as meter_id,\n"
-                + "       f.transit_vlan as transit_vlan";
+                + "       f.transit_vlan as transit_vlan,\n"
+                + "       f.status as status";
 
         logger.debug("Executing getFlows Query: {}", q);
 

@@ -95,6 +95,11 @@ public enum ComponentType {
     TRANSACTION_BOLT,
 
     /**
+     * Status bolt. Processes status update notifications.
+     */
+    STATUS_BOLT,
+
+    /**
      * Error bolt. Processes errors.
      */
     ERROR_BOLT,

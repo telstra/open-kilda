@@ -67,7 +67,7 @@ public class FlowAdapter {
                 dbRecord.get("dst_vlan").asInt(),
                 dbRecord.get("meter_id").asInt(),
                 dbRecord.get("transit_vlan").asInt(),
-                path, FlowState.CACHED
+                path, FlowState.getByValue(dbRecord.get("status").asString())
         );
     }
 

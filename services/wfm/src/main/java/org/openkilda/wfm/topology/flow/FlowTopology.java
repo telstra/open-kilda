@@ -28,6 +28,7 @@ import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
 import org.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
+import org.openkilda.wfm.topology.flow.bolts.StatusBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 
 import org.apache.storm.generated.ComponentObject;
@@ -118,8 +119,8 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          * Bolt handles flow CRUD operations.
          * It groups requests by flow-id.
          */
-        org.openkilda.persistence.neo4j.Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(
-                org.openkilda.persistence.neo4j.Neo4jConfig.class);
+        org.openkilda.persistence.Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(
+                org.openkilda.persistence.Neo4jConfig.class);
         CrudBolt crudBolt = new CrudBolt(pathComputerAuth, neo4jConfig);
         ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
 
@@ -136,6 +137,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
                 // tackle during multi instance testing
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId);
+
         //        .shuffleGrouping(
         //                ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
@@ -147,6 +149,11 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
+
+        StatusBolt statusBolt = new StatusBolt(neo4jConfig);
+        builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString())
+                .shuffleGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString());
 
         /*
          * Spout receives Speaker responses
@@ -190,7 +197,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         ErrorBolt errorProcessingBolt = new ErrorBolt();
         builder.setBolt(ComponentType.ERROR_BOLT.toString(), errorProcessingBolt, parallelism)
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.ERROR.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.ERROR.toString());
+                .shuffleGrouping(ComponentType.COMMAND_BOLT.toString(), StreamType.ERROR.toString());
 
         /*
          * Bolt forms Northbound responses

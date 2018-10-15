@@ -34,7 +34,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("flowid", flowId);
 
-        return getSession().query(Flow.class, "MATCH (a)-[f:flow{flowid: {flowid}}]-(b) RETURN a,f,b", parameters);
+        return getSession().query(Flow.class, "MATCH (a)-[f:flow{flowid: {flowid}}]->(b) RETURN a,f,b", parameters);
     }
 
     @Override

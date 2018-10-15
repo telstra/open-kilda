@@ -43,17 +43,17 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
         parameters.put("flowid", flowId);
 
         return getSession().query(FlowSegment.class,
-                "MATCH (src:switch)-[fs:flow_segment{flowid: {flow_id}}]->(dst:switch) RETURN fs, src, dst",
+                "MATCH (src:switch)-[fs:flow_segment{flowid: {flowid}}]->(dst:switch) RETURN fs, src, dst",
                 parameters);
     }
 
     @Override
     public Iterable<FlowSegment> findByFlowIdAndCookie(String flowId, long cookie) {
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("flow_id", flowId);
+        parameters.put("flowid", flowId);
         parameters.put("cookie", cookie);
         return getSession().query(FlowSegment.class,
-                "MATCH ()-[fs:flow_segment{flowid: {flow_id}, cookie: {cookie}]-() RETURN fs", parameters);
+                "MATCH ()-[fs:flow_segment{flowid: {flowid}, cookie: {cookie}]->() RETURN fs", parameters);
     }
 
     @Override
@@ -61,7 +61,7 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
         String flowId = flow.getFlowId();
         long flowCookie = flow.getCookie();
         Map<String, Object> parameters = new HashMap<>();
-        Filter flowIdFilter = new Filter("flowId", ComparisonOperator.EQUALS, flowId);
+        Filter flowIdFilter = new Filter("flowid", ComparisonOperator.EQUALS, flowId);
         Filter cookieFilter = new Filter("parent_cookie", ComparisonOperator.EQUALS, flowCookie);
         Filters filters = flowIdFilter.and(cookieFilter);
         Long count = (Long) getSession().delete(FlowSegment.class, filters, false);

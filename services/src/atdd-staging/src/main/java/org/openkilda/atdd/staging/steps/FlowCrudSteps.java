@@ -193,8 +193,8 @@ public class FlowCrudSteps implements En {
             assertThat(format("A flow creation request for '%s' failed.", flow.getId()), result,
                     reflectEquals(flow, "lastUpdated", "status"));
             assertThat(format("Flow status for '%s' was not set to '%s'. Received status: '%s'",
-                    flow.getId(), FlowState.ALLOCATED, result.getStatus()),
-                    result.getStatus(), equalTo(FlowState.ALLOCATED.toString()));
+                    flow.getId(), FlowState.IN_PROGRESS, result.getStatus()),
+                    result.getStatus(), equalTo(FlowState.IN_PROGRESS.toString()));
             assertThat(format("The flow '%s' is missing lastUpdated field", flow.getId()), result,
                     hasProperty("lastUpdated", notNullValue()));
         }

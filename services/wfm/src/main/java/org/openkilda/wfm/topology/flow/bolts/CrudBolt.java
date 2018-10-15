@@ -66,10 +66,8 @@ import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputer.Strategy;
 import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.pce.provider.UnroutablePathException;
-import org.openkilda.persistence.neo4j.Neo4jConfig;
-import org.openkilda.persistence.neo4j.Neo4jTransactionManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.impl.RepositoryFactoryImpl;
+import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.Neo4jPersistenceManager;
 import org.openkilda.wfm.converter.FlowMapper;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
@@ -191,7 +189,6 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
@@ -207,9 +204,8 @@ public class CrudBolt
         this.outputCollector = outputCollector;
 
         pathComputer = pathComputerAuth.getPathComputer();
-        Neo4jTransactionManager transactionManager = new Neo4jTransactionManager(neo4jConfig);
-        RepositoryFactory repositoryFactory = new RepositoryFactoryImpl(transactionManager);
-        flowService = new FlowService(transactionManager, repositoryFactory);
+        Neo4jPersistenceManager transactionManager = new Neo4jPersistenceManager(neo4jConfig);
+        flowService = new FlowService(transactionManager);
     }
 
     /**
@@ -281,41 +277,6 @@ public class CrudBolt
                             break;
                     }
                     break;
-
-                case SPEAKER_BOLT:
-                case TRANSACTION_BOLT:
-
-                    FlowState newStatus = (FlowState) tuple.getValueByField(FlowTopology.STATUS_FIELD);
-
-                    logger.info("Flow {} status {}: component={}, stream={}", flowId, newStatus, componentId, streamId);
-
-                    switch (streamId) {
-                        case STATUS:
-                            //TODO: SpeakerBolt & TransactionBolt don't supply a tuple with correlationId
-                            handleStateRequest(flowId, newStatus, tuple, correlationId);
-                            break;
-                        default:
-                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
-                            break;
-                    }
-                    break;
-
-                case COMMAND_BOLT:
-
-                    ErrorMessage errorMessage = (ErrorMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
-
-                    logger.info("Flow {} error: component={}, stream={}", flowId, componentId, streamId);
-
-                    switch (streamId) {
-                        case STATUS:
-                            handleErrorRequest(flowId, errorMessage, tuple);
-                            break;
-                        default:
-                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
-                            break;
-                    }
-                    break;
-
                 case LCM_FLOW_SYNC_BOLT:
                     logger.debug("Got network dump from TE");
 
@@ -751,9 +712,9 @@ public class CrudBolt
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<BidirectionalFlow> flows = flowCache.dumpFlows().stream()
-                .map(BidirectionalFlow::new)
-                .collect(Collectors.toList());
+        List<BidirectionalFlow> flows = (List<BidirectionalFlow>) flowService.getFlows().stream().map(x -> {
+            return new BidirectionalFlow(FLOW_MAPPER.flowPairToDto(x));
+        }).collect(Collectors.toList());
 
         logger.debug("Dump flows: found {} items", flows.size());
 
@@ -776,7 +737,7 @@ public class CrudBolt
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        BidirectionalFlow flow = new BidirectionalFlow(flowCache.getFlow(flowId));
+        BidirectionalFlow flow = new BidirectionalFlow(FLOW_MAPPER.flowPairToDto(flowService.getFlowPair(flowId)));
 
         logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
@@ -787,57 +748,6 @@ public class CrudBolt
                         message.getCorrelationId(),
                         Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
-    }
-
-    /**
-     * This method changes the state of the Flow. It sets the state of both left and right to the
-     * same state.
-     * It is currently called from 2 places - a failed update (set flow to DOWN), and a STATUS
-     * update from the TransactionBolt.
-     */
-    private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId)
-            throws IOException {
-        FlowPair<Flow, Flow> flow = flowCache.getFlow(flowId);
-        logger.info("State flow: {}={}", flowId, state);
-        flow.getLeft().setState(state);
-        flow.getRight().setState(state);
-
-        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.STATE, correlationId);
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
-
-        Values topology = new Values(Utils.MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.STATUS.toString(), tuple, topology);
-
-    }
-
-    private void handleErrorRequest(String flowId, ErrorMessage message, Tuple tuple) throws IOException {
-        ErrorType errorType = message.getData().getErrorType();
-        message.getData().setErrorDescription("topology-engine internal error");
-
-        logger.info("Flow {} {} failure", errorType, flowId);
-
-        switch (errorType) {
-            case CREATION_FAILURE:
-                flowCache.removeFlow(flowId);
-                break;
-
-            case UPDATE_FAILURE:
-                handleStateRequest(flowId, FlowState.DOWN, tuple, message.getCorrelationId());
-                break;
-
-            case DELETION_FAILURE:
-                break;
-
-            case INTERNAL_ERROR:
-                break;
-
-            default:
-                logger.warn("Flow {} undefined failure", flowId);
-
-        }
-
-        Values error = new Values(message, errorType);
-        outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
     }
 
     private void handleFlowSync(NetworkInfoData networkDump) {

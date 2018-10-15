@@ -57,11 +57,6 @@
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
-            <artifactId>kilda-persistence</artifactId>
-            <version>${openkilda-messaging.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openkilda</groupId>
             <artifactId>pce</artifactId>
             <version>${openkilda-pce.version}</version>
             <exclusions>
@@ -331,6 +326,12 @@
                     <artifactId>mapstruct-processor</artifactId>
                     <version>${mapstruct.version}</version>
                 </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-persistence-neo4j</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
 
     </dependencies>
 

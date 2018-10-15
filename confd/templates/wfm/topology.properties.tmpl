@@ -27,6 +27,7 @@ opentsdb.client.chunked-requests.enabled = true
 neo4j.hosts = {{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo4j.user = {{ getv "/kilda_neo4j_user" }}
 neo4j.pswd = {{ getv "/kilda_neo4j_password" }}
+neo4j.uri = {{ getv "/kilda_neo4j_uri" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 
 filter.directory =
 logger.level = INFO
