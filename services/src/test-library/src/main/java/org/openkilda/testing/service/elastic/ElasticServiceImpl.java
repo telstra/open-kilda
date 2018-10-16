@@ -51,58 +51,51 @@ public class ElasticServiceImpl implements ElasticService {
      * In case you need to lookup multiple application IDs, tags or log levels, pass parameters as:
      * "VALUE1 OR VALUE2 OR ... OR VALUE_N"
      *
-     * @param appId - application ID to lookup (either app_id or tags should be speficied)
-     * @param tags - one or more tag, delimited by OR operator, to lookup (either app_id or tags should be specified)
-     * @param level - log level (can be null)
-     * @param timeRange - search depth (in seconds, set to 0 to search all).
-     * @param resultCount - max number of returned documents (100 default)
-     * @param defaultField - field in log entry to search at (_source by default)
-     * @param index - Elastic Search index to lookup (_all by default)
-     *
+     * @param query - ElasticQuery instance (use ElasticQueryBuilder to build this one, be sure to specify
+     *                either appId or tags)
      * @return HashMap with deserialized JSON otherwise.
      */
-    public Map getLogs(String appId, String tags, String level, long timeRange,
-                long resultCount, String defaultField, String index) {
-        if (("".equals(appId) && "".equals(tags))) {
+    public Map getLogs(ElasticQuery query) {
+        if (("".equals(query.appId) && "".equals(query.tags))) {
             throw new IllegalArgumentException("Either app_id or tags should be specified");
         }
         Long time = System.currentTimeMillis();
         String queryString = "";
 
-        if (!"".equals(appId)) {
-            queryString = "app_id: (" + appId + ")";
+        if (!"".equals(query.appId)) {
+            queryString = "app_id: (" + query.appId + ")";
         }
 
-        if (!"".equals(tags)) {
+        if (!"".equals(query.tags)) {
             if (!"".equals(queryString)) {
                 queryString += " AND ";
             }
-            queryString += "tags: (" + tags + ")";
+            queryString += "tags: (" + query.tags + ")";
         }
 
-        if (!"".equals(level)) {
-            queryString += " AND level: (" + level + ")";
+        if (!"".equals(query.level)) {
+            queryString += " AND level: (" + query.level + ")";
         }
 
-        if (timeRange > 0) {
-            queryString += " AND timeMillis: [" + (time - timeRange * 1000) + " TO " + time + "]";
+        if (query.timeRange > 0) {
+            queryString += " AND timeMillis: [" + (time - query.timeRange * 1000) + " TO " + time + "]";
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        ObjectNode query = mapper.createObjectNode();
-        query.put("query", queryString);
-        query.put("default_field", defaultField);
+        ObjectNode request = mapper.createObjectNode();
+        request.put("query", queryString);
+        request.put("default_field", query.defaultField);
 
-        ObjectNode topLevelQuery = mapper.createObjectNode();
-        topLevelQuery.set("query", mapper.createObjectNode().set("query_string", query));
+        ObjectNode topLevelRequest = mapper.createObjectNode();
+        topLevelRequest.set("query", mapper.createObjectNode().set("query_string", request));
 
-        String uri = "/" + index + "/_search/?size=" + resultCount;
+        String uri = "/" + query.index + "/_search/?size=" + query.resultCount;
         HttpHeaders headers = new HttpHeaders();
         headers.add("content-type", "application/json");
         try {
-            log.debug("Issuing ElasticSearch query: " + topLevelQuery.toString());
-            log.debug("Using ElasticSearch URI: " + uri);
-            HttpEntity rawQuery = new HttpEntity<>(topLevelQuery.toString(), headers);
+            log.debug("Issuing ElasticSearch query: " + topLevelRequest.toString());
+            log.debug("Using ElasticSearch request URI: " + uri);
+            HttpEntity rawQuery = new HttpEntity<>(topLevelRequest.toString(), headers);
             return restTemplate.exchange(uri, HttpMethod.POST, rawQuery, HashMap.class).getBody();
 
         } catch (Exception e) {
