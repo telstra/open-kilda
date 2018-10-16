@@ -44,18 +44,16 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
 
     @BeforeClass
     public static void setUp() {
-        flowRepository = new Neo4jFlowRepository(txManager);
-        switchRepository = new Neo4jSwitchRepository(txManager);
+        flowRepository = new Neo4jFlowRepository(neo4jSessionFactory);
+        switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory);
     }
 
     @Test
     public void shouldCreateFindAndDeleteFlow() {
         Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
         switchA.setSwitchId(TEST_SWITCH_A_ID);
 
         Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
         switchB.setSwitchId(TEST_SWITCH_B_ID);
 
         Flow flow = new Flow();
@@ -80,11 +78,9 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     @Test
     public void shouldCreateAndFindFlowById() {
         Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
         switchA.setSwitchId(TEST_SWITCH_A_ID);
 
         Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
         switchB.setSwitchId(TEST_SWITCH_B_ID);
 
         Flow flow = new Flow();

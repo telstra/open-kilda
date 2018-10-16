@@ -23,7 +23,7 @@ import org.openkilda.persistence.PersistenceManager;
 /**
  * Neo4J OGM implementation of the service provider for persistence manager(s).
  */
-public class Neo4jPersistenceProvider extends PersistenceProvider {
+public class Neo4jPersistenceProvider implements PersistenceProvider {
     @Override
     public PersistenceManager createPersistenceManager(ConfigurationProvider configurationProvider) {
         Neo4jConfig config = configurationProvider.getConfiguration(Neo4jConfig.class);

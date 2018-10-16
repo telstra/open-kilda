@@ -15,8 +15,11 @@
 
 package org.openkilda.model;
 
+import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
@@ -38,6 +41,8 @@ public class Switch implements Serializable {
 
     @Id
     @GeneratedValue
+    @Setter(AccessLevel.NONE)
+    @Getter(AccessLevel.NONE)
     private Long entityId;
 
     @Property(name = "name")

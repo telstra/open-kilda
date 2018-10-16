@@ -25,7 +25,7 @@ import java.util.ServiceLoader;
  *
  * @see ServiceLoader
  */
-public abstract class PersistenceProvider {
+public interface PersistenceProvider {
 
     /**
      * Creates a {@link PersistenceProvider} instance. The provider is loaded using the {@link
@@ -34,7 +34,7 @@ public abstract class PersistenceProvider {
      * @return a {@link PersistenceProvider} implementation.
      * @see ServiceLoader
      */
-    public static PersistenceProvider getInstance() {
+    static PersistenceProvider getInstance() {
         ServiceLoader<PersistenceProvider> loader = ServiceLoader.load(PersistenceProvider.class);
         PersistenceProvider instance = loader.iterator().next();
         if (instance != null) {
@@ -50,5 +50,5 @@ public abstract class PersistenceProvider {
      * @param configurationProvider configuration provider to initialize the manager.
      * @return a {@link PersistenceManager} implementation.
      */
-    public abstract PersistenceManager createPersistenceManager(ConfigurationProvider configurationProvider);
+    PersistenceManager createPersistenceManager(ConfigurationProvider configurationProvider);
 }

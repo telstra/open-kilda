@@ -44,18 +44,16 @@ public class Neo4jFlowSegmentRepositoryTest extends Neo4jBasedTest {
 
     @BeforeClass
     public static void setUp() {
-        flowSegmentRepository = new Neo4jFlowSegmentRepository(txManager);
-        switchRepository = new Neo4jSwitchRepository(txManager);
+        flowSegmentRepository = new Neo4jFlowSegmentRepository(neo4jSessionFactory);
+        switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory);
     }
 
     @Test
     public void shouldCreateFindAndDeleteSegment() {
         Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
         switchA.setSwitchId(TEST_SWITCH_A_ID);
 
         Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
         switchB.setSwitchId(TEST_SWITCH_B_ID);
 
         FlowSegment segment = new FlowSegment();
@@ -80,11 +78,9 @@ public class Neo4jFlowSegmentRepositoryTest extends Neo4jBasedTest {
     @Test
     public void shouldCreateAndFindSegmentByFlowId() {
         Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
         switchA.setSwitchId(TEST_SWITCH_A_ID);
 
         Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
         switchB.setSwitchId(TEST_SWITCH_B_ID);
 
         FlowSegment segment = new FlowSegment();

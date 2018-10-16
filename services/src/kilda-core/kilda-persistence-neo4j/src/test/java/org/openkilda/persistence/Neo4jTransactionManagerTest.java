@@ -33,7 +33,7 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
 
     @BeforeClass
     public static void setUp() {
-        repository = new Neo4jSwitchRepository(txManager);
+        repository = new Neo4jSwitchRepository(neo4jSessionFactory);
     }
 
     @Test
@@ -41,7 +41,6 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
         // given
         Switch origSwitch = new Switch();
         origSwitch.setSwitchId(TEST_SWITCH_ID);
-        origSwitch.setDescription("Some description");
 
         // when
         txManager.begin();
@@ -67,7 +66,6 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
         // given
         Switch origSwitch = new Switch();
         origSwitch.setSwitchId(TEST_SWITCH_ID);
-        origSwitch.setDescription("Some description");
 
         // when
 
@@ -114,7 +112,6 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
         // given
         Switch origSwitch = new Switch();
         origSwitch.setSwitchId(TEST_SWITCH_ID);
-        origSwitch.setDescription("Some description");
 
         // when
 
@@ -144,7 +141,6 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
         // given
         Switch origSwitch = new Switch();
         origSwitch.setSwitchId(TEST_SWITCH_ID);
-        origSwitch.setDescription("Some description");
 
         // when
 

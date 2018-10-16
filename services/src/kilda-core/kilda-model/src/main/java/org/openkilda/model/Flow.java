@@ -15,8 +15,11 @@
 
 package org.openkilda.model;
 
+import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import org.neo4j.ogm.annotation.EndNode;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
@@ -24,8 +27,10 @@ import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.RelationshipEntity;
 import org.neo4j.ogm.annotation.StartNode;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
+import org.neo4j.ogm.typeconversion.InstantLongConverter;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -39,6 +44,8 @@ public class Flow implements Serializable {
 
     @Id
     @GeneratedValue
+    @Setter(AccessLevel.NONE)
+    @Getter(AccessLevel.NONE)
     private Long entityId;
 
     @Property(name = "flowid")
@@ -84,7 +91,8 @@ public class Flow implements Serializable {
     private String description;
 
     @Property(name = "last_updated")
-    private String lastUpdated;
+    @Convert(InstantLongConverter.class)
+    private Instant lastUpdated;
 
     @Property(name = "transit_vlan")
     private int transitVlan;
