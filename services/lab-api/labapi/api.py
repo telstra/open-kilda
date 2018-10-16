@@ -24,7 +24,6 @@ app = Flask(__name__)
 
 logger = logging.getLogger()
 
-FL_CONTAINER_NAME = "floodlight"
 API_CONTAINER_NAME = "lab-api"
 LAB_SERVICE = 'kilda_lab-service'
 docker = DockerClient(base_url='unix://var/run/docker.sock')
@@ -60,7 +59,9 @@ class Lab:
         if lab_id != HW_LAB_ID:
             name = make_container_name(lab_id)
             env = {'LAB_ID': lab_id}
-            docker.containers.run(LAB_SERVICE, environment=env, name=name, privileged=True, detach=True)
+            volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'}}
+            docker.containers.run(
+                LAB_SERVICE, environment=env, volumes=volumes, name=name, privileged=True, detach=True)
             docker.networks.get(NETWORK_NAME).connect(name, aliases=[name])
 
     def destroy(self):
@@ -145,24 +146,6 @@ def traffgen_proxy(lab_id, tg_name, to_path):
     if int(lab_id) == HW_LAB_ID:
         return proxy_request(tg_url.host, tg_url.port, to_path)
     return proxy_request(make_container_name(lab_id), tg_url.port, to_path)
-
-
-@app.route('/floodlight/stop', methods=['POST'])
-def fl_stop():
-    docker.containers.get(FL_CONTAINER_NAME).stop()
-    return jsonify({'status': 'ok'})
-
-
-@app.route('/floodlight/start', methods=['POST'])
-def fl_start():
-    docker.containers.get(FL_CONTAINER_NAME).start()
-    return jsonify({'status': 'ok'})
-
-
-@app.route('/floodlight/restart', methods=['POST'])
-def fl_restart():
-    docker.containers.get(FL_CONTAINER_NAME).restart()
-    return jsonify({'status': 'ok'})
 
 
 if __name__ == '__main__':

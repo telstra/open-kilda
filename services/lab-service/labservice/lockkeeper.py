@@ -16,10 +16,13 @@
 from flask import Flask, request, jsonify
 from cheroot.wsgi import Server as WSGIServer, PathInfoDispatcher
 from topology import A_SW_NAME, resolve_host
+from docker import DockerClient
 import logging
 
 
+FL_CONTAINER_NAME = "floodlight"
 logger = logging.getLogger()
+docker = DockerClient(base_url='unix://var/run/docker.sock')
 
 app = Flask(__name__)
 A_sw = None
@@ -106,6 +109,24 @@ def switch_revive():
     sw = body['name']
     controller_url = body['controller']
     switches[sw].add_controller(resolve_host(controller_url))
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/floodlight/stop', methods=['POST'])
+def fl_stop():
+    docker.containers.get(FL_CONTAINER_NAME).stop()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/floodlight/start', methods=['POST'])
+def fl_start():
+    docker.containers.get(FL_CONTAINER_NAME).start()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/floodlight/restart', methods=['POST'])
+def fl_restart():
+    docker.containers.get(FL_CONTAINER_NAME).restart()
     return jsonify({'status': 'ok'})
 
 
