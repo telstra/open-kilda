@@ -26,7 +26,6 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.exception.MessageNotSentException;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -38,7 +37,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -176,17 +174,20 @@ public class KafkaMessagingChannel implements MessagingChannel {
      * Performs searching and collecting all chunked messages into one chain if possible.
      */
     private synchronized void processChunkedMessage(ChunkedInfoMessage received) {
-        Set<String> associatedMessages = chunkedMessageIdsPerRequest.get(received.getCorrelationId());
+        String requestId = received.getCorrelationId();
+        Set<String> associatedMessages = chunkedMessageIdsPerRequest.get(requestId);
         if (!associatedMessages.add(received.getMessageId())) {
             logger.debug("Skipping chunked message, it is already received: {}", received);
             return;
         }
 
-        List<ChunkedInfoMessage> chain = messagesChains.get(received.getCorrelationId());
-        chain.add(received);
+        List<ChunkedInfoMessage> chain = messagesChains.get(requestId);
+        if (received.getTotalMessages() != 0) {
+            chain.add(received);
+        }
 
-        if (chain.size() == received.getTotalMessages() || received.getTotalMessages() == 0) {
-            completeRequest(chain);
+        if (chain.size() == received.getTotalMessages()) {
+            completeRequest(requestId, chain);
             messagesChains.remove(received.getCorrelationId());
         }
     }
@@ -194,22 +195,10 @@ public class KafkaMessagingChannel implements MessagingChannel {
     /**
      * Completes pending request with received responses.
      */
-    private void completeRequest(List<ChunkedInfoMessage> chain) {
-        if (CollectionUtils.isEmpty(chain)) {
-            throw new IllegalStateException("Chain of messages should not be empty");
-        }
-
-        ChunkedInfoMessage first = chain.get(0);
-        String requestId = first.getCorrelationId();
-
-        List<InfoData> response;
-        if (first.getData() != null) {
-            response = chain.stream()
-                    .map(ChunkedInfoMessage::getData)
-                    .collect(Collectors.toList());
-        } else {
-            response = Collections.emptyList();
-        }
+    private void completeRequest(String requestId, List<ChunkedInfoMessage> chain) {
+        List<InfoData> response = chain.stream()
+                .map(ChunkedInfoMessage::getData)
+                .collect(Collectors.toList());
 
         pendingChunkedRequests
                 .get(requestId)
