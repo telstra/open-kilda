@@ -16,15 +16,13 @@
 package org.openkilda.northbound.service.impl;
 
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.system.FeatureToggleRequest;
 import org.openkilda.messaging.command.system.FeatureToggleStateRequest;
 import org.openkilda.messaging.info.system.FeatureTogglesResponse;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.northbound.converter.FeatureTogglesMapper;
-import org.openkilda.northbound.messaging.MessageConsumer;
-import org.openkilda.northbound.messaging.MessageProducer;
+import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FeatureTogglesService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
@@ -33,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class FeatureTogglesServiceImpl implements FeatureTogglesService {
@@ -43,10 +43,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
     private String topoEngTopic;
 
     @Autowired
-    private MessageProducer messageProducer;
-
-    @Autowired
-    private MessageConsumer<Message> messageConsumer;
+    private MessagingChannel messagingChannel;
 
     @Autowired
     private FeatureTogglesMapper mapper;
@@ -58,21 +55,20 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
         FeatureToggleRequest request = mapper.toRequest(dto);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId,
                 Destination.TOPOLOGY_ENGINE);
-        messageProducer.send(topoEngTopic, message);
+
+        messagingChannel.send(topoEngTopic, message);
     }
 
     @Override
-    public FeatureTogglePayload getFeatureTogglesState() {
+    public CompletableFuture<FeatureTogglePayload> getFeatureTogglesState() {
         String correlationId = RequestCorrelationId.getId();
         FeatureToggleStateRequest teRequest = new FeatureToggleStateRequest();
         CommandMessage requestMessage = new CommandMessage(teRequest, System.currentTimeMillis(),
                 correlationId, Destination.TOPOLOGY_ENGINE);
-        messageProducer.send(topoEngTopic, requestMessage);
 
-        Message result = messageConsumer.poll(correlationId);
-        FeatureTogglesResponse response =
-                (FeatureTogglesResponse) validateInfoMessage(requestMessage, result, correlationId);
+        return messagingChannel.sendAndGet(topoEngTopic, requestMessage)
+                .thenApply(FeatureTogglesResponse.class::cast)
+                .thenApply(mapper::toDto);
 
-        return mapper.toDto(response);
     }
 }

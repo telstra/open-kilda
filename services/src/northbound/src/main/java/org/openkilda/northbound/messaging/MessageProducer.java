@@ -17,11 +17,10 @@ package org.openkilda.northbound.messaging;
 
 import org.openkilda.messaging.Message;
 
+import org.springframework.kafka.support.SendResult;
+import org.springframework.util.concurrent.ListenableFuture;
+
 public interface MessageProducer {
-    /**
-     * Kafka message send timeout.
-     */
-    int TIMEOUT = 1000;
 
     /**
      * Sends messages to WorkFlowManager.
@@ -29,5 +28,5 @@ public interface MessageProducer {
      * @param topic  kafka topic
      * @param message message to serialize and send
      */
-    void send(final String topic, final Message message);
+    ListenableFuture<SendResult<String, Message>> send(final String topic, final Message message);
 }

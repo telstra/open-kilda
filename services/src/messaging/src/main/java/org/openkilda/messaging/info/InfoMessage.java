@@ -15,7 +15,6 @@
 
 package org.openkilda.messaging.info;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DESTINATION;
 import static org.openkilda.messaging.Utils.PAYLOAD;
@@ -25,23 +24,17 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 /**
  * Class represents information message.
  */
-@JsonSerialize
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder(value = {
-        DESTINATION,
-        PAYLOAD,
-        TIMESTAMP,
-        CORRELATION_ID})
+@Getter
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
 public class InfoMessage extends Message {
     /**
      * Serialization version number constant.
@@ -68,7 +61,7 @@ public class InfoMessage extends Message {
                        @JsonProperty(CORRELATION_ID) final String correlationId,
                        @JsonProperty(DESTINATION) final Destination destination) {
         super(timestamp, correlationId, destination);
-        setData(data);
+        this.data = data;
     }
 
     /**
@@ -82,58 +75,7 @@ public class InfoMessage extends Message {
                        final long timestamp,
                        final String correlationId) {
         super(timestamp, correlationId);
-        setData(data);
-    }
-
-    /**
-     * Returns payload of the information message.
-     *
-     * @return information message payload
-     */
-    public InfoData getData() {
-        return data;
-    }
-
-    /**
-     * Sets payload of the information message.
-     *
-     * @param data information message payload
-     */
-    public void setData(final InfoData data) {
         this.data = data;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(TIMESTAMP, timestamp)
-                .add(CORRELATION_ID, correlationId)
-                .add(DESTINATION, destination)
-                .add(PAYLOAD, data)
-                .toString();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof InfoMessage)) {
-            return false;
-        }
-        InfoMessage that = (InfoMessage) o;
-        return Objects.equals(data, that.data)
-                && timestamp == that.timestamp
-                && correlationId.equals(that.correlationId)
-                && destination == that.destination;
-    }
-
-    @Override
-    public int hashCode() {
-
-        return Objects.hash(data);
-    }
 }
