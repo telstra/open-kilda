@@ -16,7 +16,6 @@
 package org.openkilda.northbound.controller;
 
 import static java.util.Collections.singletonList;
-import static org.openkilda.messaging.Utils.SYSTEM_CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
 import org.openkilda.messaging.Destination;
@@ -33,8 +32,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
-import org.openkilda.messaging.info.ChunkedInfoMessage;
-import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
@@ -48,16 +46,14 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.northbound.messaging.MessageConsumer;
-import org.openkilda.northbound.messaging.MessageProducer;
-import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
+import org.openkilda.northbound.messaging.MessagingChannel;
 
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -65,7 +61,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * appropriate kafka responses. Response type choice is based on request type.
  */
 @Component
-public class TestMessageMock implements MessageProducer, MessageConsumer {
+public class TestMessageMock implements MessagingChannel {
     static final String FLOW_ID = "ff:00";
     static final SwitchId SWITCH_ID = new SwitchId(FLOW_ID);
     static final String ERROR_FLOW_ID = "error-flow";
@@ -96,58 +92,59 @@ public class TestMessageMock implements MessageProducer, MessageConsumer {
      * @param data received from kafka CommandData message payload
      * @return InfoMassage to be send as response payload
      */
-    private Message formatResponse(final String correlationId, final CommandData data) {
+    private CompletableFuture<InfoData> formatResponse(final String correlationId, final CommandData data) {
+        CompletableFuture<InfoData> result = new CompletableFuture<>();
         if (data instanceof FlowCreateRequest) {
-            return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
+            result.complete(flowResponse);
         } else if (data instanceof FlowDeleteRequest) {
-            return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
+            result.complete(flowResponse);
         } else if (data instanceof FlowUpdateRequest) {
-            return new InfoMessage(flowResponse, 0, correlationId, Destination.NORTHBOUND);
+            result.complete(flowResponse);
         } else if (data instanceof FlowReadRequest) {
-            return getReadFlowResponse(((FlowReadRequest) data).getFlowId(), correlationId);
-        } else if (data instanceof FlowsDumpRequest) {
-            return new ChunkedInfoMessage(FLOW_RESPONSE, 0, correlationId, 1, 1);
+            result = getReadFlowResponse(((FlowReadRequest) data).getFlowId(), correlationId);
         } else if (data instanceof SwitchRulesDeleteRequest) {
-            return new InfoMessage(switchRulesResponse, 0, correlationId, Destination.NORTHBOUND);
+            result = CompletableFuture.completedFuture(switchRulesResponse);
+        } else {
+            return null;
+        }
+
+        return result;
+    }
+
+    @Override
+    public CompletableFuture<InfoData> sendAndGet(String topic, Message message) {
+        if ("error-topic".equals(topic)) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    OPERATION_TIMED_OUT, "timeout", "kilda-test");
+        } else {
+            return formatResponse(message.getCorrelationId(), ((CommandMessage) message).getData());
+        }
+    }
+
+    @Override
+    public CompletableFuture<List<InfoData>> sendAndGetChunked(String topic, Message message) {
+        if (((CommandMessage) message).getData() instanceof FlowsDumpRequest) {
+            return CompletableFuture.completedFuture(Collections.singletonList(FLOW_RESPONSE));
         } else {
             return null;
         }
     }
 
     @Override
-    public Object poll(String correlationId) {
-        CommandData data;
-
-        if (messages.containsKey(correlationId)) {
-            data = messages.remove(correlationId);
-        } else if (messages.containsKey(SYSTEM_CORRELATION_ID)) {
-            data = messages.remove(SYSTEM_CORRELATION_ID);
-        } else {
-            throw new MessageException(correlationId, System.currentTimeMillis(),
-                    OPERATION_TIMED_OUT, KafkaMessageConsumer.TIMEOUT_ERROR_MESSAGE, "kilda-test");
-        }
-        return formatResponse(correlationId, data);
-    }
-
-    @Override
-    public ListenableFuture send(String topic, Message message) {
+    public void send(String topic, Message message) {
         if (message instanceof CommandMessage) {
             messages.put(message.getCorrelationId(), ((CommandMessage) message).getData());
         }
-
-        return null;
     }
 
-    @Override
-    public void onResponse(Object message) {
-    }
-
-    private Message getReadFlowResponse(String flowId, String correlationId) {
+    private CompletableFuture<InfoData> getReadFlowResponse(String flowId, String correlationId) {
         if (ERROR_FLOW_ID.equals(flowId)) {
-            return new ErrorMessage(new ErrorData(ErrorType.NOT_FOUND, "Flow was not found", ERROR_FLOW_ID),
+            ErrorMessage error = new ErrorMessage(
+                    new ErrorData(ErrorType.NOT_FOUND, "Flow was not found", ERROR_FLOW_ID),
                     0, correlationId, Destination.NORTHBOUND);
+            throw new MessageException(error);
         } else {
-            return new InfoMessage(FLOW_RESPONSE, 0, correlationId, Destination.NORTHBOUND);
+            return CompletableFuture.completedFuture(FLOW_RESPONSE);
         }
     }
 }

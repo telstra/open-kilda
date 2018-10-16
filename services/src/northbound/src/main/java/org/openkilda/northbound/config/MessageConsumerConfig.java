@@ -16,9 +16,7 @@
 package org.openkilda.northbound.config;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessagingChannel;
-import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
 import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
 
@@ -119,18 +117,6 @@ public class MessageConsumerConfig {
         factory.getContainerProperties().setPollTimeout(POLL_TIMEOUT);
         factory.setConcurrency(kafkaListeners);
         return factory;
-    }
-
-    /**
-     * Kafka message consumer bean. Instance of {@link org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer}
-     * contains {@link org.springframework.kafka.annotation.KafkaListener} to be run in {@link
-     * org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
-     *
-     * @return kafka message consumer
-     */
-    @Bean
-    public MessageConsumer messageConsumer() {
-        return new KafkaMessageConsumer();
     }
 
     @Bean

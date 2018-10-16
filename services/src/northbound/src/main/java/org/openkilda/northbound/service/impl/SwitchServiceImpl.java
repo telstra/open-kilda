@@ -16,10 +16,8 @@
 package org.openkilda.northbound.service.impl;
 
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
 
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
@@ -36,6 +34,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesValidateRequest;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -55,12 +54,11 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
-import org.openkilda.northbound.messaging.MessageConsumer;
-import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
+import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,7 +66,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -80,12 +77,6 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
-
-    @Autowired
-    private MessageProducer messageProducer;
-
-    @Autowired
-    private MessageConsumer<Message> messageConsumer;
 
     @Autowired
     private MessagingChannel messagingChannel;
@@ -123,158 +114,137 @@ public class SwitchServiceImpl implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public SwitchFlowEntries getRules(SwitchId switchId, Long cookie, String correlationId) {
+    public CompletableFuture<SwitchFlowEntries> getRules(SwitchId switchId, Long cookie, String correlationId) {
         DumpRulesRequest request = new DumpRulesRequest(switchId);
         CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER, northboundTopic);
-        messageProducer.send(floodlightTopic, commandMessage);
-        Message message = messageConsumer.poll(correlationId);
-        SwitchFlowEntries response = (SwitchFlowEntries) validateInfoMessage(commandMessage, message, correlationId);
 
-        if (cookie > 0L) {
-            List<FlowEntry> matchedFlows = new ArrayList<>();
-            for (FlowEntry entry : response.getFlowEntries()) {
-                if (cookie.equals(entry.getCookie())) {
-                    matchedFlows.add(entry);
-                }
-            }
-            response = new SwitchFlowEntries(response.getSwitchId(), matchedFlows);
-        }
-        return response;
+        return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
+                .thenApply(SwitchFlowEntries.class::cast)
+                .thenApply(data -> cookie > NumberUtils.LONG_ZERO ? findByCookie(cookie, data) : data);
     }
 
     @Override
-    public SwitchFlowEntries getRules(SwitchId switchId, Long cookie) {
+    public CompletableFuture<SwitchFlowEntries> getRules(SwitchId switchId, Long cookie) {
         return getRules(switchId, cookie, RequestCorrelationId.getId());
     }
 
     @Override
-    public List<Long> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction) {
+    public CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Delete switch rules request received: deleteAction={}", deleteAction);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, null);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
                 Destination.CONTROLLER, northboundTopic);
-        messageProducer.send(floodlightTopic, request);
 
-        Message message = messageConsumer.poll(correlationId);
-        SwitchRulesResponse response = (SwitchRulesResponse) validateInfoMessage(request, message, correlationId);
-        return response.getRuleIds();
+        return messagingChannel.sendAndGet(floodlightTopic, request)
+                .thenApply(SwitchRulesResponse.class::cast)
+                .thenApply(SwitchRulesResponse::getRuleIds);
     }
 
     @Override
-    public List<Long> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria) {
+    public CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Delete switch rules request received: criteria={}", criteria);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, null, criteria);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
                 Destination.CONTROLLER, northboundTopic);
-        messageProducer.send(floodlightTopic, request);
 
-        Message message = messageConsumer.poll(correlationId);
-        SwitchRulesResponse response = (SwitchRulesResponse) validateInfoMessage(request, message, correlationId);
-        return response.getRuleIds();
+        return messagingChannel.sendAndGet(floodlightTopic, request)
+                .thenApply(SwitchRulesResponse.class::cast)
+                .thenApply(SwitchRulesResponse::getRuleIds);
     }
-
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public List<Long> installRules(SwitchId switchId, InstallRulesAction installAction) {
+    public CompletableFuture<List<Long>> installRules(SwitchId switchId, InstallRulesAction installAction) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Install switch rules request received");
 
         SwitchRulesInstallRequest data = new SwitchRulesInstallRequest(switchId, installAction);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
                 Destination.CONTROLLER, northboundTopic);
-        messageProducer.send(floodlightTopic, request);
 
-        Message message = messageConsumer.poll(correlationId);
-        SwitchRulesResponse response = (SwitchRulesResponse) validateInfoMessage(request, message, correlationId);
-        return response.getRuleIds();
+        return messagingChannel.sendAndGet(floodlightTopic, request)
+                .thenApply(SwitchRulesResponse.class::cast)
+                .thenApply(SwitchRulesResponse::getRuleIds);
     }
-
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public ConnectModeRequest.Mode connectMode(ConnectModeRequest.Mode mode) {
+    public CompletableFuture<ConnectModeRequest.Mode> connectMode(ConnectModeRequest.Mode mode) {
         final String correlationId = RequestCorrelationId.getId();
         LOGGER.debug("Set/Get switch connect mode request received: mode = {}", mode);
 
         ConnectModeRequest data = new ConnectModeRequest(mode);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
                 Destination.CONTROLLER, northboundTopic);
-        messageProducer.send(floodlightTopic, request);
 
-        Message message = messageConsumer.poll(correlationId);
-        ConnectModeResponse response = (ConnectModeResponse) validateInfoMessage(request, message, correlationId);
-        return response.getMode();
+        return messagingChannel.sendAndGet(floodlightTopic, request)
+                .thenApply(ConnectModeResponse.class::cast)
+                .thenApply(ConnectModeResponse::getMode);
     }
 
     @Override
-    public RulesValidationResult validateRules(SwitchId switchId) {
+    public CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId) {
         final String correlationId = RequestCorrelationId.getId();
 
         CommandWithReplyToMessage validateCommandMessage = new CommandWithReplyToMessage(
                 new SwitchRulesValidateRequest(switchId),
                 System.currentTimeMillis(), correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
-        messageProducer.send(topoEngTopic, validateCommandMessage);
 
-        Message validateResponseMessage = messageConsumer.poll(correlationId);
-        SyncRulesResponse validateResponse = (SyncRulesResponse) validateInfoMessage(validateCommandMessage,
-                validateResponseMessage, correlationId);
-
-        return switchMapper.toRulesValidationResult(validateResponse);
+        return messagingChannel.sendAndGet(topoEngTopic, validateCommandMessage)
+                .thenApply(SyncRulesResponse.class::cast)
+                .thenApply(switchMapper::toRulesValidationResult);
     }
 
     @Override
-    public RulesSyncResult syncRules(SwitchId switchId) {
-        RulesValidationResult validationResult = validateRules(switchId);
-        List<Long> missingRules = validationResult.getMissingRules();
+    public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId) {
+        CompletableFuture<RulesValidationResult> validationStage = validateRules(switchId);
 
+        return validationStage
+                .thenApply(validationResult -> syncRules(switchId, validationResult.getMissingRules()))
+                .thenApply(SyncRulesResponse.class::cast)
+                .thenCombine(validationStage, (synchronization, validation) ->
+                        switchMapper.toRulesSyncResult(validation, synchronization.getMissingRules()));
+    }
+
+    private CompletableFuture<InfoData> syncRules(SwitchId switchId, List<Long> missingRules) {
         if (CollectionUtils.isEmpty(missingRules)) {
-            return switchMapper.toRulesSyncResult(validationResult, emptyList());
+            return CompletableFuture.completedFuture(new SyncRulesResponse(missingRules, null, null, null));
         }
 
-        LOGGER.debug("The validation result for switch {}: missing rules = {}", switchId, missingRules);
-
-        // Synchronize the missing rules
         String syncCorrelationId = format("%s-sync", RequestCorrelationId.getId());
         CommandWithReplyToMessage syncCommandMessage = new CommandWithReplyToMessage(
                 new SwitchRulesSyncRequest(switchId, missingRules),
                 System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
-        messageProducer.send(topoEngTopic, syncCommandMessage);
 
-        Message syncResponseMessage = messageConsumer.poll(syncCorrelationId);
-        SyncRulesResponse syncResponse = (SyncRulesResponse) validateInfoMessage(syncCommandMessage,
-                syncResponseMessage, syncCorrelationId);
-
-        return switchMapper.toRulesSyncResult(validationResult, syncResponse.getInstalledRules());
+        return messagingChannel.sendAndGet(topoEngTopic, syncCommandMessage);
     }
 
     @Override
-    public DeleteMeterResult deleteMeter(SwitchId switchId, long meterId) {
+    public CompletableFuture<DeleteMeterResult> deleteMeter(SwitchId switchId, long meterId) {
         String requestId = RequestCorrelationId.getId();
         CommandWithReplyToMessage deleteCommand = new CommandWithReplyToMessage(
                 new DeleteMeterRequest(switchId, meterId),
                 System.currentTimeMillis(), requestId, Destination.TOPOLOGY_ENGINE, northboundTopic);
-        messageProducer.send(floodlightTopic, deleteCommand);
 
-        Message response = messageConsumer.poll(requestId);
-        DeleteMeterResponse result = (DeleteMeterResponse) validateInfoMessage(deleteCommand, response, requestId);
-        return new DeleteMeterResult(result.isDeleted());
+        return messagingChannel.sendAndGet(floodlightTopic, deleteCommand)
+                .thenApply(DeleteMeterResponse.class::cast)
+                .thenApply(response -> new DeleteMeterResult(response.isDeleted()));
     }
     
     /**
      * {@inheritDoc}
      */
     @Override
-    public PortDto configurePort(SwitchId switchId,  int port, PortConfigurationPayload config) {
+    public CompletableFuture<PortDto> configurePort(SwitchId switchId,  int port, PortConfigurationPayload config) {
         String correlationId = RequestCorrelationId.getId();
 
         PortConfigurationRequest request = new PortConfigurationRequest(switchId, 
@@ -282,43 +252,45 @@ public class SwitchServiceImpl implements SwitchService {
         CommandWithReplyToMessage updateStatusCommand = new CommandWithReplyToMessage(
                 request, System.currentTimeMillis(), correlationId, 
                 Destination.CONTROLLER, northboundTopic);
-        messageProducer.send(floodlightTopic, updateStatusCommand);
 
-        Message response = messageConsumer.poll(correlationId);
-        PortConfigurationResponse switchPortResponse = (PortConfigurationResponse) validateInfoMessage(
-                updateStatusCommand, response, correlationId);
-
-        return new PortDto(switchPortResponse.getSwitchId().toString(), switchPortResponse.getPortNo());
+        return messagingChannel.sendAndGet(floodlightTopic, updateStatusCommand)
+                .thenApply(PortConfigurationResponse.class::cast)
+                .thenApply(response -> new PortDto(response.getSwitchId().toString(), response.getPortNo()));
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public SwitchPortsDescription getSwitchPortsDescription(SwitchId switchId) {
+    public CompletableFuture<SwitchPortsDescription> getSwitchPortsDescription(SwitchId switchId) {
         String correlationId = RequestCorrelationId.getId();
         DumpSwitchPortsDescriptionRequest request = new DumpSwitchPortsDescriptionRequest(switchId);
         CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER, northboundTopic);
-        messageProducer.send(floodlightTopic, commandMessage);
-        Message message = messageConsumer.poll(correlationId);
 
-        return (SwitchPortsDescription) validateInfoMessage(commandMessage, message, correlationId);
+        return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
+                .thenApply(SwitchPortsDescription.class::cast);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public PortDescription getPortDescription(SwitchId switchId, int port) {
+    public CompletableFuture<PortDescription> getPortDescription(SwitchId switchId, int port) {
         String correlationId = RequestCorrelationId.getId();
         DumpPortDescriptionRequest request = new DumpPortDescriptionRequest(switchId, port);
         CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER, northboundTopic);
-        messageProducer.send(floodlightTopic, commandMessage);
-        Message message = messageConsumer.poll(correlationId);
 
-        return (PortDescription) validateInfoMessage(commandMessage, message, correlationId);
+        return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
+                .thenApply(PortDescription.class::cast);
+    }
+
+    private SwitchFlowEntries findByCookie(Long cookie, SwitchFlowEntries entries) {
+        List<FlowEntry> matchedFlows = entries.getFlowEntries().stream()
+                .filter(entry -> cookie.equals(entry.getCookie()))
+                .collect(Collectors.toList());
+        return new SwitchFlowEntries(entries.getSwitchId(), matchedFlows);
     }
 
     private Boolean toPortAdminDown(PortStatus status) {
