@@ -23,6 +23,8 @@ import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
 import org.mapstruct.factory.Mappers;
 
+import java.time.Instant;
+
 /**
  * Convert {@link org.openkilda.model.Flow} to {@link Flow} and back.
  */
@@ -65,6 +67,28 @@ public interface FlowMapper {
         }
 
         return new org.openkilda.model.SwitchId(value.toString());
+    }
+
+    /**
+     * Convert {@link String} to {@link Instant}.
+     */
+    default Instant map(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        return Instant.parse(value);
+    }
+
+    /**
+     * Convert {@link Instant} to {@link String}.
+     */
+    default String map(Instant value) {
+        if (value == null) {
+            return null;
+        }
+
+        return value.toString();
     }
 
     /**

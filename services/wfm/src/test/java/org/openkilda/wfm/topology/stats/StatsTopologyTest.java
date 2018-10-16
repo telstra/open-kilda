@@ -64,6 +64,7 @@ import org.junit.Test;
 import org.neo4j.ogm.testutil.TestServer;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -211,7 +212,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         flow.setBandwidth(200);
         flow.setIgnoreBandwidth(true);
         flow.setDescription("description");
-        flow.setLastUpdated("last_updated");
+        flow.setLastUpdated(Instant.EPOCH);
         flow.setFlowPath(new Path(0, Collections.emptyList(), null));
 
         flowRepository.createOrUpdate(flow);

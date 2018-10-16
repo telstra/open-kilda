@@ -158,9 +158,6 @@ public class PathComputerImpl implements PathComputer {
 
                 List<SimpleIsl> forwardPath = forward.getPath();
                 List<SimpleIsl> reversePath = reverse.getPath(forwardPath);
-                //(crimi) - getPath with hint works .. you can use the next line to troubleshoot if
-                // concerned about how hit is working
-                //LinkedList<SimpleIsl> rPath = reverse.getPath();
                 return Pair.of(forwardPath, reversePath);
         }
     }

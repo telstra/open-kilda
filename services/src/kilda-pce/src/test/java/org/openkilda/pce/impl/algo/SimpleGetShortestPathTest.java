@@ -15,21 +15,42 @@
 
 package org.openkilda.pce.impl.algo;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.impl.model.AvailableNetwork;
 import org.openkilda.pce.impl.model.SimpleIsl;
 
-import org.junit.Assert;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import java.util.List;
 
 public class SimpleGetShortestPathTest {
 
-    /**
-     * Build test network.
-     */
-    public AvailableNetwork buildNetwork1() {
+    @Test
+    public void shouldReturnThePath() {
+        AvailableNetwork network = buildTestNetwork();
+        network.removeSelfLoops().reduceByCost();
+
+        SwitchId srcDpid = new SwitchId("00:00:70:72:cf:d2:47:a6");
+        SwitchId dstDpid = new SwitchId("00:00:b0:d2:f5:00:5a:b8");
+
+        SimpleGetShortestPath forward = new SimpleGetShortestPath(network, srcDpid, dstDpid, 35);
+        List<SimpleIsl> fpath = forward.getPath();
+        assertThat(fpath, Matchers.hasSize(2));
+        assertEquals(srcDpid, fpath.get(0).getSrcDpid());
+        assertEquals(dstDpid, fpath.get(1).getDstDpid());
+
+        SimpleGetShortestPath reverse = new SimpleGetShortestPath(network, dstDpid, srcDpid, 35);
+        List<SimpleIsl> rpath = reverse.getPath(fpath);
+        assertThat(rpath, Matchers.hasSize(2));
+        assertEquals(dstDpid, rpath.get(0).getSrcDpid());
+        assertEquals(srcDpid, rpath.get(1).getDstDpid());
+    }
+
+    private AvailableNetwork buildTestNetwork() {
         AvailableNetwork network = new AvailableNetwork();
         network.addLink(new SwitchId("00:00:00:22:3d:5a:04:87"), new SwitchId("00:00:b0:d2:f5:00:5a:b8"),
                 7, 60, 0, 3);
@@ -68,24 +89,5 @@ public class SimpleGetShortestPathTest {
         network.addLink(new SwitchId("00:00:b0:d2:f5:00:5a:b8"), new SwitchId("00:00:00:22:3d:5a:04:87"),
                 50, 7, 0, 3);
         return network;
-    }
-
-    @Test
-    public void getPath() {
-
-        AvailableNetwork network = buildNetwork1();
-        network.removeSelfLoops().reduceByCost();
-        SimpleGetShortestPath forward = new SimpleGetShortestPath(network, new SwitchId("00:00:70:72:cf:d2:47:a6"),
-                new SwitchId("00:00:b0:d2:f5:00:5a:b8"), 35);
-
-        List<SimpleIsl> fpath = forward.getPath();
-        System.out.println("forward.getPath() = " + fpath);
-        Assert.assertNotNull(fpath);
-
-        SimpleGetShortestPath reverse = new SimpleGetShortestPath(network, new SwitchId("00:00:b0:d2:f5:00:5a:b8"),
-                new SwitchId("00:00:70:72:cf:d2:47:a6"), 35);
-        List<SimpleIsl> rpath = reverse.getPath(fpath);
-        System.out.println("reverse.getPath() = " + rpath);
-        Assert.assertNotNull(rpath);
     }
 }

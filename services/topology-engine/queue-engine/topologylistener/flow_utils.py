@@ -197,7 +197,7 @@ def merge_flow_relationship(flow, tx):
     # FIXME(surabujin): do we really want to keep this time representation?
     # FIXME(surabujin): format datetime as '1532609693'(don 't match with
     #                   format used in PCE/resource cache)
-    p['last_updated'] = str(int(time.time()))
+    p['last_updated'] = int(time.time())
 
     path = p['flowpath'].copy()
     path.pop('clazz', None)
