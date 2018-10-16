@@ -113,17 +113,19 @@ public class KafkaMessagingChannel implements MessagingChannel {
         CompletableFuture<List<InfoData>> future = new CompletableFuture<>();
         pendingChunkedRequests.put(message.getCorrelationId(), future);
 
+        messagesChains.put(message.getCorrelationId(), new ArrayList<>());
+        chunkedMessageIdsPerRequest.put(message.getCorrelationId(), new HashSet<>());
+
         ListenableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
         futureResult.addCallback(
-                sentResult -> {
-                    messagesChains.put(message.getCorrelationId(), new ArrayList<>());
-                    chunkedMessageIdsPerRequest.put(message.getCorrelationId(), new HashSet<>());
-                },
+                sentResult -> { },
                 error -> future.completeExceptionally(new MessageNotSentException(error.getMessage()))
         );
 
         return future.whenComplete((response, error) -> {
             pendingChunkedRequests.remove(message.getCorrelationId());
+
+            messagesChains.remove(message.getCorrelationId());
             chunkedMessageIdsPerRequest.remove(message.getCorrelationId());
         });
     }
@@ -188,7 +190,6 @@ public class KafkaMessagingChannel implements MessagingChannel {
 
         if (chain.size() == received.getTotalMessages()) {
             completeRequest(requestId, chain);
-            messagesChains.remove(received.getCorrelationId());
         }
     }
 

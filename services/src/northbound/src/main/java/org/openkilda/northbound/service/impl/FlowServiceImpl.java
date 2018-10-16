@@ -623,7 +623,6 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<List<FlowValidationDto>> validateFlow(final String flowId) {
-        final String correlationId = RequestCorrelationId.getId();
         /*
          * Algorithm:
          * 1) Grab the flow from the database

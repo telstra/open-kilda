@@ -16,9 +16,7 @@
 package org.openkilda.northbound.controller;
 
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -31,7 +29,6 @@ import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
-import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
