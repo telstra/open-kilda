@@ -32,7 +32,7 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
 
     @BeforeClass
     public static void setUp() {
-        repository = new Neo4jSwitchRepository(txManager);
+        repository = new Neo4jSwitchRepository(neo4jSessionFactory);
     }
 
     @Test

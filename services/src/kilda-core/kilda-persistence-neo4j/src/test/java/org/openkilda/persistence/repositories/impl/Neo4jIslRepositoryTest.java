@@ -36,15 +36,14 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
     @BeforeClass
     public static void setUp() {
-        islRepository = new Neo4jIslRepository(txManager);
-        switchRepository = new Neo4jSwitchRepository(txManager);
+        islRepository = new Neo4jIslRepository(neo4jSessionFactory);
+        switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory);
     }
 
     @Test
-    public void shouldCreateAndFindIsl() {
+    public void shouldCreateFindAndDeleteIsl() {
         Switch switchA = new Switch();
         switchA.setSwitchId(TEST_SWITCH_A_ID);
-        switchA.setDescription("Some description");
 
         Switch switchB = new Switch();
         switchB.setSwitchId(TEST_SWITCH_B_ID);

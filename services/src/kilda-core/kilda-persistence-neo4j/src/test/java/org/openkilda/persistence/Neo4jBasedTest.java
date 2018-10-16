@@ -15,6 +15,8 @@
 
 package org.openkilda.persistence;
 
+import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -22,7 +24,8 @@ import org.neo4j.ogm.testutil.TestServer;
 
 public abstract class Neo4jBasedTest {
     protected static TestServer testServer;
-    protected static Neo4jTransactionManager txManager;
+    protected static TransactionManager txManager;
+    protected static Neo4jSessionFactory neo4jSessionFactory;
 
     @BeforeClass
     public static void runTestServer() {
@@ -50,7 +53,8 @@ public abstract class Neo4jBasedTest {
             }
         });
 
-        txManager = (Neo4jTransactionManager) persistenceManager.getTransactionManager();
+        txManager = persistenceManager.getTransactionManager();
+        neo4jSessionFactory = (Neo4jSessionFactory) txManager;
     }
 
     @AfterClass
@@ -60,6 +64,6 @@ public abstract class Neo4jBasedTest {
 
     @After
     public void cleanUpTestServer() {
-        txManager.getSession().purgeDatabase();
+        neo4jSessionFactory.getSession().purgeDatabase();
     }
 }
