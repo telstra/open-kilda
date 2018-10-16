@@ -17,7 +17,7 @@ package org.openkilda.functionaltests.spec.samples
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.ElasticHelper
-import org.openkilda.functionaltests.helpers.ElasticQueryBuilder
+import org.openkilda.functionaltests.helpers.ElasticQuery
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Ignore
 
@@ -32,7 +32,7 @@ class KibanaSpec extends BaseSpecification {
         assert elasticHelper
 
         then: "STORM would generate at least 1 INFO message per 5 minutes"
-        def logs = elasticHelper.getLogs(new ElasticQueryBuilder().setAppId("storm-worker_log").setTimeRange(300))
+        def logs = elasticHelper.getLogs(new ElasticQuery().setAppId("storm-worker_log").setTimeRange(300))
         assert logs
         assert logs?.hits?.total > 0
 

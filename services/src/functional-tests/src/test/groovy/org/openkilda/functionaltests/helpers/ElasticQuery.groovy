@@ -4,7 +4,7 @@ import groovy.transform.builder.Builder
 import groovy.transform.builder.SimpleStrategy
 
 @Builder(builderStrategy = SimpleStrategy, prefix = "set")
-class ElasticQueryBuilder {
+class ElasticQuery {
     String appId
     String tags
     String level
@@ -13,7 +13,7 @@ class ElasticQueryBuilder {
     String defaultField
     String index
 
-    ElasticQueryBuilder() {
+    ElasticQuery() {
         this.appId = ""
         this.tags = ""
         this.level = "INFO OR WARN OR ERROR"

@@ -31,7 +31,7 @@ class ElasticHelper {
      * Returns log entries from ElasticSearch in accordance to the query parameters.
      * @return Map<String, Object>. In case of ElasticSearch communication failure, an empty map will be returned.
      */
-    def getLogs(ElasticQueryBuilder q) {
+    def getLogs(ElasticQuery q) {
         return elasticService.getLogs(q.appId, q.tags, q.level, q.timeRange, q.resultCount, q.defaultField, q.index)
     }
 }
