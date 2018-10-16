@@ -137,10 +137,6 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         }
 
         @Override
-        protected void checkAndCreateTopic(String topic) {
-        }
-
-        @Override
         public String getDefaultTopologyName() {
             return OpenTsdbTopology.class.getSimpleName().toLowerCase();
         }

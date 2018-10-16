@@ -13,28 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.command;
-
-import org.openkilda.floodlight.utils.CommandContextFactory;
+package org.openkilda.floodlight.service;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import org.easymock.EasyMockSupport;
-import org.junit.After;
-import org.junit.Before;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
-public abstract class AbstractCommandTest extends EasyMockSupport {
-    protected final CommandContextFactory commandContextFactory = new CommandContextFactory();
-    protected final FloodlightModuleContext moduleContext = new FloodlightModuleContext();
-
-    @Before
-    public void setUp() throws Exception {
-        injectMocks(this);
-
-        commandContextFactory.init(moduleContext);
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        verifyAll();
-    }
+public interface IService extends IFloodlightService {
+    void setup(FloodlightModuleContext moduleContext) throws FloodlightModuleException;
 }

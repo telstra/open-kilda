@@ -23,22 +23,17 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.neo4j.driver.v1.Session;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class FlowOperationsBolt extends NeoOperationsBolt {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowOperationsBolt.class);
-
     public FlowOperationsBolt(Auth neoAuth) {
         super(neoAuth);
     }
 
     @Override
     List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, Session session) {
-        LOGGER.warn("Received unsupported Flow Operation");
+        log.warn("Received unsupported Flow Operation");
         return null;
     }
 
@@ -46,10 +41,4 @@ public class FlowOperationsBolt extends NeoOperationsBolt {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("response", "correlationId"));
     }
-
-    @Override
-    Logger getLogger() {
-        return LOGGER;
-    }
-
 }

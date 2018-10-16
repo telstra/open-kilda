@@ -59,11 +59,9 @@ public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig>
 
         logger.debug("Building SimulatorTopology - {}", topologyName);
 
-        checkAndCreateTopic(simulatorTopic);
         logger.debug("connecting to {} topic", simulatorTopic);
         builder.setSpout(SIMULATOR_SPOUT, createKafkaSpout(simulatorTopic, SIMULATOR_SPOUT));
 
-        checkAndCreateTopic(inputTopic);
         logger.debug("connecting to {} topic", inputTopic);
         builder.setSpout(COMMAND_SPOUT, createKafkaSpout(inputTopic, COMMAND_SPOUT));
 
@@ -86,13 +84,15 @@ public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig>
                 .fieldsGrouping(SIMULATOR_COMMAND_BOLT, SIMULATOR_COMMAND_STREAM, new Fields("dpid"));
 
         // TODO(dbogun): check is it must be output topic
-        checkAndCreateTopic(inputTopic);
         builder.setBolt(KAFKA_BOLT, createKafkaBolt(inputTopic), parallelism)
                 .shuffleGrouping(SWITCH_BOLT, KAFKA_BOLT_STREAM);
 
         return builder.createTopology();
     }
 
+    /**
+     * Entry point for local run of the topology.
+     */
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);

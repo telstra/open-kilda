@@ -25,7 +25,6 @@ import org.openkilda.messaging.model.FlowPair;
 
 import org.glassfish.jersey.client.ClientConfig;
 
-import java.io.IOException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
@@ -36,8 +35,11 @@ import javax.ws.rs.core.Response;
 /**
  * Helper methods for doing Topology tests.
  */
-public class TopologyHelp {
-    public static boolean DeleteMininetTopology() {
+public final class TopologyHelp {
+    /**
+     * Remove existing mininet topo.
+     */
+    public static boolean deleteMininetTopology() {
         System.out.println("\n==> Delete Mininet Topology");
 
         long current = System.currentTimeMillis();
@@ -59,7 +61,7 @@ public class TopologyHelp {
      *
      * @param json - the json doc that is suitable for the mininet API
      */
-    public static boolean CreateMininetTopology(String json) {
+    public static boolean createMininetTopology(String json) {
         System.out.println("\n==> Create Mininet Topology");
 
         long current = System.currentTimeMillis();
@@ -76,39 +78,12 @@ public class TopologyHelp {
         return result.getStatus() == 200;
     }
 
-    public static boolean TestMininetCreate(String json) {
-        System.out.println("\n==> Create Mininet Random Topology");
-
-        //
-        // TODO: mininet_rest has been re-written, but not create_random_linear_topology.
-        //          It is unclear if this code path is still used ATM (could be useful for scale
-        //          testing, but possibly not in its current form.
-        //
-
-        boolean refactored = false;
-        if (!refactored)
-            throw new UnsupportedOperationException("This code needs refactoring");
-
-        long current = System.currentTimeMillis();
-        Client client = ClientBuilder.newClient(new ClientConfig());
-        Response result = client
-                .target(mininetEndpoint)
-                .path("/create_random_linear_topology")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(json, MediaType.APPLICATION_JSON));
-
-        System.out.println(String.format("===> Response = %s", result.toString()));
-        System.out.println(String.format("===> Create Mininet Random Topology Time: %,.3f", getTimeDuration(current)));
-
-        return result.getStatus() == 200;
-    }
-
     /**
-     * NB: This method calls TE, not Mininet
+     * NB: This method calls TE, not Mininet.
      *
      * @return The JSON document of the Topology from the Topology Engine
      */
-    public static String GetTopology() {
+    public static String getTopology() {
         System.out.println("\n==> Get Topology-Engine Topology");
 
         long current = System.currentTimeMillis();
@@ -128,11 +103,11 @@ public class TopologyHelp {
     }
 
     /**
-     * NB: This method calls TE, not Mininet
+     * NB: This method calls TE, not Mininet.
      *
      * @return The JSON document of the Topology from the Topology Engine
      */
-    public static String ClearTopology() {
+    public static String clearTopology() {
         System.out.println("\n==> Clear Topology-Engine Topology");
 
         long current = System.currentTimeMillis();
@@ -150,16 +125,19 @@ public class TopologyHelp {
         return result;
     }
 
-    public static FlowPair<Flow, Flow> GetFlow(String flowId) {
+    /**
+     * Get TE representation of flow.
+     */
+    public static FlowPair<Flow, Flow> getFlow(String flowId) {
         System.out.println("\n==> Topology-Engine Get Flow");
 
         Client client = ClientBuilder.newClient(new ClientConfig());
         Response response = client
-            .target(topologyEndpoint)
-            .path("/api/v1/topology/flows/")
-            .path(flowId)
-            .request(MediaType.APPLICATION_JSON)
-            .get();
+                .target(topologyEndpoint)
+                .path("/api/v1/topology/flows/")
+                .path(flowId)
+                .request(MediaType.APPLICATION_JSON)
+                .get();
 
         int status = response.getStatus();
         if (status != 200) {
@@ -168,19 +146,13 @@ public class TopologyHelp {
             return null;
         }
 
-        FlowPair<Flow, Flow> result = response.readEntity(new GenericType<FlowPair<Flow, Flow>>() {});
+        FlowPair<Flow, Flow> result = response.readEntity(new GenericType<FlowPair<Flow, Flow>>() {
+        });
         System.out.println(String.format("====> Topology-Engine Get Flow = %s", result));
         return result;
     }
 
-    // FIXME(surabujin): garbage
-    public static void main(String[] args) throws IOException {
-        //TopologyHelp.DeleteTopology();
-        //URL url = Resources.getResource("topologies/partial-topology.json");
-        //String doc = Resources.toString(url, Charsets.UTF_8);
-        //TopologyHelp.CreateTopology(doc);
-
-        System.out.println("GetTopology(): = " + TopologyHelp.GetTopology());
-        System.out.println("ClearTopology(): = " + TopologyHelp.ClearTopology());
+    private TopologyHelp() {
+        //pass
     }
 }

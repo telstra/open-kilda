@@ -30,15 +30,10 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class RouterBolt extends AbstractBolt {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RouterBolt.class);
-
     @Override
     protected void handleInput(Tuple input) {
         String request = input.getString(0);
@@ -47,12 +42,12 @@ public class RouterBolt extends AbstractBolt {
         try {
             message = Utils.MAPPER.readValue(request, Message.class);
         } catch (IOException e) {
-            LOGGER.error("Error during parsing request for NBWorker topology", e);
+            log.error("Error during parsing request for NBWorker topology", e);
             return;
         }
 
         if (message instanceof CommandMessage) {
-            LOGGER.debug("Received command message {}", message);
+            log.debug("Received command message {}", message);
             CommandMessage command = (CommandMessage) message;
             CommandData data = command.getData();
 

@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.controller;
 
-import static org.openkilda.messaging.Utils.EXTRA_AUTH;
-
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
@@ -52,7 +50,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -166,23 +163,9 @@ public class FlowController {
     @DeleteMapping
     @ResponseStatus(HttpStatus.OK)
     @ExtraAuthRequired
-    @SuppressWarnings("unchecked") // the error is unchecked
-    public CompletableFuture<List<FlowPayload>> deleteFlows(
-            @RequestHeader(value = EXTRA_AUTH, defaultValue = "0") long extraAuth) {
-        long currentAuth = System.currentTimeMillis();
-        if (Math.abs(currentAuth - extraAuth) > 120 * 1000) {
-            /*
-             * The request needs to be within 120 seconds of the system clock.
-             */
-            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(), ErrorType.AUTH_FAILED,
-                    "Invalid Auth: " + currentAuth, "Valid e"
-                    + "xtra auth required");
-        }
-
+    public CompletableFuture<List<FlowPayload>> deleteFlows() {
         return flowService.deleteAllFlows();
     }
-
-
 
     /**
      * Gets flow status.

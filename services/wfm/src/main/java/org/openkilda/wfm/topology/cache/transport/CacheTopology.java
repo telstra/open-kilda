@@ -59,8 +59,6 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
     public StormTopology createTopology() throws NameCollisionException {
         logger.info("Creating CacheTopology - {}", topologyName);
 
-        initKafkaTopics();
-
         int parallelism = topologyConfig.getParallelism();
 
         TopologyBuilder builder = new TopologyBuilder();
@@ -123,12 +121,6 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
 
         createCtrlBranch(builder, ctrlTargets);
         return builder.createTopology();
-    }
-
-    private void initKafkaTopics() {
-        checkAndCreateTopic(topologyConfig.getKafkaFlowTopic());
-        checkAndCreateTopic(topologyConfig.getKafkaTopoEngTopic());
-        checkAndCreateTopic(topologyConfig.getKafkaTopoCacheTopic());
     }
 
     /**
