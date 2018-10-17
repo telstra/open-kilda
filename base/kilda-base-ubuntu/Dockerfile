@@ -46,9 +46,16 @@ RUN chmod 777 /app/* \
     && python -m pip install setuptools \
     && add-apt-repository ppa:webupd8team/java \
     && apt update \
-    && apt install -y --no-install-recommends \
-        oracle-java8-installer \
+    && apt-get install -y \
         oracle-java8-set-default \
+        oracle-java8-installer || ( \
+           sed -i \
+               -e 's|JAVA_VERSION=8u181|JAVA_VERSION=8u191|' \
+               -e 's|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u181-b13/96a7b8442fe848ef90c96a2fad6ed6d1/|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u191-b12/2787e4a523244c269598db4e85c51e0c/|' \
+               -e 's|SHA256SUM_TGZ="1845567095bfbfebd42ed0d09397939796d05456290fb20a83c476ba09f991d3"|SHA256SUM_TGZ="53c29507e2405a7ffdbba627e6d64856089b094867479edc5ede4105c1da0d65"|' \
+               -e 's|J_DIR=jdk1.8.0_181|J_DIR=jdk1.8.0_191|' \
+               /var/lib/dpkg/info/oracle-java8-installer.config /var/lib/dpkg/info/oracle-java8-installer.postinst; \
+           apt-get install -y) \
     && update-java-alternatives -s java-8-oracle \
-    && echo "export JAVA_HOME=/usr/lib/jvm/java-8-oracle" >> ~/.bashrc \
+    && echo "export JAVA_HOME=${JAVA_HOME}" >> ~/.bashrc \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/* /var/cache/oracle-jdk8-installer
