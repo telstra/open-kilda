@@ -25,13 +25,30 @@ Create abstract API layer for hardware and virtual environment.
 #### Create virtual lab
 ```
 POST <lab-api-host>/api/
-BODY: topology format from atdd-staging
+BODY: topology format from functional-tests
 RESPONSE: new lab id (int)
+```
+#### Define hw lab
+```
+POST <lab-api-host>/api/
+Header: "Hw-Env: HW"
+BODY: topology format from functional-tests
+RESPONSE: lab id==0, or HTTP code 409 when hw lab is allready accured 
 ```
 #### Delete lab
 ```
 DELETE <lab-api-host>/api/<lab_id>
 RESPONSE: 200 OK
+```
+#### Get lab definition
+```
+GET <lab-api-host>/api/<lab_id>
+RESPONSE: topology format from functional-tests
+```
+#### Get defined labs
+```
+GET <lab-api-host>/api
+RESPONSE: array of defined lab id
 ```
 #### Access to lock-keeper
 Proxy call to lock-keeper host
@@ -42,10 +59,4 @@ PROXY <lab-api-host>/api/<lab_id>/lock-keeper
 Proxy call to traffgen host
 ```
 PROXY <lab-api-host>/api/<lab_id>/traffgen
-```
-#### Define hw lab
-```
-POST <lab-api-host>/api/
-BODY: new format TODO: add after impl
-RESPONSE: new lab id (int)
 ```

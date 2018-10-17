@@ -28,8 +28,6 @@ services:
     privileged: true
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      HW_LOCKKEEPER_REST_HOST: '172.28.11.177'
     networks:
       default:
         aliases:
