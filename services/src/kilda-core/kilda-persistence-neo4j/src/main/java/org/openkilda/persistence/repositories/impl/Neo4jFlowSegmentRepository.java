@@ -21,6 +21,8 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 
 import com.google.common.collect.ImmutableMap;
+import org.neo4j.ogm.cypher.ComparisonOperator;
+import org.neo4j.ogm.cypher.Filter;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,6 +35,7 @@ import java.util.Optional;
 public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegment> implements FlowSegmentRepository {
     private static final String FLOW_ID_PROPERTY_NAME = "flowid";
     private static final String COOKIE_PROPERTY_NAME = "cookie";
+    private static final String DEST_SWITCH_PROPERTY_NAME = "dst_switch";
 
     public Neo4jFlowSegmentRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -50,6 +53,12 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
         Collection<FlowSegment> flowSegments = new ArrayList<>();
         getSession().query(getEntityType(), query, parameters).forEach(flowSegments::add);
         return flowSegments;
+    }
+
+    @Override
+    public Collection<FlowSegment> findByDestSwitchId(SwitchId switchId) {
+        Filter destSwitchIdFilter = new Filter(DEST_SWITCH_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
+        return getSession().loadAll(getEntityType(), destSwitchIdFilter, DEPTH_LOAD_ENTITY);
     }
 
     @Override

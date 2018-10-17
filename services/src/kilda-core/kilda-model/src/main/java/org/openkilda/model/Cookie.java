@@ -13,17 +13,33 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.model;
 
-import org.openkilda.model.FlowSegment;
-import org.openkilda.model.SwitchId;
+import lombok.Value;
 
-import java.util.Collection;
+/**
+ * Represents information about a cookie.
+ */
+@Value
+public class Cookie {
+    public static final long DEFAULT_RULES_MASK = 0x8000000000000000L;
 
-public interface FlowSegmentRepository extends Repository<FlowSegment> {
-    Collection<FlowSegment> findByFlowIdAndCookie(String flowId, long flowCookie);
+    private final long value;
 
-    Collection<FlowSegment> findByDestSwitchId(SwitchId switchId);
+    public boolean isDefaultRule() {
+        return isDefaultRule(value);
+    }
 
-    long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
+    public static boolean isDefaultRule(long cookie) {
+        return (cookie & DEFAULT_RULES_MASK) != 0L;
+    }
+
+    @Override
+    public String toString() {
+        return toString(value);
+    }
+
+    public static String toString(long cookie) {
+        return String.format("0x%016X", cookie);
+    }
 }

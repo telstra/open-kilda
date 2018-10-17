@@ -42,10 +42,7 @@ MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
 MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
 MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
-MT_VALID_REQUEST = "org.openkilda.messaging.command.switches.SwitchRulesValidateRequest"
 MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SwitchRulesSyncRequest"
-MT_SWITCH_RULES = "org.openkilda.messaging.info.rule.SwitchFlowEntries"
-MT_ERROR_SWITCH_RULES = "org.openkilda.messaging.error.rule.DumpRulesErrorData"
 #feature toggle is the functionality to turn off/on specific features
 MT_STATE_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleStateRequest"
 MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
@@ -195,15 +192,6 @@ class MessageItem(model.JsonSerializable):
                 event_handled = self.get_feature_toggle_state()
             elif self.get_message_type() == MT_TOGGLE:
                 event_handled = self.update_feature_toggles()
-
-            elif self.get_message_type() == MT_VALID_REQUEST:
-                event_handled = self.send_dump_rules_request()
-
-            elif self.get_message_type() == MT_SWITCH_RULES:
-                event_handled = self.validate_switch_rules()
-
-            elif self.get_message_type() == MT_ERROR_SWITCH_RULES:
-                event_handled = self.error_validate_switch_rules()
 
             elif self.get_message_type() == MT_SYNC_REQUEST:
                 event_handled = self.sync_switch_rules()
@@ -740,22 +728,6 @@ class MessageItem(model.JsonSerializable):
 
         return True
 
-    def validate_switch_rules(self):
-        diff = flow_utils.validate_switch_rules(self.payload['switch_id'],
-                                                self.payload['flows'])
-        message_utils.send_validation_rules_response(diff["missing_rules"],
-                                                     diff["excess_rules"],
-                                                     diff["proper_rules"],
-                                                     self.correlation_id)
-        return True
-
-    def error_validate_switch_rules(self):
-        message_utils.send_error_validation_rules_response(self.correlation_id,
-                                                           self.payload['error-type'],
-                                                           self.payload['error-message'],
-                                                           self.payload['error-description'])
-        return True
-
     def sync_switch_rules(self):
         switch_id = self.payload['switch_id']
         rules_to_sync = self.payload['rules']
@@ -775,11 +747,6 @@ class MessageItem(model.JsonSerializable):
         message_utils.send_sync_rules_response(
             installed_rules, self.correlation_id)
 
-        return True
-
-    def send_dump_rules_request(self):
-        message_utils.send_dump_rules_request(self.payload['switch_id'],
-                                              self.correlation_id)
         return True
 
     def update_payload_lifecycle(self, life_cycle):
