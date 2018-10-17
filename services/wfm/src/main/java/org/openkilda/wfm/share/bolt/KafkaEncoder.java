@@ -20,6 +20,8 @@ import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.wfm.AbstractBolt;
@@ -34,8 +36,13 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class KafkaEncoder extends AbstractBolt {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEncoder.class);
+
     public static final String FIELD_ID_PAYLOAD = "payload";
 
     public static final Fields STREAM_FIELDS = new Fields(
@@ -50,7 +57,7 @@ public abstract class KafkaEncoder extends AbstractBolt {
 
             getOutput().emit(input, new Values(null, json));
         } catch (IllegalArgumentException e) {
-            log.error(e.getMessage());
+            LOGGER.error(e.getMessage());
             unhandledInput(input);
         }
     }
@@ -65,6 +72,8 @@ public abstract class KafkaEncoder extends AbstractBolt {
             message = wrapCommand(commandContext, (CommandData) payload);
         } else if (payload instanceof InfoData) {
             message = wrapInfo(commandContext, (InfoData) payload);
+        } else if (payload instanceof ErrorData) {
+            message = wrapError(commandContext, (ErrorData) payload);
         } else {
             throw new IllegalArgumentException(String.format("There is not rule to build envelope for: %s", payload));
         }
@@ -78,6 +87,10 @@ public abstract class KafkaEncoder extends AbstractBolt {
 
     private InfoMessage wrapInfo(CommandContext commandContext, InfoData payload) {
         return new InfoMessage(payload, System.currentTimeMillis(), commandContext.getCorrelationId());
+    }
+
+    private ErrorMessage wrapError(CommandContext commandContext, ErrorData payload) {
+        return new ErrorMessage(payload, System.currentTimeMillis(), commandContext.getCorrelationId());
     }
 
     private String encode(Message message) throws JsonEncodeException {

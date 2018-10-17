@@ -19,6 +19,11 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
@@ -60,6 +65,16 @@ public class RouterBolt extends AbstractBolt {
                 BaseRequest baseRequest = (BaseRequest) data;
                 processRequest(input, baseRequest, message.getCorrelationId());
             }
+        } else if (message instanceof InfoMessage) {
+            LOGGER.debug("Received info message {}", message);
+            InfoMessage info = (InfoMessage) message;
+            InfoData data = info.getData();
+            processRequest(input, data, message.getCorrelationId());
+        } else if (message instanceof ErrorMessage) {
+            LOGGER.debug("Received error message {}", message);
+            ErrorMessage error = (ErrorMessage) message;
+            ErrorData data = error.getData();
+            processRequest(input, data, message.getCorrelationId());
         } else {
             unhandledInput(input);
         }
@@ -77,10 +92,29 @@ public class RouterBolt extends AbstractBolt {
         }
     }
 
+    private void processRequest(Tuple input, InfoData data, String correlationId) {
+        if (data instanceof SwitchFlowEntries) {
+            getOutput().emit(StreamType.VALIDATION.toString(), input, new Values(data, correlationId));
+        } else {
+            unhandledInput(input);
+        }
+    }
+
+    private void processRequest(Tuple input, ErrorData data, String correlationId) {
+        getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(StreamType.SWITCH.toString(), new Fields("request", "correlationId"));
-        declarer.declareStream(StreamType.ISL.toString(), new Fields("request", "correlationId"));
-        declarer.declareStream(StreamType.FLOW.toString(), new Fields("request", "correlationId"));
+        Fields fields = new Fields(PersistenceOperationsBolt.FIELD_ID_REQUEST,
+                PersistenceOperationsBolt.FIELD_ID_CORELLATION_ID);
+        declarer.declareStream(StreamType.SWITCH.toString(), fields);
+        declarer.declareStream(StreamType.ISL.toString(), fields);
+        declarer.declareStream(StreamType.FLOW.toString(), fields);
+        declarer.declareStream(StreamType.VALIDATION.toString(),
+                new Fields(ValidationOperationsBolt.FIELD_ID_REQUEST,
+                        ValidationOperationsBolt.FIELD_ID_CORELLATION_ID));
+        declarer.declareStream(StreamType.ERROR.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

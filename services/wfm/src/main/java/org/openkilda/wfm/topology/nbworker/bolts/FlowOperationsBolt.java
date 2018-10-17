@@ -19,8 +19,6 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.persistence.PersistenceManager;
 
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,13 +40,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("response", "correlationId"));
-    }
-
-    @Override
     Logger getLogger() {
         return LOGGER;
     }
-
 }

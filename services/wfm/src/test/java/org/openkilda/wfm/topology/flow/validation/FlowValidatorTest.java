@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.validation;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -73,6 +74,16 @@ public class FlowValidatorTest {
                 if (switchId.toString().equals(DST_SWITCH.toString())) {
                     return new Switch();
                 }
+                return null;
+            }
+
+            @Override
+            public Iterable<FlowSegment> findFlowSegmentsToSwitch(org.openkilda.model.SwitchId switchId) {
+                return null;
+            }
+
+            @Override
+            public Iterable<org.openkilda.model.Flow> findFlowsFromSwitch(org.openkilda.model.SwitchId switchId) {
                 return null;
             }
 

@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.pce.cache.FlowCache;
@@ -115,6 +116,16 @@ public class CacheServiceTest {
     private class TestSwitchRepository implements SwitchRepository {
         @Override
         public Switch findBySwitchId(org.openkilda.model.SwitchId switchId) {
+            return null;
+        }
+
+        @Override
+        public Iterable<FlowSegment> findFlowSegmentsToSwitch(org.openkilda.model.SwitchId switchId) {
+            return null;
+        }
+
+        @Override
+        public Iterable<org.openkilda.model.Flow> findFlowsFromSwitch(org.openkilda.model.SwitchId switchId) {
             return null;
         }
 

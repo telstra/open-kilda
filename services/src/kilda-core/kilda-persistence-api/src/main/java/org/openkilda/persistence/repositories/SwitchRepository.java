@@ -15,9 +15,15 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
 public interface SwitchRepository extends Repository<Switch> {
     Switch findBySwitchId(SwitchId switchId);
+
+    Iterable<FlowSegment> findFlowSegmentsToSwitch(SwitchId switchId);
+
+    Iterable<Flow> findFlowsFromSwitch(SwitchId switchId);
 }

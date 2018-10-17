@@ -20,6 +20,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,10 +40,14 @@ public class ResponseSplitterBolt extends AbstractBolt {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ResponseSplitterBolt.class);
 
+    public static final String FIELD_ID_CORELLATION_ID = "correlationId";
+
+    public static final String FIELD_ID_RESPONSE = "response";
+
     @Override
-    protected void handleInput(Tuple input) {
-        List<InfoData> responses = (List<InfoData>) input.getValueByField("response");
-        String correlationId = input.getStringByField("correlationId");
+    protected void handleInput(Tuple input) throws PipelineException {
+        List<InfoData> responses = pullValue(input, FIELD_ID_RESPONSE, List.class);
+        String correlationId = pullValue(input, FIELD_ID_CORELLATION_ID, String.class);
         LOGGER.debug("Received response correlationId {}", correlationId);
 
         sendChunkedResponse(responses, input, correlationId);
