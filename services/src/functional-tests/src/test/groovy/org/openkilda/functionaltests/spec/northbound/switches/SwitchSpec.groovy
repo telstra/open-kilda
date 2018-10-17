@@ -13,7 +13,7 @@ class SwitchSpec extends BaseSpecification {
     @Autowired
     NorthboundService northboundService
 
-    def "Delete meter with invalid ID"() {
+    def "Unable to delete meter with invalid ID"() {
         given: "A switch"
         def sw = topology.getActiveSwitches()[0]
 
