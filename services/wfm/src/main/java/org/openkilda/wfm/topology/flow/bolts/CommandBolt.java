@@ -29,7 +29,6 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.Neo4jPersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
@@ -74,7 +73,6 @@ public class CommandBolt extends BaseRichBolt {
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         outputCollector = collector;
         Neo4jPersistenceManager transactionManager = new Neo4jPersistenceManager(neo4jConfig);
-        RepositoryFactory repositoryFactory = transactionManager.getRepositoryFactory();
         commandService = new CommandService(transactionManager);
         flowService = new FlowService(transactionManager);
     }

@@ -19,6 +19,6 @@ import org.openkilda.model.Flow;
 
 public interface FlowRepository extends Repository<Flow> {
     Iterable<Flow> findById(String flowId);
-
+    long deleteByFlowId(String flowId);
     void mergeFlowRelationships(Flow flow);
 }

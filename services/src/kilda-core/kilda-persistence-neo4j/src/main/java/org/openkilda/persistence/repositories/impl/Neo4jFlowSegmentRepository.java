@@ -23,8 +23,8 @@ import org.openkilda.persistence.repositories.FlowSegmentRepository;
 
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
-import org.neo4j.ogm.cypher.Filters;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,12 +59,9 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
     @Override
     public long deleteFlowSegments(Flow flow) {
         String flowId = flow.getFlowId();
-        long flowCookie = flow.getCookie();
         Map<String, Object> parameters = new HashMap<>();
         Filter flowIdFilter = new Filter("flowid", ComparisonOperator.EQUALS, flowId);
-        Filter cookieFilter = new Filter("parent_cookie", ComparisonOperator.EQUALS, flowCookie);
-        Filters filters = flowIdFilter.and(cookieFilter);
-        Long count = (Long) getSession().delete(FlowSegment.class, filters, false);
+        Long count = (Long) getSession().delete(FlowSegment.class, Collections.singletonList(flowIdFilter), false);
         return count;
     }
 

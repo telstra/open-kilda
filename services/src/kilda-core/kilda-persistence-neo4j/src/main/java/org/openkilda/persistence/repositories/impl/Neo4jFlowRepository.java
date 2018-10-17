@@ -18,6 +18,10 @@ package org.openkilda.persistence.repositories.impl;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.repositories.FlowRepository;
 
+import org.neo4j.ogm.cypher.ComparisonOperator;
+import org.neo4j.ogm.cypher.Filter;
+
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +39,14 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         parameters.put("flowid", flowId);
 
         return getSession().query(Flow.class, "MATCH (a)-[f:flow{flowid: {flowid}}]->(b) RETURN a,f,b", parameters);
+    }
+
+    @Override
+    public long deleteByFlowId(String flowId) {
+        Map<String, Object> parameters = new HashMap<>();
+        Filter flowIdFilter = new Filter("flowid", ComparisonOperator.EQUALS, flowId);
+        Long count = (Long) getSession().delete(Flow.class, Collections.singletonList(flowIdFilter), false);
+        return count;
     }
 
     @Override
