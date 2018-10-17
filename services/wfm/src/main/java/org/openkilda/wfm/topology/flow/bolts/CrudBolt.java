@@ -707,7 +707,7 @@ public class CrudBolt
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
                 message.getCorrelationId());
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
+        Values topology = new Values(infoMessage);
         outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),

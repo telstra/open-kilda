@@ -115,7 +115,6 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         }
     }
 
-
     public Collection<Isl> findAllOrderedBySrcSwitch() {
         return getSession().loadAll(getEntityType(), new SortOrder("src_switch"));
     }
