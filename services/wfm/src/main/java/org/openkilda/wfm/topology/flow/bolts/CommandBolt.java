@@ -74,7 +74,6 @@ public class CommandBolt extends BaseRichBolt {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         commandService = new CommandService(persistenceManager);
         flowService = new FlowService(persistenceManager);
-
     }
 
     @Override

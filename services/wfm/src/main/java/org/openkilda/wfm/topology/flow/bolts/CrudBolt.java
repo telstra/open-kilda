@@ -674,6 +674,8 @@ public class CrudBolt
 
     private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
+        FlowPair<Flow, Flow> currentFlowState = FLOW_MAPPER.flowPairToDto(
+                flowService.getFlowPair(requestedFlow.getFlowId()));
         String correlationId = message.getCorrelationId();
 
         PathPair pathPair;
@@ -704,11 +706,17 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, pathInfoPair);
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
         flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
+        FlowInfoData deleteData = new FlowInfoData(requestedFlow.getFlowId(), currentFlowState,
+                DELETE, message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(deleteData, System.currentTimeMillis(), message.getCorrelationId());
+        Values topology = new Values(infoMessage);
+        outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
+
         FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
                 message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(infoMessage);
-        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
+        infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
+        topology = new Values(infoMessage);
+        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));

@@ -177,6 +177,8 @@ public class FlowService {
         }
     }
 
+
+
     private void deleteFlowForPair(FlowPair flowPair) {
         Flow flow = flowPair.getForward();
         processDeleteFlow(flow);
@@ -197,8 +199,12 @@ public class FlowService {
     public void updateFlow(FlowPair flowPair) {
         transactionManager.getTransactionManager().begin();
         try {
-            deleteFlowForPair(flowPair);
+            Flow flow = flowPair.getForward();
+            flowSegmentRepository.deleteFlowSegments(flow);
+            flowRepository.deleteByFlowId(flow.getFlowId());
             createFlowForPair(flowPair);
+            transactionManager.getTransactionManager().commit();
+
         } catch (Exception e) {
             transactionManager.getTransactionManager().rollback();
         }
