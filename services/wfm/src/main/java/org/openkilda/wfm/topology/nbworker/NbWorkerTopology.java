@@ -25,6 +25,7 @@ import org.openkilda.wfm.topology.nbworker.bolts.MessageEncoder;
 import org.openkilda.wfm.topology.nbworker.bolts.ResponseSplitterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.RouterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.SwitchOperationsBolt;
+import org.openkilda.wfm.topology.nbworker.bolts.SwitchValidationsBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -35,9 +36,10 @@ import org.apache.storm.topology.TopologyBuilder;
  *  Storm topology to read data from database.
  *  Topology design:
  *  kilda.topo.nb-spout ---> router-bolt ---> validation-operations-bolt ---> response-splitter-bolt ---> nb-kafka-bolt
- *                                     | ---> links-operations-bolt      ---> |  \                        |
- *                                     | ---> flows-operations-bolt      ---> | \ \                       |
- *                                     | ---> switches-operations-bolt   ---> |\ \ \                      |
+ *                                     | ---> links-operations-bolt      ---> |   \                       |
+ *                                     | ---> flows-operations-bolt      ---> |  \ \                      |
+ *                                     | ---> switches-operations-bolt   ---> | \ \ \                     |
+ *                                     | ---> switch-validations-bolt    ---> |\ \ \ \                    |
  *                                     | --->                   message-encoder-bolt (in error case) ---> |
  *
  * <p>kilda.topo.nb-spout: reads data from kafka.
@@ -51,6 +53,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String SWITCHES_BOLT_NAME = "switches-operations-bolt";
     private static final String LINKS_BOLT_NAME = "links-operations-bolt";
     private static final String FLOWS_BOLT_NAME = "flows-operations-bolt";
+    private static final String SWITCH_VALIDATIONS_BOLT_NAME = "switch-validations-bolt";
     private static final String MESSAGE_ENCODER_BOLT_NAME = "message-encoder-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
@@ -90,11 +93,16 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(FLOWS_BOLT_NAME, flowsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FLOW.toString());
 
+        SwitchValidationsBolt validationBolt = new SwitchValidationsBolt(persistenceManager);
+        tb.setBolt(SWITCH_VALIDATIONS_BOLT_NAME, validationBolt, parallelism)
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.VALIDATION.toString());
+
         ResponseSplitterBolt splitterBolt = new ResponseSplitterBolt();
         tb.setBolt(SPLITTER_BOLT_NAME, splitterBolt, parallelism)
                 .shuffleGrouping(SWITCHES_BOLT_NAME)
                 .shuffleGrouping(LINKS_BOLT_NAME)
-                .shuffleGrouping(FLOWS_BOLT_NAME);
+                .shuffleGrouping(FLOWS_BOLT_NAME)
+                .shuffleGrouping(SWITCH_VALIDATIONS_BOLT_NAME);
 
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)

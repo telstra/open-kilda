@@ -23,5 +23,7 @@ import java.util.Collection;
 public interface FlowSegmentRepository extends Repository<FlowSegment> {
     Collection<FlowSegment> findByFlowIdAndCookie(String flowId, long flowCookie);
 
+    Collection<FlowSegment> findByDestSwitchId(SwitchId switchId);
+
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 }

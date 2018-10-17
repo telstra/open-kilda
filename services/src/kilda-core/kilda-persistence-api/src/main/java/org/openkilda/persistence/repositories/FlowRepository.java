@@ -39,6 +39,8 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<String> findDownFlowIds();
 
+    Collection<Flow> findBySrcSwitchId(SwitchId switchId);
+
     void createOrUpdate(FlowPair flowPair);
 
     void delete(FlowPair flowPair);
