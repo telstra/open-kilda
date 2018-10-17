@@ -58,6 +58,7 @@ public class CommandBolt extends BaseRichBolt {
     private transient CommandService commandService;
 
     private transient FlowService flowService;
+
     /**
      * Output collector.
      */
@@ -76,7 +77,6 @@ public class CommandBolt extends BaseRichBolt {
         RepositoryFactory repositoryFactory = transactionManager.getRepositoryFactory();
         commandService = new CommandService(transactionManager);
         flowService = new FlowService(transactionManager);
-
     }
 
     @Override
