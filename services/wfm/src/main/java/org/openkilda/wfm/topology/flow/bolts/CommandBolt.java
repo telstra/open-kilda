@@ -102,7 +102,10 @@ public class CommandBolt extends BaseRichBolt {
                 default:
                     break;
             }
-        } finally {
+
+        } catch (Exception e){
+            logger.error("Failed to process command for flow");
+        }finally {
             outputCollector.ack(tuple);
         }
 

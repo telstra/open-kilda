@@ -220,6 +220,11 @@ def format_switch(switch):
 
 
 def format_flow(raw_flow):
+    if 'status' in raw_flow:
+        status = raw_flow['status']
+        del raw_flow['status']
+        raw_flow['state'] = status
+
     flow = dict(raw_flow)
 
     path = json.loads(raw_flow['flowpath'])

@@ -40,7 +40,7 @@ public interface FlowMapper {
     }
 
     default Instant map(String value) {
-        return (Instant) DateTimeFormatter.ISO_INSTANT.parse(value);
+        return DateTimeFormatter.ISO_INSTANT.parse(value, Instant::from);
     }
 
     Node pathNodeFromDto(PathNode p);
