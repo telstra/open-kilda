@@ -19,8 +19,6 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.persistence.PersistenceManager;
 
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.List;
@@ -34,10 +32,5 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         log.warn("Received unsupported Flow Operation");
         return null;
-    }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("response", "correlationId"));
     }
 }

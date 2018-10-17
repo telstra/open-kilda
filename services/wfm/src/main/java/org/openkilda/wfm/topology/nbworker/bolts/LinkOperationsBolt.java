@@ -33,8 +33,6 @@ import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.mappers.LinkPropsMapper;
 
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.time.Instant;
@@ -184,10 +182,5 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
 
             return new LinkPropsResponse(request, null, e.getMessage());
         }
-    }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("response", "correlationId"));
     }
 }

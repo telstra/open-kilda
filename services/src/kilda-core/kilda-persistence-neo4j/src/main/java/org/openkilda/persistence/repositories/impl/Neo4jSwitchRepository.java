@@ -18,6 +18,8 @@ package org.openkilda.persistence.repositories.impl;
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
 
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
@@ -30,6 +32,8 @@ import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -79,6 +83,24 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
 
         return findById(session, entity.getSwitchId(), 0)
                 .orElseThrow(() -> new PersistenceException(format("Switch not found: %s", entity.getSwitchId())));
+    }
+
+    @Override
+    public Iterable<FlowSegment> findFlowSegmentsToSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("switch_id", switchId);
+        return getSession().query(FlowSegment.class,
+                "MATCH (src:switch)-[f:flow_segment]->(dst:switch) WHERE dst.name=$switch_id RETURN f, src, dst",
+                parameters);
+    }
+
+    @Override
+    public Iterable<Flow> findFlowsFromSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("switch_id", switchId);
+        return getSession().query(Flow.class,
+                "MATCH (src:switch)-[f:flow]->(dst:switch) WHERE src.name=$switch_id RETURN f, src, dst",
+                parameters);
     }
 
     @Override

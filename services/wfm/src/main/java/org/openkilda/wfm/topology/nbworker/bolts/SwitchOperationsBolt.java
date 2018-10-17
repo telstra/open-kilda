@@ -22,8 +22,6 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.List;
@@ -51,10 +49,5 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         return repositoryFactory.createSwitchRepository().findAll().stream()
                 .map(SwitchMapper.INSTANCE::map)
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("response", "correlationId"));
     }
 }
