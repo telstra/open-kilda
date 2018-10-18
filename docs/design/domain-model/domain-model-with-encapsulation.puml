@@ -1,0 +1,189 @@
+@startuml
+
+title Kilda Domain Model
+
+together {
+    class SwitchId {
+        id
+    }
+
+    class Switch {
+        id : SwitchId
+
+        status : SwitchStatus
+        controller
+        hostname
+        address
+        description
+        meter_max
+        rule_max
+        ==
+        Port[] ports()
+        Meter[] meters()
+        Rule[] rules()
+        ISL[] isls()
+        UniDirectionFlow[] flows()
+    }
+
+    enum SwitchStatus {
+        ACTIVE
+        INACTIVE
+        REMOVED
+    }
+
+    Switch o--> SwitchStatus
+    Switch o--> SwitchId
+
+    enum PortStatus {
+        UP
+        DOWN
+    }
+
+    class Port {
+        switch : Switch
+        port_no
+
+        status : PortStatus
+        ==
+        ISl isl()
+        UniDirectionFlow[] flows()
+        __
+        unique constraint on switch_id+port_no
+    }
+
+    Port o--> PortStatus
+    Port --> Switch
+
+    class Meter {
+        switch : Switch
+        meter_id
+
+        flow : UniDirectionFlow
+        __
+        unique constraint on switch_id+meter_id
+    }
+
+    Meter --> Switch
+    Meter --> UniDirectionFlow
+
+    class Rule {
+        switch : Switch
+        cookie_id
+
+        meter : Meter
+        match_port
+        match_vlan
+        out_port
+        out_vlan
+
+        flow : UniDirectionFlow
+        __
+        unique constraint on switch_id+cookie_id
+    }
+
+    Rule --> Switch
+    Rule --> UniDirectionFlow
+    Rule --> Meter
+}
+
+class ISL {
+    id = src_switch+src_port+dst_switch+dst_port :  for simplify where clause
+
+    src_switch : Switch
+    src_port
+    src_status
+    scr_latency
+
+    dst_switch : Switch
+    dst_port
+    dst_status
+    dst_latency
+
+    cost
+    speed
+    max_bandwidth
+    available_bandwidth
+    __
+    unique constraint on src_switch+src_port+dst_switch+dst_port
+}
+
+note "rules for solving whois src and dst\nsrc_switch < dst_switch\n if src_switch == dst_switch use src_port < dst_port" as ISL_id_note
+ISL_id_note .. ISL
+
+ISL --> Switch
+ISL --> Port
+
+class Flow {
+  flow_id
+
+  status : FlowStatus
+
+  forward : UniDirectionFlow
+  reverse : UniDirectionFlow
+
+  src_switch : Switch
+  src_port
+  src_vlan
+  dst_switch : Switch
+  dst_port
+  dst_vlan
+
+  description
+  bandwidth
+  ignoreBandwidth
+
+  encapsulationType : FlowEncapsulationType
+}
+
+note "rules for solving whois src and dst\nsrc_switch < dst_switch\n if src_switch == dst_switch use src_port < dst_port" as Flow_id_note
+Flow_id_note .. Flow
+
+Flow --> Switch
+Flow --> Port
+
+class UniDirectionFlow {
+    flow_id
+    cookie_id
+    __
+    unique constraint on flow_id+cookie_id
+}
+
+Flow --> UniDirectionFlow
+
+enum FlowEncapsulationType {
+   TRANSIT_VLAN
+}
+
+Flow o--> FlowEncapsulationType
+
+enum FlowStatus {
+    UP
+    DOWN
+    IN_PROGRESS
+}
+
+Flow o--> FlowStatus
+
+class FlowSegment {
+    UniDirectionFlow flow
+    ISL isl
+    __
+    unique constraint on flow_id+isl_id
+}
+
+FlowSegment --> UniDirectionFlow
+FlowSegment --> ISL
+
+package "Vlan-based Encapsulation" {
+
+    class TransitVlan {
+        flow_id
+        transit_vlan
+        __
+        unique constraint on flow_id
+    }
+
+    TransitVlan --> Flow
+}
+
+@enduml
