@@ -15,8 +15,6 @@
 
 package org.openkilda.pce;
 
-import org.openkilda.model.FlowPath;
-
 import lombok.Builder;
 import lombok.Value;
 
@@ -27,7 +25,7 @@ import java.io.Serializable;
 public class PathPair implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public final FlowPath forward;
+    public final Path forward;
 
-    public final FlowPath reverse;
+    public final Path reverse;
 }

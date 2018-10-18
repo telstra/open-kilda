@@ -25,7 +25,7 @@ public class Neo4jHistoryLogRepository extends Neo4jGenericRepository<HistoryLog
     }
 
     @Override
-    Class<HistoryLog> getEntityType() {
+    protected Class<HistoryLog> getEntityType() {
         return HistoryLog.class;
     }
 }

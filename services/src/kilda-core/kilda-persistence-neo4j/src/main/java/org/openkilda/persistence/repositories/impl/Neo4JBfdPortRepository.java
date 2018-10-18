@@ -42,11 +42,6 @@ public class Neo4JBfdPortRepository extends Neo4jGenericRepository<BfdPort> impl
     }
 
     @Override
-    Class<BfdPort> getEntityType() {
-        return BfdPort.class;
-    }
-
-    @Override
     public boolean exists(SwitchId switchId, Integer port) {
         return getSession().count(getEntityType(), getFilters(switchId, port)) > 0;
     }
@@ -54,7 +49,7 @@ public class Neo4JBfdPortRepository extends Neo4jGenericRepository<BfdPort> impl
     @Override
     public Optional<BfdPort> findBySwitchIdAndPort(SwitchId switchId, Integer port) {
         Collection<BfdPort> ports = getSession().loadAll(getEntityType(), getFilters(switchId, port),
-                DEPTH_LOAD_ENTITY);
+                getDepthLoadEntity());
         if (ports.size() > 1) {
             throw new PersistenceException(format("Found more that 1 BfdPort entity by switch: %s port: %d",
                     switchId, port));
@@ -67,5 +62,10 @@ public class Neo4JBfdPortRepository extends Neo4jGenericRepository<BfdPort> impl
         filters.and(new Filter(BfdPort.SWITCH_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId));
         filters.and(new Filter(BfdPort.PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, port));
         return filters;
+    }
+
+    @Override
+    protected Class<BfdPort> getEntityType() {
+        return BfdPort.class;
     }
 }

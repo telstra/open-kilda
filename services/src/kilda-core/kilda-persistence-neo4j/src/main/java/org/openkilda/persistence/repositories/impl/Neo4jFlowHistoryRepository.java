@@ -34,14 +34,14 @@ public class Neo4jFlowHistoryRepository extends Neo4jGenericRepository<FlowHisto
     }
 
     @Override
-    public Collection<FlowHistory> listFlowHistoryByTaskId(String taskId) {
+    public Collection<FlowHistory> findByTaskId(String taskId) {
         Filter taskIdFilter = new Filter(TASK_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, taskId);
         return getSession()
-                .loadAll(getEntityType(), taskIdFilter, new SortOrder(TIMESTAMP_PROPERTY_NAME), DEPTH_LOAD_ENTITY);
+                .loadAll(getEntityType(), taskIdFilter, new SortOrder(TIMESTAMP_PROPERTY_NAME), getDepthLoadEntity());
     }
 
     @Override
-    Class<FlowHistory> getEntityType() {
+    protected Class<FlowHistory> getEntityType() {
         return FlowHistory.class;
     }
 }
