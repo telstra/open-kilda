@@ -52,8 +52,9 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("flowid", flowId);
         parameters.put("cookie", cookie);
-        return getSession().query(FlowSegment.class,
-                "MATCH ()-[fs:flow_segment{flowid: {flowid}, cookie: {cookie}]->() RETURN fs", parameters);
+        String query = "MATCH (src:switch)-[fs:flow_segment{flowid: {flowid}, cookie: {cookie}}]->(dst:switch) "
+                     + "RETURN fs, src, dst";
+        return getSession().query(FlowSegment.class, query, parameters);
     }
 
     @Override

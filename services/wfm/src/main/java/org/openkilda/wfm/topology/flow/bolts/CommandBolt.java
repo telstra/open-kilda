@@ -101,9 +101,9 @@ public class CommandBolt extends BaseRichBolt {
                     break;
             }
 
-        } catch (Exception e){
+        } catch (Exception e) {
             logger.error("Failed to process command for flow");
-        }finally {
+        } finally {
             outputCollector.ack(tuple);
         }
 
@@ -112,7 +112,7 @@ public class CommandBolt extends BaseRichBolt {
     private void processCreateFlow(String correlationId, Tuple tuple, Flow flow) {
         try {
             List<BaseInstallFlow> rules = commandService.getInstallRulesForFlow(flow);
-            for (int i = rules.size() - 1; i > 0; i--) {
+            for (int i = rules.size() - 1; i >= 0; i--) {
                 try {
                     BaseInstallFlow rule = rules.get(i);
                     CommandMessage message = new CommandMessage(rules.get(i),
@@ -142,7 +142,7 @@ public class CommandBolt extends BaseRichBolt {
     private void processDeleteFlow(String correlationId, Tuple tuple, Flow flow) {
         try {
             List<RemoveFlow> rules = commandService.getDeleteRulesForFlow(flow);
-            for (int i = rules.size() - 1; i > 0; i--) {
+            for (int i = rules.size() - 1; i >= 0; i--) {
                 try {
                     RemoveFlow rule = rules.get(i);
                     CommandMessage message = new CommandMessage(rules.get(i),

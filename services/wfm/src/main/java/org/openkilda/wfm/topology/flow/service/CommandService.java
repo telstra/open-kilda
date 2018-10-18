@@ -162,7 +162,6 @@ public class CommandService {
         for (PathNode pathNode : pathNodes) {
             if (Objects.equals(pathNode.getSwitchId(), flow.getSourceSwitch())) {
                 outputPort = pathNode.getPortNo();
-                break;
             }
         }
         if (outputPort == -1) {

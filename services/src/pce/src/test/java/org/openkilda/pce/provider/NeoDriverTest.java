@@ -21,7 +21,6 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.FlowState;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -93,8 +92,8 @@ public class NeoDriverTest {
             rel1.setProperty("bandwidth", 200);
             rel1.setProperty("ignore_bandwidth", true);
             rel1.setProperty("description", "description");
-            rel1.setProperty("last_updated", "last_updated");
-            rel1.setProperty("status", FlowState.IN_PROGRESS.getState());
+            rel1.setProperty("last_updated", 1213333331L);
+            rel1.setProperty("status", "IN_PROGRESS");
             tx.success();
         }
 
@@ -133,7 +132,7 @@ public class NeoDriverTest {
             rel2.setProperty("max_bandwidth", 700);
             rel2.setProperty("latency", 800);
             rel2.setProperty("available_bandwidth", 900);
-            rel2.setProperty("status", "inactive");
+            rel2.setProperty("status", "INACTIVE");
 
             tx.success();
         }

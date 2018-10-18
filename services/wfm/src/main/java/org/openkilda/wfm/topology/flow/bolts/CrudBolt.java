@@ -672,8 +672,6 @@ public class CrudBolt
 
     private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
-        FlowPair<Flow, Flow> currentFlowState = FLOW_MAPPER.flowPairToDto(
-                flowService.getFlowPair(requestedFlow.getFlowId()));
         String correlationId = message.getCorrelationId();
 
         FlowPair<PathInfoData, PathInfoData> path;
@@ -699,6 +697,8 @@ public class CrudBolt
                     ErrorType.NOT_FOUND, errorType, "Path was not found");
         }
 
+        FlowPair<Flow, Flow> currentFlowState = FLOW_MAPPER.flowPairToDto(
+                flowService.getFlowPair(requestedFlow.getFlowId()));
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
         flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
