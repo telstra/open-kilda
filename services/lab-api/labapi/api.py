@@ -25,10 +25,10 @@ app = Flask(__name__)
 logger = logging.getLogger()
 
 API_CONTAINER_NAME = "lab-api"
-LAB_SERVICE = 'kilda_lab-service'
 docker = DockerClient(base_url='unix://var/run/docker.sock')
 
 HW_LOCKKEEPER_REST_HOST = os.environ.get("HW_LOCKKEEPER_REST_HOST")
+LAB_SERVICE_IMAGE = os.environ.get("LAB_SERVICE_IMAGE")
 
 HW_LAB_ID = 0
 count = 0
@@ -61,7 +61,7 @@ class Lab:
             env = {'LAB_ID': lab_id}
             volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'}}
             docker.containers.run(
-                LAB_SERVICE, environment=env, volumes=volumes, name=name, privileged=True, detach=True)
+                LAB_SERVICE_IMAGE, environment=env, volumes=volumes, name=name, privileged=True, detach=True)
             docker.networks.get(NETWORK_NAME).connect(name, aliases=[name])
 
     def destroy(self):

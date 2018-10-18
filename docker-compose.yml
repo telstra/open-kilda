@@ -26,6 +26,8 @@ services:
     ports:
     - "8288:8288"
     privileged: true
+    environment:
+      LAB_SERVICE_IMAGE: 'kilda_lab-service'
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     networks:
