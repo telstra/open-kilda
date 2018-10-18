@@ -95,16 +95,15 @@ when connection is lost(not port down)"() {
         flow2 = flowHelper.addFlow(flow2)
 
         and: "Forward flow from source switch to some 'internal' switch"
-        def internalSwitch = switches.find { it.dpId == northbound.getFlowPath(flow1.id).forwardPath[1].switchId }
-        def flow3 = flowHelper.randomFlow(srcSwitch, internalSwitch)
+        def islToInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow1.id))).first()
+        def flow3 = flowHelper.randomFlow(islToInternal.srcSwitch, islToInternal.dstSwitch)
         flow3 = flowHelper.addFlow(flow3)
 
         and: "Reverse flow from 'internal' switch to source switch"
-        def flow4 = flowHelper.randomFlow(internalSwitch, srcSwitch)
+        def flow4 = flowHelper.randomFlow(islToInternal.dstSwitch, islToInternal.srcSwitch)
         flow4 = flowHelper.addFlow(flow4)
 
         when: "Get all flows going through the link from source switch to 'internal' switch"
-        def islToInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow3.id))).first()
         def linkFlows = northbound.getLinkFlows(islToInternal.srcSwitch.dpId, islToInternal.srcPort,
                 islToInternal.dstSwitch.dpId, islToInternal.dstPort)
 

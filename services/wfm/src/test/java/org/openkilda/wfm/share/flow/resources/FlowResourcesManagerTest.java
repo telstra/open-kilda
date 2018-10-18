@@ -21,9 +21,9 @@ import static org.junit.Assert.assertNull;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanResources;
@@ -74,9 +74,9 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
 
     @Test
     public void shouldAllocateForFlow() throws ResourceAllocationException {
-        Flow flow = FlowMapper.INSTANCE.map(firstFlow);
+        UnidirectionalFlow flow = FlowMapper.INSTANCE.map(firstFlow);
 
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+        FlowResources flowResources = resourcesManager.allocateFlowResources(flow.getFlowEntity());
 
         assertEquals(1, flowResources.getUnmaskedCookie());
         assertEquals(2, ((TransitVlanResources) flowResources.getForward().getEncapsulationResources())
@@ -90,12 +90,12 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
 
     @Test
     public void shouldNotImmediatelyReuseResources() throws ResourceAllocationException {
-        Flow flow = FlowMapper.INSTANCE.map(firstFlow);
+        UnidirectionalFlow flow = FlowMapper.INSTANCE.map(firstFlow);
 
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-        resourcesManager.deallocateFlowResources(flow, flowResources);
+        FlowResources flowResources = resourcesManager.allocateFlowResources(flow.getFlowEntity());
+        resourcesManager.deallocateFlowResources(flow.getFlowEntity(), flowResources);
 
-        flowResources = resourcesManager.allocateFlowResources(flow);
+        flowResources = resourcesManager.allocateFlowResources(flow.getFlowEntity());
 
         assertEquals(1, flowResources.getUnmaskedCookie());
         assertEquals(2, ((TransitVlanResources) flowResources.getForward().getEncapsulationResources())
@@ -109,9 +109,9 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
 
     @Test
     public void shouldAllocateForNoBandwidthFlow() throws ResourceAllocationException {
-        Flow flow = FlowMapper.INSTANCE.map(fourthFlow);
+        UnidirectionalFlow flow = FlowMapper.INSTANCE.map(fourthFlow);
 
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+        FlowResources flowResources = resourcesManager.allocateFlowResources(flow.getFlowEntity());
 
 
         assertEquals(1, flowResources.getUnmaskedCookie());
@@ -137,8 +137,8 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
         for (int i = 0; i < attemps; i++) {
             thirdFlow.setFlowId(format("third-flow-%d", i));
 
-            Flow flow3 = FlowMapper.INSTANCE.map(thirdFlow);
-            resourcesManager.allocateFlowResources(flow3);
+            UnidirectionalFlow flow3 = FlowMapper.INSTANCE.map(thirdFlow);
+            resourcesManager.allocateFlowResources(flow3.getFlowEntity());
         }
     }
 
@@ -150,8 +150,8 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
         for (int i = 0; i < attemps; i++) {
             fourthFlow.setFlowId(format("fourth-flow-%d", i));
 
-            Flow flow4 = FlowMapper.INSTANCE.map(fourthFlow);
-            resourcesManager.allocateFlowResources(flow4);
+            UnidirectionalFlow flow4 = FlowMapper.INSTANCE.map(fourthFlow);
+            resourcesManager.allocateFlowResources(flow4.getFlowEntity());
         }
     }
 }

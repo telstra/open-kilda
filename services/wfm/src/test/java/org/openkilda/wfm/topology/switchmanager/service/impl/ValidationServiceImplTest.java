@@ -21,20 +21,19 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.junit.Test;
-import org.parboiled.common.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -87,6 +86,8 @@ public class ValidationServiceImplTest {
     }
 
     private static class PersistenceManagerBuilder {
+        private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
+
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
 
@@ -101,25 +102,24 @@ public class ValidationServiceImplTest {
         }
 
         private PersistenceManager build() {
-            List<FlowSegment> flowSegments = new ArrayList<>(segmentsCookies.length);
-            for (long cookie: segmentsCookies) {
-                FlowSegment flowSegment = mock(FlowSegment.class);
-                when(flowSegment.getCookie()).thenReturn(cookie);
-                flowSegments.add(flowSegment);
+            List<FlowPath> pathsBySegment = new ArrayList<>(segmentsCookies.length);
+            for (long cookie : segmentsCookies) {
+                FlowPath flowPath = mock(FlowPath.class);
+                when(flowPath.getCookie()).thenReturn(new Cookie(cookie));
+                pathsBySegment.add(flowPath);
             }
-            List<Flow> flows = new ArrayList<>(ingressCookies.length);
-            for (long cookie: ingressCookies) {
-                Flow flow = mock(Flow.class);
-                when(flow.getCookie()).thenReturn(cookie);
-                flows.add(flow);
+            List<FlowPath> flowPaths = new ArrayList<>(ingressCookies.length);
+            for (long cookie : ingressCookies) {
+                FlowPath flowPath = mock(FlowPath.class);
+                when(flowPath.getCookie()).thenReturn(new Cookie(cookie));
+                flowPaths.add(flowPath);
             }
-            FlowSegmentRepository flowSegmentRepository = mock(FlowSegmentRepository.class);
-            when(flowSegmentRepository.findByDestSwitchId(any())).thenReturn(flowSegments);
-            FlowRepository flowRepository = mock(FlowRepository.class);
-            when(flowRepository.findBySrcSwitchId(any())).thenReturn(flows);
+            when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
+            when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
+
             RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
-            when(repositoryFactory.createFlowSegmentRepository()).thenReturn(flowSegmentRepository);
-            when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+            when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
             return persistenceManager;

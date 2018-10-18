@@ -17,16 +17,18 @@ package org.openkilda.wfm.topology.flow.service;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 
 import org.junit.Test;
+
+import java.util.Optional;
 
 public class BaseFlowServiceTest extends Neo4jBasedTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
@@ -35,25 +37,21 @@ public class BaseFlowServiceTest extends Neo4jBasedTest {
     @Test
     public void shouldUpdateFlowStatus() {
         BaseFlowService flowService = new BaseFlowService(persistenceManager);
-        FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        FlowPairRepository flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
 
-        Flow flow = Flow.builder()
-                .flowId("test-flow")
-                .srcSwitch(getOrCreateSwitch(SWITCH_ID_1))
-                .srcPort(1)
-                .srcVlan(101)
-                .destSwitch(getOrCreateSwitch(SWITCH_ID_2))
-                .destPort(2)
-                .destVlan(102)
-                .bandwidth(0)
-                .status(FlowStatus.IN_PROGRESS)
-                .build();
-        flowRepository.createOrUpdate(flow);
+        String flowId = "test-flow";
+        FlowPair flowPair = new FlowPair(flowId,
+                getOrCreateSwitch(SWITCH_ID_1), 1, 101,
+                getOrCreateSwitch(SWITCH_ID_2), 2, 102);
+        flowPair.getForward().setBandwidth(0);
+        flowPair.setStatus(FlowStatus.IN_PROGRESS);
 
-        flowService.updateFlowStatus(flow.getFlowId(), FlowStatus.UP);
+        flowPairRepository.createOrUpdate(flowPair);
 
-        Flow foundFlow = flowRepository.findById(flow.getFlowId()).iterator().next();
-        assertEquals(FlowStatus.UP, foundFlow.getStatus());
+        flowService.updateFlowStatus(flowId, FlowStatus.UP);
+
+        Optional<FlowPair> foundFlow = flowPairRepository.findById(flowId);
+        assertEquals(FlowStatus.UP, foundFlow.get().getForward().getStatus());
     }
 
     private Switch getOrCreateSwitch(SwitchId switchId) {

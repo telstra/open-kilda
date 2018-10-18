@@ -33,6 +33,8 @@ public abstract class PortMapper {
     public static final PortMapper INSTANCE = Mappers.getMapper(PortMapper.class);
 
     @Mapping(source = "state", target = "status")
+    @Mapping(target = "theSwitch",
+            expression = "java(org.openkilda.model.Switch.builder().switchId(portInfoData.getSwitchId()).build())")
     public abstract Port map(PortInfoData portInfoData);
 
     public abstract PortInfoData map(Port port);
