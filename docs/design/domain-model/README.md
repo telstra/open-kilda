@@ -17,7 +17,7 @@ separate domain logic from DB and Transport layers.
 
 ## Diagrams
 
-![classes](./classes.png)
+![classes](./domain-model-with-encapsulation.png)
 
 ![data-mapper](./data-mapper.png)
 

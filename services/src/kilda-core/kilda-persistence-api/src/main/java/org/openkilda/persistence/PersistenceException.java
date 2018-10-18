@@ -15,6 +15,9 @@
 
 package org.openkilda.persistence;
 
+/**
+ * A generic exception that indicates that an error has occurred during a persistence operation.
+ */
 public class PersistenceException extends RuntimeException {
     public PersistenceException(String message) {
         super(message);

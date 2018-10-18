@@ -19,10 +19,15 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 
@@ -32,7 +37,9 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
 
+import java.time.Instant;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 
 public class Neo4jSessionCacheTest extends Neo4jBasedTest {
@@ -111,13 +118,37 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
     private void initFlow() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
-        Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
+        Switch switchA = buildTestSwitch(1);
         repositoryFactory.createSwitchRepository().createOrUpdate(switchA);
 
-        Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
+        Switch switchB = buildTestSwitch(2);
         repositoryFactory.createSwitchRepository().createOrUpdate(switchB);
+
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(TEST_FLOW_ID + "_forward_path"))
+                .flowId(TEST_FLOW_ID)
+                .cookie(new Cookie(1))
+                .meterId(new MeterId(1))
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .status(FlowPathStatus.ACTIVE)
+                .segments(Collections.emptyList())
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(TEST_FLOW_ID + "_forward_path"))
+                .flowId(TEST_FLOW_ID)
+                .cookie(new Cookie(2))
+                .meterId(new MeterId(2))
+                .srcSwitch(switchB)
+                .destSwitch(switchA)
+                .status(FlowPathStatus.ACTIVE)
+                .segments(Collections.emptyList())
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
 
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
@@ -125,7 +156,12 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
                 .srcPort(1)
                 .destSwitch(switchB)
                 .destPort(2)
+                .forwardPath(forwardPath)
+                .reversePath(reversePath)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .status(FlowStatus.IN_PROGRESS)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
                 .build();
         repositoryFactory.createFlowRepository().createOrUpdate(flow);
     }

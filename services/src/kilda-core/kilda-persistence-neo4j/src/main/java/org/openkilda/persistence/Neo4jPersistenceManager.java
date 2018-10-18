@@ -54,6 +54,10 @@ public class Neo4jPersistenceManager implements PersistenceManager {
                         configBuilder.connectionPoolSize(config.getConnectionPoolSize());
                     }
 
+                    if (config.getIndexesAuto() != null) {
+                        configBuilder.autoIndex(config.getIndexesAuto());
+                    }
+
                     SessionFactory sessionFactory =
                             new SessionFactory(configBuilder.build(), "org.openkilda.model");
                     sessionFactory.metaData().registerConversionCallback(
