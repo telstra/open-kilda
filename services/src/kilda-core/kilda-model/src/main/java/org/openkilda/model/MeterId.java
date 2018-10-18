@@ -17,9 +17,14 @@ package org.openkilda.model;
 
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-public final class MeterId {
-    /** Mask is being used to get meter id for corresponding system rule.
+public final class MeterId implements Comparable<MeterId>, Serializable {
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Mask is being used to get meter id for corresponding system rule.
      * E.g. for 0x8000000000000002L & METER_ID_DEFAULT_RULE_MASK we will get meter id 2.
      */
     public static final long METER_ID_DEFAULT_RULE_MASK = 0x000000000000001FL;
@@ -64,6 +69,11 @@ public final class MeterId {
             throw new IllegalArgumentException(String.format("Cookie '%s' is not a cookie of default rule", cookie));
         }
 
-        return new MeterId(cookie & METER_ID_DEFAULT_RULE_MASK);
+        return new MeterId((int) (cookie & METER_ID_DEFAULT_RULE_MASK));
+    }
+
+    @Override
+    public int compareTo(MeterId compareWith) {
+        return Long.compare(value, compareWith.value);
     }
 }
