@@ -32,13 +32,13 @@ public class Neo4jFlowStateRepository extends Neo4jGenericRepository<FlowDump> i
     }
 
     @Override
-    public Collection<FlowDump> listFlowDumpByTaskId(String taskId) {
+    public Collection<FlowDump> findFlowDumpByTaskId(String taskId) {
         Filter taskIdFilter = new Filter(TASK_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, taskId);
-        return getSession().loadAll(getEntityType(), taskIdFilter, DEPTH_LOAD_ENTITY);
+        return getSession().loadAll(getEntityType(), taskIdFilter, getDepthLoadEntity());
     }
 
     @Override
-    Class<FlowDump> getEntityType() {
+    protected Class<FlowDump> getEntityType() {
         return FlowDump.class;
     }
 }

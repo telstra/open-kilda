@@ -17,12 +17,16 @@ package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.FlowCookieRepository;
+import org.openkilda.persistence.repositories.FlowMeterRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPortRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 import org.openkilda.persistence.repositories.history.FlowStateRepository;
@@ -43,13 +47,23 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     }
 
     @Override
-    public FlowRepository createFlowRepository() {
-        return new Neo4jFlowRepository(sessionFactory, transactionManager);
+    public FlowCookieRepository createFlowCookieRepository() {
+        return new Neo4jFlowCookieRepository(sessionFactory, transactionManager);
     }
 
     @Override
-    public FlowSegmentRepository createFlowSegmentRepository() {
-        return new Neo4jFlowSegmentRepository(sessionFactory, transactionManager);
+    public FlowMeterRepository createFlowMeterRepository() {
+        return new Neo4jFlowMeterRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowPathRepository createFlowPathRepository() {
+        return new Neo4jFlowPathRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowRepository createFlowRepository() {
+        return new Neo4jFlowRepository(sessionFactory, transactionManager);
     }
 
     @Override
@@ -58,13 +72,23 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     }
 
     @Override
+    public LinkPropsRepository createLinkPropsRepository() {
+        return new Neo4jLinkPropsRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public SwitchPortRepository createSwitchPortRepository() {
+        return new Neo4jSwitchPortRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
     public SwitchRepository createSwitchRepository() {
         return new Neo4jSwitchRepository(sessionFactory, transactionManager);
     }
 
     @Override
-    public LinkPropsRepository createLinkPropsRepository() {
-        return new Neo4jLinkPropsRepository(sessionFactory, transactionManager);
+    public TransitVlanRepository createTransitVlanRepository() {
+        return new Neo4jTransitVlanRepository(sessionFactory, transactionManager);
     }
 
     @Override
