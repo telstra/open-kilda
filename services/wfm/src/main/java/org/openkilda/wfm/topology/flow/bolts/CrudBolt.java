@@ -33,7 +33,6 @@ import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
-import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ClientErrorMessage;
 import org.openkilda.messaging.error.ErrorData;
@@ -54,11 +53,12 @@ import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.model.Flow;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowSegment;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -69,7 +69,8 @@ import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FlowNotFoundException;
-import org.openkilda.wfm.share.cache.ResourceCache;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -83,7 +84,6 @@ import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
 import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
 import org.openkilda.wfm.topology.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.service.FlowCommandSender;
-import org.openkilda.wfm.topology.flow.service.FlowResourcesManager;
 import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
@@ -92,11 +92,10 @@ import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
@@ -109,22 +108,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class CrudBolt
-        extends BaseStatefulBolt<InMemoryKeyValueState<String, ResourceCache>>
-        implements ICtrlBolt {
+public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
     private static final String STREAM_ID_CTRL = "ctrl";
 
     private static final Logger logger = LoggerFactory.getLogger(CrudBolt.class);
 
-    /**
-     * Flow cache key.
-     */
-    private static final String FLOW_CACHE = "flow";
-
     private final PersistenceManager persistenceManager;
 
     private final PathComputerConfig pathComputerConfig;
+
+    private final FlowResourcesConfig flowResourcesConfig;
 
     private transient RepositoryFactory repositoryFactory;
 
@@ -143,27 +137,11 @@ public class CrudBolt
     private transient TopologyContext context;
     private transient OutputCollector outputCollector;
 
-    public CrudBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig) {
+    public CrudBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
+                    FlowResourcesConfig flowResourcesConfig) {
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void initState(InMemoryKeyValueState<String, ResourceCache> state) {
-        ResourceCache resourceCache = state.get(FLOW_CACHE);
-        if (resourceCache == null) {
-            resourceCache = new ResourceCache();
-            state.put(FLOW_CACHE, resourceCache);
-        }
-
-        flowResourcesManager = new FlowResourcesManager(resourceCache);
-        flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager, flowValidator);
-        featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
-
-        initFlowResourcesManager();
+        this.flowResourcesConfig = flowResourcesConfig;
     }
 
     /**
@@ -195,6 +173,10 @@ public class CrudBolt
                 new AvailableNetworkFactory(pathComputerConfig, repositoryFactory);
         pathComputerFactory = new PathComputerFactory(pathComputerConfig, availableNetworkFactory);
         commandFactory = new FlowCommandFactory();
+
+        flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager, flowValidator);
+        featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
     }
 
     /**
@@ -309,9 +291,7 @@ public class CrudBolt
     }
 
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
-        logger.info("Synchronize FlowResourcesManager.");
-
-        initFlowResourcesManager();
+        logger.info("Synchronize ResourcesManager.");
 
         Values values = new Values(new InfoMessage(new FlowCacheSyncResponse(),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
@@ -410,6 +390,7 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
         } catch (Exception e) {
+            logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.DELETION_FAILURE, errorType, e.getMessage());
         }
@@ -422,7 +403,7 @@ public class CrudBolt
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.CREATE_FLOW);
 
             FlowCreateRequest request = (FlowCreateRequest) message.getData();
-            Flow flow = FlowMapper.INSTANCE.map(request.getPayload());
+            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
 
             FlowPair createdFlow = flowService.createFlow(flow,
                     request.getDiverseFlowId(),
@@ -449,6 +430,7 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "The flow not found :  " + e.getMessage());
         } catch (Exception e) {
+            logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());
         }
@@ -489,6 +471,7 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Path was not found");
         } catch (Exception e) {
+            logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
@@ -501,7 +484,7 @@ public class CrudBolt
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
 
             FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
-            Flow flow = FlowMapper.INSTANCE.map((request).getPayload());
+            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
 
             FlowPair updatedFlow = flowService.updateFlow(flow,
                     request.getDiverseFlowId(),
@@ -525,6 +508,7 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found");
         } catch (Exception e) {
+            logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
@@ -575,8 +559,8 @@ public class CrudBolt
         SwitchId fwdSwitchId = flowPair.getForward().getSrcSwitch().getSwitchId();
         SwitchId rvsSwitchId = flowPair.getReverse().getSrcSwitch().getSwitchId();
         long bandwidth = flowPair.getForward().getBandwidth();
-        Integer fwdMeterId = flowPair.getForward().getMeterId();
-        Integer rvsMeterId = flowPair.getReverse().getMeterId();
+        Long fwdMeterId = flowPair.getForward().getMeterId();
+        Long rvsMeterId = flowPair.getReverse().getMeterId();
 
         MeterModifyCommandRequest request = new MeterModifyCommandRequest(fwdSwitchId, fwdMeterId,
                 rvsSwitchId, rvsMeterId, bandwidth);
@@ -596,9 +580,9 @@ public class CrudBolt
      * @param flow a flow for payload
      * @return flow response entity
      */
-    private FlowResponse buildFlowResponse(Flow flow) {
+    private FlowResponse buildFlowResponse(UnidirectionalFlow flow) {
         FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
-        flowDto.setCookie(flow.getCookie() & ResourceCache.FLOW_COOKIE_VALUE_MASK);
+        flowDto.setCookie(flow.getCookie() & Cookie.FLOW_COOKIE_VALUE_MASK);
         return new FlowResponse(flowDto);
     }
 
@@ -608,13 +592,6 @@ public class CrudBolt
 
     private ErrorMessage buildClientErrorMessage(String correlationId, ErrorData errorData) {
         return new ClientErrorMessage(errorData, System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
-    }
-
-    private void initFlowResourcesManager() {
-        flowResourcesManager.clear();
-
-        repositoryFactory.createFlowRepository().findAllFlowPairs()
-                .forEach(flowPair -> flowResourcesManager.registerUsedByFlow(flowPair));
     }
 
     @Override
@@ -627,7 +604,6 @@ public class CrudBolt
     @Override
     public void clearState() {
         logger.info("State clear request from test");
-        initState(new InMemoryKeyValueState<>());
     }
 
     @Override
@@ -653,10 +629,7 @@ public class CrudBolt
 
     @Override
     public Optional<AbstractDumpState> dumpResorceCacheState() {
-        return Optional.of(new ResorceCacheBoltState(
-                flowResourcesManager.getAllocatedMeters(),
-                flowResourcesManager.getAllocatedVlans(),
-                flowResourcesManager.getAllocatedCookies()));
+        return Optional.empty();
     }
 
     class CrudFlowCommandSender implements FlowCommandSender {
@@ -698,8 +671,8 @@ public class CrudBolt
         }
 
         private List<FlowCommandGroup> createInstallGroups(FlowPair flow,
-                                                           List<FlowSegment> forwardSegments,
-                                                           List<FlowSegment> reverseSegments) {
+                                                           List<PathSegment> forwardSegments,
+                                                           List<PathSegment> reverseSegments) {
             List<FlowCommandGroup> commandGroups = new ArrayList<>();
 
             createInstallTransitAndEgressRules(flow.getForward(), forwardSegments)
@@ -713,20 +686,21 @@ public class CrudBolt
             return commandGroups;
         }
 
-        private Optional<FlowCommandGroup> createInstallTransitAndEgressRules(Flow flow, List<FlowSegment> segments) {
+        private Optional<FlowCommandGroup> createInstallTransitAndEgressRules(UnidirectionalFlow flow,
+                                                                              List<PathSegment> segments) {
             List<InstallTransitFlow> rules = commandFactory.createInstallTransitAndEgressRulesForFlow(flow, segments);
             return !rules.isEmpty() ? Optional.of(new FlowCommandGroup(rules, FailureReaction.ABORT_FLOW))
                     : Optional.empty();
         }
 
-        private FlowCommandGroup createInstallIngressRules(Flow flow, List<FlowSegment> segments) {
+        private FlowCommandGroup createInstallIngressRules(UnidirectionalFlow flow, List<PathSegment> segments) {
             return new FlowCommandGroup(Collections.singletonList(
                     commandFactory.createInstallIngressRulesForFlow(flow, segments)), FailureReaction.ABORT_FLOW);
         }
 
         private List<FlowCommandGroup> createRemoveGroups(FlowPair flow,
-                                                          List<FlowSegment> forwardSegments,
-                                                          List<FlowSegment> reverseSegments) {
+                                                          List<PathSegment> forwardSegments,
+                                                          List<PathSegment> reverseSegments) {
             List<FlowCommandGroup> commandGroups = new ArrayList<>();
 
             commandGroups.add(createRemoveIngressRules(flow.getForward(), forwardSegments));
@@ -739,13 +713,14 @@ public class CrudBolt
             return commandGroups;
         }
 
-        private Optional<FlowCommandGroup> createRemoveTransitAndEgressRules(Flow flow, List<FlowSegment> segments) {
+        private Optional<FlowCommandGroup> createRemoveTransitAndEgressRules(UnidirectionalFlow flow,
+                                                                             List<PathSegment> segments) {
             List<RemoveFlow> rules = commandFactory.createRemoveTransitAndEgressRulesForFlow(flow, segments);
             return !rules.isEmpty() ? Optional.of(new FlowCommandGroup(rules, FailureReaction.IGNORE))
                     : Optional.empty();
         }
 
-        private FlowCommandGroup createRemoveIngressRules(Flow flow, List<FlowSegment> segments) {
+        private FlowCommandGroup createRemoveIngressRules(UnidirectionalFlow flow, List<PathSegment> segments) {
             return new FlowCommandGroup(Collections.singletonList(
                     commandFactory.createRemoveIngressRulesForFlow(flow, segments)), FailureReaction.IGNORE);
         }

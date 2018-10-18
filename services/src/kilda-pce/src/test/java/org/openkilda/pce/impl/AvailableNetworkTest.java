@@ -136,8 +136,8 @@ public class AvailableNetworkTest {
         addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
 
         network.processDiversitySegments(
-                asList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0),
-                        buildFlowSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)),
+                asList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0),
+                        buildPathSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)),
                 config);
         network.reduceByWeight(weightFunction);
 

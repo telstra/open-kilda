@@ -18,9 +18,10 @@ package org.openkilda.wfm.topology.flow.validation;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -29,18 +30,19 @@ import com.google.common.annotations.VisibleForTesting;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * {@code FlowValidator} performs checks against the flow validation rules.
  */
 public class FlowValidator {
 
-    private final FlowRepository flowRepository;
+    private final FlowPairRepository flowPairRepository;
 
     private final SwitchRepository switchRepository;
 
     public FlowValidator(RepositoryFactory repositoryFactory) {
-        this.flowRepository = repositoryFactory.createFlowRepository();
+        this.flowPairRepository = repositoryFactory.createFlowPairRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
     }
 
@@ -50,7 +52,7 @@ public class FlowValidator {
      * @param flow a flow to be validated.
      * @throws FlowValidationException is thrown if a violation is found.
      */
-    public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
+    public void validate(UnidirectionalFlow flow) throws FlowValidationException, SwitchValidationException {
         checkBandwidth(flow);
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
@@ -58,7 +60,7 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkBandwidth(Flow flow) throws FlowValidationException {
+    void checkBandwidth(UnidirectionalFlow flow) throws FlowValidationException {
         if (flow.getBandwidth() < 0) {
             throw new FlowValidationException(
                     format("The flow '%s' has invalid bandwidth %d provided.",
@@ -75,14 +77,14 @@ public class FlowValidator {
      * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing flows.
      */
     @VisibleForTesting
-    void checkFlowForEndpointConflicts(Flow requestedFlow) throws FlowValidationException {
+    void checkFlowForEndpointConflicts(UnidirectionalFlow requestedFlow) throws FlowValidationException {
         // Check the source
-        Collection<Flow> conflictsOnSource;
-        conflictsOnSource = flowRepository.findFlowIdsByEndpoint(requestedFlow.getSrcSwitch().getSwitchId(),
+        Collection<FlowPair> conflictsOnSource;
+        conflictsOnSource = flowPairRepository.findByEndpoint(requestedFlow.getSrcSwitch().getSwitchId(),
                 requestedFlow.getSrcPort());
 
-
-        Optional<Flow> conflictSrcSrc = conflictsOnSource.stream()
+        Optional<UnidirectionalFlow> conflictSrcSrc = conflictsOnSource.stream()
+                .flatMap(flowPair -> Stream.of(flowPair.getForward(), flowPair.getReverse()))
                 .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
                 .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
                         && flow.getSrcPort() == requestedFlow.getSrcPort()
@@ -104,7 +106,8 @@ public class FlowValidator {
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
 
-        Optional<Flow> conflictDstSrc = conflictsOnSource.stream()
+        Optional<UnidirectionalFlow> conflictDstSrc = conflictsOnSource.stream()
+                .flatMap(flowPair -> Stream.of(flowPair.getForward(), flowPair.getReverse()))
                 .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
                 .filter(flow -> flow.getDestSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
                         && flow.getDestPort() == requestedFlow.getSrcPort()
@@ -127,13 +130,14 @@ public class FlowValidator {
         }
 
         // Check the destination
-        Collection<Flow> conflictsOnDest;
-        conflictsOnDest = flowRepository.findFlowIdsByEndpoint(
+        Collection<FlowPair> conflictsOnDest;
+        conflictsOnDest = flowPairRepository.findByEndpoint(
                 requestedFlow.getDestSwitch().getSwitchId(),
                 requestedFlow.getDestPort());
 
 
-        Optional<Flow> conflictSrcDst = conflictsOnDest.stream()
+        Optional<UnidirectionalFlow> conflictSrcDst = conflictsOnDest.stream()
+                .flatMap(flowPair -> Stream.of(flowPair.getForward(), flowPair.getReverse()))
                 .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
                 .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getDestSwitch().getSwitchId())
                         && flow.getSrcPort() == requestedFlow.getDestPort()
@@ -155,7 +159,8 @@ public class FlowValidator {
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
 
-        Optional<Flow> conflictDstDst = conflictsOnDest.stream()
+        Optional<UnidirectionalFlow> conflictDstDst = conflictsOnDest.stream()
+                .flatMap(flowPair -> Stream.of(flowPair.getForward(), flowPair.getReverse()))
                 .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
                 .filter(flow -> flow.getDestSwitch().getSwitchId().equals(requestedFlow.getDestSwitch().getSwitchId())
                         && flow.getDestPort() == requestedFlow.getDestPort()
@@ -185,7 +190,7 @@ public class FlowValidator {
      * @throws SwitchValidationException if switch not found.
      */
     @VisibleForTesting
-    void checkSwitchesExists(Flow requestedFlow) throws SwitchValidationException {
+    void checkSwitchesExists(UnidirectionalFlow requestedFlow) throws SwitchValidationException {
         final SwitchId sourceId = requestedFlow.getSrcSwitch().getSwitchId();
         final SwitchId destinationId = requestedFlow.getDestSwitch().getSwitchId();
 
@@ -216,7 +221,7 @@ public class FlowValidator {
      * Ensure vlans are not equal in the case when there is an attempt to create one-switch flow for a single port.
      */
     @VisibleForTesting
-    void checkOneSwitchFlowHasNoConflicts(Flow requestedFlow) throws SwitchValidationException {
+    void checkOneSwitchFlowHasNoConflicts(UnidirectionalFlow requestedFlow) throws SwitchValidationException {
         if (requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())
                 && requestedFlow.getSrcPort() == requestedFlow.getDestPort()
                 && requestedFlow.getSrcVlan() == requestedFlow.getDestVlan()) {

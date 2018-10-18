@@ -116,7 +116,21 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         getSession().query(Flow.class, "MATCH (src:switch)-[f:flow]->(dst:switch) "
                 + "WHERE src.name=$switch_id AND f.src_port=$port "
                 + " OR dst.name=$switch_id AND f.dst_port=$port "
-                + "RETURN src,f,dst", parameters)
+                + "RETURN src, f, dst", parameters)
+                .forEach(flow -> flows.add(completeWithPaths(flow)));
+        return flows;
+    }
+
+    @Override
+    public Collection<Flow> findByEndpointSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchId.toString());
+
+        Set<Flow> flows = new HashSet<>();
+        getSession().query(Flow.class, "MATCH (src:switch)-[f:flow]->(dst:switch) "
+                + "WHERE src.name=$switch_id "
+                + " OR dst.name=$switch_id "
+                + "RETURN src, f, dst", parameters)
                 .forEach(flow -> flows.add(completeWithPaths(flow)));
         return flows;
     }

@@ -16,11 +16,15 @@
 package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathSegment;
 
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Convert {@link FlowPath} to {@link PathInfoData} and back.
@@ -30,9 +34,24 @@ public abstract class FlowPathMapper {
 
     public static final FlowPathMapper INSTANCE = Mappers.getMapper(FlowPathMapper.class);
 
-    @Mapping(source = "nodes", target = "path")
-    public abstract PathInfoData map(FlowPath path);
+    /**
+     * Convert {@link FlowPath} to {@link PathInfoData}.
+     */
+    public PathInfoData map(FlowPath path) {
+        PathInfoData result = new PathInfoData();
+        result.setLatency(path.getLatency());
 
-    @Mapping(source = "path", target = "nodes")
-    public abstract FlowPath map(PathInfoData path);
+        int seqId = 0;
+        List<PathNode> nodes = new ArrayList<>();
+        for (PathSegment pathSegment : path.getSegments()) {
+            nodes.add(new PathNode(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
+                    seqId++, pathSegment.getLatency()));
+            nodes.add(new PathNode(pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
+                    seqId++));
+        }
+
+        result.setPath(nodes);
+
+        return result;
+    }
 }

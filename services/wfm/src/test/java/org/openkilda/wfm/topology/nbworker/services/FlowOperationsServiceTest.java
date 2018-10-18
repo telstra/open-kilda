@@ -17,13 +17,13 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -33,12 +33,12 @@ import org.junit.Test;
 
 public class FlowOperationsServiceTest extends Neo4jBasedTest {
     private static FlowOperationsService flowOperationsService;
-    private static FlowRepository flowRepository;
+    private static FlowPairRepository flowPairRepository;
     private static SwitchRepository switchRepository;
 
     @BeforeClass
     public static void setUpOnce() {
-        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         flowOperationsService = new FlowOperationsService(persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager());
@@ -60,50 +60,21 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         switchB.setStatus(SwitchStatus.ACTIVE);
         switchRepository.createOrUpdate(switchB);
 
-        Flow forwardFlow = Flow.builder()
-                .flowId(testFlowId)
-                .srcSwitch(switchA)
-                .srcPort(1)
-                .srcVlan(10)
-                .destSwitch(switchB)
-                .destPort(2)
-                .destVlan(11)
-                .status(FlowStatus.UP)
-                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
-                .build();
+        FlowPair flowPair = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11);
+        flowPair.setStatus(FlowStatus.UP);
+        flowPairRepository.createOrUpdate(flowPair);
 
-        Flow reverseFlow = Flow.builder()
-                .flowId(testFlowId)
-                .srcSwitch(switchB)
-                .srcPort(2)
-                .srcVlan(11)
-                .destSwitch(switchA)
-                .destPort(1)
-                .destVlan(10)
-                .status(FlowStatus.UP)
-                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
-                .build();
+        FlowPair receivedFlow = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11);
+        receivedFlow.getForward().setMaxLatency(maxLatency);
+        receivedFlow.getForward().setPriority(priority);
 
-        flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
-
-        Flow receivedFlow = Flow.builder()
-                .flowId(testFlowId)
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .maxLatency(maxLatency)
-                .priority(priority)
-                .build();
-        Flow updatedFlow = flowOperationsService.updateFlow(receivedFlow);
+        UnidirectionalFlow updatedFlow = flowOperationsService.updateFlow(receivedFlow.getForward());
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
 
-        receivedFlow = Flow.builder()
-                .flowId(testFlowId)
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .build();
-        updatedFlow = flowOperationsService.updateFlow(receivedFlow);
+        receivedFlow = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11);
+        updatedFlow = flowOperationsService.updateFlow(receivedFlow.getForward());
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());

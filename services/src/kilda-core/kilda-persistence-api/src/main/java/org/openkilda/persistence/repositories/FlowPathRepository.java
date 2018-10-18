@@ -34,7 +34,7 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<FlowPath> findByEndpointSwitch(SwitchId switchId);
 
-    Collection<FlowPath> findBySegmentSrcSwitch(SwitchId switchId);
+    Collection<FlowPath> findBySegmentSwitch(SwitchId switchId);
 
     Collection<FlowPath> findBySegmentDestSwitch(SwitchId switchId);
 

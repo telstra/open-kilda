@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.flow.service;
 
 import static java.util.Arrays.asList;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,13 +25,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.PathPair;
@@ -39,7 +42,9 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowNotFoundException;
-import org.openkilda.wfm.share.cache.ResourceCache;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
@@ -48,45 +53,44 @@ import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Optional;
+
 public class FlowServiceTest extends Neo4jBasedTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_ID_3 = new SwitchId("00:00:00:00:00:00:00:03");
     private static final PathPair PATH_DIRECT_1_TO_3 = PathPair.builder()
-            .forward(FlowPath.builder().latency(1).nodes(asList(
-                    FlowPath.Node.builder().seqId(0).switchId(SWITCH_ID_1).portNo(11).segmentLatency(1L).build(),
-                    FlowPath.Node.builder().seqId(1).switchId(SWITCH_ID_3).portNo(11).build())).build())
-            .reverse(FlowPath.builder().latency(1).nodes(asList(
-                    FlowPath.Node.builder().seqId(0).switchId(SWITCH_ID_3).portNo(11).segmentLatency(1L).build(),
-                    FlowPath.Node.builder().seqId(1).switchId(SWITCH_ID_1).portNo(11).build())).build()).build();
+            .forward(Path.builder().srcSwitchId(SWITCH_ID_1).destSwitchId(SWITCH_ID_3).latency(1).segments(asList(
+                    Path.Segment.builder().srcSwitchId(SWITCH_ID_1).srcPort(11).latency(1L)
+                            .destSwitchId(SWITCH_ID_3).destPort(11).build())).build())
+            .reverse(Path.builder().srcSwitchId(SWITCH_ID_3).destSwitchId(SWITCH_ID_1).latency(1).segments(asList(
+                    Path.Segment.builder().srcSwitchId(SWITCH_ID_3).srcPort(11).latency(1L)
+                            .destSwitchId(SWITCH_ID_1).destPort(11).build())).build()).build();
 
     private static final PathPair PATH_1_TO_3_VIA_2 = PathPair.builder()
-            .forward(FlowPath.builder().latency(2).nodes(asList(
-                    FlowPath.Node.builder().seqId(0).switchId(SWITCH_ID_1).portNo(11).segmentLatency(1L).build(),
-                    FlowPath.Node.builder().seqId(1).switchId(SWITCH_ID_2).portNo(11).build(),
-                    FlowPath.Node.builder().seqId(2).switchId(SWITCH_ID_2).portNo(12).segmentLatency(1L).build(),
-                    FlowPath.Node.builder().seqId(3).switchId(SWITCH_ID_3).portNo(11).build()))
+            .forward(Path.builder().srcSwitchId(SWITCH_ID_1).destSwitchId(SWITCH_ID_3).latency(2).segments(asList(
+                    Path.Segment.builder().srcSwitchId(SWITCH_ID_1).srcPort(11).latency(1L)
+                            .destSwitchId(SWITCH_ID_2).destPort(11).build(),
+                    Path.Segment.builder().srcSwitchId(SWITCH_ID_2).srcPort(12).latency(1L)
+                            .destSwitchId(SWITCH_ID_3).destPort(11).build()))
                     .build())
-            .reverse(FlowPath.builder().latency(2).nodes(asList(
-                    FlowPath.Node.builder().seqId(0).switchId(SWITCH_ID_3).portNo(11).segmentLatency(1L).build(),
-                    FlowPath.Node.builder().seqId(1).switchId(SWITCH_ID_2).portNo(12).build(),
-                    FlowPath.Node.builder().seqId(2).switchId(SWITCH_ID_2).portNo(11).segmentLatency(1L).build(),
-                    FlowPath.Node.builder().seqId(3).switchId(SWITCH_ID_1).portNo(11).build()))
+            .reverse(Path.builder().srcSwitchId(SWITCH_ID_3).destSwitchId(SWITCH_ID_1).latency(2).segments(asList(
+                    Path.Segment.builder().srcSwitchId(SWITCH_ID_3).srcPort(11).latency(1L)
+                            .destSwitchId(SWITCH_ID_2).destPort(12).build(),
+                    Path.Segment.builder().srcSwitchId(SWITCH_ID_2).srcPort(11).latency(1L)
+                            .destSwitchId(SWITCH_ID_1).destPort(11).build()))
                     .build()).build();
 
     @Before
     public void setUp() {
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        Switch switch1 = new Switch();
-        switch1.setSwitchId(SWITCH_ID_1);
+        Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).build();
         switchRepository.createOrUpdate(switch1);
 
-        Switch switch2 = new Switch();
-        switch2.setSwitchId(SWITCH_ID_2);
+        Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).build();
         switchRepository.createOrUpdate(switch2);
 
-        Switch switch3 = new Switch();
-        switch3.setSwitchId(SWITCH_ID_3);
+        Switch switch3 = Switch.builder().switchId(SWITCH_ID_3).build();
         switchRepository.createOrUpdate(switch3);
         IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
 
@@ -136,40 +140,53 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
     @Test
     public void shouldRerouteFlow() throws RecoverableException, UnroutableFlowException,
-            FlowNotFoundException, FlowAlreadyExistException, FlowValidationException, SwitchValidationException {
+            FlowNotFoundException, FlowAlreadyExistException, FlowValidationException,
+            SwitchValidationException, ResourceAllocationException {
         PathComputer pathComputer = mock(PathComputer.class);
         PathComputerFactory pathComputerFactory = mock(PathComputerFactory.class);
         FlowValidator flowValidator = new FlowValidator(persistenceManager.getRepositoryFactory());
         when(pathComputerFactory.getPathComputer()).thenReturn(pathComputer);
 
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         FlowService flowService = new FlowService(persistenceManager,
-                pathComputerFactory, new FlowResourcesManager(new ResourceCache()), flowValidator);
+                pathComputerFactory, new FlowResourcesManager(persistenceManager, flowResourcesConfig), flowValidator);
 
-        Flow flow = Flow.builder()
-                .flowId("test-flow")
-                .srcSwitch(getOrCreateSwitch(SWITCH_ID_1))
-                .srcPort(1)
-                .srcVlan(101)
-                .destSwitch(getOrCreateSwitch(SWITCH_ID_3))
-                .destPort(2)
-                .destVlan(102)
-                .bandwidth(0)
-                .status(FlowStatus.IN_PROGRESS)
-                .build();
+        String flowId = "test-flow";
+        FlowPair flowPair = new FlowPair(flowId,
+                getOrCreateSwitch(SWITCH_ID_1), 1, 101,
+                getOrCreateSwitch(SWITCH_ID_3), 2, 102);
+        flowPair.getForward().setBandwidth(0);
+        flowPair.setStatus(FlowStatus.IN_PROGRESS);
+
         when(pathComputer.getPath(any())).thenReturn(PATH_DIRECT_1_TO_3);
 
-        flowService.createFlow(flow, null, mock(FlowCommandSender.class));
-        flowService.updateFlowStatus(flow.getFlowId(), FlowStatus.UP);
+        flowService.createFlow(flowPair.getForward(), null, mock(FlowCommandSender.class));
+        flowService.updateFlowStatus(flowId, FlowStatus.UP);
 
         when(pathComputer.getPath(any(), eq(true))).thenReturn(PATH_1_TO_3_VIA_2);
 
-        ReroutedFlow reroutedFlow = flowService.rerouteFlow(flow.getFlowId(), true, mock(FlowCommandSender.class));
+        ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, true, mock(FlowCommandSender.class));
         assertNotNull(reroutedFlow);
-        assertEquals(PATH_1_TO_3_VIA_2.getForward(), reroutedFlow.getNewFlow().getForward().getFlowPath());
+        checkSamePaths(PATH_1_TO_3_VIA_2.getForward(), reroutedFlow.getNewFlow().getForward().getFlowPath());
 
-        Flow foundFlow = persistenceManager.getRepositoryFactory().createFlowRepository()
-                .findById(flow.getFlowId()).iterator().next();
-        assertEquals(flow.getFlowId(), foundFlow.getFlowId());
+        Optional<FlowPair> foundFlow = persistenceManager.getRepositoryFactory().createFlowPairRepository()
+                .findById(flowId);
+        assertEquals(flowPair.getForward().getFlowId(), foundFlow.get().getForward().getFlowId());
+    }
+
+    private void checkSamePaths(Path path, FlowPath flowPath) {
+        assertEquals(path.getSrcSwitchId(), flowPath.getSrcSwitch().getSwitchId());
+        assertEquals(path.getDestSwitchId(), flowPath.getDestSwitch().getSwitchId());
+        Path.Segment[] flowPathSegments = flowPath.getSegments().stream()
+                .map(fp -> Path.Segment.builder()
+                        .srcSwitchId(fp.getSrcSwitch().getSwitchId())
+                        .srcPort(fp.getSrcPort())
+                        .destSwitchId(fp.getDestSwitch().getSwitchId())
+                        .destPort(fp.getDestPort())
+                        .latency(fp.getLatency())
+                        .build())
+                .toArray(Path.Segment[]::new);
+        assertThat(path.getSegments(), containsInAnyOrder(flowPathSegments));
     }
 
     private Switch getOrCreateSwitch(SwitchId switchId) {

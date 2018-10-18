@@ -15,18 +15,21 @@
 
 package org.openkilda.wfm.share.service;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
-import com.google.common.collect.Lists;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.UUID;
 
 public class IntersectionComputerTest {
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:00:00:00:00:00:00:0A");
@@ -43,9 +46,9 @@ public class IntersectionComputerTest {
 
     @Test
     public void onlyCurrentFlowSegments() {
-        List<FlowSegment> segments = getFlowSegments(flowId);
+        FlowPath flowPath = getFlowPath(flowId);
 
-        IntersectionComputer computer = new IntersectionComputer(flowId, segments);
+        IntersectionComputer computer = new IntersectionComputer(flowId, asList(flowPath));
         OverlappingSegmentsStats stats = computer.getOverlappingStats();
 
         assertEquals(ZERO_STATS, stats);
@@ -53,11 +56,13 @@ public class IntersectionComputerTest {
 
     @Test
     public void shouldNoIntersections() {
-        List<FlowSegment> segments = getFlowSegments(flowId);
-        segments.add(buildFlowSegment(SWITCH_ID_D, SWITCH_ID_E, 10, 10, newFlowId));
-        segments.add(buildFlowSegment(SWITCH_ID_E, SWITCH_ID_D, 10, 10, newFlowId));
+        FlowPath flowPath = getFlowPath(flowId);
+        FlowPath newFlowPath = getFlowPath(newFlowId);
+        newFlowPath.setSegments(new ArrayList<>());
+        addPathSegment(newFlowPath, SWITCH_ID_D, SWITCH_ID_E, 10, 10);
+        addPathSegment(newFlowPath, SWITCH_ID_E, SWITCH_ID_D, 10, 10);
 
-        IntersectionComputer computer = new IntersectionComputer(flowId, segments);
+        IntersectionComputer computer = new IntersectionComputer(flowId, asList(flowPath, newFlowPath));
         OverlappingSegmentsStats stats = computer.getOverlappingStats(newFlowId);
 
         assertEquals(ZERO_STATS, stats);
@@ -73,9 +78,9 @@ public class IntersectionComputerTest {
 
     @Test
     public void shouldNotFailIfNoSegmentsForIntersect() {
-        List<FlowSegment> segments = getFlowSegments(flowId);
+        FlowPath flowPath = getFlowPath(flowId);
 
-        IntersectionComputer computer = new IntersectionComputer(flowId, segments);
+        IntersectionComputer computer = new IntersectionComputer(flowId, asList(flowPath));
         OverlappingSegmentsStats stats = computer.getOverlappingStats(newFlowId);
 
         assertEquals(ZERO_STATS, stats);
@@ -83,10 +88,12 @@ public class IntersectionComputerTest {
 
     @Test
     public void switchIntersection() {
-        List<FlowSegment> segments = getFlowSegments(flowId);
-        segments.add(buildFlowSegment(SWITCH_ID_A, SWITCH_ID_D, 10, 10, newFlowId));
+        FlowPath flowPath = getFlowPath(flowId);
+        FlowPath newFlowPath = getFlowPath(newFlowId);
+        newFlowPath.setSegments(new ArrayList<>());
+        addPathSegment(newFlowPath, SWITCH_ID_A, SWITCH_ID_D, 10, 10);
 
-        IntersectionComputer computer = new IntersectionComputer(flowId, segments);
+        IntersectionComputer computer = new IntersectionComputer(flowId, asList(flowPath, newFlowPath));
         OverlappingSegmentsStats stats = computer.getOverlappingStats(newFlowId);
 
         assertEquals(new OverlappingSegmentsStats(0, 1, 0, 33), stats);
@@ -94,10 +101,12 @@ public class IntersectionComputerTest {
 
     @Test
     public void partialIntersection() {
-        List<FlowSegment> segments = getFlowSegments(flowId);
-        segments.add(buildFlowSegment(SWITCH_ID_A, SWITCH_ID_B, 1, 1, newFlowId));
+        FlowPath flowPath = getFlowPath(flowId);
+        FlowPath newFlowPath = getFlowPath(newFlowId);
+        newFlowPath.setSegments(new ArrayList<>());
+        addPathSegment(newFlowPath, SWITCH_ID_A, SWITCH_ID_B, 1, 1);
 
-        IntersectionComputer computer = new IntersectionComputer(flowId, segments);
+        IntersectionComputer computer = new IntersectionComputer(flowId, asList(flowPath, newFlowPath));
         OverlappingSegmentsStats stats = computer.getOverlappingStats(newFlowId);
 
         assertEquals(new OverlappingSegmentsStats(1, 2, 50, 66), stats);
@@ -105,34 +114,41 @@ public class IntersectionComputerTest {
 
     @Test
     public void fullIntersection() {
-        List<FlowSegment> segments = getFlowSegments(flowId);
-        segments.addAll(getFlowSegments(newFlowId));
+        FlowPath flowPath = getFlowPath(flowId);
+        FlowPath newFlowPath = getFlowPath(newFlowId);
 
-        IntersectionComputer computer = new IntersectionComputer(flowId, segments);
+        IntersectionComputer computer = new IntersectionComputer(flowId, asList(flowPath, newFlowPath));
         OverlappingSegmentsStats stats = computer.getOverlappingStats(newFlowId);
 
         assertEquals(new OverlappingSegmentsStats(2, 3, 100, 100), stats);
     }
 
-    private List<FlowSegment> getFlowSegments(String flowId) {
-        return Lists.newArrayList(
-                buildFlowSegment(SWITCH_ID_A, SWITCH_ID_B, 1, 1, flowId),
-                buildFlowSegment(SWITCH_ID_B, SWITCH_ID_A, 1, 1, flowId),
-                buildFlowSegment(SWITCH_ID_B, SWITCH_ID_C, 2, 2, flowId),
-                buildFlowSegment(SWITCH_ID_C, SWITCH_ID_B, 2, 2, flowId)
-        );
+    private FlowPath getFlowPath(String flowId) {
+        FlowPath flowPath = FlowPath.builder()
+                .flowId(flowId)
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
+                .destSwitch(Switch.builder().switchId(SWITCH_ID_D).build())
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegment(flowPath, SWITCH_ID_A, SWITCH_ID_B, 1, 1);
+        addPathSegment(flowPath, SWITCH_ID_B, SWITCH_ID_A, 1, 1);
+        addPathSegment(flowPath, SWITCH_ID_B, SWITCH_ID_C, 2, 2);
+        addPathSegment(flowPath, SWITCH_ID_C, SWITCH_ID_B, 2, 2);
+        return flowPath;
     }
 
-    private FlowSegment buildFlowSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, String flowId) {
+    private void addPathSegment(FlowPath flowPath, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort) {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
 
-        return FlowSegment.builder()
+        flowPath.getSegments().add(PathSegment.builder()
+                .pathId(flowPath.getPathId())
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .srcPort(srcPort)
                 .destPort(dstPort)
-                .flowId(flowId)
-                .build();
+                .build());
     }
 }
+
