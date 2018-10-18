@@ -314,7 +314,7 @@ public class FlowController extends BaseController {
     @DeleteMapping(path = "/cache")
     @ResponseStatus(HttpStatus.OK)
     public void invalidateFlowCache() {
-        flowService.invalidateFlowResourcesCache();
+        //TODO: to be removed
     }
 
     /**

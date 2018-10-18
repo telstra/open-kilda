@@ -24,22 +24,22 @@ import static org.mockito.Mockito.when;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
-import org.parboiled.common.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
 public class ValidationServiceTest {
+
     @Test
     public void empty() {
         ValidationService validationService = new ValidationService(repositoryFactory().build());
@@ -80,7 +80,7 @@ public class ValidationServiceTest {
 
     private SwitchFlowEntries generateSwitchFlowEntries(long... cookies) {
         List<FlowEntry> flowEntryList = new ArrayList<>(cookies.length);
-        for (long cookie: cookies) {
+        for (long cookie : cookies) {
             flowEntryList.add(new FlowEntry(cookie, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null));
         }
         return new SwitchFlowEntries(new SwitchId("00:10"), flowEntryList);
@@ -91,6 +91,8 @@ public class ValidationServiceTest {
     }
 
     private static class RepositoryFactoryBuilder {
+        private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
+
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
 
@@ -105,25 +107,23 @@ public class ValidationServiceTest {
         }
 
         private RepositoryFactory build() {
-            List<FlowSegment> flowSegments = new ArrayList<>(segmentsCookies.length);
-            for (long cookie: segmentsCookies) {
-                FlowSegment flowSegment = mock(FlowSegment.class);
-                when(flowSegment.getCookie()).thenReturn(cookie);
-                flowSegments.add(flowSegment);
+            List<FlowPath> pathsBySegment = new ArrayList<>(segmentsCookies.length);
+            for (long cookie : segmentsCookies) {
+                FlowPath flowPath = mock(FlowPath.class);
+                when(flowPath.getCookie()).thenReturn(new Cookie(cookie));
+                pathsBySegment.add(flowPath);
             }
-            List<Flow> flows = new ArrayList<>(ingressCookies.length);
-            for (long cookie: ingressCookies) {
-                Flow flow = mock(Flow.class);
-                when(flow.getCookie()).thenReturn(cookie);
-                flows.add(flow);
+            List<FlowPath> flowPaths = new ArrayList<>(ingressCookies.length);
+            for (long cookie : ingressCookies) {
+                FlowPath flowPath = mock(FlowPath.class);
+                when(flowPath.getCookie()).thenReturn(new Cookie(cookie));
+                flowPaths.add(flowPath);
             }
-            FlowSegmentRepository flowSegmentRepository = mock(FlowSegmentRepository.class);
-            when(flowSegmentRepository.findByDestSwitchId(any())).thenReturn(flowSegments);
-            FlowRepository flowRepository = mock(FlowRepository.class);
-            when(flowRepository.findBySrcSwitchId(any())).thenReturn(flows);
+            when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
+            when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
+
             RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
-            when(repositoryFactory.createFlowSegmentRepository()).thenReturn(flowSegmentRepository);
-            when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+            when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
             return repositoryFactory;
         }
     }

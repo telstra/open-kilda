@@ -15,15 +15,20 @@
 
 package org.openkilda.wfm.share.service;
 
+import static java.util.stream.Collectors.toList;
+
 import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.Sets;
 import lombok.Value;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,25 +50,28 @@ public class IntersectionComputer {
      * Construct intersection counter for current flow group and target flow.
      *
      * @param mainFlowId the flow id to find overlapping with.
-     * @param segments flow segments in group.
+     * @param flowPaths  flow paths in group.
      */
-    public IntersectionComputer(String mainFlowId, Collection<FlowSegment> segments) {
-        List<Edge> mainFlow = segments.stream()
+    public IntersectionComputer(String mainFlowId, Collection<FlowPath> flowPaths) {
+        List<Edge> mainFlow = flowPaths.stream()
                 .filter(e -> e.getFlowId().equals(mainFlowId))
-                .map(Edge::fromFlowSegment)
-                .collect(Collectors.toList());
+                .flatMap(flowPath -> flowPath.getSegments().stream())
+                .map(Edge::fromPathSegment)
+                .collect(toList());
 
         mainFlowEdges = new HashSet<>(mainFlow);
         mainFlowSwitches = mainFlow.stream()
                 .flatMap(e -> Stream.of(e.getSrcSwitch(), e.getDestSwitch()))
                 .collect(Collectors.toSet());
 
-        otherEdges = segments.stream()
+        otherEdges = new HashMap<>();
+        flowPaths.stream()
                 .filter(e -> !e.getFlowId().equals(mainFlowId))
-                .collect(Collectors.groupingBy(
-                        FlowSegment::getFlowId,
-                        Collectors.mapping(Edge::fromFlowSegment, Collectors.toList())
-                ));
+                .forEach(flowPath -> {
+                    List<Edge> edges = otherEdges.getOrDefault(flowPath.getFlowId(), new ArrayList<>());
+                    flowPath.getSegments().forEach(segment -> edges.add(Edge.fromPathSegment(segment)));
+                    otherEdges.put(flowPath.getFlowId(), edges);
+                });
     }
 
     /**
@@ -73,7 +81,7 @@ public class IntersectionComputer {
      */
     public OverlappingSegmentsStats getOverlappingStats() {
         return computeIntersectionCounters(
-                otherEdges.values().stream().flatMap(Collection::stream).collect(Collectors.toList()));
+                otherEdges.values().stream().flatMap(Collection::stream).collect(toList()));
     }
 
     /**
@@ -116,7 +124,7 @@ public class IntersectionComputer {
         private SwitchId destSwitch;
         private int destPort;
 
-        static Edge fromFlowSegment(FlowSegment segment) {
+        static Edge fromPathSegment(PathSegment segment) {
             if (segment.getSrcSwitch().getSwitchId().compareTo(segment.getDestSwitch().getSwitchId()) > 0) {
                 return new Edge(segment.getSrcSwitch().getSwitchId(),
                         segment.getSrcPort(),

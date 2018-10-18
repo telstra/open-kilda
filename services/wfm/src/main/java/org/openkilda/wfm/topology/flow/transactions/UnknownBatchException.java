@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.error;
+package org.openkilda.wfm.topology.flow.transactions;
 
-/**
- * {@code FlowNotFoundException} indicates that a flow can't be found / doesn't exist.
- */
-public class FlowNotFoundException extends AbstractException {
+import static java.lang.String.format;
 
-    public FlowNotFoundException(String flowId) {
-        super(String.format("Flow %s not found", flowId));
-    }
+import java.util.UUID;
 
-    public FlowNotFoundException(String flowId, String message) {
-        super(String.format("Flow %s not found. %s", flowId, message));
+public class UnknownBatchException extends Exception {
+    public UnknownBatchException(UUID batchId) {
+        super(format("Batch %s not found", batchId));
     }
 }
