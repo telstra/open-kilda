@@ -16,6 +16,8 @@
 
 set -e
 
+export SELF_CONTAINER_ID=$(head -1 /proc/self/cgroup | cut -d/ -f3)
+
 if [ "$1" = 'api' ]; then
     cd /app/labapi
     exec python3 /app/labapi/api.py

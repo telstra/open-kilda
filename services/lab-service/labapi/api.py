@@ -21,26 +21,19 @@ from urllib.parse import urlparse
 import os
 
 app = Flask(__name__)
-
 logger = logging.getLogger()
-
-API_CONTAINER_NAME = "lab-api"
 docker = DockerClient(base_url='unix://var/run/docker.sock')
 
+SELF_CONTAINER_ID = os.environ.get("SELF_CONTAINER_ID")
+SELF_CONTAINER = docker.containers.get(SELF_CONTAINER_ID)
+LAB_SERVICE_IMAGE = os.environ.get("LAB_SERVICE_IMAGE", SELF_CONTAINER.image.tags[0])
+NETWORK_NAME = list(SELF_CONTAINER.attrs['NetworkSettings']['Networks'].keys())[0]
+
 HW_LOCKKEEPER_REST_HOST = os.environ.get("HW_LOCKKEEPER_REST_HOST")
-LAB_SERVICE_IMAGE = os.environ.get("LAB_SERVICE_IMAGE")
 
 HW_LAB_ID = 0
 count = 0
 labs = {}
-
-
-def get_network_name():
-    cnt = docker.containers.get(API_CONTAINER_NAME)
-    return list(cnt.attrs['NetworkSettings']['Networks'].keys())[0]
-
-
-NETWORK_NAME = get_network_name()
 
 
 def make_container_name(id):
@@ -60,8 +53,8 @@ class Lab:
             name = make_container_name(lab_id)
             env = {'LAB_ID': lab_id}
             volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'}}
-            docker.containers.run(
-                LAB_SERVICE_IMAGE, environment=env, volumes=volumes, name=name, privileged=True, detach=True)
+            docker.containers.run(LAB_SERVICE_IMAGE, command='service', environment=env, volumes=volumes, name=name,
+                                  privileged=True, detach=True)
             docker.networks.get(NETWORK_NAME).connect(name, aliases=[name])
 
     def destroy(self):
