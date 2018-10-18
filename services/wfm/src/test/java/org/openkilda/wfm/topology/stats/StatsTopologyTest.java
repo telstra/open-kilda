@@ -44,6 +44,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
+import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.StableAbstractStormTest;
 import org.openkilda.wfm.config.provider.ConfigurationProvider;
@@ -61,7 +62,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.ogm.testutil.TestServer;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -82,20 +82,20 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     private final long cookie = 0x4000000000000001L;
     private final String flowId = "f253423454343";
 
-    private static TestServer testServer;
+    private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
 
     private static LaunchEnvironment launchEnvironment;
     private static PersistenceManager persistenceManager;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        StableAbstractStormTest.setupOnce();
+        StableAbstractStormTest.startCompleteTopology();
 
-        testServer = new TestServer(true, true, 5);
+        embeddedNeo4jDb = new EmbeddedNeo4jDatabase(fsData.getRoot());
 
         launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
-        configOverlay.setProperty("neo4j.uri", testServer.getUri());
+        configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
 
         launchEnvironment.setupOverlay(configOverlay);
 
@@ -104,10 +104,9 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
     }
 
-
     @AfterClass
     public static void teardownOnce() {
-        testServer.shutdown();
+        embeddedNeo4jDb.stop();
     }
 
     @Ignore

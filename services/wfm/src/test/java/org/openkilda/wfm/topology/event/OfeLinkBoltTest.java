@@ -50,7 +50,9 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.tuple.Values;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
 import org.mockito.Mockito;
@@ -71,6 +73,11 @@ public class OfeLinkBoltTest extends AbstractStormTest {
     private OfeLinkBolt bolt;
     private OutputCollectorMock outputDelegate;
     private OFEventWfmTopologyConfig config;
+
+    @BeforeClass
+    public static void setupOnce() throws Exception {
+        AbstractStormTest.startZooKafkaAndStorm();
+    }
 
     @Before
     public void before() throws CmdLineException, ConfigurationException {
@@ -93,8 +100,13 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         bolt.initState(new InMemoryKeyValueState<>());
     }
 
+    @AfterClass
+    public static void teardownOnce() throws Exception {
+        AbstractStormTest.stopZooKafkaAndStorm();
+    }
+
     @Test
-    public void invalidJsonForDiscoveryFilter() throws JsonProcessingException {
+    public void invalidJsonForDiscoveryFilter() {
         Tuple tuple = new TupleImpl(context, new Values("{\"corrupted-json"), TASK_ID_BOLT,
                 STREAM_ID_INPUT);
         bolt.doWork(tuple);

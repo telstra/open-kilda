@@ -42,9 +42,6 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/LoggerBolt.java" lines="40" checks="MissingSwitchDefault"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/LoggerContextInitializer.java" lines="36" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/WatchDog.java" lines="46" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="89" checks="AvoidEscapedUnicodeCharacters"/>
-    <suppress files="src/test/java/org/openkilda/wfm/AbstractStormTest.java" lines="102" checks="AvoidEscapedUnicodeCharacters"/>
-    <suppress files="src/test/java/org/openkilda/wfm/StableAbstractStormTest.java" lines="28" checks="AvoidEscapedUnicodeCharacters"/>
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="39" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="47" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="69" checks="JavadocMethod"/>

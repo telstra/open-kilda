@@ -32,6 +32,7 @@ import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.utils.Utils;
 import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -51,11 +52,17 @@ public class OfeLinkBoltFloodTest extends AbstractStormTest {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private TestKafkaConsumer teConsumer;
 
+    @BeforeClass
+    public static void setupOnce() throws Exception {
+        AbstractStormTest.startZooKafkaAndStorm();
+    }
+
     @AfterClass
     public static void teardownOnce() throws Exception {
         cluster.killTopology(OfeLinkBoltFloodTest.class.getSimpleName());
         Utils.sleep(4 * 1000);
-        AbstractStormTest.teardownOnce();
+
+        AbstractStormTest.stopZooKafkaAndStorm();
     }
 
     @Test(timeout = 5000 * 60)

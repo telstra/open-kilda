@@ -42,13 +42,18 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.wfm.AbstractStormTest;
+import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
@@ -58,14 +63,10 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.ogm.testutil.TestServer;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 
 public class CacheTopologyTest extends AbstractStormTest {
@@ -89,31 +90,28 @@ public class CacheTopologyTest extends AbstractStormTest {
                     new SwitchId("ff:00"), 1, 2),
             new Flow(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2));
-    private static final Set<FlowPair<Flow, Flow>> flows = new HashSet<>();
-    private static final NetworkInfoData dump = new NetworkInfoData(
-            "test", Collections.singleton(sw), Collections.emptySet(), Collections.emptySet(), flows);
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
     private static TestKafkaConsumer ctrlConsumer;
 
-    private static TestServer testServer;
+    private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
+    private static PersistenceManager persistenceManager;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.setupOnce();
+        AbstractStormTest.startZooKafkaAndStorm();
 
-        Properties configOverlay = new Properties();
-
-        testServer = new TestServer(true, true, 5);
-
-        configOverlay.setProperty("neo4j.uri", testServer.getUri());
-
-        flows.add(firstFlow);
-        flows.add(secondFlow);
+        embeddedNeo4jDb = new EmbeddedNeo4jDatabase(fsData.getRoot());
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
+        Properties configOverlay = new Properties();
+        configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
         launchEnvironment.setupOverlay(configOverlay);
+
+        Neo4jConfig neo4jConfig = launchEnvironment.getConfigurationProvider().getConfiguration(Neo4jConfig.class);
+        persistenceManager = new Neo4jPersistenceManager(neo4jConfig);
+
         topology = new CacheTopology(launchEnvironment);
         StormTopology stormTopology = topology.createTopology();
 
@@ -147,11 +145,12 @@ public class CacheTopologyTest extends AbstractStormTest {
         ctrlConsumer.clear();
 
         sendClearState();
+
+        ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession().purgeDatabase();
     }
 
     @AfterClass
     public static void teardownOnce() throws Exception {
-
         flowConsumer.wakeup();
         flowConsumer.join();
         teConsumer.wakeup();
@@ -159,11 +158,10 @@ public class CacheTopologyTest extends AbstractStormTest {
         ctrlConsumer.wakeup();
         ctrlConsumer.join();
 
-        testServer.shutdown();
+        embeddedNeo4jDb.stop();
 
-        AbstractStormTest.teardownOnce();
+        AbstractStormTest.stopZooKafkaAndStorm();
     }
-
 
     @Test
     public void cacheReceivesFlowTopologyUpdatesAndSendsToTopologyEngine() throws Exception {
@@ -337,7 +335,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
-        // assertNotNull(raw);
         if (raw != null) {
             CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
             Assert.assertEquals(request.getCorrelationId(), response.getCorrelationId());

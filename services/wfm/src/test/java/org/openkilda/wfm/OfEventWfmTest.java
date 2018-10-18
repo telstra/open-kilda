@@ -85,7 +85,7 @@ public class OfEventWfmTest extends AbstractStormTest {
      */
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.setupOnce();
+        AbstractStormTest.startZooKafkaAndStorm();
 
         ////////
         Properties overlay = new Properties();
@@ -110,7 +110,8 @@ public class OfEventWfmTest extends AbstractStormTest {
         cluster.killTopology("utils-1");
         cluster.killTopology(manager.getTopologyName());
         Utils.sleep(4 * 1000);
-        AbstractStormTest.teardownOnce();
+
+        AbstractStormTest.stopZooKafkaAndStorm();
     }
 
 

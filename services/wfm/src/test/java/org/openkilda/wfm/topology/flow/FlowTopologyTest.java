@@ -58,7 +58,15 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchStatus;
+import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.wfm.AbstractStormTest;
+import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
@@ -67,13 +75,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.utils.Utils;
-import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.ogm.testutil.TestServer;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -81,8 +87,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
-// TODO: should be fixed in the scope of TE refactoring.
-@Ignore
 public class FlowTopologyTest extends AbstractStormTest {
 
     private static final long COOKIE = 0x1FFFFFFFFL;
@@ -95,19 +99,22 @@ public class FlowTopologyTest extends AbstractStormTest {
     private static FlowTopology flowTopology;
     private static FlowTopologyConfig topologyConfig;
 
-    private static TestServer testServer;
+    private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
+    private static PersistenceManager persistenceManager;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.setupOnce();
+        AbstractStormTest.startZooKafkaAndStorm();
 
-        testServer = new TestServer(true, true, 5);
+        embeddedNeo4jDb = new EmbeddedNeo4jDatabase(fsData.getRoot());
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
-        configOverlay.setProperty("neo4j.uri", testServer.getUri());
-
+        configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
         launchEnvironment.setupOverlay(configOverlay);
+
+        Neo4jConfig neo4jConfig = launchEnvironment.getConfigurationProvider().getConfiguration(Neo4jConfig.class);
+        persistenceManager = new Neo4jPersistenceManager(neo4jConfig);
 
         flowTopology = new FlowTopology(launchEnvironment);
         topologyConfig = flowTopology.getConfig();
@@ -154,21 +161,13 @@ public class FlowTopologyTest extends AbstractStormTest {
         teResponseConsumer.wakeup();
         teResponseConsumer.join();
 
-        testServer.shutdown();
+        embeddedNeo4jDb.stop();
 
-        AbstractStormTest.teardownOnce();
+        AbstractStormTest.stopZooKafkaAndStorm();
     }
 
     @Before
-    public void setup() {
-        nbConsumer.clear();
-        ofsConsumer.clear();
-        cacheConsumer.clear();
-        teResponseConsumer.clear();
-    }
-
-    @After
-    public void teardown() throws Exception {
+    public void setup() throws IOException, InterruptedException {
         nbConsumer.clear();
         ofsConsumer.clear();
         cacheConsumer.clear();
@@ -176,6 +175,8 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         // Clean the CrudBolt's state.
         sendClearState();
+
+        ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession().purgeDatabase();
     }
 
     @Test
@@ -333,6 +334,8 @@ public class FlowTopologyTest extends AbstractStormTest {
     public void updateUnknownFlowCommandBoltTest() throws Exception {
         String flowId = UUID.randomUUID().toString();
         ConsumerRecord<String, String> record;
+
+        createSwitchIfNotExist("ff:00");
 
         updateFlow(flowId);
 
@@ -948,6 +951,9 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private Flow createFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Create flow");
+
+        createSwitchIfNotExist("ff:00");
+
         Flow flowPayload =
                 new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                         new SwitchId("ff:00"), 1, 2);
@@ -956,6 +962,18 @@ public class FlowTopologyTest extends AbstractStormTest {
         //sendNorthboundMessage(message);
         sendFlowMessage(message);
         return flowPayload;
+    }
+
+    private void createSwitchIfNotExist(String switchId) {
+        org.openkilda.model.SwitchId switchIdObj = new org.openkilda.model.SwitchId(switchId);
+
+        SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        if (switchRepository.findBySwitchId(switchIdObj) == null) {
+            Switch sw = new Switch();
+            sw.setSwitchId(switchIdObj);
+            sw.setStatus(SwitchStatus.ACTIVE);
+            switchRepository.createOrUpdate(sw);
+        }
     }
 
     private Flow updateFlow(final String flowId) throws IOException {
@@ -1124,9 +1142,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         sendMessage(request, topologyConfig.getKafkaCtrlTopic());
 
         ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
-        assertNotNull(raw);
-
-        CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
-        assertEquals(request.getCorrelationId(), response.getCorrelationId());
+        if (raw != null) {
+            CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
+            assertEquals(request.getCorrelationId(), response.getCorrelationId());
+        }
     }
 }
