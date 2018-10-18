@@ -57,7 +57,7 @@ public class FlowFetcher extends Abstract {
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
 
     private final PersistenceManager persistenceManager;
-    private FlowRepository flowRepository;
+    private transient FlowRepository flowRepository;
     private FlowsHeap flowsHeap;
 
     public FlowFetcher(PersistenceManager persistenceManager) {

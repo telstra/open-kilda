@@ -29,7 +29,6 @@ import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
 import sun.misc.BASE64Encoder;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,7 +52,7 @@ public class FlowJanitor {
     /**
      * Use to get the flows that share the same cookie (eg 1 cookie, N flows).
      */
-    public static final String DUPLICATE_COOKIES_QUERY =
+    private static final String DUPLICATE_COOKIES_QUERY =
             "MATCH (:switch) -[rel:flow]-> (:switch)"
                     + " WITH rel.cookie as affected_cookie, COUNT(rel.cookie) as cookie_num"
                     + " WHERE cookie_num > 1"
@@ -65,7 +64,7 @@ public class FlowJanitor {
     /**
      * Use to get the flows that share the same transit vlan (eg 1 t-vlan, N flows).
      */
-    public static final String DUPLICATE_VLAN_QUERY =
+    private static final String DUPLICATE_VLAN_QUERY =
             "MATCH (:switch) -[rel:flow]-> (:switch)"
                     + " WITH rel.transit_vlan as affected_cookie, COUNT(rel.transit_vlan) as cookie_num"
                     + " WHERE cookie_num > 1"
@@ -77,7 +76,7 @@ public class FlowJanitor {
     /**
      * Use to get the flows that have multiple instances (ie N flows .. should be just 1 flow).
      */
-    public static final String DUPLICATE_FLOWS_QUERY =
+    private static final String DUPLICATE_FLOWS_QUERY =
             "MATCH (:switch) -[rel:flow]-> (:switch)"
                     + " WITH rel.flowid as affected_flow_id, COUNT(rel.flowid) as flow_num"
                     + " WHERE flow_num > 2"
@@ -89,7 +88,7 @@ public class FlowJanitor {
     /**
      * Use to delete a flow (ie in conjunction with DUPLICATE_FLOWS_QUERY).
      */
-    public static final String DELETE_DUPLICATE_FLOW =
+    private static final String DELETE_DUPLICATE_FLOW =
             "MATCH (:switch) -[rel:flow]-> (:switch)"
                     + " WHERE rel.flowid = %s AND rel.cookie = %d"
                     + " DELETE rel";
@@ -112,7 +111,7 @@ public class FlowJanitor {
      *     scenarios where it does. '2' means two cookies have more than 1 flow each.
      */
     public int countDuplicateCookies() {
-        throw new NotImplementedException(); // TODO: Implement Me
+        throw new UnsupportedOperationException("Not implemented yet.");
     }
 
     /**
@@ -122,7 +121,7 @@ public class FlowJanitor {
      *     scenarios where it does. '2' means two cookies have more than 1 flow each.
      */
     public List<String> flowsWithDuplicateCookies(boolean verbose) {
-        throw new NotImplementedException(); // TODO: Implement Me
+        throw new UnsupportedOperationException("Not implemented yet.");
     }
 
     /**
@@ -131,7 +130,7 @@ public class FlowJanitor {
      * @param config the flow janitor config
      * @param flowsToUpdate list of flows to update
      */
-    public static final void updateFlows(FlowJanitor.Config config, List<String> flowsToUpdate) {
+    private static void updateFlows(FlowJanitor.Config config, List<String> flowsToUpdate) {
         String authString = config.nbUser + ":" + config.nbPswd;
         String authStringEnc = new BASE64Encoder().encode(authString.getBytes());
 
@@ -288,9 +287,6 @@ public class FlowJanitor {
                 FlowJanitor.updateFlows(config, flowsToUpdate);
 
             }
-            // NeoDriver target = new NeoDriver(driver);
-            // System.out.println("target.getSwitches() = " + target.getSwitches());
-
         } catch (ParseException exception) {
             System.out.print("Parse error: ");
             System.out.println(exception.getMessage());

@@ -66,12 +66,7 @@ public class AvailableNetwork {
      * @param dpid the primary key of the switch, ie dpid
      */
     private SimpleSwitch initSwitch(SwitchId dpid) {
-        SimpleSwitch result = switches.get(dpid);
-        if (result == null) {
-            result = new SimpleSwitch(dpid);
-            switches.put(dpid, result);
-        }
-        return result;
+        return switches.computeIfAbsent(dpid, k -> new SimpleSwitch(dpid));
     }
 
 

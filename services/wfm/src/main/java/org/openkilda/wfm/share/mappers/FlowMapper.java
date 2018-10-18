@@ -20,7 +20,6 @@ import org.openkilda.messaging.payload.flow.FlowState;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
 import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
@@ -33,18 +32,14 @@ public interface FlowMapper {
 
     FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
-    @Mappings({
-            @Mapping(source = "srcSwitchId", target = "sourceSwitch"),
-            @Mapping(source = "destSwitchId", target = "destinationSwitch"),
-            @Mapping(source = "status", target = "state")
-    })
+    @Mapping(source = "srcSwitchId", target = "sourceSwitch")
+    @Mapping(source = "destSwitchId", target = "destinationSwitch")
+    @Mapping(source = "status", target = "state")
     Flow map(org.openkilda.model.Flow flow);
 
-    @Mappings({
-            @Mapping(source = "sourceSwitch", target = "srcSwitchId"),
-            @Mapping(source = "destinationSwitch", target = "destSwitchId"),
-            @Mapping(source = "state", target = "status")
-    })
+    @Mapping(source = "sourceSwitch", target = "srcSwitchId")
+    @Mapping(source = "destinationSwitch", target = "destSwitchId")
+    @Mapping(source = "state", target = "status")
     org.openkilda.model.Flow map(Flow flow);
 
     /**

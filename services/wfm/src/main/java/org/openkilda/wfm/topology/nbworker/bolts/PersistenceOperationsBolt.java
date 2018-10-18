@@ -33,7 +33,7 @@ import java.util.Map;
 public abstract class PersistenceOperationsBolt extends AbstractBolt {
 
     private final PersistenceManager persistenceManager;
-    private RepositoryFactory repositoryFactory;
+    protected transient RepositoryFactory repositoryFactory;
 
     PersistenceOperationsBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -51,12 +51,11 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         final String correlationId = input.getStringByField("correlationId");
         getLogger().debug("Received operation request");
 
-        List<? extends InfoData> result = processRequest(input, request, repositoryFactory);
+        List<? extends InfoData> result = processRequest(input, request);
         getOutput().emit(input, new Values(result, correlationId));
     }
 
-    abstract List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request,
-                                                     RepositoryFactory repositoryFactory);
+    abstract List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request);
 
     abstract Logger getLogger();
 }

@@ -20,8 +20,6 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -42,10 +40,10 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, RepositoryFactory repositoryFactory) {
+    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetSwitchesRequest) {
-            result = getSwitches(repositoryFactory.createSwitchRepository());
+            result = getSwitches();
         } else {
             unhandledInput(tuple);
         }
@@ -53,8 +51,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         return result;
     }
 
-    private List<SwitchInfoData> getSwitches(SwitchRepository switchRepository) {
-        return switchRepository.findAll().stream()
+    private List<SwitchInfoData> getSwitches() {
+        return repositoryFactory.createSwitchRepository().findAll().stream()
                 .map(SwitchMapper.INSTANCE::map)
                 .collect(Collectors.toList());
     }

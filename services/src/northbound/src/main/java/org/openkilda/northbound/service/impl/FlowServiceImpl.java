@@ -75,7 +75,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -155,11 +154,6 @@ public class FlowServiceImpl implements FlowService {
      */
     @Autowired
     private MessageProducer messageProducer;
-
-    /**
-     * Standard variables for calling out to an ENDPOINT.
-     */
-    private HttpHeaders headers;
 
     /**
      * The TER endpoint.

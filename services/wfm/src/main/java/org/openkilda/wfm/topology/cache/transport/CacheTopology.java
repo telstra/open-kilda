@@ -82,7 +82,6 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
 
         CacheBolt cacheBolt = new CacheBolt(persistenceManager);
-        //ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
         BoltDeclarer boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
                 .shuffleGrouping(SPOUT_ID_COMMON);
         // (carmine) as per above comment, only a single input streamt

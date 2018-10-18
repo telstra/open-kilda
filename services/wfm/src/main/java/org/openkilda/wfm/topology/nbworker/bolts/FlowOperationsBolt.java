@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -37,7 +36,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, RepositoryFactory repositoryFactory) {
+    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request) {
         LOGGER.warn("Received unsupported Flow Operation");
         return null;
     }
