@@ -13,21 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.wfm.topology.flow.model;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.FlowPath;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 
-/**
- * Sync the FlowCache request.
- */
-@JsonSerialize
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class FlowCacheSyncRequest extends CommandData {
-    /**
-     * Serialization version number constant.
-     */
-    private static final long serialVersionUID = 1L;
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Getter
+public class FlowPathPair {
+    private FlowPath forward;
+    private FlowPath reverse;
 }

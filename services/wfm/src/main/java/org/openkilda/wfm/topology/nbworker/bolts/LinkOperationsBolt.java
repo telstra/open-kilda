@@ -31,11 +31,11 @@ import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequ
 import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.Isl;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
@@ -229,7 +229,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         boolean deleted;
         try {
             deleted = linkOperationsService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
-                                                      request.getDstSwitch(), request.getDstPort());
+                    request.getDstSwitch(), request.getDstPort());
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
         } catch (IllegalIslStateException e) {
@@ -260,7 +260,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
             if (underMaintenance && evacuate) {
                 flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                         .map(FlowPair::getForward)
-                        .map(Flow::getFlowId).forEach(flowId -> {
+                        .map(UnidirectionalFlow::getFlowId).forEach(flowId -> {
                             FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);
                             getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest,
                                     correlationId));

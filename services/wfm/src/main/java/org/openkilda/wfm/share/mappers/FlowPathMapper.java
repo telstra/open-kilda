@@ -16,11 +16,17 @@
 package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathSegment;
+import org.openkilda.model.UnidirectionalFlow;
 
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Convert {@link FlowPath} to {@link PathInfoData} and back.
@@ -30,9 +36,54 @@ public abstract class FlowPathMapper {
 
     public static final FlowPathMapper INSTANCE = Mappers.getMapper(FlowPathMapper.class);
 
-    @Mapping(source = "nodes", target = "path")
-    public abstract PathInfoData map(FlowPath path);
+    /**
+     * Convert {@link FlowPath} to {@link PathInfoData}.
+     */
+    public PathInfoData map(FlowPath path) {
+        PathInfoData result = new PathInfoData();
+        result.setLatency(path.getLatency());
 
-    @Mapping(source = "path", target = "nodes")
-    public abstract FlowPath map(PathInfoData path);
+        int seqId = 0;
+        List<PathNode> nodes = new ArrayList<>();
+        for (PathSegment pathSegment : path.getSegments()) {
+            nodes.add(new PathNode(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
+                    seqId++, pathSegment.getLatency()));
+            nodes.add(new PathNode(pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
+                    seqId++));
+        }
+
+        result.setPath(nodes);
+
+        return result;
+    }
+
+    /**
+     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     */
+    public List<PathNodePayload> mapToPathNodes(UnidirectionalFlow flow) {
+        List<PathNodePayload> resultList = new ArrayList<>();
+
+        if (flow.getFlowPath().getSegments().isEmpty()) {
+            resultList.add(
+                    new PathNodePayload(flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(), flow.getDestPort()));
+        } else {
+            List<PathSegment> pathSegments = flow.getFlowPath().getSegments();
+
+            resultList.add(new PathNodePayload(flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
+                    pathSegments.get(0).getSrcPort()));
+
+            for (int i = 1; i < pathSegments.size(); i++) {
+                PathSegment inputNode = pathSegments.get(i - 1);
+                PathSegment outputNode = pathSegments.get(i);
+
+                resultList.add(new PathNodePayload(inputNode.getDestSwitch().getSwitchId(), inputNode.getDestPort(),
+                        outputNode.getSrcPort()));
+            }
+
+            resultList.add(new PathNodePayload(flow.getDestSwitch().getSwitchId(),
+                    pathSegments.get(pathSegments.size() - 1).getDestPort(), flow.getDestPort()));
+        }
+
+        return resultList;
+    }
 }

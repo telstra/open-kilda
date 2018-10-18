@@ -39,7 +39,6 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 public class RerouteBolt extends AbstractBolt {
@@ -49,7 +48,6 @@ public class RerouteBolt extends AbstractBolt {
 
     private PersistenceManager persistenceManager;
     private transient RerouteService rerouteService;
-
 
 
     public RerouteBolt(PersistenceManager persistenceManager) {
@@ -77,7 +75,7 @@ public class RerouteBolt extends AbstractBolt {
         if (commandData instanceof RerouteAffectedFlows) {
             RerouteAffectedFlows rerouteAffectedFlows = (RerouteAffectedFlows) commandData;
             PathNode pathNode = rerouteAffectedFlows.getPathNode();
-            Set<Flow> affectedFlows
+            Collection<Flow> affectedFlows
                     = rerouteService.getAffectedFlows(pathNode.getSwitchId(), pathNode.getPortNo());
 
             emitRerouteCommands(tuple, affectedFlows, message.getCorrelationId(),
@@ -85,7 +83,7 @@ public class RerouteBolt extends AbstractBolt {
 
         } else if (commandData instanceof RerouteInactiveFlows) {
             RerouteInactiveFlows rerouteInactiveFlows = (RerouteInactiveFlows) commandData;
-            Set<Flow> inactiveFlows = rerouteService.getInactiveFlows();
+            Collection<Flow> inactiveFlows = rerouteService.getInactiveFlows();
 
             emitRerouteCommands(tuple, inactiveFlows, message.getCorrelationId(),
                     rerouteInactiveFlows.getReason());
