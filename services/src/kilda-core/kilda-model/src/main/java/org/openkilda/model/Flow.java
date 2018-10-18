@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -26,21 +28,21 @@ import lombok.Setter;
 import org.neo4j.ogm.annotation.EndNode;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
+import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.RelationshipEntity;
-import org.neo4j.ogm.annotation.Required;
 import org.neo4j.ogm.annotation.StartNode;
+import org.neo4j.ogm.annotation.Transient;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 
 /**
- * Represents information about a flow. This includes the source and destination, flow status,
- * bandwidth and description, encapsulation details (e.g. cookie, transitVlan, meterId).
+ * Represents a bi-directional flow. This includes the source and destination, flow status,
+ * bandwidth and description, active paths, encapsulation type.
  */
 @Data
 @NoArgsConstructor
@@ -48,10 +50,6 @@ import java.util.Optional;
 @RelationshipEntity(type = "flow")
 public class Flow implements Serializable {
     private static final long serialVersionUID = 1L;
-
-    public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
-
-    public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
 
     // Hidden as needed for OGM only.
     @Id
@@ -62,12 +60,8 @@ public class Flow implements Serializable {
 
     @NonNull
     @Property(name = "flowid")
-    @Required
+    @Index(unique = true)
     private String flowId;
-
-    @Property(name = "cookie")
-    @Required
-    private long cookie;
 
     @NonNull
     @StartNode
@@ -77,35 +71,11 @@ public class Flow implements Serializable {
     @EndNode
     private Switch destSwitch;
 
-    /**
-     * Hidden as used to support old storage schema.
-     *
-     * @deprecated Use srcSwitch instead.
-     */
-    @Deprecated
-    @Property(name = "src_switch")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private SwitchId srcSwitchId;
-
     @Property(name = "src_port")
     private int srcPort;
 
     @Property(name = "src_vlan")
     private int srcVlan;
-
-    /**
-     * Hidden as used to support old storage schema.
-     *
-     * @deprecated Use destSwitch instead.
-     */
-    @Deprecated
-    @Property(name = "dst_switch")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private SwitchId destSwitchId;
 
     @Property(name = "dst_port")
     private int destPort;
@@ -113,136 +83,78 @@ public class Flow implements Serializable {
     @Property(name = "dst_vlan")
     private int destVlan;
 
-    /**
-     * Representation of the flow path. As opposed to flow segment entity, this is kept within the flow entity.
-     *
-     * @deprecated This duplicates the information managed by flow segments, and considered excessive. Use flow segment
-     *     entities instead.
-     */
-    @Deprecated
-    @Property(name = "flowpath")
+    // No setter as forwardPath must be used for this.
+    @Property(name = "forward_path_id")
     @Convert(graphPropertyType = String.class)
-    private FlowPath flowPath;
+    @Setter(AccessLevel.NONE)
+    private PathId forwardPathId;
+
+    // No setter as reversePath must be used for this.
+    @Property(name = "reverse_path_id")
+    @Convert(graphPropertyType = String.class)
+    @Setter(AccessLevel.NONE)
+    private PathId reversePathId;
+
+    @Transient
+    private FlowPath forwardPath;
+
+    @Transient
+    private FlowPath reversePath;
 
     private long bandwidth;
-
-    private String description;
-
-    /**
-     * Hidden as used to support old storage schema.
-     *
-     * @deprecated Use timeModify instead.
-     */
-    @Deprecated
-    @Property(name = "last_updated")
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private String lastUpdated;
-
-    @Property(name = "transit_vlan")
-    private int transitVlan;
-
-    @Property(name = "meter_id")
-    private Integer meterId;
 
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
 
+    private String description;
+
     @Property(name = "periodic_pings")
     private boolean periodicPings;
 
-    @Property(name = "status")
+    @NonNull
+    @Property(name = "encapsulation_type")
+    @Convert(graphPropertyType = String.class)
+    private FlowEncapsulationType encapsulationType;
+
+    @NonNull
     // Enforce usage of custom converters.
     @Convert(graphPropertyType = String.class)
     private FlowStatus status;
+
+    @Property(name = "time_create")
+    @Convert(InstantStringConverter.class)
+    private Instant timeCreate;
 
     @Property(name = "time_modify")
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
 
-    /**
-     * Constructor used by the builder only and needed to copy srcSwitch to srcSwitchId, destSwitch to destSwitchId.
-     */
     @Builder(toBuilder = true)
-    Flow(String flowId, long cookie, //NOSONAR
-            Switch srcSwitch, Switch destSwitch, int srcPort, int srcVlan, int destPort, int destVlan,
-            FlowPath flowPath, long bandwidth, String description, int transitVlan,
-            Integer meterId, boolean ignoreBandwidth, boolean periodicPings,
-            FlowStatus status, Instant timeModify) {
+    public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
+                int srcPort, int srcVlan, int destPort, int destVlan,
+                FlowPath forwardPath, FlowPath reversePath,
+                long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
+                FlowEncapsulationType encapsulationType, FlowStatus status,
+                Instant timeCreate, Instant timeModify) {
+        validateEndpoints(srcSwitch.getSwitchId(), srcPort, destSwitch.getSwitchId(), destPort);
+
         this.flowId = flowId;
-        this.cookie = cookie;
-        setSrcSwitch(srcSwitch);
-        setDestSwitch(destSwitch);
+        this.srcSwitch = srcSwitch;
+        this.destSwitch = destSwitch;
         this.srcPort = srcPort;
         this.srcVlan = srcVlan;
         this.destPort = destPort;
         this.destVlan = destVlan;
-        this.flowPath = flowPath;
+        setForwardPath(forwardPath);
+        setReversePath(reversePath);
         this.bandwidth = bandwidth;
-        this.description = description;
-        this.transitVlan = transitVlan;
-        this.meterId = meterId;
         this.ignoreBandwidth = ignoreBandwidth;
+        this.description = description;
         this.periodicPings = periodicPings;
+        this.encapsulationType = encapsulationType;
         this.status = status;
-        setTimeModify(timeModify);
-    }
-
-    public final void setSrcSwitch(Switch srcSwitch) {
-        this.srcSwitch = Objects.requireNonNull(srcSwitch);
-        this.srcSwitchId = srcSwitch.getSwitchId();
-    }
-
-    public final void setDestSwitch(Switch destSwitch) {
-        this.destSwitch = Objects.requireNonNull(destSwitch);
-        this.destSwitchId = destSwitch.getSwitchId();
-    }
-
-    /**
-     * Getter which falls back to the lastUpdated if the timeModify is not set.
-     */
-    public final Instant getTimeModify() {
-        if (timeModify != null) {
-            return timeModify;
-        } else if (lastUpdated != null) {
-            try {
-                return Instant.ofEpochMilli(Long.parseLong(lastUpdated));
-            } catch (NumberFormatException ex) {
-                return Instant.parse(lastUpdated);
-            }
-        }
-        return null;
-    }
-
-    public final void setTimeModify(Instant timeModify) {
+        this.timeCreate = timeCreate;
         this.timeModify = timeModify;
-        this.lastUpdated = timeModify != null ? Long.toString(timeModify.toEpochMilli()) : null;
-    }
-
-    /**
-     * Checks whether a flow is forward.
-     *
-     * @return boolean flag
-     */
-    public boolean isForward() {
-        boolean isForward = cookieMarkedAsFroward();
-        boolean isReversed = cookieMarkedAsReversed();
-
-        if (isForward && isReversed) {
-            throw new IllegalArgumentException(
-                    "Invalid cookie flags combinations - it mark as forward and reverse flow at same time.");
-        }
-
-        return isForward;
-    }
-
-    /**
-     * Checks whether a flow is reverse.
-     *
-     * @return boolean flag
-     */
-    public boolean isReverse() {
-        return !isForward();
     }
 
     /**
@@ -254,39 +166,89 @@ public class Flow implements Serializable {
         return srcSwitch.getSwitchId().equals(destSwitch.getSwitchId());
     }
 
+
     public boolean isActive() {
         return status == FlowStatus.UP;
     }
 
     /**
-     * Converts meter id to long value.
-     * @return null if flow is unmetered otherwise returns converted meter id.
+     * Set the forward path.
      */
-    public Long getMeterLongValue() {
-        return Optional.ofNullable(meterId)
-                .map(Long::valueOf)
-                .orElse(null);
+    public final void setForwardPath(FlowPath forwardPath) {
+        if (forwardPath != null) {
+            this.forwardPath = validateForwardPath(forwardPath);
+            this.forwardPathId = forwardPath.getPathId();
+        } else {
+            this.forwardPath = null;
+            this.forwardPathId = null;
+        }
     }
 
-    private boolean cookieMarkedAsFroward() {
-        boolean isMatch;
+    private void validateEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
+        checkArgument(srcSwitchId.compareTo(destSwitchId) <= 0,
+                "The source and destination endpoints are in wrong order. "
+                        + "The source is expected to be less or equal to the destination.");
 
-        if ((cookie & 0xE000000000000000L) != 0) {
-            isMatch = (cookie & FORWARD_FLOW_COOKIE_MASK) != 0;
-        } else {
-            isMatch = (cookie & 0x0080000000000000L) == 0;
+        if (srcSwitchId.equals(destSwitchId)) {
+            checkArgument(srcPort < destPort,
+                    "The source and destination ports are in wrong order. "
+                            + "The source is expected to be less or equal to the destination.");
         }
-        return isMatch;
-
     }
 
-    private boolean cookieMarkedAsReversed() {
-        boolean isMatch;
-        if ((cookie & 0xE000000000000000L) != 0) {
-            isMatch = (cookie & REVERSE_FLOW_COOKIE_MASK) != 0;
+    private FlowPath validateForwardPath(FlowPath path) {
+        validatePath(path);
+
+        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId()),
+                "Forward path %s and the flow have different source switch, but expected the same.",
+                path.getPathId());
+
+        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
+                "Forward path %s and the flow have different destination switch, but expected the same.",
+                path.getPathId());
+
+        return path;
+    }
+
+    /**
+     * Set the reverse path.
+     */
+    public final void setReversePath(FlowPath reversePath) {
+        if (reversePath != null) {
+            this.reversePath = validateReversePath(reversePath);
+            this.reversePathId = reversePath.getPathId();
         } else {
-            isMatch = (cookie & 0x0080000000000000L) != 0;
+            this.reversePath = null;
+            this.reversePathId = null;
         }
-        return isMatch;
+    }
+
+    private FlowPath validateReversePath(FlowPath path) {
+        validatePath(path);
+
+        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
+                "Reverse path %s source and the flow destination are different, but expected the same.",
+                path.getPathId());
+
+        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId()),
+                "Reverse path %s destination and the flow source are different, but expected the same.",
+                path.getPathId());
+
+        return path;
+    }
+
+    private FlowPath validatePath(FlowPath path) {
+        checkArgument(Objects.equals(path.getFlowId(), getFlowId()),
+                "Path %s belongs to another flow, but expected the same.", path.getPathId());
+
+        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
+                        || Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
+                "Path %s source doesn't correspond to any of flow endpoints.", path.getSrcSwitch());
+
+        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
+                        || Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
+                "Path %s destination doesn't correspond to any of flow endpoints.", path.getSrcSwitch());
+
+        return path;
     }
 }
