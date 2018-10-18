@@ -20,13 +20,16 @@ import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.Repository;
 
 import com.google.common.collect.ImmutableMap;
+import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Arrays;
@@ -38,8 +41,6 @@ import java.util.Map;
  * Base Neo4J OGM implementation of {@link Repository}.
  */
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
-    static final int DEPTH_LOAD_ENTITY = 1;
-    static final int DEPTH_CREATE_UPDATE_ENTITY = 0;
     private static final String SRC_SWITCH_FIELD = "srcSwitch";
     private static final String DEST_SWITCH_FIELD = "destSwitch";
 
@@ -51,13 +52,33 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         this.transactionManager = transactionManager;
     }
 
+    int getDepthLoadEntity() {
+        // the default depth for loading an entity.
+        return 1;
+    }
+
+    int getDepthCreateUpdateEntity() {
+        // the default depth for creating/updating an entity.
+        return 0;
+    }
+
     Session getSession() {
         return sessionFactory.getSession();
     }
 
+    Collection<T> loadAll(Filter filter) {
+        return getSession().loadAll(getEntityType(), filter,
+                getDepthLoadEntity());
+    }
+
+    Collection<T> loadAll(Filters filters) {
+        return getSession().loadAll(getEntityType(), filters,
+                getDepthLoadEntity());
+    }
+
     @Override
     public Collection<T> findAll() {
-        return getSession().loadAll(getEntityType(), DEPTH_LOAD_ENTITY);
+        return getSession().loadAll(getEntityType(), getDepthLoadEntity());
     }
 
     @Override
@@ -71,7 +92,15 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
 
     @Override
     public void createOrUpdate(T entity) {
-        getSession().save(entity, DEPTH_CREATE_UPDATE_ENTITY);
+        try {
+            getSession().save(entity, getDepthCreateUpdateEntity());
+        } catch (ClientException ex) {
+            if (ex.code().endsWith("ConstraintValidationFailed")) {
+                throw new ConstraintViolationException(ex.getMessage(), ex);
+            } else {
+                throw ex;
+            }
+        }
     }
 
     abstract Class<T> getEntityType();

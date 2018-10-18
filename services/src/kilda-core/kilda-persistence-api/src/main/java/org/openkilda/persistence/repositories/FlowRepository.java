@@ -16,7 +16,6 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
@@ -26,19 +25,13 @@ import java.util.Set;
 public interface FlowRepository extends Repository<Flow> {
     boolean exists(String flowId);
 
-    Collection<Flow> findById(String flowId);
+    Optional<Flow> findById(String flowId);
 
     Collection<Flow> findByGroupId(String flowGroupId);
 
-    Optional<Flow> findByIdAndCookie(String flowId, long cookie);
+    Collection<Flow> findWithPeriodicPingsEnabled();
 
-    Optional<FlowPair> findFlowPairById(String flowId);
-
-    Collection<FlowPair> findAllFlowPairs();
-
-    Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled();
-
-    Collection<Flow> findFlowIdsByEndpoint(SwitchId switchId, int port);
+    Collection<Flow> findByEndpoint(SwitchId switchId, int port);
 
     Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port);
 
@@ -48,16 +41,11 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findByDstSwitchId(SwitchId switchId);
 
-    void createOrUpdate(FlowPair flowPair);
-
-    void delete(FlowPair flowPair);
-
-    Optional<String> getOrCreateFlowGroupId(String flowId);
-
-    Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
-                                                     SwitchId dstSwitchId, int dstPort);
+    Collection<Flow> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
+                                         SwitchId dstSwitchId, int dstPort);
 
     Set<String> findFlowIdsBySwitch(SwitchId switchId);
 
-    Collection<FlowPair> findFlowPairsByGroupId(String flowGroupId);
+    Optional<String> getOrCreateFlowGroupId(String flowId);
+
 }

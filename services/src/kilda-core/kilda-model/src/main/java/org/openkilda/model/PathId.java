@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,38 +15,18 @@
 
 package org.openkilda.model;
 
-import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 
 import java.io.Serializable;
-import java.time.Instant;
 
 /**
- * A pair (forward & reverse) of flows.
+ * Represents a flow path id.
  */
 @Value
-@Builder
-public class FlowPair implements Serializable {
+public class PathId implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @NonNull
-    public final Flow forward;
-
-    @NonNull
-    public final Flow reverse;
-
-    public void setStatus(FlowStatus status) {
-        forward.setStatus(status);
-        reverse.setStatus(status);
-    }
-
-    public void setTimeCreate(Instant timeCreate) {
-        forward.setTimeCreate(timeCreate);
-        reverse.setTimeCreate(timeCreate);
-    }
-
-    public boolean isActive() {
-        return forward.isActive() && reverse.isActive();
-    }
+    private final String pathId;
 }
