@@ -15,26 +15,33 @@
 
 package org.openkilda.wfm.share.mappers;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
+import org.openkilda.model.TransitVlan;
+import org.openkilda.model.UnidirectionalFlow;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.UUID;
 
 /**
- * Convert {@link Flow} to {@link FlowDto} and back.
+ * Convert {@link UnidirectionalFlow} to {@link FlowDto} and back.
  */
-@Mapper
+@Mapper(uses = {FlowPathMapper.class})
 public abstract class FlowMapper {
 
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
@@ -51,49 +58,7 @@ public abstract class FlowMapper {
     @Mapping(source = "status", target = "state")
     @Mapping(source = "timeModify", target = "lastUpdated")
     @Mapping(source = "timeCreate", target = "createdTime")
-    public abstract FlowDto map(Flow flow);
-
-    /**
-     * Builds a {@link Flow} with provided data from {@link FlowDto}.
-     * <p/>
-     * <strong>Be careful as it creates a dummy switch objects for srcSwitch and destSwitch properties
-     * with only switchId filled.</strong>
-     */
-    @Mapping(source = "sourcePort", target = "srcPort")
-    @Mapping(source = "sourceVlan", target = "srcVlan")
-    @Mapping(source = "destinationPort", target = "destPort")
-    @Mapping(source = "destinationVlan", target = "destVlan")
-    @Mapping(target = "srcSwitch",
-            expression = "java(org.openkilda.model.Switch.builder().switchId(flow.getSourceSwitch()).build())")
-    @Mapping(target = "destSwitch",
-            expression = "java(org.openkilda.model.Switch.builder().switchId(flow.getDestinationSwitch()).build())")
-    @Mapping(source = "state", target = "status")
-    @Mapping(source = "lastUpdated", target = "timeModify")
-    @Mapping(source = "createdTime", target = "timeCreate")
-    public abstract Flow map(FlowDto flow);
-
-    /**
-     * Convert {@link PathNode} to {@link FlowPath.Node}.
-     */
-    public abstract FlowPath.Node map(PathNode p);
-
-    /**
-     * Convert {@link FlowPath.Node } to {@link PathNode}.
-     */
-    public abstract PathNode map(FlowPath.Node p);
-
-    /**
-     * Convert {@link FlowPath} to {@link PathInfoData}.
-     */
-    @Mapping(source = "nodes", target = "path")
-    public abstract PathInfoData map(FlowPath p);
-
-    /**
-     * Convert {@link PathInfoData} to {@link FlowPath}.
-     */
-    @Mapping(source = "path", target = "nodes")
-    public abstract FlowPath map(PathInfoData p);
-
+    public abstract FlowDto map(UnidirectionalFlow flow);
 
     /**
      * Convert {@link FlowPair} to {@link FlowPairDto}.
@@ -103,7 +68,30 @@ public abstract class FlowMapper {
             return null;
         }
 
-        return new FlowPairDto<>(map(flowPair.getForward()), map(flowPair.getReverse()));
+        return new FlowPairDto<>(
+                map(flowPair.getForward()),
+                map(flowPair.getReverse()));
+    }
+
+    /**
+     * Builds a {@link UnidirectionalFlow} with provided data from {@link FlowDto}.
+     * <p/>
+     * <strong>Be careful as it creates a dummy switch objects for srcSwitch and destSwitch properties
+     * with only switchId filled.</strong>
+     */
+    public UnidirectionalFlow map(FlowDto flowDto) {
+        Flow flow = buildFlow(flowDto);
+
+        FlowPath flowPath = buildPath(flowDto);
+        flow.setForwardPath(flowPath);
+
+        TransitVlan transitVlan = TransitVlan.builder()
+                .flowId(flow.getFlowId())
+                .pathId(flowPath.getPathId())
+                .vlan(flowDto.getTransitVlan())
+                .build();
+
+        return new UnidirectionalFlow(flow, flowPath, transitVlan, true);
     }
 
     /**
@@ -114,7 +102,26 @@ public abstract class FlowMapper {
             return null;
         }
 
-        return FlowPair.builder().forward(map(flowPair.getLeft())).reverse(map(flowPair.getRight())).build();
+        FlowPath forwardPath = buildPath(flowPair.getLeft());
+        FlowPath reversePath = buildPath(flowPair.getRight());
+
+        Flow flow = buildFlow(flowPair.getLeft());
+        flow.setForwardPath(forwardPath);
+        flow.setReversePath(reversePath);
+
+        TransitVlan forwardTransitVlan = TransitVlan.builder()
+                .flowId(flow.getFlowId())
+                .pathId(forwardPath.getPathId())
+                .vlan(flowPair.getLeft().getTransitVlan())
+                .build();
+
+        TransitVlan reverseTransitVlan = TransitVlan.builder()
+                .flowId(flow.getFlowId())
+                .pathId(reversePath.getPathId())
+                .vlan(flowPair.getRight().getTransitVlan())
+                .build();
+
+        return new FlowPair(flow, forwardTransitVlan, reverseTransitVlan);
     }
 
     /**
@@ -177,5 +184,50 @@ public abstract class FlowMapper {
             default:
                 throw new IllegalArgumentException("Unsupported Flow status: " + status);
         }
+    }
+
+    private FlowPath buildPath(FlowDto flow) {
+        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
+        Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
+
+        return FlowPath.builder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .cookie(new Cookie(flow.getCookie()))
+                .bandwidth(flow.getBandwidth())
+                .ignoreBandwidth(flow.isIgnoreBandwidth())
+                .flowId(flow.getFlowId())
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .meterId(flow.getMeterId() != null ? new MeterId(flow.getMeterId()) : null)
+                .segments(Collections.emptyList())
+                .timeCreate(map(flow.getCreatedTime()))
+                .timeModify(map(flow.getLastUpdated()))
+                .build();
+    }
+
+    private Flow buildFlow(FlowDto flow) {
+        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
+        Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
+
+        return Flow.builder()
+                .flowId(flow.getFlowId())
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .srcPort(flow.getSourcePort())
+                .destPort(flow.getDestinationPort())
+                .srcVlan(flow.getSourceVlan())
+                .destVlan(flow.getDestinationVlan())
+                .status(map(flow.getState()))
+                .description(flow.getDescription())
+                .bandwidth(flow.getBandwidth())
+                .ignoreBandwidth(flow.isIgnoreBandwidth())
+                .periodicPings(flow.isPeriodicPings())
+                //TODO: hard-coded encapsulation will be removed in Flow H&S
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .maxLatency(flow.getMaxLatency())
+                .priority(flow.getPriority())
+                .timeCreate(map(flow.getCreatedTime()))
+                .timeModify(map(flow.getLastUpdated()))
+                .build();
     }
 }

@@ -24,6 +24,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 
@@ -41,6 +42,7 @@ public class FlowResourcesManager {
     private static final int MAX_ALLOCATION_ATTEMPTS = 5;
 
     private final TransactionManager transactionManager;
+    private final SwitchRepository switchRepository;
 
     private final CookiePool cookiePool;
     private final MeterPool meterPool;
@@ -48,6 +50,7 @@ public class FlowResourcesManager {
 
     public FlowResourcesManager(PersistenceManager persistenceManager, FlowResourcesConfig config) {
         transactionManager = persistenceManager.getTransactionManager();
+        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         this.cookiePool = new CookiePool(persistenceManager, config.getMinFlowCookie(), config.getMaxFlowCookie());
         this.meterPool = new MeterPool(persistenceManager,
@@ -83,6 +86,9 @@ public class FlowResourcesManager {
                                 .pathId(reversePathId);
 
                         if (flow.getBandwidth() > 0L) {
+                            switchRepository.lockSwitches(switchRepository.reload(flow.getSrcSwitch()),
+                                    switchRepository.reload(flow.getDestSwitch()));
+
                             forward.meterId(meterPool.allocate(
                                     flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
 

@@ -16,6 +16,7 @@
 package org.openkilda.wfm.share.flow.resources;
 
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
 
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.MeterId;
@@ -29,6 +30,10 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * The resource pool is responsible for meter de-/allocation.
@@ -90,12 +95,19 @@ public class MeterPool {
     }
 
     /**
-     * Deallocates a meter of the flow path.
+     * Deallocates a meter(s) of the flow path(s).
      */
-    public void deallocate(PathId pathId) {
-        transactionManager.doInTransaction(() ->
-                flowMeterRepository.findByPathId(pathId)
-                        .ifPresent(flowMeterRepository::delete)
-        );
+    public void deallocate(PathId... pathIds) {
+        transactionManager.doInTransaction(() -> {
+            List<FlowMeter> meters = Arrays.stream(pathIds)
+                    .map(flowMeterRepository::findByPathId)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(toList());
+
+            switchRepository.lockSwitches(meters.stream().map(FlowMeter::getTheSwitch).toArray(Switch[]::new));
+
+            meters.forEach(flowMeterRepository::delete);
+        });
     }
 }

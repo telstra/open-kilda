@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.messaging.command;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
@@ -22,20 +22,20 @@ import java.io.Serializable;
 import java.util.List;
 
 @Value
-public class FlowCommandGroup implements Serializable {
-    @JsonProperty("flow_commands")
-    private List<? extends BaseFlow> flowCommands;
+public class CommandGroup implements Serializable {
+    @JsonProperty("commands")
+    private List<? extends CommandData> commands;
     @JsonProperty("reaction_on_error")
     private FailureReaction reactionOnError;
 
-    public FlowCommandGroup(@JsonProperty("flow_commands") List<? extends BaseFlow> flowCommands,
-                            @JsonProperty("reaction_on_error") FailureReaction reactionOnError) {
-        this.flowCommands = flowCommands;
+    public CommandGroup(@JsonProperty("commands") List<? extends CommandData> commands,
+                        @JsonProperty("reaction_on_error") FailureReaction reactionOnError) {
+        this.commands = commands;
         this.reactionOnError = reactionOnError;
     }
 
     public enum FailureReaction {
         IGNORE,
-        ABORT_FLOW
+        ABORT_BATCH
     }
 }
