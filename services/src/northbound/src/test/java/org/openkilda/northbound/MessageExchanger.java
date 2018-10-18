@@ -63,8 +63,8 @@ public class MessageExchanger implements MessagingChannel {
         return CompletableFuture.completedFuture(pendingChunkedResponses.remove(message.getCorrelationId()));
     }
 
-    public void mockResponse(InfoMessage message) {
-        pendingResponses.put(message.getCorrelationId(), message.getData());
+    public void mockResponse(String requestId, InfoData data) {
+        pendingResponses.put(requestId, data);
     }
 
     public void mockChunkedResponse(String requestId, List<InfoData> messages) {
