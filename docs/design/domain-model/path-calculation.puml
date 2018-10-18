@@ -2,39 +2,66 @@
 title Path Calculation with transaction resource allocation
 
 participant FlowService
-participant FlowDataMapper
+participant PathComputer
+participant IslMapper
+database NetworkDB
+participant FlowMapper
 database FlowDB
-participant PathComputer 
-participant ResourcePullService
+participant ResourcePoolService
 participant ResourceDataMapper
 database ResourceDB
 
 
 ==STEP: Path Calculation==
-FlowService -> PathComputer : path calculation
 activate FlowService
+group DB transaction
+    FlowService -> PathComputer : path calculation
+    activate PathComputer
+    PathComputer -> PathComputer : find a path
+    activate PathComputer
+    PathComputer -> IslMapper : get available paths
+    activate IslMapper
+    IslMapper -> NetworkDB
+    IslMapper <-- NetworkDB
+    PathComputer <-- IslMapper
+    deactivate IslMapper
+    deactivate PathComputer
+    alt Path has been found
+        FlowService <-- PathComputer : the path
+        deactivate PathComputer
 
-alt DB transaction success
-  loop try to allocate resources X times in case of failure
-    PathComputer -> PathComputer : find path
-    group DB transaction
-    PathComputer -> ResourcePullService : alloc resources
-    ResourcePullService -> ResourceDataMapper : alloc flow
-    ResourcePullService -> ResourceDataMapper : alloc meter
-    ResourcePullService -> ResourceDataMapper : alloc bandwidth
-    ResourcePullService -> ResourceDataMapper : alloc transit_vlan
-    ResourceDataMapper -> ResourceDB
+        FlowService -> FlowMapper : build and store a flow path
+        activate FlowMapper
+        FlowMapper -> FlowDB
+        deactivate FlowMapper
+        FlowService -> IslMapper : alloc bandwidth
+        activate IslMapper
+        IslMapper -> NetworkDB
+        deactivate IslMapper
+    else Path not found
+        FlowService <-- PathComputer : can't find path
     end
-    ResourcePullService <-- ResourceDB
-    PathComputer <-- ResourcePullService
-  end
-FlowService <-- PathComputer : path
-FlowService -> FlowDataMapper : store flow path
-FlowDataMapper -> FlowDB :
-
-else path not found
-FlowService <-- PathComputer : can't find path
 end
 
+==STEP: Resource Allocation==
+
+FlowService -> ResourcePoolService : alloc flow resources
+activate ResourcePoolService
+loop try to allocate resources X times in case of failure
+    group DB transaction
+        ResourcePoolService -> ResourceDataMapper : alloc cookie
+        activate ResourceDataMapper
+        ResourcePoolService -> ResourceDataMapper : alloc meter
+        ResourcePoolService -> ResourceDataMapper : alloc transit_vlan
+        ResourceDataMapper -> ResourceDB
+        deactivate ResourceDataMapper
+    end
+end
+FlowService <-- ResourcePoolService
+deactivate ResourcePoolService
+FlowService -> FlowMapper : update the flow path with the resources
+activate FlowMapper
+FlowMapper -> FlowDB
+deactivate FlowMapper
 deactivate FlowService
 @enduml

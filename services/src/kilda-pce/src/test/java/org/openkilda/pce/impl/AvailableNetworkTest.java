@@ -21,8 +21,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
-import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Isl;
+import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputerConfig;
@@ -34,6 +35,7 @@ import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import java.util.Set;
+import java.util.UUID;
 
 public class AvailableNetworkTest {
     private static PathComputerConfig config = new PropertiesBasedConfigurationProvider()
@@ -205,7 +207,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)),
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)),
                 config);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
@@ -223,7 +225,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)),
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)),
                 config);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
@@ -241,7 +243,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)),
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)),
                 config);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
@@ -270,16 +272,19 @@ public class AvailableNetworkTest {
         network.addLink(isl);
     }
 
-    private FlowSegment buildFlowSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int seqId) {
+    private PathSegment buildPathSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int seqId) {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
 
-        return FlowSegment.builder()
+        PathSegment segment = PathSegment.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .srcPort(srcPort)
                 .destPort(dstPort)
-                .seqId(seqId)
                 .build();
+        //TODO: seqId is specific for Neo4j implementation of FlowPath and shouldn't be used outside.
+        segment.setSeqId(seqId);
+        return segment;
     }
 }
