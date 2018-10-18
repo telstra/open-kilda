@@ -21,5 +21,5 @@ import org.openkilda.persistence.repositories.Repository;
 import java.util.Collection;
 
 public interface FlowStateRepository extends Repository<FlowDump> {
-    Collection<FlowDump> listFlowDumpByTaskId(String taskId);
+    Collection<FlowDump> findFlowDumpByTaskId(String taskId);
 }

@@ -41,14 +41,9 @@ public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> 
     }
 
     @Override
-    Class<FlowEvent> getEntityType() {
-        return FlowEvent.class;
-    }
-
-    @Override
     public Optional<FlowEvent> findByTaskId(String taskId) {
         Filter taskIdFilter = new Filter(TASK_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, taskId);
-        Collection<FlowEvent> flowEvents = getSession().loadAll(getEntityType(), taskIdFilter, DEPTH_LOAD_ENTITY);
+        Collection<FlowEvent> flowEvents = getSession().loadAll(getEntityType(), taskIdFilter, getDepthLoadEntity());
         if (flowEvents.size() > 1) {
             throw new PersistenceException(format("Found more than 1 FlowEvent entity by %s as taskId", taskId));
         }
@@ -62,6 +57,11 @@ public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> 
         Filter afterFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.GREATER_THAN_EQUAL, timeFrom);
         Filters filters = new Filters(flowIdFilter).and(beforeFilter).and(afterFilter);
         return getSession()
-                .loadAll(getEntityType(), filters, new SortOrder(TIMESTAMP_PROPERTY_NAME), DEPTH_LOAD_ENTITY);
+                .loadAll(getEntityType(), filters, new SortOrder(TIMESTAMP_PROPERTY_NAME), getDepthLoadEntity());
+    }
+
+    @Override
+    protected Class<FlowEvent> getEntityType() {
+        return FlowEvent.class;
     }
 }

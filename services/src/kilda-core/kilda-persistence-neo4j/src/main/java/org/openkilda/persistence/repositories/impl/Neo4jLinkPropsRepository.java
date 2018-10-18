@@ -37,11 +37,6 @@ public class Neo4jLinkPropsRepository extends Neo4jGenericRepository<LinkProps> 
     }
 
     @Override
-    Class<LinkProps> getEntityType() {
-        return LinkProps.class;
-    }
-
-    @Override
     public Collection<LinkProps> findByEndpoints(SwitchId srcSwitch, Integer srcPort,
                                                  SwitchId dstSwitch, Integer dstPort) {
         Filters filters = new Filters();
@@ -58,6 +53,11 @@ public class Neo4jLinkPropsRepository extends Neo4jGenericRepository<LinkProps> 
             filters.and(new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort));
         }
 
-        return getSession().loadAll(getEntityType(), filters, DEPTH_LOAD_ENTITY);
+        return loadAll(filters);
+    }
+
+    @Override
+    protected Class<LinkProps> getEntityType() {
+        return LinkProps.class;
     }
 }

@@ -15,8 +15,8 @@
 
 package org.openkilda.pce.impl;
 
-import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Isl;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputerConfig;
@@ -73,8 +73,8 @@ public class AvailableNetwork {
     /**
      * Adds diversity weights into {@link AvailableNetwork} based on passed flow segments and configuration.
      */
-    public void processDiversitySegments(Collection<FlowSegment> segments, PathComputerConfig config) {
-        for (FlowSegment segment : segments) {
+    public void processDiversitySegments(Collection<PathSegment> segments, PathComputerConfig config) {
+        for (PathSegment segment : segments) {
             Node srcNode = getSwitch(segment.getSrcSwitch().getSwitchId());
             Node dstNode = getSwitch(segment.getDestSwitch().getSwitchId());
             Edge segmentEdge = Edge.builder()

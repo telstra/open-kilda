@@ -28,7 +28,7 @@ public interface TransactionManager {
      * @param action the transactional action
      * @return a result returned by the callback
      */
-    <T, E extends Exception> T doInTransaction(TransactionCallback<T, E> action);
+    <T, E extends Throwable> T doInTransaction(TransactionCallback<T, E> action) throws E;
 
     /**
      * Execute the action specified by the given callback within a transaction.
@@ -38,5 +38,5 @@ public interface TransactionManager {
      *
      * @param action the transactional action
      */
-    <E extends Exception> void doInTransaction(TransactionCallbackWithoutResult<E> action);
+    <E extends Throwable> void doInTransaction(TransactionCallbackWithoutResult<E> action) throws E;
 }

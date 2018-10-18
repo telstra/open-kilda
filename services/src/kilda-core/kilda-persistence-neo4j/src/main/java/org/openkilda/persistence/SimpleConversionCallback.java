@@ -40,7 +40,7 @@ class SimpleConversionCallback implements ConversionCallback {
     @SuppressWarnings("unchecked")
     SimpleConversionCallback(String... packages) {
         // Scan the packages for the converters.
-        try (ScanResult scanResult = new ClassGraph().enableAllInfo().whitelistPackages(packages).scan()) {
+        try (ScanResult scanResult = new ClassGraph().enableClassInfo().whitelistPackages(packages).scan()) {
             ClassInfoList controlClasses = scanResult.getClassesImplementing(AttributeConverter.class.getName());
             List<Class<?>> controlClassRefs = controlClasses.loadClasses();
 

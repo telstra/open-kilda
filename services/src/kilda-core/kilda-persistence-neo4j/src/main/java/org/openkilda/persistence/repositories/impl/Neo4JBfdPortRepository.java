@@ -22,7 +22,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.BfdPortRepository;
-import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
@@ -32,18 +31,13 @@ import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link SwitchRepository}.
+ * Neo4J OGM implementation of {@link BfdPortRepository}.
  */
 public class Neo4JBfdPortRepository extends Neo4jGenericRepository<BfdPort> implements BfdPortRepository {
 
 
     public Neo4JBfdPortRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
-    }
-
-    @Override
-    Class<BfdPort> getEntityType() {
-        return BfdPort.class;
     }
 
     @Override
@@ -54,7 +48,7 @@ public class Neo4JBfdPortRepository extends Neo4jGenericRepository<BfdPort> impl
     @Override
     public Optional<BfdPort> findBySwitchIdAndPort(SwitchId switchId, Integer port) {
         Collection<BfdPort> ports = getSession().loadAll(getEntityType(), getFilters(switchId, port),
-                DEPTH_LOAD_ENTITY);
+                getDepthLoadEntity());
         if (ports.size() > 1) {
             throw new PersistenceException(format("Found more that 1 BfdPort entity by switch: %s port: %d",
                     switchId, port));
@@ -67,5 +61,10 @@ public class Neo4JBfdPortRepository extends Neo4jGenericRepository<BfdPort> impl
         filters.and(new Filter(BfdPort.SWITCH_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId));
         filters.and(new Filter(BfdPort.PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, port));
         return filters;
+    }
+
+    @Override
+    protected Class<BfdPort> getEntityType() {
+        return BfdPort.class;
     }
 }
