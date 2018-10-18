@@ -24,6 +24,7 @@ import org.neo4j.ogm.testutil.TestServer;
 
 public abstract class Neo4jBasedTest {
     protected static TestServer testServer;
+    protected static PersistenceManager persistenceManager;
     protected static TransactionManager txManager;
     protected static Neo4jSessionFactory neo4jSessionFactory;
 
@@ -31,7 +32,7 @@ public abstract class Neo4jBasedTest {
     public static void runTestServer() {
         testServer = new TestServer(true, true, 5);
 
-        Neo4jPersistenceManager persistenceManager = new Neo4jPersistenceManager(new Neo4jConfig() {
+        persistenceManager = new Neo4jPersistenceManager(new Neo4jConfig() {
             @Override
             public String getUri() {
                 return testServer.getUri();
