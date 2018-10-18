@@ -58,7 +58,7 @@ public class FlowAdapter {
                 readBoolean(dbRecord, "periodic_pings", false),
                 dbRecord.get("cookie").asLong(),
                 dbRecord.get("description").asString(),
-                dbRecord.get("last_updated").asString(),
+                Long.valueOf(dbRecord.get("last_updated").asLong()).toString(),
                 new SwitchId(dbRecord.get("src_switch").asString()),
                 new SwitchId(dbRecord.get("dst_switch").asString()),
                 dbRecord.get("src_port").asInt(),
@@ -67,7 +67,7 @@ public class FlowAdapter {
                 dbRecord.get("dst_vlan").asInt(),
                 dbRecord.get("meter_id").asInt(),
                 dbRecord.get("transit_vlan").asInt(),
-                path, FlowState.getByValue(dbRecord.get("status").asString())
+                path, FlowState.valueOf(dbRecord.get("status").asString())
         );
     }
 
