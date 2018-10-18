@@ -1,0 +1,61 @@
+@startuml
+title Hub and spoke storm implementation concept
+
+control command.kafka
+
+box "async"
+control request as async.request
+control response as async.response
+end box
+
+participant command.spout
+participant async.spout
+
+participant router
+participant OpAlpha
+participant "OpBeta (async)" as OpBeta
+participant OpGamma
+
+control result.kafka
+
+command.kafka -> command.spout: Command
+command.spout -> router: Command
+activate command.spout
+
+activate router
+router -> OpAlpha: command context
+deactivate router
+
+activate OpAlpha
+note right of OpAlpha: do synchronous\nactions
+note right of OpAlpha: ack command tuple
+OpAlpha -> OpBeta: command context
+deactivate OpAlpha
+
+activate OpBeta
+OpBeta -> async.request: request
+note right of OpBeta: keep context/tuple\nin memory
+note right of OpBeta: wait(pseudo)
+
+...
+async.request --> async.response: async processing
+async.response -> async.spout: response
+async.spout -> OpBeta: response
+
+note right of OpBeta: restore\ncommand contest
+note right of OpBeta: ack async tuple
+note right of OpBeta: ack command tuple
+OpBeta -> OpGamma: command contest
+
+deactivate OpBeta
+
+activate OpGamma
+note right of OpGamma: do synchronous\nactions
+note right of OpGamma: ack command tuple
+OpGamma -> result.kafka
+OpGamma -> command.spout: success
+deactivate OpGamma
+
+deactivate command.spout
+
+@enduml

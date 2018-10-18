@@ -1,0 +1,78 @@
+@startuml
+title Hub and spoke FSM implementation concept
+
+control command.kafka
+
+box "async"
+control request as async.request
+control response as async.response
+end box
+
+participant command.spout
+participant async.spout
+participant router
+
+participant FSM
+
+participant OpAlpha
+participant "OpBeta (async)" as OpBeta
+participant OpGamma
+
+control result.kafka
+
+command.kafka -> command.spout: Command
+activate command.spout
+
+command.spout -> router: Command
+router -> FSM: event/command
+
+activate FSM
+note right of FSM: locate/create\nconcrete instance\nof FSM for current\ncommand
+note right of FSM: make next step decision
+FSM -> OpAlpha: step data
+deactivate FSM
+
+activate OpAlpha
+note right of OpAlpha: do synchronous\nactions
+OpAlpha -> FSM: step results
+deactivate OpAlpha
+
+activate FSM
+
+deactivate FSM
+note right of FSM: locate/create\nconcrete instance\nof FSM for current\ncommand
+note right of FSM: make next step decision
+FSM -> OpBeta: step data
+deactivate FSM
+
+OpBeta -> async.request: request
+...
+async.request --> async.response: async processing
+async.response -> async.spout: response
+async.spout -> router: response
+
+router -> FSM: response
+
+activate FSM
+note right of FSM: locate/create\nconcrete instance\nof FSM for current\ncommand
+note right of FSM: make next step decision
+FSM -> OpGamma: step data
+deactivate FSM
+
+activate OpGamma
+note right of OpGamma: do synchronous\nactions
+OpGamma -> FSM: step results
+deactivate OpGamma
+
+activate FSM
+note right of FSM: locate/create\nconcrete instance\nof FSM for current\ncommand
+note right of FSM: make next step decision
+FSM -> result.kafka: result
+FSM -> command.spout: success
+deactivate FSM
+
+deactivate command.spout
+
+
+
+@enduml
