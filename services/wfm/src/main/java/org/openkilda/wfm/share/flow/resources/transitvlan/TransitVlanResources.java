@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,12 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.cache;
+package org.openkilda.wfm.share.flow.resources.transitvlan;
 
-public class ResourcePoolIsFullException extends RuntimeException {
-    private static final long serialVersionUID = 1L;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.TransitVlan;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 
-    public ResourcePoolIsFullException(String message) {
-        super(message);
+import lombok.Builder;
+import lombok.Value;
+
+@Value
+@Builder
+public class TransitVlanResources implements EncapsulationResources {
+
+    private TransitVlan transitVlan;
+
+    @Override
+    public final FlowEncapsulationType getEncapsulationType() {
+        return FlowEncapsulationType.TRANSIT_VLAN;
     }
 }

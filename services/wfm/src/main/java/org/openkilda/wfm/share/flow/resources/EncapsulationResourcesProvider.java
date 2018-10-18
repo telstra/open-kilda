@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,12 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.cache;
+package org.openkilda.wfm.share.flow.resources;
 
-public class MeterPoolIsFullException extends RuntimeException {
-    private static final long serialVersionUID = 1L;
+import org.openkilda.model.Flow;
+import org.openkilda.model.PathId;
 
-    public MeterPoolIsFullException(String message) {
-        super(message);
-    }
+public interface EncapsulationResourcesProvider<T extends EncapsulationResources> {
+    /**
+     * Allocates flow encapsulation resources for the flow path.
+     *
+     * @return allocated resources.
+     */
+    T allocate(Flow flow, PathId pathId) throws ResourceNotAvailableException;
+
+    /**
+     * Deallocates flow encapsulation resources of the path.
+     */
+    void deallocate(PathId pathId);
 }
