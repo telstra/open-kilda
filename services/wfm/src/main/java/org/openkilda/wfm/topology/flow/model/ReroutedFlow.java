@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,18 +15,14 @@
 
 package org.openkilda.wfm.topology.flow.model;
 
-import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.UnidirectionalFlow;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
-import java.util.List;
-
-@Getter
+@Value
 @AllArgsConstructor
-public class FlowPairWithSegments {
-    FlowPair flowPair;
-    List<FlowSegment> forwardSegments;
-    List<FlowSegment> reverseSegments;
+public class ReroutedFlow {
+    private final UnidirectionalFlow oldFlow;
+    private final UnidirectionalFlow newFlow;
 }

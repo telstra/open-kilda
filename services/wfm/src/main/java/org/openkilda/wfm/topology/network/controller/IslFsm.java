@@ -30,7 +30,7 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -64,7 +64,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         IslFsmContext> {
     private final IslRepository islRepository;
     private final LinkPropsRepository linkPropsRepository;
-    private final FlowSegmentRepository flowSegmentRepository;
+    private final FlowPathRepository flowPathRepository;
     private final SwitchRepository switchRepository;
     private final TransactionManager transactionManager;
     private final FeatureTogglesRepository featureTogglesRepository;
@@ -183,7 +183,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
-        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
 
@@ -267,7 +267,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} is no more UP (physical-down:{})",
                   discoveryFacts.getReference(), context.getPhysicalLinkDown());
-        
+
         String nextState = "Unknown";
         if (event == IslFsmEvent.ISL_DOWN) {
             nextState = IslFsmState.DOWN.toString();
@@ -557,7 +557,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         IslDataHolder islData = discoveryFacts.makeAggregatedData();
         long availableBandwidth = 0;
         if (islData != null) {
-            long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
+            long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(
                     source.getDatapath(), source.getPortNumber(),
                     dest.getDatapath(), dest.getPortNumber());
             availableBandwidth = islData.getAvailableBandwidth() - usedBandwidth;

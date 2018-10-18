@@ -15,13 +15,14 @@
 
 package org.openkilda.wfm.topology.flow.service;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
+import org.openkilda.wfm.topology.flow.model.FlowPathPairWithEncapsulation;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,24 +32,40 @@ import java.util.Optional;
 @Slf4j
 public class BaseFlowService {
     protected TransactionManager transactionManager;
-    protected FlowRepository flowRepository;
+    private FlowPairRepository flowPairRepository;
 
     public BaseFlowService(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        flowRepository = repositoryFactory.createFlowRepository();
+        flowPairRepository = repositoryFactory.createFlowPairRepository();
     }
 
     public boolean doesFlowExist(String flowId) {
-        return flowRepository.exists(flowId);
+        return flowPairRepository.exists(flowId);
     }
 
     public Optional<FlowPair> getFlowPair(String flowId) {
-        return flowRepository.findFlowPairById(flowId);
+        return flowPairRepository.findById(flowId);
     }
 
     public Collection<FlowPair> getFlows() {
-        return flowRepository.findAllFlowPairs();
+        return flowPairRepository.findAll();
+    }
+
+    protected Optional<FlowPathPairWithEncapsulation> getFlowPathPairWithEncapsulation(String flowId) {
+        return flowPairRepository.findById(flowId)
+                .map(flowPair -> FlowPathPairWithEncapsulation.builder()
+                        .flow(flowPair.getFlowEntity())
+                        .forwardPath(flowPair.getForward().getFlowPath())
+                        .reversePath(flowPair.getReverse().getFlowPath())
+                        //TODO: hard-coded encapsulation will be removed in Flow H&S
+                        .forwardEncapsulation(TransitVlanEncapsulation.builder()
+                                .transitVlan(flowPair.getForwardTransitVlanEntity())
+                                .build())
+                        .reverseEncapsulation(TransitVlanEncapsulation.builder()
+                                .transitVlan(flowPair.getReverseTransitVlanEntity())
+                                .build())
+                        .build());
     }
 
     /**
@@ -58,12 +75,11 @@ public class BaseFlowService {
      * @param status the status to set.
      */
     public void updateFlowStatus(String flowId, FlowStatus status) {
-        transactionManager.doInTransaction(() -> {
-            Collection<Flow> flows = flowRepository.findById(flowId);
-            flows.forEach(flow -> {
-                flow.setStatus(status);
-                flowRepository.createOrUpdate(flow);
-            });
-        });
+        transactionManager.doInTransaction(() ->
+                flowPairRepository.findById(flowId)
+                        .ifPresent(flow -> {
+                            flow.setStatus(status);
+                            flowPairRepository.createOrUpdate(flow);
+                        }));
     }
 }

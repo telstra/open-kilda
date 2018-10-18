@@ -73,7 +73,7 @@ public class RemoveFlow extends BaseFlow {
             @JsonProperty("criteria") DeleteRulesCriteria criteria) {
         super(transactionId, flowId, cookie, switchId);
 
-        if (meterId != null && meterId < 0L) {
+        if (meterId != null && meterId <= 0L) {
             throw new IllegalArgumentException("need to set non negative meter_id");
         }
         this.meterId = meterId;
