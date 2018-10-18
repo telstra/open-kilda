@@ -52,7 +52,6 @@ public class FlowCookie implements Serializable {
     @Property(name = "flow_id")
     private String flowId;
 
-    @NonNull
     @Property(name = "unmasked_cookie")
     @Index(unique = true)
     private long unmaskedCookie;

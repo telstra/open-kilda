@@ -60,7 +60,7 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     private PathPair getPath(AvailableNetwork network, Flow flow) throws UnroutableFlowException {
-        if (flow.getSrcSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
+        if (flow.isOneSwitchFlow()) {
             log.info("No path computation for one-switch flow");
             SwitchId singleSwitchId = flow.getSrcSwitch().getSwitchId();
             return PathPair.builder()

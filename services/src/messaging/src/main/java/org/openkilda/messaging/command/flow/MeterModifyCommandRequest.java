@@ -30,22 +30,22 @@ public class MeterModifyCommandRequest extends CommandData {
     private SwitchId fwdSwitchId;
 
     @JsonProperty("fwd_meter_id")
-    private Integer fwdMeterId;
+    private Long fwdMeterId;
 
     @JsonProperty("rvs_switch_id")
     private SwitchId rvsSwitchId;
 
     @JsonProperty("rvs_meter_id")
-    private Integer rvsMeterId;
+    private Long rvsMeterId;
 
     @JsonProperty("bandwidth")
     private long bandwidth;
 
     public MeterModifyCommandRequest(
             @JsonProperty("fwd_switch_id") SwitchId fwdSwitchId,
-            @JsonProperty("fwd_meter_id") Integer fwdMeterId,
+            @JsonProperty("fwd_meter_id") Long fwdMeterId,
             @JsonProperty("rvs_switch_id") SwitchId rvsSwitchId,
-            @JsonProperty("rvs_meter_id") Integer rvsMeterId,
+            @JsonProperty("rvs_meter_id") Long rvsMeterId,
             @JsonProperty("bandwidth") long bandwidth) {
         this.fwdSwitchId = fwdSwitchId;
         this.fwdMeterId = fwdMeterId;

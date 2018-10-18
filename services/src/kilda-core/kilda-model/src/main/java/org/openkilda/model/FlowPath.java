@@ -43,7 +43,7 @@ import java.util.List;
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "segments", "minAvailableBandwidth"})
+@EqualsAndHashCode(exclude = {"entityId", "segments"})
 @RelationshipEntity(type = "flow_path")
 public class FlowPath implements Serializable {
     private static final long serialVersionUID = 1L;

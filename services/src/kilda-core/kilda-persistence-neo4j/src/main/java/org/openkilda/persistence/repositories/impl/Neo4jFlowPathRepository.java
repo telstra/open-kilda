@@ -120,6 +120,19 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
+    public Collection<FlowPath> findBySrcSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
+        String query = "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE src.name = $switch_id "
+                + "RETURN src, fp, dst";
+
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
+        //TODO: this is slow and requires optimization
+        paths.forEach(this::completeWithSegments);
+        return paths;
+    }
+
+    @Override
     public Collection<FlowPath> findByEndpointSwitch(SwitchId switchId) {
         Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
         String query = "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
@@ -133,9 +146,10 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
-    public Collection<FlowPath> findBySegmentSrcSwitch(SwitchId switchId) {
+    public Collection<FlowPath> findBySegmentSwitch(SwitchId switchId) {
         Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
-        String query = "MATCH (:switch {name: $switch_id})-[ps:path_segment]->(:switch) "
+        String query = "MATCH (ps_src:switch)-[ps:path_segment]->(ps_dst:switch) "
+                + "WHERE ps_src.name = $switch_id OR ps_dst.name = $switch_id "
                 + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
                 + "WHERE ps.path_id = fp.path_id "
                 + "RETURN src, fp, dst";

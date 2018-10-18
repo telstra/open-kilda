@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,35 +15,32 @@
 
 package org.openkilda.persistence.repositories;
 
-import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
-public interface FlowRepository extends Repository<Flow> {
+/**
+ * A repository for flow pairs.
+ *
+ * @deprecated Must be replaced with new model entities: {@link org.openkilda.model.Flow}
+ */
+@Deprecated
+public interface FlowPairRepository extends Repository<FlowPair> {
     boolean exists(String flowId);
 
-    Optional<Flow> findById(String flowId);
+    Optional<FlowPair> findById(String flowId);
 
-    Collection<Flow> findByGroupId(String flowGroupId);
+    Collection<FlowPair> findByGroupId(String flowGroupId);
 
-    Collection<Flow> findWithPeriodicPingsEnabled();
+    Collection<FlowPair> findWithPeriodicPingsEnabled();
 
-    Collection<Flow> findByEndpoint(SwitchId switchId, int port);
+    Collection<FlowPair> findByEndpoint(SwitchId switchId, int port);
 
-    Collection<Flow> findByEndpointSwitch(SwitchId switchId);
-
-    Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port);
-
-    Collection<Flow> findDownFlows();
-
-    Collection<Flow> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
-                                         SwitchId dstSwitchId, int dstPort);
+    Collection<FlowPair> findWithSegmentInPath(SwitchId srcSwitchId, int srcPort,
+                                               SwitchId dstSwitchId, int dstPort);
 
     Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId);
-
-    Optional<String> getOrCreateFlowGroupId(String flowId);
-
 }

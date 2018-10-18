@@ -91,10 +91,10 @@ public class FlowDump {
     private int destinationVlan;
 
     @Property(name = "forward_meter_id")
-    private Integer forwardMeterId;
+    private Long forwardMeterId;
 
     @Property(name = "reverse_meter_id")
-    private Integer reverseMeterId;
+    private Long reverseMeterId;
 
     @Property(name = "forward_path")
     @Convert(graphPropertyType = String.class)
