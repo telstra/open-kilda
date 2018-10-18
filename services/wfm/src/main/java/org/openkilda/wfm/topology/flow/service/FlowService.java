@@ -69,13 +69,13 @@ public class FlowService {
 
     private void createFlowForPair(FlowPair flowPair) {
         Flow flow = flowPair.getForward();
+        flowSegmentRepository.deleteFlowSegments(flow);
         processCreateFlow(flow);
         flow = flowPair.getReverse();
         processCreateFlow(flow);
     }
 
     private void processCreateFlow(Flow flow) {
-        flowSegmentRepository.deleteFlowSegments(flow);
         Switch srcSwitch = switchRepository.findBySwitchId(flow.getSrcSwitchId());
         Switch dstSwitch = switchRepository.findBySwitchId(flow.getDestSwitchId());
         flow.setSrcSwitch(srcSwitch);

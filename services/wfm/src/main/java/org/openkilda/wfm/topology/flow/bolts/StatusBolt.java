@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-public class StatusBolt  extends BaseRichBolt {
+public class StatusBolt extends BaseRichBolt {
     /**
      * The logger.
      */
@@ -69,10 +69,9 @@ public class StatusBolt  extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
+        StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
+        ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         try {
-            StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
-            ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
-
             switch (streamId) {
                 case STATUS:
                     FlowState state = (FlowState) tuple.getValueByField(FlowTopology.STATUS_FIELD);
@@ -87,6 +86,9 @@ public class StatusBolt  extends BaseRichBolt {
                     logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
                     break;
             }
+
+        } catch (Exception e) {
+            logger.error("Failed to update status for: component={}, stream={}", componentId, streamId);
         } finally {
             outputCollector.ack(tuple);
         }

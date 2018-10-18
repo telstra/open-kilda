@@ -674,8 +674,6 @@ public class CrudBolt
 
     private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
         Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
-        FlowPair<Flow, Flow> currentFlowState = FLOW_MAPPER.flowPairToDto(
-                flowService.getFlowPair(requestedFlow.getFlowId()));
         String correlationId = message.getCorrelationId();
 
         PathPair pathPair;
@@ -704,6 +702,8 @@ public class CrudBolt
                 PathMapper.INSTANCE.map(pathPair.getReverse()));
 
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, pathInfoPair);
+        FlowPair<Flow, Flow> currentFlowState = FLOW_MAPPER.flowPairToDto(
+                flowService.getFlowPair(requestedFlow.getFlowId()));
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
         flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
         FlowInfoData deleteData = new FlowInfoData(requestedFlow.getFlowId(), currentFlowState,
