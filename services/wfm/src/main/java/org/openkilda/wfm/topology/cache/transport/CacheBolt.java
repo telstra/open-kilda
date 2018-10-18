@@ -90,9 +90,11 @@ public class CacheBolt
      */
     private InMemoryKeyValueState<String, Cache> state;
 
-    private CacheService cacheService;
+    private transient CacheService cacheService;
 
     private final PersistenceManager persistenceManager;
+
+    private transient RepositoryFactory repositoryFactory;
 
     private TopologyContext context;
     private OutputCollector outputCollector;
@@ -119,7 +121,6 @@ public class CacheBolt
             state.put(FLOW_CACHE, flowCache);
         }
 
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         cacheService = new CacheService(networkCache, flowCache, repositoryFactory.createFlowRepository(),
                 repositoryFactory.createSwitchRepository(), repositoryFactory.createIslRepository());
     }
@@ -131,6 +132,8 @@ public class CacheBolt
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
+
+        repositoryFactory = persistenceManager.getRepositoryFactory();
     }
 
     /**

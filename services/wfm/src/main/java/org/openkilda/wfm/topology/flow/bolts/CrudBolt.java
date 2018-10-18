@@ -125,12 +125,12 @@ public class CrudBolt
 
     private final PersistenceManager persistenceManager;
 
-    private RepositoryFactory repositoryFactory;
+    private transient RepositoryFactory repositoryFactory;
 
     /**
      * Path computation instance.
      */
-    private PathComputer pathComputer;
+    private transient PathComputer pathComputer;
 
     /**
      * Flows state.
