@@ -13,12 +13,18 @@
 #   limitations under the License.
 #
 
-FROM kilda_traffexam
+FROM kilda/python3-ubuntu
 
-ADD labservice /app
+ADD traffexam/ /exam
+ADD labapi/ /app/labapi
+ADD labservice /app/labservice
 ADD run.sh /app
 
+WORKDIR /exam
+RUN make && pip3 install ./dist/kilda_traffexam-*.whl
+
 WORKDIR /app
+
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 

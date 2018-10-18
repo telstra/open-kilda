@@ -22,12 +22,11 @@ services:
   lab-api:
     container_name: lab-api
     build:
-      context: services/lab-api/
+      context: services/lab-service/
     ports:
     - "8288:8288"
     privileged: true
-    environment:
-      LAB_SERVICE_IMAGE: 'kilda_lab-service'
+    command: api
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     networks:

@@ -14,8 +14,17 @@
 #   limitations under the License.
 #
 
-export PATH=$PATH:/usr/share/openvswitch/scripts \
+set -e
+
+if [ "$1" = 'api' ]; then
+    cd /app/labapi
+    exec python3 /app/labapi/api.py
+elif [ "$1" = 'service' ]; then
+    export PATH=$PATH:/usr/share/openvswitch/scripts \
     && ovs-ctl start \
     && ovs-vsctl init \
     && sleep 1 \
-    && python3 /app/main.py
+    && exec python3 /app/labservice/main.py
+fi
+
+exec "$@"
