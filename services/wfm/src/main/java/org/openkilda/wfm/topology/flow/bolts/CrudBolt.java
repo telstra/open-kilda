@@ -556,8 +556,7 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
         logger.info("Deleted flow: {}", flowId);
-
-        (message.getCorrelationId(), tuple, flow.getLeft());
+        processDeleteFlow(message.getCorrelationId(), tuple, flow.getLeft());
         processDeleteFlow(message.getCorrelationId(), tuple, flow.getRight());
         flowService.deleteFlow(flowId);
 
