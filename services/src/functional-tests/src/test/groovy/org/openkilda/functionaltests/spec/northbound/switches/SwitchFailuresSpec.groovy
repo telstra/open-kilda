@@ -53,7 +53,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         requireProfiles("virtual")        
     }
 
-    def "ISL is still able to properly fail even after switches where reconnected"() {
+    def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
