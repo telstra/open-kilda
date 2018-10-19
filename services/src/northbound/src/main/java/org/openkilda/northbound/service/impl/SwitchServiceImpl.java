@@ -217,7 +217,7 @@ public class SwitchServiceImpl implements SwitchService {
 
     private CompletableFuture<InfoData> syncRules(SwitchId switchId, List<Long> missingRules) {
         if (CollectionUtils.isEmpty(missingRules)) {
-            return CompletableFuture.completedFuture(new SyncRulesResponse(missingRules, null, null, null));
+            return CompletableFuture.completedFuture(new SyncRulesResponse());
         }
 
         String syncCorrelationId = format("%s-sync", RequestCorrelationId.getId());
