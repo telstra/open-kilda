@@ -70,8 +70,8 @@ import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.PathMapper;
+import org.openkilda.wfm.share.utils.BidirectionalFlowFetcher;
 import org.openkilda.wfm.share.utils.FlowCollector;
-import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
@@ -860,7 +860,7 @@ public class CrudBolt
     }
 
     private void initFlowCache() {
-        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(repositoryFactory.createFlowRepository());
+        BidirectionalFlowFetcher flowFetcher = new BidirectionalFlowFetcher(repositoryFactory.createFlowRepository());
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
             FlowPair<Flow, Flow> flowPair = new FlowPair<>(

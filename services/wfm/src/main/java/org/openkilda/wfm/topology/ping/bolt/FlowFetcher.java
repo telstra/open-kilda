@@ -25,8 +25,8 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
+import org.openkilda.wfm.share.utils.BidirectionalFlowFetcher;
 import org.openkilda.wfm.share.utils.FlowCollector;
-import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
 import org.openkilda.wfm.topology.ping.model.FlowRef;
 import org.openkilda.wfm.topology.ping.model.FlowsHeap;
 import org.openkilda.wfm.topology.ping.model.PingContext;
@@ -79,7 +79,7 @@ public class FlowFetcher extends Abstract {
 
     private void handlePeriodicRequest(Tuple input) throws PipelineException {
         log.debug("Handle periodic ping request");
-        PathComputerFlowFetcher fetcher = new PathComputerFlowFetcher(flowRepository);
+        BidirectionalFlowFetcher fetcher = new BidirectionalFlowFetcher(flowRepository);
 
         final CommandContext commandContext = pullContext(input);
         final FlowsHeap heap = new FlowsHeap();

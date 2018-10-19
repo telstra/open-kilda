@@ -39,7 +39,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Sender;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
-import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
+import org.openkilda.wfm.share.utils.BidirectionalFlowFetcher;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
@@ -78,7 +78,7 @@ public class CacheService {
 
     private void initFlowCache(FlowRepository flowRepository) {
         logger.info("Flow Cache: Initializing");
-        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(flowRepository);
+        BidirectionalFlowFetcher flowFetcher = new BidirectionalFlowFetcher(flowRepository);
 
         for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
             FlowPair<Flow, Flow> flowPair = new FlowPair<>(

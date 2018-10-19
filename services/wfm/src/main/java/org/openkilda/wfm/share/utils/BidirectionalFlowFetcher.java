@@ -28,13 +28,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PathComputerFlowFetcher {
-    private static final Logger log = LoggerFactory.getLogger(PathComputerFlowFetcher.class);
+public class BidirectionalFlowFetcher {
+    private static final Logger log = LoggerFactory.getLogger(BidirectionalFlowFetcher.class);
 
     @Getter
     private final Collection<BidirectionalFlow> flows = new ArrayList<>();
 
-    public PathComputerFlowFetcher(FlowRepository flowRepository) {
+    public BidirectionalFlowFetcher(FlowRepository flowRepository) {
         for (FlowCollector collector : fetchFlows(flowRepository)) {
             flows.add(collector.make());
         }
