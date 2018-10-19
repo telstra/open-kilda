@@ -11,6 +11,7 @@ together {
         id : SwitchId
 
         status : SwitchStatus
+
         controller
         hostname
         address
@@ -18,11 +19,11 @@ together {
         meter_max
         rule_max
         ==
-        Port[] ports()
-        Meter[] meters()
-        Rule[] rules()
-        ISL[] isls()
-        UniDirectionFlow[] flows()
+        ports() : Port[]
+        meters() : Meter[]
+        rules() : Rule[]
+        isls() : Isl[]
+        flows() : Flow[]
     }
 
     enum SwitchStatus {
@@ -45,8 +46,8 @@ together {
 
         status : PortStatus
         ==
-        ISl isl()
-        UniDirectionFlow[] flows()
+        isl() : Isl
+        flow() : Flow
         __
         unique constraint on switch_id+port_no
     }
@@ -86,32 +87,50 @@ together {
     Rule --> Meter
 }
 
-class ISL {
+class Isl {
     id = src_switch+src_port+dst_switch+dst_port :  for simplify where clause
 
     src_switch : Switch
     src_port
-    src_status
-    scr_latency
 
     dst_switch : Switch
     dst_port
-    dst_status
-    dst_latency
+
+    forward_status
+    forward_latency
+    forward_available_bandwidth
+
+    reverse_status
+    reverse_latency
+    reverse_available_bandwidth
 
     cost
     speed
     max_bandwidth
-    available_bandwidth
     __
     unique constraint on src_switch+src_port+dst_switch+dst_port
 }
 
 note "rules for solving whois src and dst\nsrc_switch < dst_switch\n if src_switch == dst_switch use src_port < dst_port" as ISL_id_note
-ISL_id_note .. ISL
+ISL_id_note .. Isl
 
-ISL --> Switch
-ISL --> Port
+Isl --> Switch
+Isl --> Port
+
+class IslTemplate {
+    src_switch : Switch
+    src_port
+
+    dst_switch : Switch
+    dst_port
+
+    cost
+    __
+    unique constraint on src_switch+src_port+dst_switch+dst_port
+}
+
+IslTemplate --> Switch
+IslTemplate --> Port
 
 class Flow {
   flow_id
@@ -124,6 +143,7 @@ class Flow {
   src_switch : Switch
   src_port
   src_vlan
+
   dst_switch : Switch
   dst_port
   dst_vlan
@@ -144,8 +164,10 @@ Flow --> Port
 class UniDirectionFlow {
     flow_id
     cookie_id
+    ==
+    pathSegments() : PathSegment[]
     __
-    unique constraint on flow_id+cookie_id
+    unique constraint on cookie_id
 }
 
 Flow --> UniDirectionFlow
@@ -164,15 +186,15 @@ enum FlowStatus {
 
 Flow o--> FlowStatus
 
-class FlowSegment {
-    UniDirectionFlow flow
-    ISL isl
+class PathSegment {
+    flow : UniDirectionFlow
+    isl : Isl
     __
-    unique constraint on flow_id+isl_id
+    unique constraint on flow.cookie_id+isl.id
 }
 
-FlowSegment --> UniDirectionFlow
-FlowSegment --> ISL
+PathSegment --> UniDirectionFlow
+PathSegment --> Isl
 
 package "Vlan-based Encapsulation" {
 
