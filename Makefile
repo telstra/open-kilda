@@ -12,7 +12,6 @@ build-base:
 	docker build -t kilda/opentsdb:latest services/opentsdb
 	docker build -t kilda/logstash:latest services/logstash
 	docker build -t kilda/python3-ubuntu:latest base/kilda-base-python3/
-	docker build -t kilda_traffexam:latest services/traffexam/
 	docker build -t kilda_lab-service:latest services/lab-service/
 
 build-latest: update-props build-base compile

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright 2018 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +13,3 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-
-FROM kilda/python3-ubuntu
-
-ADD traffexam/ /exam
-WORKDIR /exam
-RUN make && pip3 install ./dist/kilda_traffexam-*.whl
-
-RUN pip3 install python-logstash
-
-ADD lab/ /app/lab
-ADD run.sh /app
-WORKDIR /app/lab
-
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-
-ENTRYPOINT ["/app/run.sh"]

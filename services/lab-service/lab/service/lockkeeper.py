@@ -15,7 +15,7 @@
 
 from flask import Flask, request, jsonify
 from cheroot.wsgi import Server as WSGIServer, PathInfoDispatcher
-from topology import A_SW_NAME, resolve_host
+from service.topology import A_SW_NAME, resolve_host
 from docker import DockerClient
 import logging
 

@@ -13,7 +13,7 @@
 #   limitations under the License.
 #
 
-from cmd import vsctl, ofctl, run_cmd
+from service.cmd import vsctl, ofctl, run_cmd
 from urllib.parse import urlparse
 import socket
 import logging

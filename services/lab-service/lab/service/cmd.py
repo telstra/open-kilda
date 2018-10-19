@@ -38,7 +38,7 @@ def run_cmd(cmd, sync=True):
     Stdout+stderr, when sync=True.
     Subprocess.Popen instance, when sync=False.
     """
-    logger.warn(cmd)
+    logger.debug(cmd)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     if sync:
         output, error = p.communicate()

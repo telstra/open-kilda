@@ -12,9 +12,3 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-
-FROM kilda/python3-ubuntu
-
-ADD . /exam
-WORKDIR /exam
-RUN make && pip3 install ./dist/kilda_traffexam-*.whl

@@ -149,5 +149,5 @@ def traffgen_proxy(lab_id, tg_name, to_path):
         return Response(str(ex), status=500)
 
 
-if __name__ == '__main__':
+def main():
     app.run(host='0.0.0.0', port=8288)

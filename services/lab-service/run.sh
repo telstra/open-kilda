@@ -17,16 +17,7 @@
 set -e
 
 export SELF_CONTAINER_ID=$(head -1 /proc/self/cgroup | cut -d/ -f3)
+export PATH=$PATH:/usr/share/openvswitch/scripts
 
-if [ "$1" = 'api' ]; then
-    cd /app/labapi
-    exec python3 /app/labapi/api.py
-elif [ "$1" = 'service' ]; then
-    export PATH=$PATH:/usr/share/openvswitch/scripts \
-    && ovs-ctl start \
-    && ovs-vsctl init \
-    && sleep 1 \
-    && exec python3 /app/labservice/main.py
-fi
-
+exec python3 /app/lab/main.py "$1"
 exec "$@"

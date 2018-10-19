@@ -20,8 +20,8 @@ import signal
 import logging
 
 import requests
-from topology import Topology
-from lockkeeper import run_server
+from service.topology import Topology
+from service.lockkeeper import run_server
 
 logger = logging.getLogger()
 
@@ -29,15 +29,15 @@ LAB_ID = os.environ.get("LAB_ID", 1)
 API_HOST = os.environ.get("API_HOST", 'lab-api.pendev:8288')
 
 
-if __name__ == '__main__':
+def main():
     url = "http://{}/api/{}/definition".format(API_HOST, LAB_ID)
     topo_def = requests.get(url).json()
     topo = Topology.create(topo_def)
 
-    logger.warn("Running topology")
+    logger.info("Running topology")
     topo.run()
 
-    logger.warn("Running rest server")
+    logger.info("Running rest server")
     lockkeeper = run_server(topo.switches)
 
     def shutdown(_signo, _stack_frame):
