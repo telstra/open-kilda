@@ -119,8 +119,8 @@ public class TransactionBolt
                     logger.info("Set status {}: switch-id={}, {}={}, {}={}", FlowState.IN_PROGRESS,
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
-                    values = new Values(flowId, FlowState.IN_PROGRESS);
-                    outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+                    //  values = new Values(flowId, FlowState.IN_PROGRESS);
+                    //  outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
                     values = new Values(message);
                     outputCollector.emit(streamId.toString(), tuple, values);

@@ -110,7 +110,7 @@ public class CommandService {
 
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flow.getCookie(), flow.getSourcePort(),
                 flow.getSourceVlan(), 0, segments.get(0).getSrcPort());
-        RemoveFlow command = new RemoveFlow(1L, flowId, flow.getCookie(),
+        RemoveFlow command = new RemoveFlow(UUID.randomUUID().getLeastSignificantBits(), flowId, flow.getCookie(),
                 flow.getSourceSwitch(), (long) flow.getMeterId(), criteria);
         commands.add(command);
         for (int i = 0; i < segments.size(); i++) {
@@ -119,7 +119,7 @@ public class CommandService {
             int dstPort = (i + 1 == segments.size()) ? flow.getDestinationPort() : segments.get(i + 1).getSrcPort();
             criteria = new DeleteRulesCriteria(cookie, f.getDestPort(), flow.getTransitVlan(),
                     0, dstPort);
-            command = new RemoveFlow(1L, flowId, cookie,
+            command = new RemoveFlow(UUID.randomUUID().getLeastSignificantBits(), flowId, cookie,
                     SWITCH_ID_MAPPER.toDto(f.getDestSwitchId()),
                     0L, criteria);
             commands.add(command);

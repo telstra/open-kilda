@@ -21,6 +21,7 @@ import org.openkilda.model.FlowPair.FlowPairBuilder;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -160,7 +161,8 @@ public class FlowService {
      * @return target FlowPair
      */
     public FlowPair updateFlowStatus(String flowId, FlowStatus flowStatus) {
-        transactionManager.getTransactionManager().begin();
+        TransactionManager transactionManager = this.transactionManager.getTransactionManager();
+        transactionManager.begin();
         try {
             FlowPair pair = getFlowPair(flowId);
             Flow forward = pair.getForward();
@@ -171,11 +173,11 @@ public class FlowService {
 
                 reverse.setStatus(flowStatus);
                 flowRepository.createOrUpdate(reverse);
-                transactionManager.getTransactionManager().commit();
             }
+            transactionManager.commit();
             return pair;
         } catch (Exception e) {
-            transactionManager.getTransactionManager().rollback();
+            transactionManager.rollback();
             return null;
         }
     }
