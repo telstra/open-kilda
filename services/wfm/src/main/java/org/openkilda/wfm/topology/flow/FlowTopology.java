@@ -143,11 +143,11 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
 
 
 
-        CommandBolt commandBolt = new CommandBolt(neo4jConfig);
-        builder.setBolt(ComponentType.COMMAND_BOLT.toString(), commandBolt, parallelism)
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
+//        CommandBolt commandBolt = new CommandBolt(neo4jConfig);
+//        builder.setBolt(ComponentType.COMMAND_BOLT.toString(), commandBolt, parallelism)
+//                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
+//                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
+//                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
 
         StatusBolt statusBolt = new StatusBolt(neo4jConfig);
         builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
@@ -175,9 +175,9 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         TransactionBolt transactionBolt = new TransactionBolt();
         boltSetup = builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
                 .fieldsGrouping(
-                        ComponentType.COMMAND_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
+                        ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
                 .fieldsGrouping(
-                        ComponentType.COMMAND_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId)
+                        ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
@@ -196,7 +196,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         ErrorBolt errorProcessingBolt = new ErrorBolt();
         builder.setBolt(ComponentType.ERROR_BOLT.toString(), errorProcessingBolt, parallelism)
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.ERROR.toString())
-                .shuffleGrouping(ComponentType.COMMAND_BOLT.toString(), StreamType.ERROR.toString());
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.ERROR.toString());
 
         /*
          * Bolt forms Northbound responses
