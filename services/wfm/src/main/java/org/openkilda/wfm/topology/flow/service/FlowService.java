@@ -165,7 +165,7 @@ public class FlowService {
             FlowPair pair = getFlowPair(flowId);
             Flow forward = pair.getForward();
             Flow reverse = pair.getReverse();
-            if (forward !=null && reverse != null) {
+            if (forward != null && reverse != null) {
                 forward.setStatus(flowStatus);
                 flowRepository.createOrUpdate(forward);
 

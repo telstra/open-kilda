@@ -109,7 +109,7 @@ public class CommandService {
         flowSegmentRepository.findByFlowIdAndCookie(flowId, cookie).forEach(segments::add);
 
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flow.getCookie(), flow.getSourcePort(),
-                flow.getSourceVlan(),0, segments.get(0).getSrcPort());
+                flow.getSourceVlan(), 0, segments.get(0).getSrcPort());
         RemoveFlow command = new RemoveFlow(1L, flowId, flow.getCookie(),
                 flow.getSourceSwitch(), (long) flow.getMeterId(), criteria);
         commands.add(command);
@@ -121,7 +121,7 @@ public class CommandService {
                     0, dstPort);
             command = new RemoveFlow(1L, flowId, cookie,
                     SWITCH_ID_MAPPER.toDto(f.getDestSwitchId()),
-                    0l, criteria);
+                    0L, criteria);
             commands.add(command);
         }
         return commands;

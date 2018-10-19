@@ -22,7 +22,6 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.flow.bolts.CommandBolt;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
@@ -141,13 +140,6 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         //                ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
-
-
-//        CommandBolt commandBolt = new CommandBolt(neo4jConfig);
-//        builder.setBolt(ComponentType.COMMAND_BOLT.toString(), commandBolt, parallelism)
-//                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
-//                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
-//                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
 
         StatusBolt statusBolt = new StatusBolt(neo4jConfig);
         builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
