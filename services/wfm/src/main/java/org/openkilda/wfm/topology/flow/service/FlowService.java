@@ -164,12 +164,15 @@ public class FlowService {
         try {
             FlowPair pair = getFlowPair(flowId);
             Flow forward = pair.getForward();
-            forward.setStatus(flowStatus);
-            flowRepository.createOrUpdate(forward);
             Flow reverse = pair.getReverse();
-            reverse.setStatus(flowStatus);
-            flowRepository.createOrUpdate(reverse);
-            transactionManager.getTransactionManager().commit();
+            if (forward !=null && reverse != null) {
+                forward.setStatus(flowStatus);
+                flowRepository.createOrUpdate(forward);
+
+                reverse.setStatus(flowStatus);
+                flowRepository.createOrUpdate(reverse);
+                transactionManager.getTransactionManager().commit();
+            }
             return pair;
         } catch (Exception e) {
             transactionManager.getTransactionManager().rollback();

@@ -17,17 +17,18 @@ package org.openkilda.wfm.topology.flow.bolts;
 
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.messaging.info.flow.FlowOperation.DELETE;
 import static org.openkilda.messaging.info.flow.FlowOperation.UPDATE;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
@@ -76,6 +77,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.service.CommandService;
 import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
@@ -133,6 +135,7 @@ public class CrudBolt
 
     private transient FlowService flowService;
 
+    private transient CommandService commandService;
     /**
      * Path computation instance.
      */
@@ -182,9 +185,14 @@ public class CrudBolt
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(
+                StreamType.CREATE.toString(),
+                FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId
+        );
+        outputFieldsDeclarer.declareStream(
+                StreamType.DELETE.toString(),
+                FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId
+        );
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
@@ -203,6 +211,7 @@ public class CrudBolt
 
         pathComputer = new PathComputerImpl(repositoryFactory.createIslRepository());
         flowService = new FlowService(persistenceManager);
+        commandService = new CommandService(persistenceManager);
     }
 
     /**
@@ -541,15 +550,43 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
         logger.info("Deleted flow: {}", flowId);
+
+        processDeleteFlow(message.getCorrelationId(), tuple, flow.getLeft());
+        processDeleteFlow(message.getCorrelationId(), tuple, flow.getRight());
         flowService.deleteFlow(flowId);
-        FlowInfoData data = new FlowInfoData(flowId, flow, DELETE, message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(infoMessage);
-        outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+    private void processDeleteFlow(String correlationId, Tuple tuple, Flow flow) {
+        try {
+            List<RemoveFlow> rules = commandService.getDeleteRulesForFlow(flow);
+            for (int i = rules.size() - 1; i >= 0; i--) {
+                try {
+                    RemoveFlow rule = rules.get(i);
+                    CommandMessage message = new CommandMessage(rules.get(i),
+                            System.currentTimeMillis(), correlationId);
+                    message.setDestination(Destination.CONTROLLER);
+                    Values values = new Values(MAPPER.writeValueAsString(message), rule.getSwitchId(), flow.getFlowId(),
+                            rule.getTransactionId());
+                    outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
+                } catch (Exception e) {
+                    logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+                }
+
+            }
+        } catch (Exception e) {
+            InfoMessage msg = (InfoMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
+            String flowId = flow.getFlowId();
+            logger.error("Flow error message: {}={}, {}={}, message={}",
+                    Utils.CORRELATION_ID, correlationId, Utils.FLOW_ID,
+                    flowId, msg.getData());
+            ErrorData payload = new ErrorData(ErrorType.DELETION_FAILURE, e.getMessage(), e.getMessage());
+            Values values = new Values(payload, flowId);
+            outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+        }
     }
 
     private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
@@ -584,15 +621,41 @@ public class CrudBolt
         logger.info("Created flow: {}, correlationId: {}", flow, message.getCorrelationId());
 
         flowService.createFlow(FLOW_MAPPER.flowPairFromDto(flow));
-        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
-                message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(infoMessage);
-        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
-
+        processCreateFlow(message.getCorrelationId(), tuple, flow.getLeft());
+        processCreateFlow(message.getCorrelationId(), tuple, flow.getRight());
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+    }
+
+    private void processCreateFlow(String correlationId, Tuple tuple, Flow flow) {
+        try {
+            List<BaseInstallFlow> rules = commandService.getInstallRulesForFlow(flow);
+            for (int i = rules.size() - 1; i >= 0; i--) {
+                try {
+                    BaseInstallFlow rule = rules.get(i);
+                    CommandMessage message = new CommandMessage(rules.get(i),
+                            System.currentTimeMillis(), correlationId);
+                    message.setDestination(Destination.CONTROLLER);
+                    Values values = new Values(MAPPER.writeValueAsString(message), rule.getSwitchId(), flow.getFlowId(),
+                            rule.getTransactionId());
+                    outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
+                } catch (Exception e) {
+                    logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+                }
+
+            }
+        } catch (Exception e) {
+            String flowId = flow.getFlowId();
+            flowService.deleteFlow(flowId);
+            InfoMessage msg = (InfoMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
+            logger.error("Flow error message: {}={}, {}={}, message={}",
+                    Utils.CORRELATION_ID, correlationId, Utils.FLOW_ID,
+                    flowId, msg.getData());
+            ErrorData payload = new ErrorData(ErrorType.CREATION_FAILURE, e.getMessage(), e.getMessage());
+            Values values = new Values(payload, flowId);
+            outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+        }
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
@@ -704,19 +767,14 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, pathInfoPair);
         FlowPair<Flow, Flow> currentFlowState = FLOW_MAPPER.flowPairToDto(
                 flowService.getFlowPair(requestedFlow.getFlowId()));
+        processDeleteFlow(message.getCorrelationId(), tuple, currentFlowState.getLeft());
+        processDeleteFlow(message.getCorrelationId(), tuple, currentFlowState.getRight());
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
         flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
-        FlowInfoData deleteData = new FlowInfoData(requestedFlow.getFlowId(), currentFlowState,
-                DELETE, message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(deleteData, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(infoMessage);
-        outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
 
-        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
-                message.getCorrelationId());
-        infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        topology = new Values(infoMessage);
-        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
+
+        processCreateFlow(message.getCorrelationId(), tuple, flow.getLeft());
+        processCreateFlow(message.getCorrelationId(), tuple, flow.getRight());
 
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -749,17 +807,23 @@ public class CrudBolt
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        BidirectionalFlow flow = new BidirectionalFlow(FLOW_MAPPER.flowPairToDto(flowService.getFlowPair(flowId)));
+        try {
+            BidirectionalFlow flow = new BidirectionalFlow(FLOW_MAPPER.flowPairToDto(flowService.getFlowPair(flowId)));
+            logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
-        logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
+            Values northbound = new Values(
+                    new InfoMessage(
+                            new FlowReadResponse(flow),
+                            message.getTimestamp(),
+                            message.getCorrelationId(),
+                            Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+        } catch (NullPointerException e) {
+            throw new CacheException(ErrorType.NOT_FOUND, "Can not get flow",
+                    String.format("Flow %s not found", flowId));
+        }
 
-        Values northbound = new Values(
-                new InfoMessage(
-                        new FlowReadResponse(flow),
-                        message.getTimestamp(),
-                        message.getCorrelationId(),
-                        Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+
     }
 
     /**

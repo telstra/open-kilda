@@ -95,7 +95,7 @@ public class TransactionBolt
 
             switch (componentId) {
 
-                case COMMAND_BOLT:
+                case CRUD_BOLT:
                     logger.info("Transaction from TopologyEngine: switch-id={}, {}={}, {}={}",
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 

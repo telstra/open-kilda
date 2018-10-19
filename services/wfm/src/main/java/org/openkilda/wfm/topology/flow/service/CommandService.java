@@ -49,7 +49,6 @@ public class CommandService {
     private FlowSegmentRepository flowSegmentRepository;
 
 
-
     public CommandService(PersistenceManager transactionManager) {
         this.transactionManager = transactionManager;
         flowRepository = transactionManager.getRepositoryFactory().createFlowRepository();
@@ -98,6 +97,7 @@ public class CommandService {
 
     /**
      * Generates delete rules for flow.
+     *
      * @param flow flow to be deleted.
      * @return list of commands
      */
@@ -105,16 +105,23 @@ public class CommandService {
         List<RemoveFlow> commands = new ArrayList<>();
         String flowId = flow.getFlowId();
         long cookie = flow.getCookie();
-        Iterable<FlowSegment> segments = flowSegmentRepository.findByFlowIdAndCookie(flowId, cookie);
+        List<FlowSegment> segments = new ArrayList<>();
+        flowSegmentRepository.findByFlowIdAndCookie(flowId, cookie).forEach(segments::add);
 
-
-        for (FlowSegment f: segments) {
-
-            DeleteRulesCriteria criteria = new DeleteRulesCriteria(f.getCookieId(), f.getSrcPort(), f.getSrcVlan(),
-                    f.getDestPort(), f.getDestVlan());
-            RemoveFlow command = new RemoveFlow(1L, flowId, f.getCookieId(),
+        DeleteRulesCriteria criteria = new DeleteRulesCriteria(flow.getCookie(), flow.getSourcePort(),
+                flow.getSourceVlan(),0, segments.get(0).getSrcPort());
+        RemoveFlow command = new RemoveFlow(1L, flowId, flow.getCookie(),
+                flow.getSourceSwitch(), (long) flow.getMeterId(), criteria);
+        commands.add(command);
+        for (int i = 0; i < segments.size(); i++) {
+            FlowSegment f = segments.get(i);
+            cookie = f.getCookieId() == 0 ? flow.getCookie() : f.getCookieId();
+            int dstPort = (i + 1 == segments.size()) ? flow.getDestinationPort() : segments.get(i + 1).getSrcPort();
+            criteria = new DeleteRulesCriteria(cookie, f.getDestPort(), flow.getTransitVlan(),
+                    0, dstPort);
+            command = new RemoveFlow(1L, flowId, cookie,
                     SWITCH_ID_MAPPER.toDto(f.getDestSwitchId()),
-                    (long) flow.getMeterId(), criteria);
+                    0l, criteria);
             commands.add(command);
         }
         return commands;
@@ -150,7 +157,7 @@ public class CommandService {
     }
 
     private BaseInstallFlow getIntermediateFlow(SwitchId switchId, int srcPortNo, int dstPortNo, int transitVlan,
-                                         String flowId, long segmentCookie) {
+                                                String flowId, long segmentCookie) {
         return new InstallTransitFlow(UUID.randomUUID().getLeastSignificantBits(), flowId, segmentCookie,
                 switchId, srcPortNo, dstPortNo, transitVlan);
     }
