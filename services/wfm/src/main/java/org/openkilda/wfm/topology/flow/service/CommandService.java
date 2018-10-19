@@ -107,9 +107,15 @@ public class CommandService {
         long cookie = flow.getCookie();
         List<FlowSegment> segments = new ArrayList<>();
         flowSegmentRepository.findByFlowIdAndCookie(flowId, cookie).forEach(segments::add);
+        int initialDstPort;
+        if (segments.size() == 0) {
+            initialDstPort = flow.getDestinationPort();
+        } else {
+            initialDstPort = segments.get(0).getSrcPort();
+        }
 
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flow.getCookie(), flow.getSourcePort(),
-                flow.getSourceVlan(), 0, segments.get(0).getSrcPort());
+                flow.getSourceVlan(), 0, initialDstPort);
         RemoveFlow command = new RemoveFlow(UUID.randomUUID().getLeastSignificantBits(), flowId, flow.getCookie(),
                 flow.getSourceSwitch(), (long) flow.getMeterId(), criteria);
         commands.add(command);
