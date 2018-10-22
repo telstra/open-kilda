@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -71,4 +73,12 @@ public interface LinkService {
      */
     CompletableFuture<List<FlowPayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
                                                          SwitchId dstSwitch, Integer dstPort);
+
+    /**
+     * Link with corresponding parameters will be deleted.
+     *
+     * @param linkParameters properties to find a link for delete.
+     * @return result of the operation wrapped into {@link DeleteLinkResult}. True means no errors is occurred.
+     */
+    CompletableFuture<DeleteLinkResult> deleteLink(LinkParametersDto linkParameters);
 }

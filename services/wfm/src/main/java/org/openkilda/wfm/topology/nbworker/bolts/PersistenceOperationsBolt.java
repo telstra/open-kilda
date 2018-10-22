@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
+import org.openkilda.wfm.error.IllegalIslStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
@@ -66,14 +67,16 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
             List<InfoData> result = processRequest(input, request);
             getOutput().emit(input, new Values(result, correlationId));
         } catch (IslNotFoundException e) {
-            ErrorData data = new ErrorData(ErrorType.NOT_FOUND,
-                    e.getMessage(),
-                    "ISL does not exist.");
+            ErrorData data = new ErrorData(ErrorType.NOT_FOUND, e.getMessage(), "ISL does not exist.");
+            getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
+        } catch (IllegalIslStateException e) {
+            ErrorData data = new ErrorData(ErrorType.REQUEST_INVALID, e.getMessage(), "ISL is in illegal state.");
             getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
         }
     }
 
-    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws AbstractException;
+    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request)
+            throws IslNotFoundException, IllegalIslStateException;
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

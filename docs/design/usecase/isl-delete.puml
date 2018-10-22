@@ -1,0 +1,51 @@
+@startuml
+title Delete ISL from database
+
+participant Client
+participant Northbound
+
+control kilda.northbound
+control kilda.topo.nb
+
+participant NbWorkerTopology
+participant Neo4j
+
+Client -> Northbound : DELETE /links\nRequest body: LinkParametersDto
+
+activate Northbound
+
+Northbound -> kilda.topo.nb : CommandMessage\nDeleteLinkRequest
+kilda.topo.nb -> NbWorkerTopology : CommandMessage\nDeleteLinkRequest
+
+activate NbWorkerTopology
+
+NbWorkerTopology -> Neo4j : Query to get ISL\ninformation
+
+activate Neo4j
+
+Neo4j -> NbWorkerTopology : Isl
+
+deactivate Neo4j
+
+alt
+NbWorkerTopology -> Neo4j : Delete Isl
+NbWorkerTopology -> kilda.northbound : InfoData\nDeleteIslResponse
+kilda.northbound -> Northbound : InfoData\nDeleteIslResponse
+Northbound -> Client : DeleteLinkResult
+
+else link does not exist
+NbWorkerTopology -> kilda.northbound : ErrorMessage
+kilda.northbound -> Northbound : ErrorMessage
+Northbound -> Client : HTTP 404: Isl not found
+
+else link is in Active state
+NbWorkerTopology -> kilda.northbound : ErrorMessage
+
+deactivate NbWorkerTopology
+
+kilda.northbound -> Northbound : ErrorMessage
+Northbound -> Client : HTTP 400: Link is in illegal state
+deactivate Northbound
+
+end
+@enduml
