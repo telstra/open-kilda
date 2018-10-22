@@ -16,6 +16,7 @@
 package org.openkilda.northbound.service.impl;
 
 import static org.openkilda.messaging.Utils.FLOW_ID;
+import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
@@ -81,7 +82,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -764,14 +764,4 @@ public class FlowServiceImpl implements FlowService {
                         flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
     }
 
-    private <T> CompletableFuture<List<T>> collectResponses(List<CompletableFuture<?>> requests,
-                                                            Class<T> responseType) {
-        return CompletableFuture.allOf(requests.toArray(new CompletableFuture[] {}))
-                .thenApply(done ->
-                        requests.stream()
-                                .map(request -> request.getNow(null))
-                                .filter(Objects::nonNull)
-                                .map(responseType::cast)
-                                .collect(Collectors.toList()));
-    }
 }
