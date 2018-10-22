@@ -19,7 +19,9 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.service.LinkService;
 
 import io.swagger.annotations.Api;
@@ -30,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -69,6 +72,19 @@ public class LinkController {
     @ResponseStatus(HttpStatus.OK)
     public List<LinkDto> getLinks() {
         return linkService.getLinks();
+    }
+
+    /**
+     * Delete link.
+     *
+     * @param linkParameters properties to find a link for delete.
+     * @return result of the operation wrapped into {@link DeleteLinkResult}. True means no errors is occurred.
+     */
+    @ApiOperation(value = "Delete link.", response = DeleteLinkResult.class)
+    @DeleteMapping(path = "/links")
+    @ResponseStatus(HttpStatus.OK)
+    public DeleteLinkResult deleteLink(@RequestBody LinkParametersDto linkParameters) {
+        return linkService.deleteLink(linkParameters);
     }
 
     /**

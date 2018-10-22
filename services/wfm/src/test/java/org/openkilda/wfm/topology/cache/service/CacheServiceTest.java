@@ -90,6 +90,12 @@ public class CacheServiceTest {
         }
 
         @Override
+        public Isl findByEndpoints(org.openkilda.model.SwitchId switchId, int sourcePort,
+                                   org.openkilda.model.SwitchId destinationPort, int destinationId) {
+            return null;
+        }
+
+        @Override
         public Iterable<Isl> findOccupiedByFlow(String flowId, boolean ignoreBandwidth, long requiredBandwidth) {
             return Collections.emptyList();
         }

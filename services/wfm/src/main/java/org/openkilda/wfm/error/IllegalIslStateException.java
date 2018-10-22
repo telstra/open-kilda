@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,13 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.error;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    VALIDATION,
-    ERROR,
-    RESPONSE
+public class IllegalIslStateException extends AbstractException {
+    public IllegalIslStateException(String srcSwitch, Integer srcPort, String dstSwitch, Integer dstPort, String s) {
+        super(String.format("Link with following parameters is in illegal state: "
+                          + "source switch '%s', source port '%d', destination switch '%s', destination port '%d'. %s",
+                srcSwitch, srcPort, dstSwitch, dstPort, s));
+    }
 }

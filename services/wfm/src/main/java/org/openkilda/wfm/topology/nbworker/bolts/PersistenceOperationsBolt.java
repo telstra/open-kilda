@@ -15,12 +15,17 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.IllegalIslStateException;
+import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.topology.nbworker.StreamType;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -35,7 +40,7 @@ import java.util.Map;
 
 public abstract class PersistenceOperationsBolt extends AbstractBolt {
 
-    private final PersistenceManager persistenceManager;
+    protected final PersistenceManager persistenceManager;
     protected transient RepositoryFactory repositoryFactory;
 
     public static final String FIELD_ID_CORELLATION_ID = "correlationId";
@@ -58,17 +63,34 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         final String correlationId = pullValue(input, FIELD_ID_CORELLATION_ID, String.class);
         getLogger().debug("Received operation request");
 
-        List<? extends InfoData> result = processRequest(input, request);
-        getOutput().emit(input, new Values(result, correlationId));
+        try {
+            List<? extends InfoData> result = processRequest(input, request);
+            getOutput().emit(StreamType.RESPONSE.toString(), input, new Values(result, correlationId));
+        } catch (IslNotFoundException e) {
+            emitErrorMessage(input, ErrorType.NOT_FOUND, e.getMessage(), "Link is not found.");
+        } catch (IllegalIslStateException e) {
+            emitErrorMessage(input, ErrorType.REQUEST_INVALID, e.getMessage(), "Link is in illegal state.");
+        }
     }
 
-    abstract List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request);
+    abstract List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request)
+            throws IslNotFoundException, IllegalIslStateException;
+
+    private void emitErrorMessage(Tuple input, ErrorType errorType, String errorMessage,
+                                  String errorDescription) throws PipelineException {
+        getLogger().error("{} {}", errorDescription, errorMessage);
+        ErrorData data = new ErrorData(errorType, errorMessage, errorDescription);
+        getOutput().emit(StreamType.ERROR.toString(), input,
+                new Values(data, pullValue(input, FIELD_ID_CORELLATION_ID, String.class)));
+    }
 
     abstract Logger getLogger();
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(
+        declarer.declareStream(StreamType.RESPONSE.toString(),
                 new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE, ResponseSplitterBolt.FIELD_ID_CORELLATION_ID));
+        declarer.declareStream(StreamType.ERROR.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

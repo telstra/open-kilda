@@ -18,7 +18,9 @@ package org.openkilda.northbound.service;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 
 import java.util.List;
 
@@ -56,4 +58,12 @@ public interface LinkService extends BasicService {
      * @return the number of successes (rows affected), failures, and any failure messages
      */
     BatchResults delLinkProps(List<LinkPropsDto> linkPropsList);
+
+    /**
+     * Link with corresponding parameters will be deleted.
+     *
+     * @param linkParameters properties to find a link for delete.
+     * @return result of the operation wrapped into {@link DeleteLinkResult}. True means no errors is occurred.
+     */
+    DeleteLinkResult deleteLink(LinkParametersDto linkParameters);
 }

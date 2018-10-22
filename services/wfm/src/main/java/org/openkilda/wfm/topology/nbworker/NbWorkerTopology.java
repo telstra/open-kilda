@@ -37,11 +37,11 @@ import org.slf4j.LoggerFactory;
 /**
  *  Storm topology to read data from database.
  *  Topology design:
- *  kilda.topo.nb-spout ---> router-bolt ---> switches-operations-bolt   ---> response-splitter-bolt ---> nb-kafka-bolt
- *                                     | ---> links-operations-bolt      ---> |                           |
- *                                     | ---> flows-operations-bolt      ---> |                           |
- *                                     | ---> validation-operations-bolt ---> |                           |
- *                                     | ---> message-encoder-bolt (in error case)                   ---> |
+ *  kilda.topo.nb-spout ---> router-bolt ---> validation-operations-bolt ---> response-splitter-bolt ---> nb-kafka-bolt
+ *                                     | ---> links-operations-bolt      ---> |  \                        |
+ *                                     | ---> flows-operations-bolt      ---> | \ \                       |
+ *                                     | ---> switches-operations-bolt   ---> |\ \ \                      |
+ *                                     | --->                   message-encoder-bolt (in error case) ---> |
  *
  * <p>kilda.topo.nb-spout: reads data from kafka.
  * router-bolt: detects what kind of request is send, defines the stream. neo-bolt: performs operation with the
@@ -102,13 +102,16 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
-                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString());
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString());
 
         ResponseSplitterBolt splitterBolt = new ResponseSplitterBolt();
         tb.setBolt(SPLITTER_BOLT_NAME, splitterBolt, parallelism)
-                .shuffleGrouping(SWITCHES_BOLT_NAME)
-                .shuffleGrouping(LINKS_BOLT_NAME)
-                .shuffleGrouping(FLOWS_BOLT_NAME)
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.RESPONSE.toString())
+                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.RESPONSE.toString())
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.RESPONSE.toString())
                 .shuffleGrouping(VALIDATION_BOLT_NAME);
 
         KafkaBolt kafkaNbBolt = createKafkaBolt(topologyConfig.getKafkaNorthboundTopic());

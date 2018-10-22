@@ -25,6 +25,8 @@ public interface IslRepository extends Repository<Isl> {
 
     Isl findByEndpoint(SwitchId switchId, int port);
 
+    Isl findByEndpoints(SwitchId switchId, int sourcePort, SwitchId destinationPort, int destinationId);
+
     /**
      * Finds ISLs occupied by the flow, filtering out ISLs that don't have enough available bandwidth.
      *
@@ -41,4 +43,11 @@ public interface IslRepository extends Repository<Isl> {
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
      */
     Iterable<Isl> findActiveWithAvailableBandwidth(boolean ignoreBandwidth, long requiredBandwidth);
+
+    /**
+     * Delete ISL.
+     *
+     * @param isl ISL to be deleted
+     */
+    void delete(Isl isl);
 }

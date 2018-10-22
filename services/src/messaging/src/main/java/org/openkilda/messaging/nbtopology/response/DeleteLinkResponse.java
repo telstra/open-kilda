@@ -13,13 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.messaging.nbtopology.response;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    VALIDATION,
-    ERROR,
-    RESPONSE
+import org.openkilda.messaging.info.InfoData;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
+
+@Value
+public class DeleteLinkResponse extends InfoData {
+
+    @JsonProperty("deleted")
+    private boolean deleted;
+
+    @JsonCreator
+    public DeleteLinkResponse(@JsonProperty("deleted") boolean deleted) {
+        this.deleted = deleted;
+    }
 }

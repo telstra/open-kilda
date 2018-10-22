@@ -15,14 +15,17 @@
 
 package org.openkilda.northbound.service.impl;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.nbtopology.request.DeleteLinkRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
+import org.openkilda.messaging.nbtopology.response.DeleteLinkResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.te.request.LinkPropsDrop;
 import org.openkilda.messaging.te.request.LinkPropsPut;
@@ -31,7 +34,9 @@ import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.messaging.MessageConsumer;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.service.LinkService;
@@ -180,5 +185,20 @@ public class LinkServiceImpl implements LinkService {
         }
 
         return new BatchResults(errors.size(), successCount, errors);
+    }
+
+    @Override
+    public DeleteLinkResult deleteLink(LinkParametersDto linkParameters) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Delete link request received: {}", linkParameters);
+        DeleteLinkRequest request = new DeleteLinkRequest(linkParameters.getSrcSwitch(), linkParameters.getSrcPort(),
+                linkParameters.getDstSwitch(), linkParameters.getDstPort());
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        messageProducer.send(nbworkerTopic, message);
+
+        Message response = (Message) messageConsumer.poll(correlationId);
+
+        DeleteLinkResponse result = (DeleteLinkResponse) validateInfoMessage(message, response, correlationId);
+        return new DeleteLinkResult(result.isDeleted());
     }
 }

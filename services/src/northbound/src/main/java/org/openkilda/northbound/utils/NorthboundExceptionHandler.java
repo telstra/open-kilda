@@ -59,6 +59,9 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
             case PARAMETERS_INVALID:
                 status = HttpStatus.BAD_REQUEST;
                 break;
+            case REQUEST_INVALID:
+                status = HttpStatus.BAD_REQUEST;
+                break;
             case ALREADY_EXISTS:
                 status = HttpStatus.CONFLICT;
                 break;

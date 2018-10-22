@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,13 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.northbound.dto.switches;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    VALIDATION,
-    ERROR,
-    RESPONSE
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
+
+@Value
+public class DeleteLinkResult {
+
+    @JsonProperty("deleted")
+    private boolean deleted;
+
+    public DeleteLinkResult(@JsonProperty("deleted") boolean deleted) {
+        this.deleted = deleted;
+    }
 }

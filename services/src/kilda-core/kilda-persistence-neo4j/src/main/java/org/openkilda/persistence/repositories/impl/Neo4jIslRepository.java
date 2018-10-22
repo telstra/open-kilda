@@ -45,6 +45,31 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
+    public Isl findByEndpoints(SwitchId sourceSwitchId, int sourcePort,
+                               SwitchId destinationSwitchId, int destinationPort) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("src_switch", sourceSwitchId.toString());
+        parameters.put("src_port", sourcePort);
+        parameters.put("dst_switch", destinationSwitchId.toString());
+        parameters.put("dst_port", destinationPort);
+
+        String query = "MATCH"
+                + "(src:switch {name: $src_switch})"
+                + "-"
+                + "[target:isl { "
+                + "src_switch: $src_switch, "
+                + "src_port: $src_port, "
+                + "dst_switch: $dst_switch, "
+                + "dst_port: $dst_port "
+                + "}]"
+                + "->"
+                + "(dst:switch {name: $dst_switch}) "
+                + "RETURN src, target, dst";
+
+        return getSession().queryForObject(Isl.class, query, parameters);
+    }
+
+    @Override
     public Iterable<Isl> findOccupiedByFlow(String flowId, boolean ignoreBandwidth, long requiredBandwidth) {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("flow_id", flowId);
@@ -76,6 +101,10 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         return getSession().query(Isl.class, query, parameters);
     }
 
+    @Override
+    public void delete(Isl isl) {
+        getSession().delete(isl);
+    }
 
     public Collection<Isl> findAllOrderedBySrcSwitch() {
         return getSession().loadAll(getEntityType(), new SortOrder("src_switch"));
