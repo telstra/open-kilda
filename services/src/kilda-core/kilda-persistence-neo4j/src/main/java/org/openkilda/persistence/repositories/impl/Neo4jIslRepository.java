@@ -141,6 +141,11 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
+    public void delete(Isl isl) {
+        getSession().delete(isl);
+    }
+
+    @Override
     Class<Isl> getEntityType() {
         return Isl.class;
     }

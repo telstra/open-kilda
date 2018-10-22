@@ -6,9 +6,11 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -158,6 +160,65 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
         getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
+    }
+
+    def "Cannot delete nonexistent link"() {
+        given: "Parameters of nonexistent link"
+        def parameters = new LinkParametersDto(new SwitchId(1).toString(), 100, new SwitchId(2).toString(), 100)
+
+        when: "Try to delete nonexistent link"
+        northbound.deleteLink(parameters)
+
+        then: "Got 404 NotFound"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.contains("ISL does not exist")
+    }
+
+    def "Cannot delete active link"() {
+        given: "Parameters for active link"
+        def link = northbound.getActiveLinks()[0]
+        def parameters = new LinkParametersDto(link.source.switchId.toString(), link.source.portNo,
+                                               link.destination.switchId.toString(), link.destination.portNo)
+
+        when: "Try to delete active link"
+        northbound.deleteLink(parameters)
+
+        then: "Got 400 BadRequest because link is active"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.contains("ISL must NOT be in active state")
+    }
+
+    def "Can delete inactive link"() {
+        given: "Parameters for inactive link"
+        def link = northbound.getActiveLinks()[0]
+        def srcSwitch = link.source.switchId
+        def srcPort = link.source.portNo
+        def dstSwitch = link.destination.switchId
+        def dstPort = link.destination.portNo
+        northbound.portDown(srcSwitch, srcPort)
+        assert Wrappers.wait(WAIT_OFFSET) {
+            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort)
+                    .every { it.state == IslChangeType.FAILED }
+        }
+        def parameters = new LinkParametersDto(srcSwitch.toString(), srcPort, dstSwitch.toString(), dstPort)
+
+        when: "Try to delete inactive link"
+        def res = northbound.deleteLink(parameters)
+
+        then: "Check that link is actually deleted"
+        res.deleted
+        Wrappers.wait(WAIT_OFFSET) {
+            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).empty
+        }
+
+        and: "Cleanup: restore link"
+        northbound.portUp(srcSwitch, srcPort)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort)
+                    .every { it.state == IslChangeType.DISCOVERED }
+        }
     }
 
     @Memoized
