@@ -19,11 +19,10 @@ ADD traffexam/ /exam
 WORKDIR /exam
 RUN make && pip3 install ./dist/kilda_traffexam-*.whl
 
-RUN pip3 install python-logstash
-
 ADD lab/ /app/lab
 ADD run.sh /app
 WORKDIR /app/lab
+RUN make && pip3 install ./dist/kilda_lab-*.whl
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8

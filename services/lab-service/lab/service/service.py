@@ -14,15 +14,14 @@
 #
 
 import os
-import sys
-import time
-import signal
 import logging
 
 import requests
 from service.topology import Topology
-from service.lockkeeper import run_server
+from service.lockkeeper import init_app
+from common import init_logger, run_process, loop_forever
 
+init_logger()
 logger = logging.getLogger()
 
 LAB_ID = os.environ.get("LAB_ID", 1)
@@ -38,14 +37,12 @@ def main():
     topo.run()
 
     logger.info("Running rest server")
-    lockkeeper = run_server(topo.switches)
+    lockkeeper_app = init_app(topo.switches)
+    lockkeeper_proc = run_process(lambda: lockkeeper_app.run('0.0.0.0', 5001))
 
-    def shutdown(_signo, _stack_frame):
+    def teardown():
+        logger.info("Terminating...")
         topo.destroy()
-        lockkeeper.stop()
-        sys.exit(0)
-    signal.signal(signal.SIGINT, shutdown)
-    signal.signal(signal.SIGTERM, shutdown)
-
-    while True:
-        time.sleep(1)
+        lockkeeper_proc.terminate()
+        lockkeeper_proc.join()
+    loop_forever(teardown)

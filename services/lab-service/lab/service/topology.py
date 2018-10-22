@@ -18,7 +18,6 @@ from urllib.parse import urlparse
 import socket
 import logging
 
-
 logger = logging.getLogger()
 
 A_SW_DEF = {'name': 'aswitch', 'dp_id': '00:00:00:00:00:00:00:00', 'max_port': 55, 'status': 'active'}
@@ -105,7 +104,7 @@ class ASwitch(Switch):
     def add_route_flows(self, mappings):
         if mappings:
             ofctl(['add-flow {sw} -O {of_ver} in_port={in_port},actions=output={out_port}'
-                       .format(sw=self.name, of_ver=self.of_ver, **flow) for flow in mappings])
+                  .format(sw=self.name, of_ver=self.of_ver, **flow) for flow in mappings])
 
     def del_route_flows(self, mappings):
         if mappings:

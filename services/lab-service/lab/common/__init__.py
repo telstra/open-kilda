@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Copyright 2018 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +13,31 @@
 #   limitations under the License.
 #
 
-set -e
+import sys
+import signal
+import time
+import json
+from multiprocessing import Process
+from logging.config import dictConfig
 
-export SELF_CONTAINER_ID=$(head -1 /proc/self/cgroup | cut -d/ -f3)
-cd /app/lab
 
-if [ "$1" = 'api' ]; then
-    exec kilda-lab-api
-elif [ "$1" = 'service' ]; then
-    export PATH=$PATH:/usr/share/openvswitch/scripts \
-    && ovs-ctl start \
-    && ovs-vsctl init \
-    && sleep 1 \
-    && exec kilda-lab-service
-fi
+def init_logger():
+    with open("./log.json", "r") as fd:
+        dictConfig(json.load(fd))
 
-exec "$@"
+
+def run_process(run_fn):
+    proc = Process(target=run_fn)
+    proc.start()
+    return proc
+
+
+def loop_forever(teardown_fn):
+    def shutdown(_signo, _stack_frame):
+        teardown_fn()
+        sys.exit(0)
+    signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGTERM, shutdown)
+
+    while True:
+        time.sleep(1)

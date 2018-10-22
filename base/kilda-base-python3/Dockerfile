@@ -30,6 +30,6 @@ RUN apt update \
         iputils-ping \
         openvswitch-switch \
         openvswitch-common \
-    && pip3 install setuptools wheel \
-    && pip3 install flask cheroot docker requests \
+    && pip3 install setuptools wheel tox \
+    && pip3 install flask docker requests \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*

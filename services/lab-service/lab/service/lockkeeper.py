@@ -14,7 +14,6 @@
 #
 
 from flask import Flask, request, jsonify
-from cheroot.wsgi import Server as WSGIServer, PathInfoDispatcher
 from service.topology import A_SW_NAME, resolve_host
 from docker import DockerClient
 import logging
@@ -27,25 +26,6 @@ docker = DockerClient(base_url='unix://var/run/docker.sock')
 app = Flask(__name__)
 A_sw = None
 switches = None
-
-
-def test_dump_parsing():
-    test_data = '''OFPST_FLOW reply (OF1.3) (xid=0x2):
-     cookie=0x0, duration=782.127s, table=0, n_packets=0, n_bytes=0, in_port=7 actions=output:8
-     cookie=0x0, duration=782.127s, table=0, n_packets=0, n_bytes=0, in_port=51 actions=output:52
-     cookie=0x8000000000000001, duration=3.256s, table=0, n_packets=0, n_bytes=0, priority=1 actions=drop
-     cookie=0x0, duration=782.132s, table=0, n_packets=0, n_bytes=0, priority=0 actions=NORMAL
-    '''
-
-    assert parse_dump_flows(test_data) == [
-        {
-            'in_port': 7,
-            'out_port': 8
-        }, {
-            'in_port': 51,
-            'out_port': 52
-        }
-    ]
 
 
 def int_from_str_by_pattern(string, pattern):
@@ -130,16 +110,8 @@ def fl_restart():
     return jsonify({'status': 'ok'})
 
 
-def run_server(_switches):
+def init_app(_switches):
     global switches, A_sw
     switches = _switches
     A_sw = switches[A_SW_NAME]
-
-    d = PathInfoDispatcher({'/': app})
-    server = WSGIServer(('0.0.0.0', 5001), d)
-    server.start()
-    return server
-
-
-if __name__ == '__main__':
-    test_dump_parsing()
+    return app

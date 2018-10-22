@@ -19,15 +19,21 @@ import requests
 import logging
 from urllib.parse import urlparse
 import os
+from common import init_logger, run_process, loop_forever
 
 app = Flask(__name__)
+init_logger()
 logger = logging.getLogger()
 docker = DockerClient(base_url='unix://var/run/docker.sock')
 
 SELF_CONTAINER_ID = os.environ.get("SELF_CONTAINER_ID")
-SELF_CONTAINER = docker.containers.get(SELF_CONTAINER_ID)
-LAB_SERVICE_IMAGE = os.environ.get("LAB_SERVICE_IMAGE", SELF_CONTAINER.image.tags[0])
-NETWORK_NAME = list(SELF_CONTAINER.attrs['NetworkSettings']['Networks'].keys())[0]
+if SELF_CONTAINER_ID:
+    SELF_CONTAINER = docker.containers.get(SELF_CONTAINER_ID)
+    LAB_SERVICE_IMAGE = os.environ.get("LAB_SERVICE_IMAGE", SELF_CONTAINER.image.tags[0])
+    NETWORK_NAME = list(SELF_CONTAINER.attrs['NetworkSettings']['Networks'].keys())[0]
+else:
+    logger.warn("Seems like lab-api isn't running inside container. "
+                "It's required to create virtual topologies properly")
 
 HW_LOCKKEEPER_REST_HOST = os.environ.get("HW_LOCKKEEPER_REST_HOST")
 
@@ -150,4 +156,10 @@ def traffgen_proxy(lab_id, tg_name, to_path):
 
 
 def main():
-    app.run(host='0.0.0.0', port=8288)
+    server_proc = run_process(lambda: app.run(host='0.0.0.0', port=8288))
+
+    def teardown():
+        logger.info('Terminating...')
+        server_proc.terminate()
+        server_proc.join()
+    loop_forever(teardown)
