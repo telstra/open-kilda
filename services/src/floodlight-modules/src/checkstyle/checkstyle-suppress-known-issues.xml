@@ -173,4 +173,11 @@
     <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="109" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="118" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="118" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="85" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="108" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="138" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="161" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="186" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="217" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="230" checks="JavadocMethod"/>
 </suppressions>

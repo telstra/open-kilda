@@ -240,4 +240,21 @@ public interface OutputCommands {
                 .setMatch(match)
                 .build();
     }
+
+    /**
+     * Expected result for install default rules.
+     *
+     * @return expected OFFlowAdd instance.
+     */
+    default OFFlowAdd installDefaultRuleResult() {
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(SwitchManager.DROP_RULE_COOKIE))
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setPriority(1)
+                .setMatch(ofFactory.buildMatch().build())
+                .setXid(0L)
+                .build();
+    }
 }

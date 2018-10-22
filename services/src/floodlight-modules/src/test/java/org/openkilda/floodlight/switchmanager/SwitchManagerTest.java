@@ -108,6 +108,7 @@ public class SwitchManagerTest {
     private static final long smallBandwidth = 100L;
     private static final String cookieHex = "7B";
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
+    private static final DatapathId defaultDpid = DatapathId.of(1);
     private SwitchManager switchManager;
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
@@ -134,8 +135,66 @@ public class SwitchManagerTest {
     }
 
     @Test
-    public void installDefaultRules() {
-        // TODO
+    public void installDefaultRules() throws Exception {
+        Capture<OFFlowMod> capture = prepareForDefaultRuleInstall();
+
+        switchManager.installDefaultRules(defaultDpid);
+        OFFlowMod flowMod = capture.getValue();
+
+        assertEquals(scheme.installDefaultRuleResult(), flowMod);
+    }
+
+    private Capture<OFFlowMod> prepareForDefaultRuleInstall() throws Exception {
+        ListenableFuture<List<OFMeterConfigStatsReply>> ofStatsFuture = mock(ListenableFuture.class);
+        OFMeterConfigStatsReply statsReply = mock(OFMeterConfigStatsReply.class);
+        List<OFMeterConfig> meterConfigs = getMeterConfig();
+
+        Capture<OFFlowMod> capture = EasyMock.newCapture();
+
+        expect(ofSwitchService.getActiveSwitch(defaultDpid)).andStubReturn(iofSwitch);
+
+        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+        expect(iofSwitch.getId()).andReturn(defaultDpid).times(8);
+        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(iofSwitch.writeStatsRequest(anyObject(OFMeterConfigStatsRequest.class))).andStubReturn(ofStatsFuture);
+        expect(iofSwitch.write(capture(capture))).andReturn(true);
+        expect(iofSwitch.write(anyObject(OFMeterMod.class))).andReturn(true).times(5);
+        expect(iofSwitch.writeRequest(anyObject(OFBarrierRequest.class)))
+                .andReturn(Futures.immediateFuture(createMock(OFBarrierReply.class))).times(2);
+
+        expect(ofStatsFuture.get(anyLong(), anyObject())).andStubReturn(Collections.singletonList(statsReply));
+        expect(statsReply.getEntries()).andStubReturn(meterConfigs);
+
+        expect(switchDescription.getManufacturerDescription()).andReturn("").times(6);
+
+        expectLastCall();
+
+        replay(ofSwitchService);
+        replay(iofSwitch);
+        replay(ofStatsFuture);
+        replay(statsReply);
+        replay(switchDescription);
+
+        return capture;
+    }
+
+    private List<OFMeterConfig> getMeterConfig() {
+
+        List<OFMeterConfig> meterConfigs = new ArrayList<>();
+        OFMeterBandDrop bandDrop = mock(OFMeterBandDrop.class);
+        expect(bandDrop.getRate()).andStubReturn(0L);
+
+        OFMeterConfig meterConfig = mock(OFMeterConfig.class);
+        expect(meterConfig.getEntries()).andStubReturn(Collections.singletonList(bandDrop));
+        expect(meterConfig.getMeterId()).andStubReturn(meterId);
+
+        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.STATS,
+                true ? OFMeterFlags.PKTPS : OFMeterFlags.KBPS);
+        expect(meterConfig.getFlags()).andStubReturn(flags);
+        replay(bandDrop, meterConfig);
+        meterConfigs.add(meterConfig);
+
+        return meterConfigs;
     }
 
     @Test
