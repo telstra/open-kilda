@@ -12,7 +12,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -26,8 +25,6 @@ class BandwidthSpec extends BaseSpecification {
     FlowHelper flowHelper
     @Autowired
     NorthboundService northboundService
-    @Autowired
-    TopologyEngineService topologyEngineService
     @Autowired
     PathHelper pathHelper
     @Autowired
@@ -102,7 +99,7 @@ class BandwidthSpec extends BaseSpecification {
         List<List<PathNode>> possibleFlowPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1
         }
         assert srcSwitch && dstSwitch
@@ -150,7 +147,7 @@ class BandwidthSpec extends BaseSpecification {
         assert srcSwitch && dstSwitch
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
-        def possibleFlowPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def possibleFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def involvedBandwidths = []
 
         possibleFlowPaths.each { path ->
@@ -187,7 +184,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
         when: "Update a flow with a bandwidth that exceeds available bandwidth on ISL"
-        def possibleFlowPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def possibleFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         List<Long> involvedBandwidths = []
 
         possibleFlowPaths.each { path ->

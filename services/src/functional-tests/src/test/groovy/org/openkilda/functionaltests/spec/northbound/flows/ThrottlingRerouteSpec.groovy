@@ -16,7 +16,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.topology.TopologyEngineService
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -35,8 +34,6 @@ for each flowId).
 class ThrottlingRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
-    @Autowired
-    TopologyEngineService topologyEngineService
     @Autowired
     FlowHelper flowHelper
     @Autowired
@@ -71,7 +68,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+            allPaths = db.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -119,7 +116,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        def allPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Ports that lead to alternative paths are brought down to deny alternative paths"
@@ -171,7 +168,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         List<List<PathNode>> allPaths1 = []
         def (Switch srcSwitch1, Switch dstSwitch1) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths1 = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+            allPaths1 = db.getPaths(src.dpId, dst.dpId)*.path
             allPaths1.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
         def flow1 = flowHelper.randomFlow(srcSwitch1, dstSwitch1)
@@ -225,7 +222,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+            allPaths = db.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)

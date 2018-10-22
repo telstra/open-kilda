@@ -32,8 +32,8 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.database.Database;
 import org.openkilda.testing.service.northbound.NorthboundService;
-import org.openkilda.testing.service.topology.TopologyEngineService;
 
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -57,7 +57,7 @@ public class FlowManagerTest {
     private NorthboundService northboundService;
 
     @Mock
-    private TopologyEngineService topologyEngineService;
+    private Database db;
 
     @Mock
     private TopologyDefinition topologyDefinition;
@@ -84,11 +84,11 @@ public class FlowManagerTest {
     @Test
     public void shouldDefineFlowsOver2Switches() {
         // given
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(1L)),
                 eq(new SwitchId(2L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(2L)),
                 eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
@@ -113,19 +113,19 @@ public class FlowManagerTest {
     @Test
     public void shouldDefineFlowsOver3Switches() {
         // given
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(1L)),
                 eq(new SwitchId(2L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(2L)),
                 eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(2L)),
                 eq(new SwitchId(3L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(3L)),
                 eq(new SwitchId(2L))))
                 .thenReturn(singletonList(new PathInfoData()));
@@ -163,7 +163,7 @@ public class FlowManagerTest {
     @Test
     public void shouldSkipFlowsOverTheSameSwitches() {
         // given
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(1L)),
                 eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
@@ -178,11 +178,11 @@ public class FlowManagerTest {
     @Test
     public void shouldDefineFlowCrossVlan() {
         // given
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(1L)),
                 eq(new SwitchId(4L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(4L)),
                 eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
@@ -206,19 +206,19 @@ public class FlowManagerTest {
     @Test
     public void failIfNoVlanAvailable() {
         // given
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(4L)),
                 eq(new SwitchId(2L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(4L)),
                 eq(new SwitchId(1L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(2L)),
                 eq(new SwitchId(4L))))
                 .thenReturn(singletonList(new PathInfoData()));
-        when(topologyEngineService.getPaths(
+        when(db.getPaths(
                 eq(new SwitchId(1L)),
                 eq(new SwitchId(4L))))
                 .thenReturn(singletonList(new PathInfoData()));
