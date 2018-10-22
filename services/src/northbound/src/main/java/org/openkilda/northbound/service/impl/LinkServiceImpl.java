@@ -27,11 +27,13 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.nbtopology.request.DeleteLinkRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
+import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -41,7 +43,9 @@ import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
@@ -190,5 +194,30 @@ public class LinkServiceImpl implements LinkService {
                         .map(FlowResponse::getPayload)
                         .map(flowMapper::toFlowOutput)
                         .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<DeleteLinkResult> deleteLink(LinkParametersDto linkParameters) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Delete link request received: {}", linkParameters);
+
+        DeleteLinkRequest request;
+        try {
+            request = new DeleteLinkRequest(
+                    new SwitchId(linkParameters.getSrcSwitch()), linkParameters.getSrcPort(),
+                    new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort());
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create 'delete link' request");
+        }
+
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> new DeleteLinkResult(
+                        response.stream()
+                                .map(DeleteIslResponse.class::cast)
+                                .findFirst()
+                                .isPresent()));
     }
 }

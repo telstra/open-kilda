@@ -18,10 +18,12 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
+import org.openkilda.messaging.nbtopology.request.DeleteLinkRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
+import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.model.Isl;
@@ -30,9 +32,13 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
-import org.openkilda.wfm.share.mappers.IslMapper;
+import org.openkilda.wfm.error.IllegalIslStateException;
+import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.LinkPropsMapper;
+import org.openkilda.wfm.topology.nbworker.services.IslService;
 
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -41,17 +47,27 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends PersistenceOperationsBolt {
+    private transient IslService islService;
+
     public LinkOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
     @Override
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+        super.prepare(stormConf, context, collector);
+        this.islService = new IslService(repositoryFactory);
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request)
+            throws IslNotFoundException, IllegalIslStateException {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
             result = getAllLinks();
@@ -61,6 +77,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
             result = Collections.singletonList(putLinkProps((LinkPropsPut) request));
         } else if (request instanceof LinkPropsDrop) {
             result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
+        } else if (request instanceof DeleteLinkRequest) {
+            result = Collections.singletonList(deleteLink((DeleteLinkRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -69,10 +87,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<IslInfoData> getAllLinks() {
-        IslRepository islRepository = repositoryFactory.createIslRepository();
-        return islRepository.findAll().stream()
-                .map(IslMapper.INSTANCE::map)
-                .collect(Collectors.toList());
+        return islService.getAllIsls();
     }
 
     private List<LinkPropsData> getLinkProps(LinkPropsGet request) {
@@ -184,6 +199,13 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
 
             return new LinkPropsResponse(request, null, e.getMessage());
         }
+    }
+
+    private DeleteIslResponse deleteLink(DeleteLinkRequest request)
+            throws IllegalIslStateException, IslNotFoundException {
+        Isl isl = islService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
+                                       request.getDstSwitch(), request.getDstPort());
+        return new DeleteIslResponse(isl);
     }
 
     @Override

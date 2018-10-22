@@ -39,7 +39,9 @@ import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
@@ -340,6 +342,13 @@ public class NorthboundServiceImpl implements NorthboundService {
         FlowPayload[] linkFlows = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload[].class).getBody();
         return Arrays.asList(linkFlows);
+    }
+
+    @Override
+    public DeleteLinkResult deleteLink(LinkParametersDto linkParameters) {
+        return restTemplate.exchange("/api/v1/links", HttpMethod.DELETE,
+                new HttpEntity<>(linkParameters, buildHeadersWithCorrelationId()),
+                DeleteLinkResult.class).getBody();
     }
 
     @Override
