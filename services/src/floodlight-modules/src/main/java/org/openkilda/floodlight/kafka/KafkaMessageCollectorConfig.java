@@ -13,13 +13,31 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.config;
+package org.openkilda.floodlight.kafka;
 
-import com.sabre.oss.conf4j.annotation.AbstractConfiguration;
+import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
-@AbstractConfiguration
-public interface KafkaFloodlightConfig {
-    @Key("bootstrap-servers")
-    String getBootstrapServers();
+import javax.validation.constraints.Min;
+
+/**
+ * WARNING! Do not use '.' in option's keys. FL will not collect such option from config.
+ */
+@Configuration
+public interface KafkaMessageCollectorConfig {
+    @Key("consumer-executors")
+    @Default("10")
+    @Min(1)
+    int getGeneralExecutorCount();
+
+    @Key("consumer-disco-executors")
+    @Default("10")
+    @Min(1)
+    int getDiscoExecutorCount();
+
+    @Key("consumer-auto-commit-interval")
+    @Default("1000")
+    @Min(1)
+    long getAutoCommitInterval();
 }

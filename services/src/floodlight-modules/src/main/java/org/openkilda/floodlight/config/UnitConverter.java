@@ -13,25 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight;
+package org.openkilda.floodlight.config;
 
-import com.sabre.oss.conf4j.annotation.Default;
-import com.sabre.oss.conf4j.annotation.Key;
+public final class UnitConverter {
+    public static long timeMillis(float raw) {
+        return (long) (raw * 1000);
+    }
 
-public interface KildaCoreConfig {
-    @Key("command-processor-workers-count")
-    @Default("4")
-    int getCommandPersistentWorkersCount();
-
-    @Key("command-processor-workers-limit")
-    @Default("32")
-    int getCommandWorkersLimit();
-
-    @Key("command-processor-deferred-requests-limit")
-    @Default("8")
-    int getCommandDeferredRequestsLimit();
-
-    @Key("command-processor-idle-workers-keep-alive-seconds")
-    @Default("300")
-    long getCommandIdleWorkersKeepAliveSeconds();
+    private UnitConverter() { }
 }

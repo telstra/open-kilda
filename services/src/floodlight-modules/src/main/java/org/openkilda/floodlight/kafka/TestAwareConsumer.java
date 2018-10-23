@@ -15,14 +15,15 @@
 
 package org.openkilda.floodlight.kafka;
 
-import org.openkilda.floodlight.kafka.RecordHandler.Factory;
-import org.openkilda.floodlight.kafka.producer.Producer;
-import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaConsumerSetup;
+import org.openkilda.floodlight.service.kafka.KafkaProducerProxy;
+import org.openkilda.floodlight.service.kafka.TestAwareKafkaProducerService;
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;
 import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,19 +37,22 @@ public class TestAwareConsumer extends Consumer {
     private KafkaBreakTrigger breakTrigger;
     private List<KafkaBreakTrigger> expectedTriggers;
 
-    public TestAwareConsumer(ConsumerContext context, KafkaConsumerConfig kafkaConfig, ExecutorService handlersPool,
-                             Factory handlerFactory, ISwitchManager switchManager, String topic,
-                             OffsetResetStrategy defaultOffsetStrategy) {
-        super(kafkaConfig, handlersPool, handlerFactory, switchManager, topic, defaultOffsetStrategy);
+    public TestAwareConsumer(FloodlightModuleContext moduleContext, ExecutorService handlersPool,
+                             KafkaConsumerSetup kafkaSetup, RecordHandler.Factory handlerFactory,
+                             long commitInterval) {
+        super(moduleContext, handlersPool, kafkaSetup, handlerFactory, commitInterval);
 
         breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_CONSUMER);
 
         expectedTriggers = new ArrayList<>();
         expectedTriggers.add(breakTrigger);
 
-        Producer producer = context.getKafkaProducer().getProducer();
-        if (producer instanceof TestAwareProducer) {
-            expectedTriggers.add(((TestAwareProducer) producer).getBreakTrigger());
+        IKafkaProducerService producerService = moduleContext.getServiceImpl(IKafkaProducerService.class);
+        if (producerService instanceof KafkaProducerProxy) {
+            producerService = ((KafkaProducerProxy) producerService).getTarget();
+        }
+        if (producerService instanceof TestAwareKafkaProducerService) {
+            expectedTriggers.add(((TestAwareKafkaProducerService) producerService).getBreakTrigger());
         }
     }
 

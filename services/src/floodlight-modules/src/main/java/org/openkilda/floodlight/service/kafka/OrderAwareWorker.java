@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka.producer;
+package org.openkilda.floodlight.service.kafka;
 
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;

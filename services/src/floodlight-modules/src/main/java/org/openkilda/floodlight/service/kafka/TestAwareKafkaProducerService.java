@@ -13,10 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka;
+package org.openkilda.floodlight.service.kafka;
 
-import org.openkilda.floodlight.kafka.producer.Producer;
-import org.openkilda.floodlight.kafka.producer.SendStatus;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;
 import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
@@ -25,16 +23,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // TODO(surabujin): avoid usage, replace with more correct network interrupting method
-public class TestAwareProducer extends Producer {
-    private static final Logger logger = LoggerFactory.getLogger(TestAwareProducer.class);
+public class TestAwareKafkaProducerService extends KafkaProducerService {
+    private static final Logger logger = LoggerFactory.getLogger(TestAwareKafkaProducerService.class);
 
-    private KafkaBreakTrigger breakTrigger;
-
-    public TestAwareProducer(KafkaProducerConfig kafkaConfig) {
-        super(kafkaConfig);
-
-        breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_PRODUCER);
-    }
+    private final KafkaBreakTrigger breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_PRODUCER);
 
     @Override
     public void sendMessageAndTrack(String topic, Message message) {
