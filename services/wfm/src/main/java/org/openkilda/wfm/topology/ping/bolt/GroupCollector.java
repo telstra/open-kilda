@@ -23,7 +23,6 @@ import org.openkilda.wfm.topology.ping.model.Group;
 import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -31,7 +30,6 @@ import org.apache.storm.tuple.Values;
 
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class GroupCollector extends Abstract {
     public static final String BOLT_ID = ComponentId.GROUP_COLLECTOR.toString();
 

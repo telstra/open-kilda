@@ -24,8 +24,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.database.Database;
 import org.openkilda.testing.service.northbound.NorthboundService;
-import org.openkilda.testing.service.topology.TopologyEngineService;
 
 import org.junit.Assume;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +56,7 @@ public class FlowManagerImpl implements FlowManager {
     private TopologyDefinition topologyDefinition;
 
     @Autowired
-    private TopologyEngineService topologyEngineService;
+    private Database db;
 
     public FlowManagerImpl() {
         this.sdf = new SimpleDateFormat("ddMMMHHmm", Locale.US);
@@ -89,9 +89,9 @@ public class FlowManagerImpl implements FlowManager {
                     continue;
                 }
                 // test only bi-directional flow
-                List<PathInfoData> forwardPaths = topologyEngineService
+                List<PathInfoData> forwardPaths = db
                         .getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
-                List<PathInfoData> reversePaths = topologyEngineService
+                List<PathInfoData> reversePaths = db
                         .getPaths(dstSwitch.getDpId(), srcSwitch.getDpId());
                 boolean hasAlternatePath = forwardPaths.size() > alternatePaths && reversePaths.size() > alternatePaths;
                 if (hasAlternatePath) {
@@ -157,9 +157,9 @@ public class FlowManagerImpl implements FlowManager {
                     }
 
                     // test only bi-directional flow
-                    List<PathInfoData> forwardPath = topologyEngineService
+                    List<PathInfoData> forwardPath = db
                             .getPaths(srcSwitch.getDpId(), dstSwitch.getDpId());
-                    List<PathInfoData> reversePath = topologyEngineService
+                    List<PathInfoData> reversePath = db
                             .getPaths(dstSwitch.getDpId(), srcSwitch.getDpId());
                     if (!forwardPath.isEmpty() && !reversePath.isEmpty()) {
                         String flowId = format("%s-%s", srcSwitch.getName(), dstSwitch.getName());

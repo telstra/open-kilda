@@ -34,6 +34,8 @@ import java.util.Map;
  * Created by jonv on 6/3/17.
  */
 public class KafkaMessageProducer implements IFloodlightModule, IFloodlightService {
+    private KafkaTopicsConfig topics;
+
     private Producer producer;
     private HeartBeat heartBeat;
 
@@ -68,10 +70,10 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
     public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
         KafkaProducerConfig producerConfig = provider.getConfiguration(KafkaProducerConfig.class);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        topics = provider.getConfiguration(KafkaTopicsConfig.class);
 
         initProducer(producerConfig, producerConfig);
-        initHeartBeat(producerConfig, topicsConfig.getTopoDiscoTopic());
+        initHeartBeat(producerConfig, topics.getTopoDiscoTopic());
     }
 
     /**
@@ -79,6 +81,10 @@ public class KafkaMessageProducer implements IFloodlightModule, IFloodlightServi
      */
     @Override
     public void startUp(FloodlightModuleContext floodlightModuleContext) throws FloodlightModuleException {
+    }
+
+    public KafkaTopicsConfig getTopics() {
+        return topics;
     }
 
     /**

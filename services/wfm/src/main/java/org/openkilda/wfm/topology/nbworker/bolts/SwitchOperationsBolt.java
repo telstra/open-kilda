@@ -29,16 +29,11 @@ import org.apache.storm.tuple.Tuple;
 import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SwitchOperationsBolt extends NeoOperationsBolt {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchOperationsBolt.class);
-
     public SwitchOperationsBolt(Auth neoAuth) {
         super(neoAuth);
     }
@@ -79,7 +74,7 @@ public class SwitchOperationsBolt extends NeoOperationsBolt {
 
             results.add(sw);
         }
-        LOGGER.debug("Found switches: {}", results.size());
+        log.debug("Found switches: {}", results.size());
 
         return results;
     }
@@ -87,10 +82,5 @@ public class SwitchOperationsBolt extends NeoOperationsBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("response", "correlationId"));
-    }
-
-    @Override
-    Logger getLogger() {
-        return LOGGER;
     }
 }

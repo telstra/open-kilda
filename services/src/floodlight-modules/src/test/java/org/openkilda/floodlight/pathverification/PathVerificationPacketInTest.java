@@ -21,6 +21,7 @@ import static org.junit.Assert.assertArrayEquals;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.FloodlightTestCase;
+import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.of.InputService;
@@ -149,9 +150,11 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
         fmc.addService(InputService.class, inputService);
-        fmc.addService(CommandProcessorService.class, new CommandProcessorService(commandContextFactory));
 
-        inputService.init(fmc);
+        KildaCore kildaCore = EasyMock.createMock(KildaCore.class);
+        fmc.addService(CommandProcessorService.class, new CommandProcessorService(kildaCore, commandContextFactory));
+
+        inputService.setup(fmc);
 
         OFPacketIn.Builder packetInBuilder = factory.buildPacketIn();
         packetInBuilder

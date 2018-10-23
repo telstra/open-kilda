@@ -14,6 +14,8 @@ server.contextPath=/api/v1
 
 topology.engine.rest.endpoint=http://topology-engine-rest.pendev:80
 northbound.messages.expiration.minutes=15
+northbound.kafka.listener.threads=10
+northbound.kafka.session.timeout=30000
 
 neo4j.hosts=neo4j.pendev:7687
 neo4j.user=neo4j

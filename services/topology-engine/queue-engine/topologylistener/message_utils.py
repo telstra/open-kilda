@@ -14,7 +14,6 @@
 #
 
 import json
-import uuid
 import logging
 
 from kafka import KafkaProducer
@@ -369,16 +368,20 @@ def send_link_props_response(payload, correlation_id, chunked=False):
 
 
 def send_link_props_chunked_response(batch, correlation_id):
-    next_correlation_id = uuid.uuid4()
-    for payload in batch:
+    if not batch:
         send_to_topic(
-            payload, correlation_id, MT_INFO_CHUNKED,
+            None, correlation_id, MT_INFO_CHUNKED,
             destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
-            extra={'next_request_id': next_correlation_id})
-        correlation_id, next_correlation_id = next_correlation_id, uuid.uuid4()
-
-    # End chain marker
-    send_to_topic(
-        None, correlation_id, MT_INFO_CHUNKED,
-        destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
-        extra={'next_request_id': None})
+            extra={
+                'message_id': correlation_id,
+                'total_messages': 0
+            })
+    else:
+        for idx, payload in enumerate(batch):
+            send_to_topic(
+                payload, correlation_id, MT_INFO_CHUNKED,
+                destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
+                extra={
+                    'message_id': ' : '.join([str(idx), correlation_id]),
+                    'total_messages': len(batch)
+                })

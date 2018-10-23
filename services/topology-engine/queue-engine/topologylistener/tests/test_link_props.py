@@ -211,12 +211,7 @@ class TestLinkProps02Occupied(Abstract):
             model.LinkProps(self.endpoint_alpha, self.endpoint_gamma),
             model.LinkProps(self.endpoint_beta, self.endpoint_gamma))
 
-        response = self._get_kafka_response(
-            expect_class=message_utils.MT_INFO_CHUNKED)
-        self.assertIsNone(response)
-
-        response = self._get_kafka_response(
-            offset=1, expect_class=message_utils.MT_INFO_CHUNKED)
+        response = self._get_kafka_response(expect_class=message_utils.MT_INFO_CHUNKED)
         self.assertIsNotNone(response)
         self.assertEqual(
             message_utils.MI_LINK_PROPS_RESPONSE, response['clazz'])

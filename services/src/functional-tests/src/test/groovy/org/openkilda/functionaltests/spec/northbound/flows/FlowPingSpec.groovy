@@ -11,6 +11,7 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.event.SwitchInfoData
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.flows.PingInput
 import org.openkilda.northbound.dto.flows.PingOutput.PingOutputBuilder
@@ -21,18 +22,22 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
 import spock.lang.Unroll
 
+@Narrative("""
+This spec tests all the functionality related to flow pings. 
+Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 
+be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
+""")
+//TODO(rtretiak): add hw-only test to verify that pings are disabled for OF_12
 class FlowPingSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
-    @Autowired
-    TopologyEngineService topologyEngineService
     @Autowired
     FlowHelper flowHelper
     @Autowired
@@ -51,13 +56,7 @@ class FlowPingSpec extends BaseSpecification {
 
     def pingInput = new PingInput(3000)
 
-    def setupOnce() {
-        //TODO(rtretiak): need to exclude Accton switches for hardware env. depends on #1027
-        //TODO(rtretiak): add hw-only test to verify that pings are disabled for Acctons
-        requireProfiles("virtual")
-    }
-
-    @Unroll("Able to ping a flow with vlan between switches #srcSwitch.ofVersion - #dstSwitch.ofVersion")
+    @Unroll("Able to ping a flow with vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with random vlan"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -81,10 +80,9 @@ class FlowPingSpec extends BaseSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
-        //TODO(rtretiak): Cycle over Switch manufacturers too (requires #1027)
     }
 
-    @Unroll("Able to ping a flow with no vlan between switches #srcSwitch.ofVersion - #dstSwitch.ofVersion")
+    @Unroll("Able to ping a flow with no vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
     def "Able to ping a flow with no vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with no vlan"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -110,19 +108,18 @@ class FlowPingSpec extends BaseSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
-        //TODO(rtretiak): Cycle over Switch manufacturers too (requires #1027)
     }
 
-    @Unroll("Flow ping can detect broken #description path")
+    @Unroll("Flow ping can detect a broken #description path")
     def "Flow ping can detect broken path"() {
         given: "A flow with at least 1 a-switch link"
-        def switches = topology.getActiveSwitches()
+        def switches = nonCentecSwitches()
         List<List<PathNode>> allPaths = []
         List<PathNode> aswitchPath
         //select src and dst switches that have an a-switch path
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+            allPaths = db.getPaths(src.dpId, dst.dpId)*.path
             aswitchPath = allPaths.find { pathHelper.getInvolvedIsls(it).find { it.aswitch } }
             aswitchPath
         } ?: assumeTrue("Wasn't able to find suitable switch pair", false)
@@ -188,7 +185,7 @@ class FlowPingSpec extends BaseSpecification {
 
     def "Able to ping single-switch flow"() {
         given: "A single-switch flow"
-        def sw = topology.activeSwitches.first()
+        def sw = nonCentecSwitches().first()
         def flow = flowHelper.singleSwitchFlow(sw)
         northboundService.addFlow(flow)
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
@@ -223,8 +220,35 @@ class FlowPingSpec extends BaseSpecification {
         }
     }
 
+    /**
+     * Returns all switch combinations with unique description, excluding single-switch combinations,
+     * combinations with Centec switches and OF_12 switches
+     */
     def getOfSwitchCombinations() {
-        return [topology.activeSwitches, topology.activeSwitches].combinations().findAll { src, dst -> src != dst }
-                .unique { it.ofVersion.sort() }
+        def nbSwitches = northboundService.getActiveSwitches()
+        return [nbSwitches, nbSwitches].combinations()
+            .findAll { src, dst ->
+                //exclude single-switch flows
+                src != dst &&
+                //pings are disabled for OF version < 1.3
+                [toSwitch(src), toSwitch(dst)].every { it.ofVersion != "OF_12" } &&
+                //known issue: pings on Centects do not work
+                [src, dst].every { !it.description.contains("Centec") }
+            }
+            //pick all unique switch description-OfVersion pairs
+            .unique { [it*.description.sort(), it.collect{ toSwitch(it) }*.ofVersion.sort()] }
+            .collect { nbSrcSwitch, nbDstSwitch ->
+                [toSwitch(nbSrcSwitch), toSwitch(nbDstSwitch)]
+            }
+    }
+
+    def nonCentecSwitches() {
+        northboundService.getActiveSwitches()
+             .findAll { !it.description.contains("Centec") }
+             .collect { toSwitch(it) }
+    }
+
+    Switch toSwitch(SwitchInfoData nbSwitch) {
+        topology.activeSwitches.find { it.dpId == nbSwitch.switchId }
     }
 }

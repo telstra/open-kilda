@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,29 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.messaging;
+package org.openkilda.northbound.messaging.exception;
 
-public interface MessageConsumer<T> {
-    /**
-     * Kafka message queue poll timeout.
-     */
-    int POLL_TIMEOUT = 120 * 1000;
+public class MessageNotSentException extends RuntimeException {
 
-    /**
-     * Kafka message queue poll pause.
-     */
-    int POLL_PAUSE = 100;
+    public MessageNotSentException(String message) {
+        super(message);
+    }
 
-    /**
-     * Polls Kafka message queue.
-     *
-     * @param correlationId correlation id
-     * @return received message
-     */
-    T poll(final String correlationId);
-
-    /**
-     * Clears message queue.
-     */
-    void clear();
+    public MessageNotSentException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

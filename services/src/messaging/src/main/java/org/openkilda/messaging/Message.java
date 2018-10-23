@@ -18,27 +18,16 @@ package org.openkilda.messaging;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DESTINATION;
-import static org.openkilda.messaging.Utils.PAYLOAD;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-import java.io.Serializable;
+import lombok.EqualsAndHashCode;
 
 /**
  * Class represents high level view of every message used by any service.
  */
-@JsonSerialize
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        DESTINATION,
-        PAYLOAD,
-        TIMESTAMP,
-        CORRELATION_ID})
+@EqualsAndHashCode(callSuper = true)
 public class Message extends BaseMessage {
     /**
      * Serialization version number constant.

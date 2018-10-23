@@ -26,7 +26,6 @@ import org.openkilda.wfm.topology.ping.model.ExpirableMap;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.TimeoutDescriptor;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -35,7 +34,6 @@ import org.apache.storm.tuple.Values;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class TimeoutManager extends Abstract {
     public static final String BOLT_ID = ComponentId.TIMEOUT_MANAGER.toString();
 

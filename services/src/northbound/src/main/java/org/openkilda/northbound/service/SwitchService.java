@@ -31,10 +31,15 @@ import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public interface SwitchService extends BasicService {
 
-    List<SwitchDto> getSwitches();
+    /**
+     * Get all available switches.
+     * @return list of switches.
+     */
+    CompletableFuture<List<SwitchDto>> getSwitches();
 
     /**
      * Get all rules from the switch. If cookie is specified, then return just that cookie rule.
@@ -43,7 +48,7 @@ public interface SwitchService extends BasicService {
      * @param cookie if > 0, then filter the results based on that cookie
      * @return the list of rules
      */
-    SwitchFlowEntries getRules(SwitchId switchId, Long cookie);
+    CompletableFuture<SwitchFlowEntries> getRules(SwitchId switchId, Long cookie);
 
     /**
      * Get all rules from the switch. If cookie is specified, then return just that cookie rule.
@@ -53,7 +58,7 @@ public interface SwitchService extends BasicService {
      * @param correlationId passed correlation id
      * @return the list of rules
      */
-    SwitchFlowEntries getRules(SwitchId switchId, Long cookie, String correlationId);
+    CompletableFuture<SwitchFlowEntries> getRules(SwitchId switchId, Long cookie, String correlationId);
 
     /**
      * Deletes rules from the switch. The flag (@code deleteAction) defines which rules to delete.
@@ -62,7 +67,7 @@ public interface SwitchService extends BasicService {
      * @param deleteAction defines which rules to delete.
      * @return the list of cookies of removed rules.
      */
-    List<Long> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction);
+    CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction);
 
     /**
      * Deletes rules from the switch.
@@ -71,7 +76,7 @@ public interface SwitchService extends BasicService {
      * @param criteria defines criteria for rules to delete.
      * @return the list of cookies of removed rules.
      */
-    List<Long> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria);
+    CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria);
 
     /**
      * Install default rules on the switch. The flag (@code installAction) defines what to do about the default rules.
@@ -80,7 +85,7 @@ public interface SwitchService extends BasicService {
      * @param installAction defines what to do about the default rules
      * @return the list of cookies for installed rules
      */
-    List<Long> installRules(SwitchId switchId, InstallRulesAction installAction);
+    CompletableFuture<List<Long>> installRules(SwitchId switchId, InstallRulesAction installAction);
 
 
     /**
@@ -90,7 +95,7 @@ public interface SwitchService extends BasicService {
      * @param mode the mode to use. If null, then just return existing value.
      * @return the value of connection mode after the operation
      */
-    ConnectModeRequest.Mode connectMode(ConnectModeRequest.Mode mode);
+    CompletableFuture<ConnectModeRequest.Mode> connectMode(ConnectModeRequest.Mode mode);
 
     /**
      * Validate the rules installed on the switch against the flows in Neo4J.
@@ -98,7 +103,7 @@ public interface SwitchService extends BasicService {
      * @param switchId switch to validate rules on.
      * @return the validation details.
      */
-    RulesValidationResult validateRules(SwitchId switchId);
+    CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId);
 
     /**
      * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
@@ -106,15 +111,15 @@ public interface SwitchService extends BasicService {
      * @param switchId switch to synchronize rules on.
      * @return the synchronization result.
      */
-    RulesSyncResult syncRules(SwitchId switchId);
+    CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId);
 
     /**
      * Removes meter from the switch.
      * @param switchId switch datapath id.
      * @param meterId meter to be deleted.
      */
-    DeleteMeterResult deleteMeter(SwitchId switchId, long meterId);
-    
+    CompletableFuture<DeleteMeterResult> deleteMeter(SwitchId switchId, long meterId);
+
     /**
      * Configure switch port. <br>
      * Configurations
@@ -122,13 +127,13 @@ public interface SwitchService extends BasicService {
      * <li> UP/DOWN port </li>
      * <li> Change port speed </li>
      * </ul>
-     *  
+     *
      * @param switchId switch whose port is to configure
      * @param port port to configure
-     * @param portConfig port configuration that needs to apply on port 
-     * @return portDto 
+     * @param portConfig port configuration that needs to apply on port
+     * @return portDto
      */
-    PortDto configurePort(SwitchId switchId,  int port, PortConfigurationPayload portConfig);
+    CompletableFuture<PortDto> configurePort(SwitchId switchId,  int port, PortConfigurationPayload portConfig);
 
     /**
      * Get a description of the switch ports.
@@ -136,7 +141,7 @@ public interface SwitchService extends BasicService {
      * @param switchId the switch id.
      * @return the list of port descriptions.
      */
-    SwitchPortsDescription getSwitchPortsDescription(SwitchId switchId);
+    CompletableFuture<SwitchPortsDescription> getSwitchPortsDescription(SwitchId switchId);
 
     /**
      * Get a description of the switch port.
@@ -145,5 +150,5 @@ public interface SwitchService extends BasicService {
      * @param port the port of switch.
      * @return the port description.
      */
-    PortDescription getPortDescription(SwitchId switchId, int port);
+    CompletableFuture<PortDescription> getPortDescription(SwitchId switchId, int port);
 }

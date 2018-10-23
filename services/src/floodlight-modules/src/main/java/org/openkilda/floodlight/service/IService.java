@@ -13,13 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.utils;
+package org.openkilda.floodlight.service;
 
-import org.openkilda.messaging.info.event.SwitchInfoData;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
-public class ResponseCollectorTest {
-
-    private ResponseCollector<SwitchInfoData> target = new ResponseCollector<>();
-
-
+public interface IService extends IFloodlightService {
+    void setup(FloodlightModuleContext moduleContext) throws FloodlightModuleException;
 }

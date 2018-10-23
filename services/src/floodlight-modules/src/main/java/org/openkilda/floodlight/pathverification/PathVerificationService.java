@@ -27,6 +27,7 @@ import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebR
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.Message;
@@ -43,7 +44,8 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
-import net.floodlightcontroller.core.IFloodlightProviderService;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -87,7 +89,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -104,7 +105,6 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     private String topoDiscoTopic;
     private IOFSwitchService switchService;
-    private IRestApiService restApiService;
     private KafkaProducer<String, String> producer;
     private double islBandwidthQuotient = 1.0;
     private Algorithm algorithm;
@@ -115,27 +115,25 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
-        services.add(IFloodlightProviderService.class);
-        services.add(CommandProcessorService.class);
-        services.add(InputService.class);
-        services.add(IOFSwitchService.class);
-        services.add(IRestApiService.class);
-        return services;
+        return ImmutableList.of(
+                CommandProcessorService.class,
+                InputService.class,
+                IOFSwitchService.class,
+                IRestApiService.class);
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
-        services.add(IPathVerificationService.class);
-        return services;
+        return ImmutableList.of(
+                IPathVerificationService.class,
+                PingService.class);
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        Map<Class<? extends IFloodlightService>, IFloodlightService> map = new HashMap<>();
-        map.put(IPathVerificationService.class, this);
-        return map;
+        return ImmutableMap.of(
+                IPathVerificationService.class, this,
+                PingService.class, new PingService());
     }
 
     @Override
@@ -165,7 +163,6 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     @VisibleForTesting
     void initServices(FloodlightModuleContext context) {
         switchService = context.getServiceImpl(IOFSwitchService.class);
-        restApiService = context.getServiceImpl(IRestApiService.class);
     }
 
     @VisibleForTesting
@@ -191,7 +188,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         InputService inputService = context.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, this);
 
-        restApiService.addRestletRoutable(new PathVerificationServiceWebRoutable());
+        context.getServiceImpl(PingService.class).setup(context);
+        context.getServiceImpl(IRestApiService.class)
+                .addRestletRoutable(new PathVerificationServiceWebRoutable());
     }
 
     @Override
