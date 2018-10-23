@@ -108,7 +108,6 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
         CrudBolt crudBolt = new CrudBolt(persistenceManager);
-
         BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 // TODO: this READ is used for single and for all flows. But all flows shouldn't be fieldsGrouping.
@@ -122,7 +121,6 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
                 // tackle during multi instance testing
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId);
-
         //        .shuffleGrouping(
         //                ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));

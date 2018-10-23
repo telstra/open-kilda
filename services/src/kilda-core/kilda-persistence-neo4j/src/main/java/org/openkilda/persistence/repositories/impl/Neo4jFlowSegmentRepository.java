@@ -116,6 +116,7 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
             parameters.put("cookie", cookie);
             getSession().query(FlowSegment.class, query, parameters);
         }
+
     }
 
     @Override

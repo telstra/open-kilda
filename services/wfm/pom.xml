@@ -35,7 +35,6 @@
         <jetty.version>9.2.22.v20170606</jetty.version>
         <neo4j.version>3.3.3</neo4j.version>
         <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
-
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <puppycrawl-tools-checkstyle.version>8.10</puppycrawl-tools-checkstyle.version>

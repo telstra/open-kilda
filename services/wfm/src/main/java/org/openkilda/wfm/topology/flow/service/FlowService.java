@@ -182,8 +182,6 @@ public class FlowService {
         }
     }
 
-
-
     private void deleteFlowForPair(FlowPair flowPair) {
         Flow flow = flowPair.getForward();
         processDeleteFlow(flow);
@@ -202,16 +200,16 @@ public class FlowService {
      * @param flowPair - forward and reverse pairs to be processed
      */
     public void updateFlow(FlowPair flowPair) {
-        persistenceManager.getTransactionManager().begin();
+        TransactionManager transactionManager = persistenceManager.getTransactionManager();
+        transactionManager.begin();
         try {
             Flow flow = flowPair.getForward();
             flowSegmentRepository.deleteFlowSegments(flow);
             flowRepository.deleteByFlowId(flow.getFlowId());
             createFlowForPair(flowPair);
-            persistenceManager.getTransactionManager().commit();
-
+            transactionManager.commit();
         } catch (Exception e) {
-            persistenceManager.getTransactionManager().rollback();
+            transactionManager.rollback();
         }
     }
 }

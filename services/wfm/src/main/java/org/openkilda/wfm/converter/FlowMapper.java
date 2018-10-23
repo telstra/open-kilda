@@ -37,6 +37,7 @@ import java.time.format.DateTimeFormatter;
 public interface FlowMapper {
 
     FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
+
     default String map(Instant value) {
         return value.toString();
     }

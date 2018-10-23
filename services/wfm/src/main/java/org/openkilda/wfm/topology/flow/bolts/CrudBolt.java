@@ -136,6 +136,7 @@ public class CrudBolt
     private transient FlowService flowService;
 
     private transient CommandService commandService;
+
     /**
      * Path computation instance.
      */
@@ -550,7 +551,6 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
 
         logger.info("Deleted flow: {}", flowId);
-
         processDeleteFlow(message.getCorrelationId(), tuple, flow.getLeft());
         processDeleteFlow(message.getCorrelationId(), tuple, flow.getRight());
         flowService.deleteFlow(flowId);
@@ -822,8 +822,6 @@ public class CrudBolt
             throw new CacheException(ErrorType.NOT_FOUND, "Can not get flow",
                     String.format("Flow %s not found", flowId));
         }
-
-
     }
 
     /**
@@ -869,11 +867,7 @@ public class CrudBolt
 
             default:
                 logger.warn("Flow {} undefined failure", flowId);
-
         }
-
-        Values error = new Values(message, errorType);
-        outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
     }
 
     private void handleFlowSync(NetworkInfoData networkDump) {

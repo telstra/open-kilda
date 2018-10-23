@@ -42,7 +42,6 @@ public class CommandService {
 
     private static final SwitchIdMapper SWITCH_ID_MAPPER = Mappers.getMapper(SwitchIdMapper.class);
 
-
     private FlowSegmentRepository flowSegmentRepository;
 
 
