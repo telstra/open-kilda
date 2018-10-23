@@ -39,11 +39,16 @@ public interface FlowMapper {
     FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
     default String map(Instant value) {
-        return value.toString();
+        if (value !=  null) {
+            return value.toString();
+        }
+        return null;
     }
 
     default Instant map(String value) {
-        return DateTimeFormatter.ISO_INSTANT.parse(value, Instant::from);
+        if (value != null)
+         return DateTimeFormatter.ISO_INSTANT.parse(value, Instant::from);
+        return null;
     }
 
     Node pathNodeFromDto(PathNode p);
