@@ -16,18 +16,13 @@
 package org.openkilda.floodlight.converter;
 
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoExtendedData;
 import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 
 import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Converter of floodlight switch representation {@link net.floodlightcontroller.core.IOFSwitch}.
@@ -59,25 +54,6 @@ public final class IofSwitchConverter {
                         sw.getOFFactory().getVersion().toString(),
                         sw.getSwitchDescription().getSoftwareDescription()),
                 controller.getHostString());
-    }
-
-    /**
-     * Transforms {@link IOFSwitch} to object that is used throughout kilda in all components.
-     *
-     * @param sw switch data.
-     * @param eventType switch state.
-     * @param flowStats installed flows.
-     * @return converted switch.
-     */
-    public static SwitchInfoExtendedData buildSwitchInfoDataExtended(IOFSwitch sw, SwitchState eventType,
-                                                                     OFFlowStatsReply flowStats) {
-        SwitchInfoData switchInfoData = buildSwitchInfoData(sw, eventType);
-
-        List<FlowEntry> flows = flowStats.getEntries().stream()
-                .map(OfFlowStatsConverter::toFlowEntry)
-                .collect(Collectors.toList());
-
-        return new SwitchInfoExtendedData(switchInfoData, flows);
     }
 
     private IofSwitchConverter() {

@@ -38,7 +38,6 @@ switch_states = {
 }
 
 MT_SWITCH = "org.openkilda.messaging.info.event.SwitchInfoData"
-MT_SWITCH_EXTENDED = "org.openkilda.messaging.info.event.SwitchInfoExtendedData"
 MT_ISL = "org.openkilda.messaging.info.event.IslInfoData"
 MT_PORT = "org.openkilda.messaging.info.event.PortInfoData"
 MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
@@ -202,12 +201,6 @@ class MessageItem(model.JsonSerializable):
                 event_handled = self.get_feature_toggle_state()
             elif self.get_message_type() == MT_TOGGLE:
                 event_handled = self.update_feature_toggles()
-
-            elif self.get_message_type() == MT_SWITCH_EXTENDED:
-                if features_status[FEATURE_SYNC_OFRULES]:
-                    event_handled = self.validate_and_sync_switch_rules()
-                else:
-                    event_handled = True
 
             elif self.get_message_type() == MT_VALID_REQUEST:
                 event_handled = self.send_dump_rules_request()
@@ -777,22 +770,6 @@ class MessageItem(model.JsonSerializable):
                                                            self.payload['error-type'],
                                                            self.payload['error-message'],
                                                            self.payload['error-description'])
-        return True
-
-    def validate_and_sync_switch_rules(self):
-        switch_id = self.payload['switch_id']
-
-        diff = flow_utils.validate_switch_rules(switch_id,
-                                                self.payload['flows'])
-        sync_actions = flow_utils.build_commands_to_sync_rules(switch_id,
-                                                               diff["missing_rules"])
-        commands = sync_actions["commands"]
-        if commands:
-            logger.info('Install commands for switch %s are to be sent: %s',
-                        switch_id, commands)
-            message_utils.send_force_install_commands(switch_id, commands,
-                                                      self.correlation_id)
-
         return True
 
     def sync_switch_rules(self):
