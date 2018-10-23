@@ -64,7 +64,7 @@ Feature: Flow failover, failure and recovery
   Scenario: ISL failover followed by failure followed by recovery
 
     Developer notes:
-      1. The Given scenario is too long and consists of tests in itself, nedd to shorten.
+      1. The Given scenario is too long and consists of tests in itself, need to shorten.
       2. Interesting use of multiple When/Then blocs. Can we consolidate?
 
     Given a clean flow topology
