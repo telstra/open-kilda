@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Transaction Bolt. Tracks OpenFlow Speaker commands transactions.
@@ -52,7 +51,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * clear.
  */
 public class TransactionBolt
-        extends BaseStatefulBolt<InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>>>
+        extends BaseStatefulBolt<InMemoryKeyValueState<String, Set<Long>>>
         implements ICtrlBolt {
     /**
      * The logger.
@@ -66,7 +65,7 @@ public class TransactionBolt
      * <p/>
      * FIXME(surabujin) in memory status lead to disaster when system restarts during any transition
      */
-    private InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>> transactions;
+    private InMemoryKeyValueState<String, Set<Long>> transactions;
 
     private TopologyContext context;
     private OutputCollector outputCollector;
@@ -86,8 +85,7 @@ public class TransactionBolt
         SwitchId switchId = (SwitchId) tuple.getValueByField(FlowTopology.SWITCH_ID_FIELD);
         String flowId = (String) tuple.getValueByField(Utils.FLOW_ID);
         Object message = tuple.getValueByField(FlowTopology.MESSAGE_FIELD);
-        Map<String, Set<Long>> flowTransactions;
-        Set<Long> flowTransactionIds;
+        Set<Long> flowTransactions;
         Values values = null;
 
         try {
@@ -99,19 +97,14 @@ public class TransactionBolt
                     logger.info("Transaction from TopologyEngine: switch-id={}, {}={}, {}={}",
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
-                    flowTransactions = transactions.get(switchId);
+                    flowTransactions = transactions.get(flowId);
+
                     if (flowTransactions == null) {
-                        flowTransactions = new ConcurrentHashMap<>();
-                        transactions.put(switchId, flowTransactions);
+                        flowTransactions = new ConcurrentHashSet<>();
+                        transactions.put(flowId, flowTransactions);
                     }
 
-                    flowTransactionIds = flowTransactions.get(flowId);
-                    if (flowTransactionIds == null) {
-                        flowTransactionIds = new ConcurrentHashSet<>();
-                        flowTransactions.put(flowId, flowTransactionIds);
-                    }
-
-                    if (!flowTransactionIds.add(transactionId)) {
+                    if (!flowTransactions.add(transactionId)) {
                         throw new RuntimeException(
                                 String.format("Transaction adding failure: id %d already exists", transactionId));
                     }
@@ -131,40 +124,30 @@ public class TransactionBolt
                     logger.info("Transaction from Speaker: switch-id={}, {}={}, {}={}",
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
-                    flowTransactions = transactions.get(switchId);
+                    flowTransactions = transactions.get(flowId);
                     if (flowTransactions != null) {
+                        if (flowTransactions.remove(transactionId)) {
 
-                        flowTransactionIds = flowTransactions.get(flowId);
-                        if (flowTransactionIds != null) {
+                            if (flowTransactions.isEmpty()) {
+                                //
+                                // All transactions have been removed .. the Flow
+                                // can now be considered "UP"
+                                //
+                                logger.info(
+                                        "Flow transaction completed for one switch "
+                                                + "(switch: {}, flow: {}, stream: {})", switchId, flowId, streamId);
 
-                            if (flowTransactionIds.remove(transactionId)) {
+                                values = new Values(flowId, FlowState.UP);
+                                outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
-                                if (flowTransactionIds.isEmpty()) {
-                                    //
-                                    // All transactions have been removed .. the Flow
-                                    // can now be considered "UP"
-                                    //
-                                    logger.info(
-                                            "Flow transaction completed for one switch "
-                                                    + "(switch: {}, flow: {}, stream: {})", switchId, flowId, streamId);
-
-                                    values = new Values(flowId, FlowState.UP);
-                                    outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
-
-                                    flowTransactions.remove(flowId);
-                                } else {
-                                    logger.debug("Transaction {} not empty yet, count = {}",
-                                            transactionId, flowTransactionIds.size()
-                                    );
-                                }
+                                transactions.delete(flowId);
                             } else {
-                                logger.warn("Transaction removing: transaction id not found");
+                                logger.debug("Transaction {} not empty yet, count = {}",
+                                        transactionId, flowTransactions.size()
+                                );
                             }
                         } else {
-                            logger.warn("Transaction removing failure: flow id not found");
-                        }
-                        if (flowTransactions.isEmpty()) {
-                            transactions.delete(switchId);
+                            logger.warn("Transaction removing: transaction id not found");
                         }
                     } else {
                         logger.warn("Transaction removing failure: switch id not found");
@@ -197,7 +180,7 @@ public class TransactionBolt
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>> state) {
+    public void initState(InMemoryKeyValueState<String, Set<Long>> state) {
         transactions = state;
     }
 
@@ -224,8 +207,8 @@ public class TransactionBolt
 
     @Override
     public AbstractDumpState dumpState() {
-        Map<SwitchId, Map<String, Set<Long>>> dump = new HashMap<>();
-        for (Map.Entry<SwitchId, Map<String, Set<Long>>> item : transactions) {
+        Map<String, Set<Long>> dump = new HashMap<>();
+        for (Map.Entry<String, Set<Long>> item : transactions) {
             dump.put(item.getKey(), item.getValue());
         }
         return new TransactionBoltState(dump);

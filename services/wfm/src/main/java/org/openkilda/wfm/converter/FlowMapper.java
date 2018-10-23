@@ -38,16 +38,27 @@ public interface FlowMapper {
 
     FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
+    /**
+     * Converts Instant to String.
+     * @param value Instant to be converted to String.
+     * @return
+     */
     default String map(Instant value) {
-        if (value !=  null) {
+        if (value != null) {
             return value.toString();
         }
         return null;
     }
 
+    /**
+     * Converts String to Instant.
+     * @param value String to be converted to Instant.
+     * @return
+     */
     default Instant map(String value) {
-        if (value != null)
-         return DateTimeFormatter.ISO_INSTANT.parse(value, Instant::from);
+        if (value != null) {
+            return DateTimeFormatter.ISO_INSTANT.parse(value, Instant::from);
+        }
         return null;
     }
 
@@ -101,6 +112,7 @@ public interface FlowMapper {
 
     /**
      * Converts messaging DTO to model.
+     *
      * @param flowPair messaging object
      * @return model FlowPair object
      */
@@ -108,6 +120,6 @@ public interface FlowMapper {
             org.openkilda.messaging.model.Flow> flowPair) {
 
         return FlowPair.builder().forward(flowFromDto(flowPair.getLeft()))
-                                             .reverse(flowFromDto(flowPair.getRight())).build();
+                .reverse(flowFromDto(flowPair.getRight())).build();
     }
 }
