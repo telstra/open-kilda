@@ -15,23 +15,24 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_KEY;
+import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE;
+
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.UUID;
 
 public class ResponseSplitterBolt extends AbstractBolt {
     @Override
@@ -44,28 +45,18 @@ public class ResponseSplitterBolt extends AbstractBolt {
     }
 
     private void sendChunkedResponse(List<InfoData> responses, Tuple input, String requestId) {
-        List<Message> messages = new ArrayList<>();
+        List<Message> messages = new ArrayList<>(responses.size());
         if (CollectionUtils.isEmpty(responses)) {
             log.debug("No records found in the database");
-            Message message = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, null);
+            Message message = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, requestId,
+                    responses.size());
             messages.add(message);
         } else {
-            String currentRequestId = requestId;
-            String nextRequestId;
-            Iterator<InfoData> iterator = responses.iterator();
-            while (iterator.hasNext()) {
-                InfoData infoData = iterator.next();
-                // generate new request id for the next request if the list contains more elements.
-                if (iterator.hasNext()) {
-                    nextRequestId = UUID.randomUUID().toString();
-                } else {
-                    nextRequestId = null;
-                }
-
-                Message message = new ChunkedInfoMessage(infoData, System.currentTimeMillis(), currentRequestId,
-                        nextRequestId);
+            int i = 0;
+            for (InfoData data : responses) {
+                Message message = new ChunkedInfoMessage(data, System.currentTimeMillis(), requestId, i++,
+                        responses.size());
                 messages.add(message);
-                currentRequestId = nextRequestId;
             }
 
             log.debug("Response is divided into {} messages", messages.size());
@@ -74,7 +65,7 @@ public class ResponseSplitterBolt extends AbstractBolt {
         // emit all found messages
         for (Message message : messages) {
             try {
-                getOutput().emit(input, new Values(Utils.MAPPER.writeValueAsString(message)));
+                getOutput().emit(input, new Values(requestId, Utils.MAPPER.writeValueAsString(message)));
             } catch (JsonProcessingException e) {
                 log.error("Error during writing response as json", e);
             }
@@ -83,6 +74,6 @@ public class ResponseSplitterBolt extends AbstractBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(AbstractTopology.fieldMessage);
+        declarer.declare(new Fields(BOLT_KEY, BOLT_MESSAGE));
     }
 }

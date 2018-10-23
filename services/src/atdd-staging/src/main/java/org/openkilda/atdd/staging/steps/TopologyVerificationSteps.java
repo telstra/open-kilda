@@ -31,7 +31,6 @@ import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.northbound.NorthboundService;
-import org.openkilda.testing.service.topology.TopologyEngineService;
 
 import cucumber.api.Scenario;
 import cucumber.api.java.Before;
@@ -46,9 +45,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class TopologyVerificationSteps implements En {
-
-    @Autowired
-    private TopologyEngineService topologyEngineService;
 
     @Autowired
     private TopologyDefinition topologyDefinition;

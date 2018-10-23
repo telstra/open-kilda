@@ -18,28 +18,35 @@ package org.openkilda.testing.service.database;
 import static org.neo4j.driver.v1.Values.NULL;
 import static org.openkilda.testing.Constants.DEFAULT_COST;
 
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import com.google.common.collect.ImmutableMap;
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.GraphDatabase;
+import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
+import org.neo4j.driver.v1.Value;
 import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
 public class DatabaseNeoImpl implements DisposableBean, Database {
+    private static final int DEFAULT_DEPTH = 7;
     private static final String MATCH_LINK_QUERY = "MATCH ()-[link:isl {src_port:$srcPort, dst_port:$dstPort, "
             + "src_switch:$srcSwitch, dst_switch:$dstSwitch}]->()";
 
     private Driver neo;
 
-    public DatabaseNeoImpl(@Value("${neo.uri}") String neoUri) {
+    public DatabaseNeoImpl(@org.springframework.beans.factory.annotation.Value("${neo.uri}") String neoUri) {
         neo = GraphDatabase.driver(neoUri);
     }
 
@@ -128,7 +135,7 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
         try (Session session = neo.session()) {
             result = session.run(query, params);
         }
-        org.neo4j.driver.v1.Value cost = result.single().get("link.cost");
+        Value cost = result.single().get("link.cost");
         return cost != NULL ? cost.asInt() : DEFAULT_COST;
     }
 
@@ -140,6 +147,36 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
             result = session.run(query);
         }
         return result.single().get("count(f)").asInt();
+    }
+
+    @Override
+    public List<PathInfoData> getPaths(SwitchId src, SwitchId dst) {
+        String query = "match p=(:switch {name: {src_switch}})-[:isl*.." + DEFAULT_DEPTH + "]->"
+                + "(:switch {name: {dst_switch}}) "
+                + "WHERE ALL(x IN NODES(p) WHERE SINGLE(y IN NODES(p) WHERE y = x)) "
+                + "WITH RELATIONSHIPS(p) as links "
+                + "WHERE ALL(l IN links WHERE l.status = 'active') "
+                + "return links";
+        Map<String, Object> params = new HashMap<>(2);
+        params.put("src_switch", src.toString());
+        params.put("dst_switch", dst.toString());
+        StatementResult result;
+        try (Session session = neo.session()) {
+            result = session.run(query, params);
+        }
+        List<PathInfoData> deserializedResults = new ArrayList<>();
+        for (Record record : result.list()) {
+            List<PathNode> path = new ArrayList<>();
+            int seqId = 0;
+            for (Value link : record.get("links").values()) {
+                path.add(new PathNode(new SwitchId(link.get("src_switch").asString()),
+                        link.get("src_port").asInt(), seqId++, link.get("latency").asLong()));
+                path.add(new PathNode(new SwitchId(link.get("dst_switch").asString()),
+                        link.get("dst_port").asInt(), seqId++, link.get("latency").asLong()));
+            }
+            deserializedResults.add(new PathInfoData(0, path));
+        }
+        return deserializedResults;
     }
 
     private Map<String, Object> getParams(Isl isl) {

@@ -14,7 +14,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,8 +24,6 @@ import java.util.concurrent.TimeUnit
 class AutoRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
-    @Autowired
-    TopologyEngineService topologyEngineService
     @Autowired
     FlowHelper flowHelper
     @Autowired
@@ -46,7 +43,7 @@ class AutoRerouteSpec extends BaseSpecification {
     def "Flow should go Down when its link fails and there is no ability to reroute"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
-        def allPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
@@ -89,7 +86,7 @@ class AutoRerouteSpec extends BaseSpecification {
         List<List<PathNode>> possibleFlowPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1
         }
         assumeTrue("No suiting switches found", srcSwitch && dstSwitch)
@@ -142,7 +139,7 @@ class AutoRerouteSpec extends BaseSpecification {
         List<List<PathNode>> possibleFlowPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1
         }
         assumeTrue("No suiting switches found", srcSwitch && dstSwitch)
