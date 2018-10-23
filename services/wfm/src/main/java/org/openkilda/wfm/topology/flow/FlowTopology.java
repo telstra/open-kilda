@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.flow;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.Neo4jConfig;
@@ -120,7 +122,8 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          */
         org.openkilda.persistence.Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(
                 org.openkilda.persistence.Neo4jConfig.class);
-        CrudBolt crudBolt = new CrudBolt(pathComputerAuth, neo4jConfig);
+        PersistenceManager persistenceManager = new Neo4jPersistenceManager(neo4jConfig);
+        CrudBolt crudBolt = new CrudBolt(pathComputerAuth, persistenceManager);
         ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
 
         BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
@@ -141,7 +144,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
 
-        StatusBolt statusBolt = new StatusBolt(neo4jConfig);
+        StatusBolt statusBolt = new StatusBolt(persistenceManager);
         builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
                 .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString())
                 .shuffleGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString());

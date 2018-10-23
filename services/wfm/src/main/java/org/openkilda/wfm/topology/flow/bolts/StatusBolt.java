@@ -19,8 +19,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.persistence.Neo4jConfig;
-import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.converter.FlowMapper;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
@@ -54,17 +53,16 @@ public class StatusBolt extends BaseRichBolt {
      */
     private OutputCollector outputCollector;
 
-    private Neo4jConfig neo4jConfig;
+    private PersistenceManager neo4jPersistenceManager;
 
-    public StatusBolt(Neo4jConfig neo4jConfig) {
-        this.neo4jConfig = neo4jConfig;
+    public StatusBolt(PersistenceManager neo4jPersistenceManager) {
+        this.neo4jPersistenceManager = neo4jPersistenceManager;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         outputCollector = collector;
-        Neo4jPersistenceManager transactionManager = new Neo4jPersistenceManager(neo4jConfig);
-        flowService = new FlowService(transactionManager);
+        flowService = new FlowService(neo4jPersistenceManager);
 
     }
 

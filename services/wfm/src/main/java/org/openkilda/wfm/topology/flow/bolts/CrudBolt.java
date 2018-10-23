@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flow.bolts;
 
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.messaging.info.flow.FlowOperation.DELETE;
 import static org.openkilda.messaging.info.flow.FlowOperation.UPDATE;
 
 import org.openkilda.messaging.Destination;
@@ -68,8 +67,7 @@ import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputer.Strategy;
 import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.pce.provider.UnroutablePathException;
-import org.openkilda.persistence.Neo4jConfig;
-import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.converter.FlowMapper;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
@@ -151,7 +149,7 @@ public class CrudBolt
 
     private FlowValidator flowValidator;
 
-    private Neo4jConfig neo4jConfig;
+    private PersistenceManager persistenceManager;
 
     private transient FlowService flowService;
 
@@ -162,9 +160,9 @@ public class CrudBolt
      *
      * @param pathComputerAuth {@link Auth} instance
      */
-    public CrudBolt(PathComputerAuth pathComputerAuth, Neo4jConfig neo4jConfig) {
+    public CrudBolt(PathComputerAuth pathComputerAuth, PersistenceManager persistenceManager) {
         this.pathComputerAuth = pathComputerAuth;
-        this.neo4jConfig = neo4jConfig;
+        this.persistenceManager = persistenceManager;
     }
 
     /**
@@ -214,9 +212,8 @@ public class CrudBolt
         this.outputCollector = outputCollector;
 
         pathComputer = pathComputerAuth.getPathComputer();
-        Neo4jPersistenceManager transactionManager = new Neo4jPersistenceManager(neo4jConfig);
-        flowService = new FlowService(transactionManager);
-        commandService = new CommandService(transactionManager);
+        flowService = new FlowService(persistenceManager);
+        commandService = new CommandService(persistenceManager);
     }
 
     /**

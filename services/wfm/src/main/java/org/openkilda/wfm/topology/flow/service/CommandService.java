@@ -27,9 +27,10 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.model.FlowSegment;
-import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.converter.SwitchIdMapper;
 
 import org.mapstruct.factory.Mappers;
@@ -44,15 +45,16 @@ public class CommandService {
     private static final SwitchIdMapper SWITCH_ID_MAPPER = Mappers.getMapper(SwitchIdMapper.class);
 
 
-    private Neo4jPersistenceManager transactionManager;
+    private PersistenceManager transactionManager;
     private FlowRepository flowRepository;
     private FlowSegmentRepository flowSegmentRepository;
 
 
-    public CommandService(Neo4jPersistenceManager transactionManager) {
-        this.transactionManager = transactionManager;
-        flowRepository = transactionManager.getRepositoryFactory().createFlowRepository();
-        flowSegmentRepository = transactionManager.getRepositoryFactory().createFlowSegmentRepository();
+    public CommandService(PersistenceManager persistenceManager) {
+        this.transactionManager = persistenceManager;
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowRepository = repositoryFactory.createFlowRepository();
+        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
     }
 
     /**
