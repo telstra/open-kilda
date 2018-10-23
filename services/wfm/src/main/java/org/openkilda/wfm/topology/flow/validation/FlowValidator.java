@@ -52,6 +52,7 @@ public class FlowValidator {
     public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
         checkBandwidth(flow);
         checkFlowForEndpointConflicts(flow);
+        checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExists(flow);
     }
 
@@ -156,6 +157,21 @@ public class FlowValidator {
         } else if (!destination) {
             throw new SwitchValidationException(
                     String.format("Destination switch %s is not connected to the controller", destinationId));
+        }
+    }
+
+    /**
+     * Ensure vlans are not equal in the case when there is an attempt to create one-switch flow for a single port.
+     */
+    @VisibleForTesting
+    void checkOneSwitchFlowHasNoConflicts(Flow requestedFlow) throws SwitchValidationException {
+        if (requestedFlow.getSourceSwitch().equals(requestedFlow.getDestinationSwitch())) {
+
+            if (requestedFlow.getSourcePort() == requestedFlow.getDestinationPort()
+                    && requestedFlow.getSourceVlan() == requestedFlow.getDestinationVlan()) {
+                throw new SwitchValidationException(
+                        "It is not allowed to create one-switch flow for the same ports and vlans");
+            }
         }
     }
 }
