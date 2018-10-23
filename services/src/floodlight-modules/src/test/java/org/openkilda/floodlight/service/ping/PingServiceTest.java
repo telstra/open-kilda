@@ -17,9 +17,11 @@ package org.openkilda.floodlight.service.ping;
 
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
+import static org.easymock.EasyMock.expect;
 
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.model.SwitchId;
@@ -33,6 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.MacAddress;
 
 public class PingServiceTest extends EasyMockSupport {
     private PingService pingService = new PingService();
@@ -45,11 +48,19 @@ public class PingServiceTest extends EasyMockSupport {
 
         moduleContext.addService(IOFSwitchService.class, createMock(IOFSwitchService.class));
         moduleContext.addService(InputService.class, createMock(InputService.class));
+        moduleContext.addService(ISwitchManager.class, createMock(ISwitchManager.class));
         moduleContext.addConfigParam(pathVerificationService, "hmac256-secret", "secret");
     }
 
     @Test
     public void wrapUnwrapCycle() throws Exception {
+        DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
+        DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
+        MacAddress macBeta = MacAddress.of(0xfffe000000000002L);
+
+        expect(moduleContext.getServiceImpl(ISwitchManager.class).dpIdToMac(anyObject(DatapathId.class)))
+                .andReturn(macBeta);
+
         moduleContext.getServiceImpl(InputService.class)
                 .addTranslator(eq(OFType.PACKET_IN), anyObject(PingInputTranslator.class));
 
@@ -57,14 +68,12 @@ public class PingServiceTest extends EasyMockSupport {
 
         pingService.setup(moduleContext);
 
-        DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
-        DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
         Ping ping = new Ping(
                 (short) 0x100,
                 new NetworkEndpoint(new SwitchId(dpIdAlpha.getLong()), 8),
                 new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 9));
 
-        byte[] payload = new byte[] {0, 1, 2, 3, 4};
+        byte[] payload = new byte[]{0, 1, 2, 3, 4};
         Ethernet wrapped = pingService.wrapData(ping, payload);
         byte[] unwrapped = pingService.unwrapData(dpIdBeta, wrapped);
 
