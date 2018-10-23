@@ -44,15 +44,11 @@ public class CommandService {
     private static final SwitchIdMapper SWITCH_ID_MAPPER = Mappers.getMapper(SwitchIdMapper.class);
 
 
-    private PersistenceManager transactionManager;
-    private FlowRepository flowRepository;
     private FlowSegmentRepository flowSegmentRepository;
 
 
-    public CommandService(PersistenceManager transactionManager) {
-        this.transactionManager = transactionManager;
-        flowRepository = transactionManager.getRepositoryFactory().createFlowRepository();
-        flowSegmentRepository = transactionManager.getRepositoryFactory().createFlowSegmentRepository();
+    public CommandService(PersistenceManager persistenceManager) {
+        flowSegmentRepository = persistenceManager.getRepositoryFactory().createFlowSegmentRepository();
     }
 
     /**

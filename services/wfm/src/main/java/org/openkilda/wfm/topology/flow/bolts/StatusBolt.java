@@ -62,9 +62,7 @@ public class StatusBolt extends BaseRichBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         outputCollector = collector;
-
         flowService = new FlowService(persistenceManager);
-
     }
 
     @Override

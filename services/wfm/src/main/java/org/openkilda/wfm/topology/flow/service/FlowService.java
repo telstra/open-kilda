@@ -93,16 +93,16 @@ public class FlowService {
      * @param flowId - flow id to be removed.
      */
     public void deleteFlow(String flowId) {
-        persistenceManager.getTransactionManager().begin();
+        TransactionManager transactionManager = persistenceManager.getTransactionManager();
+        transactionManager.begin();
         try {
             Iterable<Flow> flows = flowRepository.findById(flowId);
             for (Flow flow : flows) {
                 processDeleteFlow(flow);
             }
-            persistenceManager.getTransactionManager().commit();
-
+            transactionManager.commit();
         } catch (Exception e) {
-            persistenceManager.getTransactionManager().rollback();
+            transactionManager.rollback();
         }
     }
 
