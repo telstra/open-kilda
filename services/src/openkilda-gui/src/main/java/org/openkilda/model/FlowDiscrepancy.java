@@ -13,35 +13,30 @@
  *   limitations under the License.
  */
 
-package org.openkilda.store.model;
-
-import org.openkilda.store.auth.constants.AuthType;
+package org.openkilda.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import lombok.Data;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonPropertyOrder({"bandwidth", "status", "controller-discrepancy", "inventory-discrepancy"})
 @Data
-public class OauthTwoConfigDto implements AuthConfigDto {
+public class FlowDiscrepancy {
 
-    @JsonProperty("username")
-    private String username;
+    @JsonProperty("bandwidth")
+    private boolean bandwidth;
     
-    @JsonProperty("password")
-    private String password;
+    @JsonProperty("status")
+    private boolean status;
     
-    @JsonProperty("oauth-generate-token-url")
-    private UrlDto oauthGenerateTokenUrl;
+    @JsonProperty("controller-discrepancy")
+    private boolean controllerDiscrepancy;
     
-    @JsonProperty("oauth-refresh-token-url")
-    private UrlDto oauthRefreshTokenUrl;
-    
-    @Override
-    public AuthType getAuthType() {
-        return AuthType.OAUTH_TWO;
-    }
+    @JsonProperty("inventory-discrepancy")
+    private boolean inventoryDiscrepancy;
 }

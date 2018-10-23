@@ -34,13 +34,12 @@ import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpResponse;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -48,7 +47,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.InputStream;
+
 import java.io.UnsupportedEncodingException;
+
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -78,7 +79,7 @@ public class SwitchIntegrationService {
     private IslLinkConverter islLinkConverter;
 
     @Autowired
-    ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
 
     /**
      * Gets the switches.

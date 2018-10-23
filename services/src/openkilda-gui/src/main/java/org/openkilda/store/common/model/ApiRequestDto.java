@@ -15,9 +15,8 @@
 
 package org.openkilda.store.common.model;
 
-import org.springframework.http.HttpMethod;
-
 import lombok.Data;
+import org.springframework.http.HttpMethod;
 
 @Data
 public class ApiRequestDto {
@@ -26,4 +25,11 @@ public class ApiRequestDto {
     private HttpMethod httpMethod;
     private String header;
     private String payload;
+
+    public ApiRequestDto(final String url, final HttpMethod httpMethod, final String header, final String payload) {
+        this.url = url;
+        this.httpMethod = httpMethod;
+        this.header = header;
+        this.payload = payload;
+    }
 }

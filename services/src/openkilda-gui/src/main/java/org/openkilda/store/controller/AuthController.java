@@ -15,8 +15,6 @@
 
 package org.openkilda.store.controller;
 
-import java.util.List;
-
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.log.ActivityLogger;
@@ -36,6 +34,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+
+import java.util.List;
 
 /**
  * The Class AuthController.
@@ -88,7 +88,8 @@ public class AuthController {
     @RequestMapping(value = "/oauth-two-config/save", method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.CREATED)
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
-    public @ResponseBody OauthTwoConfigDto saveOrUpdateOauthTwoConfig(@RequestBody OauthTwoConfigDto oauthTwoConfigDto) {
+    public @ResponseBody OauthTwoConfigDto saveOrUpdateOauthTwoConfig(
+            @RequestBody OauthTwoConfigDto oauthTwoConfigDto) {
         LOGGER.info("[saveOrUpdateStoreUrls] - start. linkStoreConfigDto: " + oauthTwoConfigDto.toString());
         activityLogger.log(ActivityType.UPDATE_OAUTH_CONFIG, oauthTwoConfigDto.getUsername());
         oauthTwoConfigValidator.validate(oauthTwoConfigDto);

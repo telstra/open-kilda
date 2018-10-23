@@ -69,7 +69,11 @@ public class UserActivityLogService {
             List<UserEntity> usersList = userRepository.findByUserIdIn(userIds);
             for (int i = 0; i < logs.size(); i++) {
                 UserEntity userEntity = getUser(logs.get(i).getUserId(), usersList);
-                logs.get(i).setUsername(userEntity.getUsername());
+                if (userEntity != null) {
+                    logs.get(i).setUsername(userEntity.getUsername());
+                } else {
+                    logs.get(i).setUsername(String.valueOf(logs.get(i).getUserId()));
+                }
             }
         }
         return logs;

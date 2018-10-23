@@ -15,8 +15,10 @@
 
 package org.openkilda.store.common.dao.entity;
 
-
 import org.openkilda.store.auth.dao.entity.OauthConfigEntity;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -29,12 +31,10 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 @Entity
 @Table(name = "kilda_store_type")
-@Data @NoArgsConstructor
+@Data
+@NoArgsConstructor
 public class StoreTypeEntity {
 
     @Id
@@ -48,7 +48,7 @@ public class StoreTypeEntity {
     @Column(name = "store_type_code", nullable = false)
     private String storeTypeCode;
     
-    @ManyToOne(fetch = FetchType.EAGER,cascade=CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "oauth_config_id")
     private OauthConfigEntity oauthConfigEntity;
 }

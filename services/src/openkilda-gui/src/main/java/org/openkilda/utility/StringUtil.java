@@ -58,8 +58,8 @@ public final class StringUtil {
      * @return true, if is any null or empty
      */
     public static boolean isAnyNullOrEmpty(final String... elements) {
-        for(String element : elements){
-            if(isNullOrEmpty(element)){
+        for (String element : elements) {
+            if (isNullOrEmpty(element)) {
                 return true;
             }
         }

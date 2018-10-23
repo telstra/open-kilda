@@ -13,22 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.store.model;
+package org.openkilda.integration.exception;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+public class StoreIntegrationException extends RuntimeException {
 
-import lombok.Data;
+    private static final long serialVersionUID = 9177586156625415602L;
 
-import java.util.Map;
+    public StoreIntegrationException() {
+        super();
+    }
 
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties(ignoreUnknown = true)
-@Data
-public class LinkStoreConfigDto {
+    public StoreIntegrationException(final String errorMessage) {
+        super(errorMessage);
+    }
 
-    @JsonProperty("urls")
-    private Map<String, UrlDto> urls;
+    public StoreIntegrationException(final String errorMessage, final Throwable e) {
+        super(errorMessage, e);
+    }
 
+    public StoreIntegrationException(final Throwable e) {
+        super(e);
+    }
 }

@@ -18,6 +18,9 @@ package org.openkilda.store.linkstore.dao.entity;
 import org.openkilda.entity.BaseEntity;
 import org.openkilda.store.common.dao.entity.UrlEntity;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -29,23 +32,21 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 @Entity
 @Table(name = "kilda_link_store_urls")
-@Data @NoArgsConstructor
-public class LinkStoreRequestUrlsEntity extends BaseEntity{
+@Data
+@NoArgsConstructor
+public class LinkStoreRequestUrlsEntity extends BaseEntity {
 
     @Id
     @Column(name = "link_store_url_id", nullable = false)
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Integer linkStoreUrlId;
 
-    @ManyToOne(fetch = FetchType.EAGER,cascade=CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "link_url_id", nullable = false)
     private UrlEntity urlEntity = new UrlEntity();
-    
+
     @Override
     public Long id() {
         return linkStoreUrlId != null ? Long.valueOf(linkStoreUrlId) : null;

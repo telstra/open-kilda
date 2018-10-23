@@ -18,19 +18,21 @@ package org.openkilda.store.service;
 import org.openkilda.store.auth.constants.AuthType;
 import org.openkilda.store.auth.dao.entity.OauthConfigEntity;
 import org.openkilda.store.auth.dao.repository.OauthConfigRepository;
+import org.openkilda.store.common.constants.StoreType;
+import org.openkilda.store.common.dao.repository.StoreTypeRepository;
+import org.openkilda.store.model.AuthConfigDto;
 import org.openkilda.store.model.AuthTypeDto;
-import org.openkilda.store.model.LinkStoreConfigDto;
 import org.openkilda.store.model.OauthTwoConfigDto;
 import org.openkilda.store.service.converter.AuthTypeConverter;
 import org.openkilda.store.service.converter.OauthConfigConverter;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The Class AuthService.
@@ -41,6 +43,9 @@ public class AuthService {
     
     @Autowired
     private OauthConfigRepository oauthConfigRepository;
+    
+    @Autowired
+    private StoreTypeRepository storeTypeRepository;
     
     /**
      * Gets the auth types.
@@ -58,14 +63,13 @@ public class AuthService {
     }
     
     /**
-     * Save or update link store config.
+     * Save or update oauth config.
      *
-     * @param linkStoreConfigDto the link store config dto
-     * @return the link store config dto
+     * @param oauthTwoConfigDto the oauth two config dto
+     * @return the oauth two config dto
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public OauthTwoConfigDto saveOrUpdateOauthConfig(final OauthTwoConfigDto oauthTwoConfigDto) {
-        OauthConfigConverter oauthConfigConverter = new OauthConfigConverter();
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         OauthConfigEntity oauthConfigEntity = null;
@@ -75,16 +79,23 @@ public class AuthService {
         if (oauthConfigEntity == null) {
             oauthConfigEntity = new OauthConfigEntity();
         }
-        oauthConfigEntity = oauthConfigConverter.toOauthConfigEntity(oauthTwoConfigDto, oauthConfigEntity);
-        
+        oauthConfigEntity = OauthConfigConverter.toOauthConfigEntity(oauthTwoConfigDto, oauthConfigEntity);
+
         oauthConfigEntity = oauthConfigRepository.save(oauthConfigEntity);
-        
-        return oauthConfigConverter.toOauthTwoConfigDto(oauthConfigEntity);
+
+        StoreType.LINK_STORE.getStoreTypeEntity().setOauthConfigEntity(oauthConfigEntity);
+        storeTypeRepository.save(StoreType.LINK_STORE.getStoreTypeEntity());
+
+        return OauthConfigConverter.toOauthTwoConfigDto(oauthConfigEntity);
     }
     
+    /**
+     * Gets the oauth config.
+     *
+     * @return the oauth config
+     */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public OauthTwoConfigDto getOauthConfig() {
-        OauthConfigConverter oauthConfigConverter = new OauthConfigConverter();
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         OauthConfigEntity oauthConfigEntity = null;
@@ -94,6 +105,20 @@ public class AuthService {
         if (oauthConfigEntity == null) {
             oauthConfigEntity = new OauthConfigEntity();
         }
-        return oauthConfigConverter.toOauthTwoConfigDto(oauthConfigEntity);
+        return OauthConfigConverter.toOauthTwoConfigDto(oauthConfigEntity);
+    }
+
+    /**
+     * Gets the auth.
+     *
+     * @param storeType the store type
+     * @return the auth
+     */
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+    public AuthConfigDto getAuth(final StoreType storeType) {
+        if (storeType == StoreType.LINK_STORE) {
+            return OauthConfigConverter.toOauthTwoConfigDto(storeType.getStoreTypeEntity().getOauthConfigEntity());
+        }
+        return null;
     }
 }

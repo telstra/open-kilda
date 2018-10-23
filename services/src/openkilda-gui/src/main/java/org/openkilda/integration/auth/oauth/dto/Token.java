@@ -13,9 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.store.model;
-
-import org.openkilda.store.auth.constants.AuthType;
+package org.openkilda.integration.auth.oauth.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -23,25 +21,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
-public class OauthTwoConfigDto implements AuthConfigDto {
+public class Token implements Serializable {
 
-    @JsonProperty("username")
-    private String username;
-    
-    @JsonProperty("password")
-    private String password;
-    
-    @JsonProperty("oauth-generate-token-url")
-    private UrlDto oauthGenerateTokenUrl;
-    
-    @JsonProperty("oauth-refresh-token-url")
-    private UrlDto oauthRefreshTokenUrl;
-    
-    @Override
-    public AuthType getAuthType() {
-        return AuthType.OAUTH_TWO;
-    }
+    private static final long serialVersionUID = 1L;
+
+    @JsonProperty("token_type")
+    private String tokenType;
+
+    @JsonProperty("expires_in")
+    private long expiresIn;
+
+    @JsonProperty("refresh_token")
+    private String refreshToken;
+
+    @JsonProperty("access_token")
+    private String accessToken;
+
 }

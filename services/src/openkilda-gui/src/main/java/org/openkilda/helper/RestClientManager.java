@@ -25,6 +25,7 @@ import org.openkilda.exception.UnauthorizedException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.model.response.ErrorMessage;
 import org.openkilda.service.AuthPropertyService;
+import org.openkilda.store.common.model.ApiRequestDto;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.StringUtil;
 
@@ -40,8 +41,17 @@ import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +61,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.net.ssl.SSLContext;
 
 /**
  * The Class RestClientManager.
@@ -87,8 +102,8 @@ public class RestClientManager {
         HttpResponse httpResponse = null;
 
         try {
-        	RequestContext requestContext = serverContext.getRequestContext();
-        	
+            RequestContext requestContext = serverContext.getRequestContext();
+
             HttpClient client = HttpClients.createDefault();
             HttpUriRequest httpUriRequest = null;
             HttpEntityEnclosingRequestBase httpEntityEnclosingRequest = null;
@@ -121,7 +136,90 @@ public class RestClientManager {
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
-                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID,
+                        requestContext.getCorrelationId());
+                // Setting request payload
+                httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
+                httpResponse = client.execute(httpEntityEnclosingRequest);
+                LOGGER.debug("[invoke] Call executed successfully");
+            } else {
+                LOGGER.info("[invoke] Executing : httpUriRequest : " + httpUriRequest);
+                httpResponse = client.execute(httpUriRequest);
+                LOGGER.info("[invoke] Call executed successfully");
+            }
+
+        } catch (Exception e) {
+            LOGGER.error("[invoke] Exception: ", e);
+            throw new RestCallFailedException(e);
+        }
+        LOGGER.info("[invoke] - End");
+        return httpResponse;
+    }
+    
+    /**
+     * Invoke.
+     *
+     * @param apiRequestDto the api request dto
+     * @return the http response
+     */
+    public HttpResponse invoke(final ApiRequestDto apiRequestDto) {
+        LOGGER.info("[invoke] - Start");
+        HttpResponse httpResponse = null;
+
+        String url = apiRequestDto.getUrl();
+        String headers = apiRequestDto.getHeader();
+        HttpMethod httpMethod = apiRequestDto.getHttpMethod();
+        String payload = apiRequestDto.getPayload();
+
+        try {
+
+            SSLContext sslContext = new SSLContextBuilder().loadTrustMaterial(null, (x509CertChain, authType) -> true)
+                    .build();
+            CloseableHttpClient client = HttpClientBuilder.create().setSSLContext(sslContext)
+                    .setConnectionManager(new PoolingHttpClientConnectionManager(RegistryBuilder
+                            .<ConnectionSocketFactory>create().register("http", PlainConnectionSocketFactory.INSTANCE)
+                            .register("https",
+                                    new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE))
+                            .build()))
+                    .build();
+            HttpUriRequest httpUriRequest = null;
+            HttpEntityEnclosingRequestBase httpEntityEnclosingRequest = null;
+
+            // Initializing Request
+            if (HttpMethod.POST.equals(httpMethod)) {
+                httpEntityEnclosingRequest = new HttpPost(url);
+            } else if (HttpMethod.PUT.equals(httpMethod)) {
+                httpEntityEnclosingRequest = new HttpPut(url);
+            } else if (HttpMethod.DELETE.equals(httpMethod)) {
+                httpUriRequest = new HttpDelete(url);
+            } else if (HttpMethod.PATCH.equals(httpMethod)) {
+                httpUriRequest = new HttpPatch(url);
+            } else {
+                httpUriRequest = new HttpGet(url);
+            }
+            Map<String, String> headersMap = new HashMap<String, String>();
+            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)) {
+                if (!StringUtil.isNullOrEmpty(headers)) {
+                    for (String header : headers.split("\n")) {
+                        getHeaders(headersMap, header);
+                        for (Entry<String, String> headerEntrySet : headersMap.entrySet()) {
+                            httpUriRequest.setHeader(headerEntrySet.getKey(), headerEntrySet.getValue());
+                        }
+                    }
+                }
+            }
+
+            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)) {
+                LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
+                        + httpEntityEnclosingRequest + " : payload : " + payload);
+                if (!StringUtil.isNullOrEmpty(headers)) {
+                    for (String header : headers.split("\n")) {
+                        getHeaders(headersMap, header);
+                        for (Entry<String, String> headerEntrySet : headersMap.entrySet()) {
+                            httpEntityEnclosingRequest.setHeader(headerEntrySet.getKey(), headerEntrySet.getValue());
+                        }
+                    }
+                }
                 // Setting request payload
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);
@@ -140,6 +238,29 @@ public class RestClientManager {
         return httpResponse;
     }
 
+    /**
+     * Gets the headers.
+     *
+     * @param headers the header
+     * @return the headers
+     */
+    private Map<String, String> getHeaders(Map<String, String> headersMap, final String headers) {
+        String[] headersAry = headers.split(":");
+        if (headersAry.length > 1) {
+            StringBuilder key = null;
+            StringBuilder value = null;
+            for (int i = 0; i < headersAry.length; i++) {
+                if (i == 0 || i % 2 == 0) {
+                    key = new StringBuilder(headersAry[i]);
+                } else {
+                    value = new StringBuilder(headersAry[i]);
+                }
+            }
+            headersMap.put(key.toString(), value.toString());
+        }
+        return headersMap;
+    }
+    
     /**
      * Gets the response list.
      *

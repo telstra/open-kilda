@@ -15,20 +15,9 @@
 
 package org.openkilda.store.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.openkilda.store.auth.constants.AuthType;
 
-import lombok.Data;
-
-import java.util.Map;
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties(ignoreUnknown = true)
-@Data
-public class LinkStoreConfigDto {
-
-    @JsonProperty("urls")
-    private Map<String, UrlDto> urls;
-
+public interface AuthConfigDto {
+    
+    public AuthType getAuthType();
 }

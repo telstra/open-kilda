@@ -15,16 +15,12 @@
 
 package org.openkilda.store.controller;
 
-import java.util.List;
-import java.util.Map.Entry;
-
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.store.controller.validator.LinkStoreConfigValidator;
 import org.openkilda.store.model.LinkStoreConfigDto;
-import org.openkilda.store.model.OauthTwoConfigDto;
 import org.openkilda.store.model.StoreTypeDto;
 import org.openkilda.store.model.UrlDto;
 import org.openkilda.store.service.StoreService;
@@ -39,6 +35,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+
+import java.util.List;
+import java.util.Map.Entry;
 
 /**
  * The Class StoreController.
@@ -101,5 +100,20 @@ public class StoreController {
         activityLogger.log(ActivityType.UPDATE_LINK_STORE_CONFIG, key.toString());
         linkStoreConfigValidator.validate(linkStoreConfigDto);
         return storeService.saveOrUpdateLinkStoreConfig(linkStoreConfigDto);
+    }
+    
+    /**
+     * Delete link store config.
+     *
+     * @return true, if successful
+     */
+    @RequestMapping(value = "/link-store-config/delete", method = RequestMethod.DELETE)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.STORE_SETTING })
+    @ResponseBody
+    public boolean deleteLinkStoreConfig() {
+        LOGGER.info("[deleteLinkStoreConfig] - start.");
+        activityLogger.log(ActivityType.DELETE_LINK_STORE_CONFIG);
+        return storeService.deleteLinkStoreConfig();
     }
 }

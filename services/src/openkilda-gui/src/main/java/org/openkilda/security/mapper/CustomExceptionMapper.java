@@ -21,6 +21,7 @@ import org.openkilda.constants.HttpError;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
+import org.openkilda.integration.exception.StoreIntegrationException;
 
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -101,6 +102,21 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.INTERNAL_ERROR.getHttpStatus(), HttpError.INTERNAL_ERROR.getCode(),
                 HttpError.INTERNAL_ERROR.getAuxilaryMessage(), ex.toString());
+    }
+    
+    /**
+     * StoreIntegrationException exception handler.
+     *
+     * @param ex the ex
+     * @param request the request
+     * @return the response entity
+     */
+    @ExceptionHandler(value = { StoreIntegrationException.class })
+    protected ResponseEntity<Object> storeIntegrationExceptionHandler(final StoreIntegrationException ex,
+            final WebRequest request) {
+        _log.error("Exception: " + ex.getMessage(), ex);
+        return response(HttpError.STORE_INTEGRATION_ERROR.getHttpStatus(), HttpError.STORE_INTEGRATION_ERROR.getCode(),
+                HttpError.STORE_INTEGRATION_ERROR.getAuxilaryMessage(), HttpError.STORE_INTEGRATION_ERROR.getMessage());
     }
 
     /**

@@ -19,7 +19,9 @@ import org.openkilda.store.auth.constants.AuthType;
 import org.openkilda.store.auth.dao.entity.AuthTypeEntity;
 import org.openkilda.store.model.AuthTypeDto;
 
-public class AuthTypeConverter {
+public final class AuthTypeConverter {
+    
+    private AuthTypeConverter() { }
 
     /**
      * To auth type dto.
@@ -27,7 +29,7 @@ public class AuthTypeConverter {
      * @param authType the auth type
      * @return the auth type dto
      */
-    public static AuthTypeDto toAuthTypeDto(AuthType authType){
+    public static AuthTypeDto toAuthTypeDto(AuthType authType) {
         AuthTypeEntity authTypeEntity = authType.getAuthTypeEntity();
         AuthTypeDto authTypeDto = new AuthTypeDto();
         authTypeDto.setAuthTypeId(authTypeEntity.getAuthTypeId());

@@ -13,35 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.store.model;
-
-import org.openkilda.store.auth.constants.AuthType;
+package org.openkilda.integration.source.store.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import lombok.Data;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonPropertyOrder({"switch-id", "port-id", "vlan-id"})
 @Data
-public class OauthTwoConfigDto implements AuthConfigDto {
+public class Switch {
 
-    @JsonProperty("username")
-    private String username;
-    
-    @JsonProperty("password")
-    private String password;
-    
-    @JsonProperty("oauth-generate-token-url")
-    private UrlDto oauthGenerateTokenUrl;
-    
-    @JsonProperty("oauth-refresh-token-url")
-    private UrlDto oauthRefreshTokenUrl;
-    
-    @Override
-    public AuthType getAuthType() {
-        return AuthType.OAUTH_TWO;
-    }
+    @JsonProperty("switch-id")
+    private String id;
+
+    @JsonProperty("port-id")
+    private Integer portId;
+
+    @JsonProperty("vlan-id")
+    private String vlanId;
 }
