@@ -190,6 +190,7 @@ class StoreSetting {
 	}
 	disableLinkStoreForm(){
 		$('#editlinkstoreBtn').show();
+		$('#deletelinkstoreBtn').show();
 		$('#cancellinkstoreBtn').hide();
 		$('#submitlinkstoreBtn').hide();
 		$('#getalllinkurl').attr('disabled','disabled');
@@ -200,6 +201,7 @@ class StoreSetting {
 	}
 	enableLinkStoreForm(){
 		$('#editlinkstoreBtn').hide();
+		$('#deletelinkstoreBtn').hide();
 		$('#cancellinkstoreBtn').show();
 		$('#submitlinkstoreBtn').show();
 		$('#getalllinkurl').removeAttr('disabled');
@@ -208,6 +210,27 @@ class StoreSetting {
 		$('#getcontracturl').removeAttr('disabled');
 		$('#deletecontracturl').removeAttr('disabled');
 		
+	}
+	deleteLinkStoreConfirm(){
+		$('#deletelinkStoreconfirmModal').modal('show');
+	}
+	deleteLinkStore(){
+		$('#deletelinkStoreconfirmModal').modal('hide');
+		$('#loading_delete_link_store').show();
+		common.deleteData('/store/link-store-config/delete').then(function(response){
+			$('#loading_delete_link_store').hide();
+			common.infoMessage("Link store setting deleted successfully",'success');
+			setTimeout(function(){
+				location.reload();
+			},500);
+			
+		},function(error){
+			$('#loading_delete_link_store').hide();
+			common.infoMessage(error.responseJSON['error-message'],'error');
+		}).fail(function(error){
+			$('#loading_delete_link_store').hide();
+			common.infoMessage(error.responseJSON['error-message'],'error');
+		})
 	}
 	generateFormFieldObject(formArr) {
 		var formObj ={};
@@ -339,6 +362,7 @@ class StoreSetting {
 		return validatedForm;
 	}
 	validateUrl(url) {
+		return true;
 		var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
 	    if(res == null)
 	        return false;

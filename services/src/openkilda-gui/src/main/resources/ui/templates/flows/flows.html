@@ -87,6 +87,22 @@
 					  			 	</span>  
 								</div>
 								<div class="col-lg-12 text-right" style="padding-bottom: 10px; margin-bottom: 10px;">
+									<div class="filter_btns col-lg-11" id="storeFilter" style="display:none;padding-top: 7px; padding-right: 0;">
+										<div style="float:right">
+											<label for="activeFilter">
+												<input type="checkbox" class="status_filter" name="filterStatus[]" value="active" id="activeFilter" />
+												<span>Active</span>
+											</label>
+										    <label for="expiredFilter">
+										    	<input type="checkbox" class="status_filter" name="filterStatus[]" value="expired" id="expiredFilter" />
+										    	<span>Expired</span>
+										    </label>
+										    <label for="deletedFilter">
+										    	<input type="checkbox" class="status_filter" name="filterStatus[]" value="deleted" id="deletedFilter" />
+										    	<span>Deleted</span>
+										    </label>
+									    </div>
+									</div>
 									<span class="btn kilda_btn" id="refresh_list">Refresh</span>
 								</div>
 								<table id="flowTable" class="display" cellspacing="0" width="100%" style="display:none;">
@@ -135,6 +151,10 @@
 											<i class="icon-search" onclick="showSearch('status',event)" style=""></i> 
 											<input id="status" class="heading_search_box" type="search" style="display: none;" placeholder="Search" /> 
 											
+											</th> 
+											<th><span title="State">State </span>
+											<i class="icon-search" onclick="showSearch('state',event)" style=""></i> 
+											<input id="state" class="heading_search_box" type="search" style="display: none;" placeholder="Search" /> 
 											</th> 
 											<th><span title="Description">Description</span> 
 											<i class="icon-search" onclick="showSearch('Description',event)" style=""></i> 

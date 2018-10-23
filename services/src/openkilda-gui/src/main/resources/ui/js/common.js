@@ -134,7 +134,12 @@ var common = {
 			if(data){
 				return $.ajax({url : APP_CONTEXT+apiUrl+"/"+id,contentType:'application/json',data:JSON.stringify(data),dataType : "json",type : "DELETE"});
 			}else{
-				return $.ajax({url : APP_CONTEXT+apiUrl+"/"+id,contentType:'application/json',dataType : "json",type : "DELETE"});
+				if(typeof(id)!=='undefined' && id){
+					return $.ajax({url : APP_CONTEXT+apiUrl+"/"+id,contentType:'application/json',dataType : "json",type : "DELETE"});
+				}else{
+					return $.ajax({url : APP_CONTEXT+apiUrl,contentType:'application/json',dataType : "json",type : "DELETE"});
+				}
+				
 			}
 			
 		},
@@ -308,6 +313,8 @@ if(page == "home"){
 }else if(page == "flows" || page == "flowdetails" || (page.indexOf('details')!==-1 && href.indexOf('flows')!==-1)){
 	$("#flows-menu-id").addClass("active");
 	storage.remove("SWITCHES_LIST");
+	localStorage.removeItem('haslinkStoreSetting');
+	localStorage.removeItem('linkStoreSetting');
 }else if(page == "isllist" || page == "isl"){
 	$("#isl-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");

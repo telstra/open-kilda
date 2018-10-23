@@ -106,6 +106,14 @@ class Flow {
 			})
 	}
 	
+	deleteContract(flowid,contractid){
+		common.deleteData('/flows/'+flowid+'/contract',contractid,otpData).then(function(success){
+			common.infoMessage('Contract deleted successfully','success');
+		}).fail(function(error){
+			common.infoMessage(error.responseJSON['error-message'],'error');
+	})
+	}
+	
 	
 	createNewFlow () {
 		
@@ -228,13 +236,13 @@ class Flow {
 					
 					for(var i=0; i<switches.length; i++){
 						var switch_state = switches[i].state;
-						if(flowData.source['switch-id'] == switches[i].switch_id ) {
+						if(flowData['source_switch'] == switches[i].switch_id ) {
 							selectedSourceSwitch = {
 								id : switches[i].switch_id,
 								text : switches[i].name + "(" + switch_state.toLowerCase() + ")"
 							};
 						}
-						if(flowData.destination['switch-id'] == switches[i].switch_id ){
+						if(flowData['target_switch'] == switches[i].switch_id ){
 							selectedTargetSwitch = {
 								id : switches[i].switch_id,
 								text : switches[i].name + "(" + switch_state.toLowerCase() + ")"
@@ -256,8 +264,8 @@ class Flow {
 					$('#flow_detail_div').hide();
 					$('#edit_flow').addClass('hidePermission').removeClass('showPermission');
 					$("#edit_flow_div").show().load('../ui/templates/flows/editflow.html',function(){
-						$("#edit_flow_div").find("#source_vlan").html(vlanOptions).val(flowData.source['vlan-id']);
-						$("#edit_flow_div").find("#target_vlan").html(vlanOptions).val(flowData.destination['vlan-id']);
+						$("#edit_flow_div").find("#source_vlan").html(vlanOptions).val(flowData['vlan-id']);
+						$("#edit_flow_div").find("#target_vlan").html(vlanOptions).val(flowData['vlan-id']);
 						$("#edit_flow_div").find("#flowname").val(flowData.flowid);
 						$("#edit_flow_div").find("#flowname_read").val(flowData.flowid);
 						$("#edit_flow_div").find("#flow_description").val(flowData.description);

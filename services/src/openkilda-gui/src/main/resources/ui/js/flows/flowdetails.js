@@ -4,6 +4,12 @@ $(document).ready(function() {
 	var flowid = window.location.href.split("#")[1]
 	var tmp_anchor = '<a href="flowdetails#' + flowid + '">' + flowid + '</a>';
 	$("#flow-id-name").parent().append(flowid);
+	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
+	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == true){
+		$('#contractTab').show();
+	}else{
+		$('#contractTab').hide();
+	}
 	$("#loading").css("display", "block");	
 	common.getData("/flows/"+flowid,"GET").then(function(response) {
 		$("#loading").css("display", "none");
@@ -32,8 +38,71 @@ $(document).ready(function() {
 	getMetricDetails.getFlowMetricData();
 	$('body').css('pointer-events','all');
 	
+	$('#contractTable').DataTable( {
+		 "iDisplayLength": 10,
+		 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+		 "responsive": true,
+		 "bPaginate":false,
+		 "bSortCellsTop": true,
+		  language: {searchPlaceholder: "Search"},
+		 "autoWidth": false
+	 });
+	
 })
 
+function validateFlowForm(){
+	
+	var flowid=$('#flowid').val();
+    if(flowid.length == 0){
+    	$("#flowid").addClass("has-error");	
+		$(".flowid-error-message").html("Please enter flow id.");
+		$("#searchbtn").css("top","-6px");
+		return false;
+    } else {
+    	$("#flowid").removeClass("has-error");
+    	$(".flowid-error-message").html("");
+    	$("#searchbtn").css("top","0px");
+    }
+    
+	var tmp_anchor = '<a href="flowdetails#' + flowid + '">' + flowid + '</a>';
+	
+	$("#loading").css("display", "block");	
+	common.getData("/flows/"+flowid,"GET").then(function(response) {
+		$("#flow-id-name").parent().html('<i class="fa icon-double-angle-right" id="flow-id-name"></i>'+flowid);
+		window.location.href= APP_CONTEXT + "/flows/details#"+flowid;
+		$("#loading").css("display", "none");
+		$('body').css('pointer-events','all'); 
+		flowObj.setFlow(response);
+		var isEdit = localStorage.getItem("flowEdit_"+flowid);
+		if(isEdit){
+			$('#flow_detail_div').hide();
+			localStorage.removeItem("flowEdit_"+flowid);
+			flowObj.editFlow();
+		}else{
+			$('#flow_detail_div').show();
+			showFlowData(response);
+		}
+		
+	},function(error){
+		common.infoMessage('Flow does not exists, please try with new flow id','info');
+		response=[];
+		$("#loading").css("display", "none");
+		$('body').css('pointer-events','all');
+	});
+}
+function loadFlowContracts(flow_id){
+	$('#loading_contract').show();
+	commmon.getData('flows/getcontract?flowid='+flow_id,"GET").then(function(response){
+		
+		$('#loading_contract').hide();
+	},function(error){
+		$('#loading_contract').hide();
+		common.infoMessage(error.responseJSON['error-auxiliary-message'],'error');
+	}).fail(function(error){
+		$('#loading_contract').hide();
+		common.infoMessage(error.responseJSON['error-auxiliary-message'],'error');
+	})
+}
 function callValidateFlow(flow_id){
 	$('#validate_json_loader').show();
 	$('#validate_json').html("");
@@ -56,7 +125,7 @@ function callResyncFlow(flow_id){
 	$('#resync_json').html("");
 	$('#resync_flow_response').hide();
 	$('#validate_flow_response').hide();
-		common.getData("/flows/" + flow_id+"/sync","PATCH").then(function(response) { // calling re-route api
+		common.getData("/flows/" + flow_id+"/sync","PATCH").then(function(response) { // calling resync api
 				var responseData = JSON.stringify(response,null,2);
 				$('#resync_json').html(responseData);
 				$('#resync_flow_response').show();
@@ -69,15 +138,15 @@ function callResyncFlow(flow_id){
 }
 function showFlowData(obj) {
 	$(".flow_div_flow_id").html(obj.flowid);
-	$(".flow_div_source_switch").html(obj.source["switch-id"]);
-	$(".flow_div_source_port").html(obj.source["port-id"]);
-	$(".flow_div_source_switch_name").html(obj.source["switch-name"]);
-	$(".flow_div_source_vlan").html(obj.source["vlan-id"]);	
-	$(".flow_div_destination_switch").html(obj.destination["switch-id"]);
-	$(".flow_div_destination_port").html(obj.destination["port-id"]);
-	$(".flow_div_destination_switch_name").html(obj.destination["switch-name"]);
-	$(".flow_div_destination_vlan").html(obj.destination["vlan-id"]);
-	$(".flow_div_maximum_bandwidth").html(obj["maximum-bandwidth"]);
+	$(".flow_div_source_switch").html(obj["source_switch_name"]);
+	$(".flow_div_source_port").html(obj["src_port"]);
+	$(".flow_div_source_switch_name").html(obj["source_switch"]);
+	$(".flow_div_source_vlan").html(obj["src_vlan"]);	
+	$(".flow_div_destination_switch").html(obj["target_switch"]);
+	$(".flow_div_destination_port").html(obj["dst_port"]);
+	$(".flow_div_destination_switch_name").html(obj["target_switch_name"]);
+	$(".flow_div_destination_vlan").html(obj["dst_vlan"]);
+	$(".flow_div_maximum_bandwidth").html(obj["maximum_bandwidth"]);
 	$(".flow_div_Status").html(obj.status);
 	if (!obj.description == "") {
 		$(".flow_div_desc").html(obj.description);
@@ -105,6 +174,9 @@ function showFlowData(obj) {
 	$('#clear_resync').click(function(e){
 		$("#resync_json").html("");
 		$("#resync_flow_response").hide();
+	})
+	$('#contractTab').click(function(){
+		loadFlowContracts(obj.flowid);
 	})
 
 }
@@ -261,6 +333,15 @@ function showFlowPathData(response ,isloader) {
 	$(".path:last-child .line:nth-child(6)").hide();	
 	if(isloader){
 		$("#path_reroute_loader").hide();
+	}
+}
+
+function showSearch(idname,$event) {
+	$event.stopPropagation();
+	if($('#'+idname+'.heading_search_box').is(":visible")){
+		$('#'+idname+'.heading_search_box').css('display', 'none');
+	}else{
+		$('#'+idname+'.heading_search_box').css('display', 'inline-block');
 	}
 }
 /* ]]> */
