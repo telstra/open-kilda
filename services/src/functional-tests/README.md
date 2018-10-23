@@ -1,19 +1,20 @@
 # Functional tests
-This module holds Functional tests designed to be run against staging OR virtual environment.
+This module holds functional tests designed to be run against staging OR virtual environment.
 
-#Word about testing approach
+
+# A word about the testing approach
 ### Single topology for the whole test suite
-Since this test suite should have ability to be run both on hardware and virtual topology,
+Since this test suite should have ability to be run both on hardware and virtual topologies,
 we consider that we have the same amount of switches/same topology throughout the run even 
 for virtual runs (obviously we cannot change the topology during a hardware run).  
-Topology scheme is defined via special config file (topology.yaml) and remains the same throughout 
+Topology scheme is defined via a special config file (`topology.yaml`) and remains the same throughout 
 the test run.  
 For this reason we cannot allow tests to assume they will have a 'needed' topology, so each
-test should be designed to work on ANY topology (or skip itself if unable to run on given topology).
+test should be designed to work on ANY topology (or skip itself if unable to run on given topology).  
 Some tests require a 'special' topology state (no alternative paths, isolated switches etc.). 
-This can be achieved by manipulating existing topology via so-called A-Switch(transit switch not
- connected to controller, allows to change 
-ISLs between switches) or controlling ports on switches (bring ports down to fail certain ISLs). 
+This can be achieved by manipulating existing topology via so-called A-Switch (transit switch not 
+connected to controller, allows to change ISLs between switches) or controlling ports on 
+switches (bring ports down to fail certain ISLs). 
 It is required to bring the topology to the original state afterwards.
 
 ### Failfast with no cleanup
@@ -24,45 +25,51 @@ The drawback is that the engineer will have to manually bring the system/topolog
 state after analysing the test failure (usually not an issue for virtual topology since it is 
 recreated at the start of the test run).
 
+
 # How to run 
-Pre-setup: Mark `groovy` subdirectory in `functional-tests` module as a test sources root and ensure that `topology.yaml` and 
-`kilda.properties` are present in the root of functional-tests
+Pre-setup: mark `groovy` subdirectory in the `functional-tests` module as a test sources root and ensure that `topology.yaml` and
+`kilda.properties` files are present in the root of the functional-tests module.
+
 ### Virtual (local Kilda)
 - Spawn your Kilda env locally by running
 ```
 make build-latest 
 make up-test-mode
 ```
-- Create file `kilda.properties` in `functional-tests` directory
-- Copy all properties from `kilda.properties.example` to `kilda.properties`
-- Change endpoint properties (url, user and password) if needed. It should point 
-to your localhost environments. `spring.profiles.active` should be set to `virtual`.
+- Create the `kilda.properties` file in the `functional-tests` directory.
+- Copy all properties from `kilda.properties.example` to the `kilda.properties` file.
+- Change endpoint properties (url, user and password) if needed. It should point
+to your localhost environment. `spring.profiles.active` should be set to `virtual`.
 - Check your `topology.yaml`. This is a file which will be used to spawn a virtual
-topology used by all the tests.
-- You can now run tests from IDE or run  
-`mvn clean test -Pfunctional`
-- If you want to run single test from terminal you can use following command  
+topology used by all the tests.  
+The default `topology.yaml` file for the virtual topology is located in the `src/test/resources/` directory.  
+In order to use it for test runs copy this file to the root of the functional-tests module or specify the file path via  
+`-Dtopology.definition.file=src/test/resources/topology.yaml` in the run command.
+- Now you can run tests by executing the following command in the terminal:  
+`mvn clean test -Pfunctional`  
+If you want to run a single test, you can use the following command:  
 `mvn clean test -Pfunctional -Dtest="<path_to_test_file>#<test_name>"`  
 For example:  
 `mvn clean test -Pfunctional -Dtest="spec.northbound.flows.FlowsSpec#Able to create a single-switch flow"`
 
 ### Hardware (Staging)
-- Check your `kilda.properties`. It should point to your staging environments.  
+- Check your `kilda.properties`. It should point to your staging environment.  
 `spring.profiles.active` should be set to `hardware`.
 - Check your `topology.yaml`. It should represent your actual hardware topology.
-- You can now run tests from IDE or run  
+- Now you can run tests by executing the following command in the terminal:  
 `mvn clean test -Pfunctional`
 
 ## Artifacts
 * Logs - ```target/logs```
 * Reports - ```target/spock-reports```
 
+
 # Deployment
-## Confirguration
+## Configuration
 ### Topology
 The tests require a network topology definition provided.
-For hardware(staging) topology this definition should represent the actual state of the hardware topology
-For virtual(mininet) topology this definition will serve as a guide for creating a virtual topology.
+For hardware (staging) topology this definition should represent the actual state of the hardware topology.
+For virtual (mininet) topology this definition will serve as a guide for creating a virtual topology.
 
 The topology definition format:
 ```
@@ -121,5 +128,4 @@ traffgen_config:
 ```
 
 ### Kilda configuration
-The tests require Kilda configuration provided. See `kilda.properties.example`
-
+The tests require Kilda configuration provided. See `kilda.properties.example`.
