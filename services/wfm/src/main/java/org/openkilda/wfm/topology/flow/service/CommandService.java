@@ -28,7 +28,6 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.wfm.converter.SwitchIdMapper;
 

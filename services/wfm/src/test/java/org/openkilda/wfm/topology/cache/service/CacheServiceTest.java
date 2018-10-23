@@ -64,6 +64,11 @@ public class CacheServiceTest {
         }
 
         @Override
+        public long deleteByFlowId(String flowId) {
+            return 0;
+        }
+
+        @Override
         public void mergeFlowRelationships(org.openkilda.model.Flow flow) {
 
         }

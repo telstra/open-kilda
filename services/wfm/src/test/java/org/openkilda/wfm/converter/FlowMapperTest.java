@@ -56,13 +56,13 @@ public class FlowMapperTest {
         flow.setDestinationVlan(1112);
         flow.setBandwidth(23);
         flow.setDescription("SOME FLOW");
-        flow.setLastUpdated("SOME LAST UPDATED FLOW");
+        flow.setLastUpdated("2011-12-03T10:15:30Z");
         flow.setTransitVlan(87);
         flow.setMeterId(65);
         flow.setIgnoreBandwidth(true);
         flow.setPeriodicPings(true);
         FlowPair<Flow, Flow> pair = new FlowPair<>(flow, flow);
-        org.openkilda.model.FlowPair p =  FLOW_MAPPER.flowPairFromDto(pair);
+        org.openkilda.model.FlowPair p = FLOW_MAPPER.flowPairFromDto(pair);
         assertEquals(p.getForward().getFlowId(), pair.getLeft().getFlowId());
     }
 }
