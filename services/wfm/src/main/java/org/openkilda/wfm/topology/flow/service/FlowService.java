@@ -59,12 +59,14 @@ public class FlowService {
      * @param flowPair - forward and reverse flows to be saved.
      */
     public void createFlow(FlowPair flowPair) {
-        persistenceManager.getTransactionManager().begin();
+        TransactionManager transactionManager = persistenceManager.getTransactionManager();
+        transactionManager.begin();
         try {
             createFlowForPair(flowPair);
-            persistenceManager.getTransactionManager().commit();
+            transactionManager.commit();
         } catch (Exception e) {
-            persistenceManager.getTransactionManager().rollback();
+            transactionManager.rollback();
+            throw e;
         }
     }
 
@@ -103,6 +105,7 @@ public class FlowService {
             transactionManager.commit();
         } catch (Exception e) {
             transactionManager.rollback();
+            throw e;
         }
     }
 
@@ -178,7 +181,7 @@ public class FlowService {
             return pair;
         } catch (Exception e) {
             transactionManager.rollback();
-            return null;
+            throw e;
         }
     }
 
@@ -210,6 +213,7 @@ public class FlowService {
             transactionManager.commit();
         } catch (Exception e) {
             transactionManager.rollback();
+            throw e;
         }
     }
 }

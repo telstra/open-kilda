@@ -320,8 +320,6 @@ public class CrudBolt
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
 
         } finally {
-            outputCollector.ack(tuple);
-
             logger.debug("Command message ack: component={}, stream={}, tuple={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
 
