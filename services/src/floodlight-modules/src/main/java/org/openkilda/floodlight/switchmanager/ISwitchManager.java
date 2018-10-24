@@ -206,6 +206,8 @@ public interface ISwitchManager extends IFloodlightService {
 
     List<OFPortDesc> getPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
 
+    List<OFPortDesc> getPhysicalPorts(IOFSwitch sw);
+
     /**
      * Deletes all non-default rules from the switch.
      *
