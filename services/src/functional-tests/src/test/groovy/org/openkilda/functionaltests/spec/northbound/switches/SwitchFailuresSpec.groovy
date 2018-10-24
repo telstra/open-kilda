@@ -59,8 +59,8 @@ class SwitchFailuresSpec extends BaseSpecification {
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Two neighbouring switches of the flow go down simultaneously"
-        lockKeeperService.knockoutSwitch(isl.srcSwitch)
-        lockKeeperService.knockoutSwitch(isl.dstSwitch)
+        lockKeeperService.knockoutSwitch(isl.srcSwitch.dpId)
+        lockKeeperService.knockoutSwitch(isl.dstSwitch.dpId)
         def timeSwitchesBroke = System.currentTimeMillis()
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
@@ -69,8 +69,8 @@ class SwitchFailuresSpec extends BaseSpecification {
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
 
         and: "Switches go back UP"
-        lockKeeperService.reviveSwitch(isl.srcSwitch)
-        lockKeeperService.reviveSwitch(isl.dstSwitch)
+        lockKeeperService.reviveSwitch(isl.srcSwitch.dpId)
+        lockKeeperService.reviveSwitch(isl.dstSwitch.dpId)
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2000)
@@ -111,11 +111,11 @@ class SwitchFailuresSpec extends BaseSpecification {
         northboundService.addFlow(flow)
 
         and: "One of the switches goes down without waiting for flow's UP status"
-        lockKeeperService.knockoutSwitch(srcSwitch)
+        lockKeeperService.knockoutSwitch(srcSwitch.dpId)
 
         and: "Goes back up in a second"
         TimeUnit.SECONDS.sleep(1)
-        lockKeeperService.reviveSwitch(srcSwitch)
+        lockKeeperService.reviveSwitch(srcSwitch.dpId)
 
         then: "Flow is up and valid"
         Wrappers.wait(WAIT_OFFSET) {

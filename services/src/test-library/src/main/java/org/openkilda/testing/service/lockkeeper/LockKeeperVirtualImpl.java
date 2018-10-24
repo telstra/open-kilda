@@ -15,15 +15,19 @@
 
 package org.openkilda.testing.service.lockkeeper;
 
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+
+import java.util.Objects;
 
 /**
  * Provide functionality of {@link LockKeeperService} for virtual network.
@@ -36,18 +40,31 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl implements Lock
     @Value("${floodlight.controller.uri}")
     private String controllerHost;
 
-    @Override
-    public void knockoutSwitch(Switch switchDef) {
-        restTemplate.exchange("/knockoutswitch", HttpMethod.POST,
-                new HttpEntity<>(new SwitchModify(switchDef.getName(), null), buildJsonHeaders()), String.class);
-        log.debug("Knocking out switch: {}", switchDef.getName());
+    @Autowired
+    private TopologyDefinition topology;
+
+    private TopologyDefinition.Switch getSwitchBySwitchId(SwitchId switchId) {
+        return topology.getSwitches().stream()
+                .filter(sw -> Objects.equals(switchId, sw.getDpId()))
+                .findAny()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("Switch with dpid %s is not found", switchId.toString())));
     }
 
     @Override
-    public void reviveSwitch(Switch switchDef) {
+    public void knockoutSwitch(SwitchId switchId) {
+        String swName = getSwitchBySwitchId(switchId).getName();
+        restTemplate.exchange("/knockoutswitch", HttpMethod.POST,
+                new HttpEntity<>(new SwitchModify(swName, null), buildJsonHeaders()), String.class);
+        log.debug("Knocking out switch: {}", swName);
+    }
+
+    @Override
+    public void reviveSwitch(SwitchId switchId) {
+        String swName = getSwitchBySwitchId(switchId).getName();
         restTemplate.exchange("/reviveswitch", HttpMethod.POST,
-                new HttpEntity<>(new SwitchModify(switchDef.getName(), controllerHost),
+                new HttpEntity<>(new SwitchModify(swName, controllerHost),
                         buildJsonHeaders()), String.class);
-        log.debug("Revive switch: {}", switchDef.getName());
+        log.debug("Revive switch: {}", swName);
     }
 }

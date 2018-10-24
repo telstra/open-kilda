@@ -91,15 +91,16 @@ class Switch:
             ofctl(["mod-port {sw} -O {of_ver} {port} {port_state}"
                   .format(sw=self.name, of_ver=self.of_ver, port=str(port), port_state=port_state) for port in ports])
 
-    def add_controller(self, controller):
+    def add_controller(self, controller, batch=True):
         cmd = [
             'set-controller {} {}'.format(self.name, controller),
             'set controller {} connection-mode=out-of-band'.format(self.name)
         ]
-        self.vscmd.extend(cmd)
+        self.vscmd.extend(cmd) if batch else vsctl(cmd)
 
-    def remove_controller(self):
-        return vsctl(['del-controller %s' % self.name])
+    def remove_controller(self, batch=True):
+        cmd = ['del-controller %s' % self.name]
+        self.vscmd.extend(cmd) if batch else vsctl(cmd)
 
 
 class ASwitch(Switch):
@@ -212,10 +213,7 @@ class Topology:
             traffgens.append(tg)
             links.append(tg.make_link())
 
-        # def A-switch
         switches[A_SW_NAME] = ASwitch.create(A_SW_DEF)
-        switches[A_SW_NAME].setup(a_mappings)
-
         for sw_def in topo_def['switches']:
             sw = Switch.create(sw_def)
             switches[sw.name] = sw
@@ -224,6 +222,8 @@ class Topology:
             link.setup_switch_ports(switches)
 
         cls.batch_switch_cmd(switches)
+
+        switches[A_SW_NAME].setup(a_mappings)
         controller = resolve_host(topo_def['controller'])
         return cls(switches, links, traffgens, controller)
 

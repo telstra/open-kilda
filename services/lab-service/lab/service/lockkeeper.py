@@ -79,7 +79,7 @@ def ports_down():
 def switch_knock_out():
     body = request.get_json()
     sw = body['name']
-    switches[sw].remove_controller()
+    switches[sw].remove_controller(batch=False)
     return jsonify({'status': 'ok'})
 
 
@@ -88,7 +88,7 @@ def switch_revive():
     body = request.get_json()
     sw = body['name']
     controller_url = body['controller']
-    switches[sw].add_controller(resolve_host(controller_url))
+    switches[sw].add_controller(resolve_host(controller_url), batch=False)
     return jsonify({'status': 'ok'})
 
 
