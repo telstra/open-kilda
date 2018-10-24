@@ -13,25 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka.producer;
+package org.openkilda.floodlight.service.kafka;
 
-import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-
-public class SendStatus {
-    private final Future<RecordMetadata> promise;
-
-    protected SendStatus(Future<RecordMetadata> promise) {
-        this.promise = promise;
+public class DefaultWorker extends AbstractWorker {
+    public DefaultWorker(Producer<String, String> kafkaProducer, String topic) {
+        super(kafkaProducer, topic);
     }
 
-    public boolean isComplete() {
-        return promise.isDone();
-    }
-
-    public void waitTillComplete() throws InterruptedException, ExecutionException {
-        promise.get();
+    @Override
+    protected SendStatus send(String payload, Callback callback) {
+        ProducerRecord<String, String> record = new ProducerRecord<>(getTopic(), payload);
+        return new SendStatus(getKafkaProducer().send(record, callback));
     }
 }

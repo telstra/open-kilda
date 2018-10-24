@@ -18,7 +18,8 @@ package org.openkilda.floodlight.command.ping;
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
@@ -33,7 +34,7 @@ import java.util.UUID;
 abstract class PingCommand extends Command {
     protected static final Logger logPing = LoggerFactory.getLogger("open-kilda.flows.PING");
 
-    private final KafkaMessageProducer kafkaProducer;
+    private final IKafkaProducerService producerService;
     private final PingService pingService;
 
     private final KafkaTopicsConfig topics;
@@ -43,8 +44,8 @@ abstract class PingCommand extends Command {
 
         FloodlightModuleContext moduleContext = getContext().getModuleContext();
         pingService = moduleContext.getServiceImpl(PingService.class);
-        kafkaProducer = moduleContext.getServiceImpl(KafkaMessageProducer.class);
-        topics = kafkaProducer.getTopics();
+        producerService = moduleContext.getServiceImpl(IKafkaProducerService.class);
+        topics = moduleContext.getServiceImpl(KafkaUtilityService.class).getTopics();
     }
 
     void sendErrorResponse(UUID pingId, Ping.Errors errorCode) {
@@ -55,7 +56,7 @@ abstract class PingCommand extends Command {
     void sendResponse(PingResponse response) {
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), getContext().getCorrelationId());
         // TODO(surabujin): return future to avoid thread occupation during wait period(use CommandProcessorService)
-        kafkaProducer.postMessage(topics.getPingTopic(), message);
+        producerService.sendMessageAndTrack(topics.getPingTopic(), message);
     }
 
     protected PingService getPingService() {

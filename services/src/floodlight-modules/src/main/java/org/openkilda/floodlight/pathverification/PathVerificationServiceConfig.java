@@ -19,7 +19,6 @@ import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
-import java.util.Properties;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
@@ -35,19 +34,4 @@ public interface PathVerificationServiceConfig {
     @Key("hmac256-secret")
     @NotBlank
     String getHmac256Secret();
-
-    @Key("bootstrap-servers")
-    String getBootstrapServers();
-
-    /**
-     * Returns Kafka properties built with the configuration data for Producer.
-     */
-    default Properties createKafkaProducerProperties() {
-        Properties properties = new Properties();
-        properties.put("bootstrap.servers", getBootstrapServers());
-        properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-
-        return properties;
-    }
 }

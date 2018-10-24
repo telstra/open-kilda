@@ -13,10 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.ping.bolt;
+package org.openkilda.floodlight.service.kafka;
 
-import org.openkilda.wfm.share.bolt.KafkaDecoder;
+import org.openkilda.floodlight.service.IService;
+import org.openkilda.messaging.Message;
 
-public class InputDecoder extends KafkaDecoder {
-    public static final String BOLT_ID = ComponentId.INPUT_DECODER.toString();
+public interface IKafkaProducerService extends IService {
+    void enableGuaranteedOrder(String topic);
+
+    void disableGuaranteedOrder(String topic);
+
+    void disableGuaranteedOrder(String topic, long transitionPeriod);
+
+    void sendMessageAndTrack(String topic, Message message);
+
+    SendStatus sendMessage(String topic, Message message);
 }
