@@ -38,9 +38,6 @@ public class SwitchMapperTest {
         Assert.assertEquals(SwitchStatus.ACTIVE, sw.getStatus());
 
         SwitchInfoData switchInfoDataMapping = SwitchMapper.INSTANCE.map(sw);
-        switchInfoDataMapping.setState(SwitchChangeType.ACTIVATED);
-
         Assert.assertEquals(switchInfoData, switchInfoDataMapping);
     }
-
 }
