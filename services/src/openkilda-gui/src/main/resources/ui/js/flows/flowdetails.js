@@ -4,12 +4,7 @@ $(document).ready(function() {
 	var flowid = window.location.href.split("#")[1]
 	var tmp_anchor = '<a href="flowdetails#' + flowid + '">' + flowid + '</a>';
 	$("#flow-id-name").parent().append(flowid);
-	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
-	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == true){
-		$('#contractTab').show();
-	}else{
-		$('#contractTab').hide();
-	}
+	
 	$("#loading").css("display", "block");	
 	common.getData("/flows/"+flowid,"GET").then(function(response) {
 		$("#loading").css("display", "none");
@@ -136,7 +131,8 @@ function callResyncFlow(flow_id){
 			$('#validate_json_loader').hide();
 		})
 }
-function showFlowData(obj) {
+function showFlowData(obj) { 
+	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
 	$(".flow_div_flow_id").html(obj.flowid);
 	$(".flow_div_source_switch").html(obj["source_switch_name"]);
 	$(".flow_div_source_port").html(obj["src_port"]);
@@ -148,6 +144,18 @@ function showFlowData(obj) {
 	$(".flow_div_destination_vlan").html(obj["dst_vlan"]);
 	$(".flow_div_maximum_bandwidth").html(obj["maximum_bandwidth"]);
 	$(".flow_div_Status").html(obj.status);
+	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+		$('#contractTab').show();
+		if(obj['discrepancy'] && !obj['discrepancy']['controller-discrepancy']){ 
+			$('#edit_flow').css('display','inline-block!important');
+		}else{
+			$('#edit_flow').css('display','none!important');
+		}
+		
+	}else{
+		$('#edit_flow').css('display','inline-block  !important');
+		$('#contractTab').hide();
+	}
 	if (!obj.description == "") {
 		$(".flow_div_desc").html(obj.description);
 	} else {

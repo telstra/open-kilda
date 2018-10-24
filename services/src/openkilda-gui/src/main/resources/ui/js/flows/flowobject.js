@@ -263,13 +263,24 @@ class Flow {
 					$('#editflowloader').hide();
 					$('#flow_detail_div').hide();
 					$('#edit_flow').addClass('hidePermission').removeClass('showPermission');
+					var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
+					if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+						if(flowData['discrepancy'] && !flowData['discrepancy']['controller-discrepancy']){
+							$('#delete_flow').show();
+						}else{
+							$('#delete_flow').hide();
+						}
+						
+					}else{
+						$('#delete_flow').show();
+					}
 					$("#edit_flow_div").show().load('../ui/templates/flows/editflow.html',function(){
-						$("#edit_flow_div").find("#source_vlan").html(vlanOptions).val(flowData['vlan-id']);
-						$("#edit_flow_div").find("#target_vlan").html(vlanOptions).val(flowData['vlan-id']);
+						$("#edit_flow_div").find("#source_vlan").html(vlanOptions).val(flowData['src_vlan']);
+						$("#edit_flow_div").find("#target_vlan").html(vlanOptions).val(flowData['dst_vlan']);
 						$("#edit_flow_div").find("#flowname").val(flowData.flowid);
 						$("#edit_flow_div").find("#flowname_read").val(flowData.flowid);
 						$("#edit_flow_div").find("#flow_description").val(flowData.description);
-						$("#edit_flow_div").find("#max_bandwidth").val(flowData['maximum-bandwidth']);
+						$("#edit_flow_div").find("#max_bandwidth").val(flowData['maximum_bandwidth']);
 						if(USER_SESSION != "" && USER_SESSION != undefined) {
 							var userPermissions = USER_SESSION.permissions;
 							if(userPermissions.includes("fw_flow_delete")){ 
@@ -304,7 +315,7 @@ class Flow {
 								         placeholder:"Please select a port",
 								         matcher: common.matchCustomFlow
 								        }).on("select2:close", function (e) { flowObj.checkValidate('source_port')});
-							  		 $("#source_port").val(flowData.source['port-id']).trigger('change');
+							  		 $("#source_port").val(flowData['src_port']).trigger('change');
 						  		 });
 					       });
 					       
@@ -322,7 +333,7 @@ class Flow {
 							         placeholder:"Please select a port",
 							         matcher: common.matchCustomFlow
 							        }).on("select2:close", function (e) { flowObj.checkValidate('target_port')});
-								$("#target_port").val(flowData.destination['port-id']).trigger('change');
+								$("#target_port").val(flowData['dst_port']).trigger('change');
 					  		 });
 					       
 					       });

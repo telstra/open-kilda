@@ -175,8 +175,17 @@ function showflowData(response){
 					   if(USER_SESSION != "" && USER_SESSION != undefined) {
 								var userPermissions = USER_SESSION.permissions;
 								if(userPermissions.includes("fw_flow_update")){
-									tableRow+="<i class='icon icon-edit' title='edit flow' onClick=goToflowDetail('"+response[i].flowid+"',true); style='margin-right:10px;'></i>";
-					 			   	
+									if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+										if(response[i]['discrepancy'] && !response[i]['discrepancy']['controller-discrepancy']){
+											tableRow+="<i class='icon icon-edit' title='edit flow' onClick=goToflowDetail('"+response[i].flowid+"',true); style='margin-right:10px;'></i>";
+									 	}else{
+									 		tableRow+="";
+										}
+										
+									}else{
+										tableRow+="<i class='icon icon-edit' title='edit flow' onClick=goToflowDetail('"+response[i].flowid+"',true); style='margin-right:10px;'></i>";
+						 			}
+									
 								}
 						}
 					   

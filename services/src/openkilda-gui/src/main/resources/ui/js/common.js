@@ -305,33 +305,45 @@ if(page == "home"){
 	$("#home-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
 	storage.remove("SWITCHES_LIST");
+	localStorage.removeItem('haslinkStoreSetting');
+	localStorage.removeItem('linkStoreSetting');
 }else if(page == "topology"){
 	$("#topology-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
 	storage.remove("SWITCHES_LIST");
+	localStorage.removeItem('haslinkStoreSetting');
+	localStorage.removeItem('linkStoreSetting');
 	TopologyIntervalID = setInterval(updateTopologyCoordinates,5000);
 }else if(page == "flows" || page == "flowdetails" || (page.indexOf('details')!==-1 && href.indexOf('flows')!==-1)){
 	$("#flows-menu-id").addClass("active");
-	storage.remove("SWITCHES_LIST");
-	localStorage.removeItem('haslinkStoreSetting');
-	localStorage.removeItem('linkStoreSetting');
+	storage.remove("SWITCHES_LIST");	
 }else if(page == "isllist" || page == "isl"){
 	$("#isl-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
 	storage.remove("SWITCHES_LIST");
+	localStorage.removeItem('haslinkStoreSetting');
+	localStorage.removeItem('linkStoreSetting');
 }else if(page == "switch" || (page.indexOf('details')!==-1 && href.indexOf('switch')!==-1)){ 
 	$("#switch-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
+	localStorage.removeItem('haslinkStoreSetting');
+	localStorage.removeItem('linkStoreSetting');
 }
 else if(page == "usermanagement" || (page.indexOf('details')!==-1 && href.indexOf('usermanagement')!==-1)){ 
 	$("#usermanagement-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
+	localStorage.removeItem('haslinkStoreSetting');
+	localStorage.removeItem('linkStoreSetting');
 }else if(page =='useractivity'){
 	$("#useractivity-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
+	localStorage.removeItem('haslinkStoreSetting');
+	localStorage.removeItem('linkStoreSetting');
 }else if(page =='discrepancy'){
 	$("#discrepancy-menu-id").addClass("active");
 	storage.remove("FLOWS_LIST");
+	localStorage.removeItem('haslinkStoreSetting');
+	localStorage.removeItem('linkStoreSetting');
 }
 /** sub menu related code End **/
 
