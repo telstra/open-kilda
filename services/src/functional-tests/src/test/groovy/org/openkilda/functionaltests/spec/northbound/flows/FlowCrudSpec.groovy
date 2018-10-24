@@ -10,8 +10,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
@@ -28,7 +28,7 @@ class FlowCrudSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
-    TopologyEngineService topologyEngineService
+    Database db
     @Autowired
     FlowHelper flowHelper
     @Autowired
@@ -239,7 +239,7 @@ class FlowCrudSpec extends BaseSpecification {
 
     @Memoized
     def getPreferredPath(Switch src, Switch dst){
-        def possibleFlowPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+        def possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path
         return possibleFlowPaths.min {
             /*
               Taking the actual cost of every ISL for all the permutations takes ages. Since we assume that at the
