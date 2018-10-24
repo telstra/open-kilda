@@ -17,24 +17,23 @@ package org.openkilda.floodlight.kafka;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.CommandProcessorService;
-import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaConsumerSetup;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -62,17 +61,12 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> dependencies = new ArrayList<>();
-        ConsumerContext.fillDependencies(dependencies);
-
-        dependencies.add(IFloodlightProviderService.class);
-        dependencies.add(IOFSwitchService.class);
-        dependencies.add(IThreadPoolService.class);
-        dependencies.add(KafkaMessageProducer.class);
-        dependencies.add(CommandProcessorService.class);
-        dependencies.add(InputService.class);
-
-        return dependencies;
+        return ImmutableList.of(
+                IPathVerificationService.class,
+                ISwitchManager.class,
+                KafkaUtilityService.class,
+                IKafkaProducerService.class,
+                CommandProcessorService.class);
     }
 
     @Override
@@ -85,23 +79,25 @@ public class KafkaMessageCollector implements IFloodlightModule {
         logger.info("Starting {}", this.getClass().getCanonicalName());
 
         ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
-        KafkaConsumerConfig consumerConfig = provider.getConfiguration(KafkaConsumerConfig.class);
-
-        KafkaTopicsConfig topicsConfig = moduleContext.getServiceImpl(KafkaMessageProducer.class).getTopics();
-        ConsumerContext context = new ConsumerContext(moduleContext, topicsConfig);
+        KafkaMessageCollectorConfig consumerConfig = provider.getConfiguration(KafkaMessageCollectorConfig.class);
 
         ExecutorService generalExecutor = buildExecutorWithNoQueue(consumerConfig.getGeneralExecutorCount());
         logger.info("Kafka Consumer: general executor threads = {}", consumerConfig.getGeneralExecutorCount());
 
-        initConsumer(consumerConfig, context, topicsConfig.getSpeakerTopic(), generalExecutor);
-        initConsumer(consumerConfig, context, topicsConfig.getSpeakerFlowTopic(), generalExecutor);
-        initConsumer(consumerConfig, context, topicsConfig.getSpeakerFlowPingTopic(), generalExecutor);
+        KafkaUtilityService kafkaUtility = moduleContext.getServiceImpl(KafkaUtilityService.class);
+        KafkaTopicsConfig topics = kafkaUtility.getTopics();
+
+        ConsumerLauncher launcher = new ConsumerLauncher(moduleContext, consumerConfig);
+        launcher.launch(generalExecutor, new KafkaConsumerSetup(topics.getSpeakerTopic()));
+        launcher.launch(generalExecutor, new KafkaConsumerSetup(topics.getSpeakerFlowTopic()));
+        launcher.launch(generalExecutor, new KafkaConsumerSetup(topics.getSpeakerFlowPingTopic()));
 
         ExecutorService discoCommandExecutor = buildExecutorWithNoQueue(consumerConfig.getDiscoExecutorCount());
         logger.info("Kafka Consumer: disco executor threads = {}", consumerConfig.getDiscoExecutorCount());
 
-        initConsumer(consumerConfig, context, topicsConfig.getSpeakerDiscoTopic(), discoCommandExecutor,
-                OffsetResetStrategy.LATEST);
+        KafkaConsumerSetup kafkaSetup = new KafkaConsumerSetup(topics.getSpeakerDiscoTopic());
+        kafkaSetup.offsetResetStrategy(OffsetResetStrategy.LATEST);
+        launcher.launch(discoCommandExecutor, kafkaSetup);
     }
 
     private ExecutorService buildExecutorWithNoQueue(int executorCount) {
@@ -110,31 +106,34 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 new SynchronousQueue<>(), new RetryableExecutionHandler());
     }
 
-    private void initConsumer(KafkaConsumerConfig consumerConfig, ConsumerContext context, String topic,
-                              ExecutorService handlerExecutor) {
-        initConsumer(consumerConfig, context, topic, handlerExecutor, null);
-    }
+    private static class ConsumerLauncher {
+        private final FloodlightModuleContext moduleContext;
+        private final KafkaMessageCollectorConfig consumerConfig;
 
-    private void initConsumer(KafkaConsumerConfig consumerConfig, ConsumerContext context, String topic,
-                              ExecutorService handlerExecutor, OffsetResetStrategy defaultOffsetStrategy) {
-        logger.info("Kafka Consumer: topic = {}", topic);
+        private final RecordHandler.Factory handlerFactory;
+        private final boolean isTestingMode;
 
-        RecordHandler.Factory handlerFactory = new RecordHandler.Factory(context);
-        ISwitchManager switchManager = context.getSwitchManager();
+        ConsumerLauncher(FloodlightModuleContext moduleContext, KafkaMessageCollectorConfig consumerConfig) {
+            this.moduleContext = moduleContext;
+            this.consumerConfig = consumerConfig;
 
-        try {
+            ConsumerContext context = new ConsumerContext(moduleContext);
+            this.handlerFactory = new RecordHandler.Factory(context);
+
+            isTestingMode = moduleContext.getServiceImpl(KafkaUtilityService.class).isTestingMode();
+        }
+
+        private void launch(ExecutorService handlerExecutor, KafkaConsumerSetup kafkaSetup) {
             Consumer consumer;
-            if (!consumerConfig.isTestingMode()) {
-                consumer = new Consumer(consumerConfig, handlerExecutor, handlerFactory,
-                        switchManager, topic, defaultOffsetStrategy);
+            if (!isTestingMode) {
+                consumer = new Consumer(moduleContext, handlerExecutor, kafkaSetup, handlerFactory,
+                        consumerConfig.getAutoCommitInterval());
             } else {
-                consumer = new TestAwareConsumer(context, consumerConfig, handlerExecutor, handlerFactory,
-                        switchManager, topic, defaultOffsetStrategy);
+                consumer = new TestAwareConsumer(moduleContext, handlerExecutor, kafkaSetup, handlerFactory,
+                        consumerConfig.getAutoCommitInterval());
             }
             Executors.newSingleThreadScheduledExecutor()
                     .scheduleWithFixedDelay(consumer, 0, 1, TimeUnit.MILLISECONDS);
-        } catch (Exception exception) {
-            logger.error("error", exception);
         }
     }
 
@@ -142,13 +141,14 @@ public class KafkaMessageCollector implements IFloodlightModule {
      * Handler of rejected messages by ThreadPoolExecutor, in case of reject this handler will wait
      * until one of executors becomes available.
      */
-    private class RetryableExecutionHandler implements RejectedExecutionHandler {
+    private static class RetryableExecutionHandler implements RejectedExecutionHandler {
         @Override
         public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
             if (!executor.isShutdown()) {
                 try {
                     executor.getQueue().put(r);
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     logger.error("Couldn't retry to process message", e);
                 }
             }

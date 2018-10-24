@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -42,8 +43,7 @@ class BandwidthSpec extends BaseSpecification {
                 def switchIds = link.path*.switchId
                 !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
             }
-        }
-        assert srcSwitch && dstSwitch
+        } ?: assumeTrue("No suiting switches found", false)
 
         when: "Create a flow with a valid bandwidth"
         def maximumBandwidth = 1000
@@ -101,8 +101,7 @@ class BandwidthSpec extends BaseSpecification {
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
             possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1
-        }
-        assert srcSwitch && dstSwitch
+        } ?: assumeTrue("No suiting switches found", false)
 
         // Make the first path more preferable than others.
         possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(possibleFlowPaths.first(), it) }
@@ -144,7 +143,6 @@ class BandwidthSpec extends BaseSpecification {
         def switches = topology.getActiveSwitches()
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .find { Switch src, Switch dst -> src != dst }
-        assert srcSwitch && dstSwitch
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
         def possibleFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
@@ -170,7 +168,6 @@ class BandwidthSpec extends BaseSpecification {
         def switches = topology.getActiveSwitches()
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .find { Switch src, Switch dst -> src != dst }
-        assert srcSwitch && dstSwitch
 
         when: "Create a flow with a valid bandwidth"
         def maximumBandwidth = 1000
@@ -209,7 +206,6 @@ class BandwidthSpec extends BaseSpecification {
         def switches = topology.getActiveSwitches()
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .find { Switch src, Switch dst -> src != dst }
-        assert srcSwitch && dstSwitch
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -236,9 +232,7 @@ class BandwidthSpec extends BaseSpecification {
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
         given: "Two active neighboring switches"
         def isl = topology.getIslsForActiveSwitches().first()
-        def srcSwitch = isl.srcSwitch
-        def dstSwitch = isl.dstSwitch
-        assert srcSwitch && dstSwitch
+        def (srcSwitch, dstSwitch) = [isl.srcSwitch, isl.dstSwitch]
 
         when: "Create a flow with a valid small bandwidth"
         def maximumBandwidth = 1000

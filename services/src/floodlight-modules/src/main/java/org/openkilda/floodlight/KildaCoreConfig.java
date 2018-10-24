@@ -15,12 +15,10 @@
 
 package org.openkilda.floodlight;
 
-import org.openkilda.floodlight.config.KafkaFloodlightConfig;
-
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
-public interface KildaCoreConfig extends KafkaFloodlightConfig {
+public interface KildaCoreConfig {
     @Key("command-processor-workers-count")
     @Default("4")
     int getCommandPersistentWorkersCount();

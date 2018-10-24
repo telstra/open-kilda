@@ -9,7 +9,6 @@ floodlight.modules=\
   net.floodlightcontroller.ui.web.StaticWebRoutable,\
   net.floodlightcontroller.statistics.StatisticsCollector,\
   org.openkilda.floodlight.switchmanager.SwitchEventCollector,\
-  org.openkilda.floodlight.kafka.KafkaMessageProducer,\
   org.openkilda.floodlight.kafka.KafkaMessageCollector,\
   org.openkilda.floodlight.switchmanager.SwitchManager,\
   org.openkilda.floodlight.pathverification.PathVerificationService,\
@@ -65,23 +64,14 @@ net.floodlightcontroller.topology.TopologyManager.maxPathsToCompute=3
 #org.openkilda.floodlight.KildaCore.command-processor-workers-limit = 32
 #org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = 8
 #org.openkilda.floodlight.KildaCore.command-processor-idle-workers-keep-alive-seconds = 300
-org.openkilda.floodlight.kafka.KafkaMessageCollector.environment-naming-prefix=
-org.openkilda.floodlight.kafka.KafkaMessageCollector.testing-mode=YES
-org.openkilda.floodlight.kafka.KafkaMessageCollector.bootstrap-servers=kafka.pendev:9092
+org.openkilda.floodlight.KafkaChannel.environment-naming-prefix=
+org.openkilda.floodlight.KafkaChannel.bootstrap-servers=kafka.pendev:9092
+#org.openkilda.floodlight.KafkaChannel.heart-beat-interval=1
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors=10
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors=10
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-auto-commit-interval=1000
-org.openkilda.floodlight.kafka.KafkaMessageProducer.environment-naming-prefix=
-org.openkilda.floodlight.kafka.KafkaMessageProducer.testing-mode=YES
-org.openkilda.floodlight.kafka.KafkaMessageProducer.heart-beat-interval=2
-org.openkilda.floodlight.kafka.KafkaMessageProducer.bootstrap-servers=kafka.pendev:9092
-org.openkilda.floodlight.pathverification.PathVerificationService.environment-naming-prefix=
-org.openkilda.floodlight.pathverification.PathVerificationService.bootstrap-servers=kafka.pendev:9092
-#org.openkilda.floodlight.pathverification.PathVerificationService.isl_bandwidth_quotient=1.0
+org.openkilda.floodlight.pathverification.PathVerificationService.isl_bandwidth_quotient=1.0
 org.openkilda.floodlight.pathverification.PathVerificationService.hmac256-secret=secret
-org.openkilda.floodlight.statistics.StatisticsService.environment-naming-prefix=
-org.openkilda.floodlight.statistics.StatisticsService.bootstrap-servers=kafka.pendev:9092
 org.openkilda.floodlight.statistics.StatisticsService.interval=60
-org.openkilda.floodlight.switchmanager.SwitchEventCollector.environment-naming-prefix=
 org.openkilda.floodlight.switchmanager.SwitchManager.environment-naming-prefix=
 org.openkilda.floodlight.switchmanager.SwitchManager.connect-mode=AUTO
