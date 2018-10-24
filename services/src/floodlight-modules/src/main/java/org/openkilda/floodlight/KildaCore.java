@@ -17,20 +17,23 @@ package org.openkilda.floodlight;
 
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.FeatureDetectorService;
+import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -40,21 +43,24 @@ import java.util.Map;
 public class KildaCore implements IFloodlightModule {
     private KildaCoreConfig config;
     private final CommandContextFactory commandContextFactory = new CommandContextFactory();
+    private final Map<Class<? extends IFloodlightService>, IFloodlightService> services;
+
+    public KildaCore() {
+        services = ImmutableMap.<Class<? extends IFloodlightService>, IFloodlightService>builder()
+                .put(CommandProcessorService.class, new CommandProcessorService(this, commandContextFactory))
+                .put(InputService.class, new InputService(commandContextFactory))
+                .put(SessionService.class, new SessionService())
+                .put(FeatureDetectorService.class, new FeatureDetectorService())
+                .build();
+    }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        return ImmutableList.of(
-                CommandProcessorService.class,
-                InputService.class,
-                SessionService.class);
+        return services.keySet();
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        HashMap<Class<? extends IFloodlightService>, IFloodlightService> services = new HashMap<>();
-        services.put(CommandProcessorService.class, new CommandProcessorService(this, commandContextFactory));
-        services.put(InputService.class, new InputService(commandContextFactory));
-        services.put(SessionService.class, new SessionService());
         return services;
     }
 
@@ -73,12 +79,14 @@ public class KildaCore implements IFloodlightModule {
     }
 
     @Override
-    public void startUp(FloodlightModuleContext moduleContext) {
+    public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         commandContextFactory.init(moduleContext);
 
-        moduleContext.getServiceImpl(CommandProcessorService.class).setup(moduleContext);
-        moduleContext.getServiceImpl(InputService.class).setup(moduleContext);
-        moduleContext.getServiceImpl(SessionService.class).setup(moduleContext);
+        for (IFloodlightService entry : services.values()) {
+            if (entry instanceof IService) {
+                ((IService) entry).setup(moduleContext);
+            }
+        }
     }
 
     public KildaCoreConfig getConfig() {

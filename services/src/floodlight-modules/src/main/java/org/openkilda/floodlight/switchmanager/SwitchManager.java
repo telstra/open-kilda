@@ -35,6 +35,7 @@ import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
@@ -196,7 +197,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 IOFSwitchService.class,
                 IRestApiService.class,
                 KafkaUtilityService.class,
-                IKafkaProducerService.class);
+                IKafkaProducerService.class,
+                FeatureDetectorService.class);
     }
 
     /**
@@ -1227,8 +1229,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<OFPortDesc> getPhysicalPorts(DatapathId dpId) throws SwitchNotFoundException {
-        IOFSwitch sw = lookupSwitch(dpId);
+        return this.getPhysicalPorts(lookupSwitch(dpId));
+    }
 
+    @Override
+    public List<OFPortDesc> getPhysicalPorts(IOFSwitch sw) {
         final Collection<OFPortDesc> ports = sw.getPorts();
         if (ports == null) {
             return ImmutableList.of();

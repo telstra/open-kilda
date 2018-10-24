@@ -13,34 +13,40 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.discovery;
-
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.model.Switch;
+package org.openkilda.messaging.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
 
+import java.io.Serializable;
+
 /**
- * Defines the {@link InfoMessage} payload representing a switch for network sync process.
+ * Represent details about physical switch port. Should not be used as independent entity, only as part
+ * of {@link Switch} definition.
  */
 @Value
-@Builder
-@EqualsAndHashCode(callSuper = false)
-public class NetworkDumpSwitchData extends InfoData {
-    private static final long serialVersionUID = 1L;
+public class SwitchPort implements Serializable {
+    @JsonProperty(value = "number", required = true)
+    private int number;
 
-    @JsonProperty(value = "switch_record", required = true)
-    private Switch switchRecord;
+    @NonNull
+    @JsonProperty(value = "state", required = true)
+    private State state;
 
+    @Builder
     @JsonCreator
-    public NetworkDumpSwitchData(
-            @JsonProperty("switch_record") @NonNull Switch switchRecord) {
-        this.switchRecord = switchRecord;
+    public SwitchPort(
+            @JsonProperty("number") int number,
+            @JsonProperty("state") @NonNull State state) {
+        this.number = number;
+        this.state = state;
+    }
+
+    public enum State {
+        UP,
+        DOWN;
     }
 }
