@@ -115,6 +115,10 @@ class StoreSetting {
 				storeSettingObj.linkStoreObj = JSONResponse;
 				storeSettingObj.setLinkForm(JSONResponse);
 				storeSettingObj.disableLinkStoreForm();
+			}else{
+				$('#linkStoreForm')[0].reset();
+				$('#linkStoreForm').find('.error').hide();
+				$('#linkStoreForm').find('input').removeClass('errorInput');
 			}
 		},function(error){
 			$('#loading_config').hide();
@@ -362,9 +366,8 @@ class StoreSetting {
 		return validatedForm;
 	}
 	validateUrl(url) {
-		return true;
 		var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
-	    if(res == null)
+		if(res == null)
 	        return false;
 	    else
 	        return true;
@@ -388,36 +391,36 @@ class StoreSetting {
 		var elmVal = $('#'+id).val();
 		var ifUrlField = $('#'+id).attr('rel') == 'urltext';
 		var requiredParams = $('#requiredParam_'+id).find("plaintext").html();
+		var flag = false;
 		if(elmVal != '' && typeof(elmVal) != 'undefined'){
 			 	$('#' + id + "Error").hide();
 				$('#' + id).removeClass("errorInput");
 				if(ifUrlField && !storeSettingObj.validateUrl(elmVal)){
 					$('#' + id + "ErrorUrl").show();
 					$('#' + id).addClass("errorInput");
-					return false;
+					flag =  false;
 				}else{
-					if(typeof(requiredParams) !='undefined'){
-						if(!storeSettingObj.validateUrlParams(elmVal,requiredParams)){
-							$('#' + id + "requiredError").show();
-							$('#' + id).addClass("errorInput");
-							return false;
-						}else{
-							$('#' + id + "requiredError").hide();
-							$('#' + id).removeClass("errorInput");
-							return true;
-						}
-					}else{
 						$('#' + id + "ErrorUrl").hide();
 						$('#' + id).removeClass("errorInput");
-						return true;
+						flag =  true;
+				}
+				if(typeof(requiredParams) !='undefined'){
+					if(!storeSettingObj.validateUrlParams(elmVal,requiredParams)){
+						$('#' + id + "requiredError").show();
+						$('#' + id).addClass("errorInput");
+						flag =  false;
+					}else{
+						$('#' + id + "requiredError").hide();
+						$('#' + id).removeClass("errorInput");
+						flag =  true;
 					}
-					
 				}
 		}else{
 			$('#' + id + "Error").show();
 			$('#' + id).addClass("errorInput");
-			return false;
+			flag =  false;
 		}
+		return flag;
 	}
 	
 }
