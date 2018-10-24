@@ -38,6 +38,12 @@ class Switch:
     def __init__(self, name, of_ver):
         self.name = name
         self.of_ver = of_ver
+        self.vscmd = []
+
+    def get_and_flush_batch_cmd(self):
+        cmd = " -- ".join(self.vscmd)
+        self.vscmd = []
+        return cmd
 
     @classmethod
     def create(cls, sw_def):
@@ -63,20 +69,19 @@ class Switch:
         # for port_def in out_ports:
         #     switch.add_port(pname(name, str(port_def['port'])), str(port_def['port']))
 
-        vsctl(cmd)
+        switch.vscmd.extend(cmd)
         return switch
 
     def destroy(self):
-        vsctl(['del-br {}'.format(self.name)])
+        self.vscmd.extend((['del-br {}'.format(self.name)]))
 
-    def setup_port(self, p_name, p_num, bandwidth=None, batch=False):
+    def setup_port(self, p_name, p_num, bandwidth=None):
         cmd = [
             'set interface {} ofport_request={}'.format(p_name, p_num),
         ]
         if bandwidth:
             cmd.append('set interface {} ingress_policing_rate={}'.format(p_name, bandwidth))
-
-        return " -- ".join(cmd) if batch else vsctl(cmd)
+        self.vscmd.extend(cmd)
 
     def dump_flows(self):
         return ofctl(["dump-flows {sw} -O {of_ver}".format(sw=self.name, of_ver=self.of_ver)])[0]
@@ -86,12 +91,12 @@ class Switch:
             ofctl(["mod-port {sw} -O {of_ver} {port} {port_state}"
                   .format(sw=self.name, of_ver=self.of_ver, port=str(port), port_state=port_state) for port in ports])
 
-    def add_controller(self, controller, batch=False):
+    def add_controller(self, controller):
         cmd = [
             'set-controller {} {}'.format(self.name, controller),
             'set controller {} connection-mode=out-of-band'.format(self.name)
         ]
-        return " -- ".join(cmd) if batch else vsctl(cmd)
+        self.vscmd.extend(cmd)
 
     def remove_controller(self):
         return vsctl(['del-controller %s' % self.name])
@@ -141,11 +146,9 @@ class Link:
         run_cmd('ip link delete {}'.format(self.src_name()))
 
     def setup_switch_ports(self, switches):
-        cmd = [switches[self.src].setup_port(self.src_name(), self.src_port, self.bandwidth, batch=True)]
+        switches[self.src].setup_port(self.src_name(), self.src_port, self.bandwidth)
         if self.is_isl:
-            cmd.append(
-                switches[self.dst].setup_port(self.dst_name(), self.dst_port, self.bandwidth, batch=True))
-        return " -- ".join(cmd)
+            switches[self.dst].setup_port(self.dst_name(), self.dst_port, self.bandwidth)
 
 
 class Traffgen:
@@ -217,20 +220,39 @@ class Topology:
             sw = Switch.create(sw_def)
             switches[sw.name] = sw
 
-        cmd = []
         for link in links:
-            cmd.append(link.setup_switch_ports(switches))
-        vsctl(cmd)
+            link.setup_switch_ports(switches)
 
+        cls.batch_switch_cmd(switches)
         controller = resolve_host(topo_def['controller'])
         return cls(switches, links, traffgens, controller)
 
+    # This should be ~ 'getconf ARG_MAX' / 8
+    # Empirical constant copied from Mininet
+    ARG_MAX = 128000
+
+    @classmethod
+    def batch_switch_cmd(cls, switches):
+        vsctl_len = len('ovs-vsctl')
+        cmds = []
+        cmds_len = 0
+        for sw in switches.values():
+            cmd = sw.get_and_flush_batch_cmd()
+            # Don't exceed ARG_MAX
+            if len(cmd) + cmds_len + vsctl_len >= cls.ARG_MAX:
+                vsctl(cmds)
+                cmds = []
+                cmds_len = 0
+            cmds.append(cmd)
+            cmds_len += len(cmd)
+        if cmds:
+            vsctl(cmds)
+
     def run(self):
-        cmd = []
         for sw in self.switches.values():
             if sw.name != A_SW_NAME:
-                cmd.append(sw.add_controller(self.controller, batch=True))
-        vsctl(cmd)
+                sw.add_controller(self.controller)
+        Topology.batch_switch_cmd(self.switches)
 
         for tgen in self.traffgens:
             tgen.run()
@@ -241,6 +263,7 @@ class Topology:
 
         for _, sw in self.switches.items():
             sw.destroy()
+        Topology.batch_switch_cmd(self.switches)
 
         for link in self.links:
             link.destroy()

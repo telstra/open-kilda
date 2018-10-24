@@ -10,7 +10,7 @@
   "active_traff_gens": [
     {
       "active": true, 
-      "control_endpoint": "http://172.28.10.136:4041", 
+      "control_endpoint": "http://127.0.0.1:4041",
       "iface_name": "eth0", 
       "name": "tg1", 
       "status": "Active", 
@@ -19,7 +19,7 @@
     }, 
     {
       "active": true, 
-      "control_endpoint": "http://172.28.10.136:4042", 
+      "control_endpoint": "http://127.0.0.1:4042",
       "iface_name": "eth0", 
       "name": "tg2", 
       "status": "Active", 
@@ -28,7 +28,7 @@
     }, 
     {
       "active": true, 
-      "control_endpoint": "http://172.28.10.136:4044", 
+      "control_endpoint": "http://127.0.0.1:4044",
       "iface_name": "eth0", 
       "name": "tg4", 
       "status": "Active", 
@@ -37,7 +37,7 @@
     }, 
     {
       "active": true, 
-      "control_endpoint": "http://172.28.10.136:4045", 
+      "control_endpoint": "http://127.0.0.1:4045",
       "iface_name": "eth0", 
       "name": "tg5", 
       "status": "Active", 
@@ -712,7 +712,7 @@
   "traff_gens": [
     {
       "active": true, 
-      "control_endpoint": "http://172.28.10.136:4041", 
+      "control_endpoint": "http://127.0.0.1:4041",
       "iface_name": "eth0", 
       "name": "tg1", 
       "status": "Active", 
@@ -721,7 +721,7 @@
     }, 
     {
       "active": true, 
-      "control_endpoint": "http://172.28.10.136:4042", 
+      "control_endpoint": "http://127.0.0.1:4042",
       "iface_name": "eth0", 
       "name": "tg2", 
       "status": "Active", 
@@ -730,7 +730,7 @@
     }, 
     {
       "active": false, 
-      "control_endpoint": "http://172.28.10.136:4043", 
+      "control_endpoint": "http://127.0.0.1:4043",
       "iface_name": "eth0", 
       "name": "tg3", 
       "status": "Inactive", 
@@ -739,7 +739,7 @@
     }, 
     {
       "active": true, 
-      "control_endpoint": "http://172.28.10.136:4044", 
+      "control_endpoint": "http://127.0.0.1:4044",
       "iface_name": "eth0", 
       "name": "tg4", 
       "status": "Active", 
@@ -748,7 +748,7 @@
     }, 
     {
       "active": true, 
-      "control_endpoint": "http://172.28.10.136:4045", 
+      "control_endpoint": "http://127.0.0.1:4045",
       "iface_name": "eth0", 
       "name": "tg5", 
       "status": "Active", 

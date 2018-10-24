@@ -18,6 +18,7 @@ import signal
 import time
 import json
 from multiprocessing import Process
+from threading import Thread
 from logging.config import dictConfig
 
 
@@ -30,6 +31,12 @@ def run_process(run_fn):
     proc = Process(target=run_fn)
     proc.start()
     return proc
+
+
+def run_thread(run_fn):
+    thread = Thread(target=run_fn)
+    thread.start()
+    return thread
 
 
 def loop_forever(teardown_fn):

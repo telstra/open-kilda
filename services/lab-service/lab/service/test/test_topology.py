@@ -17,10 +17,12 @@ import json
 from service.topology import Topology
 
 
-def test_parse_smoke(mocker):
+def test_smoke(mocker):
     mocker.patch('service.topology.run_cmd')
     mocker.patch('service.topology.vsctl')
     mocker.patch('service.topology.ofctl')
 
     with open("./service/test/res/topology.json", "r") as f:
-        Topology.create(json.loads(f.read()))
+        topo = Topology.create(json.loads(f.read()))
+    topo.run()
+    topo.destroy()

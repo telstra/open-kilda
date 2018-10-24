@@ -17,9 +17,10 @@ from flask import Flask, Response, request, jsonify
 from docker import DockerClient
 import requests
 import logging
+import itertools
 from urllib.parse import urlparse
 import os
-from common import init_logger, run_process, loop_forever
+from common import init_logger, run_thread, loop_forever
 
 app = Flask(__name__)
 init_logger()
@@ -38,7 +39,7 @@ else:
 HW_LOCKKEEPER_REST_HOST = os.environ.get("HW_LOCKKEEPER_REST_HOST")
 
 HW_LAB_ID = 0
-count = 0
+count = itertools.count(start=1, step=1)
 labs = {}
 
 
@@ -65,6 +66,7 @@ class Lab:
 
     def destroy(self):
         if self.lab_id != HW_LAB_ID:
+            logger.debug('Destroying lab with id %s' % self.lab_id)
             cnt = docker.containers.get(make_container_name(self.lab_id))
             cnt.stop()
             cnt.remove()
@@ -77,8 +79,6 @@ def get_defined_labs():
 
 @app.route('/api', methods=['POST'])
 def create_lab():
-    global count
-
     try:
         is_hw = request.headers.get('Hw-Env', False)
         if is_hw:
@@ -88,12 +88,12 @@ def create_lab():
                 labs[HW_LAB_ID] = Lab(HW_LAB_ID, request.get_json())
                 return jsonify({'lab_id': HW_LAB_ID})
 
-        count = count + 1
-        labs[count] = Lab(count, request.get_json())
+        lab_id = next(count)
+        labs[lab_id] = Lab(lab_id, request.get_json())
     except Exception as ex:
         logger.exception(ex)
         return Response(str(ex), status=500)
-    return jsonify({'lab_id': count})
+    return jsonify({'lab_id': lab_id})
 
 
 @app.route('/api/<int:lab_id>', methods=['DELETE'])
@@ -156,10 +156,15 @@ def traffgen_proxy(lab_id, tg_name, to_path):
 
 
 def main():
-    server_proc = run_process(lambda: app.run(host='0.0.0.0', port=8288))
+    server_th = run_thread(lambda: app.run(host='0.0.0.0', port=8288))
 
     def teardown():
         logger.info('Terminating...')
-        server_proc.terminate()
-        server_proc.join()
+
+        for lab in labs.values():
+            try:
+                lab.destroy()
+            except Exception as e:
+                logger.exception(e)
+        server_th.terminate()
     loop_forever(teardown)
