@@ -16,6 +16,8 @@
 package org.openkilda.testing.service.database;
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
@@ -37,4 +39,6 @@ public interface Database {
     int countFlows();
 
     List<PathInfoData> getPaths(SwitchId src, SwitchId dst);
+
+    FlowPair<Flow, Flow> getFlow(String flowId);
 }

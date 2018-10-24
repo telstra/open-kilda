@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchState;
@@ -53,7 +52,6 @@ import org.openkilda.testing.service.floodlight.model.SwitchEntry;
 import org.openkilda.testing.service.lockkeeper.LockKeeperService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.northbound.NorthboundService;
-import org.openkilda.testing.service.topology.TopologyEngineService;
 import org.openkilda.testing.service.traffexam.TraffExamService;
 import org.openkilda.testing.service.traffexam.model.Bandwidth;
 import org.openkilda.testing.service.traffexam.model.Exam;
@@ -85,24 +83,6 @@ public class StubServiceFactory {
 
     public StubServiceFactory(TopologyDefinition topologyDefinition) {
         this.topologyDefinition = topologyDefinition;
-    }
-
-    /**
-     * Get a stub for {@link TopologyEngineService}. The instance is tied to the factory state.
-     */
-    public TopologyEngineService getTopologyEngineStub() {
-        TopologyEngineService serviceMock = mock(TopologyEngineService.class);
-
-        when(serviceMock.getFlow(any()))
-                .thenAnswer(invocation -> {
-                    String flowId = (String) invocation.getArguments()[0];
-                    return flows.get(flowId);
-                });
-
-        when(serviceMock.getPaths(any(), any()))
-                .thenReturn(Arrays.asList(new PathInfoData(), new PathInfoData()));
-
-        return serviceMock;
     }
 
     /**
