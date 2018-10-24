@@ -13,38 +13,59 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka;
+package org.openkilda.floodlight;
 
-import org.openkilda.floodlight.config.KafkaFloodlightConfig;
+import org.openkilda.config.KafkaConsumerGroupConfig;
+import org.openkilda.config.mapping.Mapping;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
 import java.util.Properties;
 import javax.validation.constraints.Min;
 
-/**
- * WARNING! Do not use '.' in option's keys. FL will not collect such option from config.
- */
-@Configuration
-public interface KafkaProducerConfig extends KafkaFloodlightConfig {
-    @Key("testing-mode")
-    String getTestingMode();
+public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
+    @Key("kafka-groupid")
+    @Default("floodlight")
+    @Mapping(target = KAFKA_CONSUMER_GROUP_MAPPING)
+    String getGroupId();
+
+    @Key("bootstrap-servers")
+    String getBootstrapServers();
 
     @Key("heart-beat-interval")
     @Default("1")
     @Min(1)
     float getHeartBeatInterval();
 
+    @Key("testing-mode")
+    String getTestingMode();
+
     default boolean isTestingMode() {
         return "YES".equals(getTestingMode());
     }
 
     /**
+     * Returns Kafka properties built with the configuration data for Consumer.
+     */
+    default Properties consumerProperties() {
+        Properties properties = new Properties();
+        properties.put("bootstrap.servers", getBootstrapServers());
+
+        properties.put("group.id", getGroupId());
+        properties.put("session.timeout.ms", "30000");
+        properties.put("enable.auto.commit", "false");
+
+        properties.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+
+        return properties;
+    }
+
+    /**
      * Returns Kafka properties built with the configuration data for Producer.
      */
-    default Properties createKafkaProducerProperties() {
+    default Properties producerProperties() {
         Properties properties = new Properties();
         properties.put("bootstrap.servers", getBootstrapServers());
 

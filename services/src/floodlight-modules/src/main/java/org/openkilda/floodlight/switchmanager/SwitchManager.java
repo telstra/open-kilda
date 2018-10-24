@@ -24,10 +24,10 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
-import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
@@ -41,6 +41,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
@@ -141,7 +142,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private IFloodlightProviderService floodlightProvider;
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
-    private KafkaMessageProducer kafkaProducer;
+    private IKafkaProducerService producerService;
     private ConnectModeRequest.Mode connectMode;
 
     private String topoDiscoTopic;
@@ -196,11 +197,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
-        services.add(IFloodlightProviderService.class);
-        services.add(IOFSwitchService.class);
-        services.add(IRestApiService.class);
-        return services;
+        return ImmutableList.of(
+                IFloodlightProviderService.class,
+                IOFSwitchService.class,
+                IRestApiService.class,
+                KafkaUtilityService.class,
+                IKafkaProducerService.class);
     }
 
     /**
@@ -211,12 +213,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
         restApiService = context.getServiceImpl(IRestApiService.class);
-        kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+        producerService = context.getServiceImpl(IKafkaProducerService.class);
 
         ConfigurationProvider provider = ConfigurationProvider.of(context, this);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
-        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
-
         String connectModeProperty = provider.getConfiguration(SwitchManagerConfig.class).getConnectMode();
         try {
             connectMode = ConnectModeRequest.Mode.valueOf(connectModeProperty);
@@ -225,7 +224,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     connectModeProperty);
             connectMode = ConnectModeRequest.Mode.AUTO;
         }
-        // TODO: Ensure Kafka Topics are created..
     }
 
     /**
@@ -233,7 +231,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        logger.info("Starting " + SwitchEventCollector.class.getCanonicalName());
+        logger.info("Starting {}", SwitchEventCollector.class.getCanonicalName());
+
+        topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
+
         restApiService.addRestletRoutable(new SwitchManagerWebRoutable());
         floodlightProvider.addOFMessageListener(OFType.ERROR, this);
     }
@@ -252,7 +253,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     System.currentTimeMillis(), CorrelationContext.getId(), Destination.WFM_TRANSACTION);
             // TODO: Most/all commands are flow related, but not all. 'kilda.flow' might
             // not be the best place to send a generic error.
-            kafkaProducer.postMessage("kilda.flow", error);
+            producerService.sendMessageAndTrack("kilda.flow", error);
         }
         return Command.CONTINUE;
     }
@@ -1498,7 +1499,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException {
         Message message = SwitchEventCollector.buildSwitchMessage(sw, SwitchState.ACTIVATED);
-        kafkaProducer.postMessage(topoDiscoTopic, message);
+        producerService.sendMessageAndTrack(topoDiscoTopic, message);
     }
 
     /**
@@ -1509,7 +1510,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (sw.getEnabledPortNumbers() != null) {
             for (OFPort p : sw.getEnabledPortNumbers()) {
                 if (SwitchEventCollector.isPhysicalPort(p)) {
-                    kafkaProducer.postMessage(topoDiscoTopic,
+                    producerService.sendMessageAndTrack(topoDiscoTopic,
                             SwitchEventCollector.buildPortMessage(sw.getId(), p,
                                     PortChangeType.UP));
                 }

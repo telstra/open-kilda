@@ -26,6 +26,19 @@
   </appender>
 {{- end }}
 
+{{- if eq (getv "/kilda_logging_fl_logaccess") "true" }}
+  <appender name="ACCESS_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>{{ getv "/kilda_logging_logfile_path" }}/floodlight_access.log.json</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <fileNamePattern>{{ getv "/kilda_logging_logfile_path" }}/floodlight_access.log.json.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+      <maxFileSize>250MB</maxFileSize>
+      <totalSizeCap>1GB</totalSizeCap>
+      <maxHistory>4</maxHistory>
+    </rollingPolicy>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+  </appender>
+{{- end }}
+
   <root level="INFO">
     <appender-ref ref="STDOUT" />
 {{- if eq (getv "/kilda_logging_json_file") "true" }}
@@ -37,7 +50,11 @@
   </root>
 
   <logger name="io" level="ERROR"/> <!-- Netty logging -->
-  <logger name="LogService" level="ERROR"/> <!-- Restlet access logging -->
+  <logger name="LogService" level="INFO" additivity="false"><!-- Restlet access logging detached from root -->
+{{- if eq (getv "/kilda_logging_fl_logaccess") "true" }}
+    <appender-ref ref="ACCESS_JSON"/>
+{{- end }}
+  </logger>
   <logger name="net.floodlightcontroller" level="INFO"/>
   <logger name="org.sdnplatform" level="ERROR"/>
   <logger name="ch.qos.logback" level="INFO"/>

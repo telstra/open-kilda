@@ -13,10 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.ping.bolt;
+package org.openkilda.floodlight.config;
 
-import org.openkilda.wfm.share.bolt.KafkaDecoder;
+public final class UnitConverter {
+    public static long timeMillis(float raw) {
+        return (long) (raw * 1000);
+    }
 
-public class InputDecoder extends KafkaDecoder {
-    public static final String BOLT_ID = ComponentId.INPUT_DECODER.toString();
+    private UnitConverter() { }
 }

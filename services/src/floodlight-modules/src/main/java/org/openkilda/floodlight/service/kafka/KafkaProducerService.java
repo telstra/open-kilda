@@ -13,13 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka.producer;
+package org.openkilda.floodlight.service.kafka;
 
-import org.openkilda.floodlight.kafka.KafkaProducerConfig;
+import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.messaging.Message;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,19 +28,18 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Producer {
+public class KafkaProducerService implements IKafkaProducerService {
 
-    private static final Logger logger = LoggerFactory.getLogger(Producer.class);
+    private static final Logger logger = LoggerFactory.getLogger(KafkaProducerService.class);
 
-    private final org.apache.kafka.clients.producer.Producer producer;
+    private HeartBeatService heartBeat;
+    private Producer<String, String> producer;
     private final Map<String, AbstractWorker> workersMap = new HashMap<>();
 
-    public Producer(KafkaProducerConfig kafkaConfig) {
-        this(new KafkaProducer<>(kafkaConfig.createKafkaProducerProperties()));
-    }
-
-    Producer(org.apache.kafka.clients.producer.Producer producer) {
-        this.producer = producer;
+    @Override
+    public void setup(FloodlightModuleContext moduleContext) {
+        heartBeat = moduleContext.getServiceImpl(HeartBeatService.class);
+        producer = moduleContext.getServiceImpl(KafkaUtilityService.class).makeProducer();
     }
 
     /**
@@ -74,8 +74,15 @@ public class Producer {
         getWorker(topic).sendMessage(message, new SendStatusCallback(this, topic, message));
     }
 
+    /**
+     * Push message into kafka-broker and do not control operation result.
+     *
+     * <p>Caller can check operation result by himself using returned {@link SendStatusCallback} object.
+     */
     public SendStatus sendMessage(String topic, Message message) {
-        return getWorker(topic).sendMessage(message, null);
+        SendStatus sendStatus = getWorker(topic).sendMessage(message, null);
+        postponeHeartBeat();
+        return sendStatus;
     }
 
     private AbstractWorker getWorker(String topic) {
@@ -88,19 +95,25 @@ public class Producer {
         return worker;
     }
 
-    private void reportError(String topic, Message message, Exception exception) {
+    private void postponeHeartBeat() {
+        if (heartBeat != null) {
+            heartBeat.reschedule();
+        }
+    }
+
+    private void reportError(String topic, Message message, Exception e) {
         logger.error(
                 "Fail to send message(correlationId=\"{}\") in kafka topic={}: {}",
-                message.getCorrelationId(), topic, exception.toString());
+                message.getCorrelationId(), topic, e);
     }
 
     private static class SendStatusCallback implements Callback {
-        private final Producer producer;
+        private final KafkaProducerService service;
         private final String topic;
         private final Message message;
 
-        SendStatusCallback(Producer producer, String topic, Message message) {
-            this.producer = producer;
+        SendStatusCallback(KafkaProducerService service, String topic, Message message) {
+            this.service = service;
             this.topic = topic;
             this.message = message;
         }
@@ -111,9 +124,10 @@ public class Producer {
             logger.debug("{}: {}, {}", this.getClass().getCanonicalName(), metadata, error);
 
             if (exception == null) {
+                service.postponeHeartBeat();
                 return;
             }
-            producer.reportError(topic, message, exception);
+            service.reportError(topic, message, exception);
         }
     }
 }
