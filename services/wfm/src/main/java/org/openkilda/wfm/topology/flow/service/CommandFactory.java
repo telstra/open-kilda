@@ -29,23 +29,19 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
-import org.openkilda.wfm.converter.SwitchIdMapper;
-
-import org.mapstruct.factory.Mappers;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public class CommandService {
-
-    private static final SwitchIdMapper SWITCH_ID_MAPPER = Mappers.getMapper(SwitchIdMapper.class);
+public class CommandFactory {
 
     private FlowSegmentRepository flowSegmentRepository;
 
 
-    public CommandService(PersistenceManager persistenceManager) {
+    public CommandFactory(PersistenceManager persistenceManager) {
         flowSegmentRepository = persistenceManager.getRepositoryFactory().createFlowSegmentRepository();
     }
 
@@ -120,7 +116,7 @@ public class CommandService {
             criteria = new DeleteRulesCriteria(cookie, f.getDestPort(), flow.getTransitVlan(),
                     0, dstPort);
             command = new RemoveFlow(UUID.randomUUID().getLeastSignificantBits(), flowId, cookie,
-                    SWITCH_ID_MAPPER.toDto(f.getDestSwitchId()),
+                    FlowMapper.INSTANCE.map(f.getDestSwitchId()),
                     0L, criteria);
             commands.add(command);
         }

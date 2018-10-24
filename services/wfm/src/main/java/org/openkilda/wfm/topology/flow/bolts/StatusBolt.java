@@ -20,7 +20,7 @@ import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.converter.FlowMapper;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
@@ -31,7 +31,6 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
-import org.mapstruct.factory.Mappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +41,6 @@ public class StatusBolt extends BaseRichBolt {
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(StatusBolt.class);
-
-    private static final FlowMapper FLOW_MAPPER = Mappers.getMapper(FlowMapper.class);
-
 
     private transient FlowService flowService;
 
@@ -77,8 +73,8 @@ public class StatusBolt extends BaseRichBolt {
                     String correlationId = Utils.DEFAULT_CORRELATION_ID;
 
                     logger.info("State flow: {}={}", flowId, state);
-                    FlowPair<Flow, Flow> flow = FLOW_MAPPER.flowPairToDto(
-                            flowService.updateFlowStatus(flowId, FLOW_MAPPER.flowStateFromDto(state)));
+                    FlowPair<Flow, Flow> flow = FlowMapper.INSTANCE.map(
+                            flowService.updateFlowStatus(flowId, FlowMapper.INSTANCE.map(state)));
                     break;
                 default:
                     logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);

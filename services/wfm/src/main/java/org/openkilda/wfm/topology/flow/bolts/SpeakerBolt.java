@@ -86,7 +86,7 @@ public class SpeakerBolt extends BaseRichBolt {
                             Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
                             Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
-                    message.setDestination(Destination.TOPOLOGY_ENGINE);
+                    message.setDestination(Destination.WFM);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     // FIXME(surabujin): looks like TE ignore this messages
                     outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
@@ -101,7 +101,7 @@ public class SpeakerBolt extends BaseRichBolt {
                             Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
                             Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
 
-                    message.setDestination(Destination.TOPOLOGY_ENGINE);
+                    message.setDestination(Destination.WFM);
                     values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
                     outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 

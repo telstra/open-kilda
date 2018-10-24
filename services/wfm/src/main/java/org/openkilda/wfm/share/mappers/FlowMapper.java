@@ -15,8 +15,13 @@
 
 package org.openkilda.wfm.share.mappers;
 
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.FlowPair;
+import org.openkilda.model.Node;
+import org.openkilda.model.Path;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -32,11 +37,25 @@ public interface FlowMapper {
 
     FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
+    /**
+     * Convert {@link org.openkilda.model.Flow} to {@link org.openkilda.messaging.model.Flow}.
+     */
+    @Mapping(source = "srcPort", target = "sourcePort")
+    @Mapping(source = "srcVlan", target = "sourceVlan")
+    @Mapping(source = "destPort", target = "destinationPort")
+    @Mapping(source = "destVlan", target = "destinationVlan")
     @Mapping(source = "srcSwitchId", target = "sourceSwitch")
     @Mapping(source = "destSwitchId", target = "destinationSwitch")
     @Mapping(source = "status", target = "state")
     Flow map(org.openkilda.model.Flow flow);
 
+    /**
+     * Convert {@link org.openkilda.messaging.model.Flow} to {@link org.openkilda.model.Flow}.
+     */
+    @Mapping(source = "sourcePort", target = "srcPort")
+    @Mapping(source = "sourceVlan", target = "srcVlan")
+    @Mapping(source = "destinationPort", target = "destPort")
+    @Mapping(source = "destinationVlan", target = "destVlan")
     @Mapping(source = "sourceSwitch", target = "srcSwitchId")
     @Mapping(source = "destinationSwitch", target = "destSwitchId")
     @Mapping(source = "state", target = "status")
@@ -62,6 +81,47 @@ public interface FlowMapper {
         }
 
         return new org.openkilda.model.SwitchId(value.toString());
+    }
+
+    /**
+     * Convert {@link org.openkilda.messaging.info.event.PathNode} to {@link org.openkilda.model.Node}.
+     */
+    Node map(PathNode p);
+
+    /**
+     * Convert {@link org.openkilda.model.Node} to {@link org.openkilda.messaging.info.event.PathNode}.
+     */
+    PathNode map(Node p);
+
+    /**
+     * Convert {@link org.openkilda.model.Path} to {@link org.openkilda.messaging.info.event.PathInfoData}.
+     */
+    @Mapping(source = "nodes", target = "path")
+    PathInfoData map(Path p);
+
+    /**
+     * Convert {@link org.openkilda.messaging.info.event.PathInfoData} to {@link org.openkilda.model.Path}.
+     */
+    @Mapping(source = "path", target = "nodes")
+    Path map(PathInfoData p);
+
+
+    /**
+     * Convert {@link org.openkilda.model.FlowPair} to {@link org.openkilda.messaging.model.FlowPair}.
+     */
+    default org.openkilda.messaging.model.FlowPair map(FlowPair flowPair) {
+        return new org.openkilda.messaging.model.FlowPair(map(flowPair.getForward()),
+                map(flowPair.getReverse()));
+    }
+
+    /**
+     * Convert {@link org.openkilda.messaging.model.FlowPair} to {@link org.openkilda.model.FlowPair}.
+     */
+    default FlowPair map(org.openkilda.messaging.model.FlowPair<org.openkilda.messaging.model.Flow,
+            org.openkilda.messaging.model.Flow> flowPair) {
+
+        return FlowPair.builder().forward(map(flowPair.getLeft()))
+                .reverse(map(flowPair.getRight())).build();
     }
 
     /**

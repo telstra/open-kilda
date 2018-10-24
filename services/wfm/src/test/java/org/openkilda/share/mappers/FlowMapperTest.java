@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.converter;
+package org.openkilda.share.mappers;
 
 import static org.junit.Assert.assertEquals;
 
@@ -22,16 +22,14 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.Flow;
 import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 
 import org.junit.Test;
-import org.mapstruct.factory.Mappers;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FlowMapperTest {
-
-    private static final FlowMapper FLOW_MAPPER = Mappers.getMapper(FlowMapper.class);
 
     @Test
     public void testFlowPairToDto() {
@@ -62,7 +60,7 @@ public class FlowMapperTest {
         flow.setIgnoreBandwidth(true);
         flow.setPeriodicPings(true);
         FlowPair<Flow, Flow> pair = new FlowPair<>(flow, flow);
-        org.openkilda.model.FlowPair p = FLOW_MAPPER.flowPairFromDto(pair);
+        org.openkilda.model.FlowPair p = FlowMapper.INSTANCE.map(pair);
         assertEquals(p.getForward().getFlowId(), pair.getLeft().getFlowId());
     }
 }

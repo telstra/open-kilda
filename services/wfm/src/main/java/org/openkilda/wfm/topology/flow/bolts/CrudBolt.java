@@ -67,9 +67,9 @@ import org.openkilda.pce.cache.ResourceCache;
 import org.openkilda.pce.impl.PathComputerImpl;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.converter.FlowMapper;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.PathMapper;
 import org.openkilda.wfm.share.utils.BidirectionalFlowFetcher;
 import org.openkilda.wfm.share.utils.FlowCollector;
@@ -77,7 +77,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
-import org.openkilda.wfm.topology.flow.service.CommandService;
+import org.openkilda.wfm.topology.flow.service.CommandFactory;
 import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
@@ -92,7 +92,6 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.mapstruct.factory.Mappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,11 +130,9 @@ public class CrudBolt
 
     private transient RepositoryFactory repositoryFactory;
 
-    private static final FlowMapper FLOW_MAPPER = Mappers.getMapper(FlowMapper.class);
-
     private transient FlowService flowService;
 
-    private transient CommandService commandService;
+    private transient CommandFactory commandFactory;
 
     /**
      * Path computation instance.
@@ -212,7 +209,7 @@ public class CrudBolt
 
         pathComputer = new PathComputerImpl(repositoryFactory.createIslRepository());
         flowService = new FlowService(persistenceManager);
-        commandService = new CommandService(persistenceManager);
+        commandFactory = new CommandFactory(persistenceManager);
     }
 
     /**
@@ -440,7 +437,7 @@ public class CrudBolt
                 .map(repositoryFactory.createFlowRepository()::findById)
                 .map(flows -> {
                     FlowCollector flowPair = new FlowCollector();
-                    flows.forEach(flow -> flowPair.add(FlowMapper.INSTANCE.flowToDto(flow)));
+                    flows.forEach(flow -> flowPair.add(FlowMapper.INSTANCE.map(flow)));
                     return flowPair;
                 })
                 .forEach(flowPair -> {
@@ -560,7 +557,7 @@ public class CrudBolt
 
     private void processDeleteFlow(String correlationId, Tuple tuple, Flow flow) {
         try {
-            List<RemoveFlow> rules = commandService.getDeleteRulesForFlow(flow);
+            List<RemoveFlow> rules = commandFactory.getDeleteRulesForFlow(flow);
             for (int i = rules.size() - 1; i >= 0; i--) {
                 try {
                     RemoveFlow rule = rules.get(i);
@@ -596,7 +593,7 @@ public class CrudBolt
             flowValidator.validate(requestedFlow);
 
 
-            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.flowFromDto(requestedFlow), Strategy.COST);
+            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(requestedFlow), Strategy.COST);
             logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), pathPair,
                     message.getCorrelationId());
         } catch (FlowValidationException e) {
@@ -618,7 +615,7 @@ public class CrudBolt
         FlowPair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, pathInfoPair);
         logger.info("Created flow: {}, correlationId: {}", flow, message.getCorrelationId());
 
-        flowService.createFlow(FLOW_MAPPER.flowPairFromDto(flow));
+        flowService.createFlow(FlowMapper.INSTANCE.map(flow));
         processCreateFlow(message.getCorrelationId(), tuple, flow.getLeft());
         processCreateFlow(message.getCorrelationId(), tuple, flow.getRight());
         Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
@@ -628,7 +625,7 @@ public class CrudBolt
 
     private void processCreateFlow(String correlationId, Tuple tuple, Flow flow) {
         try {
-            List<BaseInstallFlow> rules = commandService.getInstallRulesForFlow(flow);
+            List<BaseInstallFlow> rules = commandFactory.getInstallRulesForFlow(flow);
             for (int i = rules.size() - 1; i >= 0; i--) {
                 try {
                     BaseInstallFlow rule = rules.get(i);
@@ -670,7 +667,7 @@ public class CrudBolt
                 try {
                     logger.warn("Origin flow {} path: {} correlationId {}", flowId, flowForward.getFlowPath(),
                             correlationId);
-                    PathPair pathPair = pathComputer.getPath(FlowMapper.INSTANCE.flowFromDto(flow.getLeft()),
+                    PathPair pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(flow.getLeft()),
                             Strategy.COST, true);
                     logger.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {} correlationId {}",
                             flowId, pathPair.getForward(), pathPair.getReverse(), correlationId);
@@ -742,7 +739,7 @@ public class CrudBolt
         try {
             flowValidator.validate(requestedFlow);
 
-            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.flowFromDto(requestedFlow),
+            pathPair = pathComputer.getPath(FlowMapper.INSTANCE.map(requestedFlow),
                     Strategy.COST, true);
 
             logger.info("Updated flow path: {}, correlationId {}", pathPair, correlationId);
@@ -763,12 +760,12 @@ public class CrudBolt
                 PathMapper.INSTANCE.map(pathPair.getReverse()));
 
         FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, pathInfoPair);
-        FlowPair<Flow, Flow> currentFlowState = FLOW_MAPPER.flowPairToDto(
+        FlowPair<Flow, Flow> currentFlowState = FlowMapper.INSTANCE.map(
                 flowService.getFlowPair(requestedFlow.getFlowId()));
         processDeleteFlow(message.getCorrelationId(), tuple, currentFlowState.getLeft());
         processDeleteFlow(message.getCorrelationId(), tuple, currentFlowState.getRight());
         logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
-        flowService.updateFlow(FLOW_MAPPER.flowPairFromDto(flow));
+        flowService.updateFlow(FlowMapper.INSTANCE.map(flow));
 
 
         processCreateFlow(message.getCorrelationId(), tuple, flow.getLeft());
@@ -781,7 +778,7 @@ public class CrudBolt
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
         List<BidirectionalFlow> flows = (List<BidirectionalFlow>) flowService.getFlows().stream().map(x -> {
-            return new BidirectionalFlow(FLOW_MAPPER.flowPairToDto(x));
+            return new BidirectionalFlow(FlowMapper.INSTANCE.map(x));
         }).collect(Collectors.toList());
 
         logger.debug("Dump flows: found {} items", flows.size());
@@ -806,7 +803,7 @@ public class CrudBolt
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
         try {
-            BidirectionalFlow flow = new BidirectionalFlow(FLOW_MAPPER.flowPairToDto(flowService.getFlowPair(flowId)));
+            BidirectionalFlow flow = new BidirectionalFlow(FlowMapper.INSTANCE.map(flowService.getFlowPair(flowId)));
             logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
             Values northbound = new Values(

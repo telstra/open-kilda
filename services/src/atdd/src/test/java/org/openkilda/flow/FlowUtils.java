@@ -528,25 +528,21 @@ public final class FlowUtils {
             Set<String> flows = new HashSet<>();
 
             getFlowDump().forEach(flow -> flows.add(flow.getId()));
-            dumpFlows().forEach(flow -> flows.add(flow.getFlowId()));
 
             System.out.println(format("=====> Cleanup Flows - going to drop %d flows", flows.size()));
             flows.forEach(FlowUtils::deleteFlow);
 
             // Wait for them to become zero
             int nbCount = -1;
-            int terCount = -1;
             for (int i = 0; i < 10; ++i) {
                 TimeUnit.SECONDS.sleep(2);
                 nbCount = dumpFlows().size();
-                terCount = getFlowDump().size();
-                if (nbCount == 0 && terCount == 0) {
+                if (nbCount == 0) {
                     break;
                 }
             }
 
             assertEquals(0, nbCount);
-            assertEquals(0, terCount);
         } catch (Exception exception) {
             System.out.println(format("Error during flow deletion: %s", exception.getMessage()));
             exception.printStackTrace();
