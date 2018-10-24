@@ -108,6 +108,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -874,8 +875,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         if (criteria.getOutPort() != null) {
-            // Match only Out Vlan criterion.
-            builder.setOutPort(OFPort.of(criteria.getOutPort()));
+            if (Objects.equals(criteria.getInPort(), criteria.getOutPort())) {
+                builder.setOutPort(OFPort.IN_PORT);
+            } else {
+                // Match only Out Vlan criterion.
+                builder.setOutPort(OFPort.of(criteria.getOutPort()));
+            }
         }
 
         return builder.build();
