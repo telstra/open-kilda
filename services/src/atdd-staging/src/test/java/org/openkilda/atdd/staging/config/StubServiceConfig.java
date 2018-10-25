@@ -22,7 +22,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.lockkeeper.LockKeeperService;
 import org.openkilda.testing.service.northbound.NorthboundService;
-import org.openkilda.testing.service.topology.TopologyEngineService;
 import org.openkilda.testing.service.traffexam.TraffExamService;
 
 import org.springframework.context.annotation.Bean;
@@ -46,11 +45,6 @@ public class StubServiceConfig {
     @Bean
     public NorthboundService northboundService(StubServiceFactory factory) {
         return factory.getNorthboundStub();
-    }
-
-    @Bean
-    public TopologyEngineService topologyEngineService(StubServiceFactory factory) {
-        return factory.getTopologyEngineStub();
     }
 
     @Bean
