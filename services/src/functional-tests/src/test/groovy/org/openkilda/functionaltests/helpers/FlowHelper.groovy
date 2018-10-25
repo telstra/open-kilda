@@ -43,6 +43,20 @@ class FlowHelper {
     }
 
     /**
+     * Single-switch flow with random vlan. The flow will be on the same port.
+     */
+    FlowPayload singleSwitchSinglePortFlow(Switch sw) {
+        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
+        def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
+        def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber])
+        if(srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
+            dstEndpoint.vlanId--
+        }
+        return new FlowPayload(sdf.format(new Date()), srcEndpoint, dstEndpoint, 500,
+                false, false, "autotest flow", null, null)
+    }
+
+    /**
      * Returns flow endpoint with randomly chosen vlan.
      *
      * @param useTraffgenPorts whether to try finding a traffgen port

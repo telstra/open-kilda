@@ -328,7 +328,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.addAll(inputVlanTypeToOfActionList(ofFactory, transitVlanId, outputVlanType));
 
         // transmit packet from outgoing port
-        actionList.add(actionSetOutputPort(ofFactory, outputPort));
+        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
@@ -363,7 +363,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.addAll(outputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
 
         // transmit packet from outgoing port
-        actionList.add(actionSetOutputPort(ofFactory, outputPort));
+        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
@@ -391,7 +391,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Match match = matchFlow(ofFactory, inputPort, transitVlanId);
 
         // transmit packet from outgoing port
-        actionList.add(actionSetOutputPort(ofFactory, outputPort));
+        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
@@ -428,7 +428,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // output action based on encap scheme
         actionList.addAll(pushSchemeOutputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
         // transmit packet from outgoing port
-        actionList.add(actionSetOutputPort(ofFactory, outputPort));
+        OFPort ofOutputPort = outputPort == inputPort ? OFPort.IN_PORT : OFPort.of(outputPort);
+        actionList.add(actionSetOutputPort(ofFactory, ofOutputPort));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
@@ -1032,9 +1033,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param outputPort port to set in the action
      * @return {@link OFAction}
      */
-    private OFAction actionSetOutputPort(final OFFactory ofFactory, final int outputPort) {
+    private OFAction actionSetOutputPort(final OFFactory ofFactory, final OFPort outputPort) {
         OFActions actions = ofFactory.actions();
-        return actions.buildOutput().setMaxLen(0xFFFFFFFF).setPort(OFPort.of(outputPort)).build();
+        return actions.buildOutput().setMaxLen(0xFFFFFFFF).setPort(outputPort).build();
     }
 
     /**
