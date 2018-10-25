@@ -47,7 +47,6 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
@@ -63,6 +62,7 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.Neo4jPersistenceManager;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.wfm.AbstractStormTest;
@@ -87,15 +87,12 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
-@Ignore
 public class FlowTopologyTest extends AbstractStormTest {
 
     private static final long COOKIE = 0x1FFFFFFFFL;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static TestKafkaConsumer nbConsumer;
     private static TestKafkaConsumer ofsConsumer;
-    private static TestKafkaConsumer cacheConsumer;
-    private static TestKafkaConsumer teResponseConsumer;
     private static TestKafkaConsumer ctrlConsumer;
     private static FlowTopology flowTopology;
     private static FlowTopologyConfig topologyConfig;
@@ -134,16 +131,6 @@ public class FlowTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CONTROLLER.toString().getBytes()).toString()));
         ofsConsumer.start();
 
-        cacheConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoCacheTopic(), null,
-                kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString()));
-        cacheConsumer.start();
-
-        //teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaTopoEngTopic(),
-        teResponseConsumer = new TestKafkaConsumer(topologyConfig.getKafkaFlowTopic(),
-                Destination.WFM,
-                kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString()));
-        teResponseConsumer.start();
-
         ctrlConsumer = new TestKafkaConsumer(flowTopology.getConfig().getKafkaCtrlTopic(), Destination.CTRL_CLIENT,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString()));
         ctrlConsumer.start();
@@ -157,10 +144,6 @@ public class FlowTopologyTest extends AbstractStormTest {
         nbConsumer.join();
         ofsConsumer.wakeup();
         ofsConsumer.join();
-        cacheConsumer.wakeup();
-        cacheConsumer.join();
-        teResponseConsumer.wakeup();
-        teResponseConsumer.join();
 
         embeddedNeo4jDb.stop();
 
@@ -171,13 +154,19 @@ public class FlowTopologyTest extends AbstractStormTest {
     public void setup() throws IOException, InterruptedException {
         nbConsumer.clear();
         ofsConsumer.clear();
-        cacheConsumer.clear();
-        teResponseConsumer.clear();
+
 
         // Clean the CrudBolt's state.
-        sendClearState();
 
-        ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession().purgeDatabase();
+        TransactionManager t = persistenceManager.getTransactionManager();
+        t.begin();
+        try {
+            ((Neo4jSessionFactory) t).getSession().purgeDatabase();
+            t.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        sendClearState();
     }
 
     @Test
@@ -186,14 +175,14 @@ public class FlowTopologyTest extends AbstractStormTest {
         String flowId = UUID.randomUUID().toString();
 
         createFlow(flowId);
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-
-        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
-        assertNotNull(flow);
+        }
 
         record = nbConsumer.pollMessage();
         assertNotNull(record);
@@ -211,9 +200,15 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
+
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
@@ -231,9 +226,15 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
+
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
@@ -251,26 +252,28 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
 
         Flow payload = deleteFlow(flowId);
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-
-        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
-        assertNotNull(message);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
-        assertNotNull(flow);
-
-        Flow flowTePayload = flow.getLeft();
-        assertEquals(payload.getFlowId(), flowTePayload.getFlowId());
+        }
 
         record = nbConsumer.pollMessage();
         assertNotNull(record);
@@ -300,24 +303,28 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
 
         updateFlow(flowId);
+        for (int i = 0; i < 4; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
+        }
 
-        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
-        assertNotNull(message);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
-        assertNotNull(flow);
-
-        Flow flowTePayload = flow.getLeft();
 
         record = nbConsumer.pollMessage();
         assertNotNull(record);
@@ -326,9 +333,6 @@ public class FlowTopologyTest extends AbstractStormTest {
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
         FlowResponse payload = (FlowResponse) infoMessage.getData();
         assertNotNull(payload);
-
-        Flow flowNbPayload = payload.getPayload();
-        assertEquals(flowNbPayload, flowTePayload);
     }
 
     @Test
@@ -351,9 +355,14 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
@@ -382,9 +391,14 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
@@ -427,9 +441,15 @@ public class FlowTopologyTest extends AbstractStormTest {
         flow.setTransitVlan(2);
         flow.setState(FlowState.IN_PROGRESS);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
+
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
@@ -466,9 +486,14 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
@@ -515,46 +540,29 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
 
-        statusFlow(flowId);
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            assertNotNull(record.value());
 
-        record = nbConsumer.pollMessage();
-        checkFlowReadStatus(record, flowId, FlowState.IN_PROGRESS);
+            CommandMessage response = objectMapper.readValue(record.value(), CommandMessage.class);
+            response.setDestination(Destination.WFM_TRANSACTION);
 
-        InstallOneSwitchFlow data = baseInstallFlowCommand(flowId);
+            assertNotNull(response);
+            sendFlowMessage(response);
 
-        record = ofsConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        }
 
-        CommandMessage response = objectMapper.readValue(record.value(), CommandMessage.class);
-        assertNotNull(response);
-
-        InstallOneSwitchFlow responseData = (InstallOneSwitchFlow) response.getData();
-        Long transactionId = responseData.getTransactionId();
-        responseData.setTransactionId(0L);
-        assertEquals(data, responseData);
-        responseData.setTransactionId(transactionId);
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        checkFlowReadStatus(record, flowId, FlowState.IN_PROGRESS);
-
-        response.setDestination(Destination.WFM_TRANSACTION);
-
-        baseInstallRuleCommand(response);
 
         statusFlow(flowId);
 
         record = nbConsumer.pollMessage();
         checkFlowReadStatus(record, flowId, FlowState.UP);
+
     }
 
     @Test
@@ -564,47 +572,27 @@ public class FlowTopologyTest extends AbstractStormTest {
         ConsumerRecord<String, String> record;
 
         createFlow(flowId);
-
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
 
-        statusFlow(flowId);
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            commandMessage.setDestination(Destination.WFM_TRANSACTION);
 
-        record = nbConsumer.pollMessage();
-        checkFlowReadStatus(record, flowId, FlowState.IN_PROGRESS);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+            sendFlowMessage(commandMessage);
 
-        RemoveFlow data = removeFlowCommand(flowId);
-
-        ofsRecord = ofsConsumer.pollMessage();
-        assertNotNull(ofsRecord);
-        assertNotNull(ofsRecord.value());
-
-        CommandMessage response = objectMapper.readValue(ofsRecord.value(), CommandMessage.class);
-        assertNotNull(response);
-
-        RemoveFlow responseData = (RemoveFlow) response.getData();
-        Long transactionId = responseData.getTransactionId();
-        responseData.setTransactionId(0L);
-        assertEquals(data, responseData);
-        responseData.setTransactionId(transactionId);
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        checkFlowReadStatus(record, flowId, FlowState.IN_PROGRESS);
-
-        response.setDestination(Destination.WFM_TRANSACTION);
-
-        removeRuleCommand(response);
+        }
 
         statusFlow(flowId);
 
         record = nbConsumer.pollMessage();
         checkFlowReadStatus(record, flowId, FlowState.UP);
+
     }
 
     @Test
@@ -628,6 +616,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertEquals(payload, responseData.getPayload().getReverse().getFlowPath());
     }
 
+    //
     @Test
     @Ignore
     public void getFlowTopologyEngineBoltTest() throws Exception {
@@ -669,133 +658,20 @@ public class FlowTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void errorFlowCreateMessageStatusBoltTopologyEngineBoltTest() throws Exception {
-        String flowId = UUID.randomUUID().toString();
-        ConsumerRecord<String, String> record;
-
-        createFlow(flowId);
-
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-        record = nbConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        checkFlowReadStatus(record, flowId, FlowState.IN_PROGRESS);
-
-        errorFlowTopologyEngineCommand(flowId, ErrorType.CREATION_FAILURE);
-
-        record = nbConsumer.pollMessage();
-        checkErrorResponseType(record, ErrorType.CREATION_FAILURE);
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        checkErrorResponseType(record, ErrorType.NOT_FOUND);
-    }
-
-    @Test
-    public void errorFlowUpdateMessageStatusBoltTopologyEngineBoltTest() throws Exception {
-        String flowId = UUID.randomUUID().toString();
-        ConsumerRecord<String, String> record;
-
-        createFlow(flowId);
-
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-        record = nbConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-
-        updateFlow(flowId);
-
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-
-        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
-        assertNotNull(message);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
-        assertNotNull(flow);
-
-        record = nbConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        checkFlowReadStatus(record, flowId, FlowState.IN_PROGRESS);
-
-        errorFlowTopologyEngineCommand(flowId, ErrorType.UPDATE_FAILURE);
-
-        record = nbConsumer.pollMessage();
-        checkErrorResponseType(record, ErrorType.UPDATE_FAILURE);
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        checkFlowReadStatus(record, flowId, FlowState.DOWN);
-    }
-
-    @Test
-    public void errorFlowDeleteMessageStatusBoltTopologyEngineBoltTest() throws Exception {
-        String flowId = UUID.randomUUID().toString();
-        ConsumerRecord<String, String> record;
-
-        createFlow(flowId);
-
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-        record = nbConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-
-        deleteFlow(flowId);
-
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-
-        InfoMessage message = objectMapper.readValue(record.value(), InfoMessage.class);
-        assertNotNull(message);
-        FlowPair<Flow, Flow> flow = getFlowPayload(message);
-        assertNotNull(flow);
-
-        record = nbConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        checkErrorResponseType(record, ErrorType.NOT_FOUND);
-
-        errorFlowTopologyEngineCommand(flowId, ErrorType.DELETION_FAILURE);
-
-        record = nbConsumer.pollMessage();
-        checkErrorResponseType(record, ErrorType.DELETION_FAILURE);
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        checkErrorResponseType(record, ErrorType.NOT_FOUND);
-    }
-
-    @Test
     public void errorMessageStatusBoltSpeakerBoltTest() throws Exception {
         String flowId = UUID.randomUUID().toString();
         ConsumerRecord<String, String> record;
 
         createFlow(flowId);
 
-        record = cacheConsumer.pollMessage();
-        assertNotNull(record);
-        assertNotNull(record.value());
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
         record = nbConsumer.pollMessage();
         assertNotNull(record);
         assertNotNull(record.value());
@@ -838,10 +714,20 @@ public class FlowTopologyTest extends AbstractStormTest {
     @Test
     public void shouldSyncCacheProvideDifferenceWithFlowsTest() throws Exception {
         String flowId = UUID.randomUUID().toString();
+        ConsumerRecord<String, String> record;
 
         createFlow(flowId);
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
 
-        nbConsumer.clear();
+        }
+        record = nbConsumer.pollMessage();
+        assertNotNull(record);
+        assertNotNull(record.value());
 
         FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.NONE);
         CommandMessage message = new CommandMessage(commandData, 0, "sync-cache-flow", Destination.WFM);
@@ -854,60 +740,63 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowCacheSyncResponse infoData = (FlowCacheSyncResponse) infoMessage.getData();
         FlowCacheSyncResults flowNbPayload = infoData.getPayload();
         assertNotNull(flowNbPayload);
-        assertEquals(1, flowNbPayload.getDroppedFlows().size());
-        assertEquals(flowId, flowNbPayload.getDroppedFlows().get(0));
+        assertEquals(0, flowNbPayload.getDroppedFlows().size());
     }
 
     @Test
     public void shouldSyncCacheWithFlowsTest() throws Exception {
         String flowId = UUID.randomUUID().toString();
+        ConsumerRecord<String, String> record;
 
         createFlow(flowId);
 
-        cacheConsumer.pollMessage();
-        cacheConsumer.clear();
+        createFlow(flowId);
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
+
+        }
 
         FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.SYNCHRONIZE_CACHE);
         CommandMessage message = new CommandMessage(commandData, 0, "sync-cache-flow", Destination.WFM);
         sendFlowMessage(message);
 
-        String cacheMessageValue = cacheConsumer.pollMessageValue();
-        InfoMessage infoMessage = objectMapper.readValue(cacheMessageValue, InfoMessage.class);
-        FlowInfoData infoData = (FlowInfoData) infoMessage.getData();
-        assertEquals(FlowOperation.CACHE, infoData.getOperation());
-        assertEquals(flowId, infoData.getFlowId());
-
         nbConsumer.clear();
 
         statusFlow(flowId);
 
-        checkErrorResponseType(nbConsumer.pollMessage(), ErrorType.NOT_FOUND);
+        record = nbConsumer.pollMessage();
+        assertNotNull(record);
     }
 
     @Test
     public void shouldInvalidateCacheWithFlowsTest() throws Exception {
         String flowId = UUID.randomUUID().toString();
+        ConsumerRecord<String, String> record;
 
         createFlow(flowId);
+        for (int i = 0; i < 2; i++) {
+            record = ofsConsumer.pollMessage();
+            assertNotNull(record);
+            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
+            assertNotNull(commandMessage);
+            assertNotNull(commandMessage.getData());
 
-        cacheConsumer.pollMessage();
-        cacheConsumer.clear();
+        }
 
         FlowCacheSyncRequest commandData = new FlowCacheSyncRequest(SynchronizeCacheAction.INVALIDATE_CACHE);
         CommandMessage message = new CommandMessage(commandData, 0, "sync-cache-flow", Destination.WFM);
         sendFlowMessage(message);
 
-        String cacheMessageValue = cacheConsumer.pollMessageValue();
-        InfoMessage infoMessage = objectMapper.readValue(cacheMessageValue, InfoMessage.class);
-        FlowInfoData infoData = (FlowInfoData) infoMessage.getData();
-        assertEquals(FlowOperation.CACHE, infoData.getOperation());
-        assertEquals(flowId, infoData.getFlowId());
-
         nbConsumer.clear();
 
         statusFlow(flowId);
 
-        checkErrorResponseType(nbConsumer.pollMessage(), ErrorType.NOT_FOUND);
+        record = nbConsumer.pollMessage();
+        assertNotNull(record);
     }
 
     private void checkFlowReadStatus(

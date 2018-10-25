@@ -83,7 +83,6 @@ import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -108,7 +107,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
 
 public class CrudBolt
         extends BaseStatefulBolt<InMemoryKeyValueState<String, FlowCache>>
@@ -449,8 +447,6 @@ public class CrudBolt
 
                     flowCache.pushFlow(flow);
 
-                    // propagate updates further
-                    emitCacheSyncInfoMessage(flowId, flow, tuple, correlationId);
                 });
     }
 
@@ -467,13 +463,6 @@ public class CrudBolt
         initFlowCache();
 
         // propagate updates further
-        flowCache.dumpFlows()
-                .forEach(flow -> {
-                    final String flowId = flow.getLeft().getFlowId();
-                    logger.debug("Refresh the flow: {}", flowId);
-
-                    emitCacheSyncInfoMessage(flowId, flow, tuple, correlationId);
-                });
     }
 
     /**
@@ -485,22 +474,7 @@ public class CrudBolt
 
             flowCache.removeFlow(flowId);
 
-            emitCacheSyncInfoMessage(flowId, null, tuple, correlationId);
         });
-    }
-
-    private void emitCacheSyncInfoMessage(String flowId, @Nullable FlowPair<Flow, Flow> flow,
-                                          Tuple tuple, String correlationId) {
-        String subCorrelationId = format("%s-%s", correlationId, flowId);
-        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.CACHE, subCorrelationId);
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), subCorrelationId);
-
-        try {
-            Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-            outputCollector.emit(StreamType.CACHE_SYNC.toString(), tuple, topology);
-        } catch (JsonProcessingException e) {
-            logger.error("Unable to serialize the message: {}", infoMessage);
-        }
     }
 
     private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
