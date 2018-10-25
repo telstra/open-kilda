@@ -165,13 +165,12 @@ public class FlowValidator {
      */
     @VisibleForTesting
     void checkOneSwitchFlowHasNoConflicts(Flow requestedFlow) throws SwitchValidationException {
-        if (requestedFlow.getSourceSwitch().equals(requestedFlow.getDestinationSwitch())) {
+        if (requestedFlow.getSourceSwitch().equals(requestedFlow.getDestinationSwitch())
+                && requestedFlow.getSourcePort() == requestedFlow.getDestinationPort()
+                && requestedFlow.getSourceVlan() == requestedFlow.getDestinationVlan()) {
 
-            if (requestedFlow.getSourcePort() == requestedFlow.getDestinationPort()
-                    && requestedFlow.getSourceVlan() == requestedFlow.getDestinationVlan()) {
-                throw new SwitchValidationException(
-                        "It is not allowed to create one-switch flow for the same ports and vlans");
-            }
+            throw new SwitchValidationException(
+                    "It is not allowed to create one-switch flow for the same ports and vlans");
         }
     }
 }

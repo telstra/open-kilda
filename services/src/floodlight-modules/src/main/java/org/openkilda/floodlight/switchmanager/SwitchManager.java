@@ -108,7 +108,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -329,7 +328,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.addAll(inputVlanTypeToOfActionList(ofFactory, transitVlanId, outputVlanType));
 
         // transmit packet from outgoing port
-        actionList.add(actionSetOutputPort(ofFactory, outputPort));
+        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
@@ -364,7 +363,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.addAll(outputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
 
         // transmit packet from outgoing port
-        actionList.add(actionSetOutputPort(ofFactory, outputPort));
+        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
@@ -392,7 +391,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Match match = matchFlow(ofFactory, inputPort, transitVlanId);
 
         // transmit packet from outgoing port
-        actionList.add(actionSetOutputPort(ofFactory, outputPort));
+        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
@@ -429,11 +428,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // output action based on encap scheme
         actionList.addAll(pushSchemeOutputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
         // transmit packet from outgoing port
-        if (inputPort != outputPort) {
-            actionList.add(actionSetOutputPort(ofFactory, outputPort));
-        } else {
-            actionList.add(actionSetOutputInPort(ofFactory));
-        }
+        OFPort ofOutputPort = outputPort == inputPort ? OFPort.IN_PORT : OFPort.of(outputPort);
+        actionList.add(actionSetOutputPort(ofFactory, ofOutputPort));
 
         // build instruction with action list
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
@@ -875,12 +871,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         if (criteria.getOutPort() != null) {
-            if (Objects.equals(criteria.getInPort(), criteria.getOutPort())) {
-                builder.setOutPort(OFPort.IN_PORT);
-            } else {
-                // Match only Out Vlan criterion.
-                builder.setOutPort(OFPort.of(criteria.getOutPort()));
-            }
+            // Match only Out Vlan criterion.
+            builder.setOutPort(OFPort.of(criteria.getOutPort()));
         }
 
         return builder.build();
@@ -1041,20 +1033,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param outputPort port to set in the action
      * @return {@link OFAction}
      */
-    private OFAction actionSetOutputPort(final OFFactory ofFactory, final int outputPort) {
+    private OFAction actionSetOutputPort(final OFFactory ofFactory, final OFPort outputPort) {
         OFActions actions = ofFactory.actions();
-        return actions.buildOutput().setMaxLen(0xFFFFFFFF).setPort(OFPort.of(outputPort)).build();
-    }
-
-    /**
-     * Create an OFAction which sets the output port as in_port.
-     *
-     * @param ofFactory OF factory for the switch
-     * @return {@link OFAction}
-     */
-    private OFAction actionSetOutputInPort(final OFFactory ofFactory) {
-        OFActions actions = ofFactory.actions();
-        return actions.buildOutput().setMaxLen(0xFFFFFFFF).setPort(OFPort.IN_PORT).build();
+        return actions.buildOutput().setMaxLen(0xFFFFFFFF).setPort(outputPort).build();
     }
 
     /**
