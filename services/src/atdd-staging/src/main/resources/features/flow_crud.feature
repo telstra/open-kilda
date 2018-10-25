@@ -17,8 +17,7 @@ Feature: Flow CRUD
 
     When initialize creation of given flows
 
-    Then each flow is created and stored in TopologyEngine
-    And each flow is in UP state
+    Then each flow is in UP state
     And each flow can be read from Northbound
     And each flow is valid per Northbound validation
     And all active switches have correct rules installed per Northbound validation
