@@ -88,7 +88,10 @@ public class SwitchInfoData extends CacheTimeTag {
     /**
      * Default constructor.
      */
-    public SwitchInfoData() {
+    public SwitchInfoData() { }
+
+    public SwitchInfoData(SwitchId switchId, SwitchState state) {
+        this(switchId, state, null, null, null, null);
     }
 
     /**
