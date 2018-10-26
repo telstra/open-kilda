@@ -140,9 +140,15 @@ function goToflowDetail(flowid,isEdit){
 	var url = "flows/details#" + flowid;
 	window.location = url;
 }
+function closeLinkStoreNote(){
+	$('#linkStoreWarning').hide();
+}
 function showflowData(response){
 	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
 	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+		if(response && response[0] && !response[0]['discrepancy']){
+			$('#linkStoreWarning').show();
+		}
 		$('#storeFilter').show();
 	}else{
 		$('#storeFilter').hide();
