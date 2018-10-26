@@ -175,8 +175,8 @@ public class NorthboundServiceImpl implements NorthboundService {
         httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
 
         Long[] deletedRules = restTemplate.exchange(
-                "/api/v1/switches/{switch_id}/rules?delete-action=IGNORE_DEFAULTS", HttpMethod.DELETE,
-                new HttpEntity(httpHeaders), Long[].class, switchId, cookie).getBody();
+                "/api/v1/switches/{switch_id}/rules?cookie={cookie}",
+                HttpMethod.DELETE, new HttpEntity(httpHeaders), Long[].class, switchId, cookie).getBody();
         return Arrays.asList(deletedRules);
     }
 
