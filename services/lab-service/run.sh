@@ -16,7 +16,7 @@
 
 set -e
 
-export SELF_CONTAINER_ID=$(head -1 /proc/self/cgroup | cut -d/ -f3)
+export SELF_CONTAINER_ID=$(cat /proc/self/cgroup | grep cpuset | cut -d/ -f3)
 cd /app/lab
 
 if [ "$1" = 'api' ]; then
