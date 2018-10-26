@@ -36,6 +36,9 @@ contains Kafka design implementation.
 [The document](https://github.com/telstra/open-kilda/blob/develop/docs/design/path-computation.md) contains high level
 PCE description.
 
+[The document](https://github.com/telstra/open-kilda/blob/develop/docs/design/solutions/pce-exclude-subgraph/pce-exclude-subgraph.md)
+Exclude given subgraph from path computation
+
 ## Floodlight
 [The document](https://github.com/telstra/open-kilda/blob/develop/docs/design/solutions/floodlight/floodlight-guaranteed-processing.md) floodlight design and implementation
 
