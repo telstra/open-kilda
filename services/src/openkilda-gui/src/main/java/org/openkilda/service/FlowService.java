@@ -85,6 +85,7 @@ public class FlowService {
      * @return SwitchRelationData
      */
     public List<FlowInfo> getAllFlows(List<String> statuses) {
+        LOGGER.info("Inside ServiceFlowImpl method getFlowsCount");
         List<FlowInfo> flows = new ArrayList<FlowInfo>();
         if (!CollectionUtil.isEmpty(statuses)) {
             statuses = statuses.stream().map((status) -> status.toLowerCase()).collect(Collectors.toList());
@@ -94,21 +95,26 @@ public class FlowService {
         }
 
         if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
-            List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
-            if (CollectionUtil.isEmpty(statuses)) {
-                inventoryFlows = flowStoreService.getAllFlows();
-            } else {
-                String status = "";
-                for (String statusObj : statuses) {
-                    if (StringUtil.isNullOrEmpty(status)) {
-                        status += statusObj;
-                    } else {
-                        status += "," + statusObj;
+            try {
+                List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
+                if (CollectionUtil.isEmpty(statuses)) {
+                    inventoryFlows = flowStoreService.getAllFlows();
+                } else {
+                    String status = "";
+                    for (String statusObj : statuses) {
+                        if (StringUtil.isNullOrEmpty(status)) {
+                            status += statusObj;
+                        } else {
+                            status += "," + statusObj;
+                        }
                     }
+                    inventoryFlows = flowStoreService.getFlowsWithParams(status);
                 }
-                inventoryFlows = flowStoreService.getFlowsWithParams(status);
+                processInventoryFlow(flows, inventoryFlows);
+            } catch (Exception ex) {
+                LOGGER.error("[getAllFlows] Exception while retrieving flows from store. Exception: "
+                        + ex.getLocalizedMessage(), ex);
             }
-            processInventoryFlow(flows, inventoryFlows);
         }
         return flows;
     }
@@ -205,31 +211,36 @@ public class FlowService {
             flowInfo = flowConverter.toFlowInfo(flow, csNames);
         }
         if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
-            InventoryFlow inventoryFlow = flowStoreService.getFlowById(flowId);
-            if (flow != null && inventoryFlow != null) {
-                flowInfo.setState(inventoryFlow.getState());
-                flowInfo.setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
-                FlowDiscrepancy discrepancy = new FlowDiscrepancy();
-                discrepancy.setControllerDiscrepancy(false);
-                if (flowInfo.getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
-                    discrepancy.setBandwidth(true);
-                }
-                if (("UP".equalsIgnoreCase(flowInfo.getStatus())
-                        && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
-                        || ("DOWN".equalsIgnoreCase(flowInfo.getStatus())
-                                && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+            try {
+                InventoryFlow inventoryFlow = flowStoreService.getFlowById(flowId);
+                if (flow != null && inventoryFlow != null) {
+                    flowInfo.setState(inventoryFlow.getState());
+                    flowInfo.setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
+                    FlowDiscrepancy discrepancy = new FlowDiscrepancy();
+                    discrepancy.setControllerDiscrepancy(false);
+                    if (flowInfo.getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
+                        discrepancy.setBandwidth(true);
+                    }
+                    if (("UP".equalsIgnoreCase(flowInfo.getStatus())
+                            && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
+                            || ("DOWN".equalsIgnoreCase(flowInfo.getStatus())
+                                    && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                        discrepancy.setStatus(true);
+                    }
+                    flowInfo.setDiscrepancy(discrepancy);
+                } else if (inventoryFlow == null && flow != null) {
+                    FlowDiscrepancy discrepancy = new FlowDiscrepancy();
+                    discrepancy.setInventoryDiscrepancy(true);
+                    discrepancy.setControllerDiscrepancy(false);
                     discrepancy.setStatus(true);
+                    discrepancy.setBandwidth(true);
+                    flowInfo.setDiscrepancy(discrepancy);
+                } else {
+                    flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                 }
-                flowInfo.setDiscrepancy(discrepancy);
-            } else if (inventoryFlow == null && flow != null) {
-                FlowDiscrepancy discrepancy = new FlowDiscrepancy();
-                discrepancy.setInventoryDiscrepancy(true);
-                discrepancy.setControllerDiscrepancy(false);
-                discrepancy.setStatus(true);
-                discrepancy.setBandwidth(true);
-                flowInfo.setDiscrepancy(discrepancy);
-            } else {
-                flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
+            } catch (Exception ex) {
+                LOGGER.error("[getAllFlows] Exception while retrieving flows from store. Exception: "
+                        + ex.getLocalizedMessage(), ex);
             }
         }
         return flowInfo;
