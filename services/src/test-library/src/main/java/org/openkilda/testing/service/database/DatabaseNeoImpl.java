@@ -28,6 +28,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.GraphDatabase;
 import org.neo4j.driver.v1.Record;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class DatabaseNeoImpl implements DisposableBean, Database {
     private static final int DEFAULT_DEPTH = 7;
     private static final String MATCH_LINK_QUERY = "MATCH ()-[link:isl {src_port:$srcPort, dst_port:$dstPort, "
@@ -59,7 +61,11 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
     @Override
     public void destroy() {
         if (neo != null) {
-            neo.close();
+            try {
+                neo.close();
+            } catch (Exception e) {
+                log.warn("Error on closing Neo4j connection", e);
+            }
         }
     }
 

@@ -109,8 +109,10 @@ class PathHelper {
      * Get list of Switches involved in given flow.
      */
     List<Switch> getInvolvedSwitches(String flowId) {
-        def flowPath = northbound.getFlowPath(flow.id)
-        return getInvolvedSwitches(convert(flowPath))
+        def flowPath = northbound.getFlowPath(flowId)
+        assert flowPath.forwardPath
+        def switchIds = flowPath.forwardPath.unique().collect() {it -> it.switchId}
+        return topology.switches.findAll {sw -> sw.dpId in switchIds}.unique()
     }
 
     /**
