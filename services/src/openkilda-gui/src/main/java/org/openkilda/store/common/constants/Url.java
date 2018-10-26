@@ -17,10 +17,10 @@ package org.openkilda.store.common.constants;
 
 import org.openkilda.store.model.RequestParamDto;
 
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import lombok.Getter;
 
 /**
  * Gets the request params.
@@ -36,7 +36,7 @@ public enum Url {
             GET_LINK("get-link", new RequestParams[] { RequestParams.LINK_ID }),
             GET_ALL_LINK("get-all-link", new RequestParams[] {}),
             GET_LINKS_WITH_PARAMS("get-link-with-param", 
-                    new RequestParams[] { RequestParams.LINK_ID, RequestParams.STATUS }),
+                    new RequestParams[] { RequestParams.STATUS }),
             GET_CONTRACT("get-contract", new RequestParams[] { RequestParams.LINK_ID }),
             DELETE_CONTRACT("delete-contract",
                     new RequestParams[] { RequestParams.LINK_ID, RequestParams.CONTRACT_ID });
@@ -61,7 +61,7 @@ public enum Url {
      *
      * @return the url names
      */
-    public static List<String> getUrlNames(){
+    public static List<String> getUrlNames() {
         List<String> list = new ArrayList<String>();
         for (Url urlObj : Url.values()) {
             list.add(urlObj.getName());
@@ -75,7 +75,7 @@ public enum Url {
      * @param name the name
      * @return the request params by url name
      */
-    public static List<RequestParamDto> getRequestParamsByUrlName(String name){
+    public static List<RequestParamDto> getRequestParamsByUrlName(String name) {
         List<RequestParamDto> list = new ArrayList<RequestParamDto>();
         Url url = null;
         for (Url urlObj : Url.values()) {
@@ -85,9 +85,9 @@ public enum Url {
             }
         }
         RequestParamDto requestParamDto = null;
-        for(RequestParams requestParam : url.getRequestParams()){
+        for (RequestParams requestParam : url.getRequestParams()) {
             requestParamDto = new RequestParamDto();
-            requestParamDto.setParamName(requestParam.getValue());
+            requestParamDto.setParamName(requestParam.getName());
             requestParamDto.setParamDescription(requestParam.getDescription());
             list.add(requestParamDto);
         }

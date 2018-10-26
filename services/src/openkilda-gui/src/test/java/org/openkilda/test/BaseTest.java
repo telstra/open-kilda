@@ -107,13 +107,19 @@ public class BaseTest {
         if (file.contains(IConstantsTest.FONTS_PATH)) {
             File directory = new File(IConstantsTest.CLASSPATH + IConstantsTest.FONTS_PATH);
             if (!directory.exists()) {
-                directory.mkdir();
+                directory.mkdirs();
             }
         }
         if (file.contains(IConstantsTest.JAVASCRIPT_PATH)) {
             File directory = new File(IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH);
             if (!directory.exists()) {
-                directory.mkdir();
+                directory.mkdirs();
+            }
+        }
+        if (file.contains(IConstantsTest.CSS_PATH)) {
+            File directory = new File(IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH);
+            if (!directory.exists()) {
+                directory.mkdirs();
             }
         }
 

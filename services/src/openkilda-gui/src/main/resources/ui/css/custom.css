@@ -2815,6 +2815,28 @@ div#portsTable_info {
      font-size:14px;
 }
 
+/*Filter Buttons */                                                                                                                                                               
+
+.filter_btns label {
+    display: block;
+    float: left;
+    padding-right: 10px;
+    white-space: nowrap;
+}
+
+.filter_btns input {
+    vertical-align: middle;
+}
+
+.filter_btns label span {
+    vertical-align: bottom;
+}
+
+.form-group input.flowDetailSearch{
+	padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
 .kilda_white_logo{
   	background: url(../images/kilda_logo_white.png) no-repeat 0 0;
     background-size: 180px 40px;

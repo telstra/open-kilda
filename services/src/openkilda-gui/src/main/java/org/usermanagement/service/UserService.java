@@ -173,12 +173,12 @@ public class UserService implements UserDetailsService {
             userEntity.getRoles().clear();
             Set<RoleEntity> roleEntities = roleService.getRolesById(userInfo.getRoleIds());
             userEntity.getRoles().addAll(roleEntities);
-            for(RoleEntity role : roleEntities){
+            for (RoleEntity role : roleEntities) {
                 roles = roles.length() > 0 ? roles.append("," + role.getName()) : roles.append(role.getName());
             }
             activityMessage.append("roles:" + roles.toString() + "\n");
         }
-        
+
         UserConversionUtil.toUpateUserEntity(userInfo, userEntity, activityMessage);
         userEntity = userRepository.save(userEntity);
 
@@ -250,8 +250,8 @@ public class UserService implements UserDetailsService {
             throw new RequestValidationException(messageUtil.getAttributeInvalid("username", userName + ""));
         }
         userEntity.setLoginTime(Calendar.getInstance().getTime());
-        if(userEntity.getIs2FaEnabled()) {
-        	userEntity.setIs2FaConfigured(true);
+        if (userEntity.getIs2FaEnabled()) {
+            userEntity.setIs2FaConfigured(true);
         }
         userRepository.save(userEntity);
         LOGGER.info("User last login updated successfully (username: " + userName + ")");

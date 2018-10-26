@@ -15,19 +15,21 @@
 
 package org.openkilda.dao.interceptor;
 
-import java.util.Calendar;
-import java.util.Collection;
+import org.openkilda.auth.context.ServerContext;
+import org.openkilda.auth.model.RequestContext;
+import org.openkilda.entity.BaseEntity;
 
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
-import org.openkilda.auth.context.ServerContext;
-import org.openkilda.auth.model.RequestContext;
-import org.openkilda.entity.BaseEntity;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.Calendar;
+import java.util.Collection;
 
 /**
  * The Class DaoInterceptor.

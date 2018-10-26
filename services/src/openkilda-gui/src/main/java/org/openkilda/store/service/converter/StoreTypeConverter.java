@@ -19,7 +19,9 @@ import org.openkilda.store.common.constants.StoreType;
 import org.openkilda.store.common.dao.entity.StoreTypeEntity;
 import org.openkilda.store.model.StoreTypeDto;
 
-public class StoreTypeConverter {
+public final class StoreTypeConverter {
+    
+    private StoreTypeConverter() {}
 
     /**
      * To store type dto.
@@ -27,7 +29,7 @@ public class StoreTypeConverter {
      * @param storeType the store type
      * @return the store type dto
      */
-    public static StoreTypeDto toStoreTypeDto(StoreType storeType){
+    public static StoreTypeDto toStoreTypeDto(StoreType storeType) {
         StoreTypeEntity storeTypeEntity = storeType.getStoreTypeEntity();
         StoreTypeDto storeTypeDto = new StoreTypeDto();
         storeTypeDto.setStoreTypeId(storeTypeEntity.getStoreTypeId());

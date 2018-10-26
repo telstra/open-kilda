@@ -32,15 +32,14 @@ import org.openkilda.utility.StringUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import org.apache.http.HttpResponse;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

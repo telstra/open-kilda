@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.ModelAndView;
@@ -69,7 +70,7 @@ public class FlowController extends BaseController {
 
     @Autowired
     private ServerContext serverContext;
-
+    
     /**
      * Return to flows view.
      *
@@ -117,10 +118,11 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody List<FlowInfo> getFlows() {
-        return flowService.getAllFlows();
+    public @ResponseBody List<FlowInfo> getFlows(
+            @RequestParam(name = "status", required = false) List<String> statuses) {
+        return flowService.getAllFlows(statuses);
     }
-
+    
     /**
      * Returns flow path with all nodes/switches exists in provided flow.
      *
@@ -166,11 +168,11 @@ public class FlowController extends BaseController {
      * Get flow by Id.
      *
      * @param flowId id of flow requested.
-     * @return flow
+     * @return flowInfo
      */
     @RequestMapping(value = "/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody Flow getFlowById(@PathVariable final String flowId) {
+    public @ResponseBody FlowInfo getFlowById(@PathVariable final String flowId) {
         LOGGER.info("[getFlowById] - start. Flow id: " + flowId);
         return flowService.getFlowById(flowId);
     }

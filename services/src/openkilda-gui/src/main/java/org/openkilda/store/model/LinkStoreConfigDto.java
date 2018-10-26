@@ -15,13 +15,13 @@
 
 package org.openkilda.store.model;
 
-import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
+
+import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -29,6 +29,6 @@ import lombok.Data;
 public class LinkStoreConfigDto {
 
     @JsonProperty("urls")
-    private Map<String,UrlDto> urls;
-    
+    private Map<String, UrlDto> urls;
+
 }

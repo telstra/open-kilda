@@ -40,7 +40,7 @@ public class UrlService {
      * @return the auth urls
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public List<String> getAuthUrls(final String type){
+    public List<String> getAuthUrls(final String type) {
         return AuthUrl.getUrlName(type);
     }
     
@@ -51,7 +51,7 @@ public class UrlService {
      * @return the store urls
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public List<String> getStoreUrls(final String type){
+    public List<String> getStoreUrls(final String type) {
         return StoreUrl.getUrlName(type);
     }
     
@@ -62,7 +62,7 @@ public class UrlService {
      * @return the request url params
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public List<RequestParamDto> getRequestUrlParams(String urlName){
+    public List<RequestParamDto> getRequestUrlParams(String urlName) {
         return Url.getRequestParamsByUrlName(urlName);
     }
     
