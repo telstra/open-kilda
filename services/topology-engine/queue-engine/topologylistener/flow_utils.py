@@ -453,30 +453,6 @@ def get_old_flow(new_flow):
             new_flow['flowid'], new_flow['cookie']))
 
 
-# Note this methods is used for LCM functionality. Adds CACHED state to the flow
-def get_flows():
-    flows = {}
-    query = "MATCH (a:switch)-[r:flow]->(b:switch) RETURN r"
-    try:
-        result = graph.run(query).data()
-
-        for data in result:
-            flow = hydrate_flow(data['r'])
-            flow['state'] = 'CACHED'
-            flow_pair = flows.get(flow['flowid'], {})
-            if is_forward_cookie(flow['cookie']):
-                flow_pair['forward'] = flow
-            else:
-                flow_pair['reverse'] = flow
-            flows[flow['flowid']] = flow_pair
-
-        logger.info('Got flows: %s', flows.values())
-    except Exception as e:
-        logger.exception('"Can not get flows: %s', e.message)
-        raise
-    return flows.values()
-
-
 def precreate_switches(tx, *nodes):
     switches = [x.lower() for x in nodes]
     switches.sort()
