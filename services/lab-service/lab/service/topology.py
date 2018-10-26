@@ -98,10 +98,6 @@ class Switch:
         ]
         self.vscmd.extend(cmd) if batch else vsctl(cmd)
 
-    def remove_controller(self, batch=True):
-        cmd = ['del-controller %s' % self.name]
-        self.vscmd.extend(cmd) if batch else vsctl(cmd)
-
 
 class ASwitch(Switch):
     def setup(self, a_mappings):

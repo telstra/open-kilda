@@ -20,6 +20,7 @@ import logging
 
 
 FL_CONTAINER_NAME = "floodlight"
+DUMMY_CONTROLLER = "tcp:192.0.2.0:6666"
 logger = logging.getLogger()
 docker = DockerClient(base_url='unix://var/run/docker.sock')
 
@@ -79,7 +80,7 @@ def ports_down():
 def switch_knock_out():
     body = request.get_json()
     sw = body['name']
-    switches[sw].remove_controller(batch=False)
+    switches[sw].add_controller(DUMMY_CONTROLLER, batch=False)
     return jsonify({'status': 'ok'})
 
 
