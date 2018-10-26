@@ -26,9 +26,10 @@ import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.of
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchEventCollector;
@@ -68,13 +69,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ReplaceInstallFlowTest {
+    private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
+    private static final String KAFKA_FLOW_TOPIC = "kilda.flow";
+    private static final String KAFKA_NORTHBOUND_TOPIC = "kilda.northbound";
+
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private final ExecutorService parseRecordExecutor = MoreExecutors.sameThreadExecutor();
     protected SwitchDescription switchDescription;
     protected OutputCommands scheme;
     private IOFSwitchService ofSwitchService;
     private KafkaMessageCollector collector;
-    private KafkaMessageProducer producer;
 
     /**
      * Returns CommandData entity constructed by data string from json resource file.
@@ -94,12 +98,11 @@ public class ReplaceInstallFlowTest {
         final PathVerificationService pathVerificationService = new PathVerificationService();
 
         ofSwitchService = createMock(IOFSwitchService.class);
-        producer = createMock(KafkaMessageProducer.class);
 
         context.addService(IOFSwitchService.class, ofSwitchService);
         context.addService(IRestApiService.class, null);
         context.addService(SwitchEventCollector.class, null);
-        context.addService(KafkaMessageProducer.class, producer);
+        context.addService(IKafkaProducerService.class, createMock(IKafkaProducerService.class));
         context.addService(IPathVerificationService.class, pathVerificationService);
         context.addService(ISwitchManager.class, switchManager);
 
@@ -108,6 +111,17 @@ public class ReplaceInstallFlowTest {
         collector = new KafkaMessageCollector();
         context.addConfigParam(collector, "topic", "");
         context.addConfigParam(collector, "bootstrap-servers", "");
+
+        KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
+        KafkaTopicsConfig topics = createMock(KafkaTopicsConfig.class);
+        expect(topics.getTopoDiscoTopic()).andReturn(KAFKA_ISL_DISCOVERY_TOPIC).anyTimes();
+        expect(topics.getFlowTopic()).andReturn(KAFKA_FLOW_TOPIC).anyTimes();
+        expect(topics.getNorthboundTopic()).andReturn(KAFKA_NORTHBOUND_TOPIC).anyTimes();
+        expect(kafkaUtility.getTopics()).andReturn(topics).anyTimes();
+
+        replay(kafkaUtility, topics);
+
+        context.addService(KafkaUtilityService.class, kafkaUtility);
 
         initScheme();
     }
@@ -256,11 +270,8 @@ public class ReplaceInstallFlowTest {
         // construct kafka message
         ConsumerRecord<String, String> record = new ConsumerRecord<>("", 0, 0, "", value);
 
-        ConfigurationProvider provider = ConfigurationProvider.of(context, collector);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
-
         // create parser instance
-        ConsumerContext kafkaContext = new ConsumerContext(context, topicsConfig);
+        ConsumerContext kafkaContext = new ConsumerContext(context);
         RecordHandler parseRecord = new RecordHandler(kafkaContext, record, new MeterPool());
         // init test mocks
         Capture<OFFlowAdd> flowAddCapture = flowCommand == null ? null : newCapture(CaptureType.ALL);

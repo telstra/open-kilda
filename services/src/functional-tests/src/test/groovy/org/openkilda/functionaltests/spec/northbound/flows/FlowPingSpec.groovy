@@ -22,7 +22,6 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -39,8 +38,6 @@ be delivered at the other end. 'Pings' the flow in both directions(forward and r
 class FlowPingSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
-    @Autowired
-    TopologyEngineService topologyEngineService
     @Autowired
     FlowHelper flowHelper
     @Autowired
@@ -122,7 +119,7 @@ class FlowPingSpec extends BaseSpecification {
         //select src and dst switches that have an a-switch path
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+            allPaths = db.getPaths(src.dpId, dst.dpId)*.path
             aswitchPath = allPaths.find { pathHelper.getInvolvedIsls(it).find { it.aswitch } }
             aswitchPath
         } ?: assumeTrue("Wasn't able to find suitable switch pair", false)

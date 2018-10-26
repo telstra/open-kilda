@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka.producer;
+package org.openkilda.floodlight.service.kafka;
 
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.expect;
@@ -21,12 +21,15 @@ import static org.easymock.EasyMock.getCurrentArguments;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
+import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.model.SwitchId;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.PartitionInfo;
@@ -36,6 +39,7 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.easymock.IAnswer;
+import org.easymock.Mock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,21 +50,36 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class ProducerTest extends EasyMockSupport {
+public class KafkaProducerServiceTest extends EasyMockSupport {
     private static final String TOPIC = "A";
     private static final TopicPartition[] partitions = new TopicPartition[]{
             new TopicPartition(TOPIC, 0),
             new TopicPartition(TOPIC, 1)
     };
 
-    private org.apache.kafka.clients.producer.Producer<String, String> kafkaProducer;
-    private Producer subject;
+    @Mock
+    private HeartBeatService heartBeatService;
+
+    private KafkaProducerService subject;
+
+    @SuppressWarnings("unchecked")
+    private Producer<String, String> kafkaProducer = (Producer<String, String>) strictMock(Producer.class);
 
     @Before
-    @SuppressWarnings("unchecked")
     public void setUp() throws Exception {
-        kafkaProducer = strictMock(org.apache.kafka.clients.producer.Producer.class);
-        subject = new Producer(kafkaProducer);
+        injectMocks(this);
+
+        FloodlightModuleContext moduleContext = new FloodlightModuleContext();
+        moduleContext.addService(HeartBeatService.class, heartBeatService);
+
+        KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
+        expect(kafkaUtility.makeProducer()).andReturn(kafkaProducer);
+        moduleContext.addService(KafkaUtilityService.class, kafkaUtility);
+
+        replay(kafkaUtility);
+
+        subject = new KafkaProducerService();
+        subject.setup(moduleContext);
 
         ArrayList<PartitionInfo> partitionsForResult = new ArrayList<>(2);
         for (TopicPartition p : partitions) {

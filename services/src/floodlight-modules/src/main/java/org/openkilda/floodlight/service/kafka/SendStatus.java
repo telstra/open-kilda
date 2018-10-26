@@ -13,18 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.kafka;
+package org.openkilda.floodlight.service.kafka;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.apache.kafka.clients.producer.RecordMetadata;
 
-public class Context {
-    private final FloodlightModuleContext moduleContext;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
-    public Context(FloodlightModuleContext moduleContext) {
-        this.moduleContext = moduleContext;
+public class SendStatus {
+    private final Future<RecordMetadata> promise;
+
+    protected SendStatus(Future<RecordMetadata> promise) {
+        this.promise = promise;
     }
 
-    public FloodlightModuleContext getModuleContext() {
-        return moduleContext;
+    public boolean isComplete() {
+        return promise.isDone();
+    }
+
+    public void waitTillComplete() throws InterruptedException, ExecutionException {
+        promise.get();
     }
 }

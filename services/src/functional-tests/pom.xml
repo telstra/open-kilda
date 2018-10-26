@@ -20,7 +20,7 @@
         <surefire.version>2.22.0</surefire.version>
         <jackson.version>2.9.4</jackson.version>
         <groovy.version>2.4.15</groovy.version>
-        <spock.version>1.1-groovy-2.4</spock.version>
+        <spock.version>1.2-RC2-groovy-2.4</spock.version>
         <spock.reports.version>1.6.0</spock.reports.version>
         <log4j-slf4j.version>2.10.0</log4j-slf4j.version>
         <shazamcrest.version>0.9</shazamcrest.version>

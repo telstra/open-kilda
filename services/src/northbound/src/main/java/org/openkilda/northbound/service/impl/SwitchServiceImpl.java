@@ -209,15 +209,15 @@ public class SwitchServiceImpl implements SwitchService {
         CompletableFuture<RulesValidationResult> validationStage = validateRules(switchId);
 
         return validationStage
-                .thenApply(validationResult -> syncRules(switchId, validationResult.getMissingRules()))
-                .thenApply(SyncRulesResponse.class::cast)
+                .thenCompose(validationResult -> syncRules(switchId, validationResult.getMissingRules())
+                        .thenApply(SyncRulesResponse.class::cast))
                 .thenCombine(validationStage, (synchronization, validation) ->
-                        switchMapper.toRulesSyncResult(validation, synchronization.getMissingRules()));
+                        switchMapper.toRulesSyncResult(validation, synchronization.getInstalledRules()));
     }
 
     private CompletableFuture<InfoData> syncRules(SwitchId switchId, List<Long> missingRules) {
         if (CollectionUtils.isEmpty(missingRules)) {
-            return CompletableFuture.completedFuture(new SyncRulesResponse(missingRules, null, null, null));
+            return CompletableFuture.completedFuture(new SyncRulesResponse());
         }
 
         String syncCorrelationId = format("%s-sync", RequestCorrelationId.getId());

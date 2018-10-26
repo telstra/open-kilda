@@ -13,8 +13,8 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -26,13 +26,13 @@ class AutoRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
     @Autowired
-    TopologyEngineService topologyEngineService
-    @Autowired
     FlowHelper flowHelper
     @Autowired
     PathHelper pathHelper
     @Autowired
     NorthboundService northboundService
+    @Autowired
+    LockKeeperService lockKeeperService
     @Autowired
     Database db
     @Autowired
@@ -42,14 +42,17 @@ class AutoRerouteSpec extends BaseSpecification {
     int rerouteDelay
     @Value('${discovery.interval}')
     int discoveryInterval
+    @Value('${discovery.timeout}')
+    int discoveryTimeout
 
-    def "Flow should go Down when its link fails and there is no ability to reroute"() {
+    def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
-        def allPaths = topologyEngineService.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Ports that lead to alternative paths are brought down to deny alternative paths"
         def altPaths = allPaths.findAll { it != currentPath }
@@ -83,16 +86,68 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
+    def "Flow goes to 'Down' status when an intermediate switch is disconnected and there is no ability to reroute"() {
+        requireProfiles("virtual")
+
+        given: "Two active not neighboring switches"
+        def switches = topology.getActiveSwitches()
+        def links = northboundService.getAllLinks()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            links.every { link ->
+                def switchIds = link.path*.switchId
+                !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
+            }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A flow without alternative paths"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        northboundService.addFlow(flow)
+        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+
+        def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def altPaths = allPaths.findAll { it != currentPath && it.first().portNo != currentPath.first().portNo }
+        List<PathNode> broughtDownPorts = []
+        altPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northboundService.portDown(src.switchId, src.portNo)
+        }
+
+        when: "An intermediate switch is disconnected"
+        lockKeeperService.knockoutSwitch(currentPath[1].switchId)
+
+        then: "Flow becomes 'Down'"
+        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        }
+
+        when: "The intermediate switch is connected back"
+        lockKeeperService.reviveSwitch(currentPath[1].switchId)
+
+        then: "Flow becomes 'Up'"
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+        }
+
+        and: "Restore topology to original state, remove flow"
+        broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
+        northboundService.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+        }
+    }
+
     def "Flow in 'Down' status tries to reroute when discovering a new ISL"() {
         given: "Two active switches and a flow with one alternate path at least"
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> possibleFlowPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1
-        }
-        assumeTrue("No suiting switches found", srcSwitch && dstSwitch)
+        } ?: assumeTrue("No suiting switches found", false)
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 1000
@@ -142,10 +197,9 @@ class AutoRerouteSpec extends BaseSpecification {
         List<List<PathNode>> possibleFlowPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1
-        }
-        assumeTrue("No suiting switches found", srcSwitch && dstSwitch)
+        } ?: assumeTrue("No suiting switches found", false)
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 1000

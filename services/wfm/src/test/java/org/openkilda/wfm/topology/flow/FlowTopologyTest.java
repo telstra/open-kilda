@@ -933,7 +933,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Create flow");
         Flow flowPayload =
                 new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
-                        new SwitchId("ff:00"), 1, 2);
+                        new SwitchId("ff:01"), 1, 2);
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
         //sendNorthboundMessage(message);
@@ -945,7 +945,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         System.out.println("NORTHBOUND: Update flow");
         Flow flowPayload =
                 new Flow(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
-                        new SwitchId("ff:00"), 1, 2);
+                        new SwitchId("ff:01"), 1, 2);
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
         //sendNorthboundMessage(message);

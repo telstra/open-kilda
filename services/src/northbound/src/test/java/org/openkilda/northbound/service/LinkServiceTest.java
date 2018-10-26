@@ -22,7 +22,6 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -158,7 +157,7 @@ public class LinkServiceTest {
 
         LinkPropsResponse payload = new LinkPropsResponse(request, linkProps, null);
         String subCorrelationId = idFactory.produceChained(String.valueOf(requestIdIndex++), correlationId);
-        messageExchanger.mockResponse(new InfoMessage(payload, System.currentTimeMillis(), subCorrelationId));
+        messageExchanger.mockResponse(subCorrelationId, payload);
 
         LinkPropsDto inputItem = new LinkPropsDto(
                 linkProps.getSource().getDatapath().toString(), linkProps.getSource().getPortNumber(),
