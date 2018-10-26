@@ -52,8 +52,8 @@ class AutoRerouteSpec extends BaseSpecification {
         def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Ports that lead to alternative paths are brought down to deny alternative paths"
         def altPaths = allPaths.findAll { it != currentPath }
@@ -149,8 +149,8 @@ class AutoRerouteSpec extends BaseSpecification {
         given: "Two active not neighboring switches and a flow without alternative paths"
         def flow = withIntermediateSwitchFlow()
         northboundService.addFlow(flow)
-        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         def allPaths = db.getPaths(flow.source.datapath, flow.destination.datapath)*.path
         def altPaths = allPaths.findAll { it != currentPath && it.first().portNo != currentPath.first().portNo }
@@ -171,6 +171,9 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "The intermediate switch is connected back"
         lockKeeperService.reviveSwitch(currentPath[1].switchId)
+        assert Wrappers.wait(WAIT_OFFSET) {
+            northboundService.activeSwitches*.switchId.contains(currentPath[1].switchId)
+        }
 
         then: "Flow becomes 'Up'"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
@@ -198,8 +201,8 @@ class AutoRerouteSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 1000
         northboundService.addFlow(flow)
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Bring all ports down on source switch that are involved in current and alternate paths"
         List<PathNode> broughtDownPorts = []
@@ -220,7 +223,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         then: "Flow goes to 'Up' status"
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
@@ -250,8 +253,8 @@ class AutoRerouteSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 1000
         northboundService.addFlow(flow)
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make current flow path less preferable than others"
         possibleFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }

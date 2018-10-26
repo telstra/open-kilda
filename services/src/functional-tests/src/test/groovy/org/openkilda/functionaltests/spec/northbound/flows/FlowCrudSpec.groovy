@@ -98,9 +98,11 @@ class FlowCrudSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().every { it.availableBandwidth == it.speed } }
 
         and: "No rule discrepancies on every switch of the flow"
-        switches.every {
-            def rules = northboundService.validateSwitchRules(it.dpId)
-            rules.missingRules.empty && rules.excessRules.empty
+        switches.every { sw ->
+            Wrappers.wait(WAIT_OFFSET) {
+                def rules = northboundService.validateSwitchRules(sw.dpId)
+                rules.missingRules.empty && rules.excessRules.empty
+            }
         }
 
         where:
@@ -161,9 +163,11 @@ class FlowCrudSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().every { it.availableBandwidth == it.speed } }
 
         and: "No rule discrepancies on the switch after delete"
-        def rulesAfterDelete = northboundService.validateSwitchRules(flow.source.datapath)
-        rulesAfterDelete.missingRules.empty
-        rulesAfterDelete.excessRules.empty
+        Wrappers.wait(WAIT_OFFSET) {
+            def rulesAfterDelete = northboundService.validateSwitchRules(flow.source.datapath)
+            rulesAfterDelete.missingRules.empty &&
+                rulesAfterDelete.excessRules.empty
+        }
 
         where: flow << getSingleSwitchSinglePortFlows()
     }

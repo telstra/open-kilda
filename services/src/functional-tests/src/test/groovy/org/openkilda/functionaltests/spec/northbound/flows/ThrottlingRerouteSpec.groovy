@@ -16,6 +16,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -42,6 +43,8 @@ class ThrottlingRerouteSpec extends BaseSpecification {
     NorthboundService northboundService
     @Autowired
     Database db
+    @Autowired
+    IslUtils islUtils
 
     @Value('${reroute.delay}')
     int rerouteDelay
@@ -91,11 +94,11 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Still on the same path right before the timeout should run out"
-        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval)
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 1)
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Flow reroutes (changes path) after window timeout"
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval + 1) {
             currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
@@ -134,18 +137,21 @@ class ThrottlingRerouteSpec extends BaseSpecification {
 
         and: "Ends up in FAILED state"
         northboundService.portDown(isl.dstSwitch.dpId, isl.dstPort)
+        assert Wrappers.wait(WAIT_OFFSET) {
+            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
 
         then: "Flow is not rerouted and remains UP"
         northboundService.getFlowStatus(flow.id).status == FlowState.UP
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Still UP and on the same path right before the timeout should run out"
-        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval)
+        TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 1)
         currentPath == PathHelper.convert(northboundService.getFlowPath(flow.id))
         northboundService.getFlowStatus(flow.id).status == FlowState.UP
 
         and: "Flow tries to reroute and goes DOWN after window timeout"
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval + 1) {
             northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
@@ -270,6 +276,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Init a flow reroute by blinking a port"
         def islToBreak = pathHelper.getInvolvedIsls(pathHelper.convert(northboundService.getFlowPath(flow.id))).first()
@@ -289,6 +296,13 @@ class ThrottlingRerouteSpec extends BaseSpecification {
 
         and: "Flow is not present in Database"
         db.countFlows() == 0
+
+        and: "Related switches has no excess rules"
+        pathHelper.getInvolvedSwitches(path).each {
+            def rules = northboundService.validateSwitchRules(it.dpId)
+            assert rules.excessRules.empty
+            assert rules.missingRules.empty
+        }
     }
 
     def "Auto-reroute on the flow which is already deleted should not revive the flow"() {
