@@ -7,14 +7,17 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
+
+import java.util.concurrent.TimeUnit
 
 class SwitchRulesSpec extends BaseSpecification {
+
+    private static final FLOW_RULES_SIZE = 2
 
     @Autowired
     TopologyDefinition topology
@@ -23,17 +26,12 @@ class SwitchRulesSpec extends BaseSpecification {
     @Autowired
     LockKeeperService lockKeeperService
 
-    @Value('${reroute.delay}')
-    int rerouteDelay
-    @Value('${discovery.timeout}')
-    int discoveryTimeout
-
-    def "Default rules are installed on a new switch when connecting it to the controller"() {
+    def "Default rules are installed on a new switch connected to the controller"() {
         requireProfiles("virtual")
 
         given: "A switch with no rules installed and not connected to the controller"
         def sw = topology.getActiveSwitches().first()
-        def defaultRulesSorted = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
+        def defaultRules = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
         northboundService.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
 
@@ -42,14 +40,12 @@ class SwitchRulesSpec extends BaseSpecification {
 
         when: "Connect the switch to the controller"
         lockKeeperService.reviveSwitch(sw.dpId)
+        Wrappers.wait(WAIT_OFFSET) { assert sw.dpId in northboundService.getActiveSwitches()*.switchId }
 
-        then: "The switch is really connected to the controller"
-        Wrappers.wait(WAIT_OFFSET) { sw.dpId in northboundService.getActiveSwitches()*.switchId }
-
-        and: "Default rules are installed on the switch"
-        def actualRulesSorted = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
-        actualRulesSorted.size() == defaultRulesSorted.size()
-        [actualRulesSorted, defaultRulesSorted].transpose().each { actual, expected ->
+        then: "Default rules are installed on the switch"
+        def actualRules = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
+        actualRules.size() == defaultRules.size()
+        [actualRules, defaultRules].transpose().each { actual, expected ->
             verifyAll {
                 actual.cookie == expected.cookie
                 actual.tableId == expected.tableId
@@ -64,39 +60,57 @@ class SwitchRulesSpec extends BaseSpecification {
         }
     }
 
-    @Ignore("Test is skipped because of the issue #1464")
-    def "Pre-installed rules are not deleted from a new switch when connecting it to the controller"() {
-        // TODO(ylobankov): Also the current disconnection of the switch from the controller is not suitable for
-        // this scenario. It is needed to add additional functionality to properly disconnect the switch.
-
+    def "Pre-installed rules are not deleted from a new switch connected to the controller"() {
         requireProfiles("virtual")
 
-        given: "A switch with some rules installed and not connected to the controller"
-        def sw = topology.getActiveSwitches().first()
-        def defaultRulesSorted = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
+        given: "A switch with some rules installed (including default) and not connected to the controller"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
+        def defaultRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.sort { it.cookie }
 
-        def flow = flowHelper.singleSwitchFlow(sw)
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
-        def allRulesSorted = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
-        assert allRulesSorted.size() > defaultRulesSorted.size()
-
-        lockKeeperService.knockoutSwitch(sw.dpId)
-        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
-            assert northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        def defaultPlusFlowRules = []
+        Wrappers.wait(WAIT_OFFSET) {
+            defaultPlusFlowRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.sort { it.cookie }
+            assert defaultPlusFlowRules.size() == defaultRules.size() + FLOW_RULES_SIZE
         }
+
+        lockKeeperService.knockoutSwitch(srcSwitch.dpId)
+        Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northboundService.getActiveSwitches()*.switchId) }
 
         northboundService.deleteFlow(flow.id)
         Wrappers.wait(WAIT_OFFSET) { assert !(flow.id in northboundService.getAllFlows()*.id) }
+        //TODO(ylobankov): Remove this dirty workaround once we add a helper method for flow deletion where we will
+        // check the finish of delete operation
+        TimeUnit.SECONDS.sleep(1)
 
         when: "Connect the switch to the controller"
-        lockKeeperService.reviveSwitch(sw.dpId)
+        lockKeeperService.reviveSwitch(srcSwitch.dpId)
+        Wrappers.wait(WAIT_OFFSET) { assert srcSwitch.dpId in northboundService.getActiveSwitches()*.switchId }
 
-        then: "The switch is really connected to the controller"
-        Wrappers.wait(WAIT_OFFSET) { sw.dpId in northboundService.getActiveSwitches()*.switchId }
+        then: "Previously installed rules are not deleted from the switch"
+        def actualRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.sort { it.cookie }
+        actualRules.size() == defaultPlusFlowRules.size()
+        [actualRules, defaultPlusFlowRules].transpose().each { actual, expected ->
+            verifyAll {
+                actual.cookie == expected.cookie
+                actual.tableId == expected.tableId
+                actual.version == expected.version
+                actual.priority == expected.priority
+                actual.idleTimeout == expected.idleTimeout
+                actual.hardTimeout == expected.hardTimeout
+                actual.match == expected.match
+                actual.instructions == expected.instructions
+                actual.flags == expected.flags
+            }
+        }
 
-        and: "Previously installed rules are not deleted from the switch"
-        northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }.size() == allRulesSorted.size()
+        and: "Delete previously installed rules"
+        northboundService.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        Wrappers.wait(WAIT_OFFSET) {
+            northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == defaultRules.size()
+        }
     }
 }
