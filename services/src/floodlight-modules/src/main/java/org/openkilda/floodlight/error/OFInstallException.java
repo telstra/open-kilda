@@ -15,10 +15,18 @@
 
 package org.openkilda.floodlight.error;
 
+import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class InvalidMeterIdException extends SwitchOperationException {
-    public InvalidMeterIdException(DatapathId dpId, String message) {
-        super(dpId, message);
+public class OFInstallException extends SwitchOperationException {
+    private final transient OFMessage ofMessage;
+
+    public OFInstallException(DatapathId dpId, OFMessage ofMessage) {
+        super(dpId, String.format("Error during install OFRule into switch \"%s\"", dpId));
+        this.ofMessage = ofMessage;
+    }
+
+    public OFMessage getOfMessage() {
+        return ofMessage;
     }
 }

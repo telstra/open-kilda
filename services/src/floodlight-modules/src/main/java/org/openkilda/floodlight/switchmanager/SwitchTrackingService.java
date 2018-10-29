@@ -16,6 +16,8 @@
 package org.openkilda.floodlight.switchmanager;
 
 import org.openkilda.floodlight.converter.IofSwitchConverter;
+import org.openkilda.floodlight.error.SwitchNotFoundException;
+import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;

@@ -17,8 +17,8 @@ package org.openkilda.floodlight.error;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class InvalidMeterIdException extends SwitchOperationException {
-    public InvalidMeterIdException(DatapathId dpId, String message) {
-        super(dpId, message);
+public class SwitchNotFoundException extends SwitchOperationException {
+    public SwitchNotFoundException(DatapathId dpId) {
+        super(dpId, String.format("Switch %s was not found", dpId));
     }
 }
