@@ -34,14 +34,8 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     }
 
     Map<SwitchId, List<FlowEntry>> findFlowRules(long cookie, List<SwitchId> switches) {
-        def newRules = captureSwitchRules(switches)
-        def result = [:]
-        newRules.each {k, v ->
-            List<FlowEntry> rules = v.flowEntries.findAll() {it.cookie == cookie}
-            if (rules) {
-                result[k] = rules
-            }
-        }
+        Map<SwitchId, List<FlowEntry>> result = [:]
+        captureSwitchRules(switches).findAll { k, v -> result[k] = v.flowEntries.findAll { it.cookie == cookie } }
         return result
     }
 
@@ -57,18 +51,19 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         def switches = topology.getActiveSwitches()
         def differentSwitches = [switches, switches].combinations().unique().findAll {src, dst -> src != dst}
 
-        def nonNeighbouringSwitches = differentSwitches.findAll {src, dst -> noDirectLinks(src, dst, islInfoData)}
-        return nonNeighbouringSwitches[0]
+        def nonNeighbouringSwitches = differentSwitches.find {src, dst -> noDirectLinks(src, dst, islInfoData)}
+        return nonNeighbouringSwitches
     }
 
     def getNeighbouringSwitches() {
         def switches = topology.getActiveSwitches()
-        return [switches, switches].combinations().findAll { src, dst -> src != dst }.unique().first()
+        def islInfoData = northbound.getAllLinks()
+        return [switches, switches].combinations().unique().find { src, dst -> !noDirectLinks(src, dst, islInfoData) }
     }
 
     def getSingleSwitch() {
         def switches = topology.getActiveSwitches()
-        return [switches, switches].combinations().findAll() { src, dst -> src == dst }.unique().first()
+        return [switches.first(), switches.first()]
     }
 
 
