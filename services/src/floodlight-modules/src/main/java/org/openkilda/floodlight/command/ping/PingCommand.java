@@ -15,10 +15,11 @@
 
 package org.openkilda.floodlight.command.ping;
 
+import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
-import org.openkilda.floodlight.service.ConfigService;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
@@ -31,19 +32,20 @@ import org.slf4j.LoggerFactory;
 import java.util.UUID;
 
 abstract class PingCommand extends Command {
-    protected static Logger logPing = LoggerFactory.getLogger("open-kilda.flows.PING");
+    protected static final Logger logPing = LoggerFactory.getLogger("open-kilda.flows.PING");
 
-    private final KafkaMessageProducer kafkaProducer;
-    private final ConfigService configService;
+    private final IKafkaProducerService producerService;
     private final PingService pingService;
+
+    private final KafkaTopicsConfig topics;
 
     PingCommand(CommandContext context) {
         super(context);
 
         FloodlightModuleContext moduleContext = getContext().getModuleContext();
-        configService = moduleContext.getServiceImpl(ConfigService.class);
         pingService = moduleContext.getServiceImpl(PingService.class);
-        kafkaProducer = moduleContext.getServiceImpl(KafkaMessageProducer.class);
+        producerService = moduleContext.getServiceImpl(IKafkaProducerService.class);
+        topics = moduleContext.getServiceImpl(KafkaUtilityService.class).getTopics();
     }
 
     void sendErrorResponse(UUID pingId, Ping.Errors errorCode) {
@@ -52,10 +54,9 @@ abstract class PingCommand extends Command {
     }
 
     void sendResponse(PingResponse response) {
-        String topic = configService.getTopics().getPingTopic();
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), getContext().getCorrelationId());
         // TODO(surabujin): return future to avoid thread occupation during wait period(use CommandProcessorService)
-        kafkaProducer.postMessage(topic, message);
+        producerService.sendMessageAndTrack(topics.getPingTopic(), message);
     }
 
     protected PingService getPingService() {

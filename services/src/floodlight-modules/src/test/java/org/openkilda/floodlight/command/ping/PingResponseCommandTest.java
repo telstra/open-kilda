@@ -19,12 +19,10 @@ import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
 
-import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.model.PingData;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
-import org.openkilda.floodlight.service.ConfigService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.Message;
@@ -54,8 +52,6 @@ import org.projectfloodlight.openflow.types.U64;
 import java.util.List;
 
 public class PingResponseCommandTest extends PingCommandTest {
-    private static final String PING_KAFKA_TOPIC = "ping.topic";
-
     private final DatapathId dpId = DatapathId.of(0xfffe000000000001L);
 
     @Mock
@@ -73,14 +69,6 @@ public class PingResponseCommandTest extends PingCommandTest {
 
         expect(iofSwitch.getId()).andReturn(dpId).anyTimes();
         expect(iofSwitch.getLatency()).andReturn(U64.of(8)).anyTimes();
-
-        ConfigService configService = createMock(ConfigService.class);
-        moduleContext.addService(ConfigService.class, configService);
-
-        KafkaTopicsConfig topicsConfig = createMock(KafkaTopicsConfig.class);
-        expect(configService.getTopics()).andReturn(topicsConfig).anyTimes();
-
-        expect(topicsConfig.getPingTopic()).andReturn(PING_KAFKA_TOPIC).anyTimes();
     }
 
     @Test
@@ -133,7 +121,7 @@ public class PingResponseCommandTest extends PingCommandTest {
         final PingData payload = PingData.of(ping);
 
         moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");
-        realPingService.init(moduleContext);
+        realPingService.setup(moduleContext);
 
         byte[] signedPayload = realPingService.getSignature().sign(payload);
         Ethernet wrappedPayload = realPingService.wrapData(ping, signedPayload);

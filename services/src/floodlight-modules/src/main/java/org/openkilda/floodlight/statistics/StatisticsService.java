@@ -17,9 +17,9 @@ package org.openkilda.floodlight.statistics;
 
 import static java.util.stream.Collectors.toList;
 
-import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
-import org.openkilda.floodlight.kafka.KafkaMessageProducer;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
@@ -34,6 +34,7 @@ import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.messaging.model.SwitchId;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -57,7 +58,6 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -74,7 +74,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     private static final long OFPM_ALL = 0xffffffffL;
 
     private IOFSwitchService switchService;
-    private KafkaMessageProducer kafkaProducer;
+    private IKafkaProducerService producerService;
     private IThreadPoolService threadPoolService;
     private int interval;
     private String statisticsTopic;
@@ -91,29 +91,29 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
-        services.add(IFloodlightProviderService.class);
-        services.add(IOFSwitchService.class);
-        services.add(IThreadPoolService.class);
-        return services;
+        return ImmutableList.of(
+                IFloodlightProviderService.class,
+                IOFSwitchService.class,
+                IThreadPoolService.class,
+                KafkaUtilityService.class,
+                IKafkaProducerService.class);
     }
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         switchService = context.getServiceImpl(IOFSwitchService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
-        kafkaProducer = context.getServiceImpl(KafkaMessageProducer.class);
+        producerService = context.getServiceImpl(IKafkaProducerService.class);
 
         ConfigurationProvider provider = ConfigurationProvider.of(context, this);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
-        statisticsTopic = topicsConfig.getStatsTopic();
-
         StatisticsServiceConfig serviceConfig = provider.getConfiguration(StatisticsServiceConfig.class);
         interval = serviceConfig.getInterval();
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
+        statisticsTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getStatsTopic();
+
         if (interval > 0) {
             threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
                     () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
@@ -245,7 +245,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
                 InfoMessage infoMessage = new InfoMessage(transform.apply(data),
                         System.currentTimeMillis(), correlationId, Destination.WFM_STATS);
-                kafkaProducer.postMessage(statisticsTopic, infoMessage);
+                producerService.sendMessageAndTrack(statisticsTopic, infoMessage);
             }
         }
 

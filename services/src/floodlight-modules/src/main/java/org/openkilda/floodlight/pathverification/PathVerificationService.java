@@ -15,9 +15,6 @@
 
 package org.openkilda.floodlight.pathverification;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
-import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
@@ -25,8 +22,11 @@ import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.Message;
@@ -41,9 +41,9 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
-import net.floodlightcontroller.core.IFloodlightProviderService;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -58,8 +58,6 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.OFMessageUtils;
 import org.apache.commons.codec.binary.Hex;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -87,7 +85,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -96,16 +93,16 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private static final Logger logIsl = LoggerFactory.getLogger(
             String.format("%s.ISL", PathVerificationService.class.getName()));
 
-    public static U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+    public static final U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
 
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
 
-    private String topoDiscoTopic;
+    private IKafkaProducerService producerService;
     private IOFSwitchService switchService;
-    private IRestApiService restApiService;
-    private KafkaProducer<String, String> producer;
+
+    private String topoDiscoTopic;
     private double islBandwidthQuotient = 1.0;
     private Algorithm algorithm;
     private JWTVerifier verifier;
@@ -115,57 +112,47 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(3);
-        services.add(IFloodlightProviderService.class);
-        services.add(CommandProcessorService.class);
-        services.add(InputService.class);
-        services.add(IOFSwitchService.class);
-        services.add(IRestApiService.class);
-        return services;
+        return ImmutableList.of(
+                CommandProcessorService.class,
+                InputService.class,
+                IOFSwitchService.class,
+                IRestApiService.class,
+                KafkaUtilityService.class,
+                IKafkaProducerService.class);
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>();
-        services.add(IPathVerificationService.class);
-        return services;
+        return ImmutableList.of(
+                IPathVerificationService.class,
+                PingService.class);
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        Map<Class<? extends IFloodlightService>, IFloodlightService> map = new HashMap<>();
-        map.put(IPathVerificationService.class, this);
-        return map;
+        return ImmutableMap.of(
+                IPathVerificationService.class, this,
+                PingService.class, new PingService());
     }
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.debug("main pathverification service: " + this);
 
-        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
-        PathVerificationServiceConfig serviceConfig = provider.getConfiguration(PathVerificationServiceConfig.class);
+        initConfiguration(context);
 
-        initConfiguration(topicsConfig, serviceConfig);
-        initServices(context);
-
-        // FIXME(surabujin): use shared KafkaProducer i.e. org.openkilda.floodlight.kafka.KafkaMessageProducer
-        producer = new KafkaProducer<>(serviceConfig.createKafkaProducerProperties());
-    }
-
-    @VisibleForTesting
-    void initConfiguration(KafkaTopicsConfig topicsConfig, PathVerificationServiceConfig serviceConfig)
-            throws FloodlightModuleException {
-        topoDiscoTopic = topicsConfig.getTopoDiscoTopic();
-        islBandwidthQuotient = serviceConfig.getIslBandwidthQuotient();
-
-        initAlgorithm(serviceConfig.getHmac256Secret());
-    }
-
-    @VisibleForTesting
-    void initServices(FloodlightModuleContext context) {
         switchService = context.getServiceImpl(IOFSwitchService.class);
-        restApiService = context.getServiceImpl(IRestApiService.class);
+        producerService = context.getServiceImpl(IKafkaProducerService.class);
+    }
+
+    @VisibleForTesting
+    void initConfiguration(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
+        ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
+        PathVerificationServiceConfig config = provider.getConfiguration(PathVerificationServiceConfig.class);
+
+        islBandwidthQuotient = config.getIslBandwidthQuotient();
+
+        initAlgorithm(config.getHmac256Secret());
     }
 
     @VisibleForTesting
@@ -179,19 +166,18 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         }
     }
 
-    @VisibleForTesting
-    void setKafkaProducer(KafkaProducer<String, String> mockProducer) {
-        producer = mockProducer;
-    }
-
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        logger.info("Stating " + PathVerificationService.class.getCanonicalName());
+        logger.info("Stating {}", PathVerificationService.class.getCanonicalName());
+
+        topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
 
         InputService inputService = context.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, this);
 
-        restApiService.addRestletRoutable(new PathVerificationServiceWebRoutable());
+        context.getServiceImpl(PingService.class).setup(context);
+        context.getServiceImpl(IRestApiService.class)
+                .addRestletRoutable(new PathVerificationServiceWebRoutable());
     }
 
     @Override
@@ -513,13 +499,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
             Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
 
-            final String json = MAPPER.writeValueAsString(message);
-            logger.debug("about to send {}", json);
-            producer.send(new ProducerRecord<>(topoDiscoTopic, json));
+            producerService.sendMessageAndTrack(topoDiscoTopic, message);
             logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
 
-        } catch (JsonProcessingException exception) {
-            logger.error("could not create json for path packet_in: {}", exception.getMessage(), exception);
         } catch (UnsupportedOperationException exception) {
             logger.error("could not parse packet_in message: {}", exception.getMessage(),
                     exception);

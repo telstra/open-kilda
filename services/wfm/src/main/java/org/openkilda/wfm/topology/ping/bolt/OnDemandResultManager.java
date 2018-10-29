@@ -23,7 +23,6 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.Group;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -33,7 +32,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-@Slf4j
 public class OnDemandResultManager extends ResultManager {
     public static final String BOLT_ID = ComponentId.ON_DEMAND_RESULT_MANAGER.toString();
 

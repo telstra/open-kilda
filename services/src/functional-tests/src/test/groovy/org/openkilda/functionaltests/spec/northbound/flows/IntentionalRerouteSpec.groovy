@@ -12,7 +12,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.topology.TopologyEngineService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,8 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired
 class IntentionalRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
-    @Autowired
-    TopologyEngineService topologyEngineService
     @Autowired
     FlowHelper flowHelper
     @Autowired
@@ -39,7 +36,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+            allPaths = db.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 1
         }
         assert srcSwitch
@@ -86,7 +83,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = topologyEngineService.getPaths(src.dpId, dst.dpId)*.path
+            allPaths = db.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 1
         }
         assert srcSwitch

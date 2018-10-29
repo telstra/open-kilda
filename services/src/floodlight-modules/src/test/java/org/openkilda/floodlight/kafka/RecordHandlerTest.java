@@ -19,11 +19,14 @@ import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
-import org.openkilda.floodlight.kafka.producer.Producer;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaProducerService;
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.Destination;
@@ -49,37 +52,49 @@ import org.projectfloodlight.openflow.types.OFPort;
 import java.util.Map;
 
 public class RecordHandlerTest extends EasyMockSupport {
+    private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
+    private static final String KAFKA_FLOW_TOPIC = "kilda.flow";
+    private static final String KAFKA_NORTHBOUND_TOPIC = "kilda.northbound";
+
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
 
     private ISwitchManager switchManager;
-    private KafkaMessageProducer producer;
+    private KafkaProducerService producerService;
     private ConsumerContext consumerContext;
     private RecordHandlerMock handler;
 
     @Before
     public void setUp() throws Exception {
         switchManager = createStrictMock(SwitchManager.class);
-        producer = createMock(KafkaMessageProducer.class);
+        producerService = createMock(KafkaProducerService.class);
 
-        context.addService(KafkaMessageProducer.class, producer);
+        context.addService(IKafkaProducerService.class, producerService);
         context.addService(ISwitchManager.class, switchManager);
 
         KafkaMessageCollector collectorModule = new KafkaMessageCollector();
-        context.addConfigParam(collectorModule, "topic", "");
-        context.addConfigParam(collectorModule, "bootstrap-servers", "");
+        context.addConfigParam(collectorModule, "bootstrap-servers", "test.local");
 
-        ConfigurationProvider provider = ConfigurationProvider.of(context, collectorModule);
-        KafkaTopicsConfig topicsConfig = provider.getConfiguration(KafkaTopicsConfig.class);
+        KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
+        KafkaTopicsConfig topics = createMock(KafkaTopicsConfig.class);
+        expect(topics.getTopoDiscoTopic()).andReturn(KAFKA_ISL_DISCOVERY_TOPIC).anyTimes();
+        expect(topics.getFlowTopic()).andReturn(KAFKA_FLOW_TOPIC).anyTimes();
+        expect(topics.getNorthboundTopic()).andReturn(KAFKA_NORTHBOUND_TOPIC).anyTimes();
+        expect(kafkaUtility.getTopics()).andReturn(topics).anyTimes();
 
-        consumerContext = new ConsumerContext(context, topicsConfig);
+        context.addService(KafkaUtilityService.class, kafkaUtility);
 
+        replay(kafkaUtility);
+
+        consumerContext = new ConsumerContext(context);
         handler = new RecordHandlerMock(consumerContext);
+
+        reset(kafkaUtility);
     }
 
     /**
      * Simple TDD test that was used to develop warming mechanism for OFELinkBolt. We create
      * command and put it to KafkaMessageCollector then mock ISwitchManager::getAllSwitchMap and
-     * verify that output message comes to producer.
+     * verify that output message comes to producerService.
      */
     @Test
     public void networkDumpTest() {
@@ -137,14 +152,12 @@ public class RecordHandlerTest extends EasyMockSupport {
                 DatapathId.of(2),
                 new NetworkDumpSwitchData(new SwitchId("ff:02")));
 
-        // setup hook for verify that we create new message for producer
-        producer.postMessage(eq(consumerContext.getKafkaTopoDiscoTopic()), anyObject(InfoMessage.class));
+        // setup hook for verify that we create new message for producerService
+        producerService.sendMessageAndTrack(eq(KAFKA_ISL_DISCOVERY_TOPIC), anyObject(InfoMessage.class));
         expectLastCall().times(8);
 
-        Producer kafkaProducer = createMock(Producer.class);
-        expect(producer.getProducer()).andReturn(kafkaProducer).times(2);
-        kafkaProducer.enableGuaranteedOrder(eq(consumerContext.getKafkaTopoDiscoTopic()));
-        kafkaProducer.disableGuaranteedOrder(eq(consumerContext.getKafkaTopoDiscoTopic()));
+        producerService.enableGuaranteedOrder(eq(KAFKA_ISL_DISCOVERY_TOPIC));
+        producerService.disableGuaranteedOrder(eq(KAFKA_ISL_DISCOVERY_TOPIC));
 
         replayAll();
 
@@ -159,9 +172,9 @@ public class RecordHandlerTest extends EasyMockSupport {
         // created the simple method in KafkaMessageCollector for simplifying test logic.
         handler.handleMessage(command);
 
-        verify(producer);
+        verify(producerService);
 
-        // TODO: verify content of InfoMessage in producer.postMessage
+        // TODO: verify content of InfoMessage in producerService.sendMessageAndTrack
     }
 
 }

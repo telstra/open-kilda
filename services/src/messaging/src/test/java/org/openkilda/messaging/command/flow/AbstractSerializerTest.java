@@ -566,7 +566,6 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
-        info.setData(data);
         serialize(info);
 
         Message message = (Message) deserialize();

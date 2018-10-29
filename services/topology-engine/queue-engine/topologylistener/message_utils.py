@@ -14,7 +14,6 @@
 #
 
 import json
-import uuid
 import logging
 
 from kafka import KafkaProducer
@@ -190,15 +189,24 @@ def build_one_switch_flow_from_db(switch, stored_flow, output_action):
     return flow
 
 
-def build_delete_flow(switch, flow_id, cookie, meter_id, in_port, in_vlan, out_port):
+def build_delete_flow(path_segment):
     flow = Flow()
     flow.clazz = "org.openkilda.messaging.command.flow.RemoveFlow"
     flow.transaction_id = 0
-    flow.flowid = flow_id
-    flow.cookie = cookie
-    flow.switch_id = switch
-    flow.meter_id = meter_id
-    flow.criteria = {'cookie': cookie, 'in_port': in_port, 'in_vlan': in_vlan, 'out_port': out_port}
+    flow.flowid = str(path_segment['flow_id'])
+    flow.cookie = path_segment['cookie']
+    flow.switch_id = str(path_segment['switch_id'])
+    flow.meter_id = path_segment['meter_id']
+
+    flow.criteria = {
+        'cookie': path_segment['cookie'],
+        'in_port': path_segment['in_port'],
+        'in_vlan': path_segment['in_vlan']}
+
+    # next check is needed to make sure that it is not one-switch-port flow, because in that case the rule has
+    # output='in_port', not specific port value.
+    if path_segment['in_port'] != path_segment['out_port']:
+        flow.criteria['out_port'] = path_segment['out_port']
 
     return flow
 
@@ -335,9 +343,7 @@ def send_delete_commands(nodes, correlation_id):
 
     logger.debug('Send Delete Commands: node count=%d', len(nodes))
     for node in nodes:
-        data = build_delete_flow(str(node['switch_id']), str(node['flow_id']), node['cookie'],
-                                 node['meter_id'], node['in_port'], node['in_vlan'],
-                                 node['out_port'] )
+        data = build_delete_flow(node)
         # TODO: Whereas this is part of the current workflow .. feels like we should have the workflow manager work
         #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
         #       Then send a message to a FLOW_EVENT topic that says "FLOW DELETED"
@@ -369,16 +375,20 @@ def send_link_props_response(payload, correlation_id, chunked=False):
 
 
 def send_link_props_chunked_response(batch, correlation_id):
-    next_correlation_id = uuid.uuid4()
-    for payload in batch:
+    if not batch:
         send_to_topic(
-            payload, correlation_id, MT_INFO_CHUNKED,
+            None, correlation_id, MT_INFO_CHUNKED,
             destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
-            extra={'next_request_id': next_correlation_id})
-        correlation_id, next_correlation_id = next_correlation_id, uuid.uuid4()
-
-    # End chain marker
-    send_to_topic(
-        None, correlation_id, MT_INFO_CHUNKED,
-        destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
-        extra={'next_request_id': None})
+            extra={
+                'message_id': correlation_id,
+                'total_messages': 0
+            })
+    else:
+        for idx, payload in enumerate(batch):
+            send_to_topic(
+                payload, correlation_id, MT_INFO_CHUNKED,
+                destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
+                extra={
+                    'message_id': ' : '.join([str(idx), correlation_id]),
+                    'total_messages': len(batch)
+                })

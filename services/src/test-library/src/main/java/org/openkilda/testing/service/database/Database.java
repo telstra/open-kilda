@@ -15,7 +15,13 @@
 
 package org.openkilda.testing.service.database;
 
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+
+import java.util.List;
 
 public interface Database {
     boolean updateLinkProperty(Isl isl, String property, Object value);
@@ -31,4 +37,8 @@ public interface Database {
     int getIslCost(Isl isl);
 
     int countFlows();
+
+    List<PathInfoData> getPaths(SwitchId src, SwitchId dst);
+
+    FlowPair<Flow, Flow> getFlow(String flowId);
 }

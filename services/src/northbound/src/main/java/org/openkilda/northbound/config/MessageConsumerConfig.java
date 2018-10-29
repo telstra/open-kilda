@@ -15,9 +15,12 @@
 
 package org.openkilda.northbound.config;
 
-import org.openkilda.northbound.messaging.MessageConsumer;
-import org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer;
+import org.openkilda.messaging.Message;
+import org.openkilda.northbound.messaging.MessagingChannel;
+import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
+import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,8 +31,8 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -57,23 +60,32 @@ public class MessageConsumerConfig {
     private String groupId;
 
     /**
+     * Kafka group id.
+     */
+    @Value("${northbound.kafka.listener.threads}")
+    private int kafkaListeners;
+
+    /**
+     * Kafka group id.
+     */
+    @Value("${northbound.kafka.session.timeout}")
+    private int kafkaSessionTimeout;
+
+    /**
      * Kafka consumer configuration bean. This {@link Map} is used by {@link MessageConsumerConfig#consumerFactory}.
      *
      * @return kafka properties
      */
     @Bean
     public Map<String, Object> consumerConfigs() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
-        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000");
-        //props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        //props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "100");
-        //props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        return props;
+        return ImmutableMap.<String, Object>builder()
+                .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
+                .put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
+                .put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class)
+                .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+                .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
+                .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
+                .build();
     }
 
     /**
@@ -85,8 +97,9 @@ public class MessageConsumerConfig {
      * @return kafka consumer factory
      */
     @Bean
-    public ConsumerFactory<String, String> consumerFactory() {
-        return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+    public ConsumerFactory<String, Message> consumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerConfigs(),
+                new StringDeserializer(), new JsonDeserializer<>(Message.class));
     }
 
     /**
@@ -97,24 +110,23 @@ public class MessageConsumerConfig {
      * @return kafka listener container factory
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+    public ConcurrentKafkaListenerContainerFactory<String, Message> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Message> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         factory.getContainerProperties().setPollTimeout(POLL_TIMEOUT);
-        //factory.setConcurrency(10);
+        factory.setConcurrency(kafkaListeners);
         return factory;
     }
 
-    /**
-     * Kafka message consumer bean. Instance of {@link org.openkilda.northbound.messaging.kafka.KafkaMessageConsumer}
-     * contains {@link org.springframework.kafka.annotation.KafkaListener} to be run in {@link
-     * org.springframework.kafka.listener.ConcurrentMessageListenerContainer}.
-     *
-     * @return kafka message consumer
-     */
     @Bean
-    public MessageConsumer messageConsumer() {
-        return new KafkaMessageConsumer();
+    public KafkaMessageListener kafkaMessageListener() {
+        return new KafkaMessageListener();
     }
+
+    @Bean
+    public MessagingChannel messagingChannel() {
+        return new KafkaMessagingChannel();
+    }
+
 }

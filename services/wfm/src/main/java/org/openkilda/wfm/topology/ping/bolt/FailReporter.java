@@ -24,7 +24,6 @@ import org.openkilda.wfm.topology.ping.model.FlowRef;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingObserver;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -36,7 +35,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class FailReporter extends Abstract {
     public static final String BOLT_ID = ComponentId.FAIL_REPORTER.toString();
 

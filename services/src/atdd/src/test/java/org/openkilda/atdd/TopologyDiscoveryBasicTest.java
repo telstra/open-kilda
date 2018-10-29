@@ -46,7 +46,7 @@ public class TopologyDiscoveryBasicTest {
         expected = t;
         String json = TopologyPrinter.toMininetJson(t);
         pre_start = System.currentTimeMillis();
-        assertTrue(TopologyHelp.CreateMininetTopology(json));
+        assertTrue(TopologyHelp.createMininetTopology(json));
         start = System.currentTimeMillis();
     }
 

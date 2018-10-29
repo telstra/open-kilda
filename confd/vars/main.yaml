@@ -87,6 +87,7 @@ kilda_logging_logfile_path: "/var/log/"
 kilda_logging_logstash_host: "logstash.pendev"
 kilda_logging_elasticsearch_hosts: "elasticsearch.pendev:9200"
 kilda_logging_fl_loglevel: "INFO"
+kilda_logging_fl_logaccess: True
 kilda_logging_port_topology_engine: 5000
 kilda_logging_port_storm: 5001
 kilda_logging_port_floodlight: 5002

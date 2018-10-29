@@ -70,7 +70,7 @@ public class FlowFfrTest {
 
         File file = new File(resource.getFile());
         String json = new String(Files.readAllBytes(file.toPath()));
-        assertTrue(TopologyHelp.CreateMininetTopology(json));
+        assertTrue(TopologyHelp.createMininetTopology(json));
     }
 
     @When("^a flow (.*) is successfully created$")
