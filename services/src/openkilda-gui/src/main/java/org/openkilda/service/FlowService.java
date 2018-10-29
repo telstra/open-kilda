@@ -26,10 +26,12 @@ import org.openkilda.integration.source.store.FlowStoreService;
 import org.openkilda.integration.source.store.dto.InventoryFlow;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
+import org.openkilda.model.FlowBandwidth;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowDiscrepancy;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowState;
 import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
@@ -85,7 +87,7 @@ public class FlowService {
      * @return SwitchRelationData
      */
     public List<FlowInfo> getAllFlows(List<String> statuses) {
-        LOGGER.info("Inside ServiceFlowImpl method getFlowsCount");
+        LOGGER.info("Inside ServiceFlowImpl method getAllFlows");
         List<FlowInfo> flows = new ArrayList<FlowInfo>();
         if (!CollectionUtil.isEmpty(statuses)) {
             statuses = statuses.stream().map((status) -> status.toLowerCase()).collect(Collectors.toList());
@@ -220,12 +222,22 @@ public class FlowService {
                     discrepancy.setControllerDiscrepancy(false);
                     if (flowInfo.getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
                         discrepancy.setBandwidth(true);
+
+                        FlowBandwidth flowBandwidth = new FlowBandwidth();
+                        flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
+                        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+                        discrepancy.setBandwidthValue(flowBandwidth);
                     }
                     if (("UP".equalsIgnoreCase(flowInfo.getStatus())
                             && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                             || ("DOWN".equalsIgnoreCase(flowInfo.getStatus())
                                     && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
                         discrepancy.setStatus(true);
+
+                        FlowState flowState = new FlowState();
+                        flowState.setControllerState(flow.getStatus());
+                        flowState.setInventoryState(inventoryFlow.getState());
+                        discrepancy.setStatusValue(flowState);
                     }
                     flowInfo.setDiscrepancy(discrepancy);
                 } else if (inventoryFlow == null && flow != null) {
@@ -234,12 +246,23 @@ public class FlowService {
                     discrepancy.setControllerDiscrepancy(false);
                     discrepancy.setStatus(true);
                     discrepancy.setBandwidth(true);
+
+                    FlowBandwidth flowBandwidth = new FlowBandwidth();
+                    flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
+                    flowBandwidth.setInventoryBandwidth(0);
+                    discrepancy.setBandwidthValue(flowBandwidth);
+
+                    FlowState flowState = new FlowState();
+                    flowState.setControllerState(flow.getStatus());
+                    flowState.setInventoryState(null);
+                    discrepancy.setStatusValue(flowState);
+
                     flowInfo.setDiscrepancy(discrepancy);
                 } else {
                     flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                 }
             } catch (Exception ex) {
-                LOGGER.error("[getAllFlows] Exception while retrieving flows from store. Exception: "
+                LOGGER.error("[getFlowById] Exception while retrieving flows from store. Exception: "
                         + ex.getLocalizedMessage(), ex);
             }
         }
@@ -331,12 +354,22 @@ public class FlowService {
                 discrepancy.setControllerDiscrepancy(false);
                 if (flows.get(index).getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
                     discrepancy.setBandwidth(true);
+                    FlowBandwidth flowBandwidth = new FlowBandwidth();
+                    flowBandwidth.setControllerBandwidth(flows.get(index).getMaximumBandwidth());
+                    flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+                    discrepancy.setBandwidthValue(flowBandwidth);
+                    
                 }
                 if (("UP".equalsIgnoreCase(flows.get(index).getStatus())
                         && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                         || ("DOWN".equalsIgnoreCase(flows.get(index).getStatus())
                                 && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
                     discrepancy.setStatus(true);
+                    
+                    FlowState flowState = new FlowState();
+                    flowState.setControllerState(flows.get(index).getStatus());
+                    flowState.setInventoryState(inventoryFlow.getState());
+                    discrepancy.setStatusValue(flowState);
                 }
                 flows.get(index).setDiscrepancy(discrepancy);
                 flows.get(index).setState(inventoryFlow.getState());
@@ -363,6 +396,17 @@ public class FlowService {
                 discrepancy.setControllerDiscrepancy(false);
                 discrepancy.setStatus(true);
                 discrepancy.setBandwidth(true);
+                
+                FlowBandwidth flowBandwidth = new FlowBandwidth();
+                flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
+                flowBandwidth.setInventoryBandwidth(0);
+                discrepancy.setBandwidthValue(flowBandwidth);
+                
+                FlowState flowState = new FlowState();
+                flowState.setControllerState(flow.getStatus());
+                flowState.setInventoryState(null);
+                discrepancy.setStatusValue(flowState);
+                
                 flow.setDiscrepancy(discrepancy);
             }
         }

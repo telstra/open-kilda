@@ -87,15 +87,16 @@ function validateFlowForm(){
 }
 function loadFlowContracts(flow_id){
 	$('#loading_contract').show();
-	commmon.getData('flows/getcontract?flowid='+flow_id,"GET").then(function(response){
-		
+	common.getData('flows/getcontract?flowid='+flow_id,"GET").then(function(response){
 		$('#loading_contract').hide();
 	},function(error){
 		$('#loading_contract').hide();
-		common.infoMessage(error.responseJSON['error-auxiliary-message'],'error');
+		var errMsg =(error  && typeof(error.responseJSON)!='undefined' && typeof(error.responseJSON['error-auxiliary-message'])!='undefined') ? error.responseJSON['error-auxiliary-message'] :"Error in getting contract";
+		common.infoMessage(errMsg,'error');
 	}).fail(function(error){
 		$('#loading_contract').hide();
-		common.infoMessage(error.responseJSON['error-auxiliary-message'],'error');
+		var errMsg =(error && typeof(error.responseJSON)!='undefined' && typeof(error.responseJSON['error-auxiliary-message'])!='undefined') ? error.responseJSON['error-auxiliary-message'] :"Error in getting contract";
+		common.infoMessage(errMsg,'error');
 	})
 }
 function callValidateFlow(flow_id){
@@ -146,6 +147,31 @@ function showFlowData(obj) {
 	$(".flow_div_Status").html(obj.status);
 	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
 		$('#contractTab').show();
+		// check for discrepancy tab
+		var tableRow ="";
+		
+		if(obj['discrepancy'] && (obj['discrepancy']['status'] || obj['discrepancy']['bandwidth'])){
+			if(obj['discrepancy']['status']){ 
+				$("#statusDiscrepency").show();
+				var statuscontroller = (typeof(obj['discrepancy']['status-value']['controller-status'])!='undefined') ?  obj['discrepancy']['status-value']['controller-status'] : "-";
+				var statusinventory = (typeof(obj['discrepancy']['status-value']['inventory-status'])!='undefined') ?  obj['discrepancy']['status-value']['inventory-status'] : "-";
+				tableRow=tableRow + "<tr><td>Status</td><td>"+statuscontroller+"</td><td>"+statusinventory+"</td></tr>"
+			}else{
+				$("#statusDiscrepency").hide();
+			}
+			if(obj['discrepancy']['bandwidth']){ 
+				var bandwidthcontroller = (typeof(obj['discrepancy']['bandwidth-value']['controller-bandwidth'])!='undefined') ?  obj['discrepancy']['bandwidth-value']['controller-bandwidth'] : "-";
+				var bandwidthinventory = (typeof(obj['discrepancy']['bandwidth-value']['inventory-bandwidth'])!='undefined') ?  obj['discrepancy']['bandwidth-value']['inventory-bandwidth'] : "-";
+				tableRow=tableRow + "<tr><td>Bandwidth</td><td>"+bandwidthcontroller+"</td><td>"+bandwidthinventory+"</td></tr>"
+				$('#bandwidthDiscrepency').show();	    
+			}else{
+				$('#bandwidthDiscrepency').hide();	
+			}
+			$('#discrepancy_details').append(tableRow);
+			$('#discrepancyTab').show();
+		}else{
+			$('#discrepancyTab').hide();
+		}
 		if(obj['discrepancy'] && !obj['discrepancy']['controller-discrepancy']){ 
 			$('#edit_flow').css('display','inline-block!important');
 		}else{

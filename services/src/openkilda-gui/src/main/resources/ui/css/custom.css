@@ -2759,11 +2759,11 @@ body.twofa_body {
     text-align: center;
 }
 
-#portsTable .down-status .divTableCell:first-child{
+#portsTable .down-status .divTableCell:first-child,#flowTable .down-status .divTableCell:first-child{
 	border-left: 4px solid red;
 }
 
-#portsTable .up-status .divTableCell:first-child{
+#portsTable .up-status .divTableCell:first-child,#flowTable .up-status .divTableCell:first-child{
 	border-left: 4px solid #182488;
 }
 
@@ -2866,5 +2866,12 @@ label.btn.kilda_btn > span.copy_to_clipBoard {
 }
 .dropdown-menu>li>a {
     display: block!important;
+ }
+ .discrepancy-red{
+ 	color:red;
+ }
+ 
+ table.dataTable.table-bordered.discrepancy-table th{
+ 	padding:10px;
  }
 

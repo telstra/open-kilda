@@ -34,6 +34,12 @@ public class FlowDiscrepancy {
     @JsonProperty("status")
     private boolean status;
     
+    @JsonProperty("bandwidth-value")
+    private FlowBandwidth bandwidthValue;
+    
+    @JsonProperty("status-value")
+    private FlowState statusValue;
+    
     @JsonProperty("controller-discrepancy")
     private boolean controllerDiscrepancy;
     

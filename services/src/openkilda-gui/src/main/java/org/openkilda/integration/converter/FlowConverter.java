@@ -19,8 +19,10 @@ import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowEndpoint;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.integration.source.store.dto.InventoryFlow;
+import org.openkilda.model.FlowBandwidth;
 import org.openkilda.model.FlowDiscrepancy;
 import org.openkilda.model.FlowInfo;
+import org.openkilda.model.FlowState;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
@@ -107,6 +109,16 @@ public class FlowConverter {
         discrepancy.setControllerDiscrepancy(true);
         discrepancy.setStatus(true);
         discrepancy.setBandwidth(true);
+        
+        FlowBandwidth flowBandwidth = new FlowBandwidth();
+        flowBandwidth.setControllerBandwidth(0);
+        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+        discrepancy.setBandwidthValue(flowBandwidth);
+        
+        FlowState flowState = new FlowState();
+        flowState.setControllerState(null);
+        flowState.setInventoryState(inventoryFlow.getState());
+        discrepancy.setStatusValue(flowState);
         
         flowInfo.setFlowid(inventoryFlow.getId());
         flowInfo.setDiscrepancy(discrepancy);

@@ -165,7 +165,11 @@
 
 						<div class='form-group row flow_details'>
 							<label class='col-sm-4 col-form-label'>Status:</label>
-							<p class='col-sm-8 flow_div_Status'></p>
+							<p class='col-sm-8 '>
+								<span class="flow_div_Status"></span>
+								<span id="statusDiscrepency" style="display:none;"><i class="icon icon-warning-sign cursor-pointer discrepancy-red"></i></span>
+							</p>
+							
 						</div>
 
 						<div class='form-group row flow_details'>
@@ -175,7 +179,10 @@
 
 						<div class='form-group row flow_details'>
 							<label class='col-sm-4 col-form-label'>Maximum Bandwidth:</label>
-							<p class='col-sm-8 flow_div_maximum_bandwidth'></p>
+							<p class='col-sm-8'>
+								<span class="flow_div_maximum_bandwidth"></span>
+								<span id="bandwidthDiscrepency" style="display:none;"><i class="icon icon-warning-sign cursor-pointer discrepancy-red"></i></span>
+							</p>
 						</div>
 					</div>
 				</div>
@@ -190,6 +197,7 @@
 							<li class="hidePermission" permission="fw_permission_validate"><a
 								href="#validate_flow" data-toggle="tab">Validate</a></li>
 							<li id="contractTab" style="display:none;"><a href="#contract" data-toggle="tab">Contract</a></li>
+							<li id="discrepancyTab" style="display:none;"><a href="#discrepancy" data-toggle="tab">Discrepancy</a></li>
 						</ul>
 
 						<div class="tab-content clearfix">
@@ -587,6 +595,24 @@
 												
 											</tbody>
 										</table>
+									</div>
+								</div>
+							</div>
+							<div class="tab-pane" id="discrepancy">
+								<div class="row">
+									<div class="col-xs-12">
+									<table  id="discrepancyTable" class="display discrepancy-table dataTable table-bordered no-footer" cellspacing="0" width="100%">
+									  <thead>
+									  	<tr>
+									  		<th>Discrepancy</th>
+									  		<th>Kilda Controller</th>
+									  		<th>Link Store</th>
+									  	</tr>
+									  </thead>
+									  <tbody id="discrepancy_details">
+									  
+									  </tbody>
+									</table>
 									</div>
 								</div>
 							</div>
