@@ -23,6 +23,7 @@ import static org.hamcrest.core.Every.everyItem;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.ASwitch;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
@@ -120,6 +121,11 @@ public class IslUtils {
         }
         return Isl.factory(isl.getDstSwitch(), isl.getDstPort(), isl.getSrcSwitch(),
                 isl.getSrcPort(), isl.getMaxBandwidth(), reversedAsw);
+    }
+
+    public LinkParametersDto getLinkParameters(Isl isl) {
+        return new LinkParametersDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId().toString(), isl.getDstPort());
     }
 
     /**
