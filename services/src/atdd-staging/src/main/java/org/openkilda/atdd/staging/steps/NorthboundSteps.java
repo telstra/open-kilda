@@ -79,8 +79,8 @@ public class NorthboundSteps {
         featureToggleRequest.setCreateFlowEnabled(!featureToggleRequest.getCreateFlowEnabled());
         featureToggleRequest.setDeleteFlowEnabled(!featureToggleRequest.getDeleteFlowEnabled());
         featureToggleRequest.setPushFlowEnabled(!featureToggleRequest.getPushFlowEnabled());
-        featureToggleRequest.setReflowOnSwitchActivationEnabled(
-                !featureToggleRequest.getReflowOnSwitchActivationEnabled());
+        featureToggleRequest.setRerouteOnIslDiscoveryEnabled(
+                !featureToggleRequest.getRerouteOnIslDiscoveryEnabled());
         featureToggleRequest.setSyncRulesEnabled(!featureToggleRequest.getSyncRulesEnabled());
         featureToggleRequest.setUnpushFlowEnabled(!featureToggleRequest.getUnpushFlowEnabled());
         featureToggleRequest.setUpdateFlowEnabled(!featureToggleRequest.getUpdateFlowEnabled());

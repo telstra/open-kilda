@@ -63,7 +63,7 @@ public class FlowReinstallTest {
         FeatureTogglePayload result = FlowUtils.updateFeaturesStatus(desired);
 
         assertNotNull(result);
-        assertEquals(status, result.getReflowOnSwitchActivationEnabled());
-        assertEquals(desired.getReflowOnSwitchActivationEnabled(), result.getReflowOnSwitchActivationEnabled());
+        assertEquals(status, result.getRerouteOnIslDiscoveryEnabled());
+        assertEquals(desired.getRerouteOnIslDiscoveryEnabled(), result.getRerouteOnIslDiscoveryEnabled());
     }
 }

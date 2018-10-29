@@ -59,7 +59,7 @@ class TestConfig(share.AbstractTest):
             p = {
                 'data': {
                     'name': 'config',
-                    'reflow_on_switch_activation': False,
+                    'reroute_on_isl_discovery': False,
                     'unpush_flow': False,
                     'sync_rules': False,
                     'push_flow': False,

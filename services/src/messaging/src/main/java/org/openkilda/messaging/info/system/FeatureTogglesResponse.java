@@ -29,8 +29,8 @@ public class FeatureTogglesResponse extends InfoData {
     @JsonProperty(value = "sync_rules")
     private Boolean syncRulesEnabled;
 
-    @JsonProperty(value = "reflow_on_switch_activation")
-    private Boolean reflowOnSwitchActivationEnabled;
+    @JsonProperty(value = "reroute_on_isl_discovery")
+    private Boolean rerouteOnIslDiscoveryEnabled;
 
     @JsonProperty("create_flow")
     private Boolean createFlowEnabled;
@@ -48,13 +48,13 @@ public class FeatureTogglesResponse extends InfoData {
     private Boolean unpushFlowEnabled;
 
     public FeatureTogglesResponse(@JsonProperty(value = "sync_rules") Boolean syncRulesEnabled,
-            @JsonProperty(value = "reflow_on_switch_activation") Boolean reflowOnSwitchActivationEnabled,
+            @JsonProperty(value = "reroute_on_isl_discovery") Boolean rerouteOnIslDiscoveryEnabled,
             @JsonProperty("create_flow") Boolean createFlowEnabled,
             @JsonProperty("update_flow") Boolean updateFlowEnabled,
             @JsonProperty("delete_flow") Boolean deleteFlowEnabled, @JsonProperty("push_flow") Boolean pushFlowEnabled,
             @JsonProperty("unpush_flow") Boolean unpushFlowEnabled) {
         this.syncRulesEnabled = syncRulesEnabled;
-        this.reflowOnSwitchActivationEnabled = reflowOnSwitchActivationEnabled;
+        this.rerouteOnIslDiscoveryEnabled = rerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
         this.deleteFlowEnabled = deleteFlowEnabled;
@@ -66,8 +66,8 @@ public class FeatureTogglesResponse extends InfoData {
         return syncRulesEnabled;
     }
 
-    public Boolean getReflowOnSwitchActivationEnabled() {
-        return reflowOnSwitchActivationEnabled;
+    public Boolean getRerouteOnIslDiscoveryEnabled() {
+        return rerouteOnIslDiscoveryEnabled;
     }
 
     public Boolean getCreateFlowEnabled() {
@@ -92,8 +92,8 @@ public class FeatureTogglesResponse extends InfoData {
 
     @Override
     public String toString() {
-        return "FeatureTogglesResponse [syncRulesEnabled=" + syncRulesEnabled + ", reflowOnSwitchActivationEnabled="
-                + reflowOnSwitchActivationEnabled + ", createFlowEnabled=" + createFlowEnabled + ", updateFlowEnabled="
+        return "FeatureTogglesResponse [syncRulesEnabled=" + syncRulesEnabled + ", rerouteOnIslDiscoveryEnabled="
+                + rerouteOnIslDiscoveryEnabled + ", createFlowEnabled=" + createFlowEnabled + ", updateFlowEnabled="
                 + updateFlowEnabled + ", deleteFlowEnabled=" + deleteFlowEnabled + ", pushFlowEnabled="
                 + pushFlowEnabled + ", unpushFlowEnabled=" + unpushFlowEnabled + "]";
     }

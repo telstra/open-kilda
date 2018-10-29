@@ -32,8 +32,8 @@ public class FeatureToggleRequest extends CommandData {
 	@JsonProperty(value = "sync_rules")
 	private Boolean syncRulesEnabled;
 
-	@JsonProperty(value = "reflow_on_switch_activation")
-	private Boolean reflowOnSwitchActivationEnabled;
+	@JsonProperty(value = "reroute_on_isl_discovery")
+	private Boolean rerouteOnIslDiscoveryEnabled;
 
 	@JsonProperty("create_flow")
 	private Boolean createFlowEnabled;
@@ -54,7 +54,7 @@ public class FeatureToggleRequest extends CommandData {
 	private String childCorrelationId;
 
 	public FeatureToggleRequest(@JsonProperty(value = "sync_rules") Boolean syncRulesEnabled,
-			@JsonProperty(value = "reflow_on_switch_activation") Boolean reflowOnSwitchActivationEnabled,
+			@JsonProperty(value = "reroute_on_isl_discovery") Boolean rerouteOnIslDiscoveryEnabled,
 			@JsonProperty("create_flow") Boolean createFlowEnabled,
 			@JsonProperty("update_flow") Boolean updateFlowEnabled,
 			@JsonProperty("delete_flow") Boolean deleteFlowEnabled,
@@ -62,7 +62,7 @@ public class FeatureToggleRequest extends CommandData {
 			@JsonProperty("unpush_flow") Boolean unpushFlowEnabled,
 			@JsonProperty(value = "child_correlation_id") String childCorrelationId) {
 		this.syncRulesEnabled = syncRulesEnabled;
-		this.reflowOnSwitchActivationEnabled = reflowOnSwitchActivationEnabled;
+		this.rerouteOnIslDiscoveryEnabled = rerouteOnIslDiscoveryEnabled;
 		this.createFlowEnabled = createFlowEnabled;
 		this.updateFlowEnabled = updateFlowEnabled;
 		this.deleteFlowEnabled = deleteFlowEnabled;

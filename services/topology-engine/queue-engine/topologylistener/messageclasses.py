@@ -75,7 +75,7 @@ features_status = {
 
 features_status_app_to_transport_map = {
     FEATURE_SYNC_OFRULES: 'sync_rules',
-    FEATURE_REROUTE_ON_ISL_DISCOVERY: 'reflow_on_switch_activation',
+    FEATURE_REROUTE_ON_ISL_DISCOVERY: 'reroute_on_isl_discovery',
     FEATURE_CREATE_FLOW: 'create_flow',
     FEATURE_UPDATE_FLOW: 'update_flow',
     FEATURE_DELETE_FLOW: 'delete_flow',

@@ -33,7 +33,7 @@ public interface FeatureTogglesMapper {
      * @return appropriate {@code}FeatureTogglePayload{@code}.
      */
     default FeatureTogglePayload toDto(FeatureTogglesResponse response) {
-        return new FeatureTogglePayload(response.getSyncRulesEnabled(), response.getReflowOnSwitchActivationEnabled(),
+        return new FeatureTogglePayload(response.getSyncRulesEnabled(), response.getRerouteOnIslDiscoveryEnabled(),
                 response.getCreateFlowEnabled(), response.getUpdateFlowEnabled(), response.getDeleteFlowEnabled(),
                 response.getPushFlowEnabled(), response.getUnpushFlowEnabled());
     }
@@ -51,7 +51,7 @@ public interface FeatureTogglesMapper {
      * @return appropriate {@code}FeatureToggleRequest{@code}.
      */
     default FeatureToggleRequest toRequest(FeatureTogglePayload request, String correlationId) {
-        return new FeatureToggleRequest(request.getSyncRulesEnabled(), request.getReflowOnSwitchActivationEnabled(),
+        return new FeatureToggleRequest(request.getSyncRulesEnabled(), request.getRerouteOnIslDiscoveryEnabled(),
                 request.getCreateFlowEnabled(), request.getUpdateFlowEnabled(), request.getDeleteFlowEnabled(),
                 request.getPushFlowEnabled(), request.getUnpushFlowEnabled(), correlationId);
     }
