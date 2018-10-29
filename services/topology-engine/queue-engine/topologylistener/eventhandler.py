@@ -29,7 +29,6 @@ from topologylistener import model
 logger = logging.getLogger(__name__)
 
 known_messages = ['org.openkilda.messaging.info.event.SwitchInfoData',
-                  'org.openkilda.messaging.info.event.SwitchInfoExtendedData',
                   'org.openkilda.messaging.info.event.IslInfoData',
                   'org.openkilda.messaging.info.event.PortInfoData',
                   'org.openkilda.messaging.info.flow.FlowInfoData',

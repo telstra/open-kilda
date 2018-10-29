@@ -15,61 +15,8 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.AbstractException;
-import org.openkilda.wfm.error.JsonEncodeException;
-import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
-
-public class NorthboundEncoder extends AbstractBolt {
+public class NorthboundEncoder extends KafkaEncoder {
     public static final String BOLT_ID = ComponentId.NORTHBOUND_ENCODER.toString();
-
-    public static final String FIELD_ID_PAYLOAD = "payload";
-
-    public static final Fields STREAM_FIELDS = new Fields(
-            FieldNameBasedTupleToKafkaMapper.BOLT_KEY, FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
-
-    @Override
-    protected void handleInput(Tuple input) throws AbstractException {
-        InfoData payload = pullPayload(input);
-        InfoMessage message = wrap(input, payload);
-        String json = encode(message);
-
-        Values output = new Values(null, json);
-        getOutput().emit(input, output);
-    }
-
-    private InfoMessage wrap(Tuple input, InfoData payload) throws PipelineException {
-        CommandContext commandContext = pullContext(input);
-        return new InfoMessage(payload, System.currentTimeMillis(), commandContext.getCorrelationId());
-    }
-
-    private String encode(InfoMessage message) throws JsonEncodeException {
-        String json;
-        try {
-            json = Utils.MAPPER.writeValueAsString(message);
-        } catch (JsonProcessingException e) {
-            throw new JsonEncodeException(message, e);
-        }
-        return json;
-    }
-
-    private InfoData pullPayload(Tuple input) throws PipelineException {
-        return pullValue(input, FIELD_ID_PAYLOAD, InfoData.class);
-    }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer outputManager) {
-        outputManager.declare(STREAM_FIELDS);
-    }
 }

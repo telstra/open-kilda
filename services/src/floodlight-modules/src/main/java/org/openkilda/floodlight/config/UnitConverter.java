@@ -13,27 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.topology;
+package org.openkilda.floodlight.config;
 
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+public final class UnitConverter {
+    public static long timeMillis(float raw) {
+        return (long) (raw * 1000);
+    }
 
-import java.util.List;
-
-public interface TopologyEngineService {
-
-    Integer getLinkBandwidth(SwitchId srcSwitch, SwitchId srcPort);
-
-    List<Flow> getAllFlows();
-
-    FlowPair<Flow, Flow> getFlow(String flowId);
-
-    void restoreFlows();
-
-    String clearTopology();
-
-    List<PathInfoData> getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
-
+    private UnitConverter() { }
 }

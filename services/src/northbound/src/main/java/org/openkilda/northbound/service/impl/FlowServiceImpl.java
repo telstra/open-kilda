@@ -595,7 +595,10 @@ public class FlowServiceImpl implements FlowService {
                     result.add(new PathDiscrepancyDto(expected.toString(), "inVlan",
                             String.valueOf(expected.inVlan), String.valueOf(matched.inVlan)));
                 }
-                if (matched.outPort != expected.outPort) {
+                // FIXME: let's validate in_port output correctly in case of one-switch-port flow.
+                // currently for such flow we get 0 after convertion, but the rule has "output: in_port" value.
+                if (matched.outPort != expected.outPort
+                        && (expected.inPort != expected.outPort || matched.outPort != 0)) {
                     result.add(new PathDiscrepancyDto(expected.toString(), "outPort",
                             String.valueOf(expected.outPort), String.valueOf(matched.outPort)));
                 }
