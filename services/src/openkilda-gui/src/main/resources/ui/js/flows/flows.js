@@ -106,12 +106,11 @@ function flows(filters){
 	}
 	
 	common.getData("/flows/list"+query,"GET").then(function(response) {
-		$("#loading").css("display", "none");
+		$("#loading").css("display", "none");console.log('i m here');
 		$('body').css('pointer-events','all'); 
 		showflowData(response);
 		storage.set("FLOWS_LIST",response);
-	},
-	function(error){
+	},function(error){
 		response=[];
 		$("#loading").css("display", "none");
 		$('body').css('pointer-events','all'); 
@@ -143,11 +142,13 @@ function goToflowDetail(flowid,isEdit){
 function closeLinkStoreNote(){
 	$('#linkStoreWarning').hide();
 }
-function showflowData(response){
+function showflowData(response){ console.log('response',response)
 	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
 	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
 		if(response && response[0] && !response[0]['discrepancy']){
 			$('#linkStoreWarning').show();
+		}else{
+			$('#linkStoreWarning').hide();
 		}
 		$('#storeFilter').show();
 	}else{
@@ -201,6 +202,11 @@ function showflowData(response){
 		 		        } else {
 		 		        	$("#div_"+(i+1)).addClass('down-state');
 		 		        }
+		 			  if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+		 				 if(response[i]['discrepancy'] && (response[i]['discrepancy']['status'] || response[i]['discrepancy']['bandwidth'])){
+		 					$("#div_"+(i+1)).addClass('down-status');
+		 				 }
+					 	} 
 	 }
 	 
 	 common.customDataTableSorting();
