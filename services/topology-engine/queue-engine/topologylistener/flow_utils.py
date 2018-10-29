@@ -32,6 +32,7 @@ default_rules = ['0x8000000000000001', '0x8000000000000002',
                  '0x8000000000000003', '0x8000000000000004']
 
 
+cookie_flags_mask = 0xE000000000000000
 cookie_flag_forward = 0x4000000000000000
 cookie_flag_reverse = 0x2000000000000000
 
@@ -39,7 +40,7 @@ cookie_flag_reverse = 0x2000000000000000
 def is_forward_cookie(cookie):
     cookie = int(cookie)
     # trying to distinguish kilda and not kilda produced cookies
-    if cookie & 0xE000000000000000:
+    if cookie & ~cookie_flags_mask:
         is_match = cookie & cookie_flag_forward
     else:
         is_match = (cookie & 0x0080000000000000) == 0
@@ -599,7 +600,7 @@ def build_commands_to_sync_rules(switch_id, switch_rules):
                 logger.info("Ingress flow %s is to be (re)installed on switch %s", cookie, switch_id)
                 commands.append(message_utils.build_ingress_flow_from_db(flow, output_action))
 
-    return {"commands": commands, "installed_rules": installed_rules}
+    return commands, installed_rules
 
 
 def build_install_command_from_segment(segment):
