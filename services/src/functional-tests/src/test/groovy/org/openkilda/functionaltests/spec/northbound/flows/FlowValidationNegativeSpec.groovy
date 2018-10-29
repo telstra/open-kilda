@@ -8,7 +8,6 @@ import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.info.rule.SwitchFlowEntries
 import org.openkilda.messaging.model.Flow
 import org.openkilda.messaging.model.SwitchId
-import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.springframework.beans.factory.annotation.Autowired
@@ -24,8 +23,6 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     @Autowired
     Database database
 
-    @Autowired
-    TopologyDefinition topology
 
     Map<SwitchId, SwitchFlowEntries> captureSwitchRules(List<SwitchId> switchIds) {
         def rules = [:]
@@ -48,24 +45,22 @@ class FlowValidationNegativeSpec extends BaseSpecification {
 
     def getNonNeighbouringSwitches() {
         def islInfoData = northbound.getAllLinks()
-        def switches = topology.getActiveSwitches()
+        def switches = topologyDefinition.getActiveSwitches()
         def differentSwitches = [switches, switches].combinations().unique().findAll {src, dst -> src != dst}
 
-        def nonNeighbouringSwitches = differentSwitches.find {src, dst -> noDirectLinks(src, dst, islInfoData)}
-        return nonNeighbouringSwitches
+        return differentSwitches.find {src, dst -> noDirectLinks(src, dst, islInfoData)}
     }
 
     def getNeighbouringSwitches() {
-        def switches = topology.getActiveSwitches()
+        def switches = topologyDefinition.getActiveSwitches()
         def islInfoData = northbound.getAllLinks()
         return [switches, switches].combinations().unique().find { src, dst -> !noDirectLinks(src, dst, islInfoData) }
     }
 
     def getSingleSwitch() {
-        def switches = topology.getActiveSwitches()
+        def switches = topologyDefinition.getActiveSwitches()
         return [switches.first(), switches.first()]
     }
-
 
     @Unroll
     def "Flow validation should fail if #rule switch rule is deleted"() {
@@ -131,7 +126,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
 
     def "Missing rules on a switch should not prevent intact flows from successful validation"() {
         given: "Two flows with same switches in path exist"
-        def src = topology.getActiveSwitches()[0]
+        def src = topologyDefinition.getActiveSwitches()[0]
         def flow1 = flowHelper.singleSwitchFlow(src)
         assert flow1?.id
         flow1 = northbound.addFlow(flow1)
