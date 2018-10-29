@@ -10,6 +10,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -64,6 +65,12 @@ class IslMovementSpec extends BaseSpecification {
 
         and: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], MOVED)
+        
+        and: "MOVED ISL can be deleted"
+        [newIsl, islUtils.reverseIsl(newIsl)].each { Isl islToRemove ->
+            assert northbound.deleteLink(islUtils.getLinkParameters(islToRemove)).deleted
+            assert Wrappers.wait(WAIT_OFFSET) { !islUtils.getIslInfo(islToRemove).isPresent() }
+        }
     }
 
     def "New ISL is not getting discovered when replugging into a self-loop (same port)"() {
