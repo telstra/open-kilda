@@ -30,7 +30,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
     @Value('${discovery.interval}')
     int discoveryInterval
 
-    def "Bring switch port down/up (ISL-busy port)"() {
+    def "Able to bring switch port down/up (ISL-busy port)"() {
         given: "An ISL between active switches"
         def isl = topology.islsForActiveSwitches.first()
 
@@ -72,8 +72,8 @@ class SwitchPortConfigSpec extends BaseSpecification {
         statsData.values().first() == otsdbPortUp
     }
 
-    //TODO(rtretiak): Kilda won't log into OTSDB for isl-free ports. Investigate, link to an issue if requried
-    def "Bring switch port down/up (ISL-free port)"() {
+    //Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.
+    def "Able to bring switch port down/up (ISL-free port)"() {
         requireProfiles("hardware")
 
         given: "An active switch and ISL-free port"

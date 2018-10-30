@@ -23,6 +23,7 @@ import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaConsumerSetup;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchTrackingService;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -66,7 +67,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 ISwitchManager.class,
                 KafkaUtilityService.class,
                 IKafkaProducerService.class,
-                CommandProcessorService.class);
+                CommandProcessorService.class,
+                SwitchTrackingService.class);
     }
 
     @Override

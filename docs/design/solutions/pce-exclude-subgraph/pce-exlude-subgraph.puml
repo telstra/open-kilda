@@ -1,0 +1,35 @@
+@startuml
+title Ability to exclude given graph from path computation
+
+participant "PCE Client" as Client
+participant Exclude
+participant "PathComputer" as Computer
+participant "AvailableNetwork" as Network
+database "Neo4J" as DB
+
+activate Client
+create Exclude
+Client -> Exclude: create instance
+Exclude --> Client
+
+Client -> Computer: getAvailableNetwork()
+activate Computer
+Computer -> DB: get active links
+DB --> Computer
+create Network
+Computer -> Network: create from retrieved links
+Network --> Computer
+Computer --> Client: AvailableNetwork
+deactivate Computer
+
+Client -> Network: apply Exclude rules
+
+Client -> Computer: getPathWithAvailableNetwork()
+activate Computer
+Computer -> Computer: getPathFromNetwork()
+Computer -> Computer: SimpleGetShortestPath.getPath()
+Computer --> Client: computed FlowPair
+deactivate Computer
+
+deactivate Client
+@enduml

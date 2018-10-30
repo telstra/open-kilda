@@ -18,8 +18,13 @@ package org.openkilda.integration.converter;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowEndpoint;
 import org.openkilda.integration.service.SwitchIntegrationService;
+import org.openkilda.integration.source.store.dto.InventoryFlow;
+import org.openkilda.model.FlowBandwidth;
+import org.openkilda.model.FlowDiscrepancy;
 import org.openkilda.model.FlowInfo;
+import org.openkilda.model.FlowState;
 import org.openkilda.utility.CollectionUtil;
+import org.openkilda.utility.StringUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -86,6 +91,69 @@ public class FlowConverter {
             flowInfo.setDstPort(destination.getPortId());
             flowInfo.setDstVlan(destination.getVlanId());
         }
+        return flowInfo;
+    }
+    
+    /**
+     * To flow info.
+     *
+     * @param flowInfo the flow info
+     * @param inventoryFlow the inventory flow
+     * @param csNames the cs names
+     * @return the flow info
+     */
+    public FlowInfo toFlowInfo(final FlowInfo flowInfo, final InventoryFlow inventoryFlow,
+            final Map<String, String> csNames) {
+
+        FlowDiscrepancy discrepancy = new FlowDiscrepancy();
+        discrepancy.setControllerDiscrepancy(true);
+        discrepancy.setStatus(true);
+        discrepancy.setBandwidth(true);
+        
+        FlowBandwidth flowBandwidth = new FlowBandwidth();
+        flowBandwidth.setControllerBandwidth(0);
+        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+        discrepancy.setBandwidthValue(flowBandwidth);
+        
+        FlowState flowState = new FlowState();
+        flowState.setControllerState(null);
+        flowState.setInventoryState(inventoryFlow.getState());
+        discrepancy.setStatusValue(flowState);
+        
+        flowInfo.setFlowid(inventoryFlow.getId());
+        flowInfo.setDiscrepancy(discrepancy);
+        if (!StringUtil.isNullOrEmpty(inventoryFlow.getSource().getId())) {
+            flowInfo.setSourceSwitch(inventoryFlow.getSource().getId());
+            flowInfo.setSourceSwitchName(
+                    switchIntegrationService.customSwitchName(csNames, inventoryFlow.getSource().getId()));
+        }
+        if (inventoryFlow.getSource().getPortId() != null) {
+            flowInfo.setSrcPort(inventoryFlow.getSource().getPortId());
+        }
+        try {
+            flowInfo.setSrcVlan(Integer.parseInt(inventoryFlow.getSource().getVlanId()));
+        } catch (NumberFormatException numberFormatException) {
+            inventoryFlow.getSource().setVlanId(null);
+        }
+        
+        if (!StringUtil.isNullOrEmpty(inventoryFlow.getDestination().getId())) {
+            flowInfo.setTargetSwitch(inventoryFlow.getDestination().getId());
+            flowInfo.setTargetSwitchName(
+                    switchIntegrationService.customSwitchName(csNames, inventoryFlow.getDestination().getId()));
+        }
+        if (inventoryFlow.getDestination().getPortId() != null) {
+            flowInfo.setDstPort(inventoryFlow.getDestination().getPortId());
+        }
+        try {
+            flowInfo.setDstVlan(Integer.parseInt(inventoryFlow.getDestination().getVlanId()));
+        } catch (NumberFormatException numberFormatException) {
+            inventoryFlow.getDestination().setVlanId(null);
+        }
+
+        flowInfo.setDescription(inventoryFlow.getDescription());
+        flowInfo.setMaximumBandwidth(inventoryFlow.getMaximumBandwidth());
+        flowInfo.setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
+        flowInfo.setState(inventoryFlow.getState());
         return flowInfo;
     }
 

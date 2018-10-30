@@ -133,11 +133,6 @@ public class FlowCrudSteps implements En {
         flows = flowManager.allActiveSwitchesFlows();
     }
 
-    @Given("^flows defined over active traffgens in the reference topology$")
-    public void defineFlowsOverActiveTraffgens() {
-        flows = flowManager.allActiveTraffgenFlows();
-    }
-
     @Given("Create (\\d+) flows? with A Switch used and at least (\\d+) alternate paths? between source and "
             + "destination switch and (\\d+) bandwidth")
     public void flowsWithAlternatePaths(int flowsAmount, int alternatePaths, int bw) {
@@ -174,11 +169,6 @@ public class FlowCrudSteps implements En {
     @And("^each flow has unique flow_id$")
     public void setUniqueFlowIdToEachFlow() {
         flows.forEach(flow -> flow.setId(format("%s-%s", flow.getId(), UUID.randomUUID().toString())));
-    }
-
-    @And("^each flow has flow_id with (.*) prefix$")
-    public void buildFlowIdToEachFlow(String flowIdPrefix) {
-        flows.forEach(flow -> flow.setId(format("%s-%s", flowIdPrefix, flow.getId())));
     }
 
     @And("^(?:each )?flow has max bandwidth set to (\\d+)$")

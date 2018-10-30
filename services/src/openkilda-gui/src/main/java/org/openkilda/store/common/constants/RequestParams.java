@@ -20,25 +20,25 @@ import lombok.Getter;
 @Getter
 public enum RequestParams {
 
-    USER_NAME("<user-name>","In place of username."),
-    PASSWORD("<password>","In place of password."),
-    ACCESS_TOKEN("<access-token>","In place of access token."),
-    LINK_ID("<link-id>","In place of link id."),
-    STATUS("<status>","In place of status."),
-    CONTRACT_ID("<contract-id>","In place of contract id.");
+    USER_NAME("<user-name>", "In place of username."),
+    PASSWORD("<password>", "In place of password."),
+    ACCESS_TOKEN("<access-token>", "In place of access token."),
+    LINK_ID("<link-id>", "In place of link id."),
+    STATUS("<status>", "In place of status."),
+    CONTRACT_ID("<contract-id>", "In place of contract id.");
     
-    private String value;
+    private String name;
     
     private String description;
     
     /**
      * Instantiates a new request params.
      *
-     * @param value the value
+     * @param name the name
      * @param description the description
      */
-    private RequestParams(final String value, final String description) {
-        this.value = value;
+    private RequestParams(final String name, final String description) {
+        this.name = name;
         this.description = description;
     }
 }

@@ -15,31 +15,27 @@
 
 package org.openkilda.store.service;
 
-import org.openkilda.store.auth.constants.AuthType;
-import org.openkilda.store.auth.dao.entity.OauthConfigEntity;
-import org.openkilda.store.auth.dao.repository.OauthConfigRepository;
 import org.openkilda.store.common.constants.StoreType;
+import org.openkilda.store.common.constants.Url;
 import org.openkilda.store.linkstore.dao.entity.LinkStoreRequestUrlsEntity;
 import org.openkilda.store.linkstore.dao.repository.LinkStoreRequestUrlsRepository;
 import org.openkilda.store.model.LinkStoreConfigDto;
 import org.openkilda.store.model.StoreTypeDto;
 import org.openkilda.store.model.UrlDto;
-import org.openkilda.store.service.converter.OauthConfigConverter;
 import org.openkilda.store.service.converter.StoreTypeConverter;
 import org.openkilda.store.service.converter.UrlConverter;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import org.openkilda.utility.CollectionUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * The Class StoreService.
@@ -48,10 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StoreService {
 
     @Autowired
-    LinkStoreRequestUrlsRepository linkStoreRequestUrlsRepository;
-
-    @Autowired
-    OauthConfigRepository oauthConfigRepository;
+    private LinkStoreRequestUrlsRepository linkStoreRequestUrlsRepository;
 
     /**
      * Gets the store types.
@@ -76,23 +69,23 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public LinkStoreConfigDto saveOrUpdateLinkStoreConfig(final LinkStoreConfigDto linkStoreConfigDto) {
-        UrlConverter urlConverter = new UrlConverter();
-        List<LinkStoreRequestUrlsEntity>  linkStoreRequestUrlsEntitiesList = new ArrayList<LinkStoreRequestUrlsEntity>();
-        List<LinkStoreRequestUrlsEntity>  linkStoreRequestUrlsEntities = linkStoreRequestUrlsRepository
-                .findAll();
-        for(Entry<String,UrlDto> urlEntrySet : linkStoreConfigDto.getUrls().entrySet()){
-            if(linkStoreRequestUrlsEntities != null){
+        List<LinkStoreRequestUrlsEntity> linkStoreRequestUrlsEntitiesList = new ArrayList<LinkStoreRequestUrlsEntity>();
+        List<LinkStoreRequestUrlsEntity> linkStoreRequestUrlsEntities = linkStoreRequestUrlsRepository.findAll();
+        for (Entry<String, UrlDto> urlEntrySet : linkStoreConfigDto.getUrls().entrySet()) {
+            if (linkStoreRequestUrlsEntities != null) {
                 LinkStoreRequestUrlsEntity linkStoreRequestUrlsEntity = null;
-                for(LinkStoreRequestUrlsEntity linkStoreRequestUrlsEntityObj : linkStoreRequestUrlsEntities){
-                    if(linkStoreRequestUrlsEntityObj.getUrlEntity().getName().equalsIgnoreCase(urlEntrySet.getValue().getName())){
+                for (LinkStoreRequestUrlsEntity linkStoreRequestUrlsEntityObj : linkStoreRequestUrlsEntities) {
+                    if (linkStoreRequestUrlsEntityObj.getUrlEntity().getName()
+                            .equalsIgnoreCase(urlEntrySet.getValue().getName())) {
                         linkStoreRequestUrlsEntity = linkStoreRequestUrlsEntityObj;
                         break;
                     }
                 }
-                if(linkStoreRequestUrlsEntity == null){
+                if (linkStoreRequestUrlsEntity == null) {
                     linkStoreRequestUrlsEntity = new LinkStoreRequestUrlsEntity();
                 }
-                linkStoreRequestUrlsEntity.setUrlEntity(urlConverter.toUrlEntity(urlEntrySet.getKey(), urlEntrySet.getValue(), linkStoreRequestUrlsEntity.getUrlEntity()));
+                linkStoreRequestUrlsEntity.setUrlEntity(UrlConverter.toUrlEntity(urlEntrySet.getKey(),
+                        urlEntrySet.getValue(), linkStoreRequestUrlsEntity.getUrlEntity()));
                 linkStoreRequestUrlsEntitiesList.add(linkStoreRequestUrlsEntity);
             }
         }
@@ -101,12 +94,12 @@ public class StoreService {
         Map<String, UrlDto> urls = new HashMap<String, UrlDto>();
         for (LinkStoreRequestUrlsEntity linkStoreRequestUrlsEntity : linkStoreRequestUrlsEntitiesList) {
             urls.put(linkStoreRequestUrlsEntity.getUrlEntity().getName(),
-                    urlConverter.toUrlDto(linkStoreRequestUrlsEntity.getUrlEntity()));
+                    UrlConverter.toUrlDto(linkStoreRequestUrlsEntity.getUrlEntity()));
         }
         linkStoreConfigDto.setUrls(urls);
         return linkStoreConfigDto;
     }
-    
+
     /**
      * Gets the link store config.
      *
@@ -115,16 +108,47 @@ public class StoreService {
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public LinkStoreConfigDto getLinkStoreConfig() {
         LinkStoreConfigDto linkStoreConfigDto = new LinkStoreConfigDto();
-        UrlConverter urlConverter = new UrlConverter();
-        List<LinkStoreRequestUrlsEntity>  linkStoreRequestUrlsEntitiesList = linkStoreRequestUrlsRepository
-                .findAll();
+        List<LinkStoreRequestUrlsEntity> linkStoreRequestUrlsEntitiesList = linkStoreRequestUrlsRepository.findAll();
 
         Map<String, UrlDto> urls = new HashMap<String, UrlDto>();
         for (LinkStoreRequestUrlsEntity linkStoreRequestUrlsEntity : linkStoreRequestUrlsEntitiesList) {
             urls.put(linkStoreRequestUrlsEntity.getUrlEntity().getName(),
-                    urlConverter.toUrlDto(linkStoreRequestUrlsEntity.getUrlEntity()));
+                    UrlConverter.toUrlDto(linkStoreRequestUrlsEntity.getUrlEntity()));
         }
         linkStoreConfigDto.setUrls(urls);
         return linkStoreConfigDto;
     }
+
+    /**
+     * Gets the url.
+     *
+     * @param storeType the store type
+     * @param url the url
+     * @return the url
+     */
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+    public UrlDto getUrl(final StoreType storeType, final Url url) {
+        UrlDto urlDto = null;
+        
+        if (storeType == StoreType.LINK_STORE) {
+            LinkStoreRequestUrlsEntity urlsEntity = linkStoreRequestUrlsRepository
+                    .findByUrlEntity_name(url.getName());
+            urlDto = UrlConverter.toUrlDto(urlsEntity.getUrlEntity());
+        }
+
+        return urlDto;
+    }
+    
+    /**
+     * Delete link store config.
+     *
+     * @return true, if successful
+     */
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+    public boolean deleteLinkStoreConfig() {
+        linkStoreRequestUrlsRepository.deleteAll();
+        List<LinkStoreRequestUrlsEntity> linkStoreRequestUrlsEntitiesList = linkStoreRequestUrlsRepository.findAll();
+        return CollectionUtil.isEmpty(linkStoreRequestUrlsEntitiesList);
+    }
+
 }

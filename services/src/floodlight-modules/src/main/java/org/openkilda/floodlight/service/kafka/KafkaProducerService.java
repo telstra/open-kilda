@@ -85,7 +85,7 @@ public class KafkaProducerService implements IKafkaProducerService {
         return sendStatus;
     }
 
-    private AbstractWorker getWorker(String topic) {
+    private synchronized AbstractWorker getWorker(String topic) {
         AbstractWorker worker = workersMap.computeIfAbsent(
                 topic, t -> new DefaultWorker(producer, t));
         if (!worker.isActive()) {

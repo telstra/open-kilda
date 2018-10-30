@@ -84,7 +84,7 @@ public class SwitchManagerOF12Test {
     private Capture<OFFlowMod> prepareForInstallFlowOperation() {
         Capture<OFFlowMod> capture = EasyMock.newCapture();
 
-        expect(switchService.getSwitch(switchDpId)).andStubReturn(ofSwitch);
+        expect(switchService.getActiveSwitch(switchDpId)).andStubReturn(ofSwitch);
         expect(ofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(ofSwitch.write(capture(capture))).andReturn(true);
         EasyMock.expectLastCall();

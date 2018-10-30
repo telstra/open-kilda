@@ -16,16 +16,15 @@
 package org.openkilda.store.controller.validator;
 
 import org.openkilda.store.model.OauthTwoConfigDto;
-import org.openkilda.utility.StringUtil;
-import org.usermanagement.exception.RequestValidationException;
-import org.usermanagement.util.MessageUtils;
-import org.usermanagement.util.ValidatorUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import org.usermanagement.exception.RequestValidationException;
+import org.usermanagement.util.MessageUtils;
+import org.usermanagement.util.ValidatorUtil;
 
 /**
  * The Class OauthTwoConfigValidator.

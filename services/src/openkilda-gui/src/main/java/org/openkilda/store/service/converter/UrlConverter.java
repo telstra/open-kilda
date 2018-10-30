@@ -22,7 +22,9 @@ import org.openkilda.store.model.UrlDto;
  * The Class UrlConverter.
  */
 
-public class UrlConverter {
+public final class UrlConverter {
+    
+    private UrlConverter() {}
     
     /**
      * To url entity.
@@ -32,7 +34,7 @@ public class UrlConverter {
      * @param urlEntity the url entity
      * @return the url entity
      */
-    public UrlEntity toUrlEntity(final String name, final UrlDto dto, final UrlEntity urlEntity){
+    public static UrlEntity toUrlEntity(final String name, final UrlDto dto, final UrlEntity urlEntity) {
         urlEntity.setName(name);
         urlEntity.setUrl(dto.getUrl());
         urlEntity.setMethodType(dto.getMethodType());
@@ -47,7 +49,7 @@ public class UrlConverter {
      * @param urlEntity the url entity
      * @return the url dto
      */
-    public UrlDto toUrlDto(final UrlEntity urlEntity){
+    public static UrlDto toUrlDto(final UrlEntity urlEntity) {
         UrlDto urlDto = new UrlDto();
         urlDto.setName(urlEntity.getName());
         urlDto.setUrl(urlEntity.getUrl());

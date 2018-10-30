@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -159,12 +160,14 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<Long> deleteSwitchRules(SwitchId switchId) {
+    public List<Long> deleteSwitchRules(SwitchId switchId, DeleteRulesAction deleteAction) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/switches/{switch_id}/rules");
+        uriBuilder.queryParam("delete-action", deleteAction);
+
         HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
         httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
 
-        Long[] deletedRules = restTemplate.exchange(
-                "/api/v1/switches/{switch_id}/rules?delete-action=IGNORE_DEFAULTS", HttpMethod.DELETE,
+        Long[] deletedRules = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.DELETE,
                 new HttpEntity(httpHeaders), Long[].class, switchId).getBody();
         return Arrays.asList(deletedRules);
     }

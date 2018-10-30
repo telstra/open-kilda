@@ -18,6 +18,9 @@ package org.openkilda.store.auth.dao.entity;
 import org.openkilda.entity.BaseEntity;
 import org.openkilda.store.common.dao.entity.UrlEntity;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -29,12 +32,10 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 @Entity
 @Table(name = "kilda_oauth_config")
-@Data @NoArgsConstructor
+@Data
+@NoArgsConstructor
 public class OauthConfigEntity extends BaseEntity {
 
     @Id
@@ -44,22 +45,22 @@ public class OauthConfigEntity extends BaseEntity {
 
     @Column(name = "username", nullable = false)
     private String username;
-    
+
     @Column(name = "password", nullable = false)
     private String password;
 
-    @ManyToOne(fetch = FetchType.EAGER,cascade=CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "generate_token_id", nullable = false)
     private UrlEntity generateToken = new UrlEntity();
 
-    @ManyToOne(fetch = FetchType.EAGER,cascade=CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "refresh_token_id", nullable = false)
     private UrlEntity refreshToken = new UrlEntity();
-    
-    @ManyToOne(fetch = FetchType.EAGER,cascade=CascadeType.MERGE)
+
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.MERGE)
     @JoinColumn(name = "auth_type_id", nullable = false)
     private AuthTypeEntity authType;
-    
+
     @Override
     public Long id() {
         return oauthConfigId != null ? Long.valueOf(oauthConfigId) : null;

@@ -45,7 +45,8 @@ public enum ActivityType {
     DELETE_FLOW(24L),
     RESYNC_FLOW(25L),
     UPDATE_LINK_STORE_CONFIG(26L),
-    UPDATE_OAUTH_CONFIG(27L);
+    UPDATE_OAUTH_CONFIG(27L),
+    DELETE_LINK_STORE_CONFIG(28L);
 
     private Long id;
     private ActivityTypeEntity activityTypeEntity;

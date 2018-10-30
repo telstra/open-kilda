@@ -30,5 +30,5 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.MANDATORY)
 public interface LinkStoreRequestUrlsRepository extends JpaRepository<LinkStoreRequestUrlsEntity, Integer> {
 
-    
+    public LinkStoreRequestUrlsEntity findByUrlEntity_name(final String name);
 }

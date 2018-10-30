@@ -15,8 +15,6 @@
 
 package org.openkilda.floodlight.error;
 
-import org.openkilda.floodlight.switchmanager.SwitchOperationException;
-
 import org.projectfloodlight.openflow.types.DatapathId;
 
 public class InvalidMeterIdException extends SwitchOperationException {

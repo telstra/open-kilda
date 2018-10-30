@@ -19,6 +19,7 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
@@ -51,8 +52,8 @@ class AutoRerouteSpec extends BaseSpecification {
         def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Ports that lead to alternative paths are brought down to deny alternative paths"
         def altPaths = allPaths.findAll { it != currentPath }
@@ -86,27 +87,72 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Unroll
+    def "Flow goes to 'Down' status when src or dst switch is disconnected (#description)"() {
+        requireProfiles("virtual")
+
+        given: "A flow"
+        //TODO(ylobankov): Remove this code once the issue #1464 is resolved.
+        assumeTrue("Test is skipped because of the issue #1464", description != "single-switch flow")
+
+        northboundService.addFlow(flow)
+        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+
+        when: "The source switch is disconnected"
+        lockKeeperService.knockoutSwitch(flow.source.datapath)
+
+        then: "Flow becomes 'Down'"
+        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        }
+
+        when: "The source switch is connected back"
+        lockKeeperService.reviveSwitch(flow.source.datapath)
+
+        then: "Flow becomes 'Up'"
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+        }
+
+        when: "The destination switch is disconnected"
+        lockKeeperService.knockoutSwitch(flow.destination.datapath)
+
+        then: "Flow becomes 'Down'"
+        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        }
+
+        when: "The destination switch is connected back"
+        lockKeeperService.reviveSwitch(flow.destination.datapath)
+
+        then: "Flow becomes 'Up'"
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
+            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+        }
+
+        and: "Remove flow"
+        northboundService.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+        }
+
+        where:
+        description                    | flow
+        "single-switch flow"           | singleSwitchFlow()
+        "w/o-intermediate-switch flow" | withOutIntermediateSwitchFlow()
+        "w/-intermediate-switch flow"  | withIntermediateSwitchFlow()
+    }
+
     def "Flow goes to 'Down' status when an intermediate switch is disconnected and there is no ability to reroute"() {
         requireProfiles("virtual")
 
-        given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def links = northboundService.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            links.every { link ->
-                def switchIds = link.path*.switchId
-                !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
-            }
-        } ?: assumeTrue("No suiting switches found", false)
-
-        and: "A flow without alternative paths"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        given: "Two active not neighboring switches and a flow without alternative paths"
+        def flow = withIntermediateSwitchFlow()
         northboundService.addFlow(flow)
-        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
-        def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def allPaths = db.getPaths(flow.source.datapath, flow.destination.datapath)*.path
         def altPaths = allPaths.findAll { it != currentPath && it.first().portNo != currentPath.first().portNo }
         List<PathNode> broughtDownPorts = []
         altPaths.unique { it.first() }.each { path ->
@@ -125,6 +171,9 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "The intermediate switch is connected back"
         lockKeeperService.reviveSwitch(currentPath[1].switchId)
+        assert Wrappers.wait(WAIT_OFFSET) {
+            northboundService.activeSwitches*.switchId.contains(currentPath[1].switchId)
+        }
 
         then: "Flow becomes 'Up'"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
@@ -152,8 +201,8 @@ class AutoRerouteSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 1000
         northboundService.addFlow(flow)
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Bring all ports down on source switch that are involved in current and alternate paths"
         List<PathNode> broughtDownPorts = []
@@ -174,7 +223,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         then: "Flow goes to 'Up' status"
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
             northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
@@ -204,8 +253,8 @@ class AutoRerouteSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 1000
         northboundService.addFlow(flow)
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make current flow path less preferable than others"
         possibleFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
@@ -236,6 +285,28 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Delete created flow"
         northboundService.deleteFlow(flow.id)
+    }
+
+    def singleSwitchFlow() {
+        flowHelper.singleSwitchFlow(topology.getActiveSwitches().first())
+    }
+
+    def withOutIntermediateSwitchFlow() {
+        def isl = topology.getIslsForActiveSwitches().first()
+        flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
+    }
+
+    def withIntermediateSwitchFlow() {
+        def switches = topology.getActiveSwitches()
+        def links = northboundService.getAllLinks()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            links.every { link ->
+                def switchIds = link.path*.switchId
+                !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
+            }
+        } ?: assumeTrue("No suiting switches found", false)
+        flowHelper.randomFlow(srcSwitch, dstSwitch)
     }
 
     def cleanup() {

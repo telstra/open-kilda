@@ -15,6 +15,8 @@
 
 package org.openkilda.store.model;
 
+import org.openkilda.store.auth.constants.AuthType;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -24,7 +26,7 @@ import lombok.Data;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
-public class OauthTwoConfigDto {
+public class OauthTwoConfigDto implements AuthConfigDto {
 
     @JsonProperty("username")
     private String username;
@@ -37,4 +39,9 @@ public class OauthTwoConfigDto {
     
     @JsonProperty("oauth-refresh-token-url")
     private UrlDto oauthRefreshTokenUrl;
+    
+    @Override
+    public AuthType getAuthType() {
+        return AuthType.OAUTH_TWO;
+    }
 }

@@ -20,12 +20,15 @@ import org.openkilda.store.auth.dao.entity.OauthConfigEntity;
 import org.openkilda.store.common.constants.Url;
 import org.openkilda.store.model.OauthTwoConfigDto;
 import org.openkilda.utility.GeneratePassword;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OauthConfigConverter {
+public final class OauthConfigConverter {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(OauthConfigConverter.class);
+    
+    private OauthConfigConverter() {}
 
     /**
      * To oauth config entity.
@@ -34,9 +37,8 @@ public class OauthConfigConverter {
      * @param oauthConfigEntity the oauth config entity
      * @return the oauth config entity
      */
-    public OauthConfigEntity toOauthConfigEntity(final OauthTwoConfigDto oauthTwoConfigDto,
+    public static OauthConfigEntity toOauthConfigEntity(final OauthTwoConfigDto oauthTwoConfigDto,
             final OauthConfigEntity oauthConfigEntity) {
-        UrlConverter urlConverter = new UrlConverter();
         oauthConfigEntity.setUsername(oauthTwoConfigDto.getUsername());
         try {
             oauthConfigEntity.setPassword(GeneratePassword.encrypt(oauthTwoConfigDto.getPassword()));
@@ -44,9 +46,9 @@ public class OauthConfigConverter {
             LOGGER.error(
                     "[toOauthConfigEntity] Password encryption failed for user " + oauthTwoConfigDto.getUsername());
         }
-        oauthConfigEntity.setGenerateToken(urlConverter.toUrlEntity(Url.OAUTH_GENERATE_TOKEN.getName(),
+        oauthConfigEntity.setGenerateToken(UrlConverter.toUrlEntity(Url.OAUTH_GENERATE_TOKEN.getName(),
                 oauthTwoConfigDto.getOauthGenerateTokenUrl(), oauthConfigEntity.getGenerateToken()));
-        oauthConfigEntity.setRefreshToken(urlConverter.toUrlEntity(Url.OAUTH_REFRESH_TOKEN.getName(),
+        oauthConfigEntity.setRefreshToken(UrlConverter.toUrlEntity(Url.OAUTH_REFRESH_TOKEN.getName(),
                 oauthTwoConfigDto.getOauthRefreshTokenUrl(), oauthConfigEntity.getRefreshToken()));
         oauthConfigEntity.setAuthType(AuthType.OAUTH_TWO.getAuthTypeEntity());
         return oauthConfigEntity;
@@ -58,9 +60,8 @@ public class OauthConfigConverter {
      * @param oauthConfigEntity the oauth config entity
      * @return the oauth two config dto
      */
-    public OauthTwoConfigDto toOauthTwoConfigDto(final OauthConfigEntity oauthConfigEntity) {
+    public static OauthTwoConfigDto toOauthTwoConfigDto(final OauthConfigEntity oauthConfigEntity) {
         OauthTwoConfigDto oauthTwoConfigDto = new OauthTwoConfigDto();
-        UrlConverter urlConverter = new UrlConverter();
         oauthTwoConfigDto.setUsername(oauthConfigEntity.getUsername());
         try {
             oauthTwoConfigDto.setPassword(GeneratePassword.decrypt(oauthConfigEntity.getPassword()));
@@ -68,8 +69,8 @@ public class OauthConfigConverter {
             LOGGER.error(
                     "[toOauthTwoConfigDto] Password decryption failed for user " + oauthConfigEntity.getUsername());
         }
-        oauthTwoConfigDto.setOauthGenerateTokenUrl(urlConverter.toUrlDto(oauthConfigEntity.getGenerateToken()));
-        oauthTwoConfigDto.setOauthRefreshTokenUrl(urlConverter.toUrlDto(oauthConfigEntity.getRefreshToken()));
+        oauthTwoConfigDto.setOauthGenerateTokenUrl(UrlConverter.toUrlDto(oauthConfigEntity.getGenerateToken()));
+        oauthTwoConfigDto.setOauthRefreshTokenUrl(UrlConverter.toUrlDto(oauthConfigEntity.getRefreshToken()));
         return oauthTwoConfigDto;
     }
 }

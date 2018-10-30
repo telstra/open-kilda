@@ -115,6 +115,10 @@ class StoreSetting {
 				storeSettingObj.linkStoreObj = JSONResponse;
 				storeSettingObj.setLinkForm(JSONResponse);
 				storeSettingObj.disableLinkStoreForm();
+			}else{
+				$('#linkStoreForm')[0].reset();
+				$('#linkStoreForm').find('.error').hide();
+				$('#linkStoreForm').find('input').removeClass('errorInput');
 			}
 		},function(error){
 			$('#loading_config').hide();
@@ -190,6 +194,7 @@ class StoreSetting {
 	}
 	disableLinkStoreForm(){
 		$('#editlinkstoreBtn').show();
+		$('#deletelinkstoreBtn').show();
 		$('#cancellinkstoreBtn').hide();
 		$('#submitlinkstoreBtn').hide();
 		$('#getalllinkurl').attr('disabled','disabled');
@@ -200,6 +205,7 @@ class StoreSetting {
 	}
 	enableLinkStoreForm(){
 		$('#editlinkstoreBtn').hide();
+		$('#deletelinkstoreBtn').hide();
 		$('#cancellinkstoreBtn').show();
 		$('#submitlinkstoreBtn').show();
 		$('#getalllinkurl').removeAttr('disabled');
@@ -208,6 +214,27 @@ class StoreSetting {
 		$('#getcontracturl').removeAttr('disabled');
 		$('#deletecontracturl').removeAttr('disabled');
 		
+	}
+	deleteLinkStoreConfirm(){
+		$('#deletelinkStoreconfirmModal').modal('show');
+	}
+	deleteLinkStore(){
+		$('#deletelinkStoreconfirmModal').modal('hide');
+		$('#loading_delete_link_store').show();
+		common.deleteData('/store/link-store-config/delete').then(function(response){
+			$('#loading_delete_link_store').hide();
+			common.infoMessage("Link store setting deleted successfully",'success');
+			setTimeout(function(){
+				location.reload();
+			},500);
+			
+		},function(error){
+			$('#loading_delete_link_store').hide();
+			common.infoMessage(error.responseJSON['error-message'],'error');
+		}).fail(function(error){
+			$('#loading_delete_link_store').hide();
+			common.infoMessage(error.responseJSON['error-message'],'error');
+		})
 	}
 	generateFormFieldObject(formArr) {
 		var formObj ={};
@@ -340,7 +367,7 @@ class StoreSetting {
 	}
 	validateUrl(url) {
 		var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
-	    if(res == null)
+		if(res == null)
 	        return false;
 	    else
 	        return true;
@@ -364,36 +391,36 @@ class StoreSetting {
 		var elmVal = $('#'+id).val();
 		var ifUrlField = $('#'+id).attr('rel') == 'urltext';
 		var requiredParams = $('#requiredParam_'+id).find("plaintext").html();
+		var flag = false;
 		if(elmVal != '' && typeof(elmVal) != 'undefined'){
 			 	$('#' + id + "Error").hide();
 				$('#' + id).removeClass("errorInput");
 				if(ifUrlField && !storeSettingObj.validateUrl(elmVal)){
 					$('#' + id + "ErrorUrl").show();
 					$('#' + id).addClass("errorInput");
-					return false;
+					flag =  false;
 				}else{
-					if(typeof(requiredParams) !='undefined'){
-						if(!storeSettingObj.validateUrlParams(elmVal,requiredParams)){
-							$('#' + id + "requiredError").show();
-							$('#' + id).addClass("errorInput");
-							return false;
-						}else{
-							$('#' + id + "requiredError").hide();
-							$('#' + id).removeClass("errorInput");
-							return true;
-						}
-					}else{
 						$('#' + id + "ErrorUrl").hide();
 						$('#' + id).removeClass("errorInput");
-						return true;
+						flag =  true;
+				}
+				if(typeof(requiredParams) !='undefined'){
+					if(!storeSettingObj.validateUrlParams(elmVal,requiredParams)){
+						$('#' + id + "requiredError").show();
+						$('#' + id).addClass("errorInput");
+						flag =  false;
+					}else{
+						$('#' + id + "requiredError").hide();
+						$('#' + id).removeClass("errorInput");
+						flag =  true;
 					}
-					
 				}
 		}else{
 			$('#' + id + "Error").show();
 			$('#' + id).addClass("errorInput");
-			return false;
+			flag =  false;
 		}
+		return flag;
 	}
 	
 }

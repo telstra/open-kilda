@@ -17,10 +17,10 @@ package org.openkilda.store.common.constants;
 
 import org.openkilda.store.auth.constants.AuthType;
 
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import lombok.Getter;
 
 /**
  * Gets the urls.
@@ -55,7 +55,7 @@ public enum AuthUrl {
      * @param authType the auth type
      * @return the url name
      */
-    public static List<String> getUrlName(String authType){
+    public static List<String> getUrlName(String authType) {
         List<String> list = new ArrayList<String>();
         AuthUrl authUrl = null;
         for (AuthUrl authUrlObj : AuthUrl.values()) {
@@ -64,7 +64,7 @@ public enum AuthUrl {
                 break;
             }
         }
-        for(Url url : authUrl.urls){
+        for (Url url : authUrl.urls) {
             list.add(url.getName());
         }
         return list;

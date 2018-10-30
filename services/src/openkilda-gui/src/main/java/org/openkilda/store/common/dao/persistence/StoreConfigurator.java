@@ -17,8 +17,8 @@ package org.openkilda.store.common.dao.persistence;
 
 import org.openkilda.config.DatabaseConfigurator;
 import org.openkilda.store.auth.constants.AuthType;
-import org.openkilda.store.common.constants.StoreType;
 import org.openkilda.store.auth.dao.repository.AuthTypeRepository;
+import org.openkilda.store.common.constants.StoreType;
 import org.openkilda.store.common.dao.repository.StoreTypeRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +47,8 @@ public class StoreConfigurator {
      * @param authTypeRepository the auth type repository
      */
     public StoreConfigurator(@Autowired final DatabaseConfigurator databaseConfigurator,
-            @Autowired final StoreTypeRepository storeTypeRepository,@Autowired final AuthTypeRepository authTypeRepository) {
+            @Autowired final StoreTypeRepository storeTypeRepository,
+            @Autowired final AuthTypeRepository authTypeRepository) {
         this.storeTypeRepository = storeTypeRepository;
         this.authTypeRepository = authTypeRepository;
         init();

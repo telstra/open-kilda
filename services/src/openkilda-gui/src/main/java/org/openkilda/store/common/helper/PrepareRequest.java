@@ -17,9 +17,12 @@ package org.openkilda.store.common.helper;
 
 import org.openkilda.store.common.model.ApiRequestDto;
 
+import org.springframework.stereotype.Component;
+
 import java.util.Map;
 import java.util.Map.Entry;
 
+@Component
 public class PrepareRequest {
 
     /**
