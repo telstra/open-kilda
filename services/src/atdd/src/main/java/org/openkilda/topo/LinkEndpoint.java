@@ -15,10 +15,10 @@
 
 package org.openkilda.topo;
 
-import java.beans.Transient;
+import java.util.Optional;
 
 /**
- * LinkEndpoint captures the key elements of a link endpoint
+ * LinkEndpoint captures the key elements of a link endpoint.
  */
 public class LinkEndpoint implements ITopoSlug {
 
@@ -31,23 +31,25 @@ public class LinkEndpoint implements ITopoSlug {
 
 
     /**
+     * Constructor.
+     *
      * @param topoSwitch At least a valid switch is needed.
      * @param switchPort can be null; id will be 0.
      * @param portQueue can be null; id will be 0.
      */
     public LinkEndpoint(Switch topoSwitch, Port switchPort, PortQueue portQueue) {
-        if (topoSwitch == null) throw new IllegalArgumentException("Switch can't be null");
+        if (topoSwitch == null) {
+            throw new IllegalArgumentException("Switch can't be null");
+        }
         this.topoSwitch = topoSwitch;
-        this.switchPort = (switchPort != null) ? switchPort: new Port(this.topoSwitch,NULL_ID);
-        this.portQueue = (portQueue != null) ? portQueue: new PortQueue(this.switchPort,NULL_ID);
+        this.switchPort = (switchPort != null) ? switchPort : new Port(this.topoSwitch, NULL_ID);
+        this.portQueue = (portQueue != null) ? portQueue : new PortQueue(this.switchPort, NULL_ID);
     }
 
     public LinkEndpoint(PortQueue portQueue) {
         // check for nulls all the way up
-        this(   (portQueue == null) ?
-                        null : (portQueue.getParent() == null) ?
-                                null : portQueue.getParent().getParent(),
-                (portQueue == null) ? null : portQueue.getParent(),
+        this(Optional.ofNullable(portQueue).map(PortQueue::getParent).map(Port::getParent).orElse(null),
+                Optional.ofNullable(portQueue).map(PortQueue::getParent).orElse(null),
                 portQueue);
     }
 
@@ -64,23 +66,35 @@ public class LinkEndpoint implements ITopoSlug {
         return portQueue;
     }
 
+    /**
+     * Gets slug.
+     *
+     * @return the slug
+     */
     public String getSlug() {
-        if (slug == null)
+        if (slug == null) {
             slug = TopoSlug.toString(this);
+        }
         return slug;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof LinkEndpoint)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof LinkEndpoint)) {
+            return false;
+        }
 
         LinkEndpoint that = (LinkEndpoint) o;
 
-        if (topoSwitch != null ? !topoSwitch.equals(that.topoSwitch) : that.topoSwitch != null)
+        if (topoSwitch != null ? !topoSwitch.equals(that.topoSwitch) : that.topoSwitch != null) {
             return false;
-        if (switchPort != null ? !switchPort.equals(that.switchPort) : that.switchPort != null)
+        }
+        if (switchPort != null ? !switchPort.equals(that.switchPort) : that.switchPort != null) {
             return false;
+        }
         return portQueue != null ? portQueue.equals(that.portQueue) : that.portQueue == null;
     }
 

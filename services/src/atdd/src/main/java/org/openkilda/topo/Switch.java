@@ -27,7 +27,7 @@ public class Switch implements ITopoSlug {
     private final Map<String, Port> ports = new ConcurrentHashMap<String, Port>(48);
     private final String id;
     @JsonIgnore
-	private String slug;
+    private String slug;
 
     public Switch(String id) {
         this.id = id;
@@ -42,21 +42,28 @@ public class Switch implements ITopoSlug {
     }
 
     @Override
-	public String getSlug() {
-		if (slug == null)
-			slug = TopoSlug.toString(this);
-		return slug;
-	}
+    public String getSlug() {
+        if (slug == null) {
+            slug = TopoSlug.toString(this);
+        }
+        return slug;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Switch)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Switch)) {
+            return false;
+        }
 
-        Switch aSwitch = (Switch) o;
+        Switch theSwitch = (Switch) o;
 
-        if (!ports.equals(aSwitch.ports)) return false;
-        return id != null ? id.equals(aSwitch.id) : aSwitch.id == null;
+        if (!ports.equals(theSwitch.ports)) {
+            return false;
+        }
+        return id != null ? id.equals(theSwitch.id) : theSwitch.id == null;
     }
 
     @Override
