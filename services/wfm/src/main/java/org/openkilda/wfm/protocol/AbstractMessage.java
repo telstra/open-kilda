@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.protocol;
 
-import org.openkilda.wfm.ImplementationError;
+import org.openkilda.wfm.error.ImplementationError;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.tuple.Fields;

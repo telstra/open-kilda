@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm;
+package org.openkilda.wfm.error;
 
 public class ImplementationError extends Error {
     public ImplementationError(String message) {
