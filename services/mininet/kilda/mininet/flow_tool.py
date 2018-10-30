@@ -28,6 +28,8 @@ from functools import wraps
 
 logger = logging.getLogger()
 
+DUMMY_CONTROLLER = "tcp:127.0.1.2:20000"
+
 
 def log_to_logger(fn):
     '''
@@ -131,7 +133,8 @@ def check_traffic(p):
 @post("/knockoutswitch")
 @required_parameters("switch")
 def switch_knock_out(p):
-    result = os.system("ovs-vsctl del-controller %s" % p['switch'])
+    result = os.system("ovs-vsctl set-controller %s %s" % (p['switch'],
+                                                           DUMMY_CONTROLLER))
     return respond(result == 0,
                    "Switch %s is successfully knocked out\n" % p['switch'],
                    "Failed to knock out switch %s\n" % p['switch'])
