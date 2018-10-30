@@ -18,10 +18,10 @@ package org.openkilda.floodlight.error;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class OFInstallException extends SwitchOperationException {
+public class OfInstallException extends SwitchOperationException {
     private final transient OFMessage ofMessage;
 
-    public OFInstallException(DatapathId dpId, OFMessage ofMessage) {
+    public OfInstallException(DatapathId dpId, OFMessage ofMessage) {
         super(dpId, String.format("Error during install OFRule into switch \"%s\"", dpId));
         this.ofMessage = ofMessage;
     }

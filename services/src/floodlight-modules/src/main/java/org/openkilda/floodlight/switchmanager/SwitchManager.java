@@ -26,7 +26,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
-import org.openkilda.floodlight.error.OFInstallException;
+import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
@@ -780,7 +780,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private long buildAndinstallMeter(final IOFSwitch sw, final DatapathId dpid, final long bandwidth,
                                       final long burstSize, final long meterId)
-            throws OFInstallException {
+            throws OfInstallException {
         logger.debug("installing meter {} on switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
         Set<OFMeterFlags> flags = new HashSet<>(asList(OFMeterFlags.KBPS, OFMeterFlags.BURST));
@@ -810,7 +810,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private long installLegacyMeter(
             final IOFSwitch sw, final DatapathId dpid,
             final long bandwidth, final long burstSize, final long meterId)
-            throws OFInstallException {
+            throws OfInstallException {
         logger.debug("installing legacy meter {} on OVS switch {} width bandwidth {}", meterId, dpid, bandwidth);
 
         Set<OFLegacyMeterFlags> flags = new HashSet<>(asList(OFLegacyMeterFlags.KBPS, OFLegacyMeterFlags.BURST));
@@ -829,7 +829,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private long buildAndDeleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId)
-            throws OFInstallException {
+            throws OfInstallException {
         logger.debug("deleting meter {} from switch {}", meterId, dpid);
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -850,7 +850,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private long deleteLegacyMeter(final IOFSwitch sw, final DatapathId dpid, final long meterId)
-            throws OFInstallException {
+            throws OfInstallException {
         logger.debug("deleting legacy meter {} from switch {}", meterId, dpid);
 
         OFFactory ofFactory = sw.getOFFactory();
@@ -1223,13 +1223,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param flowId  flow name, for logging
      * @param flowMod command to send
      * @return OF transaction Id (???)
-     * @throws OFInstallException openflow install exception
+     * @throws OfInstallException openflow install exception
      */
-    private long pushFlow(final IOFSwitch sw, final String flowId, final OFMessage flowMod) throws OFInstallException {
+    private long pushFlow(final IOFSwitch sw, final String flowId, final OFMessage flowMod) throws OfInstallException {
         logger.info("installing {} flow: {}", flowId, flowMod);
 
         if (! sw.write(flowMod)) {
-            throw new OFInstallException(sw.getId(), flowMod);
+            throw new OfInstallException(sw.getId(), flowMod);
         }
 
         return flowMod.getXid();
