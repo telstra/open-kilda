@@ -37,7 +37,6 @@ import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosa
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
@@ -120,12 +119,7 @@ class RecordHandler implements Runnable {
 
     protected void doControllerMsg(CommandMessage message) {
         // Define the destination topic where the reply will be sent to.
-        final String replyToTopic;
-        if (message instanceof CommandWithReplyToMessage) {
-            replyToTopic = ((CommandWithReplyToMessage) message).getReplyTo();
-        } else {
-            replyToTopic = context.getKafkaFlowTopic();
-        }
+        final String replyToTopic = context.getKafkaFlowTopic();
         final Destination replyDestination = getDestinationForTopic(replyToTopic);
 
         try {
@@ -168,25 +162,25 @@ class RecordHandler implements Runnable {
         } else if (data instanceof NetworkCommandData) {
             doNetworkDump(message);
         } else if (data instanceof SwitchRulesDeleteRequest) {
-            doDeleteSwitchRules(message, replyToTopic, replyDestination);
+            doDeleteSwitchRules(message);
         } else if (data instanceof SwitchRulesInstallRequest) {
-            doInstallSwitchRules(message, replyToTopic, replyDestination);
+            doInstallSwitchRules(message);
         } else if (data instanceof ConnectModeRequest) {
-            doConnectMode(message, replyToTopic, replyDestination);
+            doConnectMode(message);
         } else if (data instanceof DumpRulesRequest) {
-            doDumpRulesRequest(message, replyToTopic);
+            doDumpRulesRequest(message);
         } else if (data instanceof BatchInstallRequest) {
             doBatchInstall(message);
         } else if (data instanceof PortsCommandData) {
             doPortsCommandDataRequest(message);
         } else if (data instanceof DeleteMeterRequest) {
-            doDeleteMeter(message, replyToTopic, replyDestination);
+            doDeleteMeter(message);
         } else if (data instanceof PortConfigurationRequest) {
-            doConfigurePort(message, replyToTopic);
+            doConfigurePort(message);
         } else if (data instanceof DumpSwitchPortsDescriptionRequest) {
-            doDumpSwitchPortsDescriptionRequest(message, replyToTopic);
+            doDumpSwitchPortsDescriptionRequest(message);
         } else if (data instanceof DumpPortDescriptionRequest) {
-            doDumpPortDescriptionRequest(message, replyToTopic);
+            doDumpPortDescriptionRequest(message);
         } else if (data instanceof DumpMetersRequest) {
             doDumpMetersRequest(message, replyToTopic);
         } else {
@@ -453,12 +447,14 @@ class RecordHandler implements Runnable {
         switchTracking.dumpAllSwitches(message.getCorrelationId());
     }
 
-    private void doInstallSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+    private void doInstallSwitchRules(final CommandMessage message) {
         SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
         logger.debug("Installing rules on '{}' switch: action={}",
                 request.getSwitchId(), request.getInstallRulesAction());
 
         final IKafkaProducerService producerService = getKafkaProducer();
+        final String replyToTopic = context.getKafkaNorthboundTopic();
+        final Destination replyDestination = getDestinationForTopic(replyToTopic);
 
         DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
         ISwitchManager switchManager = context.getSwitchManager();
@@ -500,12 +496,14 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDeleteSwitchRules(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+    private void doDeleteSwitchRules(final CommandMessage message) {
         SwitchRulesDeleteRequest request = (SwitchRulesDeleteRequest) message.getData();
         logger.debug("Deleting rules from '{}' switch: action={}, criteria={}", request.getSwitchId(),
                 request.getDeleteRulesAction(), request.getCriteria());
 
         final IKafkaProducerService producerService = getKafkaProducer();
+        final String replyToTopic = context.getKafkaNorthboundTopic();
+        final Destination replyDestination = getDestinationForTopic(replyToTopic);
 
         DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
         DeleteRulesAction deleteAction = request.getDeleteRulesAction();
@@ -582,7 +580,7 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doConnectMode(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+    private void doConnectMode(final CommandMessage message) {
         ConnectModeRequest request = (ConnectModeRequest) message.getData();
         if (request.getMode() != null) {
             logger.debug("Setting CONNECT MODE to '{}'", request.getMode());
@@ -596,14 +594,17 @@ class RecordHandler implements Runnable {
         logger.debug("CONNECT MODE is now '{}'", result);
         ConnectModeResponse response = new ConnectModeResponse(result);
         InfoMessage infoMessage = new InfoMessage(response,
-                System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
-        getKafkaProducer().sendMessageAndTrack(replyToTopic, infoMessage);
+                System.currentTimeMillis(), message.getCorrelationId(),
+                getDestinationForTopic(context.getKafkaNorthboundTopic()));
+        getKafkaProducer().sendMessageAndTrack(context.getKafkaNorthboundTopic(), infoMessage);
 
     }
 
-    private void doDumpRulesRequest(final CommandMessage message, String replyToTopic) {
+    private void doDumpRulesRequest(final CommandMessage message) {
         DumpRulesRequest request = (DumpRulesRequest) message.getData();
-
+        String reply = message.getDestination().equals(Destination.NORTHBOUND)
+                ? context.getKafkaNorthboundTopic() : context.getKafkaNbWorkerTopic();
+        // todo: replace topoEng to nbWorker
         final IKafkaProducerService producerService = getKafkaProducer();
 
         try {
@@ -622,14 +623,14 @@ class RecordHandler implements Runnable {
                     .build();
             InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
                     message.getCorrelationId());
-            producerService.sendMessageAndTrack(replyToTopic, infoMessage);
+            producerService.sendMessageAndTrack(reply, infoMessage);
         } catch (SwitchOperationException e) {
             logger.info("Dump rules is unsuccessful. Switch {} not found", request.getSwitchId());
             anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
                     .withDescription("The switch was not found when requesting a rules dump.")
                     .withCorrelationId(message.getCorrelationId())
-                    .withTopic(replyToTopic)
+                    .withTopic(reply)
                     .sendVia(producerService);
         }
     }
@@ -701,10 +702,12 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDeleteMeter(CommandMessage message, String replyToTopic, Destination replyDestination) {
+    private void doDeleteMeter(CommandMessage message) {
         DeleteMeterRequest request = (DeleteMeterRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
+        final String replyToTopic = context.getKafkaNorthboundTopic();
+        final Destination replyDestination = getDestinationForTopic(replyToTopic);
 
         try {
             DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
@@ -729,13 +732,14 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doConfigurePort(final CommandMessage message, final String replyToTopic) {
+    private void doConfigurePort(final CommandMessage message) {
         PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
 
         logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(),
                 request.getPortNumber());
 
         final IKafkaProducerService producerService = getKafkaProducer();
+        final String replyToTopic = context.getKafkaNorthboundTopic();
 
         try {
             ISwitchManager switchManager = context.getSwitchManager();
@@ -759,11 +763,11 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDumpSwitchPortsDescriptionRequest(
-            CommandMessage message, String replyToTopic) {
+    private void doDumpSwitchPortsDescriptionRequest(CommandMessage message) {
         DumpSwitchPortsDescriptionRequest request = (DumpSwitchPortsDescriptionRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
+        final String replyToTopic = context.getKafkaNorthboundTopic();
 
         try {
             SwitchId switchId = request.getSwitchId();
@@ -798,11 +802,11 @@ class RecordHandler implements Runnable {
                 .build();
     }
 
-    private void doDumpPortDescriptionRequest(
-            CommandMessage message, String replyToTopic) {
+    private void doDumpPortDescriptionRequest(CommandMessage message) {
         DumpPortDescriptionRequest request = (DumpPortDescriptionRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
+        final String replyToTopic = context.getKafkaNorthboundTopic();
 
         try {
             SwitchId switchId = request.getSwitchId();
@@ -831,8 +835,7 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDumpMetersRequest(
-            CommandMessage message, String replyToTopic) {
+    private void doDumpMetersRequest(CommandMessage message, String replyToTopic) {
         DumpMetersRequest request = (DumpMetersRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
