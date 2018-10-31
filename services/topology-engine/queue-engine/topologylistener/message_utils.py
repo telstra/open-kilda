@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
-MT_COMMAND_REPLY = "org.openkilda.messaging.command.CommandWithReplyToMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
 MT_INFO_CHUNKED = 'org.openkilda.messaging.info.ChunkedInfoMessage'
 MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
@@ -227,10 +226,9 @@ def send_dump_rules_request(switch_id, correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.command.switches.DumpRulesRequest'
     message.switch_id = switch_id
-    reply_to = {"reply_to": config.KAFKA_TOPO_ENG_TOPIC }
-    send_to_topic(message, correlation_id, MT_COMMAND_REPLY,
-                  topic=config.KAFKA_SPEAKER_TOPIC,
-                  extra=reply_to)
+    send_to_topic(message, correlation_id, MT_COMMAND,
+                  destination="TOPOLOGY_ENGINE",
+                  topic=config.KAFKA_SPEAKER_TOPIC)
 
 
 def send_validation_rules_response(missing_rules, excess_rules, proper_rules,

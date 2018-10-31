@@ -64,4 +64,9 @@ public class ConsumerContext {
     public String getKafkaNorthboundTopic() {
         return kafkaTopics.getNorthboundTopic();
     }
+
+    @SuppressWarnings("squid:CallToDeprecatedMethod")
+    public String getKafkaTopoEngTopic() {
+        return kafkaTopics.getTopoEngTopic();
+    }
 }
