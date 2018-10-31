@@ -142,11 +142,6 @@
     <suppress files="src/main/java/org/openkilda/messaging/command/system/FeatureToggleRequest.java" lines="71" checks="FileTabCharacter"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/system/FeatureToggleRequest.java" lines="72" checks="Indentation"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/system/FeatureToggleRequest.java" lines="72" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/messaging/command/CommandWithReplyToMessage.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/command/CommandWithReplyToMessage.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/command/CommandWithReplyToMessage.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/command/CommandWithReplyToMessage.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/command/CommandWithReplyToMessage.java" lines="29" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/flow/RemoveFlow.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/flow/RemoveFlow.java" lines="22" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/command/flow/RemoveFlow.java" lines="23" checks="CustomImportOrder"/>
