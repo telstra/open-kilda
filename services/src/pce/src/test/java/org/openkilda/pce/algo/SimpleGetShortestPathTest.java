@@ -32,6 +32,8 @@ public class SimpleGetShortestPathTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_ID_3 = new SwitchId("00:00:00:00:00:00:00:03");
+    private static final SwitchId SWITCH_ID_4 = new SwitchId("00:00:00:00:00:00:00:04");
+    private static final SwitchId SWITCH_ID_5 = new SwitchId("00:00:00:00:00:00:00:05");
 
     /**
      * Build test network.
@@ -77,6 +79,26 @@ public class SimpleGetShortestPathTest {
         return network;
     }
 
+    private AvailableNetwork buildEqualCostsNetwork() {
+        /*
+         *   Topology:
+         *
+         *   A---B---C---E
+         *       |       |
+         *       +---D---+
+         *
+         *   All ISLs have equal cost.
+         */
+
+        AvailableNetwork network = new AvailableNetwork(null);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 100);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_4, 3, 4, 100);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, 100);
+        addBidirectionalLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 100);
+        addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100);
+        return network;
+    }
+
     private AvailableNetwork buildExpensiveNetwork() {
         /*
          *   Triangle topology:
@@ -109,6 +131,24 @@ public class SimpleGetShortestPathTest {
         System.out.println("reverse.getPath() = " + rpath);
 
 
+    }
+
+    @Test
+    public void testForwardAndBackwardPathsEquality() {
+        AvailableNetwork network = buildEqualCostsNetwork();
+        network.removeSelfLoops().reduceByCost();
+        SimpleGetShortestPath forward = new SimpleGetShortestPath(network, new SwitchId("00:00:00:00:00:00:00:01"),
+                new SwitchId("00:00:00:00:00:00:00:05"), 35);
+        SimpleGetShortestPath backward = new SimpleGetShortestPath(network, new SwitchId("00:00:00:00:00:00:00:05"),
+                new SwitchId("00:00:00:00:00:00:00:01"), 35);
+
+        LinkedList<SimpleIsl> forwardPath = forward.getPath();
+        LinkedList<SimpleIsl> backwardPath = backward.getPath(forwardPath);
+
+        List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(forwardPath);
+        List<SwitchId> backwardSwitchPath = Lists.reverse(getSwitchIdsFlowPath(backwardPath));
+
+        Assert.assertEquals(forwardSwitchPath, backwardSwitchPath);
     }
 
     @Test
