@@ -92,7 +92,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         and: "Remove the flow"
         northbound.deleteFlow(flow.id)
         Wrappers.wait(WAIT_OFFSET) {
-            northbound.getAllLinks().every { it.availableBandwidth == it.speed }
+            northbound.getAllLinks().each { assert it.availableBandwidth == it.speed }
         }
     }
 }

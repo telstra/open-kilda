@@ -58,7 +58,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Two neighbouring switches of the flow go down simultaneously"
         lockKeeperService.knockoutSwitch(isl.srcSwitch.dpId)
@@ -81,7 +81,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         and: "ISL fails after discovery timeout"
         //TODO(rtretiak): adding big error of 7 seconds. This is an abnormal behavior, currently investigating
         Wrappers.wait(untilIslShouldFail() / 1000 + 7) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
         //depends whether there are alt paths available
@@ -89,7 +89,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
         Wrappers.wait(WAIT_OFFSET) {
             def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
-            !pathHelper.getInvolvedIsls(currentPath).contains(isl) ||
+            assert !pathHelper.getInvolvedIsls(currentPath).contains(isl) ||
                     northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
@@ -98,7 +98,7 @@ class SwitchFailuresSpec extends BaseSpecification {
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
         northboundService.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -121,10 +121,10 @@ class SwitchFailuresSpec extends BaseSpecification {
 
         then: "Flow is up and valid"
         Wrappers.wait(WAIT_OFFSET) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.UP &&
-                    northboundService.validateFlow(flow.id).every { direction ->
-                        direction.discrepancies.findAll { it.field != "meterId" }.empty
-                    }
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            northboundService.validateFlow(flow.id).each { direction ->
+                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
+            }
         }
 
         and: "Rules are valid on the knocked out switch"

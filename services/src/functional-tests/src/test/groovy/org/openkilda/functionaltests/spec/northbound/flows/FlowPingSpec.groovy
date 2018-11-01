@@ -59,7 +59,7 @@ class FlowPingSpec extends BaseSpecification {
         given: "A flow with random vlan"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Ping the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))
@@ -87,7 +87,7 @@ class FlowPingSpec extends BaseSpecification {
         flow.source.vlanId = 0
         flow.destination.vlanId = 0
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Ping the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))
@@ -127,7 +127,7 @@ class FlowPingSpec extends BaseSpecification {
         //build a flow
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         expectedPingResult.flowId = flow.id
         assert aswitchPath == pathHelper.convert(northboundService.getFlowPath(flow.id))
 
@@ -151,7 +151,7 @@ class FlowPingSpec extends BaseSpecification {
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
         db.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
 
         where:
@@ -208,7 +208,7 @@ class FlowPingSpec extends BaseSpecification {
         def sw = nonCentecSwitches().first()
         def flow = flowHelper.singleSwitchFlow(sw)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Request flow ping for the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))

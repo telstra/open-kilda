@@ -15,6 +15,9 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+
+import java.util.concurrent.TimeUnit
 
 class IslMovementSpec extends BaseSpecification {
     @Autowired
@@ -25,6 +28,8 @@ class IslMovementSpec extends BaseSpecification {
     NorthboundService northbound
     @Autowired
     LockKeeperService lockKeeperService
+    @Value('${discovery.interval}')
+    int discoveryInterval
 
     def "ISL status changes to MOVED when replugging"() {
         given: "A connected a-switch link"
@@ -100,12 +105,12 @@ class IslMovementSpec extends BaseSpecification {
         when: "Plug an ISL between two ports on the same switch"
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true)
 
-        then: "The potential self-loop ISL is not present in list of isls (wait for 5 sec)"
-        !Wrappers.wait(WAIT_OFFSET) {
-            def allLinks = northbound.getAllLinks()
-            islUtils.getIslInfo(allLinks, expectedIsl).present ||
-                    islUtils.getIslInfo(allLinks, islUtils.reverseIsl(expectedIsl)).present
-        }
+        then: "The potential self-loop ISL is not present in list of isls (wait for discovery interval)"
+        TimeUnit.SECONDS.sleep(discoveryInterval + WAIT_OFFSET)
+        def allLinks = northbound.getAllLinks()
+        !islUtils.getIslInfo(allLinks, expectedIsl).present
+        !islUtils.getIslInfo(allLinks, islUtils.reverseIsl(expectedIsl)).present
+
 
         and: "Unplug the link how it was before"
         lockKeeperService.removeFlows([
