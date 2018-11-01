@@ -68,6 +68,7 @@ import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -79,6 +80,7 @@ import java.util.Set;
 public class SwitchTrackingServiceTest extends EasyMockSupport {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
     private static final DatapathId dpId = DatapathId.of(0x7fff);
+    private static InetAddress switchIpAddress;
     private static final Set<Switch.Feature> switchFeatures = Collections.singleton(Switch.Feature.METERS);
 
     private final SwitchTrackingService service = new SwitchTrackingService();
@@ -97,6 +99,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     @Before
     public void setUp() throws Exception {
         injectMocks(this);
+
+        switchIpAddress = Inet4Address.getByName("127.0.1.1");
 
         moduleContext.addService(ISwitchManager.class, switchManager);
         moduleContext.addService(FeatureDetectorService.class, featureDetector);
@@ -127,7 +131,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
     @Test
     public void switchAdded() throws Exception {
-        Switch expectedSwitchRecord = makeSwitchRecord(dpId, switchFeatures, true, true);
+        Switch expectedSwitchRecord = makeSwitchRecord(true, true);
         Capture<Message> producedMessage = prepareAliveSwitchEvent(expectedSwitchRecord);
         replayAll();
         service.switchAdded(dpId);
@@ -154,7 +158,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
     @Test
     public void switchActivate() throws Exception {
-        Switch expectedSwitchRecord = makeSwitchRecord(dpId, switchFeatures, true, true);
+        Switch expectedSwitchRecord = makeSwitchRecord(true, true);
         switchActivateTest(prepareAliveSwitchEvent(expectedSwitchRecord), expectedSwitchRecord);
     }
 
@@ -191,7 +195,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
     @Test
     public void switchChanged() throws Exception {
-        Switch expectedSwitchRecord = makeSwitchRecord(dpId, switchFeatures, true, true);
+        Switch expectedSwitchRecord = makeSwitchRecord(true, true);
         Capture<Message> producedMessage = prepareAliveSwitchEvent(expectedSwitchRecord);
         replayAll();
         service.switchChanged(dpId);
@@ -208,13 +212,14 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
     private Capture<Message> prepareAliveSwitchEvent(Switch switchRecord) throws Exception {
         IOFSwitch sw = createMock(IOFSwitch.class);
+
         expect(sw.getId()).andReturn(dpId).anyTimes();
         expect(sw.getInetAddress())
-                .andReturn(new InetSocketAddress(InetAddress.getByName("127.0.1.1"), 6653));
+                .andReturn(new InetSocketAddress(switchIpAddress, 32769));
 
         OFConnection connect = createMock(OFConnection.class);
         expect(connect.getRemoteInetAddress())
-                .andReturn(new InetSocketAddress(InetAddress.getByName("127.0.1.2"), 32769));
+                .andReturn(new InetSocketAddress(Inet4Address.getByName("127.0.1.1"), 6653));
         expect(sw.getConnectionByCategory(eq(LogicalOFMessageCategory.MAIN))).andReturn(connect);
 
         SwitchDescription description = createMock(SwitchDescription.class);
@@ -233,6 +238,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         }
         expect(switchManager.getPhysicalPorts(sw)).andReturn(physicalPorts);
 
+        expect(switchManager.getSwitchIpAddress(sw)).andReturn(switchIpAddress);
         expect(featureDetector.detectSwitch(sw)).andReturn(ImmutableSet.of(Switch.Feature.METERS));
 
         return prepareSwitchEventCommon(dpId);
@@ -303,6 +309,9 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                 makePhysicalPortMock(5, false)
         ));
 
+        expect(switchManager.getSwitchIpAddress(iofSwitch1)).andReturn(Inet4Address.getByName("127.0.2.1"));
+        expect(switchManager.getSwitchIpAddress(iofSwitch2)).andReturn(Inet4Address.getByName("127.0.2.2"));
+
         expect(featureDetector.detectSwitch(iofSwitch1))
                 .andReturn(ImmutableSet.of(Switch.Feature.METERS));
         expect(featureDetector.detectSwitch(iofSwitch2))
@@ -336,6 +345,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         expectedMessages.add(new InfoMessage(
                 new NetworkDumpSwitchData(new Switch(
                         new SwitchId(swAid.getLong()),
+                        Inet4Address.getByName("127.0.2.1"),
                         ImmutableSet.of(Switch.Feature.METERS),
                         ImmutableList.of(
                                 new SwitchPort(1, SwitchPort.State.UP),
@@ -343,6 +353,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         expectedMessages.add(new InfoMessage(
                 new NetworkDumpSwitchData(new Switch(
                         new SwitchId(swBid.getLong()),
+                        Inet4Address.getByName("127.0.2.2"),
                         ImmutableSet.of(Switch.Feature.METERS, Switch.Feature.BFD),
                         ImmutableList.of(
                                 new SwitchPort(3, SwitchPort.State.UP),
@@ -353,12 +364,17 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         assertEquals(expectedMessages, producedMessages);
     }
 
-    private Switch makeSwitchRecord(DatapathId datapath, Set<Switch.Feature> features, boolean... portState) {
+    private Switch makeSwitchRecord(boolean... portState) {
+        return this.makeSwitchRecord(dpId, switchIpAddress, switchFeatures, portState);
+    }
+
+    private Switch makeSwitchRecord(DatapathId datapath, InetAddress ipAddress, Set<Switch.Feature> features,
+                                    boolean... portState) {
         List<SwitchPort> ports = new ArrayList<>(portState.length);
         for (int idx = 0; idx < portState.length; idx++) {
             ports.add(new SwitchPort(idx + 1, portState[idx] ? SwitchPort.State.UP : SwitchPort.State.DOWN));
         }
-        return new Switch(new SwitchId(datapath.getLong()), features, ports);
+        return new Switch(new SwitchId(datapath.getLong()), ipAddress, features, ports);
     }
 
     private OFPortDesc makePhysicalPortMock(int number, boolean isEnabled) {

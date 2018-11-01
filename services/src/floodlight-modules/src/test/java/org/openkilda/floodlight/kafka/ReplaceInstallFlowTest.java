@@ -43,6 +43,7 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 
 import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -272,7 +273,7 @@ public class ReplaceInstallFlowTest {
 
         // create parser instance
         ConsumerContext kafkaContext = new ConsumerContext(context);
-        RecordHandler parseRecord = new RecordHandler(kafkaContext, record);
+        RecordHandler parseRecord = new RecordHandler(kafkaContext, ImmutableList.of(), record);
         // init test mocks
         Capture<OFFlowAdd> flowAddCapture = flowCommand == null ? null : newCapture(CaptureType.ALL);
         Capture<OFMeterMod> meterAddCapture = meterCommand == null ? null : newCapture(CaptureType.ALL);
