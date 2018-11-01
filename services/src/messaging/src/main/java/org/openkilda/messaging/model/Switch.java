@@ -25,6 +25,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.net.InetAddress;
 import java.util.List;
 import java.util.Set;
 
@@ -32,6 +33,9 @@ import java.util.Set;
 public class Switch implements Serializable {
     @JsonProperty(value = "datapath", required = true)
     private SwitchId datapath;
+
+    @JsonProperty(value = "ip-address", required = true)
+    private InetAddress ipAddress;
 
     @JsonProperty(value = "features", required = true)
     private Set<Feature> features;
@@ -43,9 +47,11 @@ public class Switch implements Serializable {
     @JsonCreator
     public Switch(
             @JsonProperty("datapath") SwitchId datapath,
+            @JsonProperty("ip-address") InetAddress ipAddress,
             @JsonProperty("features") Set<Feature> features,
             @JsonProperty("ports") List<SwitchPort> ports) {
         this.datapath = datapath;
+        this.ipAddress = ipAddress;
         this.features = ImmutableSet.copyOf(features);
         this.ports = ImmutableList.copyOf(ports);
     }

@@ -32,6 +32,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.Inet4Address;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -328,7 +329,7 @@ public class DiscoveryManagerTest {
     }
 
     @Test
-    public void handleSwitchUp() {
+    public void handleSwitchUp() throws Exception {
         // Verify that all switch/ports on this switch of the ISL flag cleared
         // We need to create some ISLs, then send the SwitchUp, and confirm isFoundIsl
         // is cleared.
@@ -351,10 +352,11 @@ public class DiscoveryManagerTest {
         List<NetworkEndpoint> affectedEndpoints = filterEndpointsByDatapath(srcNode1.getDatapath(), allEndpoints);
         Switch switchRecord = new Switch(
                 srcNode1.getDatapath(),
-                ImmutableSet.of(Switch.Feature.METERS),
+                Inet4Address.getByName("127.0.2.2"), ImmutableSet.of(Switch.Feature.METERS),
                 affectedEndpoints.stream()
                         .map(entry -> new SwitchPort(entry.getPortNumber(), SwitchPort.State.UP))
-                        .collect(Collectors.toList()));
+                        .collect(Collectors.toList())
+        );
         dm.registerSwitch(switchRecord);
 
         for (NetworkEndpoint entry : allEndpoints) {
