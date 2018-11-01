@@ -31,8 +31,8 @@ class KibanaSpec extends BaseSpecification {
         when: "Elastic Client is initialized"
         assert elastic
 
-        then: "Retrieve all INFO+ level messages from Storm Worker for last 5 minutes"
-        def logs = elastic.getLogs(new ElasticQueryBuilder().setAppId("storm-worker_log").setTimeRange(300).build())
+        then: "Retrieve all INFO+ level messages from Floodlight for last 5 minutes"
+        def logs = elastic.getLogs(new ElasticQueryBuilder().setAppId("kilda-floodlight").setTimeRange(300).build())
         logs
         logs?.hits?.total > 0
 
