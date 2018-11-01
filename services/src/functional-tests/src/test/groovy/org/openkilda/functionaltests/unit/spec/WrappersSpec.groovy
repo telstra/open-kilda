@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.internal.spec
+package org.openkilda.functionaltests.unit.spec
 
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.Wrappers.WaitTimeoutException
@@ -11,7 +11,7 @@ class WrappersSpec extends Specification {
 
     def timeout = 0.001
 
-    def "Wrappers.wait throws when condition fails"() {
+    def "Wrappers.wait throws exception if condition fails"() {
         when: "Wait is fed with a false condition"
         Wrappers.wait(timeout, condition)
 
@@ -22,7 +22,7 @@ class WrappersSpec extends Specification {
         condition << [{ false }, { assert false }, { throw new Exception() }, { [] }]
     }
 
-    def "Wrappers.wait returns true if condition passes"() {
+    def "Wrappers.wait returns true when condition passes"() {
         expect: "Wait returns true on OK conditions"
         Wrappers.wait(timeout, condition)
 

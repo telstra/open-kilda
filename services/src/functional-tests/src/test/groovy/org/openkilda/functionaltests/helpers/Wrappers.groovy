@@ -62,7 +62,7 @@ class Wrappers {
                 sleep(sleepTime)
             }
         }
-        def message = "Condition didn't pass in $timeout seconds"
+        def message = "Condition was not satisfied within $timeout seconds"
         if (thrown) {
             message += ". Failed with exception: $thrown"
         }

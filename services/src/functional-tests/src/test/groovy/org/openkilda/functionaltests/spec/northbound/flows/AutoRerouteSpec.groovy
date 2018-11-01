@@ -224,7 +224,7 @@ class AutoRerouteSpec extends BaseSpecification {
         and: "Connect the intermediate switch back"
         lockKeeperService.reviveSwitch(flowPath[1].switchId)
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundService.activeSwitches*.switchId.contains(currentPath[1].switchId)
+            assert northboundService.activeSwitches*.switchId.contains(flowPath[1].switchId)
         }
 
         then: "The flow is #flowStatus"
