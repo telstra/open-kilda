@@ -40,6 +40,11 @@ public class MetersResource extends ServerResource {
     private static final Logger logger = LoggerFactory.getLogger(MetersResource.class);
 
     // FIXME(surabujin): is it used anywhere?
+
+    /**
+     * Gets meters.
+     * @return the map of meters.
+     */
     @Get("json")
     @SuppressWarnings("unchecked")
     public Map<Long, Object> getMeters() {
