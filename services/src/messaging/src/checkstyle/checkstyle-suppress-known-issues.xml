@@ -5,23 +5,6 @@
 
 <suppressions>
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/messaging/info/flow/FlowRerouteResponse.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/flow/FlowRerouteResponse.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/IslChangeType.java" lines="84" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/NetworkTopologyChange.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/NetworkTopologyChange.java" lines="18" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/NetworkTopologyChangeType.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PortChangeType.java" lines="94" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/info/event/PathInfoData.java" lines="30" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/messaging/HeartBeat.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/main/java/org/openkilda/messaging/BaseMessage.java" lines="33" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/messaging/BaseMessage.java" lines="38" checks="JavadocParagraph"/>
