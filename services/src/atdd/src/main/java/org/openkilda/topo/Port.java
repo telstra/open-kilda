@@ -15,14 +15,14 @@
 
 package org.openkilda.topo;
 
-import java.util.ArrayList;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Port implements ITopoSlug {
 
     /** The PortQueue.getSwitchId() is used as the key */
-	private final Map<String, PortQueue> portQueues = new ConcurrentHashMap<String, PortQueue>(10);
+    private final Map<String, PortQueue> portQueues = new ConcurrentHashMap<String, PortQueue>(10);
     private final String id;
     private final Switch parent;
     private String slug;
@@ -46,15 +46,22 @@ public class Port implements ITopoSlug {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         Port port = (Port) o;
 
         // TODO: does portQueues.equals work if the objects are equivalent (ie not same obj)
-        if (portQueues != null ? !portQueues.equals(port.portQueues) : port.portQueues != null)
+        if (!Objects.equals(portQueues, port.portQueues)) {
             return false;
-        if (id != null ? !id.equals(port.id) : port.id != null) return false;
+        }
+        if (id != null ? !id.equals(port.id) : port.id != null) {
+            return false;
+        }
         return parent != null ? parent.equals(port.parent) : port.parent == null;
     }
 
@@ -68,8 +75,9 @@ public class Port implements ITopoSlug {
 
     @Override
     public String getSlug() {
-        if (slug == null)
+        if (slug == null) {
             slug = TopoSlug.toString(this);
+        }
         return slug;
     }
 }
