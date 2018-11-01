@@ -15,8 +15,23 @@
 
 package org.openkilda.testing.service.elastic;
 
-import java.util.Map;
+class ElasticQuery {
+    String appId;
+    String tags;
+    String level;
+    long timeRange;
+    long resultCount;
+    String defaultField;
+    String index;
 
-public interface ElasticService {
-    Map getLogs(ElasticQuery query);
+    ElasticQuery(String appId, String tags, String level, long timeRange,
+                        long resultCount, String defaultField, String index) {
+        this.appId = appId;
+        this.tags = tags;
+        this.level = level;
+        this.timeRange = timeRange;
+        this.resultCount = resultCount;
+        this.defaultField = defaultField;
+        this.index = index;
+    }
 }

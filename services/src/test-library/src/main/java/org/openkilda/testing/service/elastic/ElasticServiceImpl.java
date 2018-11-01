@@ -15,10 +15,14 @@
 
 package org.openkilda.testing.service.elastic;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -35,6 +39,7 @@ import java.util.Map;
  */
 
 @Component
+@Slf4j
 public class ElasticServiceImpl implements ElasticService {
 
     @Autowired
@@ -42,12 +47,60 @@ public class ElasticServiceImpl implements ElasticService {
     private RestTemplate restTemplate;
 
     /**
-     * Inquiry ElasticSearch for logs. Not intended to be used directly.
-     * @param uri - Search address and parame
-     * @param query - Search query (with headers and ES/Lucene JSON query body)
-     * @return HTTP response from ES
+     * Searches the Elastic Search database for a specific log entries.
+     * In case you need to lookup multiple application IDs, tags or log levels, pass parameters as:
+     * "VALUE1 OR VALUE2 OR ... OR VALUE_N"
+     *
+     * @param query - ElasticQuery instance (use ElasticQueryBuilder to build this one, be sure to specify
+     *                either appId or tags)
+     * @return HashMap with deserialized JSON otherwise.
      */
-    public Map getLogs(String uri, HttpEntity query) {
-        return restTemplate.exchange(uri, HttpMethod.POST, query, HashMap.class).getBody();
+    public Map getLogs(ElasticQuery query) {
+        if (("".equals(query.appId) && "".equals(query.tags))) {
+            throw new IllegalArgumentException("Either app_id or tags should be specified");
+        }
+        Long time = System.currentTimeMillis();
+        String queryString = "";
+
+        if (!"".equals(query.appId)) {
+            queryString = "app_id: (" + query.appId + ")";
+        }
+
+        if (!"".equals(query.tags)) {
+            if (!"".equals(queryString)) {
+                queryString += " AND ";
+            }
+            queryString += "tags: (" + query.tags + ")";
+        }
+
+        if (!"".equals(query.level)) {
+            queryString += " AND level: (" + query.level + ")";
+        }
+
+        if (query.timeRange > 0) {
+            queryString += " AND timeMillis: [" + (time - query.timeRange * 1000) + " TO " + time + "]";
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode request = mapper.createObjectNode();
+        request.put("query", queryString);
+        request.put("default_field", query.defaultField);
+
+        ObjectNode topLevelRequest = mapper.createObjectNode();
+        topLevelRequest.set("query", mapper.createObjectNode().set("query_string", request));
+
+        String uri = "/" + query.index + "/_search/?size=" + query.resultCount;
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("content-type", "application/json");
+        try {
+            log.debug("Issuing ElasticSearch query: " + topLevelRequest.toString());
+            log.debug("Using ElasticSearch request URI: " + uri);
+            HttpEntity rawQuery = new HttpEntity<>(topLevelRequest.toString(), headers);
+            return restTemplate.exchange(uri, HttpMethod.POST, rawQuery, HashMap.class).getBody();
+
+        } catch (Exception e) {
+            log.error("Exception occured during communication with ElasticSearch", e);
+            throw e;
+        }
     }
 }

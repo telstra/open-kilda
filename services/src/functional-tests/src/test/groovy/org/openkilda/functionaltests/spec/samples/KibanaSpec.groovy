@@ -16,28 +16,30 @@
 package org.openkilda.functionaltests.spec.samples
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.helpers.ElasticHelper
+import org.openkilda.testing.service.elastic.ElasticQueryBuilder
+import org.openkilda.testing.service.elastic.ElasticService
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Ignore
 
 @Ignore("This is an example specification")
 class KibanaSpec extends BaseSpecification {
+
     @Autowired
-    ElasticHelper kibanaHelper
+    ElasticService elastic
 
     def "Test framework should be able to extract logs from Storm Worker"() {
-        when: "Kibana Helper is initialized"
-        assert kibanaHelper
+        when: "Elastic Client is initialized"
+        assert elastic
 
-        then: "STORM would generate at least 1 INFO message per 5 minutes"
-        def logs = kibanaHelper.getLogs("storm-worker_log", "", "INFO OR WARNING OR ERROR", [:],300)
-        assert logs
-        assert logs?.hits?.total > 0
+        then: "Retrieve all INFO+ level messages from Floodlight for last 5 minutes"
+        def logs = elastic.getLogs(new ElasticQueryBuilder().setAppId("kilda-floodlight").setTimeRange(300).build())
+        logs
+        logs?.hits?.total > 0
 
         and: "It should be possible to read a log message"
         def hits = logs?.hits?.hits
-        assert hits
-        assert hits[0]._source.message
+        hits
+        hits[0]._source.message
         cleanup:
         print(logs)
     }
