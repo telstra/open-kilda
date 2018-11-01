@@ -15,16 +15,18 @@
 
 package org.openkilda.messaging.command.switches;
 
-    import com.fasterxml.jackson.annotation.JsonInclude;
-import org.openkilda.messaging.command.CommandData;
-
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
+
+import org.openkilda.messaging.command.CommandData;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 
 /**
  * This request is used to set the global policy for switch connections, wrt default rule
  * installation.
- *
  * It can be used for set and get (PUT and GET). If the mode is NULL, the effect is a GET.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -39,6 +41,7 @@ public class ConnectModeRequest extends CommandData {
         MANUAL  // No default rules will be added when a switch connects
     }
 
+    @JsonProperty("connect_mode")
     private Mode mode;
 
     /**
@@ -46,7 +49,7 @@ public class ConnectModeRequest extends CommandData {
      *
      * @param mode what mode to set.
      */
-    public ConnectModeRequest(Mode mode) {
+    public ConnectModeRequest(@JsonProperty("connect_mode") Mode mode) {
         this.mode = mode;
     }
 
