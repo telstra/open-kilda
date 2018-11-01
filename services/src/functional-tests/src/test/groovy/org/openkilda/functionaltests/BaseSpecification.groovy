@@ -6,6 +6,7 @@ import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.floodlight.FloodlightService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -44,6 +45,12 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
     def requireProfiles(String[] profiles) {
         assumeTrue("This test required one of these profiles: ${profiles.join(',')}; " +
                 "but current active profile is '${this.profile}'", this.profile in profiles)
+    }
+
+    void verifySwitchRules(SwitchId switchId) {
+        def rules = northbound.validateSwitchRules(switchId)
+        assert rules.excessRules.empty
+        assert rules.missingRules.empty
     }
 
     @HealthCheck

@@ -61,9 +61,8 @@ class FlowCrudSpec extends BaseSpecification {
         }
         
         expect: "No rule discrepancies on every switch of the flow"
-        switches.every {
-            def rules = northboundService.validateSwitchRules(it.dpId)
-            rules.missingRules.empty && rules.excessRules.empty
+        switches.each {
+            verifySwitchRules(it.dpId)
         }
 
         and: "No discrepancies when doing flow validation"
@@ -100,10 +99,9 @@ class FlowCrudSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
 
         and: "No rule discrepancies on every switch of the flow"
-        switches.every { sw ->
+        switches.each { sw ->
             Wrappers.wait(WAIT_OFFSET) {
-                def rules = northboundService.validateSwitchRules(sw.dpId)
-                rules.missingRules.empty && rules.excessRules.empty
+                verifySwitchRules(sw.dpId)
             }
         }
 
@@ -143,9 +141,7 @@ class FlowCrudSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         expect: "No rule discrepancies on the switch"
-        def rules = northboundService.validateSwitchRules(flow.source.datapath)
-        rules.missingRules.empty
-        rules.excessRules.empty
+        verifySwitchRules(flow.source.datapath)
 
         and: "No discrepancies when doing flow validation"
         northboundService.validateFlow(flow.id).each { direction ->
@@ -166,9 +162,7 @@ class FlowCrudSpec extends BaseSpecification {
 
         and: "No rule discrepancies on the switch after delete"
         Wrappers.wait(WAIT_OFFSET) {
-            def rulesAfterDelete = northboundService.validateSwitchRules(flow.source.datapath)
-            rulesAfterDelete.missingRules.empty &&
-                rulesAfterDelete.excessRules.empty
+            verifySwitchRules(flow.source.datapath)
         }
 
         where: flow << getSingleSwitchSinglePortFlows()

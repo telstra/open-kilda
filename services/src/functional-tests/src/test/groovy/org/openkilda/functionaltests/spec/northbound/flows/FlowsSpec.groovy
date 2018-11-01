@@ -46,9 +46,8 @@ class FlowsSpec extends BaseSpecification {
         then: "All related switches have no discrepancies in rules"
         TimeUnit.SECONDS.sleep(2)
         Wrappers.wait(WAIT_OFFSET) {
-            switches.every {
-                def rules = northboundService.validateSwitchRules(it.dpId)
-                rules.missingRules.empty && rules.excessRules.empty
+            switches.each {
+                verifySwitchRules(it.dpId)
             }
         }
     }
