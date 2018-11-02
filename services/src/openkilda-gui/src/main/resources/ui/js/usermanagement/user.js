@@ -61,6 +61,8 @@ var userService = (function() {
                 userService.getUsers().then(function(allUsers) {
                     if (allUsers && allUsers.length) { 
                         userService.showAllUsers(allUsers);
+                    }else{
+                    	 userService.showAllUsers(allUsers);
                     }
                 });
 
@@ -86,6 +88,8 @@ var userService = (function() {
                 userService.getUsers().then(function(allUsers) {
                     if (allUsers && allUsers.length) {                      
                         userService.showAllUsers(allUsers);
+                    }else{
+                    	 userService.showAllUsers(allUsers);
                     }
                 });
                 common.infoMessage('User added successfully.', 'success');
@@ -145,6 +149,8 @@ var userService = (function() {
                 userService.getUsers().then(function(allUsers) {
                     if (allUsers && allUsers.length) {                        
                         userService.showAllUsers(allUsers);
+                    }else{
+                    	 userService.showAllUsers(allUsers);
                     }
                 });
                 common.infoMessage('User removed successfully.', 'success');
@@ -181,6 +187,8 @@ var userService = (function() {
             userService.getUsers().then(function(allUsers) {
                 if (allUsers && allUsers.length) {                   
                     userService.showAllUsers(allUsers);
+                }else{
+                	 userService.showAllUsers(allUsers);
                 }
             });
             common.infoMessage('User status changed successfully!', 'success');
@@ -206,6 +214,8 @@ var userService = (function() {
                 userService.getUsers().then(function(allUsers) {
                     if (allUsers && allUsers.length) {                       
                         userService.showAllUsers(allUsers);
+                    }else{
+                    	 userService.showAllUsers(allUsers);
                     }
                 });
                 common.infoMessage('User 2FA reset successfully!', 'success');
@@ -220,6 +230,7 @@ var userService = (function() {
     /*** Show all users ***/
     function showAllUsers(response) {
         var tableRowData = [];
+        $("#loading").css("display", "none");
         if (!response || response.length == 0) {
             response = []
             common.infoMessage('No Users Available', 'info');
@@ -313,7 +324,6 @@ var userService = (function() {
                 }
             });
         });
-        $("#loading").css("display", "none");
         $('#userForm').hide();
         $('#userTabData').show();
         $('#userTable').show();
