@@ -43,10 +43,6 @@ neo4j.hosts = neo4j.pendev:7687
 neo4j.user = neo4j
 neo4j.pswd = temppass
 
-filter.directory =
-logger.level = INFO
-logger.watermark =
-
 #######
 # Discovery
 # - discovery.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0
