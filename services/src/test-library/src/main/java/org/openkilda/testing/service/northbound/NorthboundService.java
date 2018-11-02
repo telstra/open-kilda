@@ -77,6 +77,8 @@ public interface NorthboundService {
 
     List<Long> deleteSwitchRules(SwitchId switchId, String cookie);
 
+    List<Long> deleteSwitchRules(SwitchId switchId, String cookie);
+
     RulesSyncResult synchronizeSwitchRules(SwitchId switchId);
 
     RulesValidationResult validateSwitchRules(SwitchId switchId);
