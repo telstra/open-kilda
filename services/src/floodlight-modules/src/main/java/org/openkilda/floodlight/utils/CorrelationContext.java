@@ -25,17 +25,27 @@ import java.util.Optional;
 
 /**
  * Associates a given correlationId with the current execution thread.
- * <p>
- * This also passes the correlationId to logger's MDC.
+ *
+ * <p>This also passes the correlationId to logger's MDC.
  */
 public final class CorrelationContext {
 
     private static final InheritableThreadLocal<String> ID = new InheritableThreadLocal<>();
 
+    private CorrelationContext() {
+
+    }
+
     public static String getId() {
         return Optional.ofNullable(ID.get()).orElse(DEFAULT_CORRELATION_ID);
     }
 
+    /**
+     * Creates correlation context from correlation id.
+     *
+     * @param correlationId the correlation id.
+     * @return the correlation context.
+     */
     public static CorrelationContextClosable create(String correlationId) {
         String currentId = ID.get();
 
@@ -53,6 +63,7 @@ public final class CorrelationContext {
             this.previousCorrelationId = previousCorrelationId;
         }
 
+        @Override
         public void close() {
             if (previousCorrelationId != null) {
                 ID.set(previousCorrelationId);
