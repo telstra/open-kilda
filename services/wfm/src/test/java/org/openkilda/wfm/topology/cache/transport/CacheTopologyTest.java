@@ -29,7 +29,6 @@ import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.NetworkDump;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -61,7 +60,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -90,8 +88,6 @@ public class CacheTopologyTest extends AbstractStormTest {
             new Flow(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2));
     private static final Set<FlowPair<Flow, Flow>> flows = new HashSet<>();
-    private static final NetworkInfoData dump = new NetworkInfoData(
-            "test", Collections.singleton(sw), Collections.emptySet(), Collections.emptySet(), flows);
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
@@ -306,12 +302,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static <T extends Message> void sendMessage(T message, String topic) throws IOException {
         String request = objectMapper.writeValueAsString(message);
         kProducer.pushMessage(topic, request);
-    }
-
-    private static void sendNetworkDump(NetworkInfoData data, String correlationId) throws IOException {
-        System.out.println("Topology-Engine: Send Network Dump");
-        InfoMessage info = new InfoMessage(data, 0, correlationId, Destination.WFM_CACHE);
-        sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
     private static <T extends InfoData> void sendData(T infoData) throws IOException {
