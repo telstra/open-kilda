@@ -46,7 +46,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     def getNonNeighbouringSwitches() {
         def islInfoData = northbound.getAllLinks()
         def switches = topologyDefinition.getActiveSwitches()
-        def differentSwitches = [switches, switches].combinations().unique().findAll {src, dst -> src != dst}
+        def differentSwitches = [switches, switches].combinations().unique().findAll {src, dst -> src.dpId != dst.dpId}
 
         return differentSwitches.find {src, dst -> noDirectLinks(src, dst, islInfoData)}
     }
