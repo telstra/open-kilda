@@ -86,10 +86,10 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         def flow = flowHelper.randomFlow(topologyDefinition.activeSwitches[0], topologyDefinition.activeSwitches[1])
         northbound.addFlow(flow)
 
-        then: "Flow switches to UP state in a reasonable amount of time"
+        then: "The flow switches to 'Up' state in a reasonable amount of time"
         Wrappers.wait(WAIT_OFFSET * 3) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
-        and: "remove the flow"
+        and: "Remove the flow"
         northbound.deleteFlow(flow.id)
         Wrappers.wait(WAIT_OFFSET) {
             northbound.getAllLinks().every { it.availableBandwidth == it.speed }
