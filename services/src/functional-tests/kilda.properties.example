@@ -13,8 +13,6 @@ floodlight.controller.uri=tcp:kilda:6653
 
 lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
-mininet.endpoint=http://localhost:38080
-mininet-flowtool.endpoint=http://localhost:17191
 lab-api.endpoint=http://localhost:8288
 
 otsdb.endpoint=http://localhost:4242

@@ -68,8 +68,8 @@ For example:
 ## Configuration
 ### Topology
 The tests require a network topology definition provided.
-For hardware (staging) topology this definition should represent the actual state of the hardware topology.
-For virtual (mininet) topology this definition will serve as a guide for creating a virtual topology.
+For hardware (staging) run this definition should represent the actual state of the hardware topology.
+For virtual run this definition will serve as a guide for creating a virtual topology.
 
 The topology definition format:
 ```
