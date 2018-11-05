@@ -19,7 +19,7 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
 
     @Override
     void start() {
-        SpringContextExtension.listeners << this
+        SpringContextExtension.addListener(this)
     }
 
     @Override

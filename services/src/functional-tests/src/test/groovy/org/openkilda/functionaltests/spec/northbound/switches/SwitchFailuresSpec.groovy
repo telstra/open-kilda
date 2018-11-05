@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.northbound.switches
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
+@CleanupSwitches
 class SwitchFailuresSpec extends BaseSpecification {
     @Value('${spring.profiles.active}')
     String profile
