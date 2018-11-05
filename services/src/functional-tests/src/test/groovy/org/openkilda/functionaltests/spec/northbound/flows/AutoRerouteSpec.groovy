@@ -376,6 +376,7 @@ class AutoRerouteSpec extends BaseSpecification {
     }
 
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
+        requireProfiles("virtual")
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
         northboundService.addFlow(flow)
