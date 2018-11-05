@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.config;
 
+import org.openkilda.testing.tools.ExtendedErrorHandler;
 import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -104,6 +105,7 @@ public class DefaultServiceConfig {
                 new HttpComponentsClientHttpRequestFactory()));
         List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
         interceptors.add(new LoggingRequestInterceptor());
+        restTemplate.setErrorHandler(new ExtendedErrorHandler());
         return restTemplate;
     }
 

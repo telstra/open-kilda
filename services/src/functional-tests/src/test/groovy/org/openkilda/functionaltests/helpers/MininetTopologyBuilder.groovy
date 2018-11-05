@@ -53,13 +53,13 @@ class MininetTopologyBuilder {
         northbound.toggleFeature(features)
 
         //wait until topology is discovered
-        assert Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
-            northbound.getAllLinks().findAll {
+        Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
+            assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.DISCOVERED
             }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
         }
-        assert Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
-            northbound.getAllSwitches().findAll {
+        Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
+            assert northbound.getAllSwitches().findAll {
                 it.state == SwitchState.ACTIVATED
             }.size() == topologyDefinition.activeSwitches.size()
         }

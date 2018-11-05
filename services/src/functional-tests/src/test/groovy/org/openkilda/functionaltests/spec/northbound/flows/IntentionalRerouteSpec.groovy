@@ -43,7 +43,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 10000
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Make current path less preferable than alternatives"
@@ -90,7 +90,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 10000
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Make some alternative path to be the most preferable among all others"
@@ -115,7 +115,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         pathHelper.getInvolvedIsls(newPath).contains(thinIsl)
 
         and: "'Thin' ISL has 0 available bandwidth left"
-        Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
         and: "Remove flow, restore bw, remove costs"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }

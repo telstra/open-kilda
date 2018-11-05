@@ -80,7 +80,7 @@ class AutoRerouteSpec extends BaseSpecification {
         given: "A flow without alternative paths"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(false, true)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         def altPaths = allFlowPaths.findAll { it != flowPath }
@@ -110,7 +110,7 @@ class AutoRerouteSpec extends BaseSpecification {
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
         northboundService.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -158,7 +158,7 @@ class AutoRerouteSpec extends BaseSpecification {
         assumeTrue("Test is skipped because of the issue #1464", switchType != "single")
 
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "The #switchType switch is disconnected"
         lockKeeperService.knockoutSwitch(sw)
@@ -178,6 +178,9 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Remove the flow"
         northboundService.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
 
         where:
         flowType                      | switchType    | flow                       | sw
@@ -195,7 +198,7 @@ class AutoRerouteSpec extends BaseSpecification {
         given: "An intermediate-switch flow without alternative paths"
         def (flow, allFlowPaths) = intermediateSwitchFlow(false, true)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         def altPaths = allFlowPaths.findAll { it != flowPath && it.first().portNo != flowPath.first().portNo }
@@ -220,6 +223,9 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Connect the intermediate switch back"
         lockKeeperService.reviveSwitch(flowPath[1].switchId)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundService.activeSwitches*.switchId.contains(flowPath[1].switchId)
+        }
 
         then: "The flow is #flowStatus"
         TimeUnit.SECONDS.sleep(discoveryInterval + rerouteDelay + WAIT_OFFSET * 2)
@@ -229,7 +235,7 @@ class AutoRerouteSpec extends BaseSpecification {
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
         northboundService.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
 
         where:
@@ -242,7 +248,7 @@ class AutoRerouteSpec extends BaseSpecification {
         given: "An intermediate-switch flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Bring all ports down on the source switch that are involved in the current and alternative paths"
@@ -276,7 +282,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
         northboundService.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -336,7 +342,7 @@ class AutoRerouteSpec extends BaseSpecification {
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make the current flow path less preferable than others"
@@ -349,7 +355,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "Link status becomes 'FAILED'"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED
         }
 
         when: "Failed link goes up"
@@ -357,7 +363,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "Link status becomes 'DISCOVERED'"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
         }
 
         and: "The flow is not rerouted and doesn't use more preferable path"

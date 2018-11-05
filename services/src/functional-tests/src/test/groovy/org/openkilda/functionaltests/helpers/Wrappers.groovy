@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import groovy.transform.InheritConstructors
 import groovy.util.logging.Slf4j
 import org.junit.runners.model.MultipleFailureException
 
@@ -17,7 +18,7 @@ class Wrappers {
      * @throws MultipleFailureException if closure fails to execute in given amount of tries.
      */
     def static retry(int times = 5, double retryInterval = 2, Closure handler = { e -> log.debug("retry failed", e) },
-                     Closure body) {
+            Closure body) {
         int retries = 0
 
         List<Throwable> ex = []
@@ -34,33 +35,38 @@ class Wrappers {
     }
 
     /**
-     * Wait for closure to return a result. Returns false if success condition was not met.
+     * Wait for closure to return a result.
      *
      * @param timeout time to wait in seconds
      * @param retryInterval pause between retries (in seconds)
      * @param closure : A closure that returns following:
-     *          - True if check is successful
-     *          - False or null if check is unsuccessful
-     * @return True if wait was successful, false otherwise
+     *          - Groovy truth or null if check is successful
+     *          - False or throw if check is unsuccessful
+     * @return True if wait was successful, throws WaitTimeoutException otherwise
      */
     static boolean wait(double timeout, double retryInterval = 0.5, Closure closure) {
         long endTime = System.currentTimeMillis() + (long) (timeout * 1000)
         long sleepTime = (long) (retryInterval * 1000)
+        def thrown
         while (System.currentTimeMillis() < endTime) {
             try {
-                if (closure.call()) {
+                def result = closure.call()
+                if (result || result == null) {
                     return true
                 } else {
-                    log.debug("No wait results yet. Sleeping for ${sleepTime} ms...")
+                    thrown = null
                     sleep(sleepTime)
                 }
             } catch (Throwable t) {
-                log.debug("Wait check threw exception: ${t.message}.\nSleeping for ${sleepTime} ms...")
+                thrown = t
                 sleep(sleepTime)
             }
         }
-        log.debug("Closure failed to succeed within ${timeout} seconds, aborting.")
-        return false
+        def message = "Condition was not satisfied within $timeout seconds"
+        if (thrown) {
+            message += ". Failed with exception: $thrown"
+        }
+        throw new WaitTimeoutException(message)
     }
 
     /**
@@ -88,7 +94,10 @@ class Wrappers {
         try {
             closure.call()
         } catch (Throwable t) {
-            log.error(t)
+            log.error("", t)
         }
     }
+
+    @InheritConstructors
+    static class WaitTimeoutException extends RuntimeException {}
 }
