@@ -82,8 +82,8 @@ function showflowData(response){
 		  "aaSorting": [[0, "asc"]],
 		  "aoColumns": [
 		                { sWidth: '14%',"sType": "name","bSortable": true },
-		                { sWidth:  '8%' },
-		                { sWidth: '8%', "sType": "name","bSortable": true },
+		                { sWidth:  '8%'},
+		                { sWidth: '8%'},
 		                { sWidth: '14%' },
 		                { sWidth: '8%' },
 		                { sWidth: '8%' },
