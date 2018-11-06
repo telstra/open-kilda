@@ -122,6 +122,11 @@ public class Datapoint extends InfoData {
         return result;
     }
 
+    /**
+     * Calc hash code only from metric and tags, excluding value.
+     *
+     * @return hash code
+     */
     public int simpleHashCode() {
         int result = metric != null ? metric.hashCode() : 0;
         result = 31 * result + (tags != null ? tags.hashCode() : 0);

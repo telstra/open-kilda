@@ -8,7 +8,6 @@ floodlight.modules=\
   net.floodlightcontroller.restserver.RestApiServer,\
   net.floodlightcontroller.ui.web.StaticWebRoutable,\
   net.floodlightcontroller.statistics.StatisticsCollector,\
-  org.openkilda.floodlight.switchmanager.SwitchEventCollector,\
   org.openkilda.floodlight.kafka.KafkaMessageCollector,\
   org.openkilda.floodlight.switchmanager.SwitchManager,\
   org.openkilda.floodlight.pathverification.PathVerificationService,\

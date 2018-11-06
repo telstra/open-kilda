@@ -16,6 +16,9 @@ neo.uri=bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }
 lab-api.endpoint={{ getv "/kilda_lab_api_endpoint" }}:8288
 
 otsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
+elasticsearch.endpoint = https://{{ getv "/kilda_logging_elasticsearch_hosts" }}
+elasticsearch.username = {{ getv "/kilda_logging_elasticsearch_user" }}
+elasticsearch.password = {{ getv "/kilda_logging_elasticsearch_pass" }}
 
 spring.profiles.active={{ getv "/kilda_test_profile" }}
 

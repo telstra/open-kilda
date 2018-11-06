@@ -8,7 +8,6 @@ floodlight.modules=\
   net.floodlightcontroller.restserver.RestApiServer,\
   net.floodlightcontroller.ui.web.StaticWebRoutable,\
   net.floodlightcontroller.statistics.StatisticsCollector,\
-  org.openkilda.floodlight.switchmanager.SwitchEventCollector,\
   org.openkilda.floodlight.kafka.KafkaMessageCollector,\
   org.openkilda.floodlight.switchmanager.SwitchManager,\
   org.openkilda.floodlight.pathverification.PathVerificationService,\
@@ -62,7 +61,7 @@ net.floodlightcontroller.topology.TopologyManager.pathMetric=latency
 net.floodlightcontroller.topology.TopologyManager.maxPathsToCompute=3
 #org.openkilda.floodlight.KildaCore.command-processor-workers-count = 4
 #org.openkilda.floodlight.KildaCore.command-processor-workers-limit = 32
-#org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = 8
+org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = {{ getv "/kilda_floodlight_command_processor_deferred_requests_limit" }}
 #org.openkilda.floodlight.KildaCore.command-processor-idle-workers-keep-alive-seconds = 300
 org.openkilda.floodlight.KafkaChannel.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
 org.openkilda.floodlight.KafkaChannel.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}

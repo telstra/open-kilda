@@ -42,7 +42,7 @@ class IslCostSpec extends BaseSpecification {
 
         then: "Link status becomes 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
         and: "ISL cost after connection loss is not increased"
@@ -51,7 +51,7 @@ class IslCostSpec extends BaseSpecification {
         and: "Add a-switch rules to restore connection"
         lockKeeper.addFlows(rulesToRemove)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
     }
 }

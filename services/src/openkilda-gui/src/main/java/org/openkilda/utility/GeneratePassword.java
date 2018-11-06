@@ -20,10 +20,12 @@ import java.util.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
-public class GeneratePassword {
+public final class GeneratePassword {
     
     public static final String AES = "AES";
     public static final String KEY = "DB99A2A8EB6904F492E9DF0595ED683C";
+    
+    private GeneratePassword() {}
 
     private static String byteArrayToHexString(byte[] b) {
         StringBuffer sb = new StringBuffer(b.length * 2);
@@ -47,6 +49,13 @@ public class GeneratePassword {
         return b;
     }
 
+    /**
+     * Encrypt.
+     *
+     * @param password the password
+     * @return the string
+     * @throws Exception the exception
+     */
     public static String encrypt(String password)
             throws Exception {
         byte[] bytekey = hexStringToByteArray(KEY);
@@ -57,6 +66,13 @@ public class GeneratePassword {
         return Base64.getEncoder().withoutPadding().encodeToString(encrypted);
     }
     
+    /**
+     * Decrypt.
+     *
+     * @param password the password
+     * @return the string
+     * @throws Exception the exception
+     */
     public static String decrypt(String password) throws Exception {
         
         byte[] bytekey = hexStringToByteArray(KEY);

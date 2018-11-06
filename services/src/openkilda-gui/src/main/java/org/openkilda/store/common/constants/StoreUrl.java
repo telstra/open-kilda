@@ -15,10 +15,10 @@
 
 package org.openkilda.store.common.constants;
 
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import lombok.Getter;
 
 /**
  * Gets the urls.
@@ -53,7 +53,7 @@ public enum StoreUrl {
      * @param storeType the store type
      * @return the url name
      */
-    public static List<String> getUrlName(String storeType){
+    public static List<String> getUrlName(String storeType) {
         List<String> list = new ArrayList<String>();
         StoreUrl storeUrl = null;
         for (StoreUrl storeUrlObj : StoreUrl.values()) {
@@ -62,7 +62,7 @@ public enum StoreUrl {
                 break;
             }
         }
-        for(Url url : storeUrl.urls){
+        for (Url url : storeUrl.urls) {
             list.add(url.getName());
         }
         return list;

@@ -15,14 +15,11 @@
 
 package org.openkilda.store.controller.validator;
 
-import java.util.List;
-import java.util.Map.Entry;
-
 import org.openkilda.store.common.constants.StoreType;
 import org.openkilda.store.common.constants.StoreUrl;
 import org.openkilda.store.model.LinkStoreConfigDto;
 import org.openkilda.store.model.UrlDto;
-import org.openkilda.utility.StringUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +28,9 @@ import org.springframework.stereotype.Component;
 import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.util.MessageUtils;
 import org.usermanagement.util.ValidatorUtil;
+
+import java.util.List;
+import java.util.Map.Entry;
 
 /**
  * The Class LinkStoreConfigValidator.

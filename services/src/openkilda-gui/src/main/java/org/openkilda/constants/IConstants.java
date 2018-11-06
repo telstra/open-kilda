@@ -369,6 +369,7 @@ public abstract class IConstants {
          * @param tag the tag
          * @return the list
          */
+
         public static List<String> switchValue(String tag) {
             List<String> list = new ArrayList<String>();
 

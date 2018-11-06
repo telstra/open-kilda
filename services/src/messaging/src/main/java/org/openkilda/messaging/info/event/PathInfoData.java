@@ -17,12 +17,13 @@ package org.openkilda.messaging.info.event;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+import org.openkilda.messaging.info.CacheTimeTag;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.messaging.info.CacheTimeTag;
 
 import java.util.Comparator;
 import java.util.List;

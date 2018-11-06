@@ -50,7 +50,7 @@ class FlowCrudSpec extends BaseSpecification {
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
         northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
         def switches = pathHelper.getInvolvedSwitches(path)
         //for single-flow cases need to add switch manually here, since PathHelper.convert will return an empty path
@@ -88,8 +88,22 @@ class FlowCrudSpec extends BaseSpecification {
                     "we are on virtual env and for now traff exam is not available here")
         }
 
-        and: "Remove flow"
+        when: "Remove flow"
         northboundService.deleteFlow(flow.id)
+
+        then: "Flow is not present in NB"
+        !northboundService.getAllFlows().find { it.id == flow.id }
+
+        and: "ISL bandwidth is restored"
+        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
+
+        and: "No rule discrepancies on every switch of the flow"
+        switches.every { sw ->
+            Wrappers.wait(WAIT_OFFSET) {
+                def rules = northboundService.validateSwitchRules(sw.dpId)
+                rules.missingRules.empty && rules.excessRules.empty
+            }
+        }
 
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
@@ -118,6 +132,44 @@ class FlowCrudSpec extends BaseSpecification {
                 ]
             })
         flow = data.flow as FlowPayload
+    }
+
+    @Unroll
+    def "Able to create single switch single port flow with different vlan (#flow.source.datapath)"(FlowPayload flow) {
+        given: "A flow"
+        northboundService.addFlow(flow)
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+
+        expect: "No rule discrepancies on the switch"
+        def rules = northboundService.validateSwitchRules(flow.source.datapath)
+        rules.missingRules.empty
+        rules.excessRules.empty
+
+        and: "No discrepancies when doing flow validation"
+        northboundService.validateFlow(flow.id).each { direction ->
+            def discrepancies = profile == "virtual" ?
+                    direction.discrepancies.findAll { it.field != "meterId" } : //unable to validate meters for virtual
+                    direction.discrepancies
+            assert discrepancies.empty
+        }
+
+        when: "Remove flow"
+        northboundService.deleteFlow(flow.id)
+
+        then: "Flow is not present in NB"
+        !northboundService.getAllFlows().find { it.id == flow.id }
+
+        and: "ISL bandwidth is restored"
+        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
+
+        and: "No rule discrepancies on the switch after delete"
+        Wrappers.wait(WAIT_OFFSET) {
+            def rulesAfterDelete = northboundService.validateSwitchRules(flow.source.datapath)
+            rulesAfterDelete.missingRules.empty &&
+                rulesAfterDelete.excessRules.empty
+        }
+
+        where: flow << getSingleSwitchSinglePortFlows()
     }
     
     /**
@@ -161,6 +213,16 @@ class FlowCrudSpec extends BaseSpecification {
             .sort{ sw -> topology.activeTraffGens.findAll { it.switchConnected == sw }.size() }.reverse()
             .unique { [getDescription(it), it.ofVersion].sort() }
             .collect { flowHelper.singleSwitchFlow(it) }
+    }
+
+    /**
+     * Get list of all unique single-switch flows. By unique flows it considers
+     * using all unique switch descriptions and OF versions.
+     */
+    def getSingleSwitchSinglePortFlows() {
+        topology.getActiveSwitches()
+                .unique { [getDescription(it), it.ofVersion].sort() }
+                .collect { flowHelper.singleSwitchSinglePortFlow(it) }
     }
 
     /**

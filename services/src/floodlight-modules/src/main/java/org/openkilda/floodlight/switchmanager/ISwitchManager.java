@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import org.openkilda.floodlight.error.SwitchNotFoundException;
+import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.payload.flow.OutputVlanType;
@@ -25,6 +27,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.List;
 import java.util.Map;
@@ -33,9 +36,14 @@ import java.util.Map;
 public interface ISwitchManager extends IFloodlightService {
     /** OVS software switch manufacturer constant value. */
     String OVS_MANUFACTURER = "Nicira, Inc.";
+
     long DROP_RULE_COOKIE = 0x8000000000000001L;
     long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
     long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
+
+    void activate(DatapathId dpid) throws SwitchOperationException;
+
+    void deactivate(DatapathId dpid);
 
     /**
      * Set connection mode.
@@ -196,6 +204,12 @@ public interface ISwitchManager extends IFloodlightService {
 
     Map<DatapathId, IOFSwitch> getAllSwitchMap();
 
+    IOFSwitch lookupSwitch(DatapathId dpid) throws SwitchNotFoundException;
+
+    List<OFPortDesc> getEnabledPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
+
+    List<OFPortDesc> getPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
+
     /**
      * Deletes all non-default rules from the switch.
      *
@@ -224,21 +238,7 @@ public interface ISwitchManager extends IFloodlightService {
      */
     List<Long> deleteRulesByCriteria(DatapathId dpid, DeleteRulesCriteria... criteria) throws SwitchOperationException;
 
-    /**
-     * Safely install default rules - ie monitor traffic.
-     */
-    void startSafeMode(final DatapathId dpid) throws SwitchOperationException;
-
-    /**
-     * Stop the safe install .. switch is deactivated or removed.
-     */
-    void stopSafeMode(final DatapathId dpid);
-
     void safeModeTick();
-
-    void sendSwitchActivate(final IOFSwitch sw) throws SwitchOperationException;
-
-    void sendPortUpEvents(final IOFSwitch sw) throws SwitchOperationException;
 
     /**
      * Configure switch port. <br>
@@ -263,4 +263,24 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found.
      */
     List<OFPortDesc> dumpPortsDescription(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Return true if port is physical.
+     *
+     * @param portDesc port.
+     * @return true if port is physical.
+     */
+    static boolean isPhysicalPort(OFPortDesc portDesc) {
+        OFPort p = portDesc.getPortNo();
+        return !(p.equals(OFPort.LOCAL)
+                || p.equals(OFPort.ALL)
+                || p.equals(OFPort.CONTROLLER)
+                || p.equals(OFPort.ANY)
+                || p.equals(OFPort.FLOOD)
+                || p.equals(OFPort.ZERO)
+                || p.equals(OFPort.NO_MASK)
+                || p.equals(OFPort.IN_PORT)
+                || p.equals(OFPort.NORMAL)
+                || p.equals(OFPort.TABLE));
+    }
 }

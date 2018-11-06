@@ -30,7 +30,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
     @Value('${discovery.interval}')
     int discoveryInterval
 
-    def "Bring switch port down/up (ISL-busy port)"() {
+    def "Able to bring switch port down/up (ISL-busy port)"() {
         given: "An ISL between active switches"
         def isl = topology.islsForActiveSwitches.first()
 
@@ -40,8 +40,8 @@ class SwitchPortConfigSpec extends BaseSpecification {
 
         then: "ISL between switches becomes 'FAILED'"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED &&
-                    islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
         }
 
         and: "Port failure is logged in OTSDB"
@@ -49,7 +49,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             statsData = otsdb.query(portDownTime, "pen.switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
-            statsData.size() == 1
+            assert statsData.size() == 1
         }
         statsData.values().first() == otsdbPortDown
 
@@ -59,21 +59,21 @@ class SwitchPortConfigSpec extends BaseSpecification {
 
         then: "ISL between switches becomes 'DISCOVERED'"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED &&
-                    islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
         }
 
         and: "Port Up event is logged in OTSDB"
         Wrappers.wait(WAIT_OFFSET) {
             statsData = otsdb.query(portUpTime, "pen.switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
-            statsData.size() == 1
+            assert statsData.size() == 1
         }
         statsData.values().first() == otsdbPortUp
     }
 
-    //TODO(rtretiak): Kilda won't log into OTSDB for isl-free ports. Investigate, link to an issue if requried
-    def "Bring switch port down/up (ISL-free port)"() {
+    //Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.
+    def "Able to bring switch port down/up (ISL-free port)"() {
         requireProfiles("hardware")
 
         given: "An active switch and ISL-free port"

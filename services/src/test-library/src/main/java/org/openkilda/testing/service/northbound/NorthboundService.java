@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.service.northbound;
 
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -72,7 +73,7 @@ public interface NorthboundService {
 
     SwitchFlowEntries getSwitchRules(SwitchId switchId);
 
-    List<Long> deleteSwitchRules(SwitchId switchId);
+    List<Long> deleteSwitchRules(SwitchId switchId, DeleteRulesAction deleteAction);
 
     RulesSyncResult synchronizeSwitchRules(SwitchId switchId);
 

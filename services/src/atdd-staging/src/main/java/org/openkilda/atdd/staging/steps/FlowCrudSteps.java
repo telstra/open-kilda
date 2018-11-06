@@ -52,11 +52,11 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.database.Database;
 import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.floodlight.model.MeterEntry;
 import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.testing.service.northbound.NorthboundService;
-import org.openkilda.testing.service.topology.TopologyEngineService;
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException;
 import org.openkilda.testing.service.traffexam.OperationalException;
 import org.openkilda.testing.service.traffexam.TraffExamService;
@@ -109,7 +109,7 @@ public class FlowCrudSteps implements En {
     private FloodlightService floodlightService;
 
     @Autowired
-    private TopologyEngineService topologyEngineService;
+    private Database db;
 
     @Autowired
     private TopologyDefinition topologyDefinition;
@@ -131,11 +131,6 @@ public class FlowCrudSteps implements En {
     @Given("^flows defined over active switches in the reference topology$")
     public void defineFlowsOverActiveSwitches() {
         flows = flowManager.allActiveSwitchesFlows();
-    }
-
-    @Given("^flows defined over active traffgens in the reference topology$")
-    public void defineFlowsOverActiveTraffgens() {
-        flows = flowManager.allActiveTraffgenFlows();
     }
 
     @Given("Create (\\d+) flows? with A Switch used and at least (\\d+) alternate paths? between source and "
@@ -176,11 +171,6 @@ public class FlowCrudSteps implements En {
         flows.forEach(flow -> flow.setId(format("%s-%s", flow.getId(), UUID.randomUUID().toString())));
     }
 
-    @And("^each flow has flow_id with (.*) prefix$")
-    public void buildFlowIdToEachFlow(String flowIdPrefix) {
-        flows.forEach(flow -> flow.setId(format("%s-%s", flowIdPrefix, flow.getId())));
-    }
-
     @And("^(?:each )?flow has max bandwidth set to (\\d+)$")
     public void setBandwidthToEachFlow(int bandwidth) {
         flows.forEach(flow -> flow.setMaximumBandwidth(bandwidth));
@@ -219,7 +209,7 @@ public class FlowCrudSteps implements En {
         for (Flow expectedFlow : expextedFlows) {
             FlowPair<Flow, Flow> flowPair = Failsafe.with(retryPolicy()
                     .retryWhen(null))
-                    .get(() -> topologyEngineService.getFlow(expectedFlow.getFlowId()));
+                    .get(() -> db.getFlow(expectedFlow.getFlowId()));
 
             assertNotNull(format("The flow '%s' is missing in TopologyEngine.", expectedFlow.getFlowId()), flowPair);
             assertThat(format("The flow '%s' in TopologyEngine is different from defined.", expectedFlow.getFlowId()),
@@ -370,7 +360,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow has meters installed with (\\d+) max bandwidth$")
     public void eachFlowHasMetersInstalledWithBandwidth(long bandwidth) {
         for (FlowPayload flow : flows) {
-            FlowPair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+            FlowPair<Flow, Flow> flowPair = db.getFlow(flow.getId());
 
             try {
                 MetersEntriesMap forwardSwitchMeters = floodlightService
@@ -397,7 +387,7 @@ public class FlowCrudSteps implements En {
     public void noExcessiveMetersInstalledOnActiveSwitches() {
         ListValuedMap<SwitchId, Integer> switchMeters = new ArrayListValuedHashMap<>();
         for (FlowPayload flow : flows) {
-            FlowPair<Flow, Flow> flowPair = topologyEngineService.getFlow(flow.getId());
+            FlowPair<Flow, Flow> flowPair = db.getFlow(flow.getId());
             if (flowPair != null) {
                 switchMeters.put(flowPair.getLeft().getSourceSwitch(), flowPair.getLeft().getMeterId());
                 switchMeters.put(flowPair.getRight().getSourceSwitch(), flowPair.getRight().getMeterId());
@@ -457,7 +447,7 @@ public class FlowCrudSteps implements En {
             FlowPair<Flow, Flow> result = Failsafe.with(retryPolicy()
                     .abortWhen(null)
                     .retryIf(Objects::nonNull))
-                    .get(() -> topologyEngineService.getFlow(flow.getId()));
+                    .get(() -> db.getFlow(flow.getId()));
 
             assertNull(format("The flow '%s' exists.", flow.getId()), result);
         }

@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.extension
 
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
-import org.openkilda.functionaltests.extension.spring.PreparesSpringContextDummy
+import org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
 
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.model.SpecInfo
@@ -9,7 +9,7 @@ import org.spockframework.runtime.model.SpecInfo
 /**
  * This extension builds the correct order for all 'special' features.
  *
- * @see org.openkilda.functionaltests.extension.spring.PreparesSpringContextDummy
+ * @see org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
  * @see org.openkilda.functionaltests.extension.healthcheck.HealthCheck
  */
 class FeatureOrderExtension extends AbstractGlobalExtension {
@@ -18,7 +18,7 @@ class FeatureOrderExtension extends AbstractGlobalExtension {
         int orderIndex = 0
         //run dummy test first
         def dummy = features.find {
-            it.featureMethod.getAnnotation(PreparesSpringContextDummy)
+            it.featureMethod.getAnnotation(PrepareSpringContextDummy)
         }
         dummy && dummy.setExecutionOrder(orderIndex++)
 

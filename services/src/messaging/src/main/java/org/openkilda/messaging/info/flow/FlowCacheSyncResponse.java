@@ -15,20 +15,18 @@
 
 package org.openkilda.messaging.info.flow;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 
-import java.util.List;
 import java.util.Objects;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Captures the results of a FlowCacheSyncRequest.

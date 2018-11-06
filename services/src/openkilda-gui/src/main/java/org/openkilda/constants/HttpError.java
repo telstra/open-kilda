@@ -69,7 +69,10 @@ public enum HttpError {
             MessageUtil.getMessage("0004")),
     NO_CONTENT(HttpStatus.NO_CONTENT, Integer.parseInt(MessageUtil
             .getCode("0204")), MessageUtil.getAuxilaryMessage("0204"),
-            MessageUtil.getMessage("0204"));
+            MessageUtil.getMessage("0204")),
+    STORE_INTEGRATION_ERROR(HttpStatus.EXPECTATION_FAILED, Integer.parseInt(MessageUtil
+            .getCode("0417")), MessageUtil.getAuxilaryMessage("0417"),
+            MessageUtil.getMessage("0417"));
 
     private HttpStatus httpStatus;
     private Integer code;

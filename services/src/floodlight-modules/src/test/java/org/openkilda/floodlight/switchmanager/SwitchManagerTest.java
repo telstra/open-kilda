@@ -60,6 +60,7 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
+import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -283,7 +284,7 @@ public class SwitchManagerTest {
 
     @Test
     public void installBandwidthMeter() throws Exception {
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(switchDescription.getManufacturerDescription()).andStubReturn("");
@@ -316,7 +317,7 @@ public class SwitchManagerTest {
     @Test
     public void shouldDeleteAllNonDefaultRules() throws Exception {
         // given
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -349,7 +350,7 @@ public class SwitchManagerTest {
     @Test
     public void shouldDeleteDefaultRules() throws Exception {
         // given
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -381,7 +382,7 @@ public class SwitchManagerTest {
     @Test
     public void shouldDeleteRuleByCookie() throws Exception {
         // given
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -417,7 +418,7 @@ public class SwitchManagerTest {
         // given
         final int testInPort = 11;
 
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -453,7 +454,7 @@ public class SwitchManagerTest {
         // given
         final short testInVlan = 101;
 
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -490,7 +491,7 @@ public class SwitchManagerTest {
         final int testInPort = 11;
         final short testInVlan = 101;
 
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -528,7 +529,7 @@ public class SwitchManagerTest {
         // given
         final int testPriority = 999;
 
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -567,7 +568,7 @@ public class SwitchManagerTest {
         final short testInVlan = 101;
         final int testPriority = 999;
 
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -607,7 +608,7 @@ public class SwitchManagerTest {
         // given
         final int testOutPort = 21;
 
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -678,7 +679,7 @@ public class SwitchManagerTest {
     private Capture<OFFlowMod> prepareForInstallTest() {
         Capture<OFFlowMod> capture = EasyMock.newCapture();
 
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(switchDescription.getManufacturerDescription()).andStubReturn("");
@@ -695,7 +696,7 @@ public class SwitchManagerTest {
     private Capture<OFMeterMod> prepareForMeterTest() {
         Capture<OFMeterMod> capture = EasyMock.newCapture();
 
-        expect(ofSwitchService.getSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(switchDescription.getManufacturerDescription()).andStubReturn("");

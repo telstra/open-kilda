@@ -40,7 +40,7 @@ class LinkPropertiesSpec extends BaseSpecification {
 
         then: "Response states that operation failed"
         response.failures == 1
-        //TODO(rtretiak): Issue #1241, verify valid error body
+        response.messages.first() == "Invalid request"
     }
 
     def "Unable to create link property with invalid switchId format"() {

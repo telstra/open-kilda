@@ -20,9 +20,13 @@ import static org.openkilda.testing.Constants.DEFAULT_COST;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowPair;
 import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.GraphDatabase;
@@ -33,6 +37,8 @@ import org.neo4j.driver.v1.Value;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -177,6 +183,38 @@ public class DatabaseNeoImpl implements DisposableBean, Database {
             deserializedResults.add(new PathInfoData(0, path));
         }
         return deserializedResults;
+    }
+
+    @Override
+    public FlowPair<Flow, Flow> getFlow(String flowId) {
+        String query = "MATCH (a:switch)-[r:flow]->(b:switch) "
+                + "WHERE r.flowid = {flow_id} "
+                + "RETURN r";
+        StatementResult result;
+        try (Session session = neo.session()) {
+            result = session.run(query, ImmutableMap.of("flow_id", flowId));
+        }
+        List<Record> flows = result.list();
+        if (flows.size() < 2) {
+            return null;
+        }
+        return new FlowPair<>(convert(flows.get(0).get("r")), convert(flows.get(1).get("r")));
+    }
+
+    private Flow convert(Value flow) {
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> f = new HashMap<>(flow.asMap());
+        Map<String, Object> p = null;
+        try {
+            p = mapper.readValue(f.get("flowpath").toString(), new TypeReference<HashMap<String, Object>>() {
+            });
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        p.put("clazz", "org.openkilda.messaging.info.event.PathInfoData");
+        f.put("flowpath", p);
+        f.put("periodic-pings", f.remove("periodic_pings"));
+        return mapper.convertValue(f, Flow.class);
     }
 
     private Map<String, Object> getParams(Isl isl) {

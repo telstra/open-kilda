@@ -118,7 +118,8 @@ public final class UserConversionUtil {
      * @param userInfo the user info
      * @param userEntity the user entity
      */
-    public static void toUpateUserEntity(final UserInfo userInfo, final UserEntity userEntity,final StringBuilder activityMessage) {
+    public static void toUpateUserEntity(final UserInfo userInfo, final UserEntity userEntity,
+            final StringBuilder activityMessage) {
         if (!ValidatorUtil.isNull(userInfo.getName())) {
             userEntity.setName(userInfo.getName());
             activityMessage.append("username:" + userInfo.getName() + "\n");

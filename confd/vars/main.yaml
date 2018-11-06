@@ -16,6 +16,8 @@ kilda_zookeeper_hosts: "zookeeper.pendev:2181"
 kilda_opentsdb_hosts: "opentsdb.pendev"
 kilda_opentsdb_port: "4242"
 kilda_storm_numbus_hosts: "nimbus.pendev"
+kilda_logging_elasticsearch_user: "kilda"
+kilda_logging_elasticsearch_pass: "kilda"
 
 kilda_gui_host: "http://127.0.0.1"
 kilda_gui_port: 1010
@@ -28,6 +30,7 @@ kilda_floodlight_rest_port: "8081"
 kilda_floodlight_username: "kilda"
 kilda_floodlight_password: "kilda"
 kilda_floodlight_controller_uri: "tcp:kilda:6653"
+kilda_floodlight_command_processor_deferred_requests_limit: 8
 
 kilda_aswitch_port: "5001"
 kilda_aswitch_endpoint: "http://127.0.0.1"

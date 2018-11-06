@@ -24,7 +24,7 @@ RUN apt-get update \
         nginx \
         sqlite \
     && pip install \
-        neo4j-driver \
+        'neo4j-driver<1.7.0' \
         kafka \
         flask \
         flask-login \

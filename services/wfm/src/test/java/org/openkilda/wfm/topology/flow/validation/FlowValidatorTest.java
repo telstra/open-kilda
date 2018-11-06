@@ -194,4 +194,54 @@ public class FlowValidatorTest {
 
         target.checkSwitchesExists(flow);
     }
+
+    @Test
+    public void shouldFailOnOneSwitchFlowWithEqualPortsAndVlans() throws SwitchValidationException {
+        Flow flow = new Flow();
+        flow.setSourceSwitch(SRC_SWITCH);
+        flow.setDestinationSwitch(SRC_SWITCH);
+
+        flow.setSourcePort(SRC_PORT);
+        flow.setDestinationPort(SRC_PORT);
+
+        flow.setSourceVlan(SRC_VLAN);
+        flow.setDestinationVlan(SRC_VLAN);
+
+        String expectedMessage = "It is not allowed to create one-switch flow for the same ports and vlans";
+
+        thrown.expect(SwitchValidationException.class);
+        thrown.expectMessage(expectedMessage);
+
+        target.checkOneSwitchFlowHasNoConflicts(flow);
+    }
+
+    @Test
+    public void shouldNotFailOnOneSwitchFlowWithEqualPortsButDifferentVlans() throws SwitchValidationException {
+        Flow flow = new Flow();
+        flow.setSourceSwitch(SRC_SWITCH);
+        flow.setDestinationSwitch(SRC_SWITCH);
+
+        flow.setSourcePort(SRC_PORT);
+        flow.setDestinationPort(SRC_PORT);
+
+        flow.setSourceVlan(SRC_VLAN);
+        flow.setDestinationVlan(DST_VLAN);
+
+        target.checkOneSwitchFlowHasNoConflicts(flow);
+    }
+
+    @Test
+    public void shouldNotFailOnOneSwitchFlowWithEqualVlansButDifferentPorts() throws SwitchValidationException {
+        Flow flow = new Flow();
+        flow.setSourceSwitch(SRC_SWITCH);
+        flow.setDestinationSwitch(SRC_SWITCH);
+
+        flow.setSourcePort(SRC_PORT);
+        flow.setDestinationPort(DST_PORT);
+
+        flow.setSourceVlan(SRC_VLAN);
+        flow.setDestinationVlan(SRC_VLAN);
+
+        target.checkOneSwitchFlowHasNoConflicts(flow);
+    }
 }

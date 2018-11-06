@@ -1,0 +1,48 @@
+@startuml
+title FL alive tracking
+
+participant FL
+
+box "FL IO Kafka topics" #LightGreen
+control "FLn-write" as fl_write.kafka
+control "FLn-read" as fl_read.kafka
+end box
+
+participant "FL-router" as fl_router
+participant MonotonicTime as Time
+
+opt
+    FL ->X fl_write.kafka: json
+    note right of FL: set writeErrorFlag
+end
+...
+
+Time -> fl_router: tick
+activate fl_router
+note right of fl_router: activate outage alert
+fl_router -> fl_read.kafka: AliveRequest
+fl_read.kafka -> FL: AliveRequest
+activate FL
+FL -> fl_write.kafka: AliveResponse\nwriteErrorFlag
+note right of FL: reset writeErrorFlag
+deactivate FL
+fl_write.kafka -> fl_router: AliveResponse\nwriteErrorFlag
+alt writeErrorFlag is set
+    fl_router -> : FlOutageNotification
+else
+    note right of fl_router: reset outage alert
+end
+deactivate fl_router
+...
+Time -> fl_router: tick
+activate fl_router
+note right of fl_router: activate outage alert
+fl_router -> fl_read.kafka: AliveRequest
+fl_read.kafka ->X FL: AliveRequest
+
+Time -> fl_router: tick
+note right of fl_router: detect FL outage
+fl_router -> : FlOutageNotification
+deactivate fl_router
+
+@enduml

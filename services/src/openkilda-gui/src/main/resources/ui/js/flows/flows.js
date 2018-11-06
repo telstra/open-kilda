@@ -3,6 +3,16 @@
 var storage = new LocalStorageHandler();
 	
 $(document).ready(function(){
+	common.getData('/store/link-store-config',"GET").then(function(data){
+		var JSONResponse = JSON.parse(JSON.stringify(data));
+		if(JSONResponse && JSONResponse['urls'] && typeof(JSONResponse['urls']['get-link']) !='undefined' &&  typeof(JSONResponse['urls']['get-link']['url'])!='undefined'){
+			localStorage.setItem('linkStoreSetting',JSONResponse);
+			localStorage.setItem('haslinkStoreSetting',true);
+			$('#activeFilter').prop('checked',true);
+		}
+	},function(error){
+	}).fail(function(error){
+	});
 	if(localStorage.getItem('flowListDisplay')){
 		localStorage.removeItem('flowListDisplay')
 		$(document).find("#flow-list").trigger('click');
@@ -15,10 +25,21 @@ $(document).ready(function(){
 	}
 	$(document).on("click","#flow-list",function(e){ 
 		var FLOWS_LIST = storage.get('FLOWS_LIST');
-		if(FLOWS_LIST){
+		if(FLOWS_LIST && FLOWS_LIST.length){
 			showflowData(FLOWS_LIST);
 		}else{
-			flows();
+			var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
+			var filters = '';
+			if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+				filters = $('input[name="filterStatus[]"]:checked').map(function(){
+					return $(this).val();
+				}).get().join();
+				if(filters == '' || filters == null){
+					filters = "active";
+					$('#activeFilter').prop('checked',"checked");
+				}
+			}
+			flows(filters);
 		}
 	});
 	$('#flowid').keyup(function(e){
@@ -27,17 +48,32 @@ $(document).ready(function(){
 		}
 	});
 	$(document).on("click","#refresh_list",function(e){
-		$('input').each(function(index){  
+		var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
+		var filters = '';
+		if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+		    filters = $('input[name="filterStatus[]"]:checked').map(function(){
+				return $(this).val();
+			}).get().join();
+			
+		}
+		$('input[type="search"]').each(function(index){  
 	        var input = $(this);
 	        input.val("");
 	    });
 		window.location.hash = "";
 		storage.remove('FLOWS_LIST');
-		flows();
+		flows(filters);
+		
 	});
 	
 	$(document).on("dblclick",".flowDataRow",function(e){
 		setFlowData(this);
+	})
+	$('input[name="filterStatus[]"]').on('click',function(){
+		var filters = $('input[name="filterStatus[]"]:checked').map(function(){
+			return $(this).val();
+		}).get().join();
+		flows(filters);
 	})
 	var hash = window.location.hash;
 	if (hash.indexOf('|') > -1){
@@ -56,15 +92,31 @@ $( 'input').on( 'click', function () {
 });
 
 
-function flows(){
+function flows(filters){
 	$("#loading").css("display", "block");
-	common.getData("/flows/list","GET").then(function(response) {
+	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
+	var query  = '';
+	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+		if(typeof(filters)!='undefined'){
+			if(filters!=''){
+				 query = '?status='+filters;
+				}
+		}else{
+			var filters = $('input[name="filterStatus[]"]:checked').map(function(){
+				return $(this).val();
+			}).get().join();
+			if(filters!=''){
+				 query = '?status='+filters;
+			}
+		}
+	}
+	
+	common.getData("/flows/list"+query,"GET").then(function(response) {
 		$("#loading").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		showflowData(response);
 		storage.set("FLOWS_LIST",response);
-	},
-	function(error){
+	},function(error){
 		response=[];
 		$("#loading").css("display", "none");
 		$('body').css('pointer-events','all'); 
@@ -93,19 +145,31 @@ function goToflowDetail(flowid,isEdit){
 	var url = "flows/details#" + flowid;
 	window.location = url;
 }
-function showflowData(response){
+function closeLinkStoreNote(){
+	$('#linkStoreWarning').hide();
+}
+function showflowData(response){ 
+	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
+	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+		if(response && response[0] && !response[0]['discrepancy']){
+			$('#linkStoreWarning').show();
+		}else{
+			$('#linkStoreWarning').hide();
+		}
+		$('#storeFilter').show();
+	}else{
+		$('#storeFilter').hide();
+	}
 	if ( $.fn.DataTable.isDataTable('#flowTable') ) {
 		  $('#flowTable').DataTable().destroy();
 		}
 	if(!response || response.length==0) {
-		response=[]
+		response=[];
+		$('#flowTable tbody').empty();
 		common.infoMessage('No Flow Available','info');
 	}else{
 		$('#flowTable tbody').empty();
 	}
-	
-	//var flowDetailsData = localStorage.getItem("flowDetailsData");
-	//var obj = JSON.parse(flowDetailsData)
 	
 	 for(var i = 0; i < response.length; i++) {
 		 var tableRow = "<tr id='div_"+(i+1)+"' class='flowDataRow'>"
@@ -119,13 +183,23 @@ function showflowData(response){
 		 			    //+"<td class='divTableCell' title ='"+((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth/1000 +" Mbps")+"'> "+ ((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth/1000 + " Mbps")+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth/1000)+"'> "+ ((response[i].maximum_bandwidth === "" || response[i].maximum_bandwidth == undefined)?"-":response[i].maximum_bandwidth/1000)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].status === "" || response[i].status == undefined)?"-":response[i].status)+"'>"+((response[i].status === "" || response[i].status == undefined)?"-":response[i].status)+"</td>"
+		 			    +"<td class='divTableCell' title ='"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"'>"+((response[i].state === "" || response[i].state == undefined)?"-":response[i].state)+"</td>"
 		 			    +"<td class='divTableCell' title ='"+((response[i].description === "" || response[i].description == undefined)?"-":response[i].description)+"'>"+((response[i].description === "" || response[i].description == undefined)?"-":response[i].description)+"</td>"
 		 			   +"<td class='divTableCell' title ='action'>";
 					   if(USER_SESSION != "" && USER_SESSION != undefined) {
 								var userPermissions = USER_SESSION.permissions;
 								if(userPermissions.includes("fw_flow_update")){
-									tableRow+="<i class='icon icon-edit' title='edit flow' onClick=goToflowDetail('"+response[i].flowid+"',true); style='margin-right:10px;'></i>";
-					 			   	
+									if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+										if(response[i]['discrepancy'] && !response[i]['discrepancy']['controller-discrepancy']){
+											tableRow+="<i class='icon icon-edit' title='edit flow' onClick=goToflowDetail('"+response[i].flowid+"',true); style='margin-right:10px;'></i>";
+									 	}else{
+									 		tableRow+="";
+										}
+										
+									}else{
+										tableRow+="<i class='icon icon-edit' title='edit flow' onClick=goToflowDetail('"+response[i].flowid+"',true); style='margin-right:10px;'></i>";
+						 			}
+									
 								}
 						}
 					   
@@ -135,11 +209,16 @@ function showflowData(response){
 		 		        } else {
 		 		        	$("#div_"+(i+1)).addClass('down-state');
 		 		        }
+		 			  if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
+		 				 if(response[i]['discrepancy'] && (response[i]['discrepancy']['status'] || response[i]['discrepancy']['bandwidth'])){
+		 					$("#div_"+(i+1)).addClass('down-status');
+		 				 }
+					 	} 
 	 }
 	 
 	 common.customDataTableSorting();
 	 
-	 var tableVar  =  $('#flowTable').DataTable( {
+	 var tableVar  =  $('#flowTable').DataTable({
 		 "iDisplayLength": 10,
 		 "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
 		  "responsive": true,
@@ -156,7 +235,7 @@ function showflowData(response){
 		                { sWidth: '8%' },
 		                { sWidth: '9%' },
 		                { sWidth: '10%' },
-		                { sWidth: '8%' },
+		                { sWidth: '8%' },{ sWidth: '8%' },
 		                { sWidth: '10%' },{ sWidth: '10%' } ]
 	 });
 	 

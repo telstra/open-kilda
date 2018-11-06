@@ -16,7 +16,7 @@
 package org.openkilda.topo;
 
 /**
- * PortQueue Identifies a queue on a port
+ * PortQueue Identifies a queue on a port.
  */
 public class PortQueue implements ITopoSlug {
 
@@ -54,20 +54,29 @@ public class PortQueue implements ITopoSlug {
 
     @Override
     public String getSlug() {
-        if (slug == null)
+        if (slug == null) {
             slug = TopoSlug.toString(this);
+        }
         return slug;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         PortQueue portQueue = (PortQueue) o;
 
-        if (priority != portQueue.priority) return false;
-        if (!parent.equals(portQueue.parent)) return false;
+        if (priority != portQueue.priority) {
+            return false;
+        }
+        if (!parent.equals(portQueue.parent)) {
+            return false;
+        }
         return id.equals(portQueue.id);
     }
 
@@ -81,10 +90,10 @@ public class PortQueue implements ITopoSlug {
 
     @Override
     public String toString() {
-        return "PortQueue{" +
-                "parent=" + parent +
-                ", id='" + id + '\'' +
-                ", priority=" + priority +
-                '}';
+        return "PortQueue{"
+                + "parent=" + parent
+                + ", id='" + id + '\''
+                + ", priority=" + priority
+                + '}';
     }
 }

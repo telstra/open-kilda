@@ -5,6 +5,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import com.github.javafaker.Faker
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
@@ -16,15 +17,15 @@ class FlowHelper {
     TopologyDefinition topology
 
     def random = new Random()
+    def faker = new Faker()
     def allowedVlans = 101..4095
-    def sdf = new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US)
 
     /**
      * Creates a FlowPayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
      * random port otherwise.
      */
     FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch) {
-        return new FlowPayload(sdf.format(new Date()), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
+        return new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
                 false, false, "autotest flow", null, null)
     }
 
@@ -38,7 +39,21 @@ class FlowHelper {
         def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
         allowedPorts = allowedPorts - srcEndpoint.portNumber //do not pick the same port as in src
         def dstEndpoint = getFlowEndpoint(sw, allowedPorts)
-        return new FlowPayload(sdf.format(new Date()), srcEndpoint, dstEndpoint, 500,
+        return new FlowPayload(generateFlowName(), srcEndpoint, dstEndpoint, 500,
+                false, false, "autotest flow", null, null)
+    }
+
+    /**
+     * Single-switch flow with random vlan. The flow will be on the same port.
+     */
+    FlowPayload singleSwitchSinglePortFlow(Switch sw) {
+        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
+        def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
+        def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber])
+        if (srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
+            dstEndpoint.vlanId--
+        }
+        return new FlowPayload(generateFlowName(), srcEndpoint, dstEndpoint, 500,
                 false, false, "autotest flow", null, null)
     }
 
@@ -69,5 +84,10 @@ class FlowHelper {
             }
         }
         return new FlowEndpointPayload(sw.dpId, port, allowedVlans[random.nextInt(allowedVlans.size())])
+    }
+
+    private String generateFlowName() {
+        return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
+                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "")
     }
 }

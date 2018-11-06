@@ -1,0 +1,45 @@
+@startuml
+title FL sync
+
+participant flN
+
+box "FL IO Kafka topics" #LightGreen
+control "FLn-write" as fl_write.kafka
+control "FLn-read" as fl_read.kafka
+end box
+
+participant "FL-router" as fl_router
+
+control kilda.topo.disco as discovery.kafka
+control speaker as speaker.kafka
+
+speaker.kafka <-] : SyncRequest
+speaker.kafka -> fl_router: SyncRequest
+
+activate fl_router
+fl_router -> fl_read.kafka: SyncRequest
+fl_read.kafka -> flN: SyncRequest
+
+fl_router -> fl_read.kafka: SyncRequest
+fl_read.kafka -> flB: SyncRequest
+
+note right of fl_router: reset switch\nto FL map(on first sync message)
+loop for managed switches
+    flN -> fl_write.kafka: SwitchSyncData
+    fl_write.kafka -> fl_router: SwitchSyncData
+    fl_router -> discovery.kafka: proxy\nSwitchSyncData
+    fl_router -> fl_router: update switch\nto FL map
+end
+note right of fl_router: determine sync\nstream end
+
+opt missing/incomplete stream from flX
+    note right of fl_router: restart sync process\nfor failed switch
+    loop for all switch on filed FL
+        fl_router -> discovery.kafka: switchUnmanagedNotification
+    end
+    fl_router -> fl_read.kafka: SyncRequest
+end
+
+deactivate fl_router
+
+@enduml

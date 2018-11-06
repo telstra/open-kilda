@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.northbound.NorthboundService;
@@ -48,7 +49,7 @@ public class CleanupSteps implements En {
         assertTrue(northboundService.getAllFlows().isEmpty());
 
         topologyDefinition.getActiveSwitches().stream()
-                .peek(sw -> northboundService.deleteSwitchRules(sw.getDpId()))
+                .peek(sw -> northboundService.deleteSwitchRules(sw.getDpId(), DeleteRulesAction.IGNORE_DEFAULTS))
                 .map(sw -> northboundService.synchronizeSwitchRules(sw.getDpId()))
                 .forEach(rulesSyncResult -> {
                     assertThat(rulesSyncResult.getExcessRules(), empty());
