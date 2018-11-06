@@ -28,6 +28,8 @@ services:
       - "7687:7687"
       - "16010:16010"
       - "16011:16011"
+    volumes:
+      - neo4j_data:/var/lib/neo4j/data
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:7474/"]
       interval: 30s
@@ -416,3 +418,4 @@ volumes:
   kafka_data:
   app_server_data:
   hbase_data:
+  neo4j_data:
