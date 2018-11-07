@@ -743,9 +743,13 @@ class MessageItem(model.JsonSerializable):
     def validate_switch_rules(self):
         diff = flow_utils.validate_switch_rules(self.payload['switch_id'],
                                                 self.payload['flows'])
-        message_utils.send_validation_rules_response(diff["missing_rules"],
-                                                     diff["excess_rules"],
-                                                     diff["proper_rules"],
+        message_utils.send_validation_rules_response(diff['rules']['missing'],
+                                                     diff['rules']['excess'],
+                                                     diff['rules']['proper'],
+                                                     diff['meters']['missing'],
+                                                     diff['meters']['misconfigured'],
+                                                     diff['meters']['excess'],
+                                                     diff['meters']['proper'],
                                                      self.correlation_id)
         return True
 

@@ -35,6 +35,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.ValidationResult;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -227,6 +228,20 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RulesValidationResult> validateRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.validateRules(switchId);
+    }
+
+    /**
+     * Validate the rules and meters installed on the switch against the flows in Neo4J.
+     *
+     * @param switchId switch to validate rules on.
+     * @return the validation details.
+     */
+    @ApiOperation(value = "Validate the rules and meters installed on the switch",
+            response = ValidationResult.class)
+    @GetMapping(path = "/{switch_id}/validate")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<ValidationResult> validate(@PathVariable(name = "switch_id") SwitchId switchId) {
+        return switchService.validate(switchId);
     }
 
     /**

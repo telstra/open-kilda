@@ -228,13 +228,17 @@ def send_dump_rules_request(switch_id, correlation_id):
                   extra=reply_to)
 
 
-def send_validation_rules_response(missing_rules, excess_rules, proper_rules,
-    correlation_id):
+def send_validation_rules_response(missing_rules, excess_rules, proper_rules, missing_meters, misconfigured_meters,
+                                   excess_meters, proper_meters, correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.info.switches.SyncRulesResponse'
     message.missing_rules = list(missing_rules)
     message.excess_rules = list(excess_rules)
     message.proper_rules = list(proper_rules)
+    message.missing_meters = list(missing_meters)
+    message.misconfigured_meters = list(misconfigured_meters)
+    message.excess_meters = list(excess_meters)
+    message.proper_meters = list(proper_meters)
     send_to_topic(message, correlation_id, MT_INFO,
                   destination="NORTHBOUND",
                   topic=config.KAFKA_NORTHBOUND_TOPIC)

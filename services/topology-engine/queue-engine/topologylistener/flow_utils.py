@@ -515,40 +515,56 @@ def validate_switch_rules(switch_id, switch_rules):
     Perform validation of provided rules against the switch flows.
     """
 
-    switch_cookies = [x['cookie'] for x in switch_rules]
+    switch_cookies_with_meters = {x['cookie']: x['instructions']['instruction_goto_meter'] for x in switch_rules}
 
     # define three types of result rules
     missing_rules = set()
     excess_rules = set()
     proper_rules = set()
 
+    # define types of result meters
+    missing_meters = set()
+    misconfigured_meters = set()
+    excess_meters = set()
+    proper_meters = set()
+
     # check whether the switch has segments' cookies
     flow_segments = get_flow_segments_by_dst_switch(switch_id)
     for segment in flow_segments:
         cookie = segment.get('cookie', segment['parent_cookie'])
 
-        if cookie not in switch_cookies:
+        if cookie not in switch_cookies_with_meters.keys():
             logger.warn('Rule %s is not found on switch %s', cookie, switch_id)
             missing_rules.add(cookie)
         else:
             proper_rules.add(cookie)
+            if switch_cookies_with_meters[cookie] is not None:
+                excess_meters.add(cookie)
 
     # check whether the switch has ingress flows (as well as one-switch flows).
     ingress_flows = get_flows_by_src_switch(switch_id)
     for flow in ingress_flows:
         cookie = flow['cookie']
+        meter_id = flow['meter_id']
 
-        if cookie not in switch_cookies:
+        if cookie not in switch_cookies_with_meters.keys():
             logger.warn("Ingress or one-switch flow %s is missing on switch %s", cookie, switch_id)
             missing_rules.add(cookie)
+            missing_meters.add(cookie)
         else:
             proper_rules.add(cookie)
+            if switch_cookies_with_meters[cookie] == meter_id:
+                proper_meters.add(cookie)
+            else:
+                misconfigured_meters.add(cookie)
 
     # check whether the switch has redundant rules, skipping the default rules.
-    for cookie in switch_cookies:
+    for (cookie, meter_id) in switch_cookies_with_meters.items():
         if cookie not in proper_rules and cookie_to_hex(cookie) not in default_rules:
             logger.warn('Rule %s is excessive on the switch %s', cookie, switch_id)
             excess_rules.add(cookie)
+            if meter_id is not None:
+                excess_meters.add(cookie)
 
     level = logging.INFO
     if missing_rules:
@@ -557,9 +573,19 @@ def validate_switch_rules(switch_id, switch_rules):
         level = logging.WARN
 
     diff = {
-        "missing_rules": missing_rules,
-        "excess_rules": excess_rules,
-        "proper_rules": proper_rules}
+        'rules': {
+            'missing': missing_rules,
+            'misconfigured': set(),
+            'excess': excess_rules,
+            'proper': proper_rules
+        },
+        'meters': {
+            'missing': missing_meters,
+            'misconfigured': misconfigured_meters,
+            'excess': excess_meters,
+            'proper': proper_meters
+        }
+    }
 
     logger.log(level, 'Switch %s rules validation result: %s', switch_id, diff)
 

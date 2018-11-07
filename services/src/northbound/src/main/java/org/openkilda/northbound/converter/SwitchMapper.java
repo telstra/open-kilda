@@ -21,9 +21,12 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.ValidationResult;
+import org.openkilda.northbound.dto.switches.ValidationResult.Diff;
 
 import org.mapstruct.Mapper;
 
+import java.util.Collections;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
@@ -37,6 +40,32 @@ public interface SwitchMapper {
     }
 
     RulesValidationResult toRulesValidationResult(SyncRulesResponse response);
+
+    /**
+     * Maps {@code}SyncRulesResponse{@code} to {@code}ValidationResult{@code}.
+     *
+     * @param response the {@code}SyncRulesResponse{@code}
+     * @return the result
+     */
+    default ValidationResult toValidationResult(SyncRulesResponse response) {
+        if (response == null) {
+            return null;
+        }
+        return new ValidationResult(
+                new Diff(
+                        response.getMissingRules(),
+                        Collections.emptyList(),
+                        response.getExcessRules(),
+                        response.getProperRules()
+                ),
+                new Diff(
+                        response.getMissingMeters(),
+                        response.getMisconfiguredMeters(),
+                        response.getExcessMeters(),
+                        response.getProperMeters()
+                )
+        );
+    }
 
     default String toSwithId(SwitchId switchId) {
         return switchId.toString();

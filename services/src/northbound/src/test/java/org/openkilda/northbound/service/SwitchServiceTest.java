@@ -71,12 +71,14 @@ public class SwitchServiceTest {
 
         // the switch has 1 excess, 1 proper and 1 missing rules
         InfoData validationResult = new SyncRulesResponse(Collections.singletonList(missingRule),
-                Collections.singletonList(properRule), Collections.singletonList(excessRule), Collections.emptyList());
+                Collections.singletonList(properRule), Collections.singletonList(excessRule), Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         messageExchanger.mockResponse(correlationId, validationResult);
 
         SyncRulesResponse rules = new SyncRulesResponse(
                 Collections.emptyList(), ImmutableList.of(properRule, missingRule),
-                Collections.singletonList(excessRule), Collections.singletonList(missingRule));
+                Collections.singletonList(excessRule), Collections.singletonList(missingRule),
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         messageExchanger.mockResponse(String.format("%s-sync", correlationId), rules);
 
         RulesSyncResult result = switchService.syncRules(switchId).get();
@@ -96,7 +98,8 @@ public class SwitchServiceTest {
 
         // the switch has 1 excess, 1 proper and no missing rules
         InfoData validationResult = new SyncRulesResponse(Collections.emptyList(),
-                Collections.singletonList(properRule), Collections.singletonList(excessRule), Collections.emptyList());
+                Collections.singletonList(properRule), Collections.singletonList(excessRule), Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         messageExchanger.mockResponse(correlationId, validationResult);
 
         RulesSyncResult result = switchService.syncRules(switchId).get();

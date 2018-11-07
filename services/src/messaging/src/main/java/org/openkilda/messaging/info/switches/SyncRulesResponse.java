@@ -39,16 +39,36 @@ public class SyncRulesResponse extends InfoData {
     @JsonProperty("installed_rules")
     private List<Long> installedRules;
 
+    @JsonProperty("missing_meters")
+    private List<Long> missingMeters;
+
+    @JsonProperty("misconfigured_meters")
+    private List<Long> misconfiguredMeters;
+
+    @JsonProperty("proper_meters")
+    private List<Long> properMeters;
+
+    @JsonProperty("excess_meters")
+    private List<Long> excessMeters;
+
     @JsonCreator
     public SyncRulesResponse(
             @JsonProperty("missing_rules") List<Long> missingRules,
             @JsonProperty("proper_rules") List<Long> properRules,
             @JsonProperty("excess_rules") List<Long> excessRules,
-            @JsonProperty("installed_rules") List<Long> installedRules) {
+            @JsonProperty("installed_rules") List<Long> installedRules,
+            @JsonProperty("missing_meters") List<Long> missingMeters,
+            @JsonProperty("misconfigured_meters") List<Long> misconfiguredMeters,
+            @JsonProperty("proper_meters") List<Long> properMeters,
+            @JsonProperty("excess_meters") List<Long> excessMeters) {
         this.missingRules = missingRules;
         this.properRules = properRules;
         this.excessRules = excessRules;
         this.installedRules = installedRules;
+        this.missingMeters = missingMeters;
+        this.misconfiguredMeters = misconfiguredMeters;
+        this.excessMeters = excessMeters;
+        this.properMeters = properMeters;
     }
 
     public SyncRulesResponse() {
@@ -56,5 +76,9 @@ public class SyncRulesResponse extends InfoData {
         this.properRules = Collections.emptyList();
         this.excessRules = Collections.emptyList();
         this.installedRules = Collections.emptyList();
+        this.missingMeters = Collections.emptyList();
+        this.misconfiguredMeters = Collections.emptyList();
+        this.excessMeters = Collections.emptyList();
+        this.properMeters = Collections.emptyList();
     }
 }

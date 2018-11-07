@@ -54,6 +54,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.ValidationResult;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -202,6 +203,19 @@ public class SwitchServiceImpl implements SwitchService {
         return messagingChannel.sendAndGet(topoEngTopic, validateCommandMessage)
                 .thenApply(SyncRulesResponse.class::cast)
                 .thenApply(switchMapper::toRulesValidationResult);
+    }
+
+    @Override
+    public CompletableFuture<ValidationResult> validate(SwitchId switchId) {
+        final String correlationId = RequestCorrelationId.getId();
+
+        CommandWithReplyToMessage validateCommandMessage = new CommandWithReplyToMessage(
+                new SwitchRulesValidateRequest(switchId),
+                System.currentTimeMillis(), correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+
+        return messagingChannel.sendAndGet(topoEngTopic, validateCommandMessage)
+                .thenApply(SyncRulesResponse.class::cast)
+                .thenApply(switchMapper::toValidationResult);
     }
 
     @Override

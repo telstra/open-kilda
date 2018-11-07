@@ -29,6 +29,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.ValidationResult;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -104,6 +105,14 @@ public interface SwitchService extends BasicService {
      * @return the validation details.
      */
     CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId);
+
+    /**
+     * Validate the rules and meters installed on the switch against the flows in Neo4J.
+     *
+     * @param switchId switch to validate rules on.
+     * @return the validation details.
+     */
+    CompletableFuture<ValidationResult> validate(SwitchId switchId);
 
     /**
      * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
