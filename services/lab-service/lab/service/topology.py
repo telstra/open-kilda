@@ -64,11 +64,6 @@ class Switch:
         for pnum in range(1, sw_def['max_port'] + 1):
             cmd.append('add-port {} {}'.format(name, pname(name, str(pnum))))
 
-        # TODO add vlan filter on tgen ports
-        # out_ports = sw_def.get('out_ports', [])
-        # for port_def in out_ports:
-        #     switch.add_port(pname(name, str(port_def['port'])), str(port_def['port']))
-
         switch.vscmd.extend(cmd)
         return switch
 
@@ -257,7 +252,7 @@ class Topology:
         for tgen in self.traffgens:
             tgen.destroy()
 
-        for _, sw in self.switches.items():
+        for sw in self.switches.values():
             sw.destroy()
         Topology.batch_switch_cmd(self.switches)
 

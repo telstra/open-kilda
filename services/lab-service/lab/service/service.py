@@ -14,6 +14,7 @@
 #
 
 import os
+import traceback
 import logging
 
 import requests
@@ -29,16 +30,25 @@ API_HOST = os.environ.get("API_HOST", 'lab-api.pendev:8288')
 
 
 def main():
-    url = "http://{}/api/{}/definition".format(API_HOST, LAB_ID)
-    topo_def = requests.get(url).json()
-    topo = Topology.create(topo_def)
+    base_url = "http://{}/api/{}/".format(API_HOST, LAB_ID)
+    definition_url = base_url + 'definition'
+    activate_url = base_url + 'activate'
 
-    logger.info("Running topology")
-    topo.run()
+    try:
+        topo_def = requests.get(definition_url).json()
+        topo = Topology.create(topo_def)
 
-    logger.info("Running rest server")
-    lockkeeper_app = init_app(topo.switches)
-    lockkeeper_proc = run_process(lambda: lockkeeper_app.run('0.0.0.0', 5001))
+        logger.info("Running topology")
+        topo.run()
+
+        logger.info("Running rest server")
+        lockkeeper_app = init_app(topo.switches)
+        lockkeeper_proc = run_process(lambda: lockkeeper_app.run('0.0.0.0', 5001))
+    except Exception as ex:
+        requests.post(activate_url, json={'error': traceback.format_exc()})
+        raise ex
+
+    requests.post(activate_url, json={})
 
     def teardown():
         logger.info("Terminating...")

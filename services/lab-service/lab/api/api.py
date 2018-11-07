@@ -18,6 +18,7 @@ from docker import DockerClient
 import requests
 import logging
 import itertools
+from threading import Event
 from urllib.parse import urlparse
 import os
 from common import init_logger, run_thread, loop_forever
@@ -33,8 +34,8 @@ if SELF_CONTAINER_ID:
     LAB_SERVICE_IMAGE = os.environ.get("LAB_SERVICE_IMAGE", SELF_CONTAINER.image.tags[0])
     NETWORK_NAME = list(SELF_CONTAINER.attrs['NetworkSettings']['Networks'].keys())[0]
 else:
-    logger.warn("Seems like lab-api isn't running inside container. "
-                "It's required to create virtual topologies properly")
+    logger.warning("Seems like lab-api isn't running inside container. "
+                   "It's required to create virtual topologies properly")
 
 HW_LOCKKEEPER_REST_HOST = os.environ.get("HW_LOCKKEEPER_REST_HOST")
 
@@ -52,11 +53,17 @@ class Lab:
         self.lab_def = lab_def
         self.lab_id = lab_id
 
+        self.activated = Event()
+        self.error = None
+
         self.tgens = {}
         for tgen_def in lab_def.get('active_traff_gens', []):
             self.tgens[tgen_def['name']] = urlparse(tgen_def['control_endpoint'])
 
-        if lab_id != HW_LAB_ID:
+        if lab_id == HW_LAB_ID:
+            # HW lab doesn't require activation
+            self.activated.set()
+        else:
             name = make_container_name(lab_id)
             env = {'LAB_ID': lab_id}
             volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'}}
@@ -67,9 +74,12 @@ class Lab:
     def destroy(self):
         if self.lab_id != HW_LAB_ID:
             logger.debug('Destroying lab with id %s' % self.lab_id)
-            cnt = docker.containers.get(make_container_name(self.lab_id))
-            cnt.stop()
-            cnt.remove()
+            try:
+                cnt = docker.containers.get(make_container_name(self.lab_id))
+                cnt.stop()
+                cnt.remove()
+            except Exception as ex:
+                logger.exception(ex)
 
 
 @app.route('/api/', methods=['GET'])
@@ -89,10 +99,17 @@ def create_lab():
                 return jsonify({'lab_id': HW_LAB_ID})
 
         lab_id = next(count)
-        labs[lab_id] = Lab(lab_id, request.get_json())
+        lab = Lab(lab_id, request.get_json())
+        labs[lab_id] = lab
+
+        lab.activated.wait()
+        if lab.error:
+            del labs[lab_id]
+            return Response(lab.error, status=500)
     except Exception as ex:
         logger.exception(ex)
         return Response(str(ex), status=500)
+
     return jsonify({'lab_id': lab_id})
 
 
@@ -107,6 +124,20 @@ def delete_lab(lab_id):
     except Exception as ex:
         logger.exception(ex)
         return Response(str(ex), status=500)
+
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/api/<int:lab_id>/activate', methods=['POST'])
+def activate_lab(lab_id):
+    if lab_id not in labs:
+        return Response('No lab with id %d' % lab_id, status=404)
+
+    data = request.get_json()
+    lab = labs[lab_id]
+    if 'error' in data:
+        lab.error = data['error']
+    lab.activated.set()
 
     return jsonify({'status': 'ok'})
 
@@ -162,9 +193,6 @@ def main():
         logger.info('Terminating...')
 
         for lab in labs.values():
-            try:
-                lab.destroy()
-            except Exception as e:
-                logger.exception(e)
+            lab.destroy()
         server_th.terminate()
     loop_forever(teardown)
