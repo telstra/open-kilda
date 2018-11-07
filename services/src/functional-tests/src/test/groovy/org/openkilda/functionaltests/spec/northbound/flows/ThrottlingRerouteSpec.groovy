@@ -4,6 +4,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -32,6 +33,7 @@ is issued during 'reroute.delay' the timer is refreshed.
 System should stop refreshing the timer if 'reroute.hardtimeout' is reached and perform all the queued reroutes (unique 
 for each flowId).
 """)
+@CleanupSwitches
 class ThrottlingRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology

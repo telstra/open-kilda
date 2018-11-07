@@ -4,6 +4,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -25,6 +26,7 @@ import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
+@CleanupSwitches
 class AutoRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology

@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.northbound.flows
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -23,6 +24,7 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 @Slf4j
+@CleanupSwitches
 class FlowCrudSpec extends BaseSpecification {
 
     @Autowired

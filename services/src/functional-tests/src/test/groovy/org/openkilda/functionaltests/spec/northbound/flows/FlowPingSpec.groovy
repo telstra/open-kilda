@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -35,6 +36,7 @@ This spec tests all the functionality related to flow pings.
 Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 
 be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
 """)
+@CleanupSwitches
 class FlowPingSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
