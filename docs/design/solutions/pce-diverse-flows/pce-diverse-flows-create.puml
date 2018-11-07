@@ -1,0 +1,66 @@
+@startuml
+title Ability to create diverse flows
+
+participant Client
+participant NB
+participant FlowTopology as Storm
+participant "PathComputer" as Computer
+database "Neo4J" as DB
+participant "AvailableNetwork" as Network
+participant "DiverseProcessor" as Processor
+participant IntersectionComputer
+
+activate Client
+Client -> NB: create diverse flow
+activate Storm
+NB -> Storm: create flow
+
+group Get AvailableNetwork
+    Storm -> Computer: getAvailableNetwork
+    activate Computer
+    Computer -> DB: get active links
+    DB --> Computer
+    create Network
+    Computer -> Network: create from retrieved links
+    Network --> Computer
+    Computer --> Storm: AvailableNetwork
+    deactivate Computer
+end
+
+Storm -> DB: get diverse flow by id
+alt diverse flow "flow group" property is not defined
+   Storm -> DB: create FlowGroup
+   Storm -> DB: add "flow group" id to diverse flow
+end
+
+Storm -> DB: get all flow segments for flows with the "flow group" id
+DB --> Storm: diverse flow segments
+
+Storm -> Processor: process AvailableNetwork with diverse flow segments
+Processor -> Network: Update link costs
+Processor --> Storm: Updated AvailableNetwork
+
+group Find path
+    Storm -> Computer: getPathWithAvailableNetwork
+    activate Computer
+    Computer -> Computer: PathFinder.findPathInNetwork
+    Computer --> Storm: computed PathPair
+    deactivate Computer
+end
+
+alt path found
+    Storm -> DB: create new flow with "flow group" id
+    Storm -> IntersectionComputer: get intersection counts by ISLs and switches in flow group
+    Storm -> DB: save intersection counts in FlowGroup
+    Storm --> NB: computed FlowPair
+    NB --> Client: Flow Response
+
+else path don't found
+   Storm --> NB: Creation error
+   NB --> Client: Creation error
+end
+
+deactivate Storm
+deactivate Client
+
+@enduml
