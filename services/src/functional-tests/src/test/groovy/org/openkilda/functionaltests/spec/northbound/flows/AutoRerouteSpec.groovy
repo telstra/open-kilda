@@ -72,7 +72,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Revive the ISL back (bring switch port up) and delete the flow"
         northboundService.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
@@ -110,7 +110,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Restore topology to the original state, remove the flow"
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -144,8 +144,8 @@ class AutoRerouteSpec extends BaseSpecification {
         and: "Connect the intermediate switch back and delete the flow"
         lockKeeperService.reviveSwitch(flowPath[1].switchId)
         Wrappers.wait(WAIT_OFFSET) { flowPath[1].switchId in northboundService.getActiveSwitches()*.switchId }
-        northboundService.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS)
-        northboundService.deleteFlow(flow.id)
+        northboundService.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
@@ -179,7 +179,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         and: "Remove the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -235,7 +235,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Restore topology to the original state, remove the flow"
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -282,7 +282,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Bring port involved in the original path up and delete the flow"
         northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -334,7 +334,7 @@ class AutoRerouteSpec extends BaseSpecification {
         disconnectedSwitches.each {
             northboundService.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS)
         }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
@@ -374,7 +374,7 @@ class AutoRerouteSpec extends BaseSpecification {
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
@@ -408,7 +408,7 @@ class AutoRerouteSpec extends BaseSpecification {
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
     }
 
     def singleSwitchFlow() {

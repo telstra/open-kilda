@@ -35,7 +35,7 @@ class PathHelper {
     void makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
         def islToAvoid = getInvolvedIsls(lessPreferablePath).find { !morePreferableIsls.contains(it) }
-        log.debug "isl to avoid: $islToAvoid"
+        log.debug "ISL to avoid: $islToAvoid"
         if (!islToAvoid) {
             throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
         }
@@ -72,7 +72,9 @@ class PathHelper {
             def involvedIsl = topology.isls.find(matchingIsl) ?:
                     topology.isls.collect { islUtils.reverseIsl(it) }.find(matchingIsl) ?:
                             Isl.factory(topology.switches.find { it.dpId == src.switchId },
-                                    src.portNo, topology.switches.find { it.dpId == dst.switchId }, dst.portNo, 0, null)
+                                    src.portNo, topology.switches.find {
+                                it.dpId == dst.switchId
+                            }, dst.portNo, 0, null)
             involvedIsls << involvedIsl
         }
         return involvedIsls

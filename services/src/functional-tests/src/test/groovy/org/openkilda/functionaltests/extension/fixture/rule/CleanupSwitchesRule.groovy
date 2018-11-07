@@ -38,8 +38,8 @@ class CleanupSwitchesRule extends AbstractRuleExtension<CleanupSwitches> {
         } catch (WaitTimeoutException e) {
             //TODO(rtretiak): Not able to deal with randomly appearing rules from previous tests at this point.
             //Waiting for new Kilda patch with Hub&Spoke features
-            log.warn("Switches do not appear to be cleaned at the end of the test. Force cleaning switches." +
-                    "\nOriginal error:\n$e")
+            log.warn("Switches do not appear to be cleaned at the end of the test. Force switches cleanup." +
+                    "\n\nOriginal error:\n\n$e")
             topology.activeSwitches.each { sw ->
                 northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
             }
