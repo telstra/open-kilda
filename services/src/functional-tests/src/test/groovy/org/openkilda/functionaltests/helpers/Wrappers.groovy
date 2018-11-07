@@ -18,7 +18,7 @@ class Wrappers {
      * @throws MultipleFailureException if closure fails to execute in given amount of tries.
      */
     def static retry(int times = 5, double retryInterval = 2, Closure handler = { e -> log.debug("retry failed", e) },
-            Closure body) {
+                     Closure body) {
         int retries = 0
 
         List<Throwable> ex = []
@@ -64,7 +64,7 @@ class Wrappers {
         }
         def message = "Condition was not satisfied within $timeout seconds"
         if (thrown) {
-            message += ". Failed with exception: $thrown"
+            message += ". Failed with exception:\n\n$thrown"
         }
         throw new WaitTimeoutException(message)
     }
