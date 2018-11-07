@@ -1,0 +1,75 @@
+@startuml
+title Ability to create diverse flows
+
+participant Client
+participant NB
+participant FlowTopology as Storm
+participant "PathComputer" as Computer
+participant "AvailableNetwork" as Network
+database "Neo4J" as DB
+
+activate Client
+Client -> NB: create diverse flow
+activate Storm
+NB -> Storm: create flow
+Storm -> DB: get diverse with flow by id
+
+alt diverse with flow has flow group
+    Storm -> DB: get flows with the same flow group
+    DB --> Storm: diverse with flows
+
+else flow group is not defined
+   Storm -> DB: create FlowGroup with most strict strategy
+   Storm -> DB: add flow group id to diverse with flow
+end
+
+group Get AvailableNetwork
+    Storm -> Computer: getAvailableNetwork
+    activate Computer
+    Computer -> DB: get active links
+    DB --> Computer
+    create Network
+    Computer -> Network: create from retrieved links
+    Network --> Computer
+    Computer --> Storm: AvailableNetwork
+    deactivate Computer
+end
+
+Storm -> Network: excludeSwitches() with flows used ISLs
+
+group Find path
+    Storm -> Computer: getPathWithAvailableNetwork
+    activate Computer
+    Computer -> Computer: PathFinder.findPathInNetwork
+    Computer --> Storm: computed PathPair
+    deactivate Computer
+end
+
+alt path don't exists (try diverse by ISL)
+    Storm -> Network: excludeIsls() with flows used ISLs
+    note right of Storm
+        Repeat "Find path" with new AvailableNetwork
+    end note
+
+else path don't exists (try to find partial diverse path)
+    Storm -> Network: increase weights for ISL used by diverse flows
+    note right of Storm
+        Repeat "Find path" with new AvailableNetwork
+    end note
+end
+
+alt path found
+    Storm -> DB: update FlowGroup with computation strategy
+    Storm -> DB: create new flow with flow group id
+    Storm --> NB: computed FlowPair
+    NB --> Client: Flow Response
+
+else path don't found
+   Storm --> NB: Creation error
+   NB --> Client: Creation error
+end
+
+deactivate Storm
+deactivate Client
+
+@enduml
