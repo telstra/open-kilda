@@ -25,7 +25,6 @@ import java.util.TreeSet;
 
 /**
  * Concrete representation of a Topology.
- *
  * It is a combination of it's raw elements as well as its graph representation
  */
 @Value

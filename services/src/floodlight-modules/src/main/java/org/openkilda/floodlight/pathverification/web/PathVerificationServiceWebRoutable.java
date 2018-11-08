@@ -15,8 +15,9 @@
 
 package org.openkilda.floodlight.pathverification.web;
 
-import net.floodlightcontroller.restserver.RestletRoutable;
 import org.openkilda.floodlight.utils.RequestCorrelationFilter;
+
+import net.floodlightcontroller.restserver.RestletRoutable;
 import org.restlet.Context;
 import org.restlet.Restlet;
 import org.restlet.routing.Filter;
@@ -28,6 +29,12 @@ public class PathVerificationServiceWebRoutable implements RestletRoutable {
         return "/wm/pathverification";
     }
 
+    /**
+     * Gets Restlet from the context.
+     *
+     * @param context the context.
+     * @return the Restlet object.
+     */
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
         router.attach("/discover/send_packet/{src_switch}/{src_port}", PathDiscover.class);

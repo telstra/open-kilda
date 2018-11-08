@@ -4,6 +4,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -18,6 +19,7 @@ import org.openkilda.testing.tools.IslUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 
+@CleanupSwitches
 class BandwidthSpec extends BaseSpecification {
 
     @Autowired

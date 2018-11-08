@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.config;
 
+import org.openkilda.testing.tools.ExtendedErrorHandler;
 import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -60,6 +61,14 @@ public class DefaultServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
+    @Bean(name = "elasticSearchRestTemplate")
+    public RestTemplate elasticSearchRestTemplate(
+            @Value("${elasticsearch.endpoint}") String endpoint,
+            @Value("${elasticsearch.username}") String username,
+            @Value("${elasticsearch.password}") String password) {
+        return buildRestTemplateWithAuth(endpoint, username, password);
+    }
+
     @Bean(name = "traffExamRestTemplate")
     public RestTemplate traffExamRestTemplate() {
         return buildLoggingRestTemplate();
@@ -96,6 +105,7 @@ public class DefaultServiceConfig {
                 new HttpComponentsClientHttpRequestFactory()));
         List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
         interceptors.add(new LoggingRequestInterceptor());
+        restTemplate.setErrorHandler(new ExtendedErrorHandler());
         return restTemplate;
     }
 

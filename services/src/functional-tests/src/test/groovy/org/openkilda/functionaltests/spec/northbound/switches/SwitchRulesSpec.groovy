@@ -35,10 +35,10 @@ class SwitchRulesSpec extends BaseSpecification {
         def sw = topology.getActiveSwitches().first()
         def defaultRulesSorted = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
         northboundService.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
 
         lockKeeperService.knockoutSwitch(sw.dpId)
-        assert Wrappers.wait(WAIT_OFFSET) { !(sw.dpId in northboundService.getActiveSwitches()*.switchId) }
+        Wrappers.wait(WAIT_OFFSET) { assert !(sw.dpId in northboundService.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch to the controller"
         lockKeeperService.reviveSwitch(sw.dpId)
@@ -77,18 +77,18 @@ class SwitchRulesSpec extends BaseSpecification {
 
         def flow = flowHelper.singleSwitchFlow(sw)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         def allRulesSorted = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
         assert allRulesSorted.size() > defaultRulesSorted.size()
 
         lockKeeperService.knockoutSwitch(sw.dpId)
-        assert Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
         northboundService.deleteFlow(flow.id)
-        assert Wrappers.wait(WAIT_OFFSET) { !(flow.id in northboundService.getAllFlows()*.id) }
+        Wrappers.wait(WAIT_OFFSET) { assert !(flow.id in northboundService.getAllFlows()*.id) }
 
         when: "Connect the switch to the controller"
         lockKeeperService.reviveSwitch(sw.dpId)

@@ -37,7 +37,6 @@ import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.event.OFEventWfmTopologyConfig;
 import org.openkilda.wfm.topology.event.OfEventWfmTopology;
 import org.openkilda.wfm.topology.event.OfeLinkBolt;
-import org.openkilda.wfm.topology.utils.KafkaFilerTopology;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
@@ -73,7 +72,6 @@ public class OfEventWfmTest extends AbstractStormTest {
     private long messagesExpected;
     private long messagesReceived;
     private static OfEventWfmTopology manager;
-    private static KafkaFilerTopology discoFiler;
 
     @Mock
     private TopologyContext topologyContext;
@@ -94,9 +92,6 @@ public class OfEventWfmTest extends AbstractStormTest {
         LaunchEnvironment env = makeLaunchEnvironment(overlay);
         manager = new OfEventWfmTopology(env);
         cluster.submitTopology(manager.getTopologyName(), stormConfig(), manager.createTopology());
-
-        discoFiler = new KafkaFilerTopology(env, manager.getConfig().getKafkaTopoDiscoTopic());
-        cluster.submitTopology("utils-1", stormConfig(), discoFiler.createTopology());
 
         Utils.sleep(5 * 1000);
         ////////
@@ -152,7 +147,8 @@ public class OfEventWfmTest extends AbstractStormTest {
         Utils.sleep(4 * 1000);
 
         messagesExpected = 8; // at present, everything is passed through, no filter.
-        messagesReceived = safeLinesCount(discoFiler.getFiler().getFile());
+        // FIXME(surabujin): if this test will be restored, discoFiller usage must be replaced with TestKafkaConsumer
+        // messagesReceived = safeLinesCount(discoFiler.getFiler().getFile());
         Assert.assertEquals(messagesExpected, messagesReceived);
 
         Utils.sleep(1 * 1000);
@@ -164,12 +160,12 @@ public class OfEventWfmTest extends AbstractStormTest {
         Utils.sleep(2 * 1000);
 
         // TODO: how can we programmatically determine how many ISL messages should be generated?
-        messagesReceived = safeLinesCount(discoFiler.getFiler().getFile());
+        // messagesReceived = safeLinesCount(discoFiler.getFiler().getFile());
         if (messagesReceived == 0) {
             System.out.println("Message count failure; NO MESSAGES RECEIVED!");
-            for (String s : Files.readLines(discoFiler.getFiler().getFile(), Charsets.UTF_8)) {
-                System.out.println("\t\t > " + s);
-            }
+            // for (String s : Files.readLines(discoFiler.getFiler().getFile(), Charsets.UTF_8)) {
+            //     System.out.println("\t\t > " + s);
+            // }
 
         }
         // NB: ISL discovery messages will be generated .. multiple .. at present 9-11.

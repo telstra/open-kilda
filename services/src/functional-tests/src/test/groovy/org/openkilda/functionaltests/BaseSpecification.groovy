@@ -1,14 +1,11 @@
 package org.openkilda.functionaltests
 
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.floodlight.FloodlightService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -50,22 +47,23 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
     }
 
     @HealthCheck
-    def "Given hardware topology is suitable for running the test suite"() {
-        requireProfiles("hardware")
+    def "Kilda is UP and topology is clean"() {
+        expect: "Kilda's health check request is successful"
+        northbound.getHealthCheck().components["kafka"] == "operational"
 
-        expect: "Topology and overall kilda state are suitable for running further test suite"
+        and: "All switches and links are active. No flows and link props are present"
         def links = northbound.getAllLinks()
         verifyAll {
             northbound.activeSwitches.size() == topologyDefinition.activeSwitches.size()
-            northbound.allFlows.empty
-            northbound.allLinkProps.empty
+            links.findAll { it.state == IslChangeType.FAILED }.empty
             links.findAll {
                 it.state == IslChangeType.DISCOVERED
             }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
-            links.findAll { it.state == IslChangeType.FAILED }.empty
+            northbound.allFlows.empty
+            northbound.allLinkProps.empty
         }
 
-        and: "More detailed inspection also reports no issues"
+        and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
         verifyAll {
             links.findAll { it.availableBandwidth != it.speed }.empty
             topologyDefinition.activeSwitches.findAll {
@@ -75,24 +73,6 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
             topologyDefinition.activeSwitches.findAll {
                 it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).isEmpty()
             }.empty
-        }
-    }
-
-    @HealthCheck
-    def "Create casual flow to ensure Kilda's up state"() {
-        requireProfiles("virtual")
-
-        when: "Create a flow"
-        def flow = flowHelper.randomFlow(topologyDefinition.activeSwitches[0], topologyDefinition.activeSwitches[1])
-        northbound.addFlow(flow)
-
-        then: "Flow switches to UP state in a reasonable amount of time"
-        Wrappers.wait(WAIT_OFFSET * 3) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
-
-        and: "remove the flow"
-        northbound.deleteFlow(flow.id)
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.getAllLinks().every { it.availableBandwidth == it.speed }
         }
     }
 }

@@ -26,6 +26,7 @@ import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
@@ -41,9 +42,16 @@ import java.util.concurrent.TimeUnit;
 public class FlowResource extends ServerResource {
     private static final Logger logger = LoggerFactory.getLogger(FlowResource.class);
 
+    /**
+     * Installing flow.
+     *
+     * @param json the json from request.
+     * @return json response.
+     * @throws JsonProcessingException if response can't be wrote to string.
+     */
     @Post("json")
     @Put("json")
-    public String installFlow(String json) throws IOException {
+    public String installFlow(String json) throws JsonProcessingException {
         ISwitchManager switchManager = (ISwitchManager) getContext().getAttributes()
                 .get(ISwitchManager.class.getCanonicalName());
 

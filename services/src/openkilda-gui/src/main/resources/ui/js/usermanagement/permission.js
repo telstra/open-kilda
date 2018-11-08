@@ -48,6 +48,8 @@ var permissionService = (function() {
                 permissionService.getPermissions().then(function(allPermissions) {
                     if (allPermissions && allPermissions.length) {                    	
                         permissionService.showAllPermissions(allPermissions);
+                    }else{
+                    	 permissionService.showAllPermissions(allPermissions);
                     }
                 });
                 common.infoMessage('Permission updated successfully.', 'success');
@@ -68,6 +70,8 @@ var permissionService = (function() {
                 permissionService.getPermissions().then(function(allPermissions) {
                     if (allPermissions && allPermissions.length) {                       
                         permissionService.showAllPermissions(allPermissions);
+                    }else{
+                    	 permissionService.showAllPermissions(allPermissions);
                     }
                 });
                 common.infoMessage('Permission added successfully.', 'success');
@@ -91,6 +95,7 @@ var permissionService = (function() {
     /*** Show all Permission list ***/
     function showAllPermissions(response) {
         var tableRowData = [];
+        $("#loading").css("display", "none");
         if (!response || response.length == 0) {
             response = []
             common.infoMessage('No Users Available', 'info');
@@ -115,7 +120,7 @@ var permissionService = (function() {
                 "<i title='View Roles' class='fa icon-user' onClick='permissionService.viewRolesByPermissionId(" + response[i].permission_id + ")' permission='um_permission_view_roles'></i>" +
                 "<i title='" + toogle_text + "' onclick='openConfirmationModal(" + response[i].permission_id + ",\"activePermission\"," + status + ")' class='fa cursor-pointer " + f_btn + "' permission='um_permission_activate'></i>";
             if (response[i].isEditable && response[i].isEditable == true) {
-                tableCol3 += "<i title='Delete' class='fa icon-trash' onclick='openConfirmationModal(" + response[i].permission_id + ", \"deletePermission\")' permission='um_permission_delete'></i>";
+               // tableCol3 += "<i title='Delete' class='fa icon-trash' onclick='openConfirmationModal(" + response[i].permission_id + ", \"deletePermission\")' permission='um_permission_delete'></i>";
             }
             tableCol3 += "</td>";
             //$("#permissionTable").append(tableRow);
@@ -174,7 +179,6 @@ var permissionService = (function() {
                 }
             });
         });
-        $("#loading").css("display", "none");
         $('#permissionForm').hide();
         $('#permissionTabData').show();
         $('#permissionTable').show();
@@ -359,6 +363,8 @@ var permissionService = (function() {
                 permissionService.getPermissions().then(function(allPermissions) {
                     if (allPermissions && allPermissions.length) {                        
                         permissionService.showAllPermissions(allPermissions);
+                    }else{
+                    	 permissionService.showAllPermissions(allPermissions);
                     }
                 });
                 common.infoMessage('Role assigned successfully.', 'success');
@@ -383,6 +389,8 @@ var permissionService = (function() {
                 permissionService.getPermissions().then(function(allPermissions) {
                     if (allPermissions && allPermissions.length) {                        
                         permissionService.showAllPermissions(allPermissions);
+                    }else{
+                    	 permissionService.showAllPermissions(allPermissions);
                     }
                 });
                 common.infoMessage('Permission removed successfully.', 'success');
@@ -419,6 +427,8 @@ var permissionService = (function() {
             permissionService.getPermissions().then(function(allPermissions) {
                 if (allPermissions && allPermissions.length) {                    
                     permissionService.showAllPermissions(allPermissions);
+                }else{
+                	 permissionService.showAllPermissions(allPermissions);
                 }
             });
 

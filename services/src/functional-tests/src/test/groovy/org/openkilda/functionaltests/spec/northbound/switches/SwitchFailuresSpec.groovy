@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.northbound.switches
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
+@CleanupSwitches
 class SwitchFailuresSpec extends BaseSpecification {
     @Value('${spring.profiles.active}')
     String profile
@@ -53,12 +55,12 @@ class SwitchFailuresSpec extends BaseSpecification {
         requireProfiles("virtual")        
     }
 
-    def "ISL is still able to properly fail even after switches where reconnected"() {
+    def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
         northboundService.addFlow(flow)
-        assert Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Two neighbouring switches of the flow go down simultaneously"
         lockKeeperService.knockoutSwitch(isl.srcSwitch.dpId)
@@ -81,7 +83,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         and: "ISL fails after discovery timeout"
         //TODO(rtretiak): adding big error of 7 seconds. This is an abnormal behavior, currently investigating
         Wrappers.wait(untilIslShouldFail() / 1000 + 7) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
         //depends whether there are alt paths available
@@ -89,7 +91,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
         Wrappers.wait(WAIT_OFFSET) {
             def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
-            !pathHelper.getInvolvedIsls(currentPath).contains(isl) ||
+            assert !pathHelper.getInvolvedIsls(currentPath).contains(isl) ||
                     northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
@@ -98,7 +100,7 @@ class SwitchFailuresSpec extends BaseSpecification {
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
         northboundService.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -121,10 +123,10 @@ class SwitchFailuresSpec extends BaseSpecification {
 
         then: "Flow is up and valid"
         Wrappers.wait(WAIT_OFFSET) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.UP &&
-                    northboundService.validateFlow(flow.id).every { direction ->
-                        direction.discrepancies.findAll { it.field != "meterId" }.empty
-                    }
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            northboundService.validateFlow(flow.id).each { direction ->
+                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
+            }
         }
 
         and: "Rules are valid on the knocked out switch"

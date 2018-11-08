@@ -44,7 +44,6 @@ MT_FLOW_INFODATA = "org.openkilda.messaging.info.flow.FlowInfoData"
 MT_FLOW_RESPONSE = "org.openkilda.messaging.info.flow.FlowResponse"
 MT_VALID_REQUEST = "org.openkilda.messaging.command.switches.SwitchRulesValidateRequest"
 MT_SYNC_REQUEST = "org.openkilda.messaging.command.switches.SwitchRulesSyncRequest"
-MT_NETWORK = "org.openkilda.messaging.info.discovery.NetworkInfoData"
 MT_SWITCH_RULES = "org.openkilda.messaging.info.rule.SwitchFlowEntries"
 MT_ERROR_SWITCH_RULES = "org.openkilda.messaging.error.rule.DumpRulesErrorData"
 #feature toggle is the functionality to turn off/on specific features
@@ -53,7 +52,6 @@ MT_TOGGLE = "org.openkilda.messaging.command.system.FeatureToggleRequest"
 MT_NETWORK_TOPOLOGY_CHANGE = (
     "org.openkilda.messaging.info.event.NetworkTopologyChange")
 CD_NETWORK = "org.openkilda.messaging.command.discovery.NetworkCommandData"
-CD_FLOWS_SYNC_REQUEST = 'org.openkilda.messaging.command.FlowsSyncRequest'
 CD_LINK_PROPS_PUT = 'org.openkilda.messaging.te.request.LinkPropsPut'
 CD_LINK_PROPS_DROP = 'org.openkilda.messaging.te.request.LinkPropsDrop'
 
@@ -192,10 +190,6 @@ class MessageItem(model.JsonSerializable):
 
             elif self.get_message_type() == MT_FLOW_INFODATA:
                 event_handled = self.flow_operation()
-
-            elif self.get_command() == CD_FLOWS_SYNC_REQUEST:
-                self.handle_flow_topology_sync()
-                event_handled = True
 
             elif self.get_message_type() == MT_STATE_TOGGLE:
                 event_handled = self.get_feature_toggle_state()
@@ -715,16 +709,6 @@ class MessageItem(model.JsonSerializable):
         except Exception as e:
             logger.exception('FAILED to get ISLs from the DB ', e.message)
             raise
-
-    def handle_flow_topology_sync(self):
-        payload = {
-            'switches': [],
-            'isls': [],
-            'flows': flow_utils.get_flows(),
-            'clazz': MT_NETWORK}
-        message_utils.send_to_topic(
-            payload, self.correlation_id, message_utils.MT_INFO,
-            destination="WFM_FLOW_LCM", topic=config.KAFKA_FLOW_TOPIC)
 
     def get_feature_toggle_state(self):
         payload = message_utils.make_features_status_response()

@@ -25,13 +25,19 @@ $(document).ready(function(){
 	}
 	$(document).on("click","#flow-list",function(e){ 
 		var FLOWS_LIST = storage.get('FLOWS_LIST');
-		if(FLOWS_LIST){
+		if(FLOWS_LIST && FLOWS_LIST.length){
 			showflowData(FLOWS_LIST);
 		}else{
 			var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
 			var filters = '';
 			if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
-				filters="active";
+				filters = $('input[name="filterStatus[]"]:checked').map(function(){
+					return $(this).val();
+				}).get().join();
+				if(filters == '' || filters == null){
+					filters = "active";
+					$('#activeFilter').prop('checked',"checked");
+				}
 			}
 			flows(filters);
 		}
@@ -106,7 +112,7 @@ function flows(filters){
 	}
 	
 	common.getData("/flows/list"+query,"GET").then(function(response) {
-		$("#loading").css("display", "none");console.log('i m here');
+		$("#loading").css("display", "none");
 		$('body').css('pointer-events','all'); 
 		showflowData(response);
 		storage.set("FLOWS_LIST",response);
@@ -142,7 +148,7 @@ function goToflowDetail(flowid,isEdit){
 function closeLinkStoreNote(){
 	$('#linkStoreWarning').hide();
 }
-function showflowData(response){ console.log('response',response)
+function showflowData(response){ 
 	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
 	if(typeof(hasStoreSetting)!='undefined' && typeof(hasStoreSetting)!=null && hasStoreSetting == "true"){
 		if(response && response[0] && !response[0]['discrepancy']){
@@ -158,7 +164,8 @@ function showflowData(response){ console.log('response',response)
 		  $('#flowTable').DataTable().destroy();
 		}
 	if(!response || response.length==0) {
-		response=[]
+		response=[];
+		$('#flowTable tbody').empty();
 		common.infoMessage('No Flow Available','info');
 	}else{
 		$('#flowTable tbody').empty();

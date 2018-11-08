@@ -20,8 +20,9 @@ import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.assertThat;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
-import org.junit.Test;
 import org.openkilda.northbound.utils.RequestCorrelationId.RequestCorrelationClosable;
+
+import org.junit.Test;
 
 import java.util.UUID;
 

@@ -12,6 +12,8 @@ function reloadTabData(link, self, activeLink) {
             if (userData && userData.length) {               
                 userService.showAllUsers(userData);
                 //hasPermission();
+            }else{
+            	 userService.showAllUsers(userData);
             }
         });
         activeLink = 'user';
@@ -24,6 +26,8 @@ function reloadTabData(link, self, activeLink) {
             if (roleData && roleData.length) {                
                 roleService.showAllRoles(roleData);
                 //hasPermission();
+            }else{                
+                roleService.showAllRoles(roleData);
             }
         });
         activeLink = 'role';
@@ -36,6 +40,8 @@ function reloadTabData(link, self, activeLink) {
             if (permissionData && permissionData.length) {                
                 permissionService.showAllPermissions(permissionData);
                 // hasPermission();
+            }else{
+            	 permissionService.showAllPermissions(permissionData);
             }
         });
         activeLink = 'permission';
@@ -45,12 +51,15 @@ function reloadTabData(link, self, activeLink) {
 $(document).ready(function() {	    
 	
     $("#userTab").load('ui/templates/usermanagement/userList.html');
-    $("#user-details").html('');
-    userService.getUsers().then(function(userData) {
+    $("#user-details").html(''); 
+    userService.getUsers().then(function(userData) { 
         if (userData && userData.length) {           
             userService.showAllUsers(userData);
             //hasPermission();
+        }else{
+        	userService.showAllUsers(userData);
         }
+    },function(error){
     });
     // add user model
     $(document).on('click', "#addUserBtn", function() {
@@ -106,6 +115,7 @@ $(document).ready(function() {
         /*Clear input fields*/
 
         document.roleForm.rname.value = '';
+        document.roleForm.rname.disabled = false;
         document.roleForm.description.value = '';
         $("#role_id").parent().remove(); //remove existing hidden permission id inpu
         $("#addRoleForm #add_update_btn").text("Add Role");
