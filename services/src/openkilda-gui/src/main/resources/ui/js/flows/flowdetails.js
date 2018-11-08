@@ -135,9 +135,9 @@ function callResyncFlow(flow_id){
 function showFlowData(obj) { 
 	var hasStoreSetting = localStorage.getItem('haslinkStoreSetting');
 	$(".flow_div_flow_id").html(obj.flowid);
-	$(".flow_div_source_switch").html(obj["source_switch_name"]);
+	$(".flow_div_source_switch").html(obj["source_switch"]);
 	$(".flow_div_source_port").html(obj["src_port"]);
-	$(".flow_div_source_switch_name").html(obj["source_switch"]);
+	$(".flow_div_source_switch_name").html(obj["source_switch_name"]);
 	$(".flow_div_source_vlan").html(obj["src_vlan"]);	
 	$(".flow_div_destination_switch").html(obj["target_switch"]);
 	$(".flow_div_destination_port").html(obj["dst_port"]);
