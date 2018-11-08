@@ -186,6 +186,17 @@ def traffgen_proxy(lab_id, tg_name, to_path):
         return Response(str(ex), status=500)
 
 
+@app.route('/api/flush', methods=['POST'])
+def flush_labs_api():
+    global labs
+
+    for lab in labs.values():
+        lab.destroy()
+    keys = [k for k in labs.keys()]
+    labs = {}
+    return jsonify(keys)
+
+
 def main():
     server_th = run_thread(lambda: app.run(host='0.0.0.0', port=8288))
 

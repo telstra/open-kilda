@@ -50,6 +50,12 @@ RESPONSE: topology format from functional-tests
 GET <lab-api-host>/api
 RESPONSE: array of defined lab id
 ```
+#### Flush labs
+Flush all running labs
+```
+POST <lab-api-host>/api/flush
+RESPONSE: array of removed labs id
+```
 #### Access to lock-keeper
 Proxy call to lock-keeper host
 ```

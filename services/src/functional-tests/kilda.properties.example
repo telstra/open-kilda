@@ -19,6 +19,9 @@ otsdb.endpoint=http://localhost:4242
 
 spring.profiles.active=virtual
 
+# not delete topology after tests
+mode.topology.single=true
+
 reroute.delay=10
 reroute.hardtimeout=30
 discovery.interval=3

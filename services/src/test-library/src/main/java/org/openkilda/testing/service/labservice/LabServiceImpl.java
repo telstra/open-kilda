@@ -23,6 +23,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,12 +31,16 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
+
 @Service
 @Slf4j
 public class LabServiceImpl implements LabService, DisposableBean {
 
     @Value("${spring.profiles.active}")
     private String profile;
+    @Value("${mode.topology.single:false}")
+    private boolean singleTopologyMode;
     @Autowired
     private TopologyDefinition topology;
     @Autowired
@@ -50,15 +55,31 @@ public class LabServiceImpl implements LabService, DisposableBean {
 
     @Override
     public synchronized LabInstance getLab() {
+        if (singleTopologyMode) {
+            List<Long> labsId = getLabs();
+
+            if (!labsId.isEmpty()) {
+                labInstance = getSingleExistingLab(labsId);
+            }
+        }
+
         if (labInstance == null) {
             labInstance = createLab();
         }
         return labInstance;
     }
 
+    private LabInstance getSingleExistingLab(List<Long> labsId) {
+        if (labsId.size() > 1) {
+            throw new IllegalArgumentException("There are several alive lab topologies");
+        }
+        // should check that topology definition not changed
+        return new LabInstance(labsId.get(0));
+    }
+
     @Override
     public synchronized void destroy() {
-        if (labInstance != null) {
+        if (labInstance != null && !singleTopologyMode) {
             deleteLab(labInstance);
             labInstance = null;
         }
@@ -68,6 +89,13 @@ public class LabServiceImpl implements LabService, DisposableBean {
         log.info("Creating topology");
         return restTemplate.exchange("/api", HttpMethod.POST,
                 new HttpEntity<>(topology, buildJsonHeaders()), LabInstance.class).getBody();
+    }
+
+    private List<Long> getLabs() {
+        log.info("Get live labs");
+        return restTemplate.exchange("/api/", HttpMethod.GET,
+                new HttpEntity(buildJsonHeaders()), new ParameterizedTypeReference<List<Long>>() {
+                }).getBody();
     }
 
     private void deleteLab(LabInstance lab) {
