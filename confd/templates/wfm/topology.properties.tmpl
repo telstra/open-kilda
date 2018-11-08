@@ -28,10 +28,6 @@ neo4j.hosts = {{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo4j.user = {{ getv "/kilda_neo4j_user" }}
 neo4j.pswd = {{ getv "/kilda_neo4j_password" }}
 
-filter.directory =
-logger.level = INFO
-logger.watermark =
-
 #######
 # Discovery
 # - discovery.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0

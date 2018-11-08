@@ -5,15 +5,4 @@
 
 <suppressions>
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="20" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="59" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/PathComputer.java" lines="83" checks="JavadocParagraph"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/AuthNeo4j.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/AuthNeo4j.java" lines="15" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/Auth.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/FlowInfo.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/pce/provider/FlowInfo.java" lines="18" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/pce/RecoverableException.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/pce/provider/PathComputerMock.java" lines="82" checks="VariableDeclarationUsageDistance"/>
 </suppressions>

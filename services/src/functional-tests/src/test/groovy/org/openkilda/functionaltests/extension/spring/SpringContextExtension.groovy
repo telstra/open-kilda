@@ -14,7 +14,7 @@ import org.springframework.context.ApplicationContextAware
 @Slf4j
 class SpringContextExtension extends AbstractGlobalExtension implements ApplicationContextAware {
     public static ApplicationContext context;
-    public static List<SpringContextListener> listeners = []
+    private static List<SpringContextListener> listeners = []
 
     void visitSpec(SpecInfo specInfo) {
         //include dummy test only if there is a parametrized test in spec
@@ -22,7 +22,7 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
         //from 'where' block
         //it will always be first in the execution order
         specInfo.getAllFeatures().find {
-            it.featureMethod.getAnnotation(PreparesSpringContextDummy)
+            it.featureMethod.getAnnotation(PrepareSpringContextDummy)
         }?.excluded = !specInfo.getFeatures().find { it.parameterized } as boolean
 
         specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {
@@ -37,7 +37,7 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
                     autowired = true
                 }
                 //do not invoke any fixtures for the dummy test
-                if (invocation?.getFeature()?.featureMethod?.getAnnotation(PreparesSpringContextDummy)) {
+                if (invocation?.getFeature()?.featureMethod?.getAnnotation(PrepareSpringContextDummy)) {
                     return
                 }
                 invocation.proceed()
@@ -51,6 +51,13 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
         context = applicationContext
         listeners.each {
             it.notifyContextInitialized(applicationContext)
+        }
+    }
+
+    static void addListener(SpringContextListener listener) {
+        listeners.add(listener)
+        if(context) {
+            listener.notifyContextInitialized(context)
         }
     }
 }

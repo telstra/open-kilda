@@ -60,6 +60,8 @@ var roleService = (function() {
                 roleService.getRoles().then(function(allRoles) {
                     if (allRoles && allRoles.length) { 
                         roleService.showAllRoles(allRoles);
+                    }else{
+                    	roleService.showAllRoles(allRoles);
                     }
                 });
                 common.infoMessage('Role updated successfully.', 'success');
@@ -80,6 +82,8 @@ var roleService = (function() {
                 roleService.getRoles().then(function(allRoles) {
                     if (allRoles && allRoles.length) {                        
                         roleService.showAllRoles(allRoles);
+                    }else{
+                    	roleService.showAllRoles(allRoles);
                     }
                 });
                 common.infoMessage('Role added successfully.', 'success');
@@ -100,6 +104,7 @@ var roleService = (function() {
     /*** Show all roles ***/
     function showAllRoles(response) {
         var tableRowData = [];
+        $("#loading").css("display", "none");
         if (!response || response.length == 0) {
             response = []
             common.infoMessage('No Users Available', 'info');
@@ -120,12 +125,14 @@ var roleService = (function() {
                     }
                 }
                 tableCol2 += "</div></td>";
-                var tableCol3 = "<td class='divTableCell'>" +
-                    "<i title='Edit' class='fa icon-edit' onclick='roleService.editRole(" + response[i].role_id + ")' permission='um_role_edit'></i>" +
-                    "<i title='Assign Users' class='fa icon-group' onClick='roleService.assignRoleToUsers(" + response[i].role_id + ")' permission='um_assign_role_to_users'></i>" +
-                    "<i title='View Users' class='fa icon-user' onClick='roleService.viewUsersByRole(" + response[i].role_id + ")' permission='um_role_view_users'></i>" +
-                    "<i title='Delete' class='fa icon-trash' onclick='openConfirmationModal(" + response[i].role_id + ",\"deleteRole\")' permission='um_role_delete'></i>" +
-                    "</td>";
+                var tableCol3 = "<td class='divTableCell'>";
+                  tableCol3  =  tableCol3 + "<i title='Edit' class='fa icon-edit' onclick='roleService.editRole(" + response[i].role_id + ")' permission='um_role_edit'></i>";
+                  tableCol3  =  tableCol3 +"<i title='Assign Users' class='fa icon-group' onClick='roleService.assignRoleToUsers(" + response[i].role_id + ")' permission='um_assign_role_to_users'></i>" +
+                    "<i title='View Users' class='fa icon-user' onClick='roleService.viewUsersByRole(" + response[i].role_id + ")' permission='um_role_view_users'></i>";
+                 if(response[i].name !=='kilda_admin'){
+                	tableCol3  =  tableCol3 + "<i title='Delete' class='fa icon-trash' onclick='openConfirmationModal(" + response[i].role_id + ",\"deleteRole\")' permission='um_role_delete'></i>" ;
+                 }
+                 tableCol3  = tableCol3 + "</td>";
 
                 //$("#roleTable").append(tableRow);
                 tableRowData.push([tableCol1, tableCol2, tableCol3]);
@@ -184,7 +191,6 @@ var roleService = (function() {
                 }
             });
         });
-        $("#loading").css("display", "none");
         $('#roleForm').hide();
         $('#roleTabData').show();
         $('#roleTable').show();
@@ -260,6 +266,11 @@ var roleService = (function() {
         $("#add_update_btn").text("Update Role");
         roleService.getRole(id).then(function(response) {        	
             document.roleForm.rname.value = response.name;
+            if(response.name == 'kilda_admin'){
+            	document.roleForm.rname.disabled = true;
+            }else{ console.log('i m here');
+            	document.roleForm.rname.disabled = false;
+            }
             document.roleForm.description.value = response.description;
             role_id = response.role_id;
             roleService.permissionsToSelect(role_id);
@@ -417,6 +428,8 @@ var roleService = (function() {
                 roleService.getRoles().then(function(allRoles) {
                     if (allRoles && allRoles.length) {                       
                         roleService.showAllRoles(allRoles);
+                    }else{
+                    	roleService.showAllRoles(allRoles);
                     }
                 });
                 common.infoMessage('Role updated successfully.', 'success');
@@ -440,6 +453,8 @@ var roleService = (function() {
                 roleService.getRoles().then(function(allRoles) {
                     if (allRoles && allRoles.length) {                       
                         roleService.showAllRoles(allRoles);
+                    }else{
+                    	roleService.showAllRoles(allRoles);
                     }
                 });
                 common.infoMessage('Role removed successfully.', 'success');

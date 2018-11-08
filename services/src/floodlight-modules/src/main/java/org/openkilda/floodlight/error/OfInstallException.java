@@ -13,20 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.utils;
+package org.openkilda.floodlight.error;
 
-import org.openkilda.wfm.topology.AbstractTopologyConfig;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.types.DatapathId;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Key;
+public class OfInstallException extends SwitchOperationException {
+    private final transient OFMessage ofMessage;
 
-@Configuration
-public interface KafkaFilerTopologyConfig extends AbstractTopologyConfig {
+    public OfInstallException(DatapathId dpId, OFMessage ofMessage) {
+        super(dpId, String.format("Error during install OFRule into switch \"%s\"", dpId));
+        this.ofMessage = ofMessage;
+    }
 
-    @Key("filter.directory")
-    String getFilterDirectory();
-
-    default String getKafkaSpeakerTopic() {
-        return getKafkaTopics().getSpeakerTopic();
+    public OFMessage getOfMessage() {
+        return ofMessage;
     }
 }

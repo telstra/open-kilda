@@ -34,7 +34,6 @@ import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
@@ -85,26 +84,13 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         final List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         Integer parallelism = topologyConfig.getParallelism();
 
-        // builder.setSpout(
-        //         ComponentType.LCM_SPOUT.toString(),
-        //         createKafkaSpout(config.getKafkaFlowTopic(), ComponentType.LCM_SPOUT.toString()), 1);
-        // builder.setBolt(
-        //         ComponentType.LCM_FLOW_SYNC_BOLT.toString(),
-        //         new LcmFlowCacheSyncBolt(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString()),
-        //         1)
-        //         .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), LcmKafkaSpout.STREAM_ID_LCM)
-        //         .shuffleGrouping(ComponentType.LCM_SPOUT.toString());
-
         /*
          * Spout receives all Northbound requests.
          */
-
-        KafkaSpoutConfig<String, String> kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
-                ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), topologyConfig.getKafkaFlowTopic()).build();
-        // (crimi) - commenting out LcmKafkaSpout here due to dying worker
-        //kafkaSpout = new LcmKafkaSpout<>(kafkaSpoutConfig);
-        KafkaSpout<String, String> kafkaSpout = new KafkaSpout<>(kafkaSpoutConfig);
-        builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), kafkaSpout, parallelism);
+        builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(),
+                         createKafkaSpout(topologyConfig.getKafkaFlowTopic(),
+                                          ComponentType.NORTHBOUND_KAFKA_SPOUT.toString()),
+                         parallelism);
 
         /*
          * Bolt splits requests on streams.
@@ -228,10 +214,6 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), StreamType.RESPONSE.toString());
 
         createCtrlBranch(builder, ctrlTargets);
-
-        // builder.setBolt(
-        //         ComponentType.TOPOLOGY_ENGINE_OUTPUT.toString(), createKafkaBolt(config.getKafkaTopoEngTopic()), 1)
-        //         .shuffleGrouping(ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_TPE);
 
         return builder.createTopology();
     }

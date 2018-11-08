@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.northbound.flows
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -23,6 +24,7 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 @Slf4j
+@CleanupSwitches
 class FlowCrudSpec extends BaseSpecification {
 
     @Autowired
@@ -50,7 +52,7 @@ class FlowCrudSpec extends BaseSpecification {
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
         northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
         def switches = pathHelper.getInvolvedSwitches(path)
         //for single-flow cases need to add switch manually here, since PathHelper.convert will return an empty path
@@ -95,7 +97,7 @@ class FlowCrudSpec extends BaseSpecification {
         !northboundService.getAllFlows().find { it.id == flow.id }
 
         and: "ISL bandwidth is restored"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().every { it.availableBandwidth == it.speed } }
+        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
 
         and: "No rule discrepancies on every switch of the flow"
         switches.every { sw ->
@@ -138,7 +140,7 @@ class FlowCrudSpec extends BaseSpecification {
     def "Able to create single switch single port flow with different vlan (#flow.source.datapath)"(FlowPayload flow) {
         given: "A flow"
         northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         expect: "No rule discrepancies on the switch"
         def rules = northboundService.validateSwitchRules(flow.source.datapath)
@@ -160,7 +162,7 @@ class FlowCrudSpec extends BaseSpecification {
         !northboundService.getAllFlows().find { it.id == flow.id }
 
         and: "ISL bandwidth is restored"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().every { it.availableBandwidth == it.speed } }
+        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
 
         and: "No rule discrepancies on the switch after delete"
         Wrappers.wait(WAIT_OFFSET) {

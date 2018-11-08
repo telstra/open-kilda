@@ -107,7 +107,9 @@
                     <execution>
                         <id>default-test</id>
                         <configuration>
-                            <skip>true</skip>
+                            <includes>
+                                <include>**/unit/spec/**/*Spec.*</include>
+                            </includes>
                         </configuration>
                     </execution>
                 </executions>
@@ -141,7 +143,7 @@
                                 </goals>
                                 <configuration>
                                     <includes>
-                                        <include>**/spec/**/*Spec.*</include>
+                                        <include>**/functionaltests/spec/**/*Spec.*</include>
                                     </includes>
                                 </configuration>
                             </execution>

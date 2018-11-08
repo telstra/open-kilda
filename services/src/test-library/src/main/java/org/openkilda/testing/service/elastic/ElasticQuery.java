@@ -13,10 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm;
+package org.openkilda.testing.service.elastic;
 
-public class ImplementationError extends Error {
-    public ImplementationError(String message) {
-        super(message);
+class ElasticQuery {
+    String appId;
+    String tags;
+    String level;
+    long timeRange;
+    long resultCount;
+    String defaultField;
+    String index;
+
+    ElasticQuery(String appId, String tags, String level, long timeRange,
+                        long resultCount, String defaultField, String index) {
+        this.appId = appId;
+        this.tags = tags;
+        this.level = level;
+        this.timeRange = timeRange;
+        this.resultCount = resultCount;
+        this.defaultField = defaultField;
+        this.index = index;
     }
 }

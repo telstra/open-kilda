@@ -15,12 +15,13 @@
 
 package org.openkilda.messaging.info.switches;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.openkilda.messaging.Utils.TIMESTAMP;
+
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.info.InfoData;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.openkilda.messaging.Utils.TIMESTAMP;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ConnectModeResponse extends InfoData {
@@ -28,6 +29,8 @@ public class ConnectModeResponse extends InfoData {
     protected ConnectModeRequest.Mode mode;
 
     /**
+     * Constructor.
+     *
      * @param mode the connect mode currently set on the controller
      */
     public ConnectModeResponse(ConnectModeRequest.Mode mode) {

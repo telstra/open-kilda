@@ -40,7 +40,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -97,7 +96,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
@@ -205,14 +203,10 @@ public class CrudBolt
         }
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
+        // FIXME(surabujin): do not use any "default" correlation id
         String correlationId = Utils.DEFAULT_CORRELATION_ID;
-
-        StreamType streamId = null;
-        String flowId = null;
-        if (!componentId.equals(ComponentType.LCM_FLOW_SYNC_BOLT)) {
-            streamId = StreamType.valueOf(tuple.getSourceStreamId());
-            flowId = tuple.getStringByField(Utils.FLOW_ID);
-        }
+        StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
+        String flowId = tuple.getStringByField(Utils.FLOW_ID);
 
         boolean isRecoverable = false;
         try {
@@ -296,14 +290,6 @@ public class CrudBolt
                             logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
                             break;
                     }
-                    break;
-
-                case LCM_FLOW_SYNC_BOLT:
-                    logger.debug("Got network dump from TE");
-
-                    NetworkInfoData networkDump = (NetworkInfoData) tuple.getValueByField(
-                            LcmFlowCacheSyncBolt.FIELD_ID_NETWORK_DUMP);
-                    handleFlowSync(networkDump);
                     break;
 
                 default:
@@ -816,13 +802,6 @@ public class CrudBolt
 
         Values error = new Values(message, errorType);
         outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
-    }
-
-    private void handleFlowSync(NetworkInfoData networkDump) {
-        Set<FlowPair<Flow, Flow>> flows = networkDump.getFlows();
-
-        logger.info("Load flows {}", flows.size());
-        flows.forEach(flowCache::putFlow);
     }
 
     /**

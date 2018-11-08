@@ -13,20 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.error;
+package org.openkilda.testing.service.elastic;
 
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.types.DatapathId;
+import java.util.Map;
 
-public class OFInstallException extends SwitchOperationException {
-    private final transient OFMessage ofMessage;
-
-    public OFInstallException(DatapathId dpId, OFMessage ofMessage) {
-        super(dpId, String.format("Error during install OFRule into switch \"%s\"", dpId));
-        this.ofMessage = ofMessage;
-    }
-
-    public OFMessage getOfMessage() {
-        return ofMessage;
-    }
+public interface ElasticService {
+    Map getLogs(ElasticQuery query);
 }

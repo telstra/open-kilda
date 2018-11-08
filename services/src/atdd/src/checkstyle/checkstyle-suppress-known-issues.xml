@@ -5,50 +5,6 @@
 
 <suppressions>
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/topo/Topology.java" lines="28" checks="JavadocParagraph"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="18" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="33" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="57" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="64" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="65" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="69" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="70" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="84" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="85" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="86" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/topo/PortQueue.java" lines="87" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="18" checks="UnusedImports"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="20" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="33" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="39" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="41" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="41" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="42" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="42" checks="WhitespaceAfter"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="45" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="47" checks="ParenPad"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="47" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="48" checks="OperatorWrap"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="67" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="68" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="75" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="76" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="80" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/LinkEndpoint.java" lines="82" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="30" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="45" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="46" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="46" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="46" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="47" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="48" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="48" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="49" checks="Indentation"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="49" checks="FileTabCharacter"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="53" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="54" checks="NeedBraces"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="56" checks="LocalVariableName"/>
-    <suppress files="src/main/java/org/openkilda/topo/Switch.java" lines="58" checks="NeedBraces"/>
     <suppress files="src/main/java/org/openkilda/topo/TopoSlug.java" lines="18" checks="UnusedImports"/>
     <suppress files="src/main/java/org/openkilda/topo/TopoSlug.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/topo/TopoSlug.java" lines="34" checks="ParameterName"/>

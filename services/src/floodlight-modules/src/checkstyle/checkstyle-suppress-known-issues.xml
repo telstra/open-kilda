@@ -5,27 +5,6 @@
 
 <suppressions>
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/floodlight/error/OFInstallException.java" lines="21" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathVerificationServiceWebRoutable.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/pathverification/web/PathVerificationServiceWebRoutable.java" lines="31" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="33" checks="LineLength"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="48" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="62" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/MeterPool.java" lines="72" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/FlowResource.java" lines="44" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/MetersResource.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/MetersResource.java" lines="43" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/MetersResource.java" lines="70" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/MetersResource.java" lines="70" checks="WhitespaceAround"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/switchmanager/web/SwitchManagerWebRoutable.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/utils/CorrelationContext.java" lines="28" checks="JavadocParagraph"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/utils/CorrelationContext.java" lines="28" checks="JavadocParagraph"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/utils/CorrelationContext.java" lines="31" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/utils/CorrelationContext.java" lines="39" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/utils/CorrelationContext.java" lines="56" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/utils/CorrelationContextInitializer.java" lines="0" checks="NewlineAtEndOfFile"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/utils/CorrelationContextInitializer.java" lines="21" checks="CustomImportOrder"/>
-    <suppress files="src/main/java/org/openkilda/floodlight/utils/CorrelationContextInitializer.java" lines="31" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="31" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/floodlight/Constants.java" lines="20" checks="HideUtilityClassConstructor"/>

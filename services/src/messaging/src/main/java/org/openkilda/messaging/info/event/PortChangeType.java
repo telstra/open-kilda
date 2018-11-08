@@ -91,6 +91,12 @@ public enum PortChangeType {
         return type;
     }
 
+    /**
+     * Gets {@code}PortChangeType{@code} object from string ignoring case.
+     *
+     * @param state the string representation of port state.
+     * @return the {@code}PortChangeType{@code} object.
+     */
     public static PortChangeType from(String state) {
         return Arrays.stream(PortChangeType.values())
                 .filter(item -> item.type.equalsIgnoreCase(state))

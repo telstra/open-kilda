@@ -15,10 +15,11 @@
 
 package org.openkilda.floodlight.utils;
 
+import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
+
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 
 import java.util.UUID;
 
@@ -28,6 +29,13 @@ import java.util.UUID;
 @Aspect
 public class CorrelationContextInitializer {
 
+    /**
+     * The around aspect.
+     *
+     * @param joinPoint the proceeding join point.
+     * @return the result of join point proceeding.
+     * @throws Throwable if something went wrong in join point proceeding.
+     */
     @Around("execution(@org.openkilda.floodlight.utils.NewCorrelationContextRequired * *(..))")
     public Object aroundAdvice(ProceedingJoinPoint joinPoint) throws Throwable {
         try (CorrelationContextClosable closable = CorrelationContext.create(UUID.randomUUID().toString())) {

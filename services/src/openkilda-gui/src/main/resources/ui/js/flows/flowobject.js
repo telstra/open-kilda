@@ -102,7 +102,8 @@ class Flow {
 				}, 500);
 			}).fail(function(error) {
 				$('#saveflowloader').hide();
-				common.infoMessage(error.responseJSON['error-auxiliary-message'],'error');
+				var msg = (error && typeof(error.responseJSON['error-auxiliary-message']) != 'undefined') ? error.responseJSON['error-auxiliary-message'] : 'something went wrong!';
+				common.infoMessage(msg,'error');
 			})
 	}
 	
