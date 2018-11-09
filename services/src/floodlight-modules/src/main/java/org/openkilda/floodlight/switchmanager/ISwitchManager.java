@@ -40,6 +40,7 @@ public interface ISwitchManager extends IFloodlightService {
     long DROP_RULE_COOKIE = 0x8000000000000001L;
     long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
     long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
+    long DROP_LOOP_RULE_COOKIE = 0x8000000000000004L;
 
     void activate(DatapathId dpid) throws SwitchOperationException;
 
@@ -91,6 +92,14 @@ public interface ISwitchManager extends IFloodlightService {
     void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
                                final long cookie, final int priority) throws SwitchOperationException;
 
+
+    /**
+     * Installs the rule that drops packets sent from this particular switch (in order to prevent creating self-looped
+     * ISLs).
+     * @param dpid datapathId of switch
+     * @throws SwitchOperationException in case of errors
+     */
+    void installDropLoopRule(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Installs an flow on ingress switch.

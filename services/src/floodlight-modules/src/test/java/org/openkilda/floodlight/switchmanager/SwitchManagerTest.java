@@ -46,6 +46,14 @@ import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 
+import org.openkilda.floodlight.error.InvalidMeterIdException;
+import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.test.standard.OutputCommands;
+import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.payload.flow.OutputVlanType;
+
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -59,13 +67,6 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
-import org.openkilda.floodlight.error.InvalidMeterIdException;
-import org.openkilda.floodlight.error.SwitchOperationException;
-import org.openkilda.floodlight.test.standard.OutputCommands;
-import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
-import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
-
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -90,6 +91,7 @@ public class SwitchManagerTest {
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private static final long cookie = 123L;
     private static final String cookieHex = "7B";
+    private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private SwitchManager switchManager;
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
@@ -103,7 +105,7 @@ public class SwitchManagerTest {
         restApiService = createMock(IRestApiService.class);
         iofSwitch = createMock(IOFSwitch.class);
         switchDescription = createMock(SwitchDescription.class);
-        dpid = createMock(DatapathId.class);
+        dpid = DatapathId.of(SWITCH_ID.toLong());
 
         context.addService(IRestApiService.class, restApiService);
         context.addService(IOFSwitchService.class, ofSwitchService);
@@ -636,6 +638,16 @@ public class SwitchManagerTest {
         assertEquals(0L, actual.getCookie().getValue());
         assertEquals(0L, actual.getCookieMask().getValue());
         assertThat(deletedRules, containsInAnyOrder(cookie));
+    }
+
+    @Test
+    public void shouldInstallDropLoopRule() throws Exception {
+        Capture<OFFlowMod> capture = prepareForInstallTest();
+
+        switchManager.installDropLoopRule(dpid);
+
+        OFFlowMod result = capture.getValue();
+        assertEquals(scheme.installDropLoopRule(dpid), result);
     }
 
     private void mockBarrierRequest() throws InterruptedException, ExecutionException, TimeoutException {
