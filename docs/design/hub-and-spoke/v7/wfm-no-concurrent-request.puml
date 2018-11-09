@@ -1,0 +1,36 @@
+@startuml
+title hub and spoke wfm mk7 happy path (no concurrent request)
+hide footbox
+
+participant NB
+
+participant "Kafka" as bus
+participant "Async Job" as async_job
+
+
+box "Hub" #LightBlue
+    participant "Spout" as sp_hub
+    participant "Bolt" as bolt_hub
+end box
+participant "Coordinator\nBolt" as coordinator
+
+NB ->> bus : request
+sp_hub <<- bus
+sp_hub ->> bolt_hub
+
+loop while task is not done
+    bolt_hub ->> coordinator : register callback request
+    bolt_hub ->> bus
+    async_job <<- bus
+    async_job -> async_job
+    async_job ->> bus
+    sp_hub <<- bus
+    sp_hub ->> bolt_hub : result of async op
+    bolt_hub -> bolt_hub : process request
+    bolt_hub ->> coordinator : cancel callback
+end
+
+bolt_hub ->> bus
+NB <<- bus
+
+@enduml
