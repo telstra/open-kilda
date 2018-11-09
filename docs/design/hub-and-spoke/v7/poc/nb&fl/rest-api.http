@@ -1,0 +1,36 @@
+
+# Create flow happy path
+POST http://localhost:8088/flow
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "length": 10
+}
+
+###
+
+# Create flow error in hub
+POST http://localhost:8088/flow
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "length": 0
+}
+
+###
+
+# Create flow error in async
+POST http://localhost:8088/flow
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "length": -1
+}
+
+###

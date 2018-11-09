@@ -1,0 +1,43 @@
+v6
+
+@startuml
+hide footbox
+
+participant NB
+participant "ACK Bolt" as ack
+
+box "Hub" #LightBlue
+    participant "Spout" as sp_hub
+    participant "Bolt" as bolt_hub
+end box
+
+participant "Kafka" as bus
+box "Worker" #LightGreen
+    participant "Spout" as sp_work
+    collections "Bolt" as bolt_work
+end box
+
+participant "Async Job" as async_job
+
+NB ->> bus : request
+sp_hub <<- bus
+sp_hub ->> bolt_hub : create H-tuple
+bolt_hub -> bolt_hub : prepare async jobs
+
+bolt_hub ->x bolt_hub: some error
+... hub spout timeout ...
+ack ->> sp_hub : fail
+alt retry
+    loop
+        sp_hub ->> bolt_hub: rerun all from start
+    end
+else cleanup if retry failed
+    sp_hub ->> bolt_hub : tuple with\ncleanup request
+    bolt_hub -> bolt_hub : cleanup
+    bolt_hub ->> ack: ack on cleanup tuple
+    bolt_hub ->> bus: error response
+    bus ->> NB: error response
+end
+
+
+@enduml
