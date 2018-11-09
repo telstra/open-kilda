@@ -130,9 +130,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         }
 
         and: "Rules are valid on the knocked out switch"
-        def rules = northboundService.validateSwitchRules(srcSwitch.dpId)
-        rules.excessRules.empty
-        rules.missingRules.empty
+        verifySwitchRules(srcSwitch.dpId)
 
         and: "Remove flow"
         northboundService.deleteFlow(flow.id)
