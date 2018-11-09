@@ -305,9 +305,13 @@ class AutoRerouteSpec extends BaseSpecification {
             disconnectedSwitches.add(sw)
             lockKeeperService.knockoutSwitch(sw.switchId)
         }
+        Wrappers.wait(WAIT_OFFSET) {
+            def actualSwitches = northbound.activeSwitches*.switchId
+            assert !actualSwitches.any { it in disconnectedSwitches*.switchId }
+        }
 
         then: "The flow goes to 'Down' status"
-        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
+        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET) {
             northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
@@ -315,6 +319,11 @@ class AutoRerouteSpec extends BaseSpecification {
         disconnectedSwitches.findAll { !(it.switchId in flowPath*.switchId) }.each {
             lockKeeperService.reviveSwitch(it.switchId)
             disconnectedSwitches.remove(it)
+        }
+        def connectedSwitches = topology.activeSwitches*.dpId.findAll { !disconnectedSwitches*.switchId.contains(it) }
+        Wrappers.wait(WAIT_OFFSET) {
+            def actualSwitches = northbound.activeSwitches*.switchId
+            assert actualSwitches.containsAll(connectedSwitches)
         }
 
         then: "The flow goes to 'Up' status"
