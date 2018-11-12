@@ -18,7 +18,9 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
 
+@Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
 @CleanupSwitches
 class BandwidthSpec extends BaseSpecification {
 

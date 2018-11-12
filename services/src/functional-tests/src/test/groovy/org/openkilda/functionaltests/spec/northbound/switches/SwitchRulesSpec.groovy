@@ -12,9 +12,12 @@ import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
+@Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
+circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
 class SwitchRulesSpec extends BaseSpecification {
 
     private static final FLOW_RULES_SIZE = 2

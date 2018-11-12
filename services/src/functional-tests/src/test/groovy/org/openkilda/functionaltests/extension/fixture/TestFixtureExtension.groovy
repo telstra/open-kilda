@@ -8,6 +8,7 @@ import org.spockframework.runtime.model.FeatureInfo
 
 /**
  * Allows to run granular setup/cleanup only once before/after all iterations of test's 'where' sequence.
+ * 
  * @see {@link TestFixture}
  */
 @Slf4j
