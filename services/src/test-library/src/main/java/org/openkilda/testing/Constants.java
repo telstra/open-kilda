@@ -26,21 +26,4 @@ public final class Constants {
     private Constants() {
         throw new UnsupportedOperationException();
     }
-
-    public enum DefaultRule {
-        DROP_RULE(0x8000000000000001L),
-        VERIFICATION_BROADCAST_RULE(0x8000000000000002L),
-        VERIFICATION_UNICAST_RULE(0x8000000000000003L),
-        DROP_LOOP_RULE(0x8000000000000004L);
-
-        private final long cookie;
-
-        DefaultRule(long cookie) {
-            this.cookie = cookie;
-        }
-
-        public long getCookie() {
-            return cookie;
-        }
-    }
 }

@@ -6,16 +6,13 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
-import spock.lang.Unroll
 
 class SwitchRulesSpec extends BaseSpecification {
 
@@ -31,22 +28,12 @@ class SwitchRulesSpec extends BaseSpecification {
     @Value('${discovery.timeout}')
     int discoveryTimeout
 
-    @Unroll("Default rules are installed on #sw.ofVersion switch(#sw.dpId)")
-    def "Default rules are installed on switches"() {
-        expect: "Default rules are installed on the #sw.ofVersion switch"
-        def cookies = northboundService.getSwitchRules(sw.dpId).flowEntries*.cookie
-        cookies.sort() == expectedRules*.cookie.sort()
-
-        where:
-        sw << uniqueSwitches
-        expectedRules = sw.ofVersion == "OF_12" ? [DefaultRule.VERIFICATION_BROADCAST_RULE] : DefaultRule.values()
-    }
-
-    @Unroll("Default rules are installed on a new #sw.ofVersion switch(#sw.dpId) when connecting it to the controller")
-    def "Default rules are installed when a new switch is connected"() {
+    def "Default rules are installed on a new switch when connecting it to the controller"() {
         requireProfiles("virtual")
 
         given: "A switch with no rules installed and not connected to the controller"
+        def sw = topology.getActiveSwitches().first()
+        def defaultRulesSorted = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
         northboundService.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
 
@@ -60,12 +47,21 @@ class SwitchRulesSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { sw.dpId in northboundService.getActiveSwitches()*.switchId }
 
         and: "Default rules are installed on the switch"
-        def cookies = northboundService.getSwitchRules(sw.dpId).flowEntries*.cookie
-        cookies.sort() == expectedRules*.cookie.sort()
-
-        where:
-        sw << uniqueSwitches
-        expectedRules = sw.ofVersion == "OF_12" ? [DefaultRule.VERIFICATION_BROADCAST_RULE] : DefaultRule.values()
+        def actualRulesSorted = northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }
+        actualRulesSorted.size() == defaultRulesSorted.size()
+        [actualRulesSorted, defaultRulesSorted].transpose().each { actual, expected ->
+            verifyAll {
+                actual.cookie == expected.cookie
+                actual.tableId == expected.tableId
+                actual.version == expected.version
+                actual.priority == expected.priority
+                actual.idleTimeout == expected.idleTimeout
+                actual.hardTimeout == expected.hardTimeout
+                actual.match == expected.match
+                actual.instructions == expected.instructions
+                actual.flags == expected.flags
+            }
+        }
     }
 
     @Ignore("Test is skipped because of the issue #1464")
@@ -102,11 +98,5 @@ class SwitchRulesSpec extends BaseSpecification {
 
         and: "Previously installed rules are not deleted from the switch"
         northboundService.getSwitchRules(sw.dpId).flowEntries.sort { it.cookie }.size() == allRulesSorted.size()
-    }
-
-    List<Switch> getUniqueSwitches() {
-        def nbSwitches = northbound.getAllSwitches()
-        topology.getActiveSwitches()
-                .unique { sw -> [nbSwitches.find { it.switchId == sw.dpId }.description, sw.ofVersion].sort() }
     }
 }
