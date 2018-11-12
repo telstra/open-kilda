@@ -13,6 +13,9 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
+/**
+ * Holds utility methods for working with flow paths.
+ */
 @Component
 @Slf4j
 class PathHelper {

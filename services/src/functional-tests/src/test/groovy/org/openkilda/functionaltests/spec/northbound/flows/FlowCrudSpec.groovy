@@ -20,11 +20,13 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
 
 @Slf4j
 @CleanupSwitches
+@Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
 class FlowCrudSpec extends BaseSpecification {
 
     @Autowired

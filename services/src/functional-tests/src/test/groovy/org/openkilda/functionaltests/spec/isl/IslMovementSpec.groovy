@@ -16,9 +16,11 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
+@Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 class IslMovementSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology

@@ -17,6 +17,9 @@ import org.springframework.web.client.HttpClientErrorException
 
 import java.text.SimpleDateFormat
 
+/**
+ * Holds utility methods for manipulating flows.
+ */
 @Component
 @Slf4j
 class FlowHelper {
