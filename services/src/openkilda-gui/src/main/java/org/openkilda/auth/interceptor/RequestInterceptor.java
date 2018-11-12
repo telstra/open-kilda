@@ -113,7 +113,10 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         requestContext.setCorrelationId(userInfo.getUsername() + "_" + correlationId);
         requestContext.setUserId(userInfo.getUserId());
         requestContext.setUserName(userInfo.getUsername());
+        requestContext.setFullName(userInfo.getName());
         requestContext.setPermissions(userInfo.getPermissions());
+        requestContext.setIs2FaEnabled(userInfo.getIs2FaEnabled());
+        requestContext.setStatus(userInfo.getStatus());
         requestContext.setClientIpAddress(getClientIp(request));
         
         MDC.put(CORRELATION_ID, requestContext.getCorrelationId());

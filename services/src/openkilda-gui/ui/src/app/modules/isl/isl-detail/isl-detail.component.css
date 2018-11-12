@@ -1,0 +1,69 @@
+.line-legend li:before {
+  height: 14px;
+  left: 0;
+  position: absolute;
+  top: 0px !important;
+  width: 14px;
+  content: "";
+  background: #aad200;
+}
+
+.line-legend li:first-child:before {
+  height: 14px;
+  left: 0;
+  position: absolute;
+  top: 0px !important;
+  width: 14px;
+  content: "";
+  background: #182488;
+}
+
+#isl-source-details-div,
+#isl-destination-details-div,
+.isl-source-details-div,
+.isl-speed-latency-bandwidth-details-div,
+#stats_div {
+  font-size: 13px;
+  border: 1px solid #ccc;
+  padding: 15px;
+  margin: 0;
+}
+
+.modal-title {
+  width: calc(100% - 25px);
+  font-weight: bold;
+  padding: 10px 0;
+  font-size: 14px;
+  margin-top: -8px
+}
+
+i.fa {
+  font-size: 15px;
+  color: #262d37;
+  vertical-align: middle;
+  margin: 0 5px;
+  cursor: pointer;
+}
+
+.fa-edit:before, .fa-pencil-square-o:before {
+  content: "\f044";
+}
+
+.icon-ok-sign:before {
+  content: "\f058";
+}
+
+.icon-remove-sign:before {
+  content: "\f057";
+}
+
+i.icon {
+  font-family: FontAwesome;
+  font-weight: normal;
+  font-style: normal;
+  text-decoration: inherit;
+}
+
+.isl_details_div .col-form-label {
+  line-height: 1;
+}

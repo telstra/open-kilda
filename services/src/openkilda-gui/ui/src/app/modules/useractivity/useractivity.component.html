@@ -1,0 +1,133 @@
+<div id="switchdetails_div">
+  <form [formGroup]="userActivityForm" id="userActivityForm" #roleform="ngForm">
+  <div class="row form-group clearfix">
+    <div class="col-sm-6">
+      <div class="row">
+        <label class='col-sm-3 col-form-label'>Start Date:</label>
+        <div class='col-sm-6'>
+          <input datetime-picker placeholder="Date Time" (change)="onStartDateChange($event)" formControlName="fromDateControl" style="height: 35px !important; font-size: 12px !important;">
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="row">
+        <label class='col-sm-3 col-form-label'>End Date:</label>
+        <div class='col-sm-6'>
+          <input datetime-picker placeholder="Date Time" (change)="onEndDateChange($event)" formControlName="toDateControl" style="height: 35px !important; font-size: 12px !important;">
+        </div>
+        <div class="col-sm-3">
+          <a href="javascript:void(0)" (click)="setToCurrentDate()" style="font-size: 14px; margin: 0px -13px;">Set to now</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row form-group clearfix">
+    <div class="col-sm-6">
+      <div class="row">
+        <label class='col-sm-3 col-form-label'>Type:</label>
+        <div class='col-sm-6'>
+         <!--  <input type="text" name="type" (change)="onTypeInputChange($event)"> -->
+
+          <ng-select
+          formControlName="typeControl"
+           [items]="typeDropdownList"
+           bindLabel="name"
+           bindValue="id"
+           labelForId="id"
+           [multiple]="true"
+           placeholder="Select Type"
+           clearAllText="Clear"
+           (change)="onTypeInputChange($event)">
+             
+           </ng-select>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="row">
+        <label class='col-sm-3 col-form-label'>Username:</label>
+        <div class='col-sm-6'>
+          <!-- <input type="text" name="username" (change)="onUsernameInputChange($event)"> -->
+
+          <ng-select
+          formControlName="usernameControl"
+           [items]="userDrowdonList"
+           bindLabel="user_name"
+           bindValue="user_id"
+           labelForId="user_id"
+           [multiple]="true"
+           placeholder="Select Type"
+           clearAllText="Clear"
+           (change)="onUsernameInputChange($event)">
+             
+           </ng-select>
+
+        </div>
+        <div class="col-sm-3">
+          <span class="btn kilda_btn" (click)="getFilteredDetails()" style="margin-right:65px;">Go</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div  class="col-sm-11 filter" [hidden]="!showFilterBlock"> 
+
+        <div  id="selectedFilter" class="selectedFilter form-group">
+          <label class="labelFilter text-label" style="margin-left: -13px; margin-bottom: 5px; margin-top: 10px; margin-right: 0px; font-size:13px;">Selected Filters</label>
+           <ul class="selected-filter" style="float: none; margin-left: 97px;">
+            <li id="typeFilterSelected" [hidden]= "!showTypeFilter">
+              <span class="badge badge-secondary">
+                <span class="badge-heading">Type : </span>
+                <span class="selectedValues">{{typeValue}}</span>
+                <span (click)="removeTypeFilter()" class="closeBadge">X</span>
+              </span>
+            </li>
+            <li id="usernameFilterSelected" [hidden]= "!showUsernameFilter">
+              <span class="badge badge-secondary">
+                <span class="badge-heading">Username : </span>
+                <span class="selectedValues">{{usernameValue}}</span>
+                <span (click)="removeUsernameFilter()" class="closeBadge" >X</span>
+              </span>
+            </li>
+            <li id="fromFilterSelected" [hidden]="!showStartDateFilter">
+              <span class="badge badge-secondary" >
+                <span class="badge-heading">From : </span>
+                <span class="selectedValues">{{startDate}}</span>
+                <span (click)="removeStartDateFilter()" class="closeBadge" >X</span>
+              </span>
+            </li>
+            <li id="toFilterSelected" [hidden]="!showEndDateFilter">
+              <span class="badge badge-secondary">
+                <span class="badge-heading">To : </span>
+                <span class="selectedValues">{{endDate}}</span>
+                <span (click)="removeEndDateFilter()" class="closeBadge" >X</span>
+              </span>
+            </li>
+           </ul>
+        </div>
+      
+      </div>
+  
+
+  <table id="useractivityTable" class="table table-striped dataTable no-footer" cellspacing="0" width="100%">
+    <thead>
+      <tr class="tableHeading">
+        <th><span title="ActivityTime">Date Time</span></th>
+        <th><span title="clientIpAddress">Ip Address</span></th>
+        <th><span title="userId">Username</span></th>
+        <th><span title="activityType">Type</span></th>
+        <th><span title="objectId">Object</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let item of userActivityData">
+        <td class="divTableCell" title="{{item.activityTime | date:'long' }}">{{item.activityTime | date:'long' }}</td>
+        <td class="divTableCell" title="{{item.clientIpAddress}}">{{item.clientIpAddress}}</td>
+        <td class="divTableCell" title="{{item.username}}">{{item.username}}</td>
+        <td class="divTableCell" title="{{item.activityType}}">{{item.activityType}}</td>
+        <td class="divTableCell" title="{{item.objectId}}">{{item.objectId}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

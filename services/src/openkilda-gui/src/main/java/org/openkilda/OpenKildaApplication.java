@@ -68,7 +68,9 @@ public class OpenKildaApplication extends SpringBootServletInitializer {
     public static void main(final String[] args) throws Exception {
         System.setProperty("spring.devtools.restart.enabled", "false");
         try {
-            SpringApplication.run(OpenKildaApplication.class, args);
+            SpringApplication sa = new SpringApplication(OpenKildaApplication.class);
+            sa.setLogStartupInfo(false);
+            sa.run(args);
         } catch (Exception e) {
             e.printStackTrace();
         }

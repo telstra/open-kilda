@@ -4,3 +4,7 @@ services:
     build: .
     ports:
       - "8010:1010"
+    volumes:
+      - ~/home/db-data:/app/kilda_db
+volumes:
+  db-data:

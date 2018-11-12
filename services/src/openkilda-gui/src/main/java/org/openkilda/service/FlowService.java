@@ -207,7 +207,13 @@ public class FlowService {
      */
     public FlowInfo getFlowById(String flowId) {
         FlowInfo flowInfo = new FlowInfo();
-        Flow flow = flowsIntegrationService.getFlowById(flowId);
+        Flow flow = null;
+        try {
+            flow = flowsIntegrationService.getFlowById(flowId);
+        } catch (Exception ex) {
+            LOGGER.error("[getFlowById] Exception while retrieving flows from controller. Exception: "
+                    + ex.getLocalizedMessage(), ex);
+        }
         Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
         if (flow != null) {
             flowInfo = flowConverter.toFlowInfo(flow, csNames);

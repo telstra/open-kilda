@@ -1,0 +1,124 @@
+<div>
+<form class="flow-card" id="flowEditForm" novalidate (ngSubmit)="updateFlow()" [formGroup]="flowEditForm">
+  <div class="row mb-4">
+        <div class="col-sm-12">
+    <h6 class="card-title card-custom-title">FLOW DETAILS
+
+      <span *ngIf="commonService.hasPermission('fw_flow_delete') && (!storeLinkSetting || (storeLinkSetting && flowDetailData.hasOwnProperty('discrepancy') && flowDetailData['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetailData['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" (click)="deleteFlow()">Delete</span> 
+      <div class="clear clearfix"></div>     
+    </h6>
+    <div class="card">
+      <div class="card-body">
+        <div class="isl-source-details-div">
+          <div class='form-group row flow_details' >
+            <label class='col-sm-3 col-form-label required'>Flow Name:</label>
+            <div class='col-sm-4'>
+              <input formControlName="flowid"   id="max_bandwidth" class="form-control" name="max_bandwidth" type="text" readonly="readonly"
+                required />
+            </div>
+          </div>
+          <div class='form-group row flow_details'>
+            <label class='col-sm-3 col-form-label'>Description:</label>
+            <div class="col-sm-4">
+              <textarea formControlName="description"  id="flow_description" class="form-control"></textarea>
+            </div>
+          </div>
+
+          <div class='form-group row flow_details' [ngClass]="{'error': f.maximum_bandwidth.errors && submitted}">
+            <label class='col-sm-3 col-form-label required'>Maximum Bandwidth:</label>
+            <div class="col-sm-4">
+              <input formControlName="maximum_bandwidth"  id="max_bandwidth" class="form-control" name="max_bandwidth" type="number" required
+              />
+              <div *ngIf="submitted && f.maximum_bandwidth.errors" class="invalid-feedback">
+                    <div *ngIf="f.maximum_bandwidth.errors.required">Maximum bandwidth is required</div>
+                  </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+    <!-- Start : 2 Flow section-->
+    <div class="row  mb-4">
+      <div class="col-sm-6">
+        <h6 class="card-title card-custom-title">SOURCE DETAILS</h6>
+        <div class="card">
+
+          <div class="card-body">
+            <div class='form-group row'>
+              <label class='col-sm-3 col-form-label required'>Switch:</label>
+              <div class='col-sm-6'>
+                <ng-select dropdownPosition="top" placeholder="Select source switch" formControlName="source_switch"  (change)="getPorts('source_switch',false)"  [items]="sourceSwitches" bindLabel="label"     bindValue="value"></ng-select>
+                <div *ngIf="submitted && f.source_switch.errors" class="invalid-feedback">
+                  <div *ngIf="f.source_switch.errors.required">Please select source switch</div>
+                </div>
+              </div>
+
+            </div>
+            <div class='form-group row'>
+              <label class='col-sm-3 col-form-label required'>Port:</label>
+              <div class='col-sm-6'>
+               <ng-select dropdownPosition="top" placeholder="Select source port" formControlName="source_port" (change)="getVLAN('source_port')" [items]="sourcePorts" bindLabel="label"     bindValue="value"></ng-select>
+               <div *ngIf="submitted && f.source_port.errors" class="invalid-feedback">
+                <div *ngIf="f.source_port.errors.required">Please select source port</div>
+              </div>
+              </div>
+            </div>
+            <div class='form-group row'>
+              <label class='col-sm-3 col-form-label'>Vlan:</label>
+              <div class='col-sm-6'>
+                  <ng-select dropdownPosition="top" placeholder="Select source VLAN" formControlName="source_vlan" [items]="vlanPorts" bindLabel="label"     bindValue="value"></ng-select>
+                  <div *ngIf="submitted && f.source_vlan.errors" class="invalid-feedback">
+                    <div *ngIf="f.source_vlan.errors.required">Please select source VLAN</div>
+                  </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <h6 class="card-title card-custom-title">DESTINATION DETAILS</h6>
+        <div class="card">
+          <div class="card-body">
+            <div class='form-group row'>
+              <label class='col-sm-3 col-form-label required'>Switch:</label>
+              <div class='col-sm-6'>
+               <ng-select dropdownPosition="top" placeholder="Select destination switch" formControlName="target_switch" (change)="getPorts('target_switch',false)" [items]="targetSwitches" bindLabel="label"     bindValue="value"></ng-select>
+               <div *ngIf="submitted && f.target_switch.errors" class="invalid-feedback">
+                <div *ngIf="f.target_switch.errors.required">Please select destination switch</div>
+              </div>
+              </div>
+
+            </div>
+            <div class='form-group row'>
+              <label class='col-sm-3 col-form-label required'>Port:</label>
+              <div class='col-sm-6'>
+                <ng-select dropdownPosition="top" placeholder="Select destination port" formControlName="target_port" (change)="getVLAN('target_port')" [items]="targetPorts" bindLabel="label"     bindValue="value"></ng-select>
+                <div *ngIf="submitted && f.target_port.errors" class="invalid-feedback">
+                  <div *ngIf="f.target_port.errors.required">Please select destination port</div>
+                </div>
+              </div>
+            </div>
+            <div class='form-group row'>
+              <label class='col-sm-3 col-form-label'>Vlan:</label>
+              <div class='col-sm-6'>
+                <ng-select dropdownPosition="top" placeholder="Select destination VLAN" formControlName="target_vlan" [items]="vlanPorts" bindLabel="label"     bindValue="value"></ng-select>
+                <div *ngIf="submitted && f.target_vlan.errors" class="invalid-feedback">
+                  <div *ngIf="f.target_vlan.errors.required">Please select destination VLAN</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ENd : 2 Flow sections-->
+
+    <div class="col-sm-12">
+      <button class="btn btn-sm btn-dark">Update</button>
+      &nbsp;
+      <button type="button" (click)="goToBack()" class="btn btn-sm btn-dark">Cancel</button>
+    </div>
+</form>
+</div>

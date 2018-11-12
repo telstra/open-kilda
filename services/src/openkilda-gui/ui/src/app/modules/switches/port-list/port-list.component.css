@@ -1,0 +1,77 @@
+#portsTable {
+    width: 100%;
+}
+
+.custom-margin-datatable{
+    margin: 45px 0px;
+}
+
+#portsTable thead{
+    background-color: #c8c8c8;
+    border-color: grey;
+}
+#portsTable .divTableCell{
+	padding: 0;
+}
+
+#portsTable .divTableCell p{
+	padding: 15px 0px;
+    text-align: center;
+}
+
+#portsTable .down-status .divTableCell:first-child{
+	border-left: 4px solid red;
+}
+
+#portsTable .up-status .divTableCell:first-child{
+	border-left: 4px solid #182488;
+}
+
+#portsTable th{
+	    padding: 15px 0px 10px 0px;
+	    text-align:center;
+}
+#portsTable .subPortHeadTable{
+	padding:0;
+} 
+#portsTable .subPortHeadTable span{
+	width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    padding: 0;
+    text-align: center;
+    font-weight: 400;
+    font-size: 11px;
+}
+div#portsTable_info {
+    display: none;
+}
+#portsTable .subPortTable{
+	padding:0;
+} 
+#portsTable .subPortTable span{
+	width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    padding: 15px 10px;
+}
+#portsTable .subPortTable span:last-child{
+    border-left:1px solid #dddddd;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    border: 1px solid #aaa !important;
+    height: 30px !important;
+    width: 240px !important;
+    padding: 5px !important;
+}
+
+tbody tr:nth-child(odd){
+   background:#f1f1f1 !important;
+}
+
+tbody tr:nth-child(even){
+        background:#ffffff !important;
+}

@@ -1,0 +1,66 @@
+<div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+  <table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+    <thead>
+      <tr>
+        <th class="">
+        <span  title="Switch ID">Switch ID</span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'switch_id')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="switch_id" [hidden]="!switch_id" />
+        </th>
+        <th class="">
+            <span title="Name">Name</span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'name')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="name" [hidden]="!name" />
+        
+        </th>
+        <th class="">
+            <span title="Name">Address</span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'address')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="address" [hidden]="!address" />
+        
+        </th>
+        <th class="">
+            <span title="Name">Hostname</span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'hostname')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="hostname" [hidden]="!hostname" />
+        
+        </th>
+        <th class="">
+            <span title="Name">Description</span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'description')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="description" [hidden]="!description" />
+        
+        </th>
+        <th class="">
+            <span title="Name">State</span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'state')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="state" [hidden]="!state" />
+        
+        </th>
+      </tr>
+    </thead>
+
+    <tbody>
+        <tr *ngFor="let row of data; let i = index" (click)="showSwitch(row)" class="flowDataRow"
+        [ngClass]="{'down-state': row.state == 'DEACTIVATED' , 'up-state': row.state == 'ACTIVATED'}">
+            <td class="divTableCell" title="{{checkValue(row.switch_id)}}" >
+              {{checkValue(row.switch_id)}}
+            </td>
+            <td class="divTableCell" title="{{checkValue(row.name)}}" >
+              {{checkValue(row.name)}}
+            </td>
+            <td class="divTableCell" title="{{checkValue(row.address)}}" >
+              {{checkValue(row.address)}}
+            </td>
+            <td class="divTableCell" title="{{checkValue(row.hostname)}}" >
+              {{checkValue(row.hostname)}}
+            </td>
+            <td class="divTableCell" title="{{checkValue(row.description)}}" >
+              {{checkValue(row.description)}}
+            </td>
+            <td class="divTableCell" title="{{checkValue(row.state)}}" >
+              {{checkValue(row.state)}}
+            </td>
+        </tr>
+    </tbody>
+  </table>

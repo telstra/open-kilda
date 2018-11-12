@@ -1,0 +1,52 @@
+<div class="row">
+  <div class="col-sm-12 col-md-12 col-lg-12">
+    <div class="form-container mb-3">
+      <form class="form-inline"  [formGroup]="filterForm">
+        <div class="form-group  col-md-3">
+          <label>Timezone: </label> &nbsp;
+          <select formControlName="timezone" class="form-control" (change)="changeTimeZone()">
+            <option value="UTC">UTC</option>
+            <option value="My">My Timezone</option>
+          </select>
+        </div>
+        <div class="form-group  col-md-3">
+          <label>From: </label> &nbsp;
+          <input datetime-picker formControlName="startDate" placeholder="Date Time:" (change)="changeDate('startDate',$event)">
+        </div>
+        <div class="form-group  col-md-3">
+          <label>To: </label> &nbsp;
+          <input datetime-picker formControlName="endDate" (change)="changeDate('endDate',$event)" placeholder="Date Time:">
+        </div>
+        <div class="form-group  col-md-3">
+            <label>Metric: </label> &nbsp;
+            <select formControlName="metric" class="form-control" (change)="changeMetric()">
+                <option value="{{metric.value}}" *ngFor="let metric of flowMetrics">{{metric.label}}</option>
+              </select>
+          </div>
+      </form>
+      
+       
+    </div>
+    <div class="col-md-12">
+        <div class="row">
+          <div class="col-md-1">
+              <label class="text-label text-right">Cookie:</label>
+          </div>
+          <div class="col-md-11 margin-zero">
+          <div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookieforwardId" *ngIf="type=='forward'">
+              <label *ngFor="let cookie of cookieData" [ngClass]="{'active': selectedCookie == cookie}"  (click)="loadcookiegraph(cookie)" class="btn kilda_btn "><span class="copy_to_clipBoard">{{cookie}}</span> </label>
+          </div>
+        <div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookiereverseId" *ngIf="type=='reverse'">
+            <label *ngFor="let cookie of cookieData" [ngClass]="{'active': selectedCookie == cookie}" (click)="loadcookiegraph(cookie)" class="btn kilda_btn "><span class="copy_to_clipBoard">{{cookie}}</span> </label>
+            <!-- <label class="btn kilda_btn active"> <input type="radio" name="cookieReverse"  value="2611686018427388455" autocomplete="off" checked=""><span class="copy_to_clipBoard">2611686018427388455</span> </label>
+            <label class="btn kilda_btn "> <input type="radio" name="cookieReverse"  value="2611686018427388455" autocomplete="off" checked=""><span class="copy_to_clipBoard">2611686018427388455</span> </label>
+            <label class="btn kilda_btn"> <input type="radio" name="cookieReverse" value="2611686018427388455" autocomplete="off" checked=""><span class="copy_to_clipBoard">2611686018427388455</span> </label> -->
+      </div>
+    </div>
+        </div>
+      </div>
+    <div class="chart-container" style="width:95% !important">
+        <app-dygraph (zoomChange)="zoom($event)" ></app-dygraph>
+    </div>
+  </div>
+</div>

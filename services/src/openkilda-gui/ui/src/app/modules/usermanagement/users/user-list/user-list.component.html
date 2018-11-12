@@ -1,0 +1,53 @@
+<div class="usermanagement-table-wrapper" [hidden]="hide"></div>
+<table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+  <thead>
+    <tr class="tableHeading" role="row">
+      <th class="tableColumn">
+        <span class="title" title="Email">Email</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedEmail')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedEmail" [hidden]="!expandedEmail"/>
+      </th>
+      <th class="tableColumn">
+        <span class="title" title="Name">Name</span> 
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedName')"></i>
+        <input id="source-switch" class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" id="expandedName" placeholder="Search" [hidden]="!expandedName"/>
+      </th>
+      <th class="tableColumn">
+        <span class="title" title="Roles">Roles</span> 
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedRole')"></i>
+        <input type="search" class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" placeholder="Search" id="expandedRole" [hidden]="!expandedRole" /> 
+      </th>
+      <th>
+        <span title="Options">Options</span>
+      </th>
+    </tr>
+  </thead>
+  <tbody id="user-details">
+    <tr *ngFor="let user of users">
+      <td>
+        <span>{{user.email}}</span>
+      </td>
+      <td>
+        <span>{{user.name}}</span>
+      </td>
+      <td>
+        <span>{{user.roles.join(',')}}</span>
+      </td>
+      <td style="font-size: 0.5rem;">
+        <i *ngIf="user.user_id != loggedInUserId && commonService.hasPermission('um_user_edit')" title="Edit" (click)="editUser(user.user_id)" class="fa fa-pencil-square-o fa-2x cursor-pointer"></i>
+        <i *ngIf="user.user_id != loggedInUserId && commonService.hasPermission('um_user_delete')" title="Delete" (click)="deleteUser(user.user_id)" class="fa fa-trash-o fa-2x cursor-pointer"></i>
+        <i *ngIf="user.user_id != loggedInUserId && commonService.hasPermission('um_user_activate')" title="Inactive" (click)="activeInactiveUser(user.user_id, user.status)" [ngClass]="{'fa-toggle-on': user.status== 'Active', 'fa-toggle-off': user.status== 'Inactive'}" class="fa cursor-pointer fa-2x"></i>
+        <span title="Reset Password" (click)="resetpassword(user.user_id)" class="fa-passwd-reset fa-stack cursor-pointer" *ngIf="commonService.hasPermission('um_user_reset')">
+          <i title="Reset Password" class="fa fa-undo fa-stack-2x"></i>
+          <i class="fa fa-lock fa-stack-1x"></i>
+        </span>
+        <span *ngIf="user.user_id != loggedInUserId && commonService.hasPermission('um_user_reset_admin')" title="Reset Password By Admin" (click)="resetpasswordByAdmin(user.user_id)" class="fa-passwd-reset fa-stack cursor-pointer">
+          <i title="Reset Password By Admin" class="fa fa-key fa-key-2x"></i>
+        </span>
+        <span title="Reset 2FA" *ngIf="user.is2FaEnabled && commonService.hasPermission('um_user_reset2fa')" (click)="reset2fa(user.user_id)" class="fa-passwd-reset fa-stack cursor-pointer">
+          <i title="Reset 2FA" class="fa fa-undo fa-stack-2x"></i>
+        </span>
+      </td>
+    </tr>
+  </tbody>
+</table>

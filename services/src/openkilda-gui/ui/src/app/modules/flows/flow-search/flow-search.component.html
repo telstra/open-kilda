@@ -1,0 +1,13 @@
+<div class="row">
+  <form [formGroup]="flowSearchForm" class="form-inline col-sm-12" (ngSubmit)="searchFlow()">
+      <div class="input-group input-group-sm w-100" >
+          <input formControlName="flowID"  type="text" class="form-control" placeholder="Enter Flow ID" aria-label="Enter Flow ID" aria-describedby="basic-addon2" [ngClass]="{ 'is-invalid': submitted && f.flowID.errors }" required>
+          <div class="input-group-append">
+            <button class="btn btn-dark">Search</button>
+          </div>
+        </div>
+        <div *ngIf="submitted && f.flowID.errors" class="invalid-feedback">
+          <div *ngIf="f.flowID.errors.required">Please enter flow ID</div>
+      </div>
+  </form>
+</div>

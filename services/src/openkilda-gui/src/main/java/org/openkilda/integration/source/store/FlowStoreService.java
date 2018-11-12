@@ -48,10 +48,10 @@ public class FlowStoreService {
 
     @Autowired
     private StoreService storeService;
-    
+
     @Autowired
     private AuthService authService;
-    
+
     /**
      * Gets the all flow list.
      *
@@ -67,8 +67,8 @@ public class FlowStoreService {
             LOGGER.error("Exception in getAllFlowList " + exception.getMessage());
             throw new StoreIntegrationException(exception);
         }
-    } 
-    
+    }
+
     /**
      * Gets the flow by id.
      *
@@ -81,9 +81,9 @@ public class FlowStoreService {
 
             Map<String, String> params = new HashMap<String, String>();
             params.put(RequestParams.LINK_ID.getName(), flowId);
-            
+
             urlDto.setParams(params);
-            
+
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponse(urlDto, authDto, InventoryFlow.class);
@@ -92,7 +92,7 @@ public class FlowStoreService {
             throw new StoreIntegrationException(exception);
         }
     }
-    
+
     /**
      * Gets the flows with params.
      *
@@ -102,12 +102,12 @@ public class FlowStoreService {
     public List<InventoryFlow> getFlowsWithParams(final String status) {
         try {
             UrlDto urlDto = storeService.getUrl(StoreType.LINK_STORE, Url.GET_LINKS_WITH_PARAMS);
-            
+
             Map<String, String> params = new HashMap<String, String>();
             params.put(RequestParams.STATUS.getName(), status);
-            
+
             urlDto.setParams(params);
-            
+
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, InventoryFlow.class);
@@ -116,22 +116,23 @@ public class FlowStoreService {
             throw new StoreIntegrationException(exception);
         }
     }
-    
+
     /**
      * Gets the all contracts.
      *
-     * @param flowId the flow id
+     * @param linkId
+     *            the link id
      * @return the all contracts
      */
-    public List<Contract> getAllContracts(final String flowId) {
+    public List<Contract> getContracts(final String linkId) {
         try {
             UrlDto urlDto = storeService.getUrl(StoreType.LINK_STORE, Url.GET_CONTRACT);
-            
+
             Map<String, String> params = new HashMap<String, String>();
-            params.put(RequestParams.LINK_ID.getName(), flowId);
-            
+            params.put(RequestParams.LINK_ID.getName(), linkId);
+
             urlDto.setParams(params);
-            
+
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, Contract.class);
@@ -140,23 +141,25 @@ public class FlowStoreService {
             throw new StoreIntegrationException(exception);
         }
     }
-    
+
     /**
      * Delete contract.
      *
-     * @param flowId the flow id
-     * @param contractId the contract id
+     * @param linkId
+     *            the link id
+     * @param contractId
+     *            the contract id
      */
-    public void deleteContract(final String flowId, final String contractId) {
+    public void deleteContract(final String linkId, final String contractId) {
         try {
-            UrlDto urlDto = storeService.getUrl(StoreType.LINK_STORE, Url.GET_CONTRACT);
-            
+            UrlDto urlDto = storeService.getUrl(StoreType.LINK_STORE, Url.DELETE_CONTRACT);
+
             Map<String, String> params = new HashMap<String, String>();
-            params.put(RequestParams.LINK_ID.getName(), flowId);
+            params.put(RequestParams.LINK_ID.getName(), linkId);
             params.put(RequestParams.CONTRACT_ID.getName(), contractId);
-            
+
             urlDto.setParams(params);
-            
+
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             authService.getResponse(urlDto, authDto, null);

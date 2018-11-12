@@ -1,0 +1,49 @@
+<div class=" user-management-tabs">
+    <form [formGroup]="roleEditForm" id="addUserForm" (ngSubmit)="submitform()" novalidate #roleform="ngForm">
+      <div class="form-group row" [ngClass]="{'error': roleEditForm.controls['name'].errors && roleform.submitted}">
+        <label class="col-sm-2 control-label required">Name:</label>
+        <div class="col-sm-6">
+          <input class="form-control" type="text" formControlName="name" placeholder="Name">
+          <div *ngIf="roleEditForm.controls['name'].errors && roleform.submitted" class="invalid-feedback" >
+              <span>Name is required.</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-group row" [ngClass]="{'error': roleEditForm.controls['description'].errors && roleform.submitted}">
+          <label class="col-sm-2 control-label required">Description:</label>
+          <div class="col-sm-6">
+            <input class="form-control" type="text" formControlName="description" placeholder="Description">
+            <div *ngIf="roleEditForm.controls['description'].errors && roleform.submitted" class="invalid-feedback" >
+                <span>Description is required.</span>
+            </div>
+          </div>
+        </div>
+      <div class="form-group row" [ngClass]="{'error': roleEditForm.controls['permission'].errors && roleform.submitted}">
+        <label class="col-sm-2 control-label required">Permissions:</label>
+        <div class="col-sm-6">
+          <ng-select
+            formControlName="permission"
+            [items]="PermissionData"
+            bindLabel="name"
+            bindValue="id"
+            labelForId="id"
+            [multiple]="true"
+            placeholder="Select Permission"
+            clearAllText="Clear"
+        > </ng-select>
+          <div *ngIf="roleEditForm.controls['permission'].errors && roleform.submitted" class="invalid-feedback" >
+            <span>Permission is required.</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-group row">
+          <div class="col-sm-8 text-right">
+            <button id="closeUserForm" type="button" class="btn kilda_btn" (click)="close()">Close</button>
+            <button type="submit" id="submitBtn" class="btn kilda_btn">Update Role</button>
+          </div>
+      </div>
+    </form>
+  
+    <!-- <pre>{{roleform.value|json}}</pre> -->
+  </div>
+  

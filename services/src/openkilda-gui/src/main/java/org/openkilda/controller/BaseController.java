@@ -64,11 +64,11 @@ public abstract class BaseController implements ErrorController {
             LOGGER.info("[validateAndRedirect] Logged in user. view name: " + viewName + ", User name: "
                     + userInfo.getName());
 
-            modelAndView = new ModelAndView(viewName);
+            modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
         } else {
             LOGGER.error("[validateAndRedirect] User in not logged in, redirected to login page. Requested view name: "
                     + viewName);
-            modelAndView = new ModelAndView(IConstants.View.LOGIN);
+            modelAndView = new ModelAndView("login");
         }
         return modelAndView;
     }

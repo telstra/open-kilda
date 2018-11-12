@@ -45,5 +45,7 @@ mail.from=donotreply@example.com
 spring.velocity.enabled = false
 
 log.duration=7
-spring.thymeleaf.prefix=classpath:/ui/templates/
 error.code.prefix=100
+
+spring.mvc.view.prefix= /views/
+spring.mvc.view.suffix= .jsp
