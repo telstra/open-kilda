@@ -17,4 +17,4 @@ FROM kilda/base-ubuntu
 
 ADD target/northbound.jar /app/
 WORKDIR /app
-CMD ["java","-jar","northbound.jar"]
+CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-jar", "northbound.jar"]

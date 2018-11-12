@@ -85,4 +85,4 @@ RUN cp /app/src/main/resources/application.properties /app/target/ && \
     cp /app/src/main/resources/logback.xml /app/target/
 
 WORKDIR /app/target
-CMD ["java","-jar","openkilda-gui.jar"]
+CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-jar", "openkilda-gui.jar"]
