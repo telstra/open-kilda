@@ -114,25 +114,7 @@ class FlowCrudSpec extends BaseSpecification {
         * costs on ISLs (those switches are neighbors, but we want a path with transit switch between them), then
         * we will not test such case
         */
-        data << (
-            flowsWithoutTransitSwitch.collect {
-                [
-                    description: "flow without transit switch",
-                    flow: it
-                ]
-            } +
-            flowsWithTransitSwitch.collect {
-                [
-                    description: "flow with transit switch",
-                    flow: it
-                ]
-            } +
-            singleSwitchFlows.collect {
-                [
-                    description: "single-switch flow",
-                    flow: it
-                ]
-            })
+        data << flowsWithoutTransitSwitch + flowsWithTransitSwitch + singleSwitchFlows
         flow = data.flow as FlowPayload
     }
 
@@ -171,8 +153,8 @@ class FlowCrudSpec extends BaseSpecification {
     }
     
     /**
-     * Get list of all unique flows without transit switch (neighboring switches). By unique flows it considers
-     * combinations of unique src/dst switch descriptions and OF versions.
+     * Get list of all unique flows without transit switch (neighboring switches), permute by vlan presence. 
+     * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
         def switchPairs = [topology.activeSwitches, topology.activeSwitches].combinations()
@@ -183,12 +165,31 @@ class FlowCrudSpec extends BaseSpecification {
             }
             .sort(taffgensPrioritized)
             .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
-        return switchPairs.collect{ src, dst -> flowHelper.randomFlow(src, dst) }
+        return switchPairs.inject([]) { r, switchPair ->
+            r << [
+                    description: "flow without transit switch and with random vlans",
+                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1])
+            ]
+            r << [
+                    description: "flow without transit switch and without vlans",
+                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                        it.source.vlanId = 0
+                        it.destination.vlanId = 0
+                    }
+            ]
+            r << [
+                    description: "flow without transit switch and vlan only on src",
+                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                        it.destination.vlanId = 0
+                    }
+            ]
+            r
+        }
     }
 
     /**
-     * Get list of all unique flows with transit switch (not neighboring switches). By unique flows it considers
-     * combinations of unique src/dst switch descriptions and OF versions.
+     * Get list of all unique flows with transit switch (not neighboring switches), permute by vlan presence. 
+     * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
         def switchPairs = [topology.activeSwitches, topology.activeSwitches].combinations()
@@ -199,18 +200,56 @@ class FlowCrudSpec extends BaseSpecification {
             }
             .sort(taffgensPrioritized)
             .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
-        return switchPairs.collect{ src, dst -> flowHelper.randomFlow(src, dst) }
+        return switchPairs.inject([]) { r, switchPair ->
+            r << [
+                    description: "flow with transit switch and random vlans",
+                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1])
+            ]
+            r << [
+                    description: "flow with transit switch and no vlans",
+                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                        it.source.vlanId = 0
+                        it.destination.vlanId = 0
+                    }
+            ]
+            r << [
+                    description: "flow with transit switch and vlan only on dst",
+                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                        it.source.vlanId = 0
+                    }
+            ]
+            r
+        }
     }
 
     /**
-     * Get list of all unique single-switch flows. By unique flows it considers
+     * Get list of all unique single-switch flows, permute by vlan presence. By unique flows it considers
      * using all unique switch descriptions and OF versions.
      */
     def getSingleSwitchFlows() {
         topology.getActiveSwitches()
             .sort{ sw -> topology.activeTraffGens.findAll { it.switchConnected == sw }.size() }.reverse()
             .unique { [getDescription(it), it.ofVersion].sort() }
-            .collect { flowHelper.singleSwitchFlow(it) }
+            .inject([]) { r, sw ->
+                r << [
+                        description: "single-switch flow with vlans",
+                        flow: flowHelper.singleSwitchFlow(sw)
+                ]
+                r << [
+                        description: "single-switch flow without vlans",
+                        flow: flowHelper.singleSwitchFlow(sw).tap {
+                            it.source.vlanId = 0
+                            it.destination.vlanId = 0
+                        }
+                ]
+                r << [
+                        description: "single-switch flow with vlan only on dst",
+                        flow: flowHelper.singleSwitchFlow(sw).tap {
+                            it.source.vlanId = 0
+                        }
+                ]
+                r
+            }
     }
 
     /**
