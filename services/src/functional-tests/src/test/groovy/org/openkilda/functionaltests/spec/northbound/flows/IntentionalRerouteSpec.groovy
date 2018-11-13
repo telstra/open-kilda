@@ -122,7 +122,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
         and: "Remove the flow, restore bandwidths on ISLs, reset costs"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         flowHelper.deleteFlow(flow.id)
         [thinIsl, islUtils.reverseIsl(thinIsl)].each { db.revertIslBandwidth(it) }
     }

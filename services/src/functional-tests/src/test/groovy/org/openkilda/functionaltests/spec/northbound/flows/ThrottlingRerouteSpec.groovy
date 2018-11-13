@@ -103,7 +103,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + 1) {
             assert currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "Do cleanup"
@@ -154,7 +154,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
 
         and: "The flow tries to reroute and goes DOWN after window timeout"
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + 1) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
@@ -162,8 +162,8 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.each { northboundService.portUp(new SwitchId(it.switchId), it.portNumber) }
-        Wrappers.wait(WAIT_OFFSET) { 
-            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED } 
+        Wrappers.wait(WAIT_OFFSET) {
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -264,7 +264,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
             assert currentPath != PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         blinkingThread.alive
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         //TODO(rtretiak): Check logs that only 1 reroute has been performed
 
         and: "Do cleanup"
@@ -334,8 +334,8 @@ class ThrottlingRerouteSpec extends BaseSpecification {
 
         and: "Bring port back up"
         northboundService.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { 
-            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED } 
+        Wrappers.wait(WAIT_OFFSET) {
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
