@@ -20,8 +20,8 @@ ADD src/main/resources/logback.xml /app
 ADD run-deps/floodlight.jar /app/floodlight.jar
 ADD target/floodlight-modules.jar /app/floodlight-modules.jar
 
-CMD ["java",
-    "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap",
+CMD ["java", \
+    "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", \
     "-Dlogback.configurationFile=/app/logback.xml", "-cp", \
     "/app/floodlight.jar:/app/floodlight-modules.jar", \
     "net.floodlightcontroller.core.Main", "-cf", "/app/floodlightkilda.properties"]
