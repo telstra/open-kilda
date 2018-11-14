@@ -75,7 +75,7 @@ class FlowCrudSpec extends BaseSpecification {
             assert discrepancies.empty
         }
 
-        and: "Flow allows traffic (only applicable flows are checked)"
+        and: "The flow allows traffic (only applicable flows are checked)"
         try {
             def exam = examBuilder.buildBidirectionalExam(flow, 0)
             [exam.forward, exam.reverse].each { direction ->
@@ -91,10 +91,10 @@ class FlowCrudSpec extends BaseSpecification {
                     "we are on virtual env and for now traff exam is not available here")
         }
 
-        when: "Remove flow"
-        northboundService.deleteFlow(flow.id)
+        when: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
 
-        then: "Flow is not present in NB"
+        then: "The flow is not present in NB"
         !northboundService.getAllFlows().find { it.id == flow.id }
 
         and: "ISL bandwidth is restored"
@@ -135,10 +135,10 @@ class FlowCrudSpec extends BaseSpecification {
             assert discrepancies.empty
         }
 
-        when: "Remove flow"
-        northboundService.deleteFlow(flow.id)
+        when: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
 
-        then: "Flow is not present in NB"
+        then: "The flow is not present in NB"
         !northboundService.getAllFlows().find { it.id == flow.id }
 
         and: "ISL bandwidth is restored"
