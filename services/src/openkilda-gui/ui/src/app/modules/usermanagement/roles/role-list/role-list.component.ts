@@ -171,6 +171,11 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
       setTimeout(() => {
         this.renderer.selectRootElement("#" + inputContainer).focus();
       });
+    }else{
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).value = "";
+        jQuery('#'+inputContainer).trigger('change');
+      });
     }
   }
 

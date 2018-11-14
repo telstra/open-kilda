@@ -27,3 +27,9 @@
     font-size: 16px;
 }
 
+
+.onoffswitch-checkbox {
+    visibility: hidden;
+    overflow: hidden;
+    float: left;
+}

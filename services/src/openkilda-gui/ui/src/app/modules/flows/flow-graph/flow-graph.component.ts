@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, Input, OnDestroy } from "@angular/core";
+import { Component, OnInit, AfterViewInit, Input, OnDestroy, OnChanges, SimpleChange, SimpleChanges } from "@angular/core";
 import { DygraphService } from "../../../common/services/dygraph.service";
 import { FormGroup, FormBuilder, Validators } from "@angular/forms";
 import { FlowsService } from "../../../common/services/flows.service";
@@ -11,7 +11,7 @@ declare var moment: any;
   templateUrl: "./flow-graph.component.html",
   styleUrls: ["./flow-graph.component.css"]
 })
-export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy {
+export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy ,OnChanges{
   @Input()
   flowId;
 
@@ -27,7 +27,13 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   ) {
     
   }
-
+  ngOnChanges(change:SimpleChanges){
+    if(change.flowId && change.flowId.currentValue){
+      this.flowId = change.flowId.currentValue;
+      this.ngOnInit();
+      this.loadGraphData();
+    }
+  }
   ngOnInit() {
     let dateRange = this.getDateRange(); 
     this.filterForm = this.formBuiler.group({
@@ -67,7 +73,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit() {
-    this.loadGraphData();
+    //this.loadGraphData();
 
     this.filterForm.get("auto_reload").valueChanges.subscribe(value => {
       if (value) {

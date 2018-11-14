@@ -27,25 +27,8 @@
       
        
     </div>
-    <div class="col-md-12">
-        <div class="row">
-          <div class="col-md-1">
-              <label class="text-label text-right">Cookie:</label>
-          </div>
-          <div class="col-md-11 margin-zero">
-          <div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookieforwardId" *ngIf="type=='forward'">
-              <label *ngFor="let cookie of cookieData" [ngClass]="{'active': selectedCookie == cookie}"  (click)="loadcookiegraph(cookie)" class="btn kilda_btn "><span class="copy_to_clipBoard">{{cookie}}</span> </label>
-          </div>
-        <div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookiereverseId" *ngIf="type=='reverse'">
-            <label *ngFor="let cookie of cookieData" [ngClass]="{'active': selectedCookie == cookie}" (click)="loadcookiegraph(cookie)" class="btn kilda_btn "><span class="copy_to_clipBoard">{{cookie}}</span> </label>
-            <!-- <label class="btn kilda_btn active"> <input type="radio" name="cookieReverse"  value="2611686018427388455" autocomplete="off" checked=""><span class="copy_to_clipBoard">2611686018427388455</span> </label>
-            <label class="btn kilda_btn "> <input type="radio" name="cookieReverse"  value="2611686018427388455" autocomplete="off" checked=""><span class="copy_to_clipBoard">2611686018427388455</span> </label>
-            <label class="btn kilda_btn"> <input type="radio" name="cookieReverse" value="2611686018427388455" autocomplete="off" checked=""><span class="copy_to_clipBoard">2611686018427388455</span> </label> -->
-      </div>
-    </div>
-        </div>
-      </div>
-    <div class="chart-container" style="width:95% !important">
+   
+    <div class="chart-container flow-path-graph-container" style="width:95% !important">
         <app-dygraph (zoomChange)="zoom($event)" ></app-dygraph>
     </div>
   </div>

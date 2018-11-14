@@ -10,6 +10,7 @@ import { ModalComponent } from "../../../../common/components/modal/modal.compon
 import { ModalconfirmationComponent } from "../../../../common/components/modalconfirmation/modalconfirmation.component";
 import { Title } from '@angular/platform-browser';
 import { CommonService } from '../../../../common/services/common.service';
+import { ResetPasswordComponent } from 'src/app/common/components/reset-password/reset-password.component';
 
 @Component({
   selector: 'app-user-list',
@@ -57,11 +58,11 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
       autoWidth: true,
       colResize: false,
       "aoColumns": [{
-          sWidth: '20%',
-        },{
-          sWidth: '20%',
-        },{
           sWidth: '30%',
+        },{
+          sWidth: '20%',
+        },{
+          sWidth: '20%',
         },{
           sWidth: '30%',
         }
@@ -158,9 +159,11 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     
     modalRef.result.then((response) => {
       if(response && response == true){
+        this.loaderService.show("Deleting User");
         this.userService.deleteUser(id).subscribe(() => {
           this.toastr.success("User removed successfully!",'Success')
           this.getUsers();
+          this.loaderService.hide();
         });
       }
     });
@@ -187,9 +190,11 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
 
     modalRef.result.then((response) => {
       if(response && response == true){
+        this.loaderService.show("Updating User Status");
         this.userService.editUser(id, this.changeStatus).subscribe(user => {
           this.toastr.success("User status changed successfully!",'Success')
           this.getUsers();
+          this.loaderService.hide();
         });
       }
     });
@@ -205,10 +210,13 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     modalRef.componentInstance.content = 'Are you sure you want to reset password?';
     modalRef.result.then((response) => {
       if(response && response == true){
+        this.loaderService.show("Resetting Password");
         this.userService.resetpasswordByUser(id).subscribe(user => {
           this.toastr.success("Reset Password email sent successfully!",'Success');
+          this.loaderService.hide();
         },error => {
           this.toastr.error(error.error['error-message']);
+          this.loaderService.hide();
         })
       }
     });
@@ -219,17 +227,17 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     Description: Reset the user password by admin.
   */
   resetpasswordByAdmin(id){
-    this.loaderService.show();
+    this.loaderService.show("Resetting Password");
     this.userService.resetpasswordByAdmin(id).subscribe(u => {
       this.loaderService.hide();
       this.toastr.success("Password Reset successfully!",'Success');
-      const modalRef = this.modalService.open(ModalComponent);
+      const modalRef = this.modalService.open(ResetPasswordComponent);
       modalRef.componentInstance.title = "User New Password";
-      modalRef.componentInstance.content = 'User password is '+u['password'];
+      modalRef.componentInstance.content = u['password'];
     },error => {
       this.loaderService.hide();
       this.toastr.error(error.error['error-message']);
-      console.log(error);
+
     })
   }
 
@@ -243,15 +251,19 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     modalRef.componentInstance.content = 'Are you sure you want to reset 2FA?';
     modalRef.result.then((response) => {
       if(response && response == true){
+        this.loaderService.show("Resetting 2FA");
         this.userService.reset2fa(id).subscribe(user => {
           this.toastr.success("User 2FA reset successfully!",'Success');
+          this.loaderService.hide();
         },error => {
           if(error.status == '500'){
             this.toastr.error(error.error['error-message']);
           }else{
             this.toastr.error("Something went wrong!");
           }
-          console.log(error);
+
+          this.loaderService.hide();
+         
         })
       }
     });
@@ -267,6 +279,11 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     if (this[inputContainer]) {
       setTimeout(() => {
         this.renderer.selectRootElement("#" + inputContainer).focus();
+      });
+    }else{
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).value = "";
+        jQuery('#'+inputContainer).trigger('change');
       });
     }
   }

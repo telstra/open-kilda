@@ -105,7 +105,7 @@ export class UserEditComponent implements OnInit {
     }
 
     this.userService.editUser(this.selectedUser, this.userUpdatedData).subscribe(user => {
-      this.toastr.success("Role updated successfully!",'Success! ');
+      this.toastr.success("User data updated successfully!",'Success! ');
       this.tabService.setSelectedTab('users');
       this.loaderService.hide();
     },error =>{

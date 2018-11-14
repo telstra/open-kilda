@@ -120,4 +120,8 @@ export class TopologyMenuComponent implements OnInit {
     const modalRef = this.modalService.open(AffectedIslComponent,{ size: 'lg',windowClass:'modal-isl slideInUp'});
   }
 
+  onClickedOutside(e: Event,type) {
+    this[type] = "hide";
+  }
+
 }

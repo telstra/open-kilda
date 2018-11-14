@@ -77,8 +77,8 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
     flowData.target_switch = data.target_switch;
     flowData.dst_port = data.dst_port;
     flowData.state = data.state;
-    flowData.speed = this.checkValueInt(data.speed);
-    flowData.available_bandwidth = this.checkValueInt(data.available_bandwidth);
+    flowData.speed = data.speed;
+    flowData.available_bandwidth = data.available_bandwidth;
     flowData.latency = this.checkValue(data.latency);
     flowData.unidirectional = data.unidirectional;
 
@@ -216,6 +216,11 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
     if (this[inputContainer]) {
       setTimeout(() => {
         this.renderer.selectRootElement("#" + inputContainer).focus();
+      });
+    }else{
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).value = "";
+        jQuery('#'+inputContainer).trigger('change');
       });
     }
     event.stopPropagation();

@@ -645,7 +645,7 @@ table.dataTable i.fa {
 
 table.dataTable i.fa.fa-lock.fa-stack-1x {
   font-size: 0.7rem !important;
-  margin: 3px 0px 0px 7px;
+  margin: 3px 0px 0px 5px;
 }
 
 .fa-passwd-reset {
@@ -1842,10 +1842,25 @@ table.dataTable thead th span,table.custom-margin-datatable thead th span {
   color: #ff0000;
 }
 
+.text-orange {
+  color: orange;
+}
+
 #flowDataTable .down-status .divTableCell:first-child {
-  border-left: 4px solid red;
+  border-left: 4px solid orange;
 }
 
 button:focus{
   outline: none;
+}
+.cursor-pointer{
+  cursor: pointer;
+}
+
+.btn-small {
+  padding: 0px 7px;
+}
+
+.badge-password{
+  font-size: 14px;
 }

@@ -294,6 +294,22 @@ export class DygraphService {
      
      return constructedData;
   }
+
+  getCookieDataforFlowStats(data,type) {
+    var constructedData = [];
+    for(var i=0; i < data.length; i++){
+       var cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie']: null;
+       if(cookieId){
+           if(type == 'forward' && cookieId.charAt(0) == '4'){
+             constructedData.push(data[i]);
+           }else if(type == 'reverse' && cookieId.charAt(0) == '2' ){
+             constructedData.push(data[i]);
+           }
+        }
+     }
+     
+     return constructedData;
+  }
   computeFlowPathGraphData(data, startDate, endDate, type, timezone,loadfromcookie) {
     var graphData = [];
     var labels =["Date"];
@@ -323,7 +339,7 @@ export class DygraphService {
           var dataValues = typeof data[j] !== "undefined" ? data[j].dps : 0;
           var metric = typeof data[j] !== "undefined" ? data[j].metric : "";
           if (metric !== "pen.flow.packets") {
-            metric = metric + "(" + data[j].tags.switchid + ")";
+            metric = metric + "(switchid=" + data[j].tags.switchid + ", cookie="+data[j].tags['cookie']+")";
             labels.push(metric);
             var colorCode = this.getColorCode(j, color);
             color.push(colorCode);

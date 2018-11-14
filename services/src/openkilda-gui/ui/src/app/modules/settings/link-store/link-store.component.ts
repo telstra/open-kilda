@@ -255,15 +255,15 @@ export class LinkStoreComponent implements OnInit {
 		return return_flag;
   }
   
-  validateUrl(url) {
-    if(url=='' || url == null){
-      return true;
-    }
-		var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
-	    if(res == null)
-	        return false;
-	    else
-	        return true;
+  validateUrl(url) { return true;
+    // if(url=='' || url == null){
+    //   return true;
+    // }
+		// var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
+	  //   if(res == null)
+	  //       return false;
+	  //   else
+	  //       return true;
 	}
   enableEditForm(){
     this.isEditable = true;

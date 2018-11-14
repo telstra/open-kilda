@@ -26,13 +26,13 @@ import java.math.BigDecimal;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({ "contractid", "duration", "bandwidth", "price", "contractStatus", "contractStatusName", "version",
-        "deletedtimestamp", "currencyCode", "currencyID", "currencyCode", "renewal-option", "contract-start-time",
-        "contract-end-time" })
+@JsonPropertyOrder({ "contract-id", "duration", "bandwidth", "price", "status", "version",
+        "deleted-time", "currency", "renewal-option", "start-time",
+        "end-time" })
 @Data
 public class Contract {
 
-    @JsonProperty("contractid")
+    @JsonProperty("contract-id")
     private String contractid;
 
     @JsonProperty("duration")
@@ -44,30 +44,24 @@ public class Contract {
     @JsonProperty("price")
     private BigDecimal price;
 
-    @JsonProperty("contractStatus")
+    @JsonProperty("status")
     private String contractStatus;
-
-    @JsonProperty("contractStatusName")
-    private String contractStatusName;
 
     @JsonProperty("version")
     private String version;
 
-    @JsonProperty("deletedtimestamp")
+    @JsonProperty("deleted-time")
     private Long deletedtimestamp;
 
-    @JsonProperty("currencyCode")
+    @JsonProperty("currency")
     private String currencyCode;
-
-    @JsonProperty("currencyID")
-    private String currencyId;
 
     @JsonProperty("renewal-option")
     private Boolean renewalOption;
 
-    @JsonProperty("contract-start-time")
+    @JsonProperty("start-time")
     private Long contractStartTime;
 
-    @JsonProperty("contract-end-time")
+    @JsonProperty("end-time")
     private Long contractEndTime;
 }

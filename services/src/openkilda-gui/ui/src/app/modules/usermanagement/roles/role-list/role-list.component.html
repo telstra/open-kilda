@@ -24,7 +24,7 @@
          <span *ngFor="let permission of role.permissions" class="badge badge-pill badge-secondary"> {{permission.name}}</span> 
       </td>
       <td style="font-size: 0.5rem;">
-          <i title="Edit" (click)="OpenTab('role-edit' ,role.role_id)" class="fa fa-pencil-square-o fa-2x cursor-pointer" *ngIf="role.name != 'kilda_admin' && commonService.hasPermission('um_role_edit')"></i>
+          <i title="Edit" (click)="OpenTab('role-edit' ,role.role_id)" class="fa fa-pencil-square-o fa-2x cursor-pointer" *ngIf="commonService.hasPermission('um_role_edit')"></i>
           <i title="Assign Users" (click)="OpenTab('role-assign' ,role.role_id)" class="fa fa-users fa-2x" *ngIf="commonService.hasPermission('um_assign_role_to_users')"></i>
           <i title="View User" (click)="OpenTab('role-view' ,role.role_id)" class="fa fa-user fa-2x" *ngIf="commonService.hasPermission('um_role_view_users')"></i>
           <i *ngIf="role.name != 'kilda_admin' && commonService.hasPermission('um_role_delete')" title="Delete" (click)="deleteRole(role.role_id)" class="fa fa-trash-o fa-2x cursor-pointer"></i>

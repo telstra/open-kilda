@@ -10,7 +10,7 @@
     <div class="check-connections">
       <div class="checkbox-btns">
         <div id="ui-container" class="ui-widget" [class.active]="searchView">
-          <div class="search-container"><input  id="search-bar" placeholder="Search" (selectItem)="searchNode($event.item)" (focusout)="searchHidden = true" [ngbTypeahead]="search"></div>
+          <div class="search-container"><input  id="search-bar" placeholder="Search" [(ngModel)]="searchModel" (selectItem)="searchNode($event.item)" (focusout)="searchHidden = true" [ngbTypeahead]="search"></div>
         </div>
         <i id="searchbox" (click)="toggleSearch()" class="fa fa-search" title="Search"></i>
         <i id="zoom_in" (click)="zoomFn(1)" title="Zoom In">+</i>

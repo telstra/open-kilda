@@ -39,7 +39,7 @@
                 <div class="col-sm-4">
                   <div class="pull-left">
                     <div class="onoffswitch">
-                      <input type="checkbox" (change)="maskSwitchId('source',$event)" name="onoffswitch" class="onoffswitch-checkbox"
+                      <input  [(ngModel)]="sourceCheckedValue" type="checkbox" (change)="maskSwitchId('source',$event)" name="onoffswitch" class="onoffswitch-checkbox"
                         id="onoffswitchsource">
                       <label class="onoffswitch-label" for="onoffswitchsource">
                         <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
@@ -88,7 +88,7 @@
                 <div class="col-sm-4">
                   <div class="pull-left">
                     <div class="onoffswitch">
-                      <input type="checkbox" (change)="maskSwitchId('target',$event)" name="onoffswitch" class="onoffswitch-checkbox"
+                      <input type="checkbox" [(ngModel)]="targetCheckedValue"  (change)="maskSwitchId('target',$event)" name="onoffswitch" class="onoffswitch-checkbox"
                         id="onoffswitchdestination">
                       <label class="onoffswitch-label" for="onoffswitchdestination">
                         <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
@@ -130,7 +130,7 @@
               <div class="row">
                 <div class="col-sm-4">Status:</div>
                 <div class="col-sm-8">{{ flowDetail.status }}
-                   &nbsp; <i *ngIf="storeLinkSetting &&  statusDescrepancy" class="fa fa-exclamation-triangle text-red"></i>
+                   &nbsp; <i *ngIf="storeLinkSetting &&  statusDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>
             </li>
@@ -144,7 +144,7 @@
               <div class="row">
                 <div class="col-sm-4">Maximum Bandwidth:</div>
                 <div class="col-sm-8">{{ flowDetail["maximum_bandwidth"] }}
-                    &nbsp;<i *ngIf="storeLinkSetting && bandWidthDescrepancy" class="fa fa-exclamation-triangle text-red"></i>
+                    &nbsp;<i *ngIf="storeLinkSetting && bandWidthDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>
             </li>
@@ -173,12 +173,12 @@
             <a href="javascript:void(0);" (click)="openTab('contracts');">Contract</a>
           </li>
           <li *ngIf="storeLinkSetting && (bandWidthDescrepancy || statusDescrepancy)" [ngClass]="{'active': openedTab == 'descrepancy'}">
-            <a href="javascript:void(0);" (click)="openTab('descrepancy');">Descrepancy</a>
+            <a href="javascript:void(0);" (click)="openTab('descrepancy');">Discrepancy</a>
           </li>
         </ul>
         <div class="tab-content padding-15 clearfix">
           <div class="tab-pane" *ngIf="openedTab == 'graph'" [ngClass]="{'active': openedTab == 'graph'}">
-            <app-flow-graph *ngIf="openedTab == 'graph'" [flowId]="flowDetail.flowid"></app-flow-graph>
+            <app-flow-graph *ngIf="openedTab == 'graph' && loadStatsGraph" [flowId]="flowDetail.flowid"></app-flow-graph>
           </div>
           <div class="tab-pane" *ngIf="openedTab == 'path'" [ngClass]="{'active': openedTab == 'path'}">
             <div class="text-right mb-2">
@@ -224,7 +224,7 @@
         <div class="tab-pane" [ngClass]="{'active': openedTab == 'descrepancy'}">
           <div class="table-responsive">
             <table class="table table-bordered table-hover">
-                <thead class="thead-light"><tr><th>Descrepancy</th><th>Kilda Controller</th><th>Link Store</th></tr></thead>
+                <thead class="thead-light"><tr><th>Discrepancy</th><th>Kilda Controller</th><th>Link Store</th></tr></thead>
               <tbody>
                 <tr *ngIf="statusDescrepancy"><td>Status</td><td>{{ descrepancyData.status.controller}}</td><td>{{ descrepancyData.status.inventory}}</td></tr>
                 <tr *ngIf="bandWidthDescrepancy"><td>Bandwidth</td><td>{{ descrepancyData.bandwidth.controller}}</td><td>{{ descrepancyData.bandwidth.inventory}}</td></tr>

@@ -2,17 +2,17 @@
   <div id="ForwardRow" class="col-xs-12 col-md-12 col-lg-12">
     <h3 class="text-center">
       FORWARD PATH
-      <a class="badge badge-dark custom-button" (click)="viewPathGraph('forward')">
+      <a class="badge badge-dark custom-button cursor-pointer" (click)="viewPathGraph('forward')">
         <i class="fa" [ngClass]="{'fa-minus': forwardPathGraph, 'fa-plus': !forwardPathGraph}"> </i>
       </a>
     </h3>
 
     <div  *ngFor="let path of forwardPathData" class="path">
-      <div class="number">{{path.input_port}}</div>
+      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
       <div class="line"></div>
       <div class="text" id="switch-name">{{path.switch_name}}</div>
       <div class="line"></div>
-      <div class="number">{{path.output_port}}</div>
+      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
       <div class="line"></div>
       <div *ngIf="forwardPathData.length > 5" class="vertical-line"></div>
       <div *ngIf="forwardPathData.length > 5" class="horizontal-line"></div>
@@ -30,17 +30,17 @@
       <!--<a href="javascript:void(0)" class="badge badge-primary pointer " onclick="loadReverseGraph()">
       <i id="reverse_graph_icon" class="glyphicon glyphicon-plus"></i>
     </a>-->
-      <a class="badge badge-dark custom-button" (click)="viewPathGraph('reverse')">
+      <a class="badge badge-dark custom-button cursor-pointer" (click)="viewPathGraph('reverse')">
         <i class="fa" [ngClass]="{'fa-minus': reversePathGraph, 'fa-plus': !reversePathGraph}"> </i>
       </a>
     </h3>
 
     <div  *ngFor="let path of reversePathData" class="path">
-      <div class="number">{{path.input_port}}</div>
+      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
       <div class="line"></div>
       <div class="text" id="switch-name">{{path.switch_name}}</div>
       <div class="line"></div>
-      <div class="number">{{path.output_port}}</div>
+      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
       <div class="line"></div>
       <div *ngIf="reversePathData.length > 5" class="vertical-line"></div>
       <div *ngIf="reversePathData.length > 5" class="horizontal-line"></div>

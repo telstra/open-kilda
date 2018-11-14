@@ -500,7 +500,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         var rec: any = element.getBoundingClientRect();
         $("#topology-hover-txt, #switch_hover").css("display", "block");
         $("#topology-hover-txt").css("top", rec.y + "px");
-        $("#topology-hover-txt").css("left", (rec.x-20) + "px");
+        $("#topology-hover-txt").css("left", (rec.x) + "px");
 
         d3.select(".switchdetails_div_switch_name").html(
           "<span>" + d.name + "</span>"
@@ -525,9 +525,10 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           document.getElementById("topology-hover-txt")
         );
         if (bound) {
+          
           $("#topology-hover-txt").removeClass("left");
         } else {
-          var left = rec.x - (300 + 80); // subtract width of tooltip box + circle radius
+          var left = rec.x - (300 + 100); // subtract width of tooltip box + circle radius
           $("#topology-hover-txt").css("left", left + "px");
           $("#topology-hover-txt").addClass("left");
         }
@@ -702,7 +703,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           }
           $(element).on("mousemove", function(e) {
             $("#topology-hover-txt").css("top", (e.pageY-30) + "px");
-            $("#topology-hover-txt").css("left", (e.pageX-30) + "px");
+            $("#topology-hover-txt").css("left", (e.pageX) + "px");
             var bound = ref.horizontallyBound(
               document.getElementById("switchesgraph"),
               document.getElementById("topology-hover-txt")
@@ -711,7 +712,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             if (bound) {
               $("#topology-hover-txt").removeClass("left");
             } else {
-              var left = e.pageX - (300 + 80); // subtract width of tooltip box + circle radius
+              var left = e.pageX - (300 + 100); // subtract width of tooltip box + circle radius
               $("#topology-hover-txt").css("left", left + "px");
               $("#topology-hover-txt").addClass("left");
             }
@@ -1797,6 +1798,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleSearch = () => {
     this.searchView = this.searchView ? false : true;
+    this.searchModel ='';
     if (this.searchView) {
       const element = this.renderer.selectRootElement("#search-bar");
       setTimeout(() => element.focus(), 0);
@@ -1806,10 +1808,10 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   };
 
-  searchNode = selectedVal => {
+  searchNode = (selectedVal) => {
     this.searchView = false;
     selectedVal = $.trim(selectedVal);
-
+    this.searchModel = '';
     if ($.inArray(selectedVal, this.optArray) > -1) {
       var node = this.svgElement.selectAll(".node");
       if (selectedVal == "none") {
@@ -1883,7 +1885,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       d3.selectAll(".logical,.flow-circle")
         .transition()
         .duration(500)
-        .style("opacity", 1);
+        .style("opacity", 1)
+        .style("visibility", "visible");
       if (!initialLoad && this.graphdata.flow.length == 0) {
         this.graphShow = true;
         window.location.reload();
@@ -1892,7 +1895,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       d3.selectAll(".logical,.flow-circle")
         .transition()
         .duration(500)
-        .style("opacity", 0);
+        .style("opacity", 0)
+        .style("visibility", "hidden");
     }
 
     this.onAutoRefreshSettingUpdate(setting);
@@ -1938,6 +1942,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.searchHidden) {
         this.searchView = false;
         this.searchHidden = false;
+        this.searchModel = '';
       }
       
     }, 1000);

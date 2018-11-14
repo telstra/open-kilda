@@ -158,7 +158,7 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
     let metric = formData.metric;
     let requestPayload = {
       flowid: this.data.flowid,
-      switches: switches,
+     // switches: switches,
       startdate: startDate,
       enddate: endDate,
       downsample: "30s",
@@ -168,14 +168,10 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
 
     this.flowService.getFlowPathStats(requestPayload).subscribe(
       response => {
-        let cookieBasedData = this.dygraphService.getCookieBasedData(response,this.type);
-        this.cookieData = Object.keys(cookieBasedData);
-        if(this.cookieData && this.cookieData.length){
-          this.selectedCookie = this.cookieData[0];
-        }else{
-         this.selectedCookie = null;
-        }
-        let data = (cookieBasedData && cookieBasedData[this.selectedCookie])?cookieBasedData[this.selectedCookie] :[]
+        let cookieBasedData = this.dygraphService.getCookieDataforFlowStats(response,this.type);
+        let data = (cookieBasedData && cookieBasedData.length) ? cookieBasedData: [] ;
+        console.log('cookieBasedData',cookieBasedData);
+        console.log('data',data);
         let graphdata = {
           data: data,
           startDate: fromDate,

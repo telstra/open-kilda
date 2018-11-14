@@ -68,16 +68,16 @@ public class FlowService {
 
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private ActivityLogger activityLogger;
-    
+
     @Autowired
-    private FlowStoreService flowStoreService; 
-    
+    private FlowStoreService flowStoreService;
+
     @Autowired
     private StoreService storeService;
-    
+
     @Autowired
     private FlowConverter flowConverter;
 
@@ -120,7 +120,7 @@ public class FlowService {
         }
         return flows;
     }
-    
+
     /**
      * Gets the flow count.
      *
@@ -230,7 +230,7 @@ public class FlowService {
                         discrepancy.setBandwidth(true);
 
                         FlowBandwidth flowBandwidth = new FlowBandwidth();
-                        flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
+                        flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth() / 1000);
                         flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
                         discrepancy.setBandwidthValue(flowBandwidth);
                     }
@@ -254,7 +254,7 @@ public class FlowService {
                     discrepancy.setBandwidth(true);
 
                     FlowBandwidth flowBandwidth = new FlowBandwidth();
-                    flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
+                    flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth() / 1000);
                     flowBandwidth.setInventoryBandwidth(0);
                     discrepancy.setBandwidthValue(flowBandwidth);
 
@@ -326,7 +326,7 @@ public class FlowService {
             return null;
         }
     }
-    
+
     /**
      * Re sync flow.
      * 
@@ -338,7 +338,7 @@ public class FlowService {
         activityLogger.log(ActivityType.RESYNC_FLOW, flowId);
         return flowsIntegrationService.resyncFlow(flowId);
     }
-    
+
     /**
      * Process inventory flow.
      *
@@ -358,20 +358,20 @@ public class FlowService {
             if (index >= 0) {
                 FlowDiscrepancy discrepancy = new FlowDiscrepancy();
                 discrepancy.setControllerDiscrepancy(false);
-                if (flows.get(index).getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
+                if ((flows.get(index).getMaximumBandwidth() / 1000) != inventoryFlow.getMaximumBandwidth()) {
                     discrepancy.setBandwidth(true);
                     FlowBandwidth flowBandwidth = new FlowBandwidth();
-                    flowBandwidth.setControllerBandwidth(flows.get(index).getMaximumBandwidth());
+                    flowBandwidth.setControllerBandwidth(flows.get(index).getMaximumBandwidth() / 1000);
                     flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
                     discrepancy.setBandwidthValue(flowBandwidth);
-                    
+
                 }
                 if (("UP".equalsIgnoreCase(flows.get(index).getStatus())
                         && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                         || ("DOWN".equalsIgnoreCase(flows.get(index).getStatus())
                                 && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
                     discrepancy.setStatus(true);
-                    
+
                     FlowState flowState = new FlowState();
                     flowState.setControllerState(flows.get(index).getStatus());
                     flowState.setInventoryState(inventoryFlow.getState());
@@ -402,17 +402,17 @@ public class FlowService {
                 discrepancy.setControllerDiscrepancy(false);
                 discrepancy.setStatus(true);
                 discrepancy.setBandwidth(true);
-                
+
                 FlowBandwidth flowBandwidth = new FlowBandwidth();
-                flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
+                flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth() / 1000);
                 flowBandwidth.setInventoryBandwidth(0);
                 discrepancy.setBandwidthValue(flowBandwidth);
-                
+
                 FlowState flowState = new FlowState();
                 flowState.setControllerState(flow.getStatus());
                 flowState.setInventoryState(null);
                 discrepancy.setStatusValue(flowState);
-                
+
                 flow.setDiscrepancy(discrepancy);
             }
         }

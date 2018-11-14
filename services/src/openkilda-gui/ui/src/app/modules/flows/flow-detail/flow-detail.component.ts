@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener, AfterViewInit } from "@angular/core";
+import { Component, OnInit, HostListener, AfterViewInit, Renderer2 } from "@angular/core";
 import { FlowsService } from "../../../common/services/flows.service";
 import { Router, ActivatedRoute } from "@angular/router";
 import { ToastrService } from "ngx-toastr";
@@ -38,6 +38,9 @@ export class FlowDetailComponent implements OnInit {
   storeLinkSetting = false;
   statusDescrepancy = false;
   bandWidthDescrepancy = false;
+  loadStatsGraph = false;
+  sourceCheckedValue = false;
+  targetCheckedValue = false;
   descrepancyData = {
     status:{
       controller: "-",
@@ -63,7 +66,8 @@ export class FlowDetailComponent implements OnInit {
     private titleService: Title,
     private commonService: CommonService,
     private _location:Location,
-  ) {
+    private _render:Renderer2,
+    ) {
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
   }
@@ -71,11 +75,14 @@ export class FlowDetailComponent implements OnInit {
     this.titleService.setTitle("OPEN KILDA - View Flow")
     //let flowId: string = this.route.snapshot.paramMap.get("id");
     this.route.params.subscribe(params => {
+      this.loadStatsGraph = false;
       this.getFlowDetail(params['id']);// reset and set based on new parameter this time
-    });
+      this.sourceCheckedValue = false;
+      this.targetCheckedValue = false;
+   });
     
   }
-
+  
   openTab(tab) {
     this.openedTab = tab;
     if(tab == 'contracts'){
@@ -97,6 +104,7 @@ export class FlowDetailComponent implements OnInit {
   /**fetching flow detail via API call */
   getFlowDetail(flowId) {
     this.openedTab = 'graph';
+    this.loadStatsGraph = true;
     this.clearResyncedFlow();
     this.clearValidatedFlow();
     this.loaderService.show("Fetching Flow Detail");
@@ -127,7 +135,7 @@ export class FlowDetailComponent implements OnInit {
             this.descrepancyData.bandwidth.inventory = (typeof(flow['discrepancy']['bandwidth-value']['inventory-bandwidth'])!='undefined') ?  flow['discrepancy']['bandwidth-value']['inventory-bandwidth'] : "-";
           }
         }
-
+        
         this.loaderService.hide();
       },
       error => {
@@ -143,7 +151,7 @@ export class FlowDetailComponent implements OnInit {
       if(switchId.startsWith("SW") || switchId.startsWith("sw")){
         switchId = switchId.substring(2);
         if(!switchId.includes(":")){
-          this.maskPipe.addCharacter(switchId,2).join(":").toLowerCase();
+          return this.maskPipe.addCharacter(switchId,2).join(":").toLowerCase();
         }else{
           return switchId;
         }
@@ -169,8 +177,10 @@ export class FlowDetailComponent implements OnInit {
 
     if(switchType == 'source'){
       this.clipBoardItems.sourceSwitch = this.flowDetail[switchType+"_switch"];
+      this.sourceCheckedValue = e.target.checked ? true : false;
     }else{
       this.clipBoardItems.targetSwitch = this.flowDetail[switchType+"_switch"];
+      this.targetCheckedValue = e.target.checked ? true : false;
     }
   }
 

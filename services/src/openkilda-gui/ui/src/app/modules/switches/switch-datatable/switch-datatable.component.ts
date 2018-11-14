@@ -118,6 +118,11 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       setTimeout(() => {
         this.renderer.selectRootElement("#" + inputContainer).focus();
       });
+    }else{
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).value = "";
+        jQuery('#'+inputContainer).trigger('change');
+      });
     }
   }
 

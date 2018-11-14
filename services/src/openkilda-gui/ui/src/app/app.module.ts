@@ -74,6 +74,8 @@ import { LogoutComponent } from './common/components/logout/logout.component';
 import { FlowDatatablesComponent } from './modules/flows/flow-datatables/flow-datatables.component';
 import { SwitchDatatableComponent } from './modules/switches/switch-datatable/switch-datatable.component';
 import { FlowContractsComponent } from './modules/flows/flow-contracts/flow-contracts.component';
+import { ClickOutsideModule } from 'ng-click-outside';
+import { ResetPasswordComponent } from './common/components/reset-password/reset-password.component';
 
 @NgModule({
   declarations: [
@@ -134,7 +136,8 @@ import { FlowContractsComponent } from './modules/flows/flow-contracts/flow-cont
     LogoutComponent,
     FlowDatatablesComponent,
     SwitchDatatableComponent,
-    FlowContractsComponent
+    FlowContractsComponent,
+    ResetPasswordComponent
   ],
   imports: [
     HttpClientModule,
@@ -159,6 +162,7 @@ import { FlowContractsComponent } from './modules/flows/flow-contracts/flow-cont
     ContextMenuModule.forRoot({
       autoFocus: true
     }),
+    ClickOutsideModule
   ],
   providers: [SwitchidmaskPipe, AlertifyService, Title],
   bootstrap: [AppComponent],
@@ -170,7 +174,8 @@ import { FlowContractsComponent } from './modules/flows/flow-contracts/flow-cont
     AffectedIslComponent,
     FlowGraphComponent,
     FlowPathGraphComponent,
-    FlowContractsComponent
+    FlowContractsComponent,
+    ResetPasswordComponent
   ]
 })
 export class AppModule { }

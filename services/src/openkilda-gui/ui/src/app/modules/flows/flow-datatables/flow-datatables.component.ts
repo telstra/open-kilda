@@ -125,6 +125,11 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
       setTimeout(() => {
         this.renderer.selectRootElement('#'+inputContainer).focus();
       });
+    }else{
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).value = "";
+        jQuery('#'+inputContainer).trigger('change');
+      });
     }
     event.stopPropagation();
   }

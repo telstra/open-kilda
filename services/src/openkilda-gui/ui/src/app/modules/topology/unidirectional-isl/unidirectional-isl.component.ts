@@ -44,7 +44,7 @@ export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDest
       "aoColumns": [
 				  { sWidth: '14%',"sType": "name","bSortable": true },
 	              { sWidth:  '8%' },
-	              { sWidth: '8%',"sType": "name","bSortable": true },
+	              { sWidth: '8%' },
 	              { sWidth: '14%' },
 	              { sWidth: '8%' },
 	              { sWidth: '8%' },
@@ -101,6 +101,11 @@ export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDest
     if (this[inputContainer]){
       setTimeout(() => {
         this.renderer.selectRootElement("#" + inputContainer).focus();
+      });
+    }else{
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).value = "";
+        jQuery('#'+inputContainer).trigger('change');
       });
     }
     event.stopPropagation();
