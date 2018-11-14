@@ -14,8 +14,8 @@
 #
 
 FROM kilda/base-ubuntu
-RUN apt-get update \
-    && apt-get install -y \
+RUN apt-get update -q \
+    && apt-get install -yq \
         python-pip \
         supervisor \
         vim \
