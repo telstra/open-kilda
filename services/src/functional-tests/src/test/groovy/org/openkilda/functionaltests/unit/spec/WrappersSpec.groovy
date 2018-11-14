@@ -9,7 +9,7 @@ import spock.lang.Unroll
 @Unroll
 class WrappersSpec extends Specification {
 
-    def timeout = 0.001
+    def timeout = 0.01
 
     def "Wrappers.wait throws exception if condition fails"() {
         when: "Wait is fed with a false condition"
