@@ -110,7 +110,8 @@ export class FlowEditComponent implements OnInit {
         this.getPorts("target_switch", true);
       },
       error => {
-        this.toaster.error("No flow found", "Error");
+        var errorMsg =error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No flow found';
+       this.toaster.error(errorMsg, "Error");
         this.goToBack();
         this.loaderService.hide();
       }
@@ -133,7 +134,8 @@ export class FlowEditComponent implements OnInit {
         this.getFlowDetail(flowId);
       },
       error => {
-        this.toaster.error("Unable to fetch switch list", "Error");
+        var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'Unable to fetch switch list';
+         this.toaster.error(errorMsg, "Error");
       }
     );
   }
@@ -193,7 +195,8 @@ export class FlowEditComponent implements OnInit {
           this.loaderService.hide();
         },
         error => {
-          this.toaster.error("Unable to get port information", "Error");
+          var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'Unable to get port information';
+          this.toaster.error(errorMsg, "Error");
           this.loaderService.hide();
         }
       );
@@ -233,18 +236,29 @@ export class FlowEditComponent implements OnInit {
       description: this.flowEditForm.controls["description"].value
     };
 
-    this.loaderService.show("Updating flow");
-    this.flowService.updateFlow(this.flowDetail.flowid, flowData).subscribe(
-      response => {
-        this.toaster.success("Flow updated successfully", "Success!");
-        this.router.navigate(["/flows/details/" + response.flowid]);
-        this.loaderService.hide();
-      },
-      error => {
-        this.loaderService.hide();
-        this.toaster.error("Unable to update", "Error!");
+    const modalRef = this.modalService.open(ModalconfirmationComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    modalRef.componentInstance.content = 'Are you sure you want to update flow?';
+    
+    modalRef.result.then((response) => {
+      if(response && response == true){
+        this.loaderService.show("Updating flow");
+        this.flowService.updateFlow(this.flowDetail.flowid, flowData).subscribe(
+          response => {
+            this.toaster.success("Flow updated successfully", "Success!");
+            this.router.navigate(["/flows/details/" + response.flowid]);
+            this.loaderService.hide();
+          },
+          error => {
+            this.loaderService.hide();
+            var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: "Unable to update";
+            this.toaster.error(errorMsg, "Error!");
+          }
+        );
       }
-    );
+    });
+
+   
   }
 
   /**Delete flow */

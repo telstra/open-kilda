@@ -47,11 +47,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
 
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
-    this.filterForm = this.formBuilder.group({
-      active: this.storeLinkSetting  ,
-      expired: false,
-      deleted: false
-    });
+    this.filterForm = this.formBuilder.group({ status: "active"});
    }
 
   ngOnInit(){
@@ -69,16 +65,17 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
 
   getFlowList(){
     this.loadingData = true;
+    this.loaderService.show("Loading Flows");
     if(this.storedData.length <=0 ){  
       let filtersValues = this.filterForm.value;
       let statusParam = [];
       for(let status in filtersValues){
         if(filtersValues[status]){
-          statusParam.push(status);
+          statusParam.push(filtersValues[status]);
         }
       }
 
-      this.loaderService.show("Loading Flows");
+     
       let filtersOptions = statusParam.length > 0 ? { status:statusParam.join(","),_:new Date().getTime()} : {_:new Date().getTime()};
       
       this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{

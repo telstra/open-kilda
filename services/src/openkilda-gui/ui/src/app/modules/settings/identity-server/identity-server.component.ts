@@ -121,7 +121,7 @@ export class IdentityServerComponent implements OnInit {
 			var tokenUrl = this.identityServerForm.value['oauth-generate-token-url'].url;
 			var refreshTokenUrl = this.identityServerForm.value['oauth-refresh-token-url'].url;
       var postData = decodeURIComponent("grant_type=password&username="+username+"&password="+password);
-      this.loaderService.show('validating identity server details');
+      this.loaderService.show('Validating identity server details');
 			this.storesettingservice.generateorRefreshToken(tokenUrl,postData).subscribe(
         (response:any)=>{
 			 if(response && response.access_token){
@@ -135,18 +135,18 @@ export class IdentityServerComponent implements OnInit {
               this.submitIdentityData();
 						},error=>{
               this.loaderService.hide();
-						this.toastr.error(error['error_description'] || error['error-message'],'Error');
+						this.toastr.error(error['error_description'] ? error['error-message'] : "Unable to validate indentity server",'Error');
 						})
 				 }	
 				},error=>{
           this.loaderService.hide();
-					this.toastr.error(error['error_description'] || error['error-message'],'Error');
+					this.toastr.error(error['error_description'] ? error['error-message'] : "Unable to validate indentity server",'Error');
 			})
    }
 
    submitIdentityData() {
     var obj = this.identityServerForm.value;
-    this.loaderService.show('saving identity server details');
+    this.loaderService.show('Saving identity server details');
     this.storesettingservice.submitIdentity('/auth/oauth-two-config/save',obj).subscribe((response:any)=>{
             this.identityServerForm.setValue(response || {});
             this.loaderService.hide();
