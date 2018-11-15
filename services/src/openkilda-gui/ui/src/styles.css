@@ -643,6 +643,8 @@ table.dataTable i.fa {
   cursor: pointer;
 }
 
+
+
 table.dataTable i.fa.fa-lock.fa-stack-1x {
   font-size: 0.7rem !important;
   margin: 3px 0px 0px 5px;

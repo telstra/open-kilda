@@ -199,6 +199,9 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         this.translateX = d3.event.transform.x;
         this.translateY = d3.event.transform.y;
         this.isDragMove = true;
+        $("#topology-hover-txt, #switch_hover").css("display", "none");
+        $("#topology-click-txt").css("display", "none");
+        
       });
 
     this.size = d3

@@ -104,13 +104,13 @@ export class DygraphComponent implements OnInit, OnDestroy {
         for (let i in getValue) {
           this.numOperator = parseInt(i);
           if (getValue[i] < 0 || getValue[i] == null) {
-            getValue[i] = 0;
+           continue;
           }
           if (
             typeof getVal[i] !== "undefined" &&
             (getVal[i] < 0 || getVal[i] == null)
           ) {
-            getVal[i] = 0;
+            continue;
           }
           var temparr = [];
           temparr[0] = new Date(Number(this.numOperator * 1000));

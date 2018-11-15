@@ -50,7 +50,7 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
   ngOnInit() {
     let ref = this;
     this.titleService.setTitle('OPEN KILDA - Users');
-    this.loaderService.show("Loading Users");
+    
     this.users = [];
     this.dtOptions = {
       pageLength: 10,
@@ -71,11 +71,10 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
         searchPlaceholder: "Search"
       },
       initComplete:function( settings, json ){
-        let timerOut = ref.loadCount > 1 ? ref.users.length*2.7 : 1500;
         setTimeout(function(){
           ref.loaderService.hide();
           ref.hide = true;
-        },timerOut);
+        },500);
       }
       
     };
@@ -116,13 +115,14 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
   */
   getUsers(){
     this.loadCount++;
+    this.hide = false;
     this.loaderService.show("Loading Users");
     this.userService.getUsers().subscribe((data : Array<object>) =>{
      this.users = data;
      this.rerender();
      this.ngAfterViewInit();
     },error=>{
-      this.loaderService.hide();
+      
       if(error){
         if(error.status == 0){
           this.toastr.info("Connection Refused",'Warning');
@@ -135,6 +135,7 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
         this.toastr.error("Something went wrong",'Error');
       }
       this.rerender();
+      this.ngAfterViewInit();
     });
   }
 
@@ -163,7 +164,6 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
         this.userService.deleteUser(id).subscribe(() => {
           this.toastr.success("User removed successfully!",'Success')
           this.getUsers();
-          this.loaderService.hide();
         });
       }
     });
@@ -194,7 +194,7 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
         this.userService.editUser(id, this.changeStatus).subscribe(user => {
           this.toastr.success("User status changed successfully!",'Success')
           this.getUsers();
-          this.loaderService.hide();
+         
         });
       }
     });

@@ -330,7 +330,7 @@ export class PortDetailsComponent implements OnInit, AfterViewInit {
         this.loaderService.hide();
         this.editConfigStatus = false;
         if(error.status == '500'){
-          this.toastr.error(error.error['error-message']);
+          this.toastr.error(error.error['error-auxiliary-message']);
         }else{
           this.toastr.error("Something went wrong!");
         }

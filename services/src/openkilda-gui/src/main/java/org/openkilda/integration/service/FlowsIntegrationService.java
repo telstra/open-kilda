@@ -103,6 +103,9 @@ public class FlowsIntegrationService {
                 return restClientManager.getResponse(response, FlowStatus.class);
             }
             return null;
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside getFlowStatusById  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (Exception exception) {
             LOGGER.error("Exception in getFlowStatusById " + exception.getMessage());
             throw new IntegrationException(exception);
@@ -129,6 +132,9 @@ public class FlowsIntegrationService {
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
 
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside getFlowPaths  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (Exception exception) {
             LOGGER.error("Exception in getFlowPaths " + exception.getMessage());
             throw new IntegrationException(exception);
@@ -148,6 +154,9 @@ public class FlowsIntegrationService {
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, Flow.class);
             }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside getAllFlowList  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (Exception exception) {
             LOGGER.error("Exception in getAllFlowList " + exception.getMessage());
             throw new IntegrationException(exception);
@@ -174,6 +183,9 @@ public class FlowsIntegrationService {
                 String content = IoUtil.toString(response.getEntity().getContent());
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside rerouteFlow  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (Exception exception) {
             LOGGER.error("Exception in rerouteFlow " + exception.getMessage());
             throw new IntegrationException(exception);
@@ -215,6 +227,9 @@ public class FlowsIntegrationService {
                 Flow flow = restClientManager.getResponse(response, Flow.class);
                 return flowConverter.toFlowWithSwitchNames(flow);
             }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside getFlowById  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (Exception exception) {
             LOGGER.error("Exception in getFlowById " + exception.getMessage());
             throw new IntegrationException(exception);
@@ -236,6 +251,9 @@ public class FlowsIntegrationService {
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, Flow.class);
             }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside createFlow  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
             LOGGER.error("Inside createFlow  Exception :", e);
             throw new IntegrationException(e);
@@ -260,9 +278,12 @@ public class FlowsIntegrationService {
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, Flow.class);
             }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside updateFlow  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (Exception e) {
             LOGGER.error("Inside updateFlow  Exception :", e);
-            throw new IntegrationException(e);
+            throw new IntegrationException(e.getMessage(), e);
         }
         return null;
     }
@@ -283,6 +304,9 @@ public class FlowsIntegrationService {
                 return restClientManager.getResponse(response, Flow.class);
             }
             return null;
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside deleteFlow  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (Exception e) {
             LOGGER.error("Inside deleteFlow  Exception :", e);
             throw new IntegrationException(e);
@@ -302,6 +326,9 @@ public class FlowsIntegrationService {
                             UriUtils.encodePath(flowId, "UTF-8")),
                     HttpMethod.PATCH, "", "application/json", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside resyncFlow  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (Exception e) {
             LOGGER.error("Inside resyncFlow  Exception :", e);
             throw new IntegrationException(e);

@@ -202,13 +202,13 @@ export class DygraphService {
         for (let i in getValue) {
           this.numOperator = parseInt(i);
           if (getValue[i] < 0 || getValue[i] == null) {
-            getValue[i] = 0;
+            continue;
           }
           if ( data.length == 2 &&
             typeof getVal[i] !== "undefined" &&
             (getVal[i] < 0 || getVal[i] == null)
           ) {
-            getVal[i] = 0;
+            continue;
           }
           var temparr = [];
           temparr[0] = new Date(Number(this.numOperator * 1000));
@@ -345,8 +345,8 @@ export class DygraphService {
             color.push(colorCode);
             var k = 1;
             for (let i in dataValues) {
-              if (dataValues[i] < 0) {
-                dataValues[i] = 0;
+              if (dataValues[i] < 0 || dataValues[i] == null) {
+                 continue;
               }
 
               if (j == 0) {
@@ -370,8 +370,8 @@ export class DygraphService {
             color.push("#aad200");
             var k = 1;
             for (let i in dataValues) {
-              if (dataValues[i] < 0) {
-                dataValues[i] = 0;
+              if (dataValues[i] < 0 || dataValues[i] == null) {
+                continue;
               }
 
               if (j == 0) {

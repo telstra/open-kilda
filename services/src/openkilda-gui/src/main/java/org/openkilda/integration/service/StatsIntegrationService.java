@@ -21,6 +21,7 @@ import org.openkilda.constants.OpenTsDb;
 import org.openkilda.constants.OpenTsDb.StatsType;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.Filter;
 import org.openkilda.integration.model.IslStats;
 import org.openkilda.integration.model.Query;
@@ -101,6 +102,9 @@ public class StatsIntegrationService {
             if (RestClientManager.isValidResponse(response)) {
                 return IoUtil.toString(response.getEntity().getContent());
             }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside getFlowStatusById  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (IOException ex) {
             LOGGER.error("Inside getStats Exception is: " + ex.getMessage());
             throw new IntegrationException(ex);
