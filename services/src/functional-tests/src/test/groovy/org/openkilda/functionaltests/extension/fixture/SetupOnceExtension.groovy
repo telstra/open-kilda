@@ -11,6 +11,7 @@ import org.spockframework.runtime.model.SpecInfo
  * Due to JUnit + Spring nature, it is impossible to use Autowired fields in setupSpec (or BeforeClass).
  * Thus, providing new method 'setupOnce' which will run once at the beginning of the spec and have access
  * to Spring context.
+ * Target spec should implement SetupOnce interface.
  * @see {@link SetupOnce}
  */
 @Slf4j

@@ -22,10 +22,12 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
 import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
+@Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 @CleanupSwitches
 class AutoRerouteSpec extends BaseSpecification {
     @Autowired
@@ -72,7 +74,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Revive the ISL back (bring switch port up) and delete the flow"
         northboundService.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
@@ -110,7 +112,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Restore topology to the original state, remove the flow"
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -144,8 +146,8 @@ class AutoRerouteSpec extends BaseSpecification {
         and: "Connect the intermediate switch back and delete the flow"
         lockKeeperService.reviveSwitch(flowPath[1].switchId)
         Wrappers.wait(WAIT_OFFSET) { flowPath[1].switchId in northboundService.getActiveSwitches()*.switchId }
-        northboundService.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS)
-        northboundService.deleteFlow(flow.id)
+        northboundService.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
@@ -179,7 +181,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         and: "Remove the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -235,7 +237,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Restore topology to the original state, remove the flow"
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -282,7 +284,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Bring port involved in the original path up and delete the flow"
         northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -305,9 +307,13 @@ class AutoRerouteSpec extends BaseSpecification {
             disconnectedSwitches.add(sw)
             lockKeeperService.knockoutSwitch(sw.switchId)
         }
+        Wrappers.wait(WAIT_OFFSET) {
+            def actualSwitches = northbound.activeSwitches*.switchId
+            assert !actualSwitches.any { it in disconnectedSwitches*.switchId }
+        }
 
         then: "The flow goes to 'Down' status"
-        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
+        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET) {
             northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
@@ -315,6 +321,11 @@ class AutoRerouteSpec extends BaseSpecification {
         disconnectedSwitches.findAll { !(it.switchId in flowPath*.switchId) }.each {
             lockKeeperService.reviveSwitch(it.switchId)
             disconnectedSwitches.remove(it)
+        }
+        def connectedSwitches = topology.activeSwitches*.dpId.findAll { !disconnectedSwitches*.switchId.contains(it) }
+        Wrappers.wait(WAIT_OFFSET) {
+            def actualSwitches = northbound.activeSwitches*.switchId
+            assert actualSwitches.containsAll(connectedSwitches)
         }
 
         then: "The flow goes to 'Up' status"
@@ -334,7 +345,7 @@ class AutoRerouteSpec extends BaseSpecification {
         disconnectedSwitches.each {
             northboundService.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS)
         }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
         }
@@ -374,7 +385,7 @@ class AutoRerouteSpec extends BaseSpecification {
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
@@ -408,7 +419,7 @@ class AutoRerouteSpec extends BaseSpecification {
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
     }
 
     def singleSwitchFlow() {

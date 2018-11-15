@@ -303,9 +303,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
 
         and: "Related switches has no excess rules"
         pathHelper.getInvolvedSwitches(path).each {
-            def rules = northboundService.validateSwitchRules(it.dpId)
-            assert rules.excessRules.empty
-            assert rules.missingRules.empty
+            verifySwitchRules(it.dpId)
         }
     }
 
@@ -330,9 +328,8 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         northboundService.getAllLinks().every { it.availableBandwidth == it.speed }
 
         and: "No rule discrepancies observed"
-        topology.activeSwitches.every {
-            def rules = northboundService.validateSwitchRules(it.dpId)
-            rules.missingRules.empty && rules.excessRules.empty
+        topology.activeSwitches.each {
+            verifySwitchRules(it.dpId)
         }
 
         and: "Bring port back up"

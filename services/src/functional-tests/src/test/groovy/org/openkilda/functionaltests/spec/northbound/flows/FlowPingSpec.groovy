@@ -64,7 +64,7 @@ class FlowPingSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Ping the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))
+        def response = northboundService.pingFlow(flow.id, new PingInput())
 
         then: "Ping is successfull"
         response.forward.pingSuccess
@@ -92,7 +92,7 @@ class FlowPingSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Ping the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))
+        def response = northboundService.pingFlow(flow.id, new PingInput())
 
         then: "Ping is successfull"
         response.forward.pingSuccess
@@ -161,17 +161,17 @@ class FlowPingSpec extends BaseSpecification {
                 [
                         breakForward: true,
                         breakReverse: false,
-                        pingInput: new PingInput(getDiscoveryInterval() * 1000)
+                        pingInput: new PingInput()
                 ],
                 [
                         breakForward: false,
                         breakReverse: true,
-                        pingInput: new PingInput(getDiscoveryInterval() * 1000)
+                        pingInput: new PingInput()
                 ],
                 [
                         breakForward: true,
                         breakReverse: true,
-                        pingInput: new PingInput(getDiscoveryInterval() * 1000)
+                        pingInput: new PingInput()
                 ],
                 //TODO(rtretiak): below are ignored due to #1416
 //                [
@@ -190,10 +190,9 @@ class FlowPingSpec extends BaseSpecification {
 //                        pingInput: new PingInput((getDiscoveryInterval() + 1) * 1000)
 //                ]
         ]
-        isBigTimeout = data.pingInput.timeoutMillis > discoveryInterval * 1000
         description = "${data.breakForward ? "forward" : ""}${data.breakForward && data.breakReverse ? " and " : ""}" +
-                "${data.breakReverse ? "reverse" : ""} path with timeout ${isBigTimeout ? "bigger" : "lesser"}" +
-                " than ISL disco interval"
+                "${data.breakReverse ? "reverse" : ""} path with ${data.pingInput.timeoutMillis}ms" +
+                " timeout"
 
         expectedPingResult = new PingOutputBuilder()
                 .forward(new UniFlowPingOutput(
@@ -213,7 +212,7 @@ class FlowPingSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Request flow ping for the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))
+        def response = northboundService.pingFlow(flow.id, new PingInput())
 
         then: "Flow is pingable"
         response.forward.pingSuccess
@@ -231,7 +230,7 @@ class FlowPingSpec extends BaseSpecification {
     def "Verify error if try to ping with wrong flowId"() {
         when: "Send ping request with non-existing flowId"
         def wrongFlowId = "nonexistent"
-        def response = northboundService.pingFlow(wrongFlowId, new PingInput(discoveryInterval * 1000))
+        def response = northboundService.pingFlow(wrongFlowId, new PingInput())
 
         then: "Receive error response"
         with(response) {

@@ -14,7 +14,7 @@ import org.springframework.context.ApplicationContext
 import java.lang.annotation.Annotation
 
 /**
- * Provides easy interface for adding fixture actions before/after test via spock extension.
+ * Provides easy interface for adding fixture actions before/after test via spock extension (similar to JUnit rules).
  * If `T` annotation is applied on a spec-level, the annotation effect will be spread on every feature in the spec.
  *
  * @param <T> bound annotation
