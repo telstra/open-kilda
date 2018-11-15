@@ -10,6 +10,9 @@ import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
 
+/**
+ * This extension is responsible for creating a virtual topology at the start of the test run.
+ */
 @Slf4j
 class VirtualEnvExtension extends AbstractGlobalExtension implements SpringContextListener {
     @Autowired

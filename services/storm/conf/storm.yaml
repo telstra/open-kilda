@@ -29,3 +29,8 @@ supervisor.slots.ports:
 #     parallelism.hint: 1
 #     argument:
 #       - endpoint: "metrics-collector.mycompany.org"
+
+nimbus.childopts: "-Xmx128m"
+ui.childopts: "-Xmx128m"
+supervisor.childopts: "-Xmx128m"
+worker.childopts: "-Xmx128m"

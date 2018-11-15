@@ -16,8 +16,10 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
 
 @CleanupSwitches
+@Narrative("Verify that on-demand reroute operations are performed accurately.")
 class IntentionalRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology

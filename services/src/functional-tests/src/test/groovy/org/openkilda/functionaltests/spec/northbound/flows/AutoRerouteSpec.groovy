@@ -22,10 +22,12 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
 import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
+@Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 @CleanupSwitches
 class AutoRerouteSpec extends BaseSpecification {
     @Autowired

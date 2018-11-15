@@ -23,6 +23,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 ENV JAVA_VER 8
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
+ENV JAVA_MEM_CONFIG "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
 
 COPY app /app
 

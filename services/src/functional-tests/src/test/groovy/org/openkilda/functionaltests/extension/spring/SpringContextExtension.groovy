@@ -11,6 +11,12 @@ import org.springframework.beans.factory.config.AutowireCapableBeanFactory
 import org.springframework.context.ApplicationContext
 import org.springframework.context.ApplicationContextAware
 
+/**
+ * This extension is responsible for handling spring context-related things.
+ * 
+ * Runs special 'dummy' test before spec to ensure context init for tests with 'where' blocks.
+ * Can accept listeners that will be provided with ApplicationContext as soon as it is accessible.
+ */
 @Slf4j
 class SpringContextExtension extends AbstractGlobalExtension implements ApplicationContextAware {
     public static ApplicationContext context;
