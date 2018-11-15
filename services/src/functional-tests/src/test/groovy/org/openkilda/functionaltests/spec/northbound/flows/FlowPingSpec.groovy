@@ -75,8 +75,8 @@ class FlowPingSpec extends BaseSpecification {
         !response.forward.error
         !response.reverse.error
 
-        and: "remove flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
@@ -94,7 +94,7 @@ class FlowPingSpec extends BaseSpecification {
         when: "Ping the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput())
 
-        then: "Ping is successfull"
+        then: "Ping is successful"
         response.forward.pingSuccess
         response.reverse.pingSuccess
 
@@ -103,8 +103,8 @@ class FlowPingSpec extends BaseSpecification {
         !response.forward.error
         !response.reverse.error
 
-        and: "remove flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
@@ -112,7 +112,7 @@ class FlowPingSpec extends BaseSpecification {
 
     @Issue("https://github.com/telstra/open-kilda/issues/1416")
     @Unroll("Flow ping can detect a broken #description")
-    def "Flow ping can detect broken path"() {
+    def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
         def switches = nonCentecSwitches()
         List<List<PathNode>> allPaths = []
@@ -147,9 +147,9 @@ class FlowPingSpec extends BaseSpecification {
         expect response, sameBeanAs(expectedPingResult)
                 .ignoring("forward.latency").ignoring("reverse.latency")
 
-        and: "Restore rules, costs and remove flow"
+        and: "Restore rules, costs and remove the flow"
         lockKeeper.addFlows(rulesToRemove)
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
         db.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -204,27 +204,27 @@ class FlowPingSpec extends BaseSpecification {
                 .error(null).build()
     }
 
-    def "Able to ping single-switch flow"() {
+    def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
         def sw = nonCentecSwitches().first()
         def flow = flowHelper.singleSwitchFlow(sw)
         northboundService.addFlow(flow)
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
-        when: "Request flow ping for the flow"
+        when: "Ping the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput())
 
-        then: "Flow is pingable"
+        then: "The flow is pingable"
         response.forward.pingSuccess
         response.reverse.pingSuccess
 
-        and: "No errors"
+        and: "No errors are present"
         !response.error
         !response.forward.error
         !response.reverse.error
 
-        and: "remove flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Verify error if try to ping with wrong flowId"() {
