@@ -61,7 +61,7 @@ class SwitchRulesSpec extends BaseSpecification {
 
         given: "A switch with no rules installed and not connected to the controller"
         northboundService.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
+        Wrappers.wait(RULES_DELETION_TIME) { assert northboundService.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
 
         lockKeeperService.knockoutSwitch(sw.dpId)
         Wrappers.wait(WAIT_OFFSET) { assert !(sw.dpId in northboundService.getActiveSwitches()*.switchId) }
@@ -70,10 +70,7 @@ class SwitchRulesSpec extends BaseSpecification {
         lockKeeperService.reviveSwitch(sw.dpId)
         Wrappers.wait(WAIT_OFFSET) { assert sw.dpId in northboundService.getActiveSwitches()*.switchId }
 
-        then: "The switch is really connected to the controller"
-        Wrappers.wait(WAIT_OFFSET) { sw.dpId in northboundService.getActiveSwitches()*.switchId }
-
-        and: "Default rules are installed on the switch"
+        then: "Default rules are installed on the switch"
         def cookies = northboundService.getSwitchRules(sw.dpId).flowEntries*.cookie
         cookies.sort() == expectedRules*.cookie.sort()
 
