@@ -57,7 +57,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.addFlow(flow)
 
         then: "The flow is successfully created and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
         and: "Available bandwidth on ISLs is changed in accordance with flow maximum bandwidth"
@@ -78,7 +78,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.updateFlow(flow.id, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidthUpdated
 
         and: "Available bandwidth on ISLs is changed in accordance with new flow maximum bandwidth"
@@ -126,7 +126,7 @@ class BandwidthSpec extends BaseSpecification {
         def flow1Path = PathHelper.convert(northboundService.getFlowPath(flow1.id))
 
         then: "The flow is successfully created and really built through the expected preferable path"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow1.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow1.id).status == FlowState.UP }
         flow1Path == possibleFlowPaths.first()
 
         when: "Create another flow. One path is shorter but available bandwidth is not enough, another path is longer"
@@ -135,7 +135,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.addFlow(flow2)
 
         then: "The flow is successfully created and built through longer path where available bandwidth is enough"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow2.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow2.id).status == FlowState.UP }
         def flow2Path = PathHelper.convert(northboundService.getFlowPath(flow2.id))
         pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
 
@@ -182,7 +182,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.addFlow(flow)
 
         then: "The flow is successfully created and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
         when: "Update the flow with a bandwidth that exceeds available bandwidth on ISL"
@@ -219,7 +219,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.addFlow(flow)
 
         then: "The flow is successfully created and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE - 1
 
         when: "Update the flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
@@ -227,7 +227,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.updateFlow(flow.id, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE
 
         and: "Delete the flow"
@@ -247,7 +247,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.addFlow(flow)
 
         then: "The flow is successfully created and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
         and: "Only one link is involved in flow path"
@@ -262,7 +262,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.updateFlow(flow.id, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == linkSpeed
 
         and: "The same path is used by updated flow"
