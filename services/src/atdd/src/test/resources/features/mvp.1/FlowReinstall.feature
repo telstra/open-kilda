@@ -31,7 +31,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     And a clean controller
     And a random linear topology of 3 switches
     And topology contains 8 links
-    When flow pcet creation request with de:ad:be:ef:00:00:00:01 2 0 and de:ad:be:ef:00:00:00:03 2 0 and 100 is successful
+    When flow pcet creation request with 00:00:00:00:00:00:00:01 2 0 and 00:00:00:00:00:00:00:03 2 0 and 100 is successful
     And flow pcet in UP state
 
     When switch 00000002 is turned off
@@ -52,7 +52,7 @@ Feature: Flow re-reinstalling after switch comes back up.
     And a clean controller
     And a random linear topology of 3 switches
     And topology contains 8 links
-    When flow disableReflowTest creation request with de:ad:be:ef:00:00:00:01 2 0 and de:ad:be:ef:00:00:00:03 2 0 and 100 is successful
+    When flow disableReflowTest creation request with 00:00:00:00:00:00:00:01 2 0 and 00:00:00:00:00:00:00:03 2 0 and 100 is successful
     And flow disableReflowTest in UP state
 
     And flow reroute feature is off

@@ -36,11 +36,11 @@ Feature: Basic Flow CRUD
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
       # flows with transit vlans and intermediate switches
-      | c3none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
+      | c3none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |        0         |   10000   |
       # flows with transit vlans and without intermediate switches
-      | c2none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
+      | c2none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:04 |         2        |        0         |   10000   |
       # flows without transit vlans and intermediate switches
-      | c1none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |
+      | c1none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:03 |         2        |        0         |   10000   |
 
 
 
@@ -76,10 +76,10 @@ Feature: Basic Flow CRUD
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
       # flows with transit vlans and intermediate switches
-      | c3none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
-      | c3push  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |       100        |   10000   |
-      | c3pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
-      | c3swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |       200        |   10000   |
+      | c3none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |        0         |   10000   |
+      | c3push  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |       100        |   10000   |
+      | c3pop   | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:05 |         2        |        0         |   10000   |
+      | c3swap  | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:05 |         2        |       200        |   10000   |
 
   @MVP1 @CRUD_CREATE
   Scenario Outline: Flow Creation - flows with transit vlans and without intermediate switches
@@ -110,10 +110,10 @@ Feature: Basic Flow CRUD
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
       # flows with transit vlans and without intermediate switches
-      | c2none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | c2push  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |
-      | c2pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | c2swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
+      | c2none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:04 |         2        |        0         |   10000   |
+      | c2push  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:04 |         2        |       100        |   10000   |
+      | c2pop   | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:04 |         2        |        0         |   10000   |
+      | c2swap  | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:04 |         2        |       200        |   10000   |
 
   @MVP1 @CRUD_CREATE
   Scenario Outline: Flow Creation - flows without transit vlans and intermediate switches
@@ -144,10 +144,10 @@ Feature: Basic Flow CRUD
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
       # flows without transit vlans and intermediate switches
-      | c1none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |
-      | c1push  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       100        |   10000   |
-      | c1pop   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000   |
-      | c1swap  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       200        |   10000   |
+      | c1none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:03 |         2        |        0         |   10000   |
+      | c1push  | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:03 |         2        |       100        |   10000   |
+      | c1pop   | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:03 |         2        |        0         |   10000   |
+      | c1swap  | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:03 |         2        |       200        |   10000   |
 
 
   @MVP1 @CRUD_UPDATE
@@ -172,23 +172,23 @@ Feature: Basic Flow CRUD
     Examples:
       | flow_id  |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth  | new_bandwidth |
       # flows with transit vlans and intermediate switches
-      | u3none   | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000    |     20000     |
-      | u3push   | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |       100        |   10000    |     20000     |
-      | u3pop    | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000    |     20000     |
-      | u3swap   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |       200        |   10000    |     20000     |
-      | u3bwdown | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |       200        |   10000000 |    1000000    |
+      | u3none   | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |        0         |   10000    |     20000     |
+      | u3push   | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |       100        |   10000    |     20000     |
+      | u3pop    | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:05 |         2        |        0         |   10000    |     20000     |
+      | u3swap   | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:05 |         2        |       200        |   10000    |     20000     |
+      | u3bwdown | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:05 |         2        |       200        |   10000000 |    1000000    |
       # flows with transit vlans and without intermediate switches
-      | u2none   | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000    |     20000     |
-      | u2push   | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000    |     20000     |
-      | u2pop    | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000    |     20000     |
-      | u2swap   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000    |     20000     |
-      | u2bwdown | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000000 |    1000000    |
+      | u2none   | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:04 |         2        |        0         |   10000    |     20000     |
+      | u2push   | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:04 |         2        |       100        |   10000    |     20000     |
+      | u2pop    | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:04 |         2        |        0         |   10000    |     20000     |
+      | u2swap   | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:04 |         2        |       200        |   10000    |     20000     |
+      | u2bwdown | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:04 |         2        |       200        |   10000000 |    1000000    |
       # flows without transit vlans and intermediate switches
-      | u1none   | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000    |     20000     |
-      | u1push   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       100        |   10000    |     20000     |
-      | u1pop    | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |        0         |   10000    |     20000     |
-      | u1swap   | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       200        |   10000    |     20000     |
-      | u1bwdown | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:03 |         2        |       200        |   10000000 |    1000000    |
+      | u1none   | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:03 |         2        |        0         |   10000    |     20000     |
+      | u1push   | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:03 |         2        |       100        |   10000    |     20000     |
+      | u1pop    | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:03 |         2        |        0         |   10000    |     20000     |
+      | u1swap   | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:03 |         2        |       200        |   10000    |     20000     |
+      | u1bwdown | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:03 |         2        |       200        |   10000000 |    1000000    |
 
 
   @MVP1.1 @CRUD_NEGATIVE
@@ -206,14 +206,14 @@ Feature: Basic Flow CRUD
 
     Examples:
       | flow_id  |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
-      | vc2none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | vc2push1 | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |
-      | vc2push2 | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
-      | vc2pop1  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | vc2pop2  | de:ad:be:ef:00:00:00:03 |      1      |     200     | de:ad:be:ef:00:00:00:04 |         2        |        0         |   10000   |
-      | vs2swap1 | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
-      | vs2swap2 | de:ad:be:ef:00:00:00:03 |      1      |     200     | de:ad:be:ef:00:00:00:04 |         2        |       100        |   10000   |
-      | vs2swap3 | de:ad:be:ef:00:00:00:03 |      1      |     200     | de:ad:be:ef:00:00:00:04 |         2        |       200        |   10000   |
+      | vc2none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:04 |         2        |        0         |   10000   |
+      | vc2push1 | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:04 |         2        |       100        |   10000   |
+      | vc2push2 | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:04 |         2        |       200        |   10000   |
+      | vc2pop1  | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:04 |         2        |        0         |   10000   |
+      | vc2pop2  | 00:00:00:00:00:00:00:03 |      1      |     200     | 00:00:00:00:00:00:00:04 |         2        |        0         |   10000   |
+      | vs2swap1 | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:04 |         2        |       200        |   10000   |
+      | vs2swap2 | 00:00:00:00:00:00:00:03 |      1      |     200     | 00:00:00:00:00:00:00:04 |         2        |       100        |   10000   |
+      | vs2swap3 | 00:00:00:00:00:00:00:03 |      1      |     200     | 00:00:00:00:00:00:00:04 |         2        |       200        |   10000   |
 
   @MVP1 @CRUD_CREATE
   Scenario Outline: Flow Creation - unmetered flows with transit vlans and intermediate switches
@@ -240,7 +240,7 @@ Feature: Basic Flow CRUD
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
-      | uf3none | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |     0     |
-      | uf3push | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |       100        |     0     |
-      | uf3pop  | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |        0         |     0     |
-      | uf3swap | de:ad:be:ef:00:00:00:03 |      1      |     100     | de:ad:be:ef:00:00:00:05 |         2        |       200        |     0     |
+      | uf3none | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |        0         |     0     |
+      | uf3push | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |       100        |     0     |
+      | uf3pop  | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:05 |         2        |        0         |     0     |
+      | uf3swap | 00:00:00:00:00:00:00:03 |      1      |     100     | 00:00:00:00:00:00:00:05 |         2        |       200        |     0     |

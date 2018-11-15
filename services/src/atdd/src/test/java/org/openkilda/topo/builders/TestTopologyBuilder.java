@@ -133,7 +133,7 @@ public class TestTopologyBuilder {
 
     public static String intToSwitchId(int i){
         byte[] ib = Ints.toByteArray(i);
-        return String.format("DE:AD:BE:EF:%02x:%02x:%02x:%02x",ib[0],ib[1],ib[2],ib[3]);
+        return String.format("00:00:00:00:%02x:%02x:%02x:%02x",ib[0],ib[1],ib[2],ib[3]);
     }
 
     private static final void linkSwitches(Map<String, Link> links, Switch s1, Switch s2){

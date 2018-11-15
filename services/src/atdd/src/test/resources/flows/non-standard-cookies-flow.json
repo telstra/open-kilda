@@ -11,33 +11,33 @@
             "transit_vlan": 300,
             "cookie": 73183493944770561,
             "meter_id": 1,
-            "src_switch": "de:ad:be:ef:00:00:00:01",
+            "src_switch": "00:00:00:00:00:00:00:01",
             "src_port": 1,
             "src_vlan": 200,
-            "dst_switch": "de:ad:be:ef:00:00:00:03",
+            "dst_switch": "00:00:00:00:00:00:00:03",
             "dst_port": 2,
             "dst_vlan": 201,
             "flowpath": {
                 "path": [
                     {
                         "seq_id": 1,
-                        "switch_id": "de:ad:be:ef:00:00:00:01",
+                        "switch_id": "00:00:00:00:00:00:00:01",
                         "port_no": 2
                     },
                     {
                         "seq_id": 2,
-                        "switch_id": "de:ad:be:ef:00:00:00:02",
+                        "switch_id": "00:00:00:00:00:00:00:02",
                         "port_no": 1,
                         "cookie": 145241087982698497
                     },
                     {
                         "seq_id": 3,
-                        "switch_id": "de:ad:be:ef:00:00:00:02",
+                        "switch_id": "00:00:00:00:00:00:00:02",
                         "port_no": 2
                     },
                     {
                         "seq_id": 4,
-                        "switch_id": "de:ad:be:ef:00:00:00:03",
+                        "switch_id": "00:00:00:00:00:00:00:03",
                         "port_no": 1,
                         "cookie": 217298682020626433
                     }
@@ -55,33 +55,33 @@
             "transit_vlan": 301,
             "cookie": 109212290963734529,
             "meter_id": 2,
-            "src_switch": "de:ad:be:ef:00:00:00:03",
+            "src_switch": "00:00:00:00:00:00:00:03",
             "src_port": 2,
             "src_vlan": 201,
-            "dst_switch": "de:ad:be:ef:00:00:00:01",
+            "dst_switch": "00:00:00:00:00:00:00:01",
             "dst_port": 1,
             "dst_vlan": 200,
             "flowpath": {
                 "path": [
                     {
                         "seq_id": 1,
-                        "switch_id": "de:ad:be:ef:00:00:00:03",
+                        "switch_id": "00:00:00:00:00:00:00:03",
                         "port_no": 1
                     },
                     {
                         "seq_id": 2,
-                        "switch_id": "de:ad:be:ef:00:00:00:02",
+                        "switch_id": "00:00:00:00:00:00:00:02",
                         "port_no": 2,
                         "cookie": 181269885001662465
                     },
                     {
                         "seq_id": 3,
-                        "switch_id": "de:ad:be:ef:00:00:00:02",
+                        "switch_id": "00:00:00:00:00:00:00:02",
                         "port_no": 1
                     },
                     {
                         "seq_id": 4,
-                        "switch_id": "de:ad:be:ef:00:00:00:01",
+                        "switch_id": "00:00:00:00:00:00:00:01",
                         "port_no": 2,
                         "cookie": 253327479039590401
                     }

@@ -16,7 +16,7 @@ Feature: Validate kilda behaviour during connectivity issues with speaker
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
-      | c3none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
+      | c3none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |        0         |   10000   |
 
   @InDev
   Scenario Outline: Switches lost between switches to speaker (idle)
@@ -36,7 +36,7 @@ Feature: Validate kilda behaviour during connectivity issues with speaker
 
     Examples:
       | flow_id |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth |
-      | c3none  | de:ad:be:ef:00:00:00:03 |      1      |      0      | de:ad:be:ef:00:00:00:05 |         2        |        0         |   10000   |
+      | c3none  | 00:00:00:00:00:00:00:03 |      1      |      0      | 00:00:00:00:00:00:00:05 |         2        |        0         |   10000   |
 
 #  Scenario: New switch added when speaker is unreachable
 #    Given a clean controller

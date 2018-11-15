@@ -48,13 +48,13 @@ import java.util.stream.Collectors;
 public class NorthboundRunTest {
     private static final FlowState expectedFlowStatus = FlowState.UP;
     private static final List<PathNodePayload> expectedForwardFlowPath = Arrays.asList(
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:03"), 11, 2),
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:04"), 1, 2),
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:05"), 1, 12));
+            new PathNodePayload(new SwitchId("00:00:00:00:00:00:00:03"), 11, 2),
+            new PathNodePayload(new SwitchId("00:00:00:00:00:00:00:04"), 1, 2),
+            new PathNodePayload(new SwitchId("00:00:00:00:00:00:00:05"), 1, 12));
     private static final List<PathNodePayload> expectedReverseFlowPath = Arrays.asList(
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:05"), 12, 1),
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:04"), 2, 1),
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:03"), 2, 11));
+            new PathNodePayload(new SwitchId("00:00:00:00:00:00:00:05"), 12, 1),
+            new PathNodePayload(new SwitchId("00:00:00:00:00:00:00:04"), 2, 1),
+            new PathNodePayload(new SwitchId("00:00:00:00:00:00:00:03"), 2, 11));
 
     @Then("^path of flow (\\w+) could be read$")
     public void checkFlowPath(final String flowId) {
