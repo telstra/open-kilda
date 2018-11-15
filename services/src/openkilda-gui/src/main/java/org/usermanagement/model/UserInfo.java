@@ -27,9 +27,10 @@ import java.util.Set;
 /**
  * The Class UserInfo.
  */
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({ "user_id", "name", "user_name", "roles", "email", "role_id", "password", "status", "new_password",
-        "code", "settings" })
+@JsonPropertyOrder({ "user_id", "name", "user_name", "roles", "is2FaEnabled", "status", "email", "role_id", "password",
+        "status", "new_password", "code", "settings" })
 public class UserInfo implements Serializable {
 
     private static final long serialVersionUID = 5779373512137456449L;
@@ -340,6 +341,6 @@ public class UserInfo implements Serializable {
     public String toString() {
         return "UserInfo [userId=" + userId + ", username=" + username + ", name=" + name + ", roles=" + roles
                 + ", email=" + email + ", roleIds=" + roleIds + ", password=" + password + ", status=" + status
-                + ", newPassword=" + newPassword + ", code=" + code + "]";
+                + ", is2FaEnabled=" + is2FaEnabled + ", newPassword=" + newPassword + ", code=" + code + "]";
     }
 }

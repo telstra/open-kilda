@@ -1,0 +1,5 @@
+
+   <div class="text-right mb-1">
+      <span class="btn kilda_btn" id="refresh_list" (click)="getSwitchList()">Refresh</span>
+    </div>
+   <app-switch-datatable [data]="dataSet" *ngIf="!loadingData"></app-switch-datatable>

@@ -1,0 +1,29 @@
+<div class="modal-header">
+  <h4 class="modal-title">AFFECTED ISL's</h4>
+  <button type="button" class="close" aria-label="Close" (click)="activeModal.dismiss('Cross click')">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+<div class="row">
+  <div id="exTab1" class="col-lg-12 tab-wrapper">
+    <ul class="nav nav-pills">
+      <li [ngClass]="{'active': openedTab == 'failed'}">
+        <a href="javascript:void(0)" (click)="toggleTab('failed')" data-toggle="tab">FAILED</a>
+      </li>
+      <li [ngClass]="{'active': openedTab == 'unidirectional'}">
+        <a href="javascript:void(0)" (click)="toggleTab('unidirectional')" data-toggle="tab" id="flow-list">UNIDIRECTIONAL</a>
+      </li>
+    </ul>
+    <div class="tab-content clearfix">
+      <div class="tab-pane" [ngClass]="{'active': openedTab == 'failed'}" id="1a">
+        
+        <app-failed-isl ></app-failed-isl>
+      </div>
+      <div class="tab-pane" [ngClass]="{'active': openedTab == 'unidirectional'}" id="2a">
+        <app-unidirectional-isl ></app-unidirectional-isl>
+      </div>
+    </div>
+  </div>
+</div>
+</div>

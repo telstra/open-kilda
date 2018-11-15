@@ -1,0 +1,34 @@
+<div class="usermanagement-table-wrapper" [hidden]="hide"></div>
+<table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+  <thead>
+    <tr class="tableHeading" role="row">
+      <th class="roleDataTable tableColumn">
+        <span class="title" title="Name">Name</span> 
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedName')"></i>
+        <input type="search" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" class="heading_search_box" placeholder="Search" id="expandedName" [hidden]="!expandedName"/> 
+      </th>
+      <th class="tableColumn">
+        <span class="title" title="Roles">Permissions</span> 
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedPermission')"></i>
+        <input type="search" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" class="heading_search_box" placeholder="Search"  id="expandedPermission" [hidden]="!expandedPermission" /> 
+      </th>
+      <th>
+        <span class="title" title="Options">Options</span>
+      </th>
+    </tr>
+  </thead>
+  <tbody id="user-details">
+    <tr *ngFor="let role of roleData">
+      <td>{{role.name}}</td>
+      <td>
+         <span *ngFor="let permission of role.permissions" class="badge badge-pill badge-secondary"> {{permission.name}}</span> 
+      </td>
+      <td style="font-size: 0.5rem;">
+          <i title="Edit" (click)="OpenTab('role-edit' ,role.role_id)" class="fa fa-pencil-square-o fa-2x cursor-pointer" *ngIf="commonService.hasPermission('um_role_edit')"></i>
+          <i title="Assign Users" (click)="OpenTab('role-assign' ,role.role_id)" class="fa fa-users fa-2x" *ngIf="commonService.hasPermission('um_assign_role_to_users')"></i>
+          <i title="View User" (click)="OpenTab('role-view' ,role.role_id)" class="fa fa-user fa-2x" *ngIf="commonService.hasPermission('um_role_view_users')"></i>
+          <i *ngIf="role.name != 'kilda_admin' && commonService.hasPermission('um_role_delete')" title="Delete" (click)="deleteRole(role.role_id)" class="fa fa-trash-o fa-2x cursor-pointer"></i>
+        </td>
+    </tr>
+  </tbody>
+</table>

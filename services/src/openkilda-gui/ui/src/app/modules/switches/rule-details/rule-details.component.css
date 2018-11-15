@@ -1,0 +1,13 @@
+.clip-board-wrapper{
+    position: relative;
+}
+
+.clip-board-button{
+    position: absolute;
+    background: #9d9191cf;
+    outline: none;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    display: none;
+}

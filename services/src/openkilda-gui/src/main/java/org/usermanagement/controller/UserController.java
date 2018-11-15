@@ -47,7 +47,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 
 @RestController
-@RequestMapping(path = "/user", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/api/user", produces = MediaType.APPLICATION_JSON_VALUE)
 public class UserController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class);
@@ -259,5 +259,17 @@ public class UserController {
     public boolean validateOtp(@RequestBody final UserInfo userInfo, final HttpServletRequest request) {
         LOGGER.info("[validateOTP] (userId: " + serverContext.getRequestContext().getUserId() + ")");
         return userService.validateOtp(serverContext.getRequestContext().getUserId(), userInfo.getCode());
+    }
+    
+    /**
+     * Gets the logged in user info.
+     *
+     * @return the logged in user info
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @RequestMapping(value = "/loggedInUserInfo", method = RequestMethod.GET)
+    public UserInfo getLoggedInUserInfo() {
+        LOGGER.info("[getLoggedInUserInfo] ");
+        return userService.getLoggedInUserInfo();
     }
 }

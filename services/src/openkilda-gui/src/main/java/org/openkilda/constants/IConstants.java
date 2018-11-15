@@ -189,7 +189,7 @@ public abstract class IConstants {
         
         public static final String ERROR_403 = "errors/403";
         
-        public static final String LOGIN = "login/login";
+        public static final String LOGIN = "login";
         
         public static final String HOME = "home";
         
@@ -218,9 +218,9 @@ public abstract class IConstants {
         public static final String USER_MANAGEMENT = "usermanagement/usermanagement";
         public static final String STORE_SETTING = "storesetting/storesetting";
         
-        public static final String TWO_FA_GENERATOR = "login/twofa";
+        public static final String TWO_FA_GENERATOR = "twofa";
         
-        public static final String OTP = "login/otp";
+        public static final String OTP = "otp";
         
         public static final String ACTIVITY_LOGS = "useractivity/useractivity";
     }
@@ -363,13 +363,13 @@ public abstract class IConstants {
             }
             return list;
         }
+        
         /**
          * Switch value.
          *
          * @param tag the tag
          * @return the list
          */
-
         public static List<String> switchValue(String tag) {
             List<String> list = new ArrayList<String>();
 

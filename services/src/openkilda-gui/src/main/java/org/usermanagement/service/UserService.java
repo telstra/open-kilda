@@ -15,6 +15,8 @@
 
 package org.usermanagement.service;
 
+import org.openkilda.auth.context.ServerContext;
+import org.openkilda.auth.model.RequestContext;
 import org.openkilda.constants.IConstants;
 import org.openkilda.exception.InvalidOtpException;
 import org.openkilda.exception.OtpRequiredException;
@@ -101,6 +103,9 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     MessageCodeUtil messageCodeUtil;
+    
+    @Autowired
+    private ServerContext serverContext;
 
     /*
      * (non-Javadoc)
@@ -528,5 +533,22 @@ public class UserService implements UserDetailsService {
             throw new TwoFaKeyNotSetException(messageUtil.getAttribute2faNotEnabled());
         }
         return true;
+    }
+
+    /**
+     * Gets the logged in user info.
+     *
+     * @return the logged in user info
+     */
+    public UserInfo getLoggedInUserInfo() {
+        UserInfo userInfo = new UserInfo();
+        RequestContext requestContext = serverContext.getRequestContext();
+        userInfo.setUserId(requestContext.getUserId());
+        userInfo.setUsername(requestContext.getUserName());
+        userInfo.setIs2FaEnabled(requestContext.getIs2FaEnabled());
+        userInfo.setStatus(requestContext.getStatus());
+        userInfo.setName(requestContext.getFullName());
+        userInfo.setPermissions(requestContext.getPermissions());
+        return userInfo;
     }
 }

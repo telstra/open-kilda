@@ -1,0 +1,54 @@
+<div class="isl_flow_switch">
+  <input type="hidden" id="auto_refresh" value="false">
+  <input type="hidden" id="auto_refresh_interval">
+  <input type="hidden" id="m_s_dropdown">
+  <input type="hidden" id="switch">
+
+  <span class="btn btn-dark btn-xsmall" data-toggle="modal" id="viewISL" (click)="showAffectedISL()">Affected ISL</span>
+  <span (click)="showSwitch()" ngbPopover="Show Switch" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" class="switch_icon custom-icon" id="switch_icon">
+
+    <i [class.icon-switch]="this.defaultSetting.SWITCH_CHECKED" [class.inactive-icon-switch]="!this.defaultSetting.SWITCH_CHECKED"
+      aria-hidden="true"></i>
+  </span>
+  <span *ngIf="this.defaultSetting.FLOW_CHECKED" (click)="showIsl()" data-balloon-pos="down" ngbPopover="Show ISL"
+    popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" class="isl_switch_icon custom-icon"
+    id="logical">
+    <i class="icon-isl" aria-hidden="true"></i></span>
+
+  <span *ngIf="this.defaultSetting.ISL_CHECKED" (click)="showFlow()" data-balloon-pos="down" ngbPopover="Show Flows" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" class="isl_switch_icon custom-icon" id="physical" style="">
+
+    <i class="icon-flows" aria-hidden="true"></i>
+  </span>
+  <span (clickOutside)="onClickedOutside($event,'refreshMenu')" ngbPopover="Refresh" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave"
+    class="refresh_toggle custom-icon" (click)="toggleRefreshMenu()">
+    <i class="icon-refresh-kilda" [class.active]="defaultSetting.REFRESH_CHECKED"></i>
+  </span>
+  <ul class="refresh_list" [@changeState]="refreshMenu">
+    <li class="stop_refresh" [class.active]="!defaultSetting.REFRESH_CHECKED" (click)="stopAutoRefresh()"><i class="fa fa-check"></i> STOP</li>
+    <li *ngFor="let interval of refreshIntervals" [class.active]="defaultSetting.REFRESH_CHECKED && defaultSetting.REFRESH_INTERVAL== interval.value" class="refresh_option" (click)="setAutoRefresh(interval.value)"><i class="fa fa-check"></i> {{interval.label}}</li>
+   </ul>
+  <span (clickOutside)="onClickedOutside($event,'showInfoFlag')" (click)="showInfo()" class="refresh_toggle custom-icon"><i class="info-icon" aria-hidden="true"></i></span>
+  </div>
+<div class="topology-txt" id="topology-txt" [@changeState]="showInfoFlag">
+  <h1 align="center">Information</h1>
+  <p>1. Graph represents all logical and physical links between
+    switches.</p>
+  <p>2. Hover over switch will show switch name and on click, it
+    will show switch detail information along with port details.</p>
+  <p>3. Click on Physical link will lead to link details page
+    which will provide source &amp; Destination details along with
+    ISL details. It will also provide graph of data being transferred
+    through this link.</p>
+  <p>4. No. mentioned on Logical link represents no. of logical
+    links present between these switches.</p>
+  <p>5. Click on logical link will share list of all logical
+    links present between these switches which will further provide
+    source &amp; destination details of flow along with flow details.
+    It will also provide graph of data being transferred and path
+    (Forward &amp; Reverse) followed by link.</p>
+  <p>6. Select switch and drag for better view of connections.</p>
+  <p>7. Double click on switch to restore graph.</p>
+  <div class="clear clearfix"></div>
+</div>
+
+ 

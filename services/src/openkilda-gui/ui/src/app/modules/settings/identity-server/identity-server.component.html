@@ -1,0 +1,41 @@
+<div class="tab-pane active" id="identityServerTab">
+  <form  novalidate (ngSubmit)="validateIdentityData()" [formGroup]="identityServerForm" method="POST">
+    <div class="form-group row">
+      <label for="username" class="col-sm-2">Username:</label>
+      <div class="col-sm-6">
+        <input  formControlName="username"  type="text" class="form-control" placeholder="Username" />
+        <span  *ngIf=" (!i.username.valid && (i.username.dirty || i.username.touched)  && i.username.errors || submitted) && (i.username.errors && i.username.errors.required)" class="error" >Username is required.</span>
+      </div>  
+    </div>
+    <div class="form-group row">
+      <label for="password" class="col-sm-2">Password:</label>
+      <div class="col-sm-6">
+        <input  formControlName="password" type="password"  class="form-control" placeholder="Password"  />
+        <span *ngIf="(!i.password.valid && (i.password.dirty || i.password.touched) && i.password.errors || submitted) && (i.password.errors && i.password.errors.required)" class="error" >Password is required.</span>
+      </div> 
+    </div>
+    <div class="form-group row" [formGroupName]="'oauth-generate-token-url'">
+      <label for="tokenurl" class="col-sm-2">Generate Token URL:</label> 
+      <div class="col-sm-6">
+        <input  rel="urltext"  formControlName="url"  type="text" class="form-control" placeholder="Generate Token URL"  /> 
+        <span *ngIf="(!i['oauth-generate-token-url']['controls'].url.valid && (i['oauth-generate-token-url']['controls'].url.dirty || i['oauth-generate-token-url']['controls'].url.touched )  &&  i['oauth-generate-token-url']['controls'].url.errors || submitted)  && ( i['oauth-generate-token-url']['controls'].url.errors && i['oauth-generate-token-url']['controls'].url.errors.required)" class="error" >Token URL is required.</span>
+        <span *ngIf="(!i['oauth-generate-token-url']['controls'].url.valid && (i['oauth-generate-token-url']['controls'].url.dirty || i['oauth-generate-token-url']['controls'].url.touched) &&  i['oauth-generate-token-url']['controls'].url.errors || submitted ) && (i['oauth-generate-token-url']['controls'].url.errors && i['oauth-generate-token-url']['controls'].url.errors.pattern)" class="error" >Kindly enter a valid url.</span>
+      </div>
+    </div>
+    <div class="form-group row" [formGroupName]="'oauth-refresh-token-url'">
+      <label for="refreshtokenurl" class="col-sm-2">Refresh Token URL:</label> 
+      <div class="col-sm-6">
+        <input  rel="urltext"  formControlName="url" type="text" class="form-control" placeholder="Refresh Token URL"  /> 
+        <span  *ngIf="(!i['oauth-refresh-token-url']['controls'].url.valid && (i['oauth-refresh-token-url']['controls'].url.dirty || i['oauth-refresh-token-url']['controls'].url.touched )   && i['oauth-refresh-token-url']['controls'].url.errors || submitted) && (i['oauth-refresh-token-url']['controls'].url.errors && i['oauth-refresh-token-url']['controls'].url.errors.required)" class="error" >Refresh Token URL is required.</span>
+        <span  *ngIf="(!i['oauth-refresh-token-url']['controls'].url.valid && (i['oauth-refresh-token-url']['controls'].url.dirty || i['oauth-refresh-token-url']['controls'].url.touched ) && i['oauth-refresh-token-url']['controls'].url.errors || submitted) && (i['oauth-refresh-token-url']['controls'].url.errors && i['oauth-refresh-token-url']['controls'].url.errors.pattern)" class="error" >Kindly enter a valid url.</span>
+      </div>
+    </div>
+    <div class="form-group row">
+      <div class="col-sm-8 text-right">
+        <button type="button"  (click)="enableEditForm()"  *ngIf="isEdit && !isEditable" class="btn kilda_btn" >Edit</button>
+        <button type="button" (click)="cancelEditForm()"  *ngIf="isEdit && isEditable" class="btn kilda_btn cancel_btn">Cancel</button>
+        <button type="submit" id="submitidentityBtn" *ngIf="!isEdit || isEditable" class="btn kilda_btn">Validate and Submit</button>
+      </div>
+    </div>
+  </form>
+</div>

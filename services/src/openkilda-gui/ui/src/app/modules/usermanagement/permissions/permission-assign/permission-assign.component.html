@@ -1,0 +1,43 @@
+<div class=" user-management-tabs">
+  <form [formGroup]="permissionAssignForm" id="addpermissionform" (ngSubmit)="submitform()" novalidate #permissionform="ngForm">
+    <div class="form-group row" [ngClass]="{'error': permissionAssignForm.controls['name'].errors && permissionform.submitted}">
+      <label class="col-sm-2 control-label required">Name:</label>
+      <div class="col-sm-6">
+        <input class="form-control" mdInput  type="text" formControlName="name" placeholder="Name" required/>
+        <div *ngIf="permissionAssignForm.controls['name'].errors && permissionform.submitted" class="invalid-feedback" >
+          <span >Name is required.</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group row" [ngClass]="{'error': permissionAssignForm.controls['name'].errors && permissionform.submitted}">
+      <label class="col-sm-2 control-label required">Description:</label>
+      <div class="col-sm-6">
+        <input class="form-control" type="text" formControlName="description" placeholder="Description">
+        <div *ngIf="permissionAssignForm.controls['description'].errors && permissionform.submitted" class="invalid-feedback" >
+            <span>Description is required.</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group row">
+      <label class="col-sm-2 control-label required">Roles:</label>
+      <div class="col-sm-6">
+        <ng-select
+          formControlName="role"
+          [items]="roleData"
+          bindLabel="name"
+          bindValue="id"
+          labelForId="id"
+          [multiple]="true"
+          placeholder="Select Role"
+          clearAllText="Clear"
+      > </ng-select>
+      </div>
+    </div>
+    <div class="form-group row">
+        <div class="col-sm-8 text-right">
+          <button id="closeUserForm" type="button" class="btn kilda_btn" (click)="close()">Close</button>
+          <button type="submit" id="submitBtn" class="btn kilda_btn">Assign Roles</button>
+        </div>
+    </div>
+  </form>
+</div>

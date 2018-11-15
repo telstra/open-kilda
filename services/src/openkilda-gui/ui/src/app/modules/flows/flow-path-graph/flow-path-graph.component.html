@@ -1,0 +1,35 @@
+<div class="row">
+  <div class="col-sm-12 col-md-12 col-lg-12">
+    <div class="form-container mb-3">
+      <form class="form-inline"  [formGroup]="filterForm">
+        <div class="form-group  col-md-3">
+          <label>Timezone: </label> &nbsp;
+          <select formControlName="timezone" class="form-control" (change)="changeTimeZone()">
+            <option value="UTC">UTC</option>
+            <option value="My">My Timezone</option>
+          </select>
+        </div>
+        <div class="form-group  col-md-3">
+          <label>From: </label> &nbsp;
+          <input datetime-picker formControlName="startDate" placeholder="Date Time:" (change)="changeDate('startDate',$event)">
+        </div>
+        <div class="form-group  col-md-3">
+          <label>To: </label> &nbsp;
+          <input datetime-picker formControlName="endDate" (change)="changeDate('endDate',$event)" placeholder="Date Time:">
+        </div>
+        <div class="form-group  col-md-3">
+            <label>Metric: </label> &nbsp;
+            <select formControlName="metric" class="form-control" (change)="changeMetric()">
+                <option value="{{metric.value}}" *ngFor="let metric of flowMetrics">{{metric.label}}</option>
+              </select>
+          </div>
+      </form>
+      
+       
+    </div>
+   
+    <div class="chart-container flow-path-graph-container" style="width:95% !important">
+        <app-dygraph (zoomChange)="zoom($event)" ></app-dygraph>
+    </div>
+  </div>
+</div>

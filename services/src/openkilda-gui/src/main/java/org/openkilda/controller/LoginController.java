@@ -24,7 +24,6 @@ import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 
 import org.apache.log4j.Logger;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -38,7 +37,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
-
 import org.usermanagement.dao.entity.PermissionEntity;
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.UserEntity;
@@ -80,9 +78,9 @@ public class LoginController extends BaseController {
      */
     @RequestMapping(value = { "/", "/login" })
     public ModelAndView login(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.REDIRECT_HOME);
+        return validateAndRedirect(request, IConstants.View.LOGIN);
     }
-
+    
     /**
      * Logout.
      *
@@ -127,7 +125,7 @@ public class LoginController extends BaseController {
                 LOGGER.error("authenticate() Authentication failure with username{} and password{}");
                 modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
             }
-        } catch (@SuppressWarnings("unused") TwoFaKeyNotSetException e) {
+        } catch (TwoFaKeyNotSetException e) {
             LOGGER.error("2 FA Key not set for user: '" + username + "'.");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
@@ -137,12 +135,12 @@ public class LoginController extends BaseController {
             userService.updateUser2FaKey(username, secretKey);
 
             modelAndView.setViewName(IConstants.View.TWO_FA_GENERATOR);
-        } catch (@SuppressWarnings("unused") OtpRequiredException e) {
+        } catch (OtpRequiredException e) {
             LOGGER.error("OTP required for user: '" + username + "'.");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
             modelAndView.setViewName(IConstants.View.OTP);
-        } catch (@SuppressWarnings("unused") InvalidOtpException e) {
+        } catch (InvalidOtpException e) {
             LOGGER.error("Authentication code is invalid for user: '" + username + "'.");
             error = "Authentication code is invalid";
             modelAndView.addObject("username", username);

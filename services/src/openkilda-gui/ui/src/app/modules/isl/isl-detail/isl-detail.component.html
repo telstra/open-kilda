@@ -1,0 +1,243 @@
+<div *ngIf="detailDataObservable">
+  <div class="row isl_details_div" style="margin-bottom: 10px;">
+    <div class="col-md-6 isl_details">
+      <h5 class='modal-title'>SOURCE DETAILS</h5>
+       <div id="isl-source-details-div">
+        <div class='row'>
+          <label class='col-sm-4 col-form-label'>Port:</label>
+          <p class="col-sm-8 col-form-label">
+            {{src_port}}
+          </p>
+        </div>
+        <div class='row'>
+          <label class='col-sm-4 col-form-label'>Switch Id:</label>
+            <div class=" col-sm-4 col-form-label" >
+              <span [contextMenu]="copySrcSwitch">{{src_switch}}</span>
+            </div>
+          <div class='col-sm-4'>
+            <div class="pull-left">
+              <div class="onoffswitch">
+                <input type="checkbox" (change)="maskSwitchId('source',$event)" name="onoffswitch" class="onoffswitch-checkbox" id="onoffswitchsource">
+                <label class="onoffswitch-label" for="onoffswitchsource">
+                  <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
+                  <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class='row'>
+          <label class='col-sm-4 col-form-label'>Name:</label>
+          <!-- <p class='col-sm-8 copy_to_clipBoard link_div_source_switch_name'>{{src_switch_name}}</p> -->
+           <div class=" col-sm-4 col-form-label">
+              <span [contextMenu]="copySrcSwitchName">{{src_switch_name }}</span>
+            </div>
+        </div>
+      </div>
+    </div>
+    <!-- ISL DESTINATION Details -->
+    <div class="col-md-6 isl_details">
+      <h5 class='modal-title'>DESTINATION DETAILS</h5>
+      <div id="isl-destination-details-div">
+        <div class='row'>
+          <label class='col-sm-4 col-form-label'>Port:</label>
+          <p class='col-sm-8 col-form-label'>
+            {{dst_port}}
+          </p>
+        </div>
+        <div class='row'>
+          <label class='col-sm-4 col-form-label'>Switch Id:</label>
+           <!--  <span class="link_div_destination_switch copy_to_clipBoard">{{dst_switch}}</span> -->
+             <div class="col-form-label col-sm-4">
+              <span [contextMenu]="copyTrgSwitch" >{{dst_switch }}</span>
+            </div>
+          <div class='col-sm-4'>
+            <div class="pull-left">
+              <div class="onoffswitch">
+                <input type="checkbox" (change)="maskSwitchId('destination',$event)" name="onoffswitch" class="onoffswitch-checkbox" id="onoffswitchdestination">
+                <label class="onoffswitch-label" for="onoffswitchdestination">
+                  <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
+                  <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class='row'>
+          <label class='col-sm-4 col-form-label'> Name:</label>
+           <div class="col-sm-8 col-form-label">
+              <span [contextMenu]="copyTrgSwitchName">{{dst_switch_name}}</span>
+            </div>
+        </div>
+      </div>
+    </div>
+    <!-- ISL Speed Details -->
+    <form [formGroup]="islForm" style="width: 100%;">
+      <div class="col-lg-12 isl_detail_title_div">
+        <h5 class='modal-title' style="margin-top: 0px !important">ISL DETAILS</h5>
+        <div class="isl-speed-latency-bandwidth-details-div">
+          <div class='row isl_sbl_details'>
+            <label class='col-sm-4 col-form-label'>Speed:</label>
+            <p class='col-sm-8 isl_div_speed'>{{ convertInMB(speed) }}</p>
+          </div>
+          <!-- ISL Latency Details -->
+          <div class='row isl_sbl_details'>
+            <label class='col-sm-4 col-form-label'>Latency:</label>
+            <p class='col-sm-8 isl_div_latency'>{{latency}}</p>
+          </div>
+          <div class='row isl_sbl_details'>
+            <label id="isl_cost_lbl" class='col-sm-4 col-form-label'>Cost:</label>
+            <div class="text_cost_details" id="text_cost_details" [hidden]="showCostEditing">
+              <span class="col-sm-3" style="padding-right: 0 !important">{{detailDataObservable.props.cost}}</span>
+              <span >
+                <span class="isl_div_cost"></span><span class="ml-1 cursor-pointer" id="edit_isl_cost" *ngIf="commonService.hasPermission('isl_permission_editcost')" style="display: inline;">
+                <i title="Edit" (click)="editCost()" class="fa fa-pencil-square-o fa-2x cursor-pointer" ></i>
+                </span>
+              </span>
+            </div>
+            <div class="update_isl_cost col-sm-8" id="isl_cost_update" [hidden]="!showCostEditing">
+              <!-- <div class="row col-sm-2"> -->
+              <div class="row" style=" margin-bottom: 10px;">
+                <input formControlName="cost" type="number" name="cost" style="height: 35px; margin-left: 15px; width: 10%; padding: 10px;">
+                <!--  <input id="isl_cost_obj" type="hidden" /> -->
+                <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1" data-toggle="modal" (click)="saveEditedCost()"><i class="icon icon-ok-sign"></i></span>
+                <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_cost_update" class="btn kilda_btn ml-0.5" (click)="cancelEditedCost()"><i class="icon icon-remove-sign"></i></span>
+              </div>
+            </div>
+          </div>
+          <!-- ISL Avaliable Bandwidth Details -->
+          <div class='row isl_sbl_details'>
+            <label class='col-sm-4 col-form-label'>Available Bandwidth:
+            </label>
+            <p class='col-sm-8 isl_div_avaliable_bandwidth'>{{ convertInMB(available_bandwidth) }}</p>
+          </div>
+          <div class='row isl_sbl_details'>
+            <label class='col-sm-4 col-form-label'>State:</label>
+            <p class='col-sm-8 isl_div_state'>{{state}}</p>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  <form [formGroup]="filterForm">
+    <h5 class='modal-title'>GRAPH</h5>
+  <div class="container-fluid graph_div topology-graph" style="border: 1px solid #ccc;">
+    <div class="row">
+      <div class="col-xs-8 col-md-8 " id="stats_div" style="border: 0px white; padding-top: 15px;
+            padding-bottom: 15px;
+            padding-left: 0;
+            padding-right: 0;">
+          
+            <h2 class="isl-header text-center" id="graphLabel">{{currentGraphName}}</h2>
+           <app-dygraph (zoomChange)='zoomHandler($event)' style="width: 780px !important;  height: 400px;"></app-dygraph>
+          
+      </div>
+      <div class="col-md-4 col-xs-4 filter">
+        <div class="stats-graph row" style="margin-top: 30px;">
+          <ul class="line-legend col-lg-12">
+            <li>Forward</li>
+            <li>Reverse</li>
+          </ul>
+        </div>
+        <div>
+          <div class="row form-group clearfix">
+            <label class="col-xs-4 col-md-4 text-label">Timezone:</label>
+            <div class="col-xs-8 col-md-8">
+               <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimezone()">
+              <option value="UTC">UTC</option>
+              <option value="LOCAL">My Timezone</option>
+            </select>
+            </div>
+           </div>
+          <div class="row form-group clearfix">
+            <label class="col-xs-4 col-md-4 text-label">From:</label>
+            <div class="col-xs-8 col-md-8">
+               <input formControlName="fromDate" type="text"  (change)="changeDate('fromDate',$event)" datetime-picker  placeholder="From" class="form-control">
+            </div>
+           </div>
+           <div class="row form-group clearfix">
+            <label class="col-xs-4 col-md-4 text-label">To:</label>
+            <div class="col-xs-8 col-md-8">
+              <input type="text" formControlName="toDate"    (change)="changeDate('toDate',$event)" datetime-picker  placeholder="From" class="form-control">
+            </div>
+           </div>
+          <div id="DownsampleID" class="row form-group clearfix">
+            <label class="col-xs-4 col-md-4 text-label">Downsample:</label>
+            <div class="col-xs-8 col-md-8">
+              <select formControlName="download_sample" class="form-control" (change)="loadGraphData()">
+                <option value="30s">30s</option>
+                <option value="1m">1m</option>
+                <option value="5m">5m</option>
+                <option value="10m">10m</option>
+              </select>
+              <span class="downsample-error-message pull-left"></span>
+            </div>
+          </div>
+          <div id="autoreloadId" class="row form-group clearfix">
+            <label class="col-xs-4 col-md-4 text-label">Autoreload(Sec):</label>
+            <div class="col-xs-8 col-md-8">
+              <input formControlName="auto_reload" value="1" type="checkbox">
+              <span [hidden]="!f.auto_reload.value">
+                <input formControlName="auto_reload_time" type="text" name="auto_reload_time" (blur)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;">
+                <div class="invalid-feedback" *ngIf="!f.auto_reload_time.valid && f.auto_reload_time.dirty">
+                  <div *ngIf="f.auto_reload_time.errors.pattern">Auto reload time should be number</div>
+                  <div *ngIf="f.auto_reload_time.errors.required">Auto reload time required</div>
+                </div>
+              </span>
+            </div>
+          </div>
+          <div id="SourceDestinationSwitchId" class="row form-group clearfix">
+            <label class="col-xs-4 col-md-4 text-label">Graph:</label>
+            <div class="col-xs-8 col-md-8">
+              <select formControlName="graph" class="form-control" (change)="graphChanged()">
+              <option value="latency">Latency</option>
+              <option value="source">Source</option>
+              <option value="target">Destination</option>
+              <option value="isllossforward">Loss packet forward</option>
+              <option value="isllossreverse">Loss packet reverse</option>
+            </select>
+            </div>
+          </div>
+          <div class="row form-group clearfix" id="islMetric" *ngIf="f.graph.value !='latency'">
+            <label class="col-xs-4 col-md-4 text-label">Metric:</label>
+            <div class="col-xs-8 col-md-8">
+               <select formControlName="metric" class="form-control" (change)="loadGraphData()">
+              <option *ngFor="let option of graphMetrics" value="{{option.value}}">{{option.label}}</option>
+            </select>
+            </div>
+          </div>
+          <div class="col-xs-12 col-md-12 submit-btn">
+          
+            <div id="errorMesg" class="error"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </form>
+</div>
+<context-menu #copySrcSwitch>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitch');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyTrgSwitchName>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'targetSwitchName');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copySrcSwitchName>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitchName');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyTrgSwitch>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'targetSwitch');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+
