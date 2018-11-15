@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
+import org.openkilda.functionaltests.extension.tags.Tag
+import org.openkilda.functionaltests.extension.tags.Tags
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -209,6 +212,56 @@ class SwitchRulesSpec extends BaseSpecification {
                   inPort     : null,
                   inVlan     : null,
                   outPort    : flow.destination.portNumber
+                 ]
+        ]
+    }
+
+    @Unroll
+    @Tags(Tag.NEGATIVE)
+    def "Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact"() {
+        given: "A switch with some flow rules installed"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        northboundService.addFlow(flow)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            assert northboundService.getSwitchRules(data.switch.dpId).flowEntries.size() ==
+                    defaultRules.size() + flowRulesCount
+        }
+
+        when: "Delete switch rules by non-existing #data.description"
+        def deletedRules = northboundService.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan, data.outPort)
+
+        then: "All rules are kept intact"
+        deletedRules.size() == 0
+        northboundService.getSwitchRules(data.switch.dpId).flowEntries.size() == defaultRules.size() + flowRulesCount
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        data << [[description: "inPort",
+                  switch     : srcSwitch,
+                  inPort     : Integer.MAX_VALUE - 1,
+                  inVlan     : null,
+                  outPort    : null
+                 ],
+                 [description: "inVlan",
+                  switch     : srcSwitch,
+                  inPort     : null,
+                  inVlan     : 4095,
+                  outPort    : null
+                 ],
+                 [description: "inPort and inVlan",
+                  switch     : srcSwitch,
+                  inPort     : Integer.MAX_VALUE - 1,
+                  inVlan     : 4095,
+                  outPort    : null
+                 ],
+                 [description: "outPort",
+                  switch     : dstSwitch,
+                  inPort     : null,
+                  inVlan     : null,
+                  outPort    : Integer.MAX_VALUE - 1
                  ]
         ]
     }
