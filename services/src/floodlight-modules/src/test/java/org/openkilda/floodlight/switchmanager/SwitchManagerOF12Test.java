@@ -5,7 +5,11 @@ import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_PRIORITY;
+
+import org.openkilda.floodlight.OFFactoryVer12Mock;
+import org.openkilda.floodlight.error.SwitchOperationException;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -16,7 +20,6 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.openkilda.floodlight.OFFactoryVer12Mock;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -79,6 +82,16 @@ public class SwitchManagerOF12Test {
                 .build();
 
         assertEquals(expected, capture.getValue());
+    }
+
+    @Test
+    public void shouldNotInstallDropLoopRule() throws SwitchOperationException {
+        Capture<OFFlowMod> capture = prepareForInstallFlowOperation();
+
+        switchManager.installDropLoopRule(switchDpId);
+
+        // we shouldn't installed anything because of OF version
+        assertFalse(capture.hasCaptured());
     }
 
     private Capture<OFFlowMod> prepareForInstallFlowOperation() {
