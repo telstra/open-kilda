@@ -103,7 +103,7 @@ public class SimpleGetShortestPath {
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
                 // We found the destination
-                if (current.parentCost <= bestCost) {
+                if (current.parentCost < bestCost) {
                     // We found a best path. If we don't get here, then the entire graph will be
                     // searched until we run out of nodes or the depth is reached.
                     bestCost = current.parentCost;
