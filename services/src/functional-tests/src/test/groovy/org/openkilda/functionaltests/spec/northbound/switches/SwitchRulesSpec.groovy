@@ -27,7 +27,7 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
-circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
+circumstances: e.g. persisting rules on newly connected switch, installing default rules on a new switch etc.""")
 class SwitchRulesSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
