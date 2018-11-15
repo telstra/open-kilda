@@ -43,8 +43,8 @@ class SwitchRulesSpec extends BaseSpecification {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
         defaultRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
     }
-    
-    @Unroll("Default rules are installed on #sw.ofVersion switch(#sw.dpId)")
+
+    @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
     def "Default rules are installed on switches"() {
         expect: "Default rules are installed on the #sw.ofVersion switch"
         def cookies = northboundService.getSwitchRules(sw.dpId).flowEntries*.cookie
