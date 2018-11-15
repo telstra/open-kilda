@@ -64,7 +64,7 @@ public class SimpleGetShortestPath {
     private SimpleSwitch start;
     private SimpleSwitch end;
     private int allowedDepth;
-    private int bestCost = Integer.MAX_VALUE;
+    private long bestCost = Integer.MAX_VALUE; // Need to be long because it stores sum of ints.
     private SearchNode bestPath = null;
 
     public SimpleGetShortestPath(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int allowedDepth) {
@@ -260,16 +260,16 @@ public class SimpleGetShortestPath {
     private class SearchNode implements Cloneable {
         SimpleSwitch dstSw;
         int allowedDepth;
-        int parentCost;
+        long parentCost; // Need to be long because it stores sum of ints.
         LinkedList<SimpleIsl> parentPath;
         // NB: We could consider tracking the child path as well .. to facilitate
         //     re-calc if we find a better parentPath.
 
-        public SearchNode(int allowedDepth, int parentCost, SimpleSwitch dstSw) {
+        public SearchNode(int allowedDepth, long parentCost, SimpleSwitch dstSw) {
             this(allowedDepth, parentCost, dstSw, new LinkedList<SimpleIsl>());
         }
 
-        public SearchNode(int allowedDepth, int parentCost, SimpleSwitch dstSw, LinkedList<SimpleIsl> parentPath) {
+        public SearchNode(int allowedDepth, long parentCost, SimpleSwitch dstSw, LinkedList<SimpleIsl> parentPath) {
             this.dstSw = dstSw;
             this.allowedDepth = allowedDepth;
             this.parentCost = parentCost;
