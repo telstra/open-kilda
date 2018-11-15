@@ -22,7 +22,6 @@ from topologylistener import db
 from topologylistener import message_utils
 from topologylistener import model
 
-
 __all__ = ['graph']
 
 
@@ -30,7 +29,7 @@ graph = db.create_p2n_driver()
 logger = logging.getLogger(__name__)
 
 default_rules = ['0x8000000000000001', '0x8000000000000002',
-                 '0x8000000000000003']
+                 '0x8000000000000003', '0x8000000000000004']
 
 
 cookie_flag_forward = 0x4000000000000000

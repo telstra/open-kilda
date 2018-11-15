@@ -269,16 +269,10 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             byte[] dpidTlvValue = new byte[]{0x0, 0x26, (byte) 0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
             System.arraycopy(dpidArray, 0, dpidTlvValue, 4, 8);
 
-            OFPortDesc ofPortDesc = srcSw.getPort(port);
-            byte[] zeroMac = {0, 0, 0, 0, 0, 0};
-            byte[] srcMac = ofPortDesc.getHwAddr().getBytes();
-            if (Arrays.equals(srcMac, zeroMac)) {
-                int portVal = ofPortDesc.getPortNo().getPortNumber();
-                // this is a common scenario
-                logger.debug("Port {}/{} has zero hardware address: overwrite with lower 6 bytes of dpid",
-                        dpid.toString(), portVal);
-                System.arraycopy(dpidArray, 2, srcMac, 0, 6);
-            }
+            // Set src mac to be able to detect the origin of the packet.
+            // NB: previously we set port's address instead of switch (some switches declare unique address per port)
+            byte[] srcMac = new byte[6];
+            System.arraycopy(dpidArray, 2, srcMac, 0, 6);
 
             byte[] portId = new byte[]{2, 0, 0};
             ByteBuffer portBb = ByteBuffer.wrap(portId, 1, 2);
