@@ -1,0 +1,118 @@
+<div id="switchesgraph" class="topology-container" >
+    <div class="graph-wrapper" [hidden]="graphShow"></div>
+  <svg id="" width="1100" height="450"></svg>
+</div>
+<div class="row">
+    <ng-template #itemTpl let-result>
+        <span> {{ result.result }}</span>
+    </ng-template>
+  <div class="checkbox-wrapper pull-right">
+    <div class="check-connections">
+      <div class="checkbox-btns">
+        <div id="ui-container" class="ui-widget" [class.active]="searchView">
+          <div class="search-container"><input  id="search-bar" placeholder="Search" [(ngModel)]="searchModel" (selectItem)="searchNode($event.item)" (focusout)="searchHidden = true" [ngbTypeahead]="search"></div>
+        </div>
+        <i id="searchbox" (click)="toggleSearch()" class="fa fa-search" title="Search"></i>
+        <i id="zoom_in" (click)="zoomFn(1)" title="Zoom In">+</i>
+        <i id="zoom_out" (click)="zoomFn(-1)" title="Zoom Out">-</i>
+        <i id="reset" class="fa fa-undo" (click)="zoomReset()" title="Reset"></i>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div id="topology-click-txt">
+  <button id="close_switch_detail" style="margin-right:5px;" type="button" class="close right" aria-label="Close">
+    <span aria-hidden="true">×</span>
+  </button>
+  <div class="form-wrapper" id="switch_click" style="display:none">
+
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">Name:</label>
+      <p class="col-sm-9 switchdetails_div_click_switch_name"></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">SwitchId:</label>
+      <p class="col-sm-9 switchdetails_div_click_name"></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">State:</label>
+      <p class="col-sm-9 switchdetails_div_click_state"></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">Address:</label>
+      <p class="col-sm-9 switchdetails_div_click_address"></p>
+    </div>
+    
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">Description:</label>
+      <p class="col-sm-9 switchdetails_div_click_desc"></p>
+    </div>
+  </div>
+</div>
+
+<div id="topology-hover-txt" style="display: none; top: 339.089px; left: 596.811px;" class="">
+		
+  <div class="form-wrapper" id="switch_hover" style="display: none;">
+
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">Name:</label>
+      <p class="col-sm-9 switchdetails_div_switch_name"><span>00:00:00:00:00:00:00:01</span></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">SwitchId:</label>
+      <p class="col-sm-9 switchdetails_div_name"><span>00:00:00:00:00:00:00:01</span></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">State:</label>
+      <p class="col-sm-9 switchdetails_div_state"><span>DEACTIVATED</span></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">Address:</label>
+      <p class="col-sm-9 switchdetails_div_address"><span>null</span></p>
+    </div>
+    
+    <div class="row">
+      <label class="col-sm-3 col-form-label" style="font-weight: bold;">Description:</label>
+      <p class="col-sm-9 switchdetails_div_desc"><span>null</span></p>
+    </div>
+  </div>
+  
+  <div class="form-wrapper" id="isl_hover" style="display: none;">
+    <div class="row">
+      <label class="col-sm-5 col-form-label" style="font-weight: bold;">Src Switch:</label>
+      <p class="col-sm-6 isldetails_div_source_switch"><span>00:00:00:22:3d:5a:04:87</span></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-5 col-form-label" style="font-weight: bold;">Src Port:</label>
+      <p class="col-sm-6 isldetails_div_source_port"><span>7</span></p>
+    </div>
+    <div class=" row">
+      <label class="col-sm-5 col-form-label" style="font-weight: bold;">Dst Switch:</label>
+      <p class="col-sm-6 isldetails_div_destination_switch"><span>00:00:b0:d2:f5:00:5a:b8</span></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-5 col-form-label" style="font-weight: bold;">Dst Port:</label>
+      <p class="col-sm-6 isldetails_div_destination_port"><span>50</span></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-5 col-form-label" style="font-weight: bold;">Cost:</label>
+      <p class="col-sm-6 isldetails_div_cost"><span>-</span></p>
+    </div>
+      <div class="row">
+      <label class="col-sm-5 col-form-label" style="font-weight: bold;">State:</label>
+      <p class="col-sm-6 isldetails_div_state"><span>DISCOVERED</span></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-5 col-form-label" style="font-weight: bold;">Speed:</label>
+      <p class="col-sm-6 isldetails_div_speed"><span>10000 Mbps</span></p>
+    </div>
+    <div class="row">
+      <label class="col-sm-5 col-form-label" style="font-weight: bold;">Available Bandwidth:</label>
+      <p class="col-sm-6 isldetails_div_bandwidth"><span>10000 Mbps (100%)</span></p>
+    </div>
+    
+  </div>
+  
+</div>

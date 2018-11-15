@@ -15,13 +15,8 @@
 
 package org.openkilda.controller;
 
-import org.openkilda.constants.IConstants;
-
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.servlet.ModelAndView;
-
-import javax.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The Class UserManagementController.
@@ -29,18 +24,9 @@ import javax.servlet.http.HttpServletRequest;
  * @author Neeraj Kumar
  */
 
-@Controller
-@RequestMapping(value = "/usermanagement")
+@RestController
+@RequestMapping(value = "/api/usermanagement")
 public class UsermanagementController extends BaseController {
 
-    /**
-     * UserManagement.
-     *
-     * @param request the request
-     * @return the model and view
-     */
-    @RequestMapping
-    public ModelAndView usermanagement(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.USER_MANAGEMENT);
-    }
+  
 }

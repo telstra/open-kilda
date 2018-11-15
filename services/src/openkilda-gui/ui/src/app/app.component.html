@@ -1,0 +1,18 @@
+<!--The content below is only a placeholder and can be replaced.-->
+<ngx-spinner bdColor = "rgba(51, 51, 51, 0.8)" size="medium" color = "#4ec0ec" type = "ball-clip-rotate">
+<p *ngIf="loaderMessage">{{loaderMessage}}<span class="loader__dot">.</span><span class="loader__dot">.</span><span class="loader__dot">.</span></p>
+</ngx-spinner>
+<app-header></app-header>
+<app-sidebar></app-sidebar>
+<div class="content">
+	<div class="row">
+		<div class="navigation-bar container-fluid" [class.home-container]="currentUrl == '/home'">
+			<app-breadcrumb></app-breadcrumb>
+		</div>
+	</div>
+	
+	<div class="container-fluid">
+    	<router-outlet></router-outlet>
+    </div>
+</div>
+<app-footer></app-footer>

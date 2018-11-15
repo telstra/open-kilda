@@ -1,0 +1,77 @@
+#ForwardRow h3, #ReversePath h3 {
+    margin: 0 0 25px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.path {
+    float: left;
+    margin-bottom:60px;
+}
+
+
+#ForwardRow h3, #ReversePath h3 {
+    margin: 0 0 25px;
+    font-weight: 700;
+}
+
+#ForwardRow {
+	
+	margin-top:15px;
+	position: relative;
+}
+
+#ReversePath {
+	margin-top:22px;
+	position: relative;
+}
+
+.path .number {
+    float: left;
+    width: 26px;
+    height: 26px;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 25px;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.path .line {
+    width: 10px;
+    float: left;
+    height: 2px;
+    background: #ccc;
+    margin-top: 12px;
+}
+
+.path .text {
+    float: left;
+    width: auto;
+    background: #262d37;
+    padding: 7px 5px;
+    color: #fff;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.horizontal-line {
+    position: absolute;
+    width: calc(100% - 47px);
+    height: 2px;
+    background: #ccc;
+    right: 18px;
+    top: 96px;
+}
+a.badge.badge-dark.custom-button {
+    padding: 5px 7px;
+    background: grey;
+    border-radius: 10px;
+    color: #fff;
+}
+
+.path:last-child .line:nth-child(6){
+    display: none;
+}

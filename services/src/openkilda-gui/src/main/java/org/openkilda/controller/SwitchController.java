@@ -28,7 +28,6 @@ import org.openkilda.service.SwitchService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,12 +35,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 
 /**
  * The Class SwitchController.
@@ -49,76 +45,16 @@ import javax.servlet.http.HttpServletRequest;
  * @author sumitpal.singh
  *
  */
-@Controller
-@RequestMapping(value = "/switch")
-public class SwitchController extends BaseController {
+
+@RestController
+@RequestMapping(value = "/api/switch")
+public class SwitchController  {
 
     @Autowired
     private SwitchService serviceSwitch;
 
     @Autowired
     private ActivityLogger activityLogger;
-
-
-    /**
-     * Switch list.
-     *
-     * @param request the request
-     * @return the model and view
-     */
-    @RequestMapping
-    @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
-    public ModelAndView switchList(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.SWITCH_LIST);
-
-    }
-
-    /**
-     * Switch details.
-     *
-     * @param request the request
-     * @return the model and view
-     */
-    @RequestMapping(value = "/details")
-    public ModelAndView switchDetails(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.SWITCH);
-    }
-
-
-    /**
-     * Port details.
-     *
-     * @param request the request
-     * @return the model and view
-     */
-    @RequestMapping(value = "/portdetails", method = RequestMethod.GET)
-    public ModelAndView portDetails(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.PORT_DETAILS);
-    }
-
-
-    /**
-     * Isl List.
-     *
-     * @param request the request
-     * @return the model and view
-     */
-    @RequestMapping(value = "/isllist", method = RequestMethod.GET)
-    @Permissions(values = {IConstants.Permission.MENU_ISL})
-    public ModelAndView islList(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.ISL_LIST);
-    }
-
-    /**
-     * Isl details.
-     *
-     * @param request the request
-     * @return the model and view
-     */
-    @RequestMapping(value = "/isl", method = RequestMethod.GET)
-    public ModelAndView islDetails(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.ISL);
-    }
 
 
     /**

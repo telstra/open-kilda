@@ -1,0 +1,282 @@
+<div id="flow_detail_div" *ngIf="flowDetail">
+  <!-- Start : Flow Top Section-->
+
+  <div class="row mb-3">
+    <div class="col-sm-12">
+        <div class="">
+            <div class="col-sm-3 pull-right flow-search-container">
+                <app-flow-search></app-flow-search>
+            </div>
+            <div class="clear clearfix"></div>
+        </div>
+      <p class="text-center flow-title" >Flow ID : <span [contextMenu]="copyFLow">{{flowDetail.flowid}}</span>
+      <a *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (storeLinkSetting && flowDetail.hasOwnProperty('discrepancy') && flowDetail['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetail['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" role="button" aria-pressed="true" [routerLink]="['/flows/edit',flowDetail.flowid]">Edit</a>
+      </p>
+      
+    
+      </div>
+    </div>
+  <!-- End : Flow Top Section-->
+  <!-- Start : 2 Flow section-->
+  <div class="row  mb-4">
+    <div class="col-sm-6">
+      <h6 class="card-title card-custom-title">SOURCE DETAILS</h6>
+      <div class="card">
+
+        <div class="card-body">
+          <ul class="list-group list-group-no-border">
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Port:</div>
+                <div class="col-sm-4">{{ flowDetail["src_port"] }}</div>
+                <div class="col-sm-4"></div>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Switch Id:</div>
+                <div class="col-sm-4" [contextMenu]="copySrcSwitch">{{ flowDetail["source_switch"] }}</div>
+                <div class="col-sm-4">
+                  <div class="pull-left">
+                    <div class="onoffswitch">
+                      <input  [(ngModel)]="sourceCheckedValue" type="checkbox" (change)="maskSwitchId('source',$event)" name="onoffswitch" class="onoffswitch-checkbox"
+                        id="onoffswitchsource">
+                      <label class="onoffswitch-label" for="onoffswitchsource">
+                        <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
+                        <span class="onoffswitch-switch"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Name:</div>
+                <div class="col-sm-4" [contextMenu]="copySrcSwitchName">{{ flowDetail["source_switch_name"] }}</div>
+                <div class="col-sm-4"></div>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Vlan:</div>
+                <div class="col-sm-4">{{ flowDetail["src_vlan"] }}</div>
+                <div class="col-sm-4"></div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <h6 class="card-title card-custom-title">DESTINATION DETAILS</h6>
+      <div class="card">
+        <div class="card-body">
+          <ul class="list-group list-group-no-border">
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Port:</div>
+                <div class="col-sm-4">{{ flowDetail["dst_port"] }}</div>
+                <div class="col-sm-4"></div>
+              </div>
+            </li>
+
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Switch Id:</div>
+                <div class="col-sm-4" [contextMenu]="copyTrgSwitch">{{ flowDetail["target_switch"] }}</div>
+                <div class="col-sm-4">
+                  <div class="pull-left">
+                    <div class="onoffswitch">
+                      <input type="checkbox" [(ngModel)]="targetCheckedValue"  (change)="maskSwitchId('target',$event)" name="onoffswitch" class="onoffswitch-checkbox"
+                        id="onoffswitchdestination">
+                      <label class="onoffswitch-label" for="onoffswitchdestination">
+                        <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
+                        <span class="onoffswitch-switch"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Name:</div>
+                <div class="col-sm-4" [contextMenu]="copyTrgSwitchName">{{ flowDetail["target_switch_name"] }}</div>
+                <div class="col-sm-4"></div>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Vlan:</div>
+                <div class="col-sm-4">{{ flowDetail["dst_vlan"] }}</div>
+                <div class="col-sm-4"></div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ENd : 2 Flow sections-->
+  <!-- Start : Switch Section-->
+  <div class="row mb-3">
+    <div class="col-md-12">
+      <h6 class="card-title card-custom-title">FLOW DETAILS</h6>
+      <div class="card">
+        <div class="card-body">
+          <ul class="list-group list-group-no-border">
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Status:</div>
+                <div class="col-sm-8">{{ flowDetail.status }}
+                   &nbsp; <i *ngIf="storeLinkSetting &&  statusDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
+                </div>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Description:</div>
+                <div class="col-sm-8">{{ flowDetail.description }}</div>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Maximum Bandwidth:</div>
+                <div class="col-sm-8">{{ flowDetail["maximum_bandwidth"] }}
+                    &nbsp;<i *ngIf="storeLinkSetting && bandWidthDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- End : Switch Section -->
+
+  <!-- Start : Swith Tab Section -->
+  <div>
+    <div class="row">
+      <div id="exTab1" class="col-lg-12 tab-wrapper">
+        <ul class="nav nav-pills">
+          <li [ngClass]="{'active': openedTab == 'graph'}">
+            <a href="javascript:void(0);" (click)="openTab('graph');">Graph</a>
+          </li>
+          <li [ngClass]="{'active': openedTab == 'path'}">
+            <a href="javascript:void(0);" (click)="openTab('path');">Path</a>
+          </li>
+          <li *ngIf="commonService.hasPermission('fw_permission_validate')" [ngClass]="{'active': openedTab == 'validate'}">
+            <a href="javascript:void(0);" (click)="openTab('validate');">Validate</a>
+          </li>
+          <li *ngIf="storeLinkSetting" [ngClass]="{'active': openedTab == 'contracts'}">
+            <a href="javascript:void(0);" (click)="openTab('contracts');">Contract</a>
+          </li>
+          <li *ngIf="storeLinkSetting && (bandWidthDescrepancy || statusDescrepancy)" [ngClass]="{'active': openedTab == 'descrepancy'}">
+            <a href="javascript:void(0);" (click)="openTab('descrepancy');">Discrepancy</a>
+          </li>
+        </ul>
+        <div class="tab-content padding-15 clearfix">
+          <div class="tab-pane" *ngIf="openedTab == 'graph'" [ngClass]="{'active': openedTab == 'graph'}">
+            <app-flow-graph *ngIf="openedTab == 'graph' && loadStatsGraph" [flowId]="flowDetail.flowid"></app-flow-graph>
+          </div>
+          <div class="tab-pane" *ngIf="openedTab == 'path'" [ngClass]="{'active': openedTab == 'path'}">
+            <div class="text-right mb-2">
+              <button *ngIf="commonService.hasPermission('fw_permission_reroute')" class="btn btn-dark btn-sm" (click)="reRouteFlow()">Re-route
+                Flow</button>
+            </div>
+            <app-flow-path *ngIf="!reRoutingInProgress" [flowId]="flowDetail.flowid"></app-flow-path>
+          </div>
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'validate'}">
+            <div class="text-right mb-2">
+              <button *ngIf="commonService.hasPermission('fw_flow_resync')" class="btn btn-dark btn-sm" (click)="resyncFlow()">Resync
+                Flow</button>&nbsp;
+              <button *ngIf="commonService.hasPermission('fw_permission_validate')" class="btn btn-dark btn-sm" (click)="validateFlow()">Validate
+                Flow</button>
+            </div>
+            <div *ngIf="loading" class="component-loader"></div>
+            <div *ngIf="flowIs =='validate' && !loading" class="clip-board-wrapper">
+              <div class="row">
+              <div class="col-md-12">
+                <label class="response_flow_label">Validate Flow</label>
+                <button class="btn btn-secondary btn-no-radius pull-right btn-custom-margin" (click)="clearValidatedFlow()">Clear</button>
+                <div class="clear clearfix"></div>
+              </div>
+            </div>
+           
+            <pre [contextMenu]="copyValidateFlow" class="code validateFlow" *ngIf="validatedFlow">{{validatedFlow | json}}</pre>
+          </div>
+          <div *ngIf="flowIs =='resync' && !loading" class="clip-board-wrapper">
+            <div class="row">
+              <div class="col-md-12">
+                <label class="response_flow_label">Resync Flow</label>
+                <button class="btn btn-secondary btn-no-radius pull-right btn-custom-margin" (click)="clearResyncedFlow()">Clear</button>
+                <div class="clear clearfix"></div>
+              </div>
+            </div>
+           
+            <pre [contextMenu]="copyResyncFlow" class="code resyncFlow" *ngIf="resyncedFlow">{{resyncedFlow | json}}</pre>
+          </div>
+        </div>
+        <div class="tab-pane" [ngClass]="{'active': openedTab == 'contracts'}">
+            <app-flow-contracts *ngIf="openedTab == 'contracts' && isLoadedcontract" [data]="contracts" [flowId]="flowDetail.flowid" ></app-flow-contracts>
+        </div>
+        <div class="tab-pane" [ngClass]="{'active': openedTab == 'descrepancy'}">
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light"><tr><th>Discrepancy</th><th>Kilda Controller</th><th>Link Store</th></tr></thead>
+              <tbody>
+                <tr *ngIf="statusDescrepancy"><td>Status</td><td>{{ descrepancyData.status.controller}}</td><td>{{ descrepancyData.status.inventory}}</td></tr>
+                <tr *ngIf="bandWidthDescrepancy"><td>Bandwidth</td><td>{{ descrepancyData.bandwidth.controller}}</td><td>{{ descrepancyData.bandwidth.inventory}}</td></tr>
+              </tbody>
+            </table>
+          </div>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- End : Switch Tab Section -->
+</div>
+
+<context-menu #copySrcSwitch>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitch');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyTrgSwitchName>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'targetSwitchName');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copySrcSwitchName>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitchName');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyTrgSwitch>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'targetSwitch');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyFLow>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'flowName');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyValidateFlow>
+  <ng-template contextMenuItem (execute)="copyToClipHtml($event,'validateFlow');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyResyncFlow>
+  <ng-template contextMenuItem (execute)="copyToClipHtml($event,'resyncFlow');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>

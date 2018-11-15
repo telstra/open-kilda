@@ -56,7 +56,7 @@ class BandwidthSpec extends BaseSpecification {
         flow.maximumBandwidth = maximumBandwidth
         northboundService.addFlow(flow)
 
-        then: "Flow is successfully created and has 'Up' status"
+        then: "The flow is successfully created and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
@@ -77,7 +77,7 @@ class BandwidthSpec extends BaseSpecification {
         flow.maximumBandwidth = maximumBandwidthUpdated
         northboundService.updateFlow(flow.id, flow)
 
-        then: "Flow is successfully updated and has 'Up' status"
+        then: "The flow is successfully updated and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidthUpdated
 
@@ -85,16 +85,17 @@ class BandwidthSpec extends BaseSpecification {
         def linksBeforeFlowUpdate = linksAfterFlow
         def linksAfterFlowUpdate = northboundService.getAllLinks()
         def flowPathAfterUpdate = PathHelper.convert(northboundService.getFlowPath(flow.id))
-        pathHelper.getInvolvedIsls(flowPathAfterUpdate).every { link ->
-            [link, islUtils.reverseIsl(link)].every {
+        flowPathAfterUpdate == flowPath
+        pathHelper.getInvolvedIsls(flowPathAfterUpdate).each { link ->
+            [link, islUtils.reverseIsl(link)].each {
                 def bwBeforeFlow = islUtils.getIslInfo(linksBeforeFlowUpdate, it).get().availableBandwidth
                 def bwAfterFlow = islUtils.getIslInfo(linksAfterFlowUpdate, it).get().availableBandwidth
-                bwAfterFlow == bwBeforeFlow + maximumBandwidth - maximumBandwidthUpdated
+                assert bwAfterFlow == bwBeforeFlow + maximumBandwidth - maximumBandwidthUpdated
             }
         }
 
-        and: "Delete created flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
@@ -124,7 +125,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.addFlow(flow1)
         def flow1Path = PathHelper.convert(northboundService.getFlowPath(flow1.id))
 
-        then: "Flow is successfully created and really built through the expected preferable path"
+        then: "The flow is successfully created and really built through the expected preferable path"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow1.id).status == FlowState.UP }
         flow1Path == possibleFlowPaths.first()
 
@@ -133,13 +134,13 @@ class BandwidthSpec extends BaseSpecification {
         flow2.maximumBandwidth = 101
         northboundService.addFlow(flow2)
 
-        then: "Flow is successfully created and built through longer path where available bandwidth is enough"
+        then: "The flow is successfully created and built through longer path where available bandwidth is enough"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow2.id).status == FlowState.UP }
         def flow2Path = PathHelper.convert(northboundService.getFlowPath(flow2.id))
         pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
 
-        and: "Delete created flows and link props"
-        [flow1.id, flow2.id].every { northboundService.deleteFlow(it) }
+        and: "Delete created flows"
+        [flow1.id, flow2.id].each { flowHelper.deleteFlow(it) }
     }
 
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
@@ -162,7 +163,7 @@ class BandwidthSpec extends BaseSpecification {
         flow.maximumBandwidth = involvedBandwidths.max() + 1
         northboundService.addFlow(flow)
 
-        then: "Flow is not created because flow path should not be found"
+        then: "The flow is not created because flow path should not be found"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
     }
@@ -180,11 +181,11 @@ class BandwidthSpec extends BaseSpecification {
         flow.maximumBandwidth = maximumBandwidth
         northboundService.addFlow(flow)
 
-        then: "Flow is successfully created and has 'Up' status"
+        then: "The flow is successfully created and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
-        when: "Update a flow with a bandwidth that exceeds available bandwidth on ISL"
+        when: "Update the flow with a bandwidth that exceeds available bandwidth on ISL"
         def possibleFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         List<Long> involvedBandwidths = []
 
@@ -197,12 +198,12 @@ class BandwidthSpec extends BaseSpecification {
         flow.maximumBandwidth += involvedBandwidths.max() + 1
         northboundService.updateFlow(flow.id, flow)
 
-        then: "Flow is not updated because flow path should not be found"
+        then: "The flow is not updated because flow path should not be found"
         def e = thrown(HttpClientErrorException)
         e.rawStatusCode == 404
 
-        and: "Delete created flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth = true"() {
@@ -217,7 +218,7 @@ class BandwidthSpec extends BaseSpecification {
         flow.ignoreBandwidth = true
         northboundService.addFlow(flow)
 
-        then: "Flow is successfully created and has 'Up' status"
+        then: "The flow is successfully created and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE - 1
 
@@ -225,12 +226,12 @@ class BandwidthSpec extends BaseSpecification {
         flow.maximumBandwidth = Integer.MAX_VALUE
         northboundService.updateFlow(flow.id, flow)
 
-        then: "Flow is successfully updated and has 'Up' status"
+        then: "The flow is successfully updated and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE
 
-        and: "Delete created flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
@@ -245,7 +246,7 @@ class BandwidthSpec extends BaseSpecification {
         flow.maximumBandwidth = maximumBandwidth
         northboundService.addFlow(flow)
 
-        then: "Flow is successfully created and has 'Up' status"
+        then: "The flow is successfully created and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
@@ -260,7 +261,7 @@ class BandwidthSpec extends BaseSpecification {
         flow.maximumBandwidth = linkSpeed
         northboundService.updateFlow(flow.id, flow)
 
-        then: "Flow is successfully updated and has 'Up' status"
+        then: "The flow is successfully updated and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         northboundService.getFlow(flow.id).maximumBandwidth == linkSpeed
 
@@ -268,8 +269,8 @@ class BandwidthSpec extends BaseSpecification {
         def flowPathUpdated = PathHelper.convert(northboundService.getFlowPath(flow.id))
         flowPathUpdated == flowPath
 
-        and: "Delete created flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {

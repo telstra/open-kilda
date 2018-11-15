@@ -2205,16 +2205,6 @@ td.highlight {
     text-decoration: none;
     background: #b0b0b0;
 }
-#cookieforwardId > .btn.kilda_btn:hover ,#cookiereverseId > .btn.kilda_btn:hover {
-    color: #FFF;
-    text-decoration: none;
-    background: #262d37;
-}
-#cookieforwardId > .btn.kilda_btn.active:hover ,#cookiereverseId > .btn.kilda_btn.active:hover {
-    color: #000;
-    text-decoration: none;
-    background: #b0b0b0;
-}
 .kilda_btn:focus{
     color: #000;
     text-decoration: none;
@@ -2227,7 +2217,7 @@ td.highlight {
     margin: -20px 10px;
     float: right;
 }
-pre.validate_json , pre.resync_json{
+pre.validate_json{
 	display: block;
     font-family: monospace;
     white-space: pre;
@@ -2403,7 +2393,7 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
 	margin: 20px;
 }
 
-.tab-content.user-management-tabs form label, .store-setting-tabs form label{
+.tab-content.user-management-tabs form label {
 	margin: 10px 0 0;
 }
 
@@ -2577,7 +2567,7 @@ span.mandatory-text.text-danger {
     font-size: 15px;
     font-weight: 100;
 }
-#validate_flow_btn,#resync_flow_btn{
+#validate_flow_btn{
 	float:right;
     margin: -20px 10px 10px 0px;
 }
@@ -2759,11 +2749,11 @@ body.twofa_body {
     text-align: center;
 }
 
-#portsTable .down-status .divTableCell:first-child,#flowTable .down-status .divTableCell:first-child{
+#portsTable .down-status .divTableCell:first-child{
 	border-left: 4px solid red;
 }
 
-#portsTable .up-status .divTableCell:first-child,#flowTable .up-status .divTableCell:first-child{
+#portsTable .up-status .divTableCell:first-child{
 	border-left: 4px solid #182488;
 }
 
@@ -2804,74 +2794,4 @@ div#portsTable_info {
     padding: 10px 5px;
     font-size: 12px;
 }
-.response_flow_label{
-	 background: #262d37;
-     color: #FFF;
-     opacity:0.7;
-     float: left;
-     opacity: 0.7;
-     border-radius: 0!important;
-     padding: 8px 50px;
-     font-size:14px;
-}
-
-/*Filter Buttons */                                                                                                                                                               
-
-.filter_btns label {
-    display: block;
-    float: left;
-    padding-right: 10px;
-    white-space: nowrap;
-}
-
-.filter_btns input {
-    vertical-align: middle;
-}
-
-.filter_btns label span {
-    vertical-align: bottom;
-}
-
-.form-group input.flowDetailSearch{
-	padding: 6px 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-.kilda_white_logo{
-  	background: url(../images/kilda_logo_white.png) no-repeat 0 0;
-    background-size: 180px 40px;
-    height: 40px;
-    width: 180px;
-    margin: 10px 0px;
-    display: block;
-}
-#forward_graph .form-group input, #forward_graph .form-group select, #forward_graph .form-group textarea {
-	width: 100%;
-	height:35px;
-	padding: 8px 8px;
-}
-#reverse_graph .form-group input, #reverse_graph .form-group select, #reverse_graph .form-group textarea {
-	width: 100%;
-	height:35px;
-	padding: 8px 8px;
-}
-
-label.btn.kilda_btn.active {
-    background: #b0b0b0;
-    color:#000!important;
-    font-weight:bold;
-}
-label.btn.kilda_btn > span.copy_to_clipBoard {
-    padding: 10px;
-}
-.dropdown-menu>li>a {
-    display: block!important;
- }
- .discrepancy-red{
- 	color:red;
- }
- 
- table.dataTable.table-bordered.discrepancy-table th{
- 	padding:10px;
- }
 

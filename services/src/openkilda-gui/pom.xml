@@ -13,7 +13,7 @@
 	<artifactId>openkilda-gui</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>OpenKilda-GUI</name>
-
+	<packaging>jar</packaging>
 	<properties>
 		<mdep.analyze.skip>false</mdep.analyze.skip>
 		<maven-shade-plugin.version>2.3</maven-shade-plugin.version>
@@ -38,6 +38,16 @@
 
 	</properties>
 	<dependencies>
+        <!-- JSP view resolver -->
+        <dependency>
+              <groupId>javax.servlet</groupId>
+              <artifactId>jstl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-jasper</artifactId>
+            <scope>provided</scope>
+        </dependency>
 		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
@@ -83,10 +93,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-tomcat</artifactId>
 			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -281,6 +287,7 @@
 				<plugin>
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-maven-plugin</artifactId>
+					<version>1.4.2.RELEASE</version>
 					<executions>
 						<execution>
 							<goals>
@@ -383,6 +390,7 @@
 			<plugin>
 				<artifactId>maven-checkstyle-plugin</artifactId>
 			</plugin>
+
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>

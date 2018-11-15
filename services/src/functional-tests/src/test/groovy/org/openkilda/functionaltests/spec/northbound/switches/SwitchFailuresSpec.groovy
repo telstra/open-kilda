@@ -87,7 +87,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         }
 
         //depends whether there are alt paths available
-        and: "Flow goes down OR changes path to avoid failed ISL after reroute timeout"
+        and: "The flow goes down OR changes path to avoid failed ISL after reroute timeout"
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
         Wrappers.wait(WAIT_OFFSET) {
             def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
@@ -95,10 +95,10 @@ class SwitchFailuresSpec extends BaseSpecification {
                     northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
-        and: "Cleanup, restore connection, remove flow"
+        and: "Cleanup, restore connection, remove the flow"
         lockKeeperService.addFlows([isl, islUtils.reverseIsl(isl)]
                 .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -121,7 +121,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         TimeUnit.SECONDS.sleep(1)
         lockKeeperService.reviveSwitch(srcSwitch.dpId)
 
-        then: "Flow is up and valid"
+        then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
             northboundService.validateFlow(flow.id).each { direction ->
@@ -132,7 +132,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         and: "Rules are valid on the knocked out switch"
         verifySwitchRules(srcSwitch.dpId)
 
-        and: "Remove flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 }

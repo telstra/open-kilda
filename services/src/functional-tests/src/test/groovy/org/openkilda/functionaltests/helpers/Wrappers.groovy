@@ -47,7 +47,7 @@ class Wrappers {
     static boolean wait(double timeout, double retryInterval = 0.5, Closure closure) {
         long endTime = System.currentTimeMillis() + (long) (timeout * 1000)
         long sleepTime = (long) (retryInterval * 1000)
-        def thrown
+        Throwable thrown = null
         while (System.currentTimeMillis() < endTime) {
             try {
                 def result = closure.call()
@@ -62,11 +62,7 @@ class Wrappers {
                 sleep(sleepTime)
             }
         }
-        def message = "Condition was not satisfied within $timeout seconds"
-        if (thrown) {
-            message += ". Failed with exception:\n\n$thrown"
-        }
-        throw new WaitTimeoutException(message)
+        throw new WaitTimeoutException("Condition was not satisfied within $timeout seconds", thrown)
     }
 
     /**
@@ -99,5 +95,12 @@ class Wrappers {
     }
 
     @InheritConstructors
-    static class WaitTimeoutException extends RuntimeException {}
+    static class WaitTimeoutException extends RuntimeException {
+        Throwable originalError
+        
+        WaitTimeoutException(String message, Throwable error) {
+            super(error ? message + "\nFailed with exception:\n\n$error" : message)
+            originalError = error
+        }
+    }
 }

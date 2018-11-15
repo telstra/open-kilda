@@ -1,0 +1,33 @@
+<aside class="main-sidebar" id="sidebar-left">
+	<!-- sidebar: style can be found in sidebar.less -->
+	<section class="sidebar">
+		<!-- sidebar menu: : style can be found in sidebar.less -->
+		<ul id="menubar-tbn" class="sidebar-menu tree" data-widget="tree">
+			<li id="home-menu-id" [class.active]="currentUrl == '/home'">
+				<a title="Home" class="" routerLink="/home"> <i class="fa fa-home" aria-hidden="true"></i> <span class="toggleText">Home</span></a>
+			</li>
+			<li id="topology-menu-id" *ngIf="commonService.hasPermission('menu_topology')" [class.active]="currentUrl == '/topology'">
+				<a title="Topology" routerLink="/topology"> <i class="icon-topology" aria-hidden="true"></i><span class="home-Topology toggleText">Topology</span></a>
+			</li>
+			<li id="flows-menu-id" *ngIf="commonService.hasPermission('menu_flows')" [class.active]="urlmatch('flows')" >
+				<a title="Flows" routerLink="/flows"> <i class="icon-flows" aria-hidden="true"></i><span class="home-flows toggleText">Flows</span></a>
+			</li>
+			<li id="isl-menu-id" *ngIf="commonService.hasPermission('menu_isl')" [class.active]="urlmatch('isl')">
+				<a title="ISL" routerLink="/isl"> <i class="icon-isl" aria-hidden="true"></i><span class="home-isl toggleText">ISL</span></a>
+			</li>
+			<li id="switch-menu-id" *ngIf="commonService.hasPermission('menu_switches')" [class.active]="urlmatch('switches')">
+				<a title="Switches" routerLink="/switches"> <i class="icon-switch" aria-hidden="true"></i><span class="home-flows toggleText">Switches</span></a>
+			</li>
+			<li *ngIf="commonService.hasPermission('menu_user_management')" id="usermanagement-menu-id" [class.active]="currentUrl == '/usermanagement'">
+				<a title="User Management" routerLink='/usermanagement'> 
+					<i class="icon-usermanagement" aria-hidden="true"></i><span class="home-flows toggleText">User Management</span>
+				</a>
+			</li>
+			<li *ngIf="commonService.hasPermission('menu_user_activity')" id="useractivity-menu-id" [class.active]="currentUrl == '/useractivity'">
+				<a title="User Activity" routerLink="/useractivity">
+					<i class="icon-logactivity" aria-hidden="true"></i><span class="home-flows toggleText">User Activity</span>
+				</a>
+			</li>
+		</ul>
+	</section>
+</aside>

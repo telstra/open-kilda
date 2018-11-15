@@ -119,7 +119,8 @@ public class StatsIntegrationService {
                     Filter filter = new Filter();
                     filter.setGroupBy(Boolean.valueOf(OpenTsDb.GROUP_BY));
                     if ((statsType.equals(StatsType.SWITCH_PORT) && param.getKey().equals("port"))
-                            || (statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("cookie"))) {
+                            || (statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("cookie"))
+                            || (statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("switchid"))) {
                         filter.setType(OpenTsDb.TYPE_WILDCARD);
                     } else {
                         filter.setType(OpenTsDb.TYPE);
@@ -215,7 +216,7 @@ public class StatsIntegrationService {
         islStatsRequest.setQueries(queryList);
         return JsonUtil.toString(islStatsRequest);
     }
-    
+
     /**
      * Gets the metircs.
      *
@@ -243,7 +244,7 @@ public class StatsIntegrationService {
         }
         return metricList;
     }
-    
+
     /**
      * Gets the queries.
      *
@@ -294,7 +295,7 @@ public class StatsIntegrationService {
         }
         return queries;
     }
-    
+
     /**
      * Gets the flow loss packets queries.
      *
@@ -319,7 +320,7 @@ public class StatsIntegrationService {
         }
         return queries;
     }
-    
+
     /**
      * Gets the isl loss packets queries.
      *
@@ -372,7 +373,7 @@ public class StatsIntegrationService {
         }
         return queries;
     }
-    
+
     /**
      * Gets the switch port queries.
      *

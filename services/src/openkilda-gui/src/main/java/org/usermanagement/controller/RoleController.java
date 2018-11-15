@@ -36,12 +36,13 @@ import org.usermanagement.model.Role;
 import org.usermanagement.service.RoleService;
 
 import java.util.List;
+
 /**
  * The Class RoleController.
  */
 
 @RestController
-@RequestMapping(path = "/role", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/api/role", produces = MediaType.APPLICATION_JSON_VALUE)
 public class RoleController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RoleController.class);
