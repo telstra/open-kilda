@@ -10,6 +10,8 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -128,7 +130,9 @@ class SwitchRulesSpec extends BaseSpecification {
         then: "#data.description.capitalize() rules are really deleted"
         deletedRules.size() == data.rulesDeleted
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == data.rulesRemained
+            def actualRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
+            assert actualRules.size() == data.rulesRemained
+            data.deleteRulesAction == DeleteRulesAction.IGNORE_DEFAULTS ? compareRules(actualRules, defaultRules) : null
         }
 
         and: "Delete the flow"
@@ -152,6 +156,59 @@ class SwitchRulesSpec extends BaseSpecification {
                   deleteRulesAction: DeleteRulesAction.DROP_ALL,
                   rulesDeleted     : defaultRules.size() + flowRulesCount,
                   rulesRemained    : 0
+                 ]
+        ]
+    }
+
+    @Unroll
+    def "Able to delete switch rules by #data.description"() {
+        given: "A switch with some flow rules installed"
+        northboundService.addFlow(flow)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            assert northboundService.getSwitchRules(data.switch.dpId).flowEntries.size() ==
+                    defaultRules.size() + flowRulesCount
+        }
+
+        when: "Delete switch rules by #data.description"
+        def deletedRules = northboundService.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan, data.outPort)
+
+        then: "The requested rules are really deleted"
+        deletedRules.size() == 1
+        Wrappers.wait(RULES_DELETION_TIME) {
+            def actualRules = northboundService.getSwitchRules(data.switch.dpId).flowEntries
+            assert actualRules.size() == defaultRules.size() + flowRulesCount - 1
+            assert filterRules(actualRules, data.inPort, data.inVlan, data.outPort).empty
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        flow << [buildFlow()] * 4
+        data << [[description: "inPort",
+                  switch     : srcSwitch,
+                  inPort     : flow.source.portNumber,
+                  inVlan     : null,
+                  outPort    : null
+                 ],
+                 [description: "inVlan",
+                  switch     : srcSwitch,
+                  inPort     : null,
+                  inVlan     : flow.source.vlanId,
+                  outPort    : null
+                 ],
+                 [description: "inPort and inVlan",
+                  switch     : srcSwitch,
+                  inPort     : flow.source.portNumber,
+                  inVlan     : flow.source.vlanId,
+                  outPort    : null
+                 ],
+                 [description: "outPort",
+                  switch     : dstSwitch,
+                  inPort     : null,
+                  inVlan     : null,
+                  outPort    : flow.destination.portNumber
                  ]
         ]
     }
@@ -207,5 +264,23 @@ class SwitchRulesSpec extends BaseSpecification {
         def nbSwitches = northbound.getAllSwitches()
         topology.getActiveSwitches()
                 .unique { sw -> [nbSwitches.find { it.switchId == sw.dpId }.description, sw.ofVersion].sort() }
+    }
+
+    FlowPayload buildFlow() {
+        flowHelper.randomFlow(srcSwitch, dstSwitch)
+    }
+
+    List<FlowEntry> filterRules(List<FlowEntry> rules, inPort, inVlan, outPort) {
+        if (inPort) {
+            rules = rules.findAll { it.match.inPort == inPort.toString() }
+        }
+        if (inVlan) {
+            rules = rules.findAll { it.match.vlanVid == inVlan.toString() }
+        }
+        if (outPort) {
+            rules = rules.findAll { it.instructions?.applyActions?.flowOutput == outPort.toString() }
+        }
+
+        return rules
     }
 }
