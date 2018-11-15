@@ -85,11 +85,12 @@ class BandwidthSpec extends BaseSpecification {
         def linksBeforeFlowUpdate = linksAfterFlow
         def linksAfterFlowUpdate = northboundService.getAllLinks()
         def flowPathAfterUpdate = PathHelper.convert(northboundService.getFlowPath(flow.id))
-        pathHelper.getInvolvedIsls(flowPathAfterUpdate).every { link ->
-            [link, islUtils.reverseIsl(link)].every {
+        flowPathAfterUpdate == flowPath
+        pathHelper.getInvolvedIsls(flowPathAfterUpdate).each { link ->
+            [link, islUtils.reverseIsl(link)].each {
                 def bwBeforeFlow = islUtils.getIslInfo(linksBeforeFlowUpdate, it).get().availableBandwidth
                 def bwAfterFlow = islUtils.getIslInfo(linksAfterFlowUpdate, it).get().availableBandwidth
-                bwAfterFlow == bwBeforeFlow + maximumBandwidth - maximumBandwidthUpdated
+                assert bwAfterFlow == bwBeforeFlow + maximumBandwidth - maximumBandwidthUpdated
             }
         }
 
