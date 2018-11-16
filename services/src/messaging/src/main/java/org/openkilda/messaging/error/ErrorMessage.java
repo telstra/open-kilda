@@ -72,7 +72,7 @@ public class ErrorMessage extends Message {
     /**
      * Instance constructor.
      *
-     * @param data          info message payload
+     * @param data          error message payload
      * @param timestamp     timestamp value
      * @param correlationId message correlation id
      */
