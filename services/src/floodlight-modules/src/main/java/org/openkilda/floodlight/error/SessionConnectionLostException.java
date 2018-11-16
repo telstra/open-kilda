@@ -15,17 +15,10 @@
 
 package org.openkilda.floodlight.error;
 
-import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class OfWriteException extends AbstractException {
-    public OfWriteException(String s) {
-        super(s);
-    }
-
-    public OfWriteException(DatapathId dpId, OFMessage message) {
-        this(String.format(
-                "Unable't to write message %s.%s:%s into %s",
-                message.getType(), message.getVersion(), message.getXid(), dpId));
+public class SessionConnectionLostException extends SwitchOperationException {
+    public SessionConnectionLostException(DatapathId dpId) {
+        super(dpId, String.format("Switch %s have been disconnected", dpId));
     }
 }

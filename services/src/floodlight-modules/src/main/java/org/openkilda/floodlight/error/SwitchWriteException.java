@@ -15,19 +15,20 @@
 
 package org.openkilda.floodlight.error;
 
-import org.openkilda.floodlight.model.OfRequestResponse;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.types.DatapathId;
 
-import java.util.List;
+public class SwitchWriteException extends SwitchOperationException {
+    private final transient OFMessage ofMessage;
 
-public class OfBatchException extends AbstractException {
-    private final List<OfRequestResponse> errors;
-
-    public OfBatchException(List<OfRequestResponse> errors) {
-        super("There is an error(s) during batch operation");
-        this.errors = errors;
+    public SwitchWriteException(DatapathId dpId, OFMessage message) {
+        super(dpId, String.format(
+                "Unable't to write message %s.%s:%s into %s",
+                message.getType(), message.getVersion(), message.getXid(), dpId));
+        this.ofMessage = message;
     }
 
-    public List<OfRequestResponse> getErrors() {
-        return errors;
+    public OFMessage getOfMessage() {
+        return ofMessage;
     }
 }

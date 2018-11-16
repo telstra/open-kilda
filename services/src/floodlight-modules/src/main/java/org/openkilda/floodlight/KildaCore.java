@@ -18,10 +18,12 @@ package org.openkilda.floodlight;
 import org.openkilda.floodlight.config.provider.ConfigurationProvider;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
 import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -44,7 +46,8 @@ public class KildaCore implements IFloodlightModule {
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableList.of(
                 CommandProcessorService.class,
-                InputService.class);
+                InputService.class,
+                SessionService.class);
     }
 
     @Override
@@ -52,6 +55,7 @@ public class KildaCore implements IFloodlightModule {
         HashMap<Class<? extends IFloodlightService>, IFloodlightService> services = new HashMap<>();
         services.put(CommandProcessorService.class, new CommandProcessorService(this, commandContextFactory));
         services.put(InputService.class, new InputService(commandContextFactory));
+        services.put(SessionService.class, new SessionService());
         return services;
     }
 
@@ -59,7 +63,8 @@ public class KildaCore implements IFloodlightModule {
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         return ImmutableList.of(
                 IThreadPoolService.class,
-                IFloodlightProviderService.class);
+                IFloodlightProviderService.class,
+                IOFSwitchService.class);
     }
 
     @Override
@@ -74,6 +79,7 @@ public class KildaCore implements IFloodlightModule {
 
         moduleContext.getServiceImpl(CommandProcessorService.class).setup(moduleContext);
         moduleContext.getServiceImpl(InputService.class).setup(moduleContext);
+        moduleContext.getServiceImpl(SessionService.class).setup(moduleContext);
     }
 
     public KildaCoreConfig getConfig() {

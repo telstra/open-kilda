@@ -15,17 +15,19 @@
 
 package org.openkilda.floodlight.error;
 
+import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class OfLostConnectionException extends OfWriteException {
-    private final DatapathId dpId;
+public class SessionErrorResponseException extends SwitchOperationException {
+    private final transient OFErrorMsg errorResponse;
 
-    public OfLostConnectionException(DatapathId dpId) {
-        super(String.format("Incomplete OpenFlow I/O - lost connects to switch %s", dpId));
-        this.dpId = dpId;
+    public SessionErrorResponseException(DatapathId dpId, OFErrorMsg error) {
+        super(dpId, String.format(
+                "Receive error response from %s on message %d %s:%s", dpId, error.getXid(), error.getErrType(), error));
+        this.errorResponse = error;
     }
 
-    public DatapathId getDpId() {
-        return dpId;
+    public OFErrorMsg getErrorResponse() {
+        return errorResponse;
     }
 }

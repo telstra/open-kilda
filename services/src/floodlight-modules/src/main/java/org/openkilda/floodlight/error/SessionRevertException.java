@@ -17,19 +17,8 @@ package org.openkilda.floodlight.error;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class SwitchOperationException extends AbstractException {
-    private final transient DatapathId dpId;
-
-    public SwitchOperationException(DatapathId dpId) {
-        this(dpId, "Switch manipulation has failed");
-    }
-
-    public SwitchOperationException(DatapathId dpId, String message) {
-        super(message);
-        this.dpId = dpId;
-    }
-
-    public DatapathId getDpId() {
-        return dpId;
+public class SessionRevertException extends SwitchOperationException {
+    public SessionRevertException(DatapathId dpId) {
+        super(dpId, String.format("Session to %s have been reverted, result of operation is unknown", dpId));
     }
 }
