@@ -15,19 +15,19 @@
 
 package org.openkilda.floodlight.error;
 
-import org.openkilda.floodlight.model.OfRequestResponse;
+import org.projectfloodlight.openflow.protocol.OFErrorMsg;
+import org.projectfloodlight.openflow.types.DatapathId;
 
-import java.util.List;
+public class SessionErrorResponseException extends SwitchOperationException {
+    private final transient OFErrorMsg errorResponse;
 
-public class OfBatchException extends AbstractException {
-    private final List<OfRequestResponse> errors;
-
-    public OfBatchException(List<OfRequestResponse> errors) {
-        super("There is an error(s) during batch operation");
-        this.errors = errors;
+    public SessionErrorResponseException(DatapathId dpId, OFErrorMsg error) {
+        super(dpId, String.format(
+                "Receive error response from %s on message %d %s:%s", dpId, error.getXid(), error.getErrType(), error));
+        this.errorResponse = error;
     }
 
-    public List<OfRequestResponse> getErrors() {
-        return errors;
+    public OFErrorMsg getErrorResponse() {
+        return errorResponse;
     }
 }

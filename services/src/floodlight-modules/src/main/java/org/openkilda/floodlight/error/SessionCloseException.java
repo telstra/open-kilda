@@ -15,17 +15,10 @@
 
 package org.openkilda.floodlight.error;
 
-import org.projectfloodlight.openflow.protocol.OFErrorMsg;
+import org.projectfloodlight.openflow.types.DatapathId;
 
-public class OfErrorResponseException extends OfWriteException {
-    private final OFErrorMsg errorResponse;
-
-    public OfErrorResponseException(OFErrorMsg error) {
-        super(String.format("%s:%s", error.getErrType(), error));
-        this.errorResponse = error;
-    }
-
-    public OFErrorMsg getErrorResponse() {
-        return errorResponse;
+public class SessionCloseException extends SwitchOperationException {
+    public SessionCloseException(DatapathId dpId) {
+        super(dpId, String.format("Unable to close session with %s (failed to write final barrier message)", dpId));
     }
 }
