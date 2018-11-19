@@ -206,7 +206,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
                 //give consumer some time to fully roll. Probably should be fixed on service's side, this is workaround
                 TimeUnit.MILLISECONDS.sleep(300);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
             producer = assignEndpoint(exam.getSource(), producer);
             supplied.add(producer);
