@@ -1,0 +1,75 @@
+<div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+<table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+    <thead>
+      <tr class="tableHeading">
+        <th class="">
+          <span title="Contract ID">
+         ID
+        </span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'expandedId')"></i>
+          <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedId" id="expandedId"/>
+        </th>
+        <th class="" >
+          <span title="Status">
+            Status
+          </span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'expandedStatus')"></i>
+            <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedStatus" id="expandedStatus"/>
+          
+        </th>
+        <th >
+          <span title="Bandwidth(Mbps)">
+           Bandwidth(Mbps)
+          </span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'expandedBandwidth')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedBandwidth"id="expandedBandwidth"/>
+          
+        </th>
+        <th>
+            <span title="Start Date">
+          Start
+        </span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'expandedStart')"></i>
+          <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedStart" id="expandedStart"/>
+        
+        </th>
+        <th class="">
+          <span title="Expiry Date">
+            Expiry
+          </span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'expandedExpiry')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedExpiry" id="expandedExpiry"/>
+          
+        </th>
+        <th >
+          <span title="Renewal">
+           Renewal
+          </span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'expandedRenewal')"></i>
+            <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedRenewal" id="expandedRenewal"/>
+          
+        </th>
+        <th >
+            <span title="Price">
+          Price
+        </span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'expandedPrice')"></i>
+          <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedPrice" id="expandedPrice"/>
+        
+        </th>
+        <th class=""><span title="Action">Action</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of data; let i = index">
+        <td class="divTableCell">{{row['contract-id'] || "-"}}</td>
+        <td class="divTableCell">{{row['status'] || "-"}}</td>
+        <td class="divTableCell">{{row.bandwidth / 1000 || "-"}}</td>
+        <td class="divTableCell">{{row['start-time'] | date:'medium' || "-"}}</td>
+        <td class="divTableCell">{{row['end-time'] | date:'medium' || "-"}}</td>
+        <td class="divTableCell">{{row['renewal-option'] ? "Auto Renewal" :"Auto Disconnect"}}</td>
+        <td class="divTableCell">{{row.currency +" "+ row.price || "-"}}</td>
+        <td class="divTableCell"><a *ngIf="row.status == 'Active' || row.status == 'Deployed'" class="pull-left" (click)="deleteContract(row['contract-id'])"><i  class="fa fa-trash " ></i></a></td>
+      </tr>
+    </tbody>
+  </table>

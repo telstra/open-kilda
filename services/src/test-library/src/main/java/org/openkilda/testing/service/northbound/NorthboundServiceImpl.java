@@ -17,6 +17,7 @@ package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -157,6 +158,19 @@ public class NorthboundServiceImpl implements NorthboundService {
         FlowPayload[] flows = restTemplate.exchange("/api/v1/flows", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload[].class).getBody();
         return Arrays.asList(flows);
+    }
+
+    @Override
+    public List<Long> installSwitchRules(SwitchId switchId, InstallRulesAction installAction) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/switches/{switch_id}/rules");
+        uriBuilder.queryParam("install-action", installAction);
+
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+
+        Long[] installedRules = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.PUT,
+                new HttpEntity(httpHeaders), Long[].class, switchId).getBody();
+        return Arrays.asList(installedRules);
     }
 
     @Override

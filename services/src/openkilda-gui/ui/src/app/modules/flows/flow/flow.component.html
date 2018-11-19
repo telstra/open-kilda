@@ -1,0 +1,21 @@
+<div id="switchdetails_div">
+  <div class="row">
+    <div id="exTab1" class="col-lg-12 tab-wrapper">
+    <a routerLink="add-new" class="btn btn-sm btn-dark pull-right" *ngIf="commonService.hasPermission('fw_flow_create')">Add New Flow</a>
+    <ul class="nav nav-pills">
+        <li [ngClass]="{'active': openedTab == 'search'}"><a href="javascript:void(0);" (click)="openTab('search');">Search</a></li>
+        <li [ngClass]="{'active': openedTab == 'list'}"><a href="javascript:void(0);" (click)="openTab('list');">List</a></li>
+      </ul>
+      <div class="tab-content clearfix">
+        <div class="tab-pane" [ngClass]="{'active': openedTab == 'search'}">
+          <div class="row">
+              <div class="col-md-4"><app-flow-search  *ngIf="openedTab == 'search'"></app-flow-search></div>
+          </div>
+        </div>
+        <div class="tab-pane" [ngClass]="{'active': openedTab == 'list'}">
+            <app-flow-list *ngIf="openedTab == 'list' && loadFlows" [srcSwitch]="src" [dstSwitch]="dst" ></app-flow-list>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

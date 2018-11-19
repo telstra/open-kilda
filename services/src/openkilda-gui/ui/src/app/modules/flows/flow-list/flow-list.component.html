@@ -1,0 +1,19 @@
+<div>
+    <div class="pull-right mb-3">
+    <div class="flow-list-filter">
+        <form [formGroup]="filterForm"class="form-inline"  *ngIf="storeLinkSetting"> 
+            <div class="form-group">
+                    <label class="form-label" style="margin-top:-6px;">Status: </label>
+                    <select class="form-control" style="margin-top:-6px; margin-right:60px;" formControlName="status" (change)="refreshFlowList()">
+                        <option value="active">Active</option>
+                        <option value="expired">Expired</option>
+                        <option value="deleted">Deleted</option>
+                    </select>  
+            </div> 
+     </form>
+    </div>
+    <button class="btn btn-sm btn-dark" (click)="refreshFlowList()">Refresh</button>
+    </div>
+   <div class="clear clearfix"></div>
+</div>
+<app-flow-datatables [srcSwitch]="srcSwitch" [dstSwitch]="dstSwitch" [data]="dataSet" *ngIf="!loadingData"></app-flow-datatables>

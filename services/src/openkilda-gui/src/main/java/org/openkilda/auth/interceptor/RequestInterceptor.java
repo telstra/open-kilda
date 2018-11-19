@@ -84,6 +84,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 
             userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
             if (userInfo != null) {
+                validateUser(userInfo);
                 if (handler instanceof HandlerMethod) {
                     HandlerMethod handlerMethod = (HandlerMethod) handler;
                     Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
@@ -106,6 +107,13 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         super.postHandle(request, response, handler, modelAndView);
         MDC.remove(CORRELATION_ID);
     }
+    
+    private void validateUser(final UserInfo userInfo) throws AccessDeniedException {
+        UserEntity userEntity = userRepository.findByUserId(userInfo.getUserId());
+        if (!userEntity.getActiveFlag()) {
+            throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
+        }
+    }
 
     private void updateRequestContext(final String correlationId, final HttpServletRequest request,
             final UserInfo userInfo) {
@@ -113,7 +121,10 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         requestContext.setCorrelationId(userInfo.getUsername() + "_" + correlationId);
         requestContext.setUserId(userInfo.getUserId());
         requestContext.setUserName(userInfo.getUsername());
+        requestContext.setFullName(userInfo.getName());
         requestContext.setPermissions(userInfo.getPermissions());
+        requestContext.setIs2FaEnabled(userInfo.getIs2FaEnabled());
+        requestContext.setStatus(userInfo.getStatus());
         requestContext.setClientIpAddress(getClientIp(request));
         
         MDC.put(CORRELATION_ID, requestContext.getCorrelationId());

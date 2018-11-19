@@ -1,0 +1,62 @@
+.dataTable tfoot {
+    display: table-header-group;
+}
+
+table.dataTable i.fa{
+    float: right;
+    font-size:12px;
+}
+
+
+table.dataTable .flowDataRow.up-state .divTableCell:first-child:before {
+    width: 8px;
+    height: 8px;
+    background: #19b365;
+    border-radius: 100%;
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    content: "";
+}
+
+table.dataTable .flowDataRow.down-state .divTableCell:first-child:before {
+    width: 8px;
+    height: 8px;
+    background: #b64545;
+    border-radius: 100%;
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    content: "";
+}
+
+
+table.dataTable thead th span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    width: calc(100% - 25px);
+    line-height: normal;
+    vertical-align: middle;
+}
+
+
+table.dataTable td {
+        position: relative;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background-position: right 10px;
+        padding: 10px 20px 10px 18px;
+        overflow: hidden;
+        vertical-align: middle;
+    
+}
+
+table.dataTable tbody tr td:first-child {
+    padding-left: 25px !important;
+}

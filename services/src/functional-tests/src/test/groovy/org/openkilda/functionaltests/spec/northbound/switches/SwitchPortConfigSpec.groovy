@@ -12,7 +12,9 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
 
+@Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
 class SwitchPortConfigSpec extends BaseSpecification {
 
     @Autowired

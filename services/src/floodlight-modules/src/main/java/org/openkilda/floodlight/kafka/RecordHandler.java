@@ -515,7 +515,12 @@ class RecordHandler implements Runnable {
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
                         break;
+                    case REMOVE_VERIFICATION_LOOP:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ISwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE).build();
+                        break;
                     default:
+                        logger.warn("Received unexpected delete switch rule action: {}", deleteAction);
                 }
 
                 // The cases when we delete all non-default rules.

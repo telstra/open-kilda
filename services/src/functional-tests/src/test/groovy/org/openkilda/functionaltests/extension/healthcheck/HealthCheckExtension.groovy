@@ -4,7 +4,7 @@ import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.model.SpecInfo
 
 /**
- * Any test annotated with @HealthCheck will be run only once and will have higher order priority above any other 
+ * Any test annotated with @HealthCheck will be run only once and will have higher order priority over any other 
  * tests without this annotation. Can be applied to tests in 'parent' specifications to run a single healthcheck
  * for all the descendants.
  * Execution order is guaranteed by {@link org.openkilda.functionaltests.extension.FeatureOrderExtension}

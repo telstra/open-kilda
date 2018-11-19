@@ -1,0 +1,96 @@
+<div *ngIf="currentRoute != 'port-details'">
+  <!-- <div> -->
+  <!-- Switch Details -->
+    <div id="switchdetails_div">
+      <h5 class="modal-title">SWITCH DETAILS</h5>
+      <div class="form-wrapper">
+        <div class="row">
+          <label class="col-sm-4 ">Name:</label>
+          <p class="col-sm-8 copy_to_clipBoard switchdetails_div_name" [contextMenu]="copySrcSwitchName">{{name}}</p>
+        </div>
+        <div class="row">
+          <label class="col-sm-4 ">Switch ID:</label>
+          <div class="col-sm-2">
+            <p [contextMenu]="copySrcSwitch">{{switch_id}}</p>
+            <span class="switchdetails_div_switch_id copy_to_clipBoard"></span>
+          </div>
+          <div class="col-sm-6">
+            <input type="hidden" class="on-off-switch" value="0" style="display: none;">
+            <div class="pull-left">
+              <div class="onoffswitch">
+                <input type="checkbox" (change)="maskSwitchId('source',$event)" name="onoffswitch" class="onoffswitch-checkbox" id="onoffswitchsource">
+                <label class="onoffswitch-label" for="onoffswitchsource">
+                  <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
+                  <span class="onoffswitch-switch"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <label class="col-sm-4 ">Hostname:</label>
+          <p class="col-sm-8 copy_to_clipBoard switchdetails_div_hostname" [contextMenu]="copyTrgSwitchName">{{hostname}}</p>
+        </div>
+        <div class="row">
+          <label class="col-sm-4 ">Address:</label>
+          <p class="col-sm-8 switchdetails_div_address">{{address}}</p>
+        </div>
+        <div class="row">
+          <label class="col-sm-4 ">Description:</label>
+          <p class="col-sm-8 switchdetails_div_desc">{{description}}</p>
+        </div>
+        <div class="row">
+          <label class="col-sm-4 ">State:</label>
+          <p class="col-sm-8 switchdetails_div_state">{{state}}</p>
+        </div>
+      </div>
+    </div>
+    <!-- HERE -->
+    <div class="row">
+      <div id="exTab1" class="col-lg-12 tab-wrapper">
+        <ul class="nav nav-pills">
+          <li [ngClass]="{'active': openedTab == 'port'}">
+            <a href="javascript:void(0)" (click)="toggleTab('port')" data-toggle="tab">PORT DETAILS</a>
+          </li>
+          <li *ngIf="commonService.hasPermission('sw_permission_rules')" [ngClass]="{'active': openedTab == 'rules'}">
+            <a href="javascript:void(0)" (click)="toggleTab('rules')" data-toggle="tab" id="flow-list">RULES</a>
+          </li>
+        </ul>
+        <div class="tab-content clearfix">
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'port'}" id="1a">
+            <app-port-list *ngIf="openedTab == 'port'"></app-port-list>
+          </div>
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'rules'}" id="2a">
+            <app-rule-details *ngIf="openedTab == 'rules'"></app-rule-details>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- END -->
+  <!-- Switch Details -->
+</div>
+
+<div *ngIf="currentRoute == 'port-details'">
+  <!-- <div> -->
+ <router-outlet></router-outlet> 
+</div>
+
+
+
+<context-menu #copySrcSwitch>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitch');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyTrgSwitchName>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'targetSwitchName');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copySrcSwitchName>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitchName');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>

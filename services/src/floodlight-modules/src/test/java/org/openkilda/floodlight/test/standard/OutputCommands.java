@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
@@ -23,13 +24,18 @@ import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
 import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 
-import net.floodlightcontroller.util.FlowModUtils;
 import org.openkilda.floodlight.OFFactoryMock;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
+
+import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
+import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
@@ -215,6 +221,22 @@ public interface OutputCommands {
                         .setBurstSize(burstSize).build()))
                 .setFlags(new HashSet<>(Arrays.asList(KBPS, BURST)))
                 .setXid(0L)
+                .build();
+    }
+
+    default OFFlowAdd installDropLoopRule(DatapathId dpid) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST))
+                .setExact(MatchField.ETH_SRC, MacAddress.of(Arrays.copyOfRange(dpid.getBytes(), 2, 8)))
+                .build();
+
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(SwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE))
+                .setPriority(SwitchManager.DROP_VERIFICATION_LOOP_RULE_PRIORITY)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
                 .build();
     }
 }

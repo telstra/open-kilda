@@ -1,0 +1,52 @@
+<div class="row">
+  <div id="ForwardRow" class="col-xs-12 col-md-12 col-lg-12">
+    <h3 class="text-center">
+      FORWARD PATH
+      <a class="badge badge-dark custom-button cursor-pointer" (click)="viewPathGraph('forward')">
+        <i class="fa" [ngClass]="{'fa-minus': forwardPathGraph, 'fa-plus': !forwardPathGraph}"> </i>
+      </a>
+    </h3>
+
+    <div  *ngFor="let path of forwardPathData" class="path">
+      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
+      <div class="line"></div>
+      <div class="text" id="switch-name">{{path.switch_name}}</div>
+      <div class="line"></div>
+      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
+      <div class="line"></div>
+      <div *ngIf="forwardPathData.length > 5" class="vertical-line"></div>
+      <div *ngIf="forwardPathData.length > 5" class="horizontal-line"></div>
+      <div *ngIf="forwardPathData.length > 5" class="vertical-line-2"></div>
+    </div>
+
+  </div>
+</div>
+<app-flow-path-graph [data]="flowPathData" path-type="forward"  *ngIf="forwardPathGraph"></app-flow-path-graph>
+<div class="row">
+
+  <div id="ReversePath" class="col-xs-12 col-md-12 col-lg-12">
+    <h3 class="text-center">
+      REVERSE PATH
+      <!--<a href="javascript:void(0)" class="badge badge-primary pointer " onclick="loadReverseGraph()">
+      <i id="reverse_graph_icon" class="glyphicon glyphicon-plus"></i>
+    </a>-->
+      <a class="badge badge-dark custom-button cursor-pointer" (click)="viewPathGraph('reverse')">
+        <i class="fa" [ngClass]="{'fa-minus': reversePathGraph, 'fa-plus': !reversePathGraph}"> </i>
+      </a>
+    </h3>
+
+    <div  *ngFor="let path of reversePathData" class="path">
+      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
+      <div class="line"></div>
+      <div class="text" id="switch-name">{{path.switch_name}}</div>
+      <div class="line"></div>
+      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
+      <div class="line"></div>
+      <div *ngIf="reversePathData.length > 5" class="vertical-line"></div>
+      <div *ngIf="reversePathData.length > 5" class="horizontal-line"></div>
+      <div *ngIf="reversePathData.length > 5" class="vertical-line-2"></div>
+    </div>
+    
+  </div>
+</div>
+<app-flow-path-graph [data]="flowPathData" path-type="reverse" *ngIf="reversePathGraph"></app-flow-path-graph>

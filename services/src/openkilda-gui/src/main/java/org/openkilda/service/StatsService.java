@@ -65,16 +65,25 @@ public class StatsService {
     /**
      * Gets the stats.
      *
-     * @param startDate the start date
-     * @param endDate the end date
-     * @param downsample the downsample
-     * @param srcSwitch the src switch
-     * @param srcPort the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort the dst port
-     * @param metric the metric
+     * @param startDate
+     *            the start date
+     * @param endDate
+     *            the end date
+     * @param downsample
+     *            the downsample
+     * @param srcSwitch
+     *            the src switch
+     * @param srcPort
+     *            the src port
+     * @param dstSwitch
+     *            the dst switch
+     * @param dstPort
+     *            the dst port
+     * @param metric
+     *            the metric
      * @return the stats
-     * @throws IntegrationException the integration exception
+     * @throws IntegrationException
+     *             the integration exception
      */
     public String getSwitchIslStats(String startDate, String endDate, String downsample, String srcSwitch,
             String srcPort, String dstSwitch, String dstPort, String metric) throws IntegrationException {
@@ -85,13 +94,19 @@ public class StatsService {
     /**
      * Gets the flow stats.
      *
-     * @param startDate the start date
-     * @param endDate the end date
-     * @param downsample the downsample
-     * @param flowId the flow id
-     * @param metric the metric
+     * @param startDate
+     *            the start date
+     * @param endDate
+     *            the end date
+     * @param downsample
+     *            the downsample
+     * @param flowId
+     *            the flow id
+     * @param metric
+     *            the metric
      * @return the flow stats
-     * @throws IntegrationException the integration exception
+     * @throws IntegrationException
+     *             the integration exception
      */
     public String getFlowStats(String startDate, String endDate, String downsample, String flowId, String metric)
             throws IntegrationException {
@@ -102,14 +117,21 @@ public class StatsService {
     /**
      * Gets the switch stats.
      *
-     * @param switchid the switchid
-     * @param portnumber the portnumber
-     * @param startDate the start date
-     * @param endDate the end date
-     * @param downsample the downsample
-     * @param metric the metric
+     * @param switchid
+     *            the switchid
+     * @param portnumber
+     *            the portnumber
+     * @param startDate
+     *            the start date
+     * @param endDate
+     *            the end date
+     * @param downsample
+     *            the downsample
+     * @param metric
+     *            the metric
      * @return the switch stats
-     * @throws IntegrationException the integration exception
+     * @throws IntegrationException
+     *             the integration exception
      */
     public String getSwitchPortStats(String startDate, String endDate, String downsample, String switchid,
             String portnumber, String metric) throws IntegrationException {
@@ -122,14 +144,22 @@ public class StatsService {
     /**
      * Gets the switch isl loss packet stats.
      *
-     * @param startDate the start date
-     * @param endDate the end date
-     * @param downsample the downsample
-     * @param srcSwitch the src switch
-     * @param srcPort the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort the dst port
-     * @param metric the metric
+     * @param startDate
+     *            the start date
+     * @param endDate
+     *            the end date
+     * @param downsample
+     *            the downsample
+     * @param srcSwitch
+     *            the src switch
+     * @param srcPort
+     *            the src port
+     * @param dstSwitch
+     *            the dst switch
+     * @param dstPort
+     *            the dst port
+     * @param metric
+     *            the metric
      * @return the switch isl loss packet stats
      */
     public String getSwitchIslLossPacketStats(String startDate, String endDate, String downsample, String srcSwitch,
@@ -141,13 +171,19 @@ public class StatsService {
     /**
      * Gets the flow loss packet stats.
      *
-     * @param startDate the start date
-     * @param endDate the end date
-     * @param downsample the downsample
-     * @param flowId the flow id
-     * @param direction the direction
+     * @param startDate
+     *            the start date
+     * @param endDate
+     *            the end date
+     * @param downsample
+     *            the downsample
+     * @param flowId
+     *            the flow id
+     * @param direction
+     *            the direction
      * @return the flow loss packet stats
-     * @throws IntegrationException the integration exception
+     * @throws IntegrationException
+     *             the integration exception
      */
     public String getFlowLossPacketStats(String startDate, String endDate, String downsample, String flowId,
             String direction) throws IntegrationException {
@@ -159,23 +195,27 @@ public class StatsService {
     /**
      * Gets the flow path stat.
      *
-     * @param flowPathStats the flow path stat
+     * @param flowPathStats
+     *            the flow path stat
      * @return the flow path stat
      */
     public String getFlowPathStats(FlowPathStats flowPathStats) {
         return statsIntegrationService.getStats(flowPathStats.getStartDate(), flowPathStats.getEndDate(),
-                flowPathStats.getDownsample(), flowPathStats.getSwitches(), null, flowPathStats.getFlowid(), null, null,
-                null, null, StatsType.FLOW_RAW_PACKET, flowPathStats.getMetric(),
-                flowPathStats.getDirection());
+                flowPathStats.getDownsample(), getSwitches(flowPathStats), null, flowPathStats.getFlowid(), null, null,
+                null, null, StatsType.FLOW_RAW_PACKET, flowPathStats.getMetric(), flowPathStats.getDirection());
     }
 
     /**
      * Gets the switch ports stats.
      *
-     * @param startDate the start date
-     * @param endDate the end date
-     * @param downSample the down sample
-     * @param switchId the switch id
+     * @param startDate
+     *            the start date
+     * @param endDate
+     *            the end date
+     * @param downSample
+     *            the down sample
+     * @param switchId
+     *            the switch id
      * @return the switch ports stats
      */
     public List<PortInfo> getSwitchPortsStats(String startDate, String endDate, String downSample, String switchId) {
@@ -196,7 +236,8 @@ public class StatsService {
     /**
      * Creates the switch post stat report.
      *
-     * @param switchPortStats the list
+     * @param switchPortStats
+     *            the list
      * @return the ports stat
      */
     private List<PortInfo> getSwitchPortStatsReport(List<SwitchPortStats> switchPortStats, String switchId) {
@@ -219,7 +260,8 @@ public class StatsService {
     /**
      * Calculate highest value.
      *
-     * @param dps the dps
+     * @param dps
+     *            the dps
      * @return the double
      */
     private double calculateHighestValue(Map<String, Double> dps) {
@@ -241,8 +283,10 @@ public class StatsService {
     /**
      * Sets the isl ports.
      *
-     * @param portInfos the port infos
-     * @param switchid the switchid
+     * @param portInfos
+     *            the port infos
+     * @param switchid
+     *            the switchid
      * @return the list
      */
     private List<PortInfo> getIslPorts(final Map<String, Map<String, Double>> portStatsByPortNo, String switchid) {
@@ -282,5 +326,17 @@ public class StatsService {
             portInfos.add(portInfo);
         }
         return portInfos;
+    }
+
+    private List<String> getSwitches(FlowPathStats flowPathStats) {
+        List<String> switches = null;
+        if (flowPathStats != null) {
+            switches = flowPathStats.getSwitches();
+            if (switches == null || switches.isEmpty()) {
+                switches = new ArrayList<String>();
+                switches.add("*");
+            }
+        }
+        return switches;
     }
 }

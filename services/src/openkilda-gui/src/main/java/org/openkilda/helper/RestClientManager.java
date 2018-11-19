@@ -335,7 +335,9 @@ public class RestClientManager {
 
                 } else {
                     if (dependentClass == null) {
-                        obj = mapper.readValue(responseEntity, responseClass);
+                        if (responseClass != null) {
+                            obj = mapper.readValue(responseEntity, responseClass);
+                        }
                     } else {
                         obj = mapper.readValue(responseEntity, TypeFactory.defaultInstance()
                                 .constructCollectionLikeType(responseClass, dependentClass));

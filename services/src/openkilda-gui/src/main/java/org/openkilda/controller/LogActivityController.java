@@ -42,7 +42,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 
 @RestController
-@RequestMapping(path = "/useractivity", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/api/useractivity", produces = MediaType.APPLICATION_JSON_VALUE)
 public class LogActivityController extends BaseController {
 
     /** The user activity log service. */

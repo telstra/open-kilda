@@ -25,7 +25,7 @@ import lombok.Data;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({ "flow-id", "description", "customer-name", "source", "destination", "maximum-bandwidth",
-        "ignore-bandwidth", "state" })
+        "ignore-bandwidth", "status" })
 @Data
 public class InventoryFlow {
 
@@ -50,7 +50,7 @@ public class InventoryFlow {
     @JsonProperty("ignore-bandwidth")
     private Boolean ignoreBandwidth;
 
-    @JsonProperty("state")
+    @JsonProperty("status")
     private String state;
 
 }

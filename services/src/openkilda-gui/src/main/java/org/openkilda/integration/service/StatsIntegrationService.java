@@ -21,6 +21,7 @@ import org.openkilda.constants.OpenTsDb;
 import org.openkilda.constants.OpenTsDb.StatsType;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.Filter;
 import org.openkilda.integration.model.IslStats;
 import org.openkilda.integration.model.Query;
@@ -101,6 +102,9 @@ public class StatsIntegrationService {
             if (RestClientManager.isValidResponse(response)) {
                 return IoUtil.toString(response.getEntity().getContent());
             }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside getFlowStatusById  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (IOException ex) {
             LOGGER.error("Inside getStats Exception is: " + ex.getMessage());
             throw new IntegrationException(ex);
@@ -119,7 +123,8 @@ public class StatsIntegrationService {
                     Filter filter = new Filter();
                     filter.setGroupBy(Boolean.valueOf(OpenTsDb.GROUP_BY));
                     if ((statsType.equals(StatsType.SWITCH_PORT) && param.getKey().equals("port"))
-                            || (statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("cookie"))) {
+                            || (statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("cookie"))
+                            || (statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("switchid"))) {
                         filter.setType(OpenTsDb.TYPE_WILDCARD);
                     } else {
                         filter.setType(OpenTsDb.TYPE);
@@ -215,7 +220,7 @@ public class StatsIntegrationService {
         islStatsRequest.setQueries(queryList);
         return JsonUtil.toString(islStatsRequest);
     }
-    
+
     /**
      * Gets the metircs.
      *
@@ -243,7 +248,7 @@ public class StatsIntegrationService {
         }
         return metricList;
     }
-    
+
     /**
      * Gets the queries.
      *
@@ -294,7 +299,7 @@ public class StatsIntegrationService {
         }
         return queries;
     }
-    
+
     /**
      * Gets the flow loss packets queries.
      *
@@ -319,7 +324,7 @@ public class StatsIntegrationService {
         }
         return queries;
     }
-    
+
     /**
      * Gets the isl loss packets queries.
      *
@@ -372,7 +377,7 @@ public class StatsIntegrationService {
         }
         return queries;
     }
-    
+
     /**
      * Gets the switch port queries.
      *

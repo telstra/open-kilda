@@ -112,7 +112,7 @@ public class FlowConverter {
         
         FlowBandwidth flowBandwidth = new FlowBandwidth();
         flowBandwidth.setControllerBandwidth(0);
-        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth() * 1000);
         discrepancy.setBandwidthValue(flowBandwidth);
         
         FlowState flowState = new FlowState();

@@ -1,0 +1,97 @@
+<div class="tab-pane" id="linkStoreTab">
+  <form novalidate (ngSubmit)="submitLinkStore()" [formGroup]="linkStoreForm" method="POST">
+    <div class="col-md-12" [formGroupName]="'urls'">
+  <div class="form-group row" [ngClass]="{'error': ((!i['urls']['controls']['get-all-link']['controls'].url.valid && (i['urls']['controls']['get-all-link']['controls'].url.dirty || i['urls']['controls']['get-all-link']['controls'].url.touched )   && i['urls']['controls']['get-all-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-all-link']['controls'].url.errors && i['urls']['controls']['get-all-link']['controls'].url.errors.required)) || ((!i['urls']['controls']['get-all-link']['controls'].url.valid && (i['urls']['controls']['get-all-link']['controls'].url.dirty || i['urls']['controls']['get-all-link']['controls'].url.touched )   && i['urls']['controls']['get-all-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-all-link']['controls'].url.errors && i['urls']['controls']['get-all-link']['controls'].url.errors.pattern))}" [formGroupName]="'get-all-link'">
+    <label for="getalllinkurl" class="col-sm-2 text-right col-form-label required">Get All Link URL:</label>
+    <div class="col-sm-6">
+      <input  type="text"formControlName="url" class="form-control"  placeholder="Get Link" /> 
+      <div class="invalid-feedback">
+        <div  *ngIf="(!i['urls']['controls']['get-all-link']['controls'].url.valid && (i['urls']['controls']['get-all-link']['controls'].url.dirty || i['urls']['controls']['get-all-link']['controls'].url.touched )   && i['urls']['controls']['get-all-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-all-link']['controls'].url.errors && i['urls']['controls']['get-all-link']['controls'].url.errors.required)" 
+        >Get All Link Url is required.</div>
+        <div  *ngIf="(!i['urls']['controls']['get-all-link']['controls'].url.valid && (i['urls']['controls']['get-all-link']['controls'].url.dirty || i['urls']['controls']['get-all-link']['controls'].url.touched )   && i['urls']['controls']['get-all-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-all-link']['controls'].url.errors && i['urls']['controls']['get-all-link']['controls'].url.errors.pattern)" 
+        >Please enter a valid URL</div>
+      </div>
+    </div>  
+  </div>
+  <div class="form-group row" [ngClass]="{'error': ((!i['urls']['controls']['get-link']['controls'].url.valid && (i['urls']['controls']['get-link']['controls'].url.dirty || i['urls']['controls']['get-link']['controls'].url.touched )   && i['urls']['controls']['get-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link']['controls'].url.errors && i['urls']['controls']['get-link']['controls'].url.errors.paramError)) || ((!i['urls']['controls']['get-link']['controls'].url.valid && (i['urls']['controls']['get-link']['controls'].url.dirty || i['urls']['controls']['get-link']['controls'].url.touched )   && i['urls']['controls']['get-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link']['controls'].url.errors && i['urls']['controls']['get-link']['controls'].url.errors.required)) || ((!i['urls']['controls']['get-link']['controls'].url.valid && (i['urls']['controls']['get-link']['controls'].url.dirty || i['urls']['controls']['get-link']['controls'].url.touched )   && i['urls']['controls']['get-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link']['controls'].url.errors && i['urls']['controls']['get-link']['controls'].url.errors.pattern)) }" [formGroupName]="'get-link'">
+    <label for="getlinkurl" class="col-sm-2 text-right col-form-label required">Get Link With ID URL:</label>
+    <div class="col-sm-6">
+         <input  type="text" formControlName="url" class="form-control"   placeholder="Get Link" /> 
+        <span  class="example-param-span normal-invalid-feedback">
+              <span>Required Query Params:</span><pre class="required-params">{{getlinkParamList}}</pre>
+        </span>
+        <div class="invalid-feedback">
+            <div *ngIf="(!i['urls']['controls']['get-link']['controls'].url.valid && (i['urls']['controls']['get-link']['controls'].url.dirty || i['urls']['controls']['get-link']['controls'].url.touched )   && i['urls']['controls']['get-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link']['controls'].url.errors && i['urls']['controls']['get-link']['controls'].url.errors.paramError)" 
+             >Url do not contain required params.</div>
+            <div *ngIf="(!i['urls']['controls']['get-link']['controls'].url.valid && (i['urls']['controls']['get-link']['controls'].url.dirty || i['urls']['controls']['get-link']['controls'].url.touched )   && i['urls']['controls']['get-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link']['controls'].url.errors && i['urls']['controls']['get-link']['controls'].url.errors.required)" 
+             >Get Link Url is required.</div>
+            <div *ngIf="(!i['urls']['controls']['get-link']['controls'].url.valid && (i['urls']['controls']['get-link']['controls'].url.dirty || i['urls']['controls']['get-link']['controls'].url.touched )   && i['urls']['controls']['get-link']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link']['controls'].url.errors && i['urls']['controls']['get-link']['controls'].url.errors.pattern)" 
+            >Please enter a valid URL</div>
+        </div>
+    </div>
+ </div> 
+<div class="form-group row" [ngClass]="{'error': ((!i['urls']['controls']['get-link-with-param']['controls'].url.valid && (i['urls']['controls']['get-link-with-param']['controls'].url.dirty || i['urls']['controls']['get-link-with-param']['controls'].url.touched )   && i['urls']['controls']['get-link-with-param']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link-with-param']['controls'].url.errors && i['urls']['controls']['get-link-with-param']['controls'].url.errors.paramError)) || ((!i['urls']['controls']['get-link-with-param']['controls'].url.valid && (i['urls']['controls']['get-link-with-param']['controls'].url.dirty || i['urls']['controls']['get-link-with-param']['controls'].url.touched )   && i['urls']['controls']['get-link-with-param']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link-with-param']['controls'].url.errors && i['urls']['controls']['get-link-with-param']['controls'].url.errors.required)) || ((!i['urls']['controls']['get-link-with-param']['controls'].url.valid && (i['urls']['controls']['get-link-with-param']['controls'].url.dirty || i['urls']['controls']['get-link-with-param']['controls'].url.touched )   && i['urls']['controls']['get-link-with-param']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link-with-param']['controls'].url.errors && i['urls']['controls']['get-link-with-param']['controls'].url.errors.pattern)) }" [formGroupName]="'get-link-with-param'">
+  <label for="getlinkwithparam"  class="col-sm-2 text-right col-form-label required">Get Link With Parameter:</label>
+  <div class="col-sm-6">
+    <input  type="text"  formControlName="url" class="form-control"  placeholder="Get Link With Parameter" />
+   <span  class="example-param-span normal-invalid-feedback">
+        <span>Required Query Params:</span><pre  class="required-params">{{getlinkwithParamList}}</pre>
+    </span>
+    <div class="invalid-feedback">
+    <div  *ngIf="(!i['urls']['controls']['get-link-with-param']['controls'].url.valid && (i['urls']['controls']['get-link-with-param']['controls'].url.dirty || i['urls']['controls']['get-link-with-param']['controls'].url.touched )   && i['urls']['controls']['get-link-with-param']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link-with-param']['controls'].url.errors && i['urls']['controls']['get-link-with-param']['controls'].url.errors.paramError)" 
+     >Url do not contain required params.</div>
+    <div  *ngIf="(!i['urls']['controls']['get-link-with-param']['controls'].url.valid && (i['urls']['controls']['get-link-with-param']['controls'].url.dirty || i['urls']['controls']['get-link-with-param']['controls'].url.touched )   && i['urls']['controls']['get-link-with-param']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link-with-param']['controls'].url.errors && i['urls']['controls']['get-link-with-param']['controls'].url.errors.required)" 
+    >Get Link With Parameter is required.</div>
+   <div  *ngIf="(!i['urls']['controls']['get-link-with-param']['controls'].url.valid && (i['urls']['controls']['get-link-with-param']['controls'].url.dirty || i['urls']['controls']['get-link-with-param']['controls'].url.touched )   && i['urls']['controls']['get-link-with-param']['controls'].url.errors || submitted) && (i['urls']['controls']['get-link-with-param']['controls'].url.errors && i['urls']['controls']['get-link-with-param']['controls'].url.errors.pattern)" 
+    >Please enter a valid URL</div>
+  </div>
+  </div> 
+</div>
+<div class="form-group row" [ngClass]="{'error': ((!i['urls']['controls']['get-contract']['controls'].url.valid && (i['urls']['controls']['get-contract']['controls'].url.dirty || i['urls']['controls']['get-contract']['controls'].url.touched )   && i['urls']['controls']['get-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['get-contract']['controls'].url.errors && i['urls']['controls']['get-contract']['controls'].url.errors.paramError)) || ((!i['urls']['controls']['get-contract']['controls'].url.valid && (i['urls']['controls']['get-contract']['controls'].url.dirty || i['urls']['controls']['get-contract']['controls'].url.touched )   && i['urls']['controls']['get-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['get-contract']['controls'].url.errors && i['urls']['controls']['get-contract']['controls'].url.errors.required)) || ((!i['urls']['controls']['get-contract']['controls'].url.valid && (i['urls']['controls']['get-contract']['controls'].url.dirty || i['urls']['controls']['get-contract']['controls'].url.touched )   && i['urls']['controls']['get-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['get-contract']['controls'].url.errors && i['urls']['controls']['get-contract']['controls'].url.errors.pattern)) }" [formGroupName]="'get-contract'">
+  <label for="getcontracturl" class="col-sm-2 text-right col-form-label required">Get Contract URL:</label> 
+  <div class="col-sm-6">
+    <input formControlName="url" type="text" class="form-control" placeholder="Get Contract" /> 
+   <span  class="example-param-span normal-invalid-feedback">
+        <span>Required Query Params:</span><pre class="required-params">{{getcontractParamList}}</pre>
+    </span>
+    <div class="invalid-feedback">
+    <div  *ngIf="(!i['urls']['controls']['get-contract']['controls'].url.valid && (i['urls']['controls']['get-contract']['controls'].url.dirty || i['urls']['controls']['get-contract']['controls'].url.touched )   && i['urls']['controls']['get-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['get-contract']['controls'].url.errors && i['urls']['controls']['get-contract']['controls'].url.errors.paramError)" 
+     >Url do not contain required params.</div>
+    <div  *ngIf="(!i['urls']['controls']['get-contract']['controls'].url.valid && (i['urls']['controls']['get-contract']['controls'].url.dirty || i['urls']['controls']['get-contract']['controls'].url.touched )   && i['urls']['controls']['get-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['get-contract']['controls'].url.errors && i['urls']['controls']['get-contract']['controls'].url.errors.required)" 
+     >Get Contract URL is required.</div>
+    <div  *ngIf="(!i['urls']['controls']['get-contract']['controls'].url.valid && (i['urls']['controls']['get-contract']['controls'].url.dirty || i['urls']['controls']['get-contract']['controls'].url.touched )   && i['urls']['controls']['get-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['get-contract']['controls'].url.errors && i['urls']['controls']['get-contract']['controls'].url.errors.pattern)" 
+     >Please enter a valid URL</div>
+  </div>
+  </div>
+</div>
+<div class="form-group row" [ngClass]="{'error': ((!i['urls']['controls']['delete-contract']['controls'].url.valid && (i['urls']['controls']['delete-contract']['controls'].url.dirty || i['urls']['controls']['delete-contract']['controls'].url.touched )   && i['urls']['controls']['delete-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['delete-contract']['controls'].url.errors && i['urls']['controls']['delete-contract']['controls'].url.errors.paramError)) || ((!i['urls']['controls']['delete-contract']['controls'].url.valid && (i['urls']['controls']['delete-contract']['controls'].url.dirty || i['urls']['controls']['delete-contract']['controls'].url.touched )   && i['urls']['controls']['delete-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['delete-contract']['controls'].url.errors && i['urls']['controls']['delete-contract']['controls'].url.errors.required)) || ((!i['urls']['controls']['delete-contract']['controls'].url.valid && (i['urls']['controls']['delete-contract']['controls'].url.dirty || i['urls']['controls']['delete-contract']['controls'].url.touched )   && i['urls']['controls']['delete-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['delete-contract']['controls'].url.errors && i['urls']['controls']['delete-contract']['controls'].url.errors.pattern)) }" [formGroupName]="'delete-contract'">
+  <label for="deletecontracturl" class="col-sm-2 text-right col-form-label required">Delete Contract URL:</label> 
+  <div class="col-sm-6">
+    <input formControlName="url" type="text" class="form-control"  placeholder="Delete Contract" /> 
+    <span  class="example-param-span normal-invalid-feedback">
+        <span>Required Query Params:</span><pre class="required-params">{{deletecontractParamList}}</pre>
+    </span>	
+    <div class="invalid-feedback">
+    <div  *ngIf="(!i['urls']['controls']['delete-contract']['controls'].url.valid && (i['urls']['controls']['delete-contract']['controls'].url.dirty || i['urls']['controls']['delete-contract']['controls'].url.touched )   && i['urls']['controls']['delete-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['delete-contract']['controls'].url.errors && i['urls']['controls']['delete-contract']['controls'].url.errors.paramError)" 
+     >Url do not contain required params.</div>
+    <div  *ngIf="(!i['urls']['controls']['delete-contract']['controls'].url.valid && (i['urls']['controls']['delete-contract']['controls'].url.dirty || i['urls']['controls']['delete-contract']['controls'].url.touched )   && i['urls']['controls']['delete-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['delete-contract']['controls'].url.errors && i['urls']['controls']['delete-contract']['controls'].url.errors.required)" 
+    >Delete Contract URL is required.</div>
+    <div  *ngIf="(!i['urls']['controls']['delete-contract']['controls'].url.valid && (i['urls']['controls']['delete-contract']['controls'].url.dirty || i['urls']['controls']['delete-contract']['controls'].url.touched )   && i['urls']['controls']['delete-contract']['controls'].url.errors || submitted) && (i['urls']['controls']['delete-contract']['controls'].url.errors && i['urls']['controls']['delete-contract']['controls'].url.errors.pattern)" 
+     >Please enter a valid URL</div>
+  </div>
+  
+  </div>
+</div>
+<div class="form-group row">
+  <div class="col-sm-8 text-right">
+    <button type="button" (click)="deleteLinkStore()" class="btn kilda_btn" *ngIf="isEdit && !isEditable" style="margin:1px 4px;">Delete</button>
+    <button type="button" (click)="enableEditForm()" class="btn kilda_btn" *ngIf="isEdit && !isEditable">Edit</button>
+    <button type="button" (click)="cancelEditForm()"  class="btn kilda_btn cancel_btn" *ngIf="isEdit && isEditable">Cancel</button>
+   <button type="submit"  class="btn kilda_btn" *ngIf="!isEdit || isEditable">Save</button>
+  </div>
+</div>
+</div>
+</form>
+ 
+ 
+ </div>

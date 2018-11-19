@@ -40,6 +40,9 @@ public enum DeleteRulesAction {
     // Drop just the verification (unicast) rule only
     REMOVE_UNICAST,
 
+    // Remove the verification loop drop rule only
+    REMOVE_VERIFICATION_LOOP,
+
     // Drop all default rules (ie a combination of the above)
     REMOVE_DEFAULTS,
 

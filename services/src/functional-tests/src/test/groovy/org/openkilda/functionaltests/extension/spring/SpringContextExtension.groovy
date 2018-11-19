@@ -11,10 +11,16 @@ import org.springframework.beans.factory.config.AutowireCapableBeanFactory
 import org.springframework.context.ApplicationContext
 import org.springframework.context.ApplicationContextAware
 
+/**
+ * This extension is responsible for handling spring context-related things.
+ * 
+ * Runs special 'dummy' test before spec to ensure context init for tests with 'where' blocks.
+ * Can accept listeners that will be provided with ApplicationContext as soon as it is accessible.
+ */
 @Slf4j
 class SpringContextExtension extends AbstractGlobalExtension implements ApplicationContextAware {
     public static ApplicationContext context;
-    public static List<SpringContextListener> listeners = []
+    private static List<SpringContextListener> listeners = []
 
     void visitSpec(SpecInfo specInfo) {
         //include dummy test only if there is a parametrized test in spec
@@ -51,6 +57,13 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
         context = applicationContext
         listeners.each {
             it.notifyContextInitialized(applicationContext)
+        }
+    }
+
+    static void addListener(SpringContextListener listener) {
+        listeners.add(listener)
+        if(context) {
+            listener.notifyContextInitialized(context)
         }
     }
 }

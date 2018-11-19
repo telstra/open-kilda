@@ -29,6 +29,9 @@ public class RequestContext {
     private String correlationId;
     private Set<String> permissions;
     private String clientIpAddress;
+    private String fullName;
+    private Boolean is2FaEnabled;
+    private String status;
 
     public Long getUserId() {
         return userId;
@@ -69,4 +72,29 @@ public class RequestContext {
     public void setClientIpAddress(final String clientIpAddress) {
         this.clientIpAddress = clientIpAddress;
     }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public Boolean getIs2FaEnabled() {
+        return is2FaEnabled;
+    }
+
+    public void setIs2FaEnabled(Boolean is2FaEnabled) {
+        this.is2FaEnabled = is2FaEnabled;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
 }

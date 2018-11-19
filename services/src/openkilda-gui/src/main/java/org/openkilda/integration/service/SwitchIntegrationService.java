@@ -331,6 +331,9 @@ public class SwitchIntegrationService {
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, ConfiguredPort.class);
             }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside configurePort  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
             LOGGER.error("Error occurred while converting configration to string. Exception: " + e.getMessage(), e);
             throw new IntegrationException(e);

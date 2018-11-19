@@ -1,4 +1,4 @@
-FROM logstash
+FROM logstash:5.6.12
 
 COPY . /
 

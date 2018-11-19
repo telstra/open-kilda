@@ -44,7 +44,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 
 @RestController
-@RequestMapping(path = "/permission", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/api/permission", produces = MediaType.APPLICATION_JSON_VALUE)
 public class PermissionController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PermissionController.class);

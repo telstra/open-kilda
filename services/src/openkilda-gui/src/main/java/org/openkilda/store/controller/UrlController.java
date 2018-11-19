@@ -36,7 +36,7 @@ import java.util.List;
  */
 
 @Controller
-@RequestMapping(value = "/url")
+@RequestMapping(value = "/api/url")
 public class UrlController {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(UrlController.class);

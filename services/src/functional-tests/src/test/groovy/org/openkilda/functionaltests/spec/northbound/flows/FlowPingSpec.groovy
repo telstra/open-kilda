@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -35,6 +36,7 @@ This spec tests all the functionality related to flow pings.
 Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 
 be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
 """)
+@CleanupSwitches
 class FlowPingSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
@@ -62,7 +64,7 @@ class FlowPingSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Ping the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))
+        def response = northboundService.pingFlow(flow.id, new PingInput())
 
         then: "Ping is successfull"
         response.forward.pingSuccess
@@ -73,8 +75,8 @@ class FlowPingSpec extends BaseSpecification {
         !response.forward.error
         !response.reverse.error
 
-        and: "remove flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
@@ -90,9 +92,9 @@ class FlowPingSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "Ping the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))
+        def response = northboundService.pingFlow(flow.id, new PingInput())
 
-        then: "Ping is successfull"
+        then: "Ping is successful"
         response.forward.pingSuccess
         response.reverse.pingSuccess
 
@@ -101,8 +103,8 @@ class FlowPingSpec extends BaseSpecification {
         !response.forward.error
         !response.reverse.error
 
-        and: "remove flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
@@ -110,7 +112,7 @@ class FlowPingSpec extends BaseSpecification {
 
     @Issue("https://github.com/telstra/open-kilda/issues/1416")
     @Unroll("Flow ping can detect a broken #description")
-    def "Flow ping can detect broken path"() {
+    def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
         def switches = nonCentecSwitches()
         List<List<PathNode>> allPaths = []
@@ -145,9 +147,9 @@ class FlowPingSpec extends BaseSpecification {
         expect response, sameBeanAs(expectedPingResult)
                 .ignoring("forward.latency").ignoring("reverse.latency")
 
-        and: "Restore rules, costs and remove flow"
+        and: "Restore rules, costs and remove the flow"
         lockKeeper.addFlows(rulesToRemove)
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         northboundService.deleteLinkProps(northboundService.getAllLinkProps())
         db.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -159,17 +161,17 @@ class FlowPingSpec extends BaseSpecification {
                 [
                         breakForward: true,
                         breakReverse: false,
-                        pingInput: new PingInput(getDiscoveryInterval() * 1000)
+                        pingInput: new PingInput()
                 ],
                 [
                         breakForward: false,
                         breakReverse: true,
-                        pingInput: new PingInput(getDiscoveryInterval() * 1000)
+                        pingInput: new PingInput()
                 ],
                 [
                         breakForward: true,
                         breakReverse: true,
-                        pingInput: new PingInput(getDiscoveryInterval() * 1000)
+                        pingInput: new PingInput()
                 ],
                 //TODO(rtretiak): below are ignored due to #1416
 //                [
@@ -188,10 +190,9 @@ class FlowPingSpec extends BaseSpecification {
 //                        pingInput: new PingInput((getDiscoveryInterval() + 1) * 1000)
 //                ]
         ]
-        isBigTimeout = data.pingInput.timeoutMillis > discoveryInterval * 1000
         description = "${data.breakForward ? "forward" : ""}${data.breakForward && data.breakReverse ? " and " : ""}" +
-                "${data.breakReverse ? "reverse" : ""} path with timeout ${isBigTimeout ? "bigger" : "lesser"}" +
-                " than ISL disco interval"
+                "${data.breakReverse ? "reverse" : ""} path with ${data.pingInput.timeoutMillis}ms" +
+                " timeout"
 
         expectedPingResult = new PingOutputBuilder()
                 .forward(new UniFlowPingOutput(
@@ -203,33 +204,33 @@ class FlowPingSpec extends BaseSpecification {
                 .error(null).build()
     }
 
-    def "Able to ping single-switch flow"() {
+    def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
         def sw = nonCentecSwitches().first()
         def flow = flowHelper.singleSwitchFlow(sw)
         northboundService.addFlow(flow)
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
-        when: "Request flow ping for the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput(discoveryInterval * 1000))
+        when: "Ping the flow"
+        def response = northboundService.pingFlow(flow.id, new PingInput())
 
-        then: "Flow is pingable"
+        then: "The flow is pingable"
         response.forward.pingSuccess
         response.reverse.pingSuccess
 
-        and: "No errors"
+        and: "No errors are present"
         !response.error
         !response.forward.error
         !response.reverse.error
 
-        and: "remove flow"
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Verify error if try to ping with wrong flowId"() {
         when: "Send ping request with non-existing flowId"
         def wrongFlowId = "nonexistent"
-        def response = northboundService.pingFlow(wrongFlowId, new PingInput(discoveryInterval * 1000))
+        def response = northboundService.pingFlow(wrongFlowId, new PingInput())
 
         then: "Receive error response"
         with(response) {

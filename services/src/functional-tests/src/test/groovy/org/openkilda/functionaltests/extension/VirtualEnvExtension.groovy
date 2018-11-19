@@ -16,6 +16,9 @@ import org.springframework.context.ApplicationContext
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 
+/**
+ * This extension is responsible for creating a virtual topology at the start of the test run.
+ */
 @Slf4j
 class VirtualEnvExtension extends AbstractGlobalExtension implements SpringContextListener {
 
@@ -30,7 +33,7 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
 
     @Override
     void start() {
-        SpringContextExtension.listeners << this
+        SpringContextExtension.addListener(this)
     }
 
     @Override

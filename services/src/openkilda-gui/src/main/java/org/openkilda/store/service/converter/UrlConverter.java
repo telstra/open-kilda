@@ -36,7 +36,7 @@ public final class UrlConverter {
      */
     public static UrlEntity toUrlEntity(final String name, final UrlDto dto, final UrlEntity urlEntity) {
         urlEntity.setName(name);
-        urlEntity.setUrl(dto.getUrl());
+        urlEntity.setUrl(dto.getUrl().trim());
         urlEntity.setMethodType(dto.getMethodType());
         urlEntity.setHeader(dto.getHeader());
         urlEntity.setBody(dto.getBody());
@@ -52,7 +52,7 @@ public final class UrlConverter {
     public static UrlDto toUrlDto(final UrlEntity urlEntity) {
         UrlDto urlDto = new UrlDto();
         urlDto.setName(urlEntity.getName());
-        urlDto.setUrl(urlEntity.getUrl());
+        urlDto.setUrl(urlEntity.getUrl().trim());
         urlDto.setMethodType(urlEntity.getMethodType());
         urlDto.setHeader(urlEntity.getHeader());
         urlDto.setBody(urlEntity.getBody());
