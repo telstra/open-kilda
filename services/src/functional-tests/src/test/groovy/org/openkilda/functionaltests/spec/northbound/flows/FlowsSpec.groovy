@@ -13,10 +13,12 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Ignore
 
 import java.util.concurrent.TimeUnit
 
 @CleanupSwitches
+@Ignore("unstable") //TODO(rtretiak) to investigate
 class FlowsSpec extends BaseSpecification {
 
     @Autowired
