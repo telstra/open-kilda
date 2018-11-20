@@ -696,6 +696,7 @@ public class SwitchManagerTest {
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(iofSwitch.getId()).andStubReturn(dpid);
         expect(switchDescription.getManufacturerDescription()).andStubReturn("");
         expect(iofSwitch.write(capture(capture))).andReturn(true);
         expectLastCall();

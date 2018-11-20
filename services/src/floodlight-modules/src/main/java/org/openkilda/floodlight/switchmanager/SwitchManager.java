@@ -786,7 +786,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         } else {
             Builder builder = ofFactory.buildMatch();
             builder.setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST));
-            builder.setExact(MatchField.ETH_SRC, MacAddress.of(dpid));
+            builder.setExact(MatchField.ETH_SRC, dpidToMac(sw));
             Match match = builder.build();
 
             OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null,
