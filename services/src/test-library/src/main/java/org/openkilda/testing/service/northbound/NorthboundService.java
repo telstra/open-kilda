@@ -78,6 +78,8 @@ public interface NorthboundService {
 
     List<Long> deleteSwitchRules(SwitchId switchId, DeleteRulesAction deleteAction);
 
+    List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, Integer outPort);
+
     RulesSyncResult synchronizeSwitchRules(SwitchId switchId);
 
     RulesValidationResult validateSwitchRules(SwitchId switchId);
