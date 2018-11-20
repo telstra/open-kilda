@@ -367,7 +367,8 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "One of the links not used by flow goes down"
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
-        def islToFail = topology.islsForActiveSwitches.find { !involvedIsls.contains(it) }
+        def islToFail = topology.islsForActiveSwitches.find { !involvedIsls.contains(it) &&
+                !involvedIsls.contains(islUtils.reverseIsl(it))}
         northboundService.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'FAILED'"

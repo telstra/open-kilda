@@ -114,7 +114,7 @@ class FlowPingSpec extends BaseSpecification {
     @Unroll("Flow ping can detect a broken #description")
     def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
-        def switches = nonCentecSwitches()
+        def switches = nonCentecSwitches().findAll { it.ofVersion != "OF_12" }
         List<List<PathNode>> allPaths = []
         List<PathNode> aswitchPath
         //select src and dst switches that have an a-switch path
