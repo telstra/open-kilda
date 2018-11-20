@@ -3,31 +3,37 @@ input {
     port => {{ getv "/kilda_logging_port_topology_engine" }}
     codec => json
     type => "kilda-TE"
+    tags => ["kilda-tpe"]
   }
   tcp {
     port => {{ getv "/kilda_logging_port_storm" }}
     codec => json
     type => "kilda-storm"
+    tags => ["storm-worker_log"]
   }
   tcp {
     port => {{ getv "/kilda_logging_port_floodlight" }}
     codec => json_lines
     type => "kilda-FL"
+    tags => ["kilda-floodlight"]
   }
   tcp {
     port => {{ getv "/kilda_logging_port_topology_engine_rest" }}
     codec => json
     type => "kilda-TER"
+    tags => ["kilda-tpe-rest"]
   }
   tcp {
     port => {{ getv "/kilda_logging_port_mininet" }}
     codec => json
     type => "kilda-MN"
+    tags => ["kilda-mininet"]
   }
   tcp {
     port => {{ getv "/kilda_logging_port_northbound" }}
     codec => json
     type => "kilda-NB"
+    tags => ["kilda-northbound"]
   }
 }
 
@@ -36,6 +42,10 @@ filter {
     code => "
       event.to_hash.keys.each { |k| event[ k.sub('.','_') ] = event.remove(k) if k.include?'.' }
     "
+  }
+  mutate {
+      rename => { "logger_name" => "loggerName" }
+      rename => { "thread_name" => "thread" }
   }
 }
 output {
