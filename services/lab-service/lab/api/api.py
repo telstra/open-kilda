@@ -74,15 +74,13 @@ class Lab:
     def destroy(self):
         if self.lab_id != HW_LAB_ID:
             logger.debug('Destroying lab with id %s' % self.lab_id)
-            try:
-                cnt = docker.containers.get(make_container_name(self.lab_id))
-                cnt.stop()
-                cnt.remove()
-            except Exception as ex:
-                logger.exception(ex)
+            cnt = docker.containers.get(make_container_name(self.lab_id))
+            cnt.stop()
+            cnt.remove()
+        del labs[self.lab_id]
 
 
-@app.route('/api/', methods=['GET'])
+@app.route('/api', methods=['GET'])
 def get_defined_labs():
     return jsonify([lab_id for lab_id in labs.keys()])
 
@@ -104,7 +102,7 @@ def create_lab():
 
         lab.activated.wait()
         if lab.error:
-            del labs[lab_id]
+            lab.destroy()
             return Response(lab.error, status=500)
     except Exception as ex:
         logger.exception(ex)
@@ -120,7 +118,6 @@ def delete_lab(lab_id):
 
     try:
         labs[lab_id].destroy()
-        del labs[lab_id]
     except Exception as ex:
         logger.exception(ex)
         return Response(str(ex), status=500)
@@ -133,11 +130,13 @@ def activate_lab(lab_id):
     if lab_id not in labs:
         return Response('No lab with id %d' % lab_id, status=404)
 
-    data = request.get_json()
     lab = labs[lab_id]
-    if 'error' in data:
-        lab.error = data['error']
-    lab.activated.set()
+    try:
+        data = request.get_json()
+        if 'error' in data:
+            lab.error = data['error']
+    finally:
+        lab.activated.set()
 
     return jsonify({'status': 'ok'})
 
@@ -190,9 +189,13 @@ def traffgen_proxy(lab_id, tg_name, to_path):
 def flush_labs_api():
     global labs
 
-    for lab in labs.values():
-        lab.destroy()
-    keys = [k for k in labs.keys()]
+    keys = []
+    for lab in list(labs.values()):
+        try:
+            lab.destroy()
+            keys.append(lab.lab_id)
+        except Exception as ex:
+            logger.exception(ex)
     labs = {}
     return jsonify(keys)
 
@@ -203,7 +206,10 @@ def main():
     def teardown():
         logger.info('Terminating...')
 
-        for lab in labs.values():
-            lab.destroy()
+        for lab in list(labs.values()):
+            try:
+                lab.destroy()
+            except Exception as ex:
+                logger.exception(ex)
         server_th.terminate()
     loop_forever(teardown)

@@ -1,12 +1,11 @@
-all: build
+all: install
 
-build:
-	tox -e pep8,py35
-	.tox/py35/bin/python setup.py bdist_wheel
+test:
+	tox -e pep8,py3
 
-build36:
-	tox -e pep8,py36
-	.tox/py36/bin/python setup.py bdist_wheel
+install:
+	pip3 install -r requirements.txt
+	python3 setup.py build install
 
 clean:
 	rm -rf .eggs .tox build dist

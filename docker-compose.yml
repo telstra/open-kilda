@@ -22,6 +22,7 @@ services:
 
   lab-api:
     container_name: lab-api
+    image: kilda_lab-service
     build:
       context: services/lab-service/
     ports:
@@ -34,6 +35,7 @@ services:
       default:
         aliases:
         - lab-api.pendev
+    mem_limit: 256741824
 
   neo4j:
     container_name: neo4j

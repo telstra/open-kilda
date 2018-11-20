@@ -93,7 +93,7 @@ public class LabServiceImpl implements LabService, DisposableBean {
 
     private List<Long> getLabs() {
         log.info("Get live labs");
-        return restTemplate.exchange("/api/", HttpMethod.GET,
+        return restTemplate.exchange("/api", HttpMethod.GET,
                 new HttpEntity(buildJsonHeaders()), new ParameterizedTypeReference<List<Long>>() {
                 }).getBody();
     }

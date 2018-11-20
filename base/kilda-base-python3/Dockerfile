@@ -31,5 +31,4 @@ RUN apt update \
         openvswitch-switch \
         openvswitch-common \
     && pip3 install setuptools wheel tox \
-    && pip3 install flask docker requests \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*

@@ -17,12 +17,12 @@ FROM kilda/python3-ubuntu
 
 ADD traffexam/ /exam
 WORKDIR /exam
-RUN make && pip3 install ./dist/kilda_traffexam-*.whl
+RUN make install
 
 ADD lab/ /app/lab
 ADD run.sh /app
 WORKDIR /app/lab
-RUN make && pip3 install ./dist/kilda_lab-*.whl
+RUN make install
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
