@@ -15,7 +15,10 @@
 
 package org.openkilda.testing.service.elastic;
 
+import org.openkilda.testing.service.elastic.model.ElasticResponseDto;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,12 +30,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.Map;
 
 
 /**
- * An interface to the Elastic Search. Set following variables in the kilda.properties to work:
+ * An interface to the Elastic Search. Set following variables in the kilda.properties for it to work:
  * elasticsearch.endpoint = URL to Elastic
  * elasticsearch.username = User with read access
  * elasticsearch.password = User's password
@@ -53,50 +55,73 @@ public class ElasticServiceImpl implements ElasticService {
      *
      * @param query - ElasticQuery instance (use ElasticQueryBuilder to build this one, be sure to specify
      *                either appId or tags)
-     * @return HashMap with deserialized JSON otherwise.
+     * @return ElasticResponseDto
      */
-    public Map getLogs(ElasticQuery query) {
-        if (("".equals(query.appId) && "".equals(query.tags))) {
-            throw new IllegalArgumentException("Either app_id or tags should be specified");
+    public ElasticResponseDto getLogs(ElasticQuery query) {
+        if (("".equals(query.appId) && "".equals(query.tags)) && (null == query.additionalFields)) {
+            throw new IllegalArgumentException("Either app_id or tags or arbitrary fields should be specified");
         }
-        Long time = System.currentTimeMillis();
-        String queryString = "";
+        StringBuilder queryString = new StringBuilder();
 
-        if (!"".equals(query.appId)) {
-            queryString = "app_id: (" + query.appId + ")";
-        }
-
-        if (!"".equals(query.tags)) {
-            if (!"".equals(queryString)) {
-                queryString += " AND ";
+        if (query.additionalFields != null) {
+            for (Map.Entry<String, String> entry : query.additionalFields.entrySet()) {
+                if (queryString.length() > 0) {
+                    queryString.append(" AND ");
+                }
+                queryString.append(entry.getKey()).append(": (").append(entry.getValue()).append(")");
             }
-            queryString += "tags: (" + query.tags + ")";
+        }
+        if (query.appId  != null && !"".equals(query.appId)) {
+            if (queryString.length() > 0) {
+                queryString.append(" AND ");
+            }
+            queryString.append("app_id: (").append(query.appId).append(")");
         }
 
-        if (!"".equals(query.level)) {
-            queryString += " AND level: (" + query.level + ")";
+        if (query.tags  != null && !"".equals(query.tags)) {
+            if (queryString.length() > 0) {
+                queryString.append(" AND ");
+            }
+            queryString.append("tags: (").append(query.tags).append(")");
         }
 
-        if (query.timeRange > 0) {
-            queryString += " AND timeMillis: [" + (time - query.timeRange * 1000) + " TO " + time + "]";
+        if (query.level  != null && !"".equals(query.level)) {
+            queryString.append(" AND level: (").append(query.level).append(")");
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        ObjectNode request = mapper.createObjectNode();
-        request.put("query", queryString);
-        request.put("default_field", query.defaultField);
+        ArrayNode combinedQuery = mapper.createArrayNode();
 
+        //first criteria - multi-filter on _source field
+        ObjectNode fieldValueFilter = mapper.createObjectNode();
+        fieldValueFilter.set("query_string", mapper.createObjectNode().put("query", queryString.toString())
+                .put("default_field", query.defaultField));
+        combinedQuery.add(fieldValueFilter);
+
+        if (query.timeRange > 0) {
+            //second criteria - time range (if present)
+            //TODO: consider using timestamps instead of "now-time" approach, as it would simplify post-mortem analysis.
+            ObjectNode timeRangeFilter = mapper.createObjectNode();
+            timeRangeFilter.set("range", mapper.createObjectNode().set("@timestamp", mapper.createObjectNode()
+                    .put("gt", "now-" + query.timeRange + "s")));
+            combinedQuery.add(timeRangeFilter);
+        }
+
+        //wrapping up criterial search into bool "must" query where all conditions must be satisfied
         ObjectNode topLevelRequest = mapper.createObjectNode();
-        topLevelRequest.set("query", mapper.createObjectNode().set("query_string", request));
+        topLevelRequest.set("query", mapper.createObjectNode().set("bool", mapper.createObjectNode().set("must",
+                combinedQuery)));
 
+        //limiting results count to a given size
         String uri = "/" + query.index + "/_search/?size=" + query.resultCount;
+
         HttpHeaders headers = new HttpHeaders();
-        headers.add("content-type", "application/json");
+        headers.add("Content-Type", "application/json");
         try {
             log.debug("Issuing ElasticSearch query: " + topLevelRequest.toString());
             log.debug("Using ElasticSearch request URI: " + uri);
             HttpEntity rawQuery = new HttpEntity<>(topLevelRequest.toString(), headers);
-            return restTemplate.exchange(uri, HttpMethod.POST, rawQuery, HashMap.class).getBody();
+            return restTemplate.exchange(uri, HttpMethod.POST, rawQuery, ElasticResponseDto.class).getBody();
 
         } catch (Exception e) {
             log.error("Exception occured during communication with ElasticSearch", e);

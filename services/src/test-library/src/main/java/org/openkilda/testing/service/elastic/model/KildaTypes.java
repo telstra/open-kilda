@@ -13,10 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.elastic;
+package org.openkilda.testing.service.elastic.model;
 
-import org.openkilda.testing.service.elastic.model.ElasticResponseDto;
+public final class KildaTypes {
+    public static final String NORTHBOUND = "kilda-NB";
+    public static final String FLOODLIGHT = "kilda-FL";
+    public static final String STORM = "kilda-storm";
+    public static final String TOPOLOGY_ENGINE = "kilda-TE";
 
-public interface ElasticService {
-    ElasticResponseDto getLogs(ElasticQuery query);
+    private KildaTypes() {
+        throw new UnsupportedOperationException();
+    }
+
 }
