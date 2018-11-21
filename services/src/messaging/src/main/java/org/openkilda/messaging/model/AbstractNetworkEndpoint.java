@@ -26,10 +26,10 @@ import java.io.Serializable;
 @Data
 public abstract class AbstractNetworkEndpoint implements Serializable {
     @JsonProperty("switch-id")
-    private final SwitchId datapath;
+    private SwitchId datapath;
 
     @JsonProperty("port-id")
-    private final Integer portNumber;
+    private Integer portNumber;
 
     @JsonCreator
     public AbstractNetworkEndpoint(SwitchId datapath, Integer portNumber) {
