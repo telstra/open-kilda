@@ -1,8 +1,5 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
-import org.openkilda.functionaltests.extension.tags.Tag
-import org.openkilda.functionaltests.extension.tags.Tags
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -10,6 +7,8 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
@@ -169,7 +168,9 @@ class SwitchRulesSpec extends BaseSpecification {
         northboundService.addFlow(flow)
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
-            assert northboundService.getSwitchRules(data.switch.dpId).flowEntries.size() ==
+            assert northboundService.getSwitchRules(flow.source.datapath).flowEntries.size() ==
+                    defaultRules.size() + flowRulesCount
+            assert northboundService.getSwitchRules(flow.destination.datapath).flowEntries.size() ==
                     defaultRules.size() + flowRulesCount
         }
 
