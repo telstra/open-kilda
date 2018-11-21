@@ -232,7 +232,7 @@ class MessageItem(model.JsonSerializable):
                 raise exc.NotImplementedError(
                     'link props request {}'.format(self.get_message_type()))
         except CypherSyntaxError as e:
-            logger.exception('Invalid request: ', e)
+            logger.exception('Request produce invalid cypher query')
             payload = message_utils.make_link_props_response(
                 self.payload, None, 'Invalid request')
             message_utils.send_link_props_response(
@@ -762,17 +762,19 @@ class MessageItem(model.JsonSerializable):
 
         logger.debug('Switch rules synchronization for rules: %s', rules_to_sync)
 
-        sync_actions = flow_utils.build_commands_to_sync_rules(switch_id,
-                                                           rules_to_sync)
-        commands = sync_actions["commands"]
+        commands, installed_rules = flow_utils.build_commands_to_sync_rules(
+            switch_id, rules_to_sync)
         if commands:
-            logger.info('Install commands for switch %s are to be sent: %s',
-                        switch_id, commands)
+            indent = ' ' * 4
+            logger.info('Install commands for switch %s are to be sent:\n%s%s',
+                        switch_id, indent,
+                        (',\n' + indent).join(str(x) for x in commands))
             message_utils.send_force_install_commands(switch_id, commands,
                                                       self.correlation_id)
 
-        message_utils.send_sync_rules_response(sync_actions["installed_rules"],
-                                               self.correlation_id)
+        message_utils.send_sync_rules_response(
+            installed_rules, self.correlation_id)
+
         return True
 
     def send_dump_rules_request(self):

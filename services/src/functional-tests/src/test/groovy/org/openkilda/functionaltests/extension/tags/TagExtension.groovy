@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.extension.tags
 
 import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
+import org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.model.MethodInfo
 import org.spockframework.runtime.model.SpecInfo
@@ -26,17 +28,22 @@ class TagExtension extends AbstractGlobalExtension {
         List<Tag> excludeTags = getBuildTags(EXCLUDE_PROPERTY_NAME)
         if (includeTags != [null]) {
             spec.excluded = true
-            spec.getAllFeatures().each { it.excluded = true }
+            spec.getAllFeatures().each { feature ->
+                def annotations = feature.featureMethod.getAnnotations()*.annotationType()
+                if (!annotations.any { it in [HealthCheck, PrepareSpringContextDummy] }) {
+                    feature.excluded = true
+                }
+            }
         }
         spec.getAllFeatures().each { feature ->
             def tags = collectAllTags(feature.featureMethod)
             if (tags.containsAll(includeTags)) {
+                log.debug("Feature '$feature.name' with tags $tags is included in the test run")
                 spec.excluded = false
                 feature.excluded = false
-                log.debug("feature '$feature.name' included with tags $tags")
             }
             if (tags.containsAll(excludeTags)) {
-                log.debug("feature '$feature.name' included with tags $tags")
+                log.debug("Feature '$feature.name' with tags $tags is excluded from the test run")
                 feature.excluded = true
                 if (spec.getAllFeatures().every { it.excluded }) {
                     spec.excluded = true
@@ -68,7 +75,7 @@ class TagExtension extends AbstractGlobalExtension {
         return tags as Set<Tag>
     }
 
-    private List<Tag> getBuildTags(propertyName) {
+    private static List<Tag> getBuildTags(String propertyName) {
         return System.getProperty(propertyName, "").split(",").findAll { it != "" }.collect {
             Tag.valueOf(it.toUpperCase())
         } ?: [null]

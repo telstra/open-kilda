@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.portstate.spout;
 
 import static java.lang.String.format;
-import static org.openkilda.messaging.Utils.PAYLOAD;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -43,15 +42,16 @@ public class SwitchPortsSpout extends BaseRichSpout {
     private static final String CRON_TUPLE = "cron.tuple";
     private static final int DEFAULT_FREQUENCY = 600;
     private static final String REQUESTER = SwitchPortsSpout.class.getSimpleName();
-    private final int frequency;
+    private final long frequency;
     private SpoutOutputCollector collector;
+    private long lastTickTime = 0;
 
     public SwitchPortsSpout() {
         this(DEFAULT_FREQUENCY);
     }
 
     public SwitchPortsSpout(int frequency) {
-        this.frequency = frequency;
+        this.frequency = frequency * 1000L;
     }
 
     private static long now() {
@@ -65,28 +65,29 @@ public class SwitchPortsSpout extends BaseRichSpout {
 
     @Override
     public void nextTuple() {
-        Message message = buildPortsCommand(REQUESTER);
-        logger.debug("emitting portsCommand: {}", message.toString());
+        final long now = now();
+        if (now - lastTickTime > frequency) {
+            Message message = buildPortsCommand();
+            logger.debug("emitting PortsCommandData: {}", message);
+            try {
+                Values values = new Values(null, Utils.MAPPER.writeValueAsString(message));
+                collector.emit(values);
+            } catch (JsonProcessingException e) {
+                logger.error("Error on json serialization", e);
+            }
 
-        try {
-            Values values = new Values(PAYLOAD, Utils.MAPPER.writeValueAsString(message));
-            collector.emit(values);
-        } catch (JsonProcessingException e) {
-            logger.error("Error sleeping");
-        }
+            if (now - lastTickTime > frequency * 2) {
+                logger.warn("long tick for PortsCommandData - {}ms", now - lastTickTime);
+            }
 
-        // Note that no tupleId which means this is an untracked tuple which is
-        // required for the sleep
-        try {
-            Thread.sleep(frequency * 1000);
-        } catch (InterruptedException e) {
-            logger.error("Error sleeping");
+            lastTickTime = now;
         }
+        org.apache.storm.utils.Utils.sleep(1);
     }
 
-    private Message buildPortsCommand(String requester) {
+    private Message buildPortsCommand() {
         String correlationId = format("SwitchPortsSpout-%s", UUID.randomUUID().toString());
-        return new CommandMessage(new PortsCommandData(requester), now(), correlationId,
+        return new CommandMessage(new PortsCommandData(REQUESTER), now(), correlationId,
                 Destination.CONTROLLER);
     }
 

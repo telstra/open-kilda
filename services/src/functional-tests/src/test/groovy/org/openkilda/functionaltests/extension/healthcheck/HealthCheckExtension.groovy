@@ -20,7 +20,7 @@ class HealthCheckExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo spec) {
         spec.allFeatures.findAll { it.featureMethod.getAnnotation(HealthCheck) }.each {
             def reflection = it.featureMethod.reflection.toString()
-            if (!healthChecksRun.contains(reflection)) {
+            if (!spec.excluded && !healthChecksRun.contains(reflection)) {
                 it.excluded = false
                 healthChecksRun << reflection
             } else {

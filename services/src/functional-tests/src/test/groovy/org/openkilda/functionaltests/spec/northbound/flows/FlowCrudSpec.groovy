@@ -7,6 +7,8 @@ import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -20,6 +22,8 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -150,6 +154,95 @@ class FlowCrudSpec extends BaseSpecification {
         }
 
         where: flow << getSingleSwitchSinglePortFlows()
+    }
+
+    def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
+        given: "Potential single-switch flow with the same ports and vlans on both sides"
+        def flow = flowHelper.singleSwitchSinglePortFlow(topology.activeSwitches.first())
+        flow.destination.vlanId = flow.source.vlanId
+
+        when: "Try creating such flow"
+        northbound.addFlow(flow)
+
+        then: "Error is returned, stating a readable reason"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        error.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not create flow: It is not allowed to create one-switch flow for the same ports and vlans"
+    }
+
+    @Unroll("Unable to create flow with #data.conflict")
+    def "Unable to create flow with conflicting vlans or flowIds"() {
+        given: "A potential flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+
+        and: "Another potential flow with #data.conflict"
+        def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        data.makeFlowsConflicting(flow, conflictingFlow)
+
+        when: "Create the first flow"
+        northbound.addFlow(flow)
+
+        and: "Try creating the second flow which conflicts"
+        northbound.addFlow(conflictingFlow)
+
+        then: "Error is returned, stating a readable reason of conflict"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.CONFLICT
+        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow)
+
+        and: "Cleanup: delete the dominant flow"
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.deleteFlow(flow.id)
+
+        where: data << [
+            [
+                conflict: "the same vlans on same port on src",
+                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                    flowToConflict.source.portNumber = dominantFlow.source.portNumber
+                    flowToConflict.source.vlanId = dominantFlow.source.vlanId
+                },
+                getError: { FlowPayload flowToError ->
+                    portError(flowToError.source.portNumber, flowToError.source.datapath, flowToError.id)
+                }
+            ],
+            [
+                conflict: "no vlan vs vlan on same port on dst",
+                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                    flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
+                    flowToConflict.destination.vlanId = 0
+                },
+                getError: { FlowPayload flowToError ->
+                    portError(flowToError.destination.portNumber, flowToError.destination.datapath, flowToError.id)
+                }
+            ],
+            [
+                conflict: "no vlans both flows on same port on src",
+                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                    flowToConflict.source.portNumber = dominantFlow.source.portNumber
+                    flowToConflict.source.vlanId = 0
+                    dominantFlow.source.vlanId = 0
+                },
+                getError: { FlowPayload flowToError ->
+                    portError(flowToError.source.portNumber, flowToError.source.datapath, flowToError.id)
+                }
+            ],
+            [
+                conflict: "the same flowId",
+                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                    flowToConflict.id = dominantFlow.id
+                },
+                getError: { FlowPayload flowToError ->
+                    "Can not create flow: Flow $flowToError.id already exists"
+                }
+            ]
+        ]
+    }
+
+    @Shared
+    def portError = { int port, SwitchId switchId, String flowId ->
+        "Could not create flow: The port $port on the switch '$switchId' has already occupied by the flow '$flowId'."
     }
     
     /**

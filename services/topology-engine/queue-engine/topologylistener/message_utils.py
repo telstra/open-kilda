@@ -37,8 +37,12 @@ MI_LINK_PROPS_RESPONSE = (
 
 
 class Abstract(model.JsonSerializable):
-    def to_json(self):
-        return json.dumps(self, cls=model.JSONEncoder)
+    def __str__(self):
+        return '<{}: {}>'.format(type(self).__name__, self.to_json(
+            sort_keys=True))
+
+    def to_json(self, sort_keys=False):
+        return json.dumps(self, cls=model.JSONEncoder, sort_keys=sort_keys)
 
 
 class Flow(Abstract):
