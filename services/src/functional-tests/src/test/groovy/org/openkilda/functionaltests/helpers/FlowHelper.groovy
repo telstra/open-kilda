@@ -88,7 +88,7 @@ class FlowHelper {
         switches.each { sw ->
             Wrappers.wait(RULES_DELETION_TIME) {
                 try {
-                    assert !northbound.getSwitchRules(sw).flowEntries*.cookie.containsAll(cookies)
+                    assert !northbound.getSwitchRules(sw).flowEntries*.cookie.any { it in cookies}
                 } catch (HttpClientErrorException exc) {
                     if (exc.rawStatusCode == 404) {
                         log.warn("Switch '$sw' was not found when checking rules after flow deletion")
