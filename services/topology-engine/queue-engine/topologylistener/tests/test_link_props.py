@@ -45,6 +45,9 @@ class Abstract(share.AbstractTest):
             command = share.command(isl_info)
             self.assertTrue(messageclasses.MessageItem(command).handle())
 
+    def take_response(self, **kwargs):
+        return self.take_kafka_response(config.KAFKA_NORTHBOUND_TOPIC, **kwargs)
+
     def _ensure_props_match(self, link_props, props):
         with self.open_neo4j_session() as tx:
             persistent = link_props_utils.read(tx, link_props)
@@ -55,19 +58,6 @@ class Abstract(share.AbstractTest):
         payload = share.link_props_put_payload(request)
         self.feed_service(share.command(payload))
         return payload
-
-    def _get_kafka_response(self, offset=0, expect_class=message_utils.MT_INFO):
-        kafka_backlog = share.env.kafka_producer_stub.backlog
-
-        self.assertTrue(offset < len(kafka_backlog))
-
-        kafka_record = kafka_backlog[offset]
-        self.assertEqual(config.KAFKA_NORTHBOUND_TOPIC, kafka_record.topic)
-
-        message = json.loads(kafka_record.payload)
-        self.assertEqual(expect_class, message['clazz'])
-
-        return message['payload']
 
 
 class TestLinkProps01Clean(Abstract):
@@ -90,7 +80,7 @@ class TestLinkProps01Clean(Abstract):
             persistent = link_props_utils.read(tx, link_props)
             self.assertEquals(link_props, persistent)
 
-        response = self._get_kafka_response()
+        response = self.take_response()
         self.assertEqual(
             message_utils.MI_LINK_PROPS_RESPONSE, response['clazz'])
         self.assertIsNone(response['error'])
@@ -121,7 +111,7 @@ class TestLinkProps01Clean(Abstract):
             props={'latency': -2})
         self._put(link_props)
 
-        response = self._get_kafka_response()
+        response = self.take_response()
         self.assertEqual(
             message_utils.MI_LINK_PROPS_RESPONSE, response['clazz'])
         self.assertIsNone(response['link_props'])
@@ -134,7 +124,7 @@ class TestLinkProps01Clean(Abstract):
             self.endpoint_alpha.dpid, None)
         self._put(link_props)
 
-        response = self._get_kafka_response()
+        response = self.take_response()
         self.assertEqual(
             message_utils.MI_LINK_PROPS_RESPONSE, response['clazz'])
         self.assertIsNotNone(response['error'])
@@ -211,7 +201,8 @@ class TestLinkProps02Occupied(Abstract):
             model.LinkProps(self.endpoint_alpha, self.endpoint_gamma),
             model.LinkProps(self.endpoint_beta, self.endpoint_gamma))
 
-        response = self._get_kafka_response(expect_class=message_utils.MT_INFO_CHUNKED)
+        response = self.take_response(
+            expect_class=message_utils.MT_INFO_CHUNKED)
         self.assertIsNotNone(response)
         self.assertEqual(
             message_utils.MI_LINK_PROPS_RESPONSE, response['clazz'])
