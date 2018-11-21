@@ -7,8 +7,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.tags.Tag
-import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
@@ -38,13 +36,16 @@ class SwitchRulesSpec extends BaseSpecification {
     @Shared
     Switch srcSwitch, dstSwitch
     @Shared
-    List defaultRules
+    List srcSwDefaultRules
+    @Shared
+    List dstSwDefaultRules
     @Shared
     int flowRulesCount = 2
 
     def setup() {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
-        defaultRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
+        srcSwDefaultRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
+        dstSwDefaultRules = northboundService.getSwitchRules(dstSwitch.dpId).flowEntries
     }
 
     @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
@@ -92,7 +93,7 @@ class SwitchRulesSpec extends BaseSpecification {
         def defaultPlusFlowRules = []
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             defaultPlusFlowRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
-            assert defaultPlusFlowRules.size() == defaultRules.size() + flowRulesCount
+            assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount
         }
 
         lockKeeperService.knockoutSwitch(srcSwitch.dpId)
@@ -109,7 +110,7 @@ class SwitchRulesSpec extends BaseSpecification {
         and: "Delete previously installed rules"
         northboundService.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == defaultRules.size()
+            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
         }
     }
 
@@ -127,7 +128,7 @@ class SwitchRulesSpec extends BaseSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             def actualRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
             assert actualRules.size() == data.rulesRemained
-            data.deleteRulesAction == DeleteRulesAction.IGNORE_DEFAULTS ? compareRules(actualRules, defaultRules) : null
+            data.deleteRulesAction != DeleteRulesAction.IGNORE_DEFAULTS ?: compareRules(actualRules, srcSwDefaultRules)
         }
 
         and: "Delete the flow"
@@ -137,7 +138,7 @@ class SwitchRulesSpec extends BaseSpecification {
         if (data.rulesRemained == 0) {
             northboundService.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
             Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == defaultRules.size()
+                assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
             }
         }
 
@@ -145,11 +146,11 @@ class SwitchRulesSpec extends BaseSpecification {
         data << [[description      : "non-default",
                   deleteRulesAction: DeleteRulesAction.IGNORE_DEFAULTS,
                   rulesDeleted     : flowRulesCount,
-                  rulesRemained    : defaultRules.size()
+                  rulesRemained    : srcSwDefaultRules.size()
                  ],
                  [description      : "all",
                   deleteRulesAction: DeleteRulesAction.DROP_ALL,
-                  rulesDeleted     : defaultRules.size() + flowRulesCount,
+                  rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount,
                   rulesRemained    : 0
                  ]
         ]
@@ -167,7 +168,7 @@ class SwitchRulesSpec extends BaseSpecification {
         deletedRules.size() == 1
         Wrappers.wait(RULES_DELETION_TIME) {
             def actualRules = northboundService.getSwitchRules(data.switch.dpId).flowEntries
-            assert actualRules.size() == defaultRules.size() + flowRulesCount - 1
+            assert actualRules.size() == data.defaultRules.size() + flowRulesCount - 1
             assert filterRules(actualRules, data.inPort, data.inVlan, data.outPort).empty
         }
 
@@ -176,35 +177,38 @@ class SwitchRulesSpec extends BaseSpecification {
 
         where:
         flow << [buildFlow()] * 4
-        data << [[description: "inPort",
-                  switch     : srcSwitch,
-                  inPort     : flow.source.portNumber,
-                  inVlan     : null,
-                  outPort    : null
+        data << [[description : "inPort",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : flow.source.portNumber,
+                  inVlan      : null,
+                  outPort     : null
                  ],
-                 [description: "inVlan",
-                  switch     : srcSwitch,
-                  inPort     : null,
-                  inVlan     : flow.source.vlanId,
-                  outPort    : null
+                 [description : "inVlan",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : null,
+                  inVlan      : flow.source.vlanId,
+                  outPort     : null
                  ],
-                 [description: "inPort and inVlan",
-                  switch     : srcSwitch,
-                  inPort     : flow.source.portNumber,
-                  inVlan     : flow.source.vlanId,
-                  outPort    : null
+                 [description : "inPort and inVlan",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : flow.source.portNumber,
+                  inVlan      : flow.source.vlanId,
+                  outPort     : null
                  ],
-                 [description: "outPort",
-                  switch     : dstSwitch,
-                  inPort     : null,
-                  inVlan     : null,
-                  outPort    : flow.destination.portNumber
+                 [description : "outPort",
+                  switch      : dstSwitch,
+                  defaultRules: dstSwDefaultRules,
+                  inPort      : null,
+                  inVlan      : null,
+                  outPort     : flow.destination.portNumber
                  ]
         ]
     }
 
     @Unroll
-    @Tags(Tag.NEGATIVE)
     def "Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -215,35 +219,40 @@ class SwitchRulesSpec extends BaseSpecification {
 
         then: "All rules are kept intact"
         deletedRules.size() == 0
-        northboundService.getSwitchRules(data.switch.dpId).flowEntries.size() == defaultRules.size() + flowRulesCount
+        northboundService.getSwitchRules(data.switch.dpId).flowEntries.size() ==
+                data.defaultRules.size() + flowRulesCount
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
         where:
-        data << [[description: "inPort",
-                  switch     : srcSwitch,
-                  inPort     : Integer.MAX_VALUE - 1,
-                  inVlan     : null,
-                  outPort    : null
+        data << [[description : "inPort",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : Integer.MAX_VALUE - 1,
+                  inVlan      : null,
+                  outPort     : null
                  ],
-                 [description: "inVlan",
-                  switch     : srcSwitch,
-                  inPort     : null,
-                  inVlan     : 4095,
-                  outPort    : null
+                 [description : "inVlan",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : null,
+                  inVlan      : 4095,
+                  outPort     : null
                  ],
-                 [description: "inPort and inVlan",
-                  switch     : srcSwitch,
-                  inPort     : Integer.MAX_VALUE - 1,
-                  inVlan     : 4095,
-                  outPort    : null
+                 [description : "inPort and inVlan",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : Integer.MAX_VALUE - 1,
+                  inVlan      : 4095,
+                  outPort     : null
                  ],
-                 [description: "outPort",
-                  switch     : dstSwitch,
-                  inPort     : null,
-                  inVlan     : null,
-                  outPort    : Integer.MAX_VALUE - 1
+                 [description : "outPort",
+                  switch      : dstSwitch,
+                  defaultRules: dstSwDefaultRules,
+                  inPort      : null,
+                  inVlan      : null,
+                  outPort     : Integer.MAX_VALUE - 1
                  ]
         ]
     }
@@ -256,7 +265,7 @@ class SwitchRulesSpec extends BaseSpecification {
         def defaultPlusFlowRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
         northboundService.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == defaultRules.size()
+            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
         }
         assert northboundService.validateSwitchRules(srcSwitch.dpId).missingRules.size() == flowRulesCount
 
