@@ -89,9 +89,9 @@ class SwitchFailuresSpec extends BaseSpecification {
         and: "The flow goes down OR changes path to avoid failed ISL after reroute timeout"
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
         Wrappers.wait(WAIT_OFFSET) {
-            def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
-            assert !pathHelper.getInvolvedIsls(currentPath).contains(isl) ||
-                    northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+            def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northboundService.getFlowPath(flow.id)))
+            def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(islUtils.reverseIsl(isl))
+            assert pathChanged || northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
         and: "Cleanup, restore connection, remove the flow"

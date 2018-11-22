@@ -197,12 +197,12 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         allPaths1.findAll { it != currentPath1 }.each { pathHelper.makePathMorePreferable(it, currentPath1) }
 
         when: "Unique ISL for the flow1 blinks twice, initiating 2 reroutes of the flow1"
-        def isl1 = flow1Isls.find { !flow2Isls.contains(it) }
+        def isl1 = flow1Isls.find { !flow2Isls.contains(it) && !flow2Isls.contains(islUtils.reverseIsl(it)) }
         2.times { blinkPort(isl1.dstSwitch.dpId, isl1.dstPort) }
 
         and: "Right before timeout ends the flow2 ISL blinks twice"
         TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 2)
-        def isl2 = flow2Isls.find { !flow1Isls.contains(it) }
+        def isl2 = flow2Isls.find { !flow1Isls.contains(it) && !flow1Isls.contains(islUtils.reverseIsl(it)) }
         2.times { blinkPort(isl2.dstSwitch.dpId, isl2.dstPort) }
 
         then: "The flow1 is still on its path right before the updated timeout runs out"
