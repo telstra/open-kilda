@@ -63,7 +63,7 @@ class AutoRerouteSpec extends BaseSpecification {
         Set<Isl> altFlowIsls = []
         def flowIsls = pathHelper.getInvolvedIsls(flowPath)
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
-        def islToFail = flowIsls.find { !(it in altFlowIsls) }
+        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(islUtils.reverseIsl(it) in altFlowIsls) }
         northboundService.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"

@@ -37,7 +37,8 @@ class PathHelper {
      */
     void makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
-        def islToAvoid = getInvolvedIsls(lessPreferablePath).find { !morePreferableIsls.contains(it) }
+        def islToAvoid = getInvolvedIsls(lessPreferablePath).find { !morePreferableIsls.contains(it) &&
+                !morePreferableIsls.contains(islUtils.reverseIsl(it)) }
         log.debug "ISL to avoid: $islToAvoid"
         if (!islToAvoid) {
             throw new Exception("Unable to make some path more preferable because both paths use same ISLs")

@@ -57,7 +57,8 @@ class IntentionalRerouteSpec extends BaseSpecification {
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
         def changedIsls = alternativePaths.collect { altPath ->
-            def thinIsl = pathHelper.getInvolvedIsls(altPath).find { !currentIsls.contains(it) }
+            def thinIsl = pathHelper.getInvolvedIsls(altPath).find { !currentIsls.contains(it) &&
+                    !currentIsls.contains(islUtils.reverseIsl(it)) }
             def newBw = flow.maximumBandwidth - 1
             db.updateLinkProperty(thinIsl, "max_bandwidth", newBw)
             db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", newBw)
@@ -103,7 +104,8 @@ class IntentionalRerouteSpec extends BaseSpecification {
 
         and: "Make the future path to have exact bandwidth to handle the flow"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find { !currentIsls.contains(it) }
+        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find { !currentIsls.contains(it) &&
+                !currentIsls.contains(islUtils.reverseIsl(it))}
         db.updateLinkProperty(thinIsl, "max_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(thinIsl, "available_bandwidth", flow.maximumBandwidth)
