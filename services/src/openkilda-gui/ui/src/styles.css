@@ -237,7 +237,7 @@ h1 {
 
 .invalid-feedback {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .list-group-no-border .list-group-item {
@@ -877,10 +877,7 @@ pre.code {
   border-radius: 3px;
 }
 
-.dygraph-legend {
-  font-size: 14px;
-  font-weight: normal !important;
-}
+
 
 .isl_switch_icon .icon-isl {
   background: url(assets/images/icon-isl-small.png) no-repeat 0 0;
@@ -1360,10 +1357,24 @@ tbody tr.odd td {
 
 .dygraph-legend {
   font-weight: 300 !important;
-  width: 350px !important;
+  width: 550px !important;
   font-family: arial;
   top: -20px !important;
+  font-size: 10px!important;
+  background: transparent!important;
 }
+.dygraph-legend span{
+  font-weight: normal!important;
+}
+.dygraph-legend-line {
+  display: inline-block;
+  position: relative;
+  bottom: .5ex;
+  height: 1px;
+  border-bottom-width: 0;
+  border-bottom-style: none;
+}
+
 
 .flowDataRow td {
   cursor: pointer;
@@ -1412,12 +1423,14 @@ table.dataTable thead .sorting {
   background-image: url(assets/images/sort_both.png);
 }
 
+
 table.dataTable thead .sorting_asc {
   background-image: url(assets/images/sort_asc.png);
 }
 table.dataTable thead .sorting_desc {
   background-image: url(assets/images/sort_desc.png);
 }
+
 
 table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTable thead .sorting_desc, table.dataTable thead .sorting_asc_disabled, table.dataTable thead .sorting_desc_disabled {
   background-position: right 8px;
@@ -1819,7 +1832,7 @@ table.dataTable thead th span,table.custom-margin-datatable thead th span {
 
 
 .flow-list-filter {
-  float: left;
+   float: left;
   margin-right: 10px;
   margin-top:5px;
 }
@@ -1866,3 +1879,5 @@ button:focus{
 .badge-password{
   font-size: 14px;
 }
+
+
