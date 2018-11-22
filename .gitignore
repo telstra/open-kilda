@@ -38,6 +38,7 @@ services/src/api/target/
 /services/src/openkilda-gui/src/main/resources/logback.xml
 /services/storm/log4j2/cluster.xml
 /services/storm/log4j2/worker.xml
+/services/lab-service/lab/log.json
 /services/topology-engine-rest/app/log.json
 /services/topology-engine-rest/app/topology_engine_rest.ini
 /services/topology-engine/queue-engine/log.json

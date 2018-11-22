@@ -20,6 +20,7 @@ import static java.util.Collections.unmodifiableMap;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig;
+import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.service.traffexam.model.Address;
 import org.openkilda.testing.service.traffexam.model.AddressResponse;
 import org.openkilda.testing.service.traffexam.model.ConsumerEndpoint;
@@ -40,12 +41,10 @@ import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
 
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -69,10 +68,14 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 
 @Service
-@Profile("hardware")
 public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TraffExamServiceImpl.class);
+    @Value("${lab-api.endpoint}")
+    private String labEndpoint;
+
+    @Autowired
+    private LabService labService;
+    private String baseUrl;
 
     @Autowired
     @Qualifier("traffExamRestTemplate")
@@ -94,6 +97,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
     @PostConstruct
     void initializePools() {
+        baseUrl = labEndpoint + "/api/" + labService.getLab().getLabId() + "/traffgen/";
         hostsPool = new HashMap<>();
 
         for (TraffGen traffGen : topology.getActiveTraffGens()) {
@@ -198,7 +202,12 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
             if (exam.getTimeLimitSeconds() != null) {
                 producer.setTime(exam.getTimeLimitSeconds());
             }
-
+            try {
+                //give consumer some time to fully roll. Probably should be fixed on service's side, this is workaround
+                TimeUnit.MILLISECONDS.sleep(300);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             producer = assignEndpoint(exam.getSource(), producer);
             supplied.add(producer);
 
@@ -441,6 +450,6 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     }
 
     private UriBuilder makeHostUri(Host host) {
-        return UriComponentsBuilder.fromUri(host.getApiAddress());
+        return UriComponentsBuilder.fromUriString(baseUrl).path(host.getName()).path("/");
     }
 }
