@@ -13,7 +13,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchInfoData
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.flows.PingInput
 import org.openkilda.northbound.dto.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput
@@ -60,8 +59,7 @@ class FlowPingSpec extends BaseSpecification {
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with random vlan"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
 
         when: "Ping the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput())
@@ -88,8 +86,7 @@ class FlowPingSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.source.vlanId = 0
         flow.destination.vlanId = 0
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
 
         when: "Ping the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput())
@@ -128,8 +125,7 @@ class FlowPingSpec extends BaseSpecification {
         allPaths.findAll { it != aswitchPath }.each { pathHelper.makePathMorePreferable(aswitchPath, it) }
         //build a flow
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         expectedPingResult.flowId = flow.id
         assert aswitchPath == pathHelper.convert(northboundService.getFlowPath(flow.id))
 
@@ -161,33 +157,33 @@ class FlowPingSpec extends BaseSpecification {
                 [
                         breakForward: true,
                         breakReverse: false,
-                        pingInput: new PingInput()
+                        pingInput   : new PingInput()
                 ],
                 [
                         breakForward: false,
                         breakReverse: true,
-                        pingInput: new PingInput()
+                        pingInput   : new PingInput()
                 ],
                 [
                         breakForward: true,
                         breakReverse: true,
-                        pingInput: new PingInput()
+                        pingInput   : new PingInput()
                 ],
                 //TODO(rtretiak): below are ignored due to #1416
 //                [
 //                        breakForward: true,
 //                        breakReverse: false,
-//                        pingInput: new PingInput((getDiscoveryInterval() + 1) * 1000)
+//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
 //                ],
 //                [
 //                        breakForward: false,
 //                        breakReverse: true,
-//                        pingInput: new PingInput((getDiscoveryInterval() + 1) * 1000)
+//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
 //                ],
 //                [
 //                        breakForward: true,
 //                        breakReverse: true,
-//                        pingInput: new PingInput((getDiscoveryInterval() + 1) * 1000)
+//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
 //                ]
         ]
         description = "${data.breakForward ? "forward" : ""}${data.breakForward && data.breakReverse ? " and " : ""}" +
@@ -208,8 +204,7 @@ class FlowPingSpec extends BaseSpecification {
         given: "A single-switch flow"
         def sw = nonCentecSwitches().first()
         def flow = flowHelper.singleSwitchFlow(sw)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
 
         when: "Ping the flow"
         def response = northboundService.pingFlow(flow.id, new PingInput())
@@ -265,8 +260,8 @@ class FlowPingSpec extends BaseSpecification {
 
     def nonCentecSwitches() {
         northboundService.getActiveSwitches()
-             .findAll { !it.description.contains("Centec") }
-             .collect { toSwitch(it) }
+                .findAll { !it.description.contains("Centec") }
+                .collect { toSwitch(it) }
     }
 
     Switch toSwitch(SwitchInfoData nbSwitch) {
