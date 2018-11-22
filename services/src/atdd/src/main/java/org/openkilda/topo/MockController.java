@@ -13,30 +13,26 @@
  *   limitations under the License.
  */
 
-/**
- * 
- */
 package org.openkilda.topo;
 
 /**
- * @author carmine
- *
+ * The mock controller.
  */
 public class MockController implements IController {
 
-	public MockController(ITopology t1) {
-		// TODO Auto-generated constructor stub
-	}
+    public MockController(ITopology t1) {
+        // TODO Auto-generated constructor stub
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.openkilda.topo.IController#getTopology()
-	 */
-	@Override
-	public ITopology getTopology() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.openkilda.topo.IController#getTopology()
+     */
+    @Override
+    public ITopology getTopology() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
 }
