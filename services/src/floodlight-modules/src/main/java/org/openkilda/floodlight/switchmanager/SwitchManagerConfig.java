@@ -22,4 +22,13 @@ import com.sabre.oss.conf4j.annotation.Key;
 public interface SwitchManagerConfig {
     @Key("connect-mode")
     String getConnectMode();
+
+    @Key("broadcast-rate-limit")
+    int getBroadcastRateLimit();
+
+    @Key("unicast-rate-limit")
+    int getUnicastRateLimit();
+
+    @Key("disco-packet-size")
+    int getDiscoPacketSize();
 }
