@@ -72,6 +72,7 @@ public class ReplaceInstallFlowTest {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
     private static final String KAFKA_FLOW_TOPIC = "kilda.flow";
     private static final String KAFKA_NORTHBOUND_TOPIC = "kilda.northbound";
+    private static final DatapathId SWITCH_ID = DatapathId.of("00:00:00:00:00:00:00:09");
 
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private final ExecutorService parseRecordExecutor = MoreExecutors.sameThreadExecutor();
@@ -302,6 +303,7 @@ public class ReplaceInstallFlowTest {
                               boolean needCheckReverseFlow, boolean needCheckReverseMeter) {
         IOFSwitch iofSwitch = createMock(IOFSwitch.class);
 
+        expect(iofSwitch.getId()).andReturn(SWITCH_ID);
         expect(ofSwitchService.getActiveSwitch(anyObject(DatapathId.class))).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
