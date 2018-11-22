@@ -46,8 +46,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         assert srcSwitch
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 10000
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Make the current path less preferable than alternatives"
@@ -93,8 +92,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         assert srcSwitch
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 10000
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Make one of the alternative paths to be the most preferable among all others"

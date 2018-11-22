@@ -77,8 +77,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
             allPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make the current path less preferable than alternatives"
@@ -119,8 +118,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
@@ -187,8 +185,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def (Switch srcSwitch2, Switch dstSwitch2) = restSwitches[0..1]
         def flow2 = flowHelper.randomFlow(srcSwitch2, dstSwitch2)
         def (currentPath1, currentPath2) = [flow1, flow2].collect { flow ->
-            northboundService.addFlow(flow)
-            Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+            flowHelper.addFlow(flow)
             PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         def flow1Isls = pathHelper.getInvolvedIsls(currentPath1)
@@ -236,8 +233,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
             allPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make the current path less preferable than alternatives"
@@ -278,8 +274,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Init a flow reroute by blinking a port"
@@ -311,8 +306,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Remove the flow"

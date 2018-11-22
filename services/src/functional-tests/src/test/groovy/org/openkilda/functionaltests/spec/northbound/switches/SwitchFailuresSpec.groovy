@@ -50,17 +50,16 @@ class SwitchFailuresSpec extends BaseSpecification {
     IslUtils islUtils
     @Autowired
     PathHelper pathHelper
-    
+
     def setupOnce() {
-        requireProfiles("virtual")        
+        requireProfiles("virtual")
     }
 
     def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
         lockKeeperService.knockoutSwitch(isl.srcSwitch.dpId)
