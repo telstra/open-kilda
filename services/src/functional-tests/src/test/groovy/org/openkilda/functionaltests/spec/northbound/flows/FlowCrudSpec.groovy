@@ -10,7 +10,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -45,7 +44,7 @@ class FlowCrudSpec extends BaseSpecification {
     NorthboundService northboundService
     @Autowired
     TraffExamService traffExam;
-    
+
     @Shared
     FlowTrafficExamBuilder examBuilder
 
@@ -57,15 +56,14 @@ class FlowCrudSpec extends BaseSpecification {
             (#flow.source.datapath - #flow.destination.datapath)")
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
         def switches = pathHelper.getInvolvedSwitches(path)
         //for single-flow cases need to add switch manually here, since PathHelper.convert will return an empty path
-        if(flow.source.datapath == flow.destination.datapath) {
+        if (flow.source.datapath == flow.destination.datapath) {
             switches << topology.activeSwitches.find { it.dpId == flow.source.datapath }
         }
-        
+
         expect: "No rule discrepancies on every switch of the flow"
         switches.each {
             verifySwitchRules(it.dpId)
@@ -87,10 +85,10 @@ class FlowCrudSpec extends BaseSpecification {
                 direction.setResources(resources)
                 assert traffExam.waitExam(direction).hasTraffic()
             }
-        } catch(FlowNotApplicableException e) {
+        } catch (FlowNotApplicableException e) {
             //flow is not applicable for traff exam. That's fine, just inform
             log.warn(e.message)
-        } catch(UnsupportedOperationException e) {
+        } catch (UnsupportedOperationException e) {
             log.warn("skipping traff exam for flow $flow.id. " +
                     "we are on virtual env and for now traff exam is not available here")
         }
@@ -125,8 +123,7 @@ class FlowCrudSpec extends BaseSpecification {
     @Unroll
     def "Able to create single switch single port flow with different vlan (#flow.source.datapath)"(FlowPayload flow) {
         given: "A flow"
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
 
         expect: "No rule discrepancies on the switch"
         verifySwitchRules(flow.source.datapath)
@@ -153,7 +150,8 @@ class FlowCrudSpec extends BaseSpecification {
             verifySwitchRules(flow.source.datapath)
         }
 
-        where: flow << getSingleSwitchSinglePortFlows()
+        where:
+        flow << getSingleSwitchSinglePortFlows()
     }
 
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
@@ -182,7 +180,7 @@ class FlowCrudSpec extends BaseSpecification {
         data.makeFlowsConflicting(flow, conflictingFlow)
 
         when: "Create the first flow"
-        northbound.addFlow(flow)
+        flowHelper.addFlow(flow)
 
         and: "Try creating the second flow which conflicts"
         northbound.addFlow(conflictingFlow)
@@ -193,7 +191,6 @@ class FlowCrudSpec extends BaseSpecification {
         error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow)
 
         and: "Cleanup: delete the dominant flow"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         flowHelper.deleteFlow(flow.id)
 
         where: data << [
@@ -244,7 +241,7 @@ class FlowCrudSpec extends BaseSpecification {
     def portError = { int port, SwitchId switchId, String flowId ->
         "Could not create flow: The port $port on the switch '$switchId' has already occupied by the flow '$flowId'."
     }
-    
+
     /**
      * Get list of all unique flows without transit switch (neighboring switches), permute by vlan presence. 
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
@@ -258,23 +255,22 @@ class FlowCrudSpec extends BaseSpecification {
             }
             .sort(taffgensPrioritized)
             .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
+
         return switchPairs.inject([]) { r, switchPair ->
             r << [
                     description: "flow without transit switch and with random vlans",
-                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1])
+                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1])
             ]
             r << [
                     description: "flow without transit switch and without vlans",
-                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
                         it.source.vlanId = 0
                         it.destination.vlanId = 0
                     }
             ]
             r << [
                     description: "flow without transit switch and vlan only on src",
-                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
-                        it.destination.vlanId = 0
-                    }
+                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap { it.destination.vlanId = 0 }
             ]
             r
         }
@@ -293,23 +289,22 @@ class FlowCrudSpec extends BaseSpecification {
             }
             .sort(taffgensPrioritized)
             .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
+
         return switchPairs.inject([]) { r, switchPair ->
             r << [
                     description: "flow with transit switch and random vlans",
-                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1])
+                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1])
             ]
             r << [
                     description: "flow with transit switch and no vlans",
-                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
                         it.source.vlanId = 0
                         it.destination.vlanId = 0
                     }
             ]
             r << [
                     description: "flow with transit switch and vlan only on dst",
-                    flow: flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
-                        it.source.vlanId = 0
-                    }
+                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap { it.source.vlanId = 0 }
             ]
             r
         }
@@ -321,28 +316,28 @@ class FlowCrudSpec extends BaseSpecification {
      */
     def getSingleSwitchFlows() {
         topology.getActiveSwitches()
-            .sort{ sw -> topology.activeTraffGens.findAll { it.switchConnected == sw }.size() }.reverse()
-            .unique { [getDescription(it), it.ofVersion].sort() }
-            .inject([]) { r, sw ->
-                r << [
-                        description: "single-switch flow with vlans",
-                        flow: flowHelper.singleSwitchFlow(sw)
-                ]
-                r << [
-                        description: "single-switch flow without vlans",
-                        flow: flowHelper.singleSwitchFlow(sw).tap {
-                            it.source.vlanId = 0
-                            it.destination.vlanId = 0
-                        }
-                ]
-                r << [
-                        description: "single-switch flow with vlan only on dst",
-                        flow: flowHelper.singleSwitchFlow(sw).tap {
-                            it.source.vlanId = 0
-                        }
-                ]
-                r
-            }
+                .sort { sw -> topology.activeTraffGens.findAll { it.switchConnected == sw }.size() }.reverse()
+                .unique { [getDescription(it), it.ofVersion].sort() }
+                .inject([]) { r, sw ->
+            r << [
+                    description: "single-switch flow with vlans",
+                    flow       : flowHelper.singleSwitchFlow(sw)
+            ]
+            r << [
+                    description: "single-switch flow without vlans",
+                    flow       : flowHelper.singleSwitchFlow(sw).tap {
+                        it.source.vlanId = 0
+                        it.destination.vlanId = 0
+                    }
+            ]
+            r << [
+                    description: "single-switch flow with vlan only on dst",
+                    flow       : flowHelper.singleSwitchFlow(sw).tap {
+                        it.source.vlanId = 0
+                    }
+            ]
+            r
+        }
     }
 
     /**
@@ -372,7 +367,7 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Memoized
-    def getPreferredPath(Switch src, Switch dst){
+    def getPreferredPath(Switch src, Switch dst) {
         def possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path
         return possibleFlowPaths.min {
             /*

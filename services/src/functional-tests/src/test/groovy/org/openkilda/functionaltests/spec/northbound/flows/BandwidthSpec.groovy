@@ -54,13 +54,10 @@ class BandwidthSpec extends BaseSpecification {
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = maximumBandwidth
-        northboundService.addFlow(flow)
+        flowHelper.addFlow(flow)
+        assert northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
-        then: "The flow is successfully created and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
-
-        and: "Available bandwidth on ISLs is changed in accordance with flow maximum bandwidth"
+        then: "Available bandwidth on ISLs is changed in accordance with flow maximum bandwidth"
         def linksAfterFlow = northboundService.getAllLinks()
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         pathHelper.getInvolvedIsls(flowPath).each { link ->
@@ -122,20 +119,18 @@ class BandwidthSpec extends BaseSpecification {
         when: "Create a flow to reduce available bandwidth on links of the expected preferable path"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow1.maximumBandwidth = minAvailableBandwidth - 100
-        northboundService.addFlow(flow1)
+        flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northboundService.getFlowPath(flow1.id))
 
-        then: "The flow is successfully created and really built through the expected preferable path"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow1.id).status == FlowState.UP }
+        then: "The flow is really built through the expected preferable path"
         flow1Path == possibleFlowPaths.first()
 
         when: "Create another flow. One path is shorter but available bandwidth is not enough, another path is longer"
         def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow2.maximumBandwidth = 101
-        northboundService.addFlow(flow2)
+        flowHelper.addFlow(flow2)
 
-        then: "The flow is successfully created and built through longer path where available bandwidth is enough"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow2.id).status == FlowState.UP }
+        then: "The flow is built through longer path where available bandwidth is enough"
         def flow2Path = PathHelper.convert(northboundService.getFlowPath(flow2.id))
         pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
 
@@ -179,13 +174,10 @@ class BandwidthSpec extends BaseSpecification {
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = maximumBandwidth
-        northboundService.addFlow(flow)
+        flowHelper.addFlow(flow)
+        assert northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
-        then: "The flow is successfully created and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
-
-        when: "Update the flow with a bandwidth that exceeds available bandwidth on ISL"
+        and: "Update the flow with a bandwidth that exceeds available bandwidth on ISL"
         def possibleFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         List<Long> involvedBandwidths = []
 
@@ -216,13 +208,10 @@ class BandwidthSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = Integer.MAX_VALUE - 1
         flow.ignoreBandwidth = true
-        northboundService.addFlow(flow)
+        flowHelper.addFlow(flow)
+        assert northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE - 1
 
-        then: "The flow is successfully created and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE - 1
-
-        when: "Update the flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
+        and: "Update the flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
         flow.maximumBandwidth = Integer.MAX_VALUE
         northboundService.updateFlow(flow.id, flow)
 
@@ -244,13 +233,10 @@ class BandwidthSpec extends BaseSpecification {
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = maximumBandwidth
-        northboundService.addFlow(flow)
+        flowHelper.addFlow(flow)
+        assert northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
-        then: "The flow is successfully created and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
-
-        and: "Only one link is involved in flow path"
+        then: "Only one link is involved in flow path"
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
         involvedIsls.size() == 1
