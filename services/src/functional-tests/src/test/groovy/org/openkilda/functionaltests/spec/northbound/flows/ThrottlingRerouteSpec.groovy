@@ -21,6 +21,8 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
+import spock.lang.Issue
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
@@ -165,6 +167,8 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Ignore
+    @Issue("https://github.com/telstra/open-kilda/issues/1636")
     def "Reroute timer is refreshed even if another flow reroute is issued"() {
         def blinkingPeriod = rerouteDelay
         assumeTrue("Configured reroute timeouts are not acceptable for this test. " +
