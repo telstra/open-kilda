@@ -88,9 +88,6 @@ class FlowCrudSpec extends BaseSpecification {
         } catch (FlowNotApplicableException e) {
             //flow is not applicable for traff exam. That's fine, just inform
             log.warn(e.message)
-        } catch (UnsupportedOperationException e) {
-            log.warn("skipping traff exam for flow $flow.id. " +
-                    "we are on virtual env and for now traff exam is not available here")
         }
 
         when: "Remove the flow"
