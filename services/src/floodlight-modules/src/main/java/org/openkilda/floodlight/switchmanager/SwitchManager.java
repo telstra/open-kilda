@@ -532,7 +532,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
 
-            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST);
+            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
             // All cases when we're installing meters require that we wait until the command is processed and
             // the meter is installed.

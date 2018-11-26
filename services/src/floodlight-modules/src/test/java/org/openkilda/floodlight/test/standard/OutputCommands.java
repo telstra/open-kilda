@@ -22,6 +22,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_M
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
+import static org.projectfloodlight.openflow.protocol.OFMeterFlags.STATS;
 import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 
 import org.openkilda.floodlight.OFFactoryMock;
@@ -219,7 +220,7 @@ public interface OutputCommands {
                         .buildDrop()
                         .setRate(bandwidth)
                         .setBurstSize(burstSize).build()))
-                .setFlags(new HashSet<>(Arrays.asList(KBPS, BURST)))
+                .setFlags(new HashSet<>(Arrays.asList(KBPS, BURST, STATS)))
                 .setXid(0L)
                 .build();
     }
