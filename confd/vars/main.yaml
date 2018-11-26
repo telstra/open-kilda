@@ -86,6 +86,7 @@ kilda_logging_json_file: False
 kilda_logging_logstash: True
 kilda_logging_logfile_path: "/var/log/"
 kilda_logging_logstash_host: "logstash.pendev"
+kilda_logging_elasticsearch_proto: "http"
 kilda_logging_elasticsearch_hosts: "elasticsearch.pendev:9200"
 kilda_logging_fl_loglevel: "INFO"
 kilda_logging_fl_logaccess: True
