@@ -153,7 +153,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                                                 rxFrameErr = etherProps.getRxFrameErr().getValue();
                                                 rxOverErr = etherProps.getRxOverErr().getValue();
                                                 rxCrcErr = etherProps.getRxCrcErr().getValue();
-                                                collisions = etherProps.getCollisions().getLength();
+                                                collisions = etherProps.getCollisions().getValue();
                                             }
                                         }
 
