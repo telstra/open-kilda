@@ -36,6 +36,10 @@ public class FlowStatsReply implements Serializable {
         this.entries = entries;
     }
 
+    public long getXid() {
+        return xid;
+    }
+
     public List<FlowStatsEntry> getEntries() {
         return entries;
     }

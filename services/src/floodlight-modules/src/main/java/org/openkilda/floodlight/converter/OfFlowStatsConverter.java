@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,15 +15,22 @@
 
 package org.openkilda.floodlight.converter;
 
+import static java.util.stream.Collectors.toList;
+
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
+import org.openkilda.messaging.info.stats.FlowStatsData;
+import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.messaging.info.stats.FlowStatsReply;
+import org.openkilda.messaging.model.SwitchId;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFInstructionType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
@@ -54,9 +61,9 @@ public final class OfFlowStatsConverter {
     private static final int VLAN_MASK = 0xFFF;
 
     /**
-     * Convert {@link OFFlowStatsEntry} to format that kilda supports.
+     * Convert {@link OFFlowStatsEntry} to format that kilda supports {@link FlowEntry}.
      * @param entry flow stats to be converted.
-     * @return result of transformation.
+     * @return result of transformation {@link FlowEntry}.
      */
     public static FlowEntry toFlowEntry(final OFFlowStatsEntry entry) {
         return FlowEntry.builder()
@@ -149,6 +156,33 @@ public final class OfFlowStatsConverter {
                 .fieldName(setFieldAction.getMatchField().getName())
                 .fieldValue(value)
                 .build();
+    }
+
+    /**
+     * Convert list of {@link OFFlowStatsReply} to {@link FlowStatsData}.
+     * @param data list of flow stats replies to be converted.
+     * @param switchId id of the switch from which these replies were gotten.
+     * @return result of transformation {@link FlowStatsData}.
+     */
+    public static FlowStatsData toFlowStatsData(List<OFFlowStatsReply> data, SwitchId switchId) {
+        List<FlowStatsReply> replies = data.stream()
+                .map(OfFlowStatsConverter::toFlowStatsReply)
+                .collect(toList());
+        return new FlowStatsData(switchId, replies);
+    }
+
+    private static FlowStatsReply toFlowStatsReply(OFFlowStatsReply reply) {
+        List<FlowStatsEntry> entries = reply.getEntries().stream()
+                .map(OfFlowStatsConverter::toFlowStatsEntry)
+                .collect(toList());
+        return new FlowStatsReply(reply.getXid(), entries);
+    }
+
+    private static FlowStatsEntry toFlowStatsEntry(OFFlowStatsEntry entry) {
+        return new FlowStatsEntry(entry.getTableId().getValue(),
+                                  entry.getCookie().getValue(),
+                                  entry.getPacketCount().getValue(),
+                                  entry.getByteCount().getValue());
     }
 
     private OfFlowStatsConverter() {
