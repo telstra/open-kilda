@@ -252,8 +252,7 @@ class BandwidthSpec extends BaseSpecification {
         northboundService.getFlow(flow.id).maximumBandwidth == linkSpeed
 
         and: "The same path is used by updated flow"
-        def flowPathUpdated = PathHelper.convert(northboundService.getFlowPath(flow.id))
-        flowPathUpdated == flowPath
+        PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
