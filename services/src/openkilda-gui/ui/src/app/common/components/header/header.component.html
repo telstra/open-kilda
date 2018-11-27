@@ -1,0 +1,17 @@
+<header class="main-header">
+	<a routerLink="/home" id="logo_header" class="logo">
+      <span class="logo-lg toggleText"><img class="kilda_logo" src="ui/assets/images/new_kilda_logo.png" /></span>
+    </a>
+    <nav class="navbar navbar-static-top">
+      <div class="navbar-custom-menu pull-right">
+				<div ngbDropdown placement="bottom-right" class="d-inline-block">
+					<button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>{{username}} <i class="fa fa-angle-down" aria-hidden="true"></i></button>
+					<div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+						<button (click)="openChangePassword()" class="dropdown-item"><i class="fa fa-lock"></i> Change Password</button>
+						<button routerLink="/storesetting" *ngIf="commonService.hasPermission('store_setting')" class="dropdown-item"><i class="fa fa-cog"></i> Settings</button>
+						<button routerLink="/logout" class="dropdown-item"><i class="fa fa-sign-out"></i> Logout</button>
+					</div>
+				</div>
+      </div>
+    </nav>
+</header>

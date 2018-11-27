@@ -1,0 +1,53 @@
+<div id="usermanagement_div">
+  <div class="row">
+    <div id="exTab1" class="col-lg-12 tab-wrapper">
+      <ul class="nav nav-pills">
+          <li [ngClass]="{'active': openedTab == 'users' || openedTab == 'user-add' || openedTab == 'user-edit'}"><a href="javascript:void(0);" (click)="openTab('users');">Users</a></li>
+          <li *ngIf="commonService.hasPermission('um_role')" [ngClass]="{'active': openedTab == 'roles' || openedTab == 'role-add' || openedTab == 'role-edit' || openedTab == 'role-assign' || openedTab == 'role-view' }"><a href="javascript:void(0);" (click)="openTab('roles');">Roles</a></li>
+          <li *ngIf="commonService.hasPermission('um_permission')" [ngClass]="{'active': openedTab == 'permissions' || openedTab == 'permission-add' || openedTab == 'permission-edit' || openedTab == 'permission-assign' || openedTab == 'permission-view'}"><a href="javascript:void(0);" (click)="openTab('permissions');">Permissions</a></li>
+        </ul>
+        <div class="tab-content clearfix">
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'users' || openedTab == 'user-add' || openedTab == 'user-edit'}">
+            <div id="userTabData">
+              <div *ngIf="openedTab == 'users'" class="text-right" style="padding-bottom: 10px; margin-bottom: 10px;">
+                  <span class="btn kilda_btn pull-right" (click)="openTab('user-add')" id="addUserBtn" *ngIf="commonService.hasPermission('um_user_add')">Add User</span>
+              </div>
+              <div id="userTable_wrapper">
+                <app-user-list *ngIf="openedTab == 'users'"></app-user-list>
+                <app-user-add *ngIf="openedTab == 'user-add'"></app-user-add>
+                <app-user-edit *ngIf="openedTab == 'user-edit'"></app-user-edit>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'roles' || openedTab == 'role-add' || openedTab == 'role-edit' || openedTab == 'role-assign' || openedTab == 'role-view'}">
+            <div id="userTabData">
+              <div *ngIf="openedTab == 'roles'" class="text-right" style="padding-bottom: 10px; margin-bottom: 10px;">
+                  <span class="btn kilda_btn pull-right" (click)="openTab('role-add')" id="addUserBtn" *ngIf="commonService.hasPermission('um_role_add')">Add Role</span>
+              </div>
+              <div id="userTable_wrapper">
+                <app-role-list *ngIf="openedTab == 'roles'"></app-role-list>
+                <app-role-add *ngIf="openedTab == 'role-add'"></app-role-add>
+                <app-role-edit *ngIf="openedTab == 'role-edit'"></app-role-edit>
+                <app-role-assign *ngIf="openedTab == 'role-assign'"></app-role-assign>
+                <app-role-view *ngIf="openedTab == 'role-view'"></app-role-view>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'permissions' || openedTab == 'permission-add' || openedTab == 'permission-edit' || openedTab == 'permission-assign' || openedTab == 'permission-view'}">
+            <div id="userTabData">
+                <div *ngIf="openedTab == 'permissions'" class="text-right" style="padding-bottom: 10px; margin-bottom: 10px;">
+                    <!-- <span class="btn kilda_btn pull-right" (click)="openTab('permission-add')" id="addUserBtn" *ngIf="commonService.hasPermission('um_permission_add')">Add Permission</span> -->
+                </div>
+                <div id="userTable_wrapper">
+                  <app-permission-list *ngIf="openedTab == 'permissions'"></app-permission-list>
+                  <app-permission-add *ngIf="openedTab == 'permission-add'"></app-permission-add>
+                  <app-permission-edit *ngIf="openedTab == 'permission-edit'"></app-permission-edit>  
+                  <app-permission-assign *ngIf="openedTab == 'permission-assign'"></app-permission-assign>
+                  <app-permission-view *ngIf="openedTab == 'permission-view'"></app-permission-view>
+                </div>
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+</div>

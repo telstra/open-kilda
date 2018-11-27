@@ -19,11 +19,21 @@ import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 
+import com.google.common.collect.Lists;
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 
 public class SimpleGetShortestPathTest {
+
+    private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
+    private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
+    private static final SwitchId SWITCH_ID_3 = new SwitchId("00:00:00:00:00:00:00:03");
+    private static final SwitchId SWITCH_ID_4 = new SwitchId("00:00:00:00:00:00:00:04");
+    private static final SwitchId SWITCH_ID_5 = new SwitchId("00:00:00:00:00:00:00:05");
 
     /**
      * Build test network.
@@ -69,6 +79,41 @@ public class SimpleGetShortestPathTest {
         return network;
     }
 
+    private AvailableNetwork buildEqualCostsNetwork() {
+        /*
+         *   Topology:
+         *
+         *   A---B---C---E
+         *       |       |
+         *       +---D---+
+         *
+         *   All ISLs have equal cost.
+         */
+
+        AvailableNetwork network = new AvailableNetwork(null);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 100);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_4, 3, 4, 100);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, 100);
+        addBidirectionalLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 100);
+        addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100);
+        return network;
+    }
+
+    private AvailableNetwork buildExpensiveNetwork() {
+        /*
+         *   Triangle topology:
+         *
+         *   A---2 000 000 000---B---2 000 000 000---C
+         *   |                                       |
+         *   +-------------------1-------------------+
+         */
+        
+        AvailableNetwork network = new AvailableNetwork(null);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 2000000000); //cost near to MAX_INTEGER
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 3, 4, 2000000000); //cost near to MAX_INTEGER
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_3, 5, 6, 1);
+        return network;
+    }
 
     @Test
     public void getPath() {
@@ -86,5 +131,59 @@ public class SimpleGetShortestPathTest {
         System.out.println("reverse.getPath() = " + rpath);
 
 
+    }
+
+    @Test
+    public void testForwardAndBackwardPathsEquality() {
+        AvailableNetwork network = buildEqualCostsNetwork();
+        network.removeSelfLoops().reduceByCost();
+        SimpleGetShortestPath forward = new SimpleGetShortestPath(network, new SwitchId("00:00:00:00:00:00:00:01"),
+                new SwitchId("00:00:00:00:00:00:00:05"), 35);
+        SimpleGetShortestPath backward = new SimpleGetShortestPath(network, new SwitchId("00:00:00:00:00:00:00:05"),
+                new SwitchId("00:00:00:00:00:00:00:01"), 35);
+
+        LinkedList<SimpleIsl> forwardPath = forward.getPath();
+        LinkedList<SimpleIsl> backwardPath = backward.getPath(forwardPath);
+
+        List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(forwardPath);
+        List<SwitchId> backwardSwitchPath = Lists.reverse(getSwitchIdsFlowPath(backwardPath));
+
+        Assert.assertEquals(forwardSwitchPath, backwardSwitchPath);
+    }
+
+    @Test
+    public void testExpensiveLinks() {
+        AvailableNetwork network = buildExpensiveNetwork();
+        network.removeSelfLoops().reduceByCost();
+        SimpleGetShortestPath forward = new SimpleGetShortestPath(network, SWITCH_ID_1, SWITCH_ID_3, 35);
+        SimpleGetShortestPath backward = new SimpleGetShortestPath(network, SWITCH_ID_3, SWITCH_ID_1, 35);
+
+        LinkedList<SimpleIsl> forwardPath = forward.getPath();
+        LinkedList<SimpleIsl> reversePath = backward.getPath(forwardPath);
+
+        List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(forwardPath);
+        List<SwitchId> reverseSwitchPath = Lists.reverse(getSwitchIdsFlowPath(reversePath));
+
+        Assert.assertEquals(forwardSwitchPath, reverseSwitchPath);
+        Assert.assertEquals(forwardSwitchPath, Lists.newArrayList(SWITCH_ID_1, SWITCH_ID_3));
+    }
+
+    private List<SwitchId> getSwitchIdsFlowPath(List<SimpleIsl> path) {
+        List<SwitchId> switchIds = new ArrayList<>();
+
+        if (!path.isEmpty()) {
+            switchIds.add(path.get(0).getSrcDpid());
+            for (SimpleIsl isl : path) {
+                switchIds.add(isl.getDstDpid());
+            }
+        }
+
+        return switchIds;
+    }
+
+    private void addBidirectionalLink(AvailableNetwork network, SwitchId firstSwitch, SwitchId secondSwitch,
+                                      int srcPort, int dstPort, int cost) {
+        network.addLink(firstSwitch, secondSwitch, srcPort, dstPort, cost, 1);
+        network.addLink(secondSwitch, firstSwitch, dstPort, srcPort, cost, 1);
     }
 }

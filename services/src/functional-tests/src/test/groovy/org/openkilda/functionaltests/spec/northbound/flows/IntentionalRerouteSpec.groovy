@@ -16,8 +16,10 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
 
 @CleanupSwitches
+@Narrative("Verify that on-demand reroute operations are performed accurately.")
 class IntentionalRerouteSpec extends BaseSpecification {
     @Autowired
     TopologyDefinition topology
@@ -33,7 +35,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
     IslUtils islUtils
 
     def "Should not be able to reroute to a path with not enough bandwidth available"() {
-        given: "Flow with alternate paths available"
+        given: "A flow with alternate paths available"
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
@@ -48,7 +50,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
-        when: "Make current path less preferable than alternatives"
+        when: "Make the current path less preferable than alternatives"
         def alternativePaths = allPaths.findAll { it != currentPath }
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
 
@@ -67,12 +69,12 @@ class IntentionalRerouteSpec extends BaseSpecification {
         and: "Init a reroute to a more preferable path"
         def rerouteResponse = northboundService.rerouteFlow(flow.id)
 
-        then: "Flow is NOT rerouted because of not enough bandwidth on alternative paths"
+        then: "The flow is NOT rerouted because of not enough bandwidth on alternative paths"
         !rerouteResponse.rerouted
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == currentPath
 
-        and: "Remove flow, restore bw"
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
+        flowHelper.deleteFlow(flow.id)
         changedIsls.each {
             db.revertIslBandwidth(it)
             db.revertIslBandwidth(islUtils.reverseIsl(it))
@@ -80,7 +82,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
     }
 
     def "Should be able to reroute to a better path if it has enough bandwidth"() {
-        given: "Flow with alternate paths available"
+        given: "A flow with alternate paths available"
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
@@ -95,11 +97,11 @@ class IntentionalRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
-        when: "Make some alternative path to be the most preferable among all others"
+        when: "Make one of the alternative paths to be the most preferable among all others"
         def preferableAltPath = allPaths.find { it != currentPath }
         allPaths.findAll { it != preferableAltPath }.each { pathHelper.makePathMorePreferable(preferableAltPath, it) }
 
-        and: "Make future path to have exact bandwidth to handle the flow"
+        and: "Make the future path to have exact bandwidth to handle the flow"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
         def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find { !currentIsls.contains(it) }
         db.updateLinkProperty(thinIsl, "max_bandwidth", flow.maximumBandwidth)
@@ -107,10 +109,10 @@ class IntentionalRerouteSpec extends BaseSpecification {
         db.updateLinkProperty(thinIsl, "available_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "available_bandwidth", flow.maximumBandwidth)
 
-        and: "Init a reroute to a more preferable path"
+        and: "Init a reroute of the flow"
         def rerouteResponse = northboundService.rerouteFlow(flow.id)
 
-        then: "Flow is successfully rerouted through a more preferable path"
+        then: "The flow is successfully rerouted and goes through the preferable path"
         rerouteResponse.rerouted
         def newPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         newPath == preferableAltPath
@@ -119,9 +121,9 @@ class IntentionalRerouteSpec extends BaseSpecification {
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
-        and: "Remove flow, restore bw, remove costs"
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.deleteFlow(flow.id)
+        and: "Remove the flow, restore bandwidths on ISLs, reset costs"
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.deleteFlow(flow.id)
         [thinIsl, islUtils.reverseIsl(thinIsl)].each { db.revertIslBandwidth(it) }
     }
 

@@ -130,10 +130,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Cookie IDs when creating a flow.
      */
     public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
-
-    static final U64 NON_SYSTEM_MASK = U64.of(0x80000000FFFFFFFFL);
+    private static final long DEFAULT_RULES_MASK = 0x8000000000000000L;
 
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
+    public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int DEFAULT_RULE_PRIORITY = FlowModUtils.PRIORITY_HIGH;
 
 
@@ -324,6 +324,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         installDropFlow(dpid);
         installVerificationRule(dpid, true);
         installVerificationRule(dpid, false);
+        installDropLoopRule(dpid);
     }
 
     /**
@@ -619,9 +620,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         for (OFFlowStatsEntry flowStatsEntry : flowStatsBefore) {
             long flowCookie = flowStatsEntry.getCookie().getValue();
-            if (flowCookie != DROP_RULE_COOKIE
-                    && flowCookie != VERIFICATION_BROADCAST_RULE_COOKIE
-                    && flowCookie != VERIFICATION_UNICAST_RULE_COOKIE) {
+            if (!isDefaultRule(flowCookie)) {
                 OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
                         .setCookie(U64.of(flowCookie))
                         .setCookieMask(U64.NO_MASK)
@@ -698,7 +697,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
         return deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE);
+                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE);
     }
 
     /**
@@ -774,6 +773,25 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             logger.debug("Installing drop flow for switch {}", dpid);
             OFFlowMod flowMod = buildFlowMod(ofFactory, null, null, null, DROP_RULE_COOKIE, 1);
             String flowName = "--DropRule--" + dpid.toString();
+            pushFlow(sw, flowName, flowMod);
+        }
+    }
+
+    void installDropLoopRule(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        if (ofFactory.getVersion() == OF_12) {
+            logger.debug("Skip installation of drop loop rule for switch {}", dpid);
+        } else {
+            Builder builder = ofFactory.buildMatch();
+            builder.setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST));
+            builder.setExact(MatchField.ETH_SRC, MacAddress.of(dpid));
+            Match match = builder.build();
+
+            OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null,
+                    DROP_VERIFICATION_LOOP_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_PRIORITY);
+            String flowName = "--DropLoopRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
     }
@@ -1570,5 +1588,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                             portNumber, sw.getId()));
         }
         return portDesc.getHwAddr();
+    }
+
+    private boolean isDefaultRule(long cookie) {
+        return (cookie & DEFAULT_RULES_MASK) != 0L;
     }
 }

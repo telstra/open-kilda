@@ -1,0 +1,32 @@
+.form-wrapper {
+  border: 1px solid #ccc;
+  padding: 15px 15px 0;
+}
+
+.modal-title {
+  width: calc(100% - 25px);
+  font-weight: bold;
+  padding: 10px 0;
+  font-size: 14px;
+  margin-top: 0px;
+}
+
+.line-legend li:before {
+  height: 14px;
+  left: 0;
+  position: absolute;
+  top: 0px !important;
+  width: 14px;
+  content: "";
+  background: #aad200;
+}
+
+.line-legend li:first-child:before {
+  height: 14px;
+  left: 0;
+  position: absolute;
+  top: 0px !important;
+  width: 14px;
+  content: "";
+  background: #182488;
+}

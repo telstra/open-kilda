@@ -1,0 +1,89 @@
+<div class="row topology-graph">
+  <div class="col-md-8">
+    <app-dygraph (zoomChange)="zoom($event)"></app-dygraph>
+  </div>
+  <div class="col-md-4 flow-path-filters filter">
+    <div class="stats-graph  row">
+      <ul id="flow_graph_directions" class="line-legend col-lg-12">
+        <li>Forward</li>
+        <li>Reverse</li>
+      </ul>
+      <form [formGroup]="filterForm" class="col-md-12">
+        <div class="form-group row">
+          <label for="inputEmail3" class="col-sm-4 col-form-label">Timezone : </label>
+          <div class="col-sm-8">
+            <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimeZone()">
+              <option value="UTC">UTC</option>
+              <option value="LOCAL">My Timezone</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label for="inputEmail3" class="col-sm-4 col-form-label">From: </label>
+          <div class="col-sm-8">
+            <input formControlName="fromDate" type="text"  (change)="changeDate('fromDate',$event)" datetime-picker  placeholder="From" class="form-control">
+          </div>
+        </div>
+        <div class="form-group row" *ngIf="!f.auto_reload.value">
+          <label for="inputEmail3" class="col-sm-4 col-form-label">To : </label>
+          <div class="col-sm-8">
+            <input type="text" formControlName="toDate"    (change)="changeDate('toDate',$event)" datetime-picker  placeholder="From" class="form-control">
+          </div>
+        </div>
+        <div class="form-group row">
+          <label for="inputEmail3" class="col-sm-4 col-form-label">Downsample : </label>
+          <div class="col-sm-8">
+            <select formControlName="download_sample" class="form-control" (change)="loadGraphData()">
+              <option value="30s">30s</option>
+              <option value="1m">1m</option>
+              <option value="5m">5m</option>
+              <option value="10m">10m</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label for="inputEmail3" class="col-sm-4 col-form-label">Graph : </label>
+          <div class="col-sm-8">
+            <select formControlName="graph" class="form-control" (change)="loadGraphData()">
+              <option value="flow">Flow</option>
+              <option value="flowpacket">Loss packets</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group row" *ngIf="f.graph.value=='flow'">
+          <label for="inputEmail3" class="col-sm-4 col-form-label">Metric: </label>
+          <div class="col-sm-8">
+            <select formControlName="metric" class="form-control" (change)="loadGraphData()">
+              <option *ngFor="let option of flowMetrics" value="{{option.value}}">{{option.label}}</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group row" *ngIf="f.graph.value=='flowpacket'">
+          <label for="inputEmail3" class="col-sm-4 col-form-label">Direction: </label>
+          <div class="col-sm-8">
+            <select formControlName="direction" class="form-control" (change)="loadGraphData()">
+              <option *ngFor="let option of packetMetrics" value="{{option.value}}">{{option.label}}</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label for="inputEmail3" class="col-sm-4 col-form-label">Autoreload(sec): </label>
+          <div class="col-sm-1">
+            <input formControlName="auto_reload" value="1" type="checkbox">
+          </div>
+          <div class="col-sm-7" *ngIf="f.auto_reload.value">
+            <input formControlName="auto_reload_time" type="text" name="auto_reload_time" (blur)="startAutoReload()" class="form-control">
+            <div class="invalid-feedback" *ngIf="!f.auto_reload_time.valid && f.auto_reload_time.dirty">
+              <div *ngIf="f.auto_reload_time.errors.pattern">Auto reload time should be number</div>
+              <div *ngIf="f.auto_reload_time.errors.required">Auto reload time required</div>
+            </div>
+           
+          </div>
+        </div>
+      </form>
+      <div class="col-xs-12 submit-btn">
+        <div id="errorMesg" class="error"></div>
+      </div>
+    </div>
+  </div>
+</div>

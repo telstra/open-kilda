@@ -40,6 +40,7 @@ public interface ISwitchManager extends IFloodlightService {
     long DROP_RULE_COOKIE = 0x8000000000000001L;
     long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
     long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
+    long DROP_VERIFICATION_LOOP_RULE_COOKIE = 0x8000000000000004L;
 
     void activate(DatapathId dpid) throws SwitchOperationException;
 

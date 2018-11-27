@@ -37,18 +37,17 @@ class FlowsSpec extends BaseSpecification {
         def paths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
 
-        when: "Init creation of new flow"
+        when: "Init creation of a new flow"
         northboundService.addFlow(flow)
 
-        and: "Immediately remove it"
+        and: "Immediately remove the flow"
         northboundService.deleteFlow(flow.id)
 
         then: "All related switches have no discrepancies in rules"
         TimeUnit.SECONDS.sleep(2)
         Wrappers.wait(WAIT_OFFSET) {
-            switches.every {
-                def rules = northboundService.validateSwitchRules(it.dpId)
-                rules.missingRules.empty && rules.excessRules.empty
+            switches.each {
+                verifySwitchRules(it.dpId)
             }
         }
     }

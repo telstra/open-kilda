@@ -1,0 +1,171 @@
+
+  <div >
+    <div class="row">
+      <div class="col-sm-6">      
+          <h5 class='modal-title'>PORT DETAILS</h5>
+      </div>
+      <div class="col-sm-6 text-right">
+          <button class="btn kilda_btn" *ngIf="!editConfigStatus && commonService.hasPermission('sw_port_config')" (click)="configurePortDetails()">Configure</button>
+          <button class="btn kilda_btn" *ngIf="editConfigStatus" (click)="savePortDetails()" style="margin-right: 5px;">Save</button>
+          <button class="btn kilda_btn" *ngIf="editConfigStatus" (click)="cancelConfigurePort()">Cancel</button>
+      </div>
+    </div>
+    <form [formGroup]="portForm">
+      <div class='form-wrapper'>
+        <div class='row'>
+          <label class='col-sm-4 '>Switch ID:</label>
+          <div class='col-sm-2'>
+            <span class="switchportdetails_div_switch_id copy_to_clipBoard">        
+              <p [contextMenu]="copySrcSwitch">{{retrievedSwitchObject.switch_id}}</p>
+              </span>
+          </div>
+          <div class="col-sm-6">
+            <input type="hidden" class="on-off-switch" value="0" style="display: none;">
+            <div class="pull-left">
+              <div class="onoffswitch">
+                <input type="checkbox" (change)="maskSwitchId('source',$event)" name="onoffswitch" class="onoffswitch-checkbox" id="onoffswitchsource">
+                <label class="onoffswitch-label" for="onoffswitchsource">
+                  <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
+                  <span class="onoffswitch-switch"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class='row'>
+          <label class='col-sm-4 '>Port Number:</label>
+          <p class='col-sm-8 switchdetails_div_number'>{{portDataObject.port_number}}</p>
+        </div>
+        <div class='row'>
+          <label class='col-sm-4 '>Interface Type:</label>
+          <p class='col-sm-8 switchdetails_div_interface'>{{portDataObject.interfacetype}}</p>
+        </div>
+        <div class='row' *ngIf="!editConfigStatus">
+          <label class='col-sm-4 '>Status:</label>
+          <p class='col-sm-8 port_details_div_status'>{{portDataObject.status}}</p>
+        </div>
+        <div class='row form-group portStatusInput' *ngIf="editConfigStatus">
+          <label class='col-sm-4 '>Status:</label>
+          <select formControlName="portStatus" class="form-control port_details_div_status" name="portStatus">
+            <option value="UP">UP</option>
+            <option value="DOWN">DOWN</option>
+          </select>
+        </div>
+      </div>
+    </form>
+  </div>
+  <form [formGroup]="filterForm">
+    <h5 class='modal-title'>GRAPH</h5>
+      <div class="container-fluid graph_div topology-graph" style="border: 1px solid #ccc;">
+          <div class="row">          
+            <div class="col-xs-8 col-md-8 " id="stats_div" style="border: 0px white; padding-top: 15px;
+                padding-bottom: 15px;
+                padding-left: 0;
+                padding-right: 0;">
+              
+                <app-dygraph  (zoomChange)='zoomHandler($event)'  style="width: 750px;"></app-dygraph>
+             
+            </div>
+            <div class="col-md-4 col-xs-4 filter">
+              <div class="stats-graph row" style="margin-top: 30px;">
+                <ul class="line-legend col-lg-12">
+                  <li>Forward</li>
+                  <li>Reverse</li>
+                </ul>
+              </div>
+              <div>
+                <div class="row form-group clearfix">
+                  <!-- <fieldset class="form-group clearfix"> -->
+                  <label class="col-xs-4 col-md-4 text-label">Timezone:</label>
+                  <div class="col-xs-8 col-md-8">
+                    <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimezone()">
+                      <option value="UTC">UTC</option>
+                      <option value="LOCAL">My Timezone</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row form-group clearfix">
+                  <label class="col-xs-4 col-md-4 text-label">From:</label>
+                  <div class="col-xs-8 col-md-8">
+                    <input formControlName="fromDate" type="text" (change)="changeDate('fromDate',$event)" datetime-picker placeholder="From" class="form-control">
+                  </div>
+                </div>
+                <div class="row form-group clearfix">
+                  <label class="col-xs-4 col-md-4 text-label">To:</label>
+                  <div class="col-xs-8 col-md-8">
+                    <input type="text" formControlName="toDate" (change)="changeDate('toDate',$event)" datetime-picker placeholder="From" class="form-control">
+                  </div>
+                </div>
+                <div id="DownsampleID" class="row form-group clearfix">
+                  <label class="col-xs-4 col-md-4 text-label">Downsample:</label>
+                  <div class="col-xs-8 col-md-8">
+                    <select formControlName="download_sample" class="form-control" (change)="callPortGraphAPI()">
+                      <option value="30s">30s</option>
+                      <option value="1m">1m</option>
+                      <option value="5m">5m</option>
+                      <option value="10m">10m</option>
+                    </select>
+                    <span class="downsample-error-message pull-left"></span>
+                  </div>
+                </div>
+                <div id="autoreloadId" class="row form-group clearfix">
+                  <label class="col-xs-4 col-md-4 text-label">Autoreload(Sec):</label>
+                  <div class="col-xs-8 col-md-8">
+                    <input formControlName="auto_reload" value="1" type="checkbox">
+                    <span [hidden]="!f.auto_reload.value">
+                      <input formControlName="auto_reload_time" type="text" name="auto_reload_time" (blur)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;">
+                      <div class="invalid-feedback" *ngIf="!f.auto_reload_time.valid && f.auto_reload_time.dirty">
+                        <div *ngIf="f.auto_reload_time.errors.pattern">Auto reload time should be number</div>
+                        <div *ngIf="f.auto_reload_time.errors.required">Auto reload time required</div>
+                      </div>
+                    </span>
+                  </div>
+                </div>
+                <div class="row form-group clearfix" id="islMetric">
+                  <label class="col-xs-4 col-md-4 text-label">Metric:</label>
+                  <div class="col-xs-8 col-md-8">
+                    <select formControlName="metric" class="form-control" (change)="callPortGraphAPI()">
+                      <option *ngFor="let option of portMetrics" value="{{option.value}}">{{option.label}}</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-xs-12 col-md-12 submit-btn">
+                  <div id="errorMesg" class="error"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+      </div>
+  </form>
+  <div id="final_configure_confirm_modal" >
+    <div class="row final_configure_confirm_modal_text">
+      <div class="col-md-12 row">
+        <div class="col-md-4">
+          <div class="col-md-12 margin-bottom" style="margin-bottom:10px;">&nbsp;</div>
+          <div class="col-md-10">
+            <label>Status</label>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="col-md-12 margin-bottom font-weight no-padding" style="margin-bottom:10px; font-weight:bold;">Current State</div>
+          <div class="col-md-10 no-padding">
+            <span id="old_status_val"></span>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="col-md-12 margin-bottom font-weight no-padding" style="margin-bottom:10px; font-weight:bold;">Requested State</div>
+          <div class="col-md-10 no-padding">
+            <span id="new_status_val"></span>
+          </div>
+        </div>
+      </div>
+      <span class="col-md-12 confirmationText">Are you sure you want to configure this port with requested state?</span>
+    </div>
+  </div>
+
+
+<context-menu #copySrcSwitch>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitch');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>

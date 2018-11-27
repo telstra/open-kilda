@@ -1,0 +1,113 @@
+.main-header {
+    height: 55px;
+    position: fixed;
+    top: 0px;
+    z-index: 3;
+    width: 100%;
+    background: rgb(27, 31, 38);
+}
+
+.main-header .logo {
+    float: left;
+    width: 210px;
+    padding: 10px 15px 0;
+}
+
+.pull-right {
+    float: right !important;
+}
+
+.nav {
+    padding-left: 0px;
+    margin-bottom: 0px;
+    list-style: none;
+}
+nav.navbar.navbar-static-top{
+    padding: 10px 5px 0px 0;
+}
+
+.navbar-static-top {
+    z-index: 1000;
+    border-width: 0px 0px 1px;
+}
+
+.navbar {
+    position: relative;
+    min-height: 50px;
+    margin-bottom: 20px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: transparent;
+    border-image: initial;
+    display: block;
+}
+
+nav.navbar .dropdown button i {
+    margin-left: 10px;
+}
+
+span.icon-logo.toggleText {
+    float: left;
+    padding: 18px 0px;
+}
+
+.icon-logo img {
+    width: 30px;
+    height: 30px;
+    float: left;
+}
+
+.navbar-custom-menu .dropdown p.dropdown-toggle {
+    margin-top: 10px;
+    color: rgb(255, 255, 255);
+}
+
+.dropdown-menu {
+    left: auto;
+    right: 0;
+    min-width: 175px;
+    margin-top: 10px;
+    border-radius: 0;
+    box-shadow: 0 6px 12px rgba(0,0,0,.175);
+}
+
+.dropdown-menu:before {
+	width: 0;
+	height: 0;
+	border-style: solid;
+	border-width: 0 8px 10px 8px;
+	border-color: transparent transparent #fff transparent;
+	content: "";
+	position: absolute;
+	bottom: 100%;
+	left: calc(100% - 24px);
+}
+
+.kilda_logo{
+    width: 100%;
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:not(:disabled):not(.disabled).active, .btn-outline-primary:not(:disabled):not(.disabled):active, .show>.btn-outline-primary.dropdown-toggle {
+    color: #fff;
+    background-color: transparent;
+    border-color: transparent;
+}
+
+.btn-outline-primary {
+    color: #fff;
+    background-color: transparent;
+    background-image: none;
+    border-color: transparent;
+    font-size: 100%;
+}
+
+.btn.focus, .btn:focus, .btn-outline-primary.focus, .btn-outline-primary:focus, .btn-outline-primary:not(:disabled):not(.disabled).active:focus, .btn-outline-primary:not(:disabled):not(.disabled):active:focus, .show>.btn-outline-primary.dropdown-toggle:focus {
+    outline: 0;
+    box-shadow: none;
+}
+
+.dropdown-item:focus, .dropdown-item:hover {
+    cursor: pointer;
+}
+
+.dropdown-toggle:after {display: none;}

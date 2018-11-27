@@ -7,10 +7,12 @@ import org.openkilda.testing.service.otsdb.OtsdbQueryService
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Issue
+import spock.lang.Narrative
 import spock.lang.Unroll
 import spock.util.mop.Use
 
 @Use(TimeCategory)
+@Narrative("Verify that basic stats logging happens.")
 class OpenTsdbSpec extends BaseSpecification {
 
     @Autowired

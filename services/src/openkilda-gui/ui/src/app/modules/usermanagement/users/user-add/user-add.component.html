@@ -1,0 +1,56 @@
+<div class=" user-management-tabs">
+  <form [formGroup]="userAddForm" id="addUserForm" (ngSubmit)="addUser()" novalidate #userform="ngForm">
+    <div class="form-group row" [ngClass]="{'error': userAddForm.controls['email'].errors && userform.submitted}">
+      <label class="col-sm-2 control-label required">Email/User Name:</label>
+      <div class="col-sm-6">
+        <input class="form-control" mdInput  type="text" formControlName="email" placeholder="Email" required/>
+        <div *ngIf="userAddForm.controls['email'].errors && userAddForm.controls['email'].errors.required && userform.submitted" class="invalid-feedback" >
+          <span >Email is required.</span>
+        </div>
+        <div *ngIf="userAddForm.controls['email'].errors && userAddForm.controls['email'].errors.email && userform.submitted" class="invalid-feedback" >
+          <span>Please enter valid Email.</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group row" [ngClass]="{'error': userAddForm.controls['name'].errors && userform.submitted}">
+      <label class="col-sm-2 control-label required">Name:</label>
+      <div class="col-sm-6">
+        <input class="form-control" type="text" formControlName="name" placeholder="Name">
+        <div *ngIf="userAddForm.controls['name'].errors && userform.submitted" class="invalid-feedback" >
+            <span>Name is required.</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group row" [ngClass]="{'error': userAddForm.controls['roles'].errors && userform.submitted}">
+      <label class="col-sm-2 control-label required">Role:</label>
+      <div class="col-sm-6">
+        <ng-select
+          formControlName="roles"
+           [items]="roleData"
+           bindLabel="name"
+           bindValue="id"
+           labelForId="id"
+           [multiple]="true"
+           placeholder="Select Role"
+           clearAllText="Clear"
+        > </ng-select>
+        <div *ngIf="userAddForm.controls['roles'].errors && userform.submitted" class="invalid-feedback" >
+          <span>Role is required.</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group row">
+      <label for="role" class="col-sm-2"></label> 
+       <div class="col-sm-6">
+         <input  type="checkbox" formControlName="is2FaEnabled" name="is2FaEnabled" id="is2FaEnabled" value="true">
+         <span class="Enabled2FAText">Enable 2FA</span> 
+       </div>
+    </div>
+    <div class="form-group row">
+        <div class="col-sm-8 text-right">
+          <button id="closeUserForm" type="button" class="btn kilda_btn" (click)="close()">Close</button>
+          <button type="submit" id="submitBtn" class="btn kilda_btn">Add User</button>
+        </div>
+    </div>
+  </form>
+</div>

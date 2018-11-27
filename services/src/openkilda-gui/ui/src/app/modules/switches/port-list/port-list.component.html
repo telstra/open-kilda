@@ -1,0 +1,111 @@
+<div id="custom-search-input">
+  <div class="port-table-div">
+    <div id="port_loading" class="bg_load" style="display: none;">
+      <div class="loader"></div>
+      <span class="load-text">Loading Port Detail
+        <span class="loader__dot">.</span>
+        <span class="loader__dot">.</span>
+        <span class="loader__dot">.</span>
+      </span>
+    </div>
+    <div id="portsTable_wrapper" class="dataTables_wrapper no-footer">
+      <!-- <div id="portsTable_filter" class="dataTables_filter"><label>Search:<input type="search" class=""
+                      placeholder="Search" aria-controls="portsTable"></label></div> -->
+      <table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" id="portsTable" class="display no-footer dataTable custom-margin-datatable" cellspacing="0"
+        role="grid" aria-describedby="portsTable_info">
+        <thead>
+          <tr class="tableHeading">
+            <th class="sorting">
+              <span title="PortNumber">Port</span>
+            </th>
+            <th class="sorting">
+              <span title="interfaceType">Interface</span>
+            </th>
+            <th class="sorting">
+              <span title="Mbps" style="text-align: center;">Mbps</span>
+              <div class="subPortHeadTable">
+                <span>INPUT</span>
+                <span>OUTPUT</span>
+              </div>
+            </th>
+            <th class="sorting">
+              <span title="Packets/Sec" style="text-align: center;">Packets/Sec</span>
+              <div class="subPortHeadTable">
+                <span>INPUT</span>
+                <span>OUTPUT</span>
+              </div>
+            </th>
+            <th class="sorting">
+              <span title="Drops" style="text-align: center;">Drops</span>
+              <div class="subPortHeadTable">
+                <span>INPUT</span>
+                <span>OUTPUT</span>
+              </div>
+            </th>
+            <th class="sorting">
+              <span title="Errors" style="text-align: center;">Errors</span>
+              <div class="subPortHeadTable">
+                <span>INPUT</span>
+                <span>OUTPUT</span>
+              </div>
+            </th>
+            <th class="sorting">
+              <span title="Collisions">Collisions</span>
+            </th>
+            <th class="sorting">
+              <span title="Frame Errors">Frame Errors</span>
+            </th>
+            <th class="sorting">
+              <span title="Overruns">Overruns</span>
+            </th>
+            <th class="sorting">
+              <span title="CRC Errors">CRC Errors</span>
+            </th>
+          </tr>
+        </thead>
+
+        <tbody id="flow-details">
+          <tr rel="1" id="div_18" class="flowDataRow odd" role="row" *ngFor="let item of switchPortDataSet; let i = index" [ngClass]="{'down-status': item.status == 'DOWN' , 'up-status': item.status == 'UP'}"
+            (click)="showPortDetail(item)">
+            <td class="divTableCell sorting_1" title="{{item.port_number}}">
+              <p>{{item.port_number}}</p>
+            </td>
+            <td class="divTableCell" title="{{item.interfacetype}}">
+              <p>{{item.interfacetype}}</p>
+            </td>
+            <td class="divTableCell subPortTable" title="">
+              <span>{{item.stats['tx-bytes']}}</span>
+              <span>{{item.stats['rx-bytes']}}</span>
+            </td>
+            <td class="divTableCell subPortTable" title="">
+              <span title="{{item.stats['tx-packets']}}">{{item.stats['tx-packets']}}</span>
+              <span title="{{item.stats['rx-packets']}}">{{item.stats['rx-packets']}}</span>
+            </td>
+            <td class="divTableCell subPortTable" title="">
+              <span title="{{item.stats['tx-dropped']}}">{{item.stats['tx-dropped']}}</span>
+              <span title="{{item.stats['rx-dropped']}}">{{item.stats['rx-dropped']}}</span>
+            </td>
+            <td class="divTableCell subPortTable" title="">
+              <span title="{{item.stats['tx-errors']}}">{{item.stats['tx-errors']}}</span>
+              <span title="{{item.stats['rx-errors']}}">{{item.stats['rx-errors']}}</span>
+            </td>
+            <td class="divTableCell" title="{{item.stats[collisions]}}">
+              <p>{{item.stats['collisions']}}</p>
+            </td>
+            <td class="divTableCell" title="{{item.stats[rx-frame-error]}}">
+              <p>{{item.stats['rx-frame-error']}}</p>
+            </td>
+            <td class="divTableCell" title="{{item.stats[rx-over-error]}}">
+              <p>{{item.stats['rx-over-error']}}</p>
+            </td>
+            <td class="divTableCell" title="{{item.stats[rx-crc-error]}}">
+              <p>{{item.stats['rx-crc-error']}}</p>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+</div>

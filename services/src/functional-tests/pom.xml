@@ -17,10 +17,10 @@
 
     <properties>
         <gmavenplus.version>1.6</gmavenplus.version>
-        <surefire.version>2.22.0</surefire.version>
+        <surefire.version>2.22.1</surefire.version>
         <jackson.version>2.9.4</jackson.version>
-        <groovy.version>2.4.15</groovy.version>
-        <spock.version>1.2-RC2-groovy-2.4</spock.version>
+        <groovy.version>2.5.3</groovy.version>
+        <spock.version>1.2-groovy-2.5</spock.version>
         <spock.reports.version>1.6.0</spock.reports.version>
         <log4j-slf4j.version>2.10.0</log4j-slf4j.version>
         <shazamcrest.version>0.9</shazamcrest.version>
@@ -42,6 +42,7 @@
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-all</artifactId>
             <version>${groovy.version}</version>
+            <type>pom</type>
         </dependency>
         <dependency>
             <groupId>com.athaydes</groupId>
@@ -113,6 +114,13 @@
                         </configuration>
                     </execution>
                 </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.surefire</groupId>
+                        <artifactId>surefire-junit47</artifactId>
+                        <version>${surefire.version}</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>
@@ -128,7 +136,6 @@
                         <version>${surefire.version}</version>
                         <configuration>
                             <testFailureIgnore>false</testFailureIgnore>
-                            <skipAfterFailureCount>1</skipAfterFailureCount>
                             <redirectTestOutputToFile>false</redirectTestOutputToFile>
                             <printSummary>true</printSummary>
                             <useFile>false</useFile>

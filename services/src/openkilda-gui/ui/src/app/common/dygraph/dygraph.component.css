@@ -1,0 +1,19 @@
+canvas{
+   width: 751px !important;
+    height: 400px !important;
+}
+
+.ng-dygraphs .loader-holder {
+    display: none !important;
+}
+
+ .ng-dygraphs .loader {
+    display: none !important;
+ }
+
+ .dygraph-legend{
+    font-weight: 300 !important;
+     width: 350px !important;
+    font-family: arial;
+    top: -20px !important;
+ }

@@ -81,10 +81,19 @@ public class OAuthService extends IAuthService {
             } else {
                 request.setHeader("Authorization:" + accessToken);
             }
-
-            ApiRequestDto apiRequestDto = new ApiRequestDto(request.getUrl(), HttpMethod.GET, request.getHeader(),
+            HttpMethod httpMethod = null;
+            if (("POST").equalsIgnoreCase(request.getMethodType())) {
+                httpMethod = HttpMethod.POST;
+            } else if (("PUT").equalsIgnoreCase(request.getMethodType())) {
+                httpMethod = HttpMethod.PUT;
+            } else if (("DELETE").equalsIgnoreCase(request.getMethodType())) {
+                httpMethod = HttpMethod.DELETE;
+            } else {
+                httpMethod = HttpMethod.GET;
+            }
+            ApiRequestDto apiRequestDto = new ApiRequestDto(request.getUrl(), httpMethod, request.getHeader(),
                     request.getBody());
-            
+
             if (request.getParams() != null) {
                 prepareRequest.preprocessApiRequest(apiRequestDto, request.getParams());
             }

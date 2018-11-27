@@ -18,6 +18,7 @@ package org.openkilda.controller;
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
+import org.openkilda.exception.NoDataFoundException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
@@ -27,13 +28,13 @@ import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.service.FlowService;
+import org.openkilda.utility.StringUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,7 +42,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.bind.annotation.RestController;
 
 import org.usermanagement.model.UserInfo;
 
@@ -49,15 +50,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
-
 /**
  * The Class FlowController.
  *
  * @author Gaurav Chugh
  */
-@Controller
-@RequestMapping(value = "/flows")
+
+@RestController
+@RequestMapping(value = "/api/flows")
 public class FlowController extends BaseController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowController.class);
@@ -70,30 +70,6 @@ public class FlowController extends BaseController {
 
     @Autowired
     private ServerContext serverContext;
-    
-    /**
-     * Return to flows view.
-     *
-     * @param request is HttpServletRequest with request information
-     * @return flows view if called with valid user session.
-     */
-    @RequestMapping
-    @Permissions(values = { IConstants.Permission.MENU_FLOWS })
-    public ModelAndView flowList(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.FLOW_LIST);
-    }
-
-    /**
-     * Return to flow details view.
-     *
-     * @param request is HttpServletRequest with request information
-     * @return flow details view if called with valid user session.
-     */
-    @RequestMapping(value = "/details")
-    public ModelAndView flowDetails(final HttpServletRequest request) {
-        return validateAndRedirect(request, IConstants.View.FLOW_DETAILS);
-    }
-
 
     /**
      * Returns information of no of flow between any two switches.
@@ -122,11 +98,12 @@ public class FlowController extends BaseController {
             @RequestParam(name = "status", required = false) List<String> statuses) {
         return flowService.getAllFlows(statuses);
     }
-    
+
     /**
      * Returns flow path with all nodes/switches exists in provided flow.
      *
-     * @param flowId id of flow path requested.
+     * @param flowId
+     *            id of flow path requested.
      * @return flow path with all nodes/switches exists in provided flow
      */
     @RequestMapping(value = "/path/{flowId}", method = RequestMethod.GET)
@@ -137,9 +114,11 @@ public class FlowController extends BaseController {
     }
 
     /**
-     * Re route the flow and returns flow path with all nodes/switches exists in provided flow.
+     * Re route the flow and returns flow path with all nodes/switches exists in
+     * provided flow.
      *
-     * @param flowId id of reroute requested.
+     * @param flowId
+     *            id of reroute requested.
      * @return reroute flow of new flow path with all nodes/switches exist
      */
     @RequestMapping(value = "/{flowId}/reroute", method = RequestMethod.GET)
@@ -153,7 +132,8 @@ public class FlowController extends BaseController {
     /**
      * Validate the flow.
      *
-     * @param flowId id of validate flow requested.
+     * @param flowId
+     *            id of validate flow requested.
      * @return validate flow
      */
     @RequestMapping(value = "/{flowId}/validate", method = RequestMethod.GET)
@@ -167,20 +147,26 @@ public class FlowController extends BaseController {
     /**
      * Get flow by Id.
      *
-     * @param flowId id of flow requested.
+     * @param flowId
+     *            id of flow requested.
      * @return flowInfo
      */
     @RequestMapping(value = "/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowInfo getFlowById(@PathVariable final String flowId) {
         LOGGER.info("[getFlowById] - start. Flow id: " + flowId);
-        return flowService.getFlowById(flowId);
+        FlowInfo flowInfo = flowService.getFlowById(flowId);
+        if (flowInfo != null && StringUtil.isNullOrEmpty(flowInfo.getFlowid())) {
+            throw new NoDataFoundException("No flow found");
+        }
+        return flowInfo;
     }
 
     /**
      * Get flow Status by Id.
      *
-     * @param flowId id of flow requested.
+     * @param flowId
+     *            id of flow requested.
      * @return flow
      */
     @RequestMapping(value = "/{flowId}/status", method = RequestMethod.GET)
@@ -193,7 +179,8 @@ public class FlowController extends BaseController {
     /**
      * Creates the flow.
      *
-     * @param flow the flow
+     * @param flow
+     *            the flow
      * @return the flow
      */
     @RequestMapping(method = RequestMethod.PUT)
@@ -207,8 +194,10 @@ public class FlowController extends BaseController {
     /**
      * Update flow.
      *
-     * @param flowId the flow id
-     * @param flow the flow
+     * @param flowId
+     *            the flow id
+     * @param flow
+     *            the flow
      * @return the flow
      */
     @RequestMapping(value = "/{flowId}", method = RequestMethod.PUT)
@@ -222,27 +211,29 @@ public class FlowController extends BaseController {
     /**
      * Delete flow.
      *
-     * @param userInfo the user info
-     * @param flowId the flow id
+     * @param userInfo
+     *            the user info
+     * @param flowId
+     *            the flow id
      * @return the flow
      */
     @RequestMapping(value = "/{flowId}", method = RequestMethod.DELETE)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.FW_FLOW_DELETE })
     @ResponseBody
-    public Flow deleteFlow(@RequestBody final UserInfo userInfo,
-            @PathVariable("flowId") final String flowId) {
+    public Flow deleteFlow(@RequestBody final UserInfo userInfo, @PathVariable("flowId") final String flowId) {
         LOGGER.info("[deleteFlow] - start. Flow id: " + flowId);
         if (serverContext.getRequestContext() != null) {
             userInfo.setUserId(serverContext.getRequestContext().getUserId());
         }
         return flowService.deleteFlow(flowId, userInfo);
     }
-    
+
     /**
      * Validate the flow.
      *
-     * @param flowId id of validate flow requested.
+     * @param flowId
+     *            id of validate flow requested.
      * @return validate flow
      */
     @RequestMapping(value = "/{flowId}/sync", method = RequestMethod.PATCH)

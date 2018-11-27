@@ -8,15 +8,13 @@
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="31" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/floodlight/Constants.java" lines="20" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="76" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="99" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="129" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="152" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="177" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="208" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="82" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="105" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="135" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="158" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="183" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="214" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="227" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryMock.java" lines="20" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryVer12Mock.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryVer12Mock.java" lines="7" checks="AbbreviationAsWordInName"/>
@@ -52,33 +50,7 @@
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="10" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="11" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="12" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="13" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="14" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="15" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="16" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="17" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="18" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="19" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="20" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="44" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="49" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="50" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="51" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="52" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="53" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="54" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="55" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="56" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="57" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="58" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="59" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="60" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="61" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="62" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="63" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="97" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="0" checks="NewlineAtEndOfFile"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="1" checks="RegexpHeader"/>

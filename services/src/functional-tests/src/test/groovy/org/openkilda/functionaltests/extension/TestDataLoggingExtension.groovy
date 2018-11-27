@@ -6,6 +6,9 @@ import org.spockframework.runtime.extension.IMethodInterceptor
 import org.spockframework.runtime.extension.IMethodInvocation
 import org.spockframework.runtime.model.SpecInfo
 
+/**
+ * Provides additional logging with spec/feature names and additional metadata info during the test run.
+ */
 @Slf4j
 class TestDataLoggingExtension extends AbstractGlobalExtension {
 

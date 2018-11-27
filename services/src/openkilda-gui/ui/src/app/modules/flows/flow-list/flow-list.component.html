@@ -1,0 +1,14 @@
+<div>
+    <div class="pull-right mb-3">
+    <div class="flow-list-filter">
+        <form [formGroup]="filterForm" *ngIf="storeLinkSetting">    
+            <label><input formControlName="active" type="checkbox" (change)="refreshFlowList()"/>&nbsp; Active</label>
+            <label><input formControlName="expired" type="checkbox" (change)="refreshFlowList()"/>&nbsp; Expired</label>
+            <label><input formControlName="deleted" type="checkbox" (change)="refreshFlowList()"/>&nbsp; Deleted</label>
+        </form>
+    </div>
+    <button class="btn btn-sm btn-dark" (click)="refreshFlowList()">Refresh</button>
+    </div>
+   <div class="clear clearfix"></div>
+</div>
+<app-flow-datatables [srcSwitch]="srcSwitch" [dstSwitch]="dstSwitch" [data]="dataSet" *ngIf="!loadingData"></app-flow-datatables>

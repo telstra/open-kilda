@@ -1,0 +1,18 @@
+<div class="row switch_rules" *ngIf="commonService.hasPermission('sw_permission_rules')">
+    <div class="col-lg-12 text-right" style="padding-bottom: 10px;margin-top:-20px; margin-bottom: 10px;">
+      <span class="btn kilda_btn" id="switch_rules_btn" (click)="switchRules()">Switch Rules</span>
+    </div>
+    <div id="switch_rules_loader" class="bg-data-loader" style="bottom:1px;display:none;">
+      <div class="loader"></div>
+    </div>
+    <div *ngIf="loading" class="component-loader"></div>
+    <div class=" col-lg-12" [hidden]="showRulesJSON">
+      <pre [contextMenu]="switchRulesVal" class="code"  style="height: 500px;">{{switchedRules | json}}</pre>
+    </div>
+</div>
+
+<context-menu #switchRulesVal>
+  <ng-template contextMenuItem (execute)="copyToClipHtml($event,'switchRulesVal');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>

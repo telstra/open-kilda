@@ -1,0 +1,16 @@
+<div class="row" [class.topology-header]="currentRoute=='/topology'">
+  <ul class="col breadcrum_flow" id="breadcrum_flow">
+    <li>
+      <a routerLink="">Home</a>
+    </li>
+    <li *ngFor="let breadcrumb of breadcrumbs">
+      <i class="fa fa-angle-double-right" *ngIf="breadcrumb.label"></i>&nbsp;
+      <a [routerLink]="[breadcrumb.url,breadcrumb.params || []]">{{breadcrumb.label}}</a>
+    </li>
+  
+  </ul>
+  <ul class="col text-right" *ngIf="currentRoute=='/topology'">
+    <app-topology-menu></app-topology-menu>
+  </ul>
+  
+</div>

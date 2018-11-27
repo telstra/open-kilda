@@ -22,10 +22,12 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
 import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
+@Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 @CleanupSwitches
 class AutoRerouteSpec extends BaseSpecification {
     @Autowired
@@ -66,15 +68,15 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.UP &&
-                    PathHelper.convert(northboundService.getFlowPath(flow.id)) != flowPath
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            assert PathHelper.convert(northboundService.getFlowPath(flow.id)) != flowPath
         }
 
         and: "Revive the ISL back (bring switch port up) and delete the flow"
         northboundService.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -98,19 +100,21 @@ class AutoRerouteSpec extends BaseSpecification {
         northboundService.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "The flow becomes 'Down'"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        }
 
         when: "ISL goes back up"
         northboundService.portUp(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "The flow becomes 'Up'"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
         and: "Restore topology to the original state, remove the flow"
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -130,24 +134,24 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "All ISLs going through the intermediate switch are 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
-            northboundService.getAllLinks().findAll { flowPath[1].switchId in it.path*.switchId }.every {
-                it.state == IslChangeType.FAILED
+            northboundService.getAllLinks().findAll { flowPath[1].switchId in it.path*.switchId }.each {
+                assert it.state == IslChangeType.FAILED
             }
         }
 
         and: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.UP &&
-                    PathHelper.convert(northboundService.getFlowPath(flow.id)) != flowPath
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            assert PathHelper.convert(northboundService.getFlowPath(flow.id)) != flowPath
         }
 
         and: "Connect the intermediate switch back and delete the flow"
         lockKeeperService.reviveSwitch(flowPath[1].switchId)
-        Wrappers.wait(WAIT_OFFSET) { flowPath[1].switchId in northboundService.getActiveSwitches()*.switchId }
-        northboundService.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS)
-        northboundService.deleteFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) { assert flowPath[1].switchId in northboundService.getActiveSwitches()*.switchId }
+        northboundService.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -167,7 +171,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
         when: "The #switchType switch is connected back"
@@ -175,11 +179,11 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "The flow becomes 'Up'"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
         and: "Remove the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -216,7 +220,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
         when: "Set reflow_on_switch_activation=#reflowOnSwitchActivation"
@@ -235,7 +239,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         and: "Restore topology to the original state, remove the flow"
         broughtDownPorts.every { northboundService.portUp(it.switchId, it.portNo) }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -262,7 +266,9 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         then: "The flow goes to 'Down' status"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        }
 
         when: "Bring all ports up on the source switch that are involved in the alternative paths"
         broughtDownPorts.findAll {
@@ -273,16 +279,16 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "The flow goes to 'Up' status"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
         and: "The flow was rerouted"
         PathHelper.convert(northboundService.getFlowPath(flow.id)) != flowPath
-        Wrappers.wait(WAIT_OFFSET) { northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Bring port involved in the original path up and delete the flow"
         northboundService.portUp(flowPath.first().switchId, flowPath.first().portNo)
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -305,10 +311,14 @@ class AutoRerouteSpec extends BaseSpecification {
             disconnectedSwitches.add(sw)
             lockKeeperService.knockoutSwitch(sw.switchId)
         }
+        Wrappers.wait(WAIT_OFFSET) {
+            def actualSwitches = northbound.activeSwitches*.switchId
+            assert !actualSwitches.any { it in disconnectedSwitches*.switchId }
+        }
 
         then: "The flow goes to 'Down' status"
-        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
+        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET) {
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
         when: "Connect switches that are involved in the alternative paths"
@@ -316,10 +326,15 @@ class AutoRerouteSpec extends BaseSpecification {
             lockKeeperService.reviveSwitch(it.switchId)
             disconnectedSwitches.remove(it)
         }
+        def connectedSwitches = topology.activeSwitches*.dpId.findAll { !disconnectedSwitches*.switchId.contains(it) }
+        Wrappers.wait(WAIT_OFFSET) {
+            def actualSwitches = northbound.activeSwitches*.switchId
+            assert actualSwitches.containsAll(connectedSwitches)
+        }
 
         then: "The flow goes to 'Up' status"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
-            northboundService.getFlowStatus(flow.id).status == FlowState.UP
+            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
         }
 
         and: "The flow was rerouted"
@@ -329,14 +344,14 @@ class AutoRerouteSpec extends BaseSpecification {
         disconnectedSwitches.each { lockKeeperService.reviveSwitch(it.switchId) }
         Wrappers.wait(WAIT_OFFSET) {
             def activeSwitches = northboundService.getActiveSwitches()*.switchId
-            disconnectedSwitches.every { it.switchId in activeSwitches }
+            disconnectedSwitches.each { assert it.switchId in activeSwitches }
         }
         disconnectedSwitches.each {
             northboundService.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS)
         }
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northboundService.getAllLinks().every { it.state != IslChangeType.FAILED }
+            northboundService.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -374,7 +389,7 @@ class AutoRerouteSpec extends BaseSpecification {
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
@@ -394,13 +409,17 @@ class AutoRerouteSpec extends BaseSpecification {
         lockKeeperService.knockoutSwitch(switchToDisconnect.dpId)
 
         then: "The switch is really disconnected from the controller"
-        Wrappers.wait(WAIT_OFFSET) { !(switchToDisconnect.dpId in northboundService.getActiveSwitches()*.switchId) }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !(switchToDisconnect.dpId in northboundService.getActiveSwitches()*.switchId)
+        }
 
         when: "Connect the switch back to the controller"
         lockKeeperService.reviveSwitch(switchToDisconnect.dpId)
 
         then: "The switch is really connected to the controller"
-        Wrappers.wait(WAIT_OFFSET) { switchToDisconnect.dpId in northboundService.getActiveSwitches()*.switchId }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert switchToDisconnect.dpId in northboundService.getActiveSwitches()*.switchId
+        }
 
         and: "The flow is not rerouted and doesn't use more preferable path"
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
@@ -408,7 +427,7 @@ class AutoRerouteSpec extends BaseSpecification {
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
-        northboundService.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
     }
 
     def singleSwitchFlow() {

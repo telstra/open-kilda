@@ -1,0 +1,103 @@
+<div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+<table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover" style="font-size:13px;">
+  <thead>
+    <tr>
+      <th >
+        <span title="Source Switch Name">
+        Src Switch
+      </span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedSrcSwitchName')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedSrcSwitchName" [hidden]="!expandedSrcSwitchName" />
+      </th>
+      <th > <span title="Source Switch">Src Switch</span></th>
+      <th ><span title="Source Port">Src Port </span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedSrcPort')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedSrcPort" [hidden]="!expandedSrcPort"/>
+      </th>
+      <th ><span title="Destination Switch Name">Dst Switch Name</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedDestinationSwitchName')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedDestinationSwitchName" [hidden]="!expandedDestinationSwitchName"/>
+      </th>
+      <th > <span title="Dst Switch">Dst Switch</span></th>
+      <th ><span title="Destination Port">Dst Port </span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedDestinationPort')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedDestinationPort" [hidden]="!expandedDestinationPort"/>
+      </th>
+      <th ><span title="Cost">Cost </span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedCost')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedCost" [hidden]="!expandedCost"/>
+      </th>
+      <th ><span title="State">State </span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedState')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedState" [hidden]="!expandedState"/>
+      </th>
+      <th  ><span title="Available Speed(%)">Available Speed(%)</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedAvailableSpeed')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedAvailableSpeed" [hidden]="!expandedAvailableSpeed"/>
+      </th>
+      <th ><span title="Speed(Mbps)">Speed(Mbps)</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedSpeed')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedSpeed" [hidden]="!expandedSpeed"/>
+      </th>
+      <th ><span title="Available Bandwidth(Mbps)">Available Bandwidth(Mbps) </span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedAvailableBandwidth')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedAvailableBandwidth" [hidden]="!expandedAvailableBandwidth"/>
+      </th>
+      <th ><span title="Latency">Latency</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedLatency')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedLatency" [hidden]="!expandedLatency"/>
+      </th>
+      <th ><span title="Unidirectional">Unidirectional</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedUnidirectional')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedUnidirectional" [hidden]="!expandedUnidirectional"/>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let listItem of data" [ngClass]="{'down-state': listItem.state == 'FAILED' , 'up-state': listItem.state != 'FAILED'}" class="flowDataRow">
+      <td class="divTableCell" title="{{ checkValue(listItem.source_switch_name) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.source_switch_name)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.source_switch) }}">
+        {{checkValue(listItem.source_switch)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.src_port) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.src_port)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.target_switch_name) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.target_switch_name)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.target_switch) }}">
+        {{checkValue(listItem.target_switch)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.dst_port) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.dst_port)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.cost) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.cost)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.state) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.state)}}
+      </td>
+      <td class="divTableCell" title="{{ getPercentage(listItem.available_bandwidth, listItem.speed) }}" (click)="showIslDetail(listItem)">
+        {{getPercentage(listItem.available_bandwidth, listItem.speed)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValueInt(listItem.speed) }}" (click)="showIslDetail(listItem)">
+        {{checkValueInt(listItem.speed)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValueInt(listItem.available_bandwidth) }}" (click)="showIslDetail(listItem)">
+        {{checkValueInt(listItem.available_bandwidth)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.latency) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.latency)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.unidirectional) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.unidirectional)}}
+      </td>
+    </tr>
+  </tbody>
+</table>
+<br>
+
+
+      
