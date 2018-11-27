@@ -43,5 +43,9 @@ public final class Constants {
         public long getCookie() {
             return cookie;
         }
+
+        public String toHexString() {
+            return String.format("%X", cookie);
+        }
     }
 }

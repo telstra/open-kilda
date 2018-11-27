@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -53,7 +53,6 @@ import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +68,6 @@ import java.util.function.Function;
  */
 public class StatisticsService implements IStatisticsService, IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
-    private static final U64 SYSTEM_MASK = U64.of(0x8000000000000000L);
     private static final long OFPM_ALL = 0xffffffffL;
 
     private IOFSwitchService switchService;
@@ -202,7 +200,6 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         OFFlowStatsRequest flowStatsRequest = factory
                 .buildFlowStatsRequest()
                 .setOutGroup(OFGroup.ANY)
-                .setCookieMask(SYSTEM_MASK)
                 .build();
 
         if (factory.getVersion().compareTo(OFVersion.OF_15) != 0) {

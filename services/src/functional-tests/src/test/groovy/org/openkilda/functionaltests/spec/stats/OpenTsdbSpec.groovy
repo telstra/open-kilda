@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.testing.Constants.DefaultRule
 
 import groovy.time.TimeCategory
 import spock.lang.Issue
@@ -31,5 +32,20 @@ class OpenTsdbSpec extends BaseSpecification {
 
     def getUniqueSwitches() {
         topology.activeSwitches.unique { it.ofVersion }
+    }
+
+    @Unroll("Stats are being logged for metric:#metric, tags:#tags")
+    def "Stats for default rules"(metric, tags) {
+        expect: "At least 1 result in the past 2 minutes"
+        otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
+
+        where:
+        [metric, tags] << ([
+                ["pen.switch.flow.system.packets", "pen.switch.flow.system.bytes", "pen.switch.flow.system.bits"],
+                [[cookie: DefaultRule.DROP_RULE.toHexString()],
+                 [cookie: DefaultRule.VERIFICATION_BROADCAST_RULE.toHexString()],
+                 [cookie: DefaultRule.VERIFICATION_UNICAST_RULE.toHexString()],
+                 [cookie: DefaultRule.DROP_LOOP_RULE.toHexString()]]
+        ].combinations())
     }
 }
