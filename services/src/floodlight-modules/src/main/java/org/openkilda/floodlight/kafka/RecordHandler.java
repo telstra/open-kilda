@@ -21,7 +21,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.ping.PingRequestCommand;
-import org.openkilda.floodlight.converter.OfFlowStatsConverter;
+import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.FlowCommandException;
@@ -620,7 +620,7 @@ class RecordHandler implements Runnable {
             List<OFFlowStatsEntry> flowEntries =
                     context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
             List<FlowEntry> flows = flowEntries.stream()
-                    .map(OfFlowStatsConverter::toFlowEntry)
+                    .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
                     .collect(Collectors.toList());
 
             SwitchFlowEntries response = SwitchFlowEntries.builder()

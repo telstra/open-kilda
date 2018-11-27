@@ -30,12 +30,10 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.messaging.info.stats.MeterConfigReply;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
-import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.OutputVlanType;
@@ -122,8 +120,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                     baseCount + 4, baseCount + 5, baseCount + 6, baseCount + 7,
                     baseCount + 8, baseCount + 9, baseCount + 10, baseCount + 11);
         }).collect(toList());
-        final List<PortStatsReply> replies = Collections.singletonList(new PortStatsReply(1, entries));
-        InfoMessage message = new InfoMessage(new PortStatsData(switchId, replies), timestamp, CORRELATION_ID,
+        InfoMessage message = new InfoMessage(new PortStatsData(switchId, entries), timestamp, CORRELATION_ID,
                 Destination.WFM_STATS);
 
         //mock kafka spout
@@ -224,8 +221,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         List<FlowStatsEntry> entries = Collections.singletonList(
                 new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
-        final List<FlowStatsReply> stats = Collections.singletonList(new FlowStatsReply(3, entries));
-        InfoMessage message = new InfoMessage(new FlowStatsData(switchId, stats),
+        InfoMessage message = new InfoMessage(new FlowStatsData(switchId, entries),
                 timestamp, CORRELATION_ID, Destination.WFM_STATS);
 
         sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
