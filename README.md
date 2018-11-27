@@ -11,6 +11,7 @@ The followings are required for building Kilda controller:
  - Maven 3.3.9+
  - JDK8
  - Python 2.7+
+ - Python 3.5+
  - Docker Compose 1.20.0+
  - GNU Make 4.1+
 
