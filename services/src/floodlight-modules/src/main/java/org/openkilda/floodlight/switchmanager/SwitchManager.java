@@ -534,9 +534,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
-            // All cases when we're installing meters require that we wait until the command is processed and
-            // the meter is installed.
-            sendBarrierRequest(sw);
         } else {
             throw new InvalidMeterIdException(dpid,
                     format("Could not install meter '%d' onto switch '%s'. Meter id must be positive.",
@@ -812,6 +809,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFMeterMod meterMod = meterModBuilder.build();
 
         pushFlow(sw, "--InstallMeter--", meterMod);
+
+        // All cases when we're installing meters require that we wait until the command is processed and
+        // the meter is installed.
+        sendBarrierRequest(sw);
     }
 
     private void buildAndDeleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId)

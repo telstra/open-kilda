@@ -735,6 +735,7 @@ public class SwitchManagerTest {
         // define that switch is Centec
         expect(switchDescription.getManufacturerDescription()).andStubReturn("Centec Inc.");
         mockGetMetersRequest(Collections.emptyList(), true, 0);
+        mockBarrierRequest();
 
         Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
         expect(iofSwitch.write(capture(capture))).andReturn(true).times(1);
@@ -767,6 +768,7 @@ public class SwitchManagerTest {
         expect(iofSwitch.getId()).andStubReturn(dpid);
         expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
         mockGetMetersRequest(Collections.emptyList(), true, 0);
+        mockBarrierRequest();
 
         Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
         expect(iofSwitch.write(capture(capture))).andReturn(true).times(1);

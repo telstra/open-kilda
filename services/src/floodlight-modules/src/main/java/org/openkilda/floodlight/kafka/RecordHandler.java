@@ -471,7 +471,8 @@ class RecordHandler implements Runnable {
                 installedRules.addAll(asList(
                         ISwitchManager.DROP_RULE_COOKIE,
                         ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE,
-                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE
+                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE,
+                        ISwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE
                 ));
             }
 
