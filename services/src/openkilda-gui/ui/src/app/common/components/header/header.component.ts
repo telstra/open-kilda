@@ -41,4 +41,12 @@ export class HeaderComponent implements OnInit, AfterViewInit {
     });
   }
 
+  logOut(){
+    this.commonService.getLogout().subscribe((data)=>{
+      location.href= environment.appEndPoint+'/login';
+    },err=>{
+      location.href= environment.appEndPoint+'/login';
+    });
+  }
+
 }

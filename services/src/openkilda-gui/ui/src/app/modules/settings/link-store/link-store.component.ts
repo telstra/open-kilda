@@ -32,8 +32,8 @@ export class LinkStoreComponent implements OnInit {
   ngOnInit() {
     this.linkStoreForm = this.formbuilder.group({
        "urls":this.formbuilder.group({
-              "get-all-link":this.formbuilder.group({
-                "name": "get-all-link",
+              "get-status-list":this.formbuilder.group({
+                "name": "get-status-list",
                 "method-type": "GET",
                 "url": ["",Validators.compose([
                           Validators.required,

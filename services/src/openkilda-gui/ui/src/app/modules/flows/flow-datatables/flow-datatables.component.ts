@@ -1,10 +1,11 @@
-import { Component, OnInit, Input, ViewChild, OnChanges, SimpleChange, SimpleChanges, Renderer2, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, Input, ViewChild, OnChanges, SimpleChange,EventEmitter, SimpleChanges, Renderer2, AfterViewInit, OnDestroy, Output } from '@angular/core';
 import { DataTableDirective } from 'angular-datatables';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { Subject } from 'rxjs';
 import { Flow } from 'src/app/common/data-models/flow';
 import { Router } from '@angular/router';
 import { CommonService } from 'src/app/common/services/common.service';
+import { FormBuilder, FormGroup } from '@angular/forms';
 declare var jQuery: any;
 
 @Component({
@@ -17,6 +18,9 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   @Input() data = [];
   @Input() srcSwitch : string;
   @Input() dstSwitch : string;
+  @Output() refresh =  new EventEmitter();
+  @Input()  statusParams:any;
+  @Input() statusList:any;
   
   dtOptions = {};
   dtTrigger: Subject<any> = new Subject();
@@ -36,21 +40,25 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   expandedStatus : boolean = false;
   expandedDescription : boolean = false;
   storeLinkSetting = false;
+  loadFilter : boolean =  false;
+  activeStatus :any = '';
+  filterForm : FormGroup;
 
   constructor(private loaderService:LoaderService, private renderer: Renderer2,private router: Router,
-    private commonService: CommonService) {
+    private commonService: CommonService,
+    private formBuilder: FormBuilder) {
     this.wrapperHide = false;
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
-    this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
+    this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false;    
    }
-
   ngOnInit() {
-   
-
+   this.activeStatus = this.statusParams.join(",");
+    this.filterForm = this.formBuilder.group({ status: (this.statusParams && this.statusParams.length > 0) ? this.statusParams[this.statusParams.length-1]: 'active'});
     let ref= this;
     this.dtOptions = {
       pageLength: 10,
       deferRender: true,
+      dom: 'tpl',
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       retrieve: true,
       autoWidth: false,
@@ -69,7 +77,6 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
         { sWidth: '9%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
-        // { sWidth: '8%' },
         { sWidth: '10%' },{ sWidth: '10%' ,"bSortable": false} ],
       initComplete:function( settings, json ){
         setTimeout(function(){
@@ -100,6 +107,21 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
 
     this.triggerSearch();
 
+  }
+  loadFilters() {
+    this.loadFilter = ! this.loadFilter;
+  }
+  refreshList(status){
+    let statusParam = [];
+    statusParam.push(status);
+    this.refresh.emit({statusParam:statusParam});
+  }
+  fulltextSearch(e:any){ 
+      var value = e.target.value;
+        this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+          dtInstance.search(value)
+                  .draw();
+        });
   }
 
   ngAfterViewInit(){

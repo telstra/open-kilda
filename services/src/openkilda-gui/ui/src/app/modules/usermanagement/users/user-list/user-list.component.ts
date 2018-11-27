@@ -57,14 +57,15 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
       retrieve: true,
       autoWidth: true,
       colResize: false,
+      dom: 'tpl',
       "aoColumns": [{
           sWidth: '30%',
         },{
           sWidth: '20%',
         },{
-          sWidth: '20%',
+          sWidth: '20%',"bSortable": false 
         },{
-          sWidth: '30%',
+          sWidth: '30%', "bSortable": false 
         }
       ],
       language: {

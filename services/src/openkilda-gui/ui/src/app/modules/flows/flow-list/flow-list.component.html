@@ -1,5 +1,22 @@
-<div>
-    <div class="pull-right mb-3">
+<div class="row">
+    <!-- <div class="col-sm-12">
+            <div class="col-sm-9">
+                <div class="col-sm-6">
+                        <div class="form-group input-group-sm">
+                                <input type="text" class="form-control" (change)="fulltextSearch()" placeholder="Search"/>
+                           </div>
+                </div>
+                   
+                </div>
+                <div class="col-sm-3 pull-right mb-3">
+                    <a><i class="fa fa-cog"></i>Filters</a>
+                    <a> | <i class="fa fa-cog"></i> Custom View</a>
+                    <a> | <i class="fa fa-refresh"></i>  Refresh</a>
+                </div>
+
+    </div> -->
+    
+    <!-- <div class="pull-right mb-3">
     <div class="flow-list-filter">
         <form [formGroup]="filterForm"class="form-inline"  *ngIf="storeLinkSetting"> 
             <div class="form-group">
@@ -11,9 +28,9 @@
                     </select>  
             </div> 
      </form>
-    </div>
+    </div> 
     <button class="btn btn-sm btn-dark" (click)="refreshFlowList()">Refresh</button>
-    </div>
-   <div class="clear clearfix"></div>
+    </div>-->
+   <!-- <div class="clear clearfix"></div> -->
 </div>
-<app-flow-datatables [srcSwitch]="srcSwitch" [dstSwitch]="dstSwitch" [data]="dataSet" *ngIf="!loadingData"></app-flow-datatables>
+<app-flow-datatables [srcSwitch]="srcSwitch" [statusList]="statusList" [statusParams] = "statusParams" (refresh)="refreshFlowList($event.statusParam)"  [dstSwitch]="dstSwitch" [data]="dataSet" *ngIf="!loadingData"></app-flow-datatables>

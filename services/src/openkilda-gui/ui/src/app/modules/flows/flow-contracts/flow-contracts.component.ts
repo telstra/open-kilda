@@ -48,14 +48,14 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
         searchPlaceholder: "Search"
       },
       "aoColumns": [
-        { sWidth: '9%' },
+        { sWidth: '7%' },
         { sWidth: '9%' },
         { sWidth: '12%' },
         { sWidth: '15%' },
         { sWidth: '15%'},
         { sWidth: '13%' },
         { sWidth: '8%' },
-        { sWidth: '8%'},
+        { sWidth: '10%', "bSortable": false },
         ],
       initComplete:function( settings, json ){
         setTimeout(function(){
@@ -77,6 +77,18 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
 
   ngAfterViewInit(){
     this.dtTrigger.next();
+    this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+      dtInstance.columns().every(function () {
+        const that = this;
+        $('input', this.header()).on('keyup change', function () {
+          if (that.search() !== this['value']) {
+            that
+              .search(this['value'])
+              .draw();
+          }
+        });
+      });
+    });
   }
   deleteContract(contractid){
     const modalReff = this.modalService.open(ModalconfirmationComponent);
@@ -106,6 +118,11 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
     if(this[inputContainer]){
       setTimeout(() => {
         this.renderer.selectRootElement('#'+inputContainer).focus();
+      });
+    }else{
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).value = "";
+        jQuery('#'+inputContainer).trigger('change');
       });
     }
     event.stopPropagation();

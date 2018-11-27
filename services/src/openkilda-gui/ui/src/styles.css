@@ -247,12 +247,14 @@ h1 {
 }
 
 table.dataTable.no-footer {
-  border: 1px solid #ccc;
+  border-right: 1px solid #ccc;
   font-size: 13px;
   margin: 15px 0;
   float: left;
   width: 100%;
   table-layout: fixed;
+  border-bottom: 1px solid #ccc;
+  border-left: 1px solid #ccc;
 }
 
 table.dataTable thead {
@@ -292,9 +294,19 @@ table.dataTable thead th .heading_search_box {
   padding: 5px;
   border: 1px solid #999;
 }
-
+table.dataTable thead th, table.dataTable tfoot th{
+  font-weight: normal!important;
+}
 table.dataTable thead th i {
   display: inline-block;
+}
+table.dataTable thead {
+  background-color: #343a40;
+  border-color: #343a40;
+  color: #FFF;
+}
+table.dataTable thead i.fa{
+  color:#FFF;
 }
 
 /*Start : Switch Css*/
@@ -1419,18 +1431,30 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
 }
 
 table.dataTable thead .sorting {
-  /* background-image: url('../images/sort_both.png'); */
-  background-image: url(assets/images/sort_both.png);
+  /* background-image: url('../images/sort_both.png'); 
+  background-image: url(assets/images/sort_both.png);*/
+  background-image: url(assets/images/sort_both_white.png);
 }
 
 
 table.dataTable thead .sorting_asc {
-  background-image: url(assets/images/sort_asc.png);
+  /*background-image: url(assets/images/sort_asc.png);*/
+  background-image: url(assets/images/sort_asc_white.png);
 }
 table.dataTable thead .sorting_desc {
-  background-image: url(assets/images/sort_desc.png);
+  /*background-image: url(assets/images/sort_desc.png);*/
+  background-image: url(assets/images/sort_desc_white.png);
 }
-
+/* table#flowDataTable.dataTable thead .sorting {
+  /* background-image: url('../images/sort_both.png'); *
+  background-image: url(assets/images/sort_both_white.png);
+}
+table#flowDataTable.dataTable thead .sorting_asc {
+  background-image: url(assets/images/sort_asc_white.png);
+}
+table#flowDataTable.dataTable thead .sorting_desc {
+  background-image: url(assets/images/sort_desc_white.png);
+} */
 
 table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTable thead .sorting_desc, table.dataTable thead .sorting_asc_disabled, table.dataTable thead .sorting_desc_disabled {
   background-position: right 8px;
@@ -1832,9 +1856,14 @@ table.dataTable thead th span,table.custom-margin-datatable thead th span {
 
 
 .flow-list-filter {
-   float: left;
-  margin-right: 10px;
-  margin-top:5px;
+  position: absolute;
+  top: 20px;
+  z-index: 1;
+  background: #FFF;
+  box-shadow: 1px 1px 1px 1px #c6c6c6;
+  width: 400px;
+  right: 100px;
+  padding: 8px 10px;
 }
 
 .flow-list-filter label {
@@ -1879,5 +1908,20 @@ button:focus{
 .badge-password{
   font-size: 14px;
 }
+#ngb-tooltip-0{
+  display: block;
+  z-index: 9999999;
+}
+.text-filters{
+  font-size: 16px;
+}
+.text-filters .dropdown-toggle::after{
+  border:none;
+}
 
+.filterMenues{
+  height: 100px;
+  overflow-y: scroll;
+  border: 1px solid #ccc;
 
+}
