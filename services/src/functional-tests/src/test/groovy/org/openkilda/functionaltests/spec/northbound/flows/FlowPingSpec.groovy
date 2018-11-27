@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
-import spock.lang.Ignore
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -28,7 +26,6 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -109,8 +106,6 @@ class FlowPingSpec extends BaseSpecification {
         [srcSwitch, dstSwitch] << ofSwitchCombinations
     }
 
-    @Ignore
-    @Issue("https://github.com/telstra/open-kilda/issues/1416")
     @Unroll("Flow ping can detect a broken #description")
     def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
@@ -172,22 +167,21 @@ class FlowPingSpec extends BaseSpecification {
                         breakReverse: true,
                         pingInput   : new PingInput()
                 ],
-                //TODO(rtretiak): below are ignored due to #1416
-//                [
-//                        breakForward: true,
-//                        breakReverse: false,
-//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
-//                ],
-//                [
-//                        breakForward: false,
-//                        breakReverse: true,
-//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
-//                ],
-//                [
-//                        breakForward: true,
-//                        breakReverse: true,
-//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
-//                ]
+                [
+                        breakForward: true,
+                        breakReverse: false,
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                ],
+                [
+                        breakForward: false,
+                        breakReverse: true,
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                ],
+                [
+                        breakForward: true,
+                        breakReverse: true,
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                ]
         ]
         description = "${data.breakForward ? "forward" : ""}${data.breakForward && data.breakReverse ? " and " : ""}" +
                 "${data.breakReverse ? "reverse" : ""} path with ${data.pingInput.timeoutMillis}ms" +
