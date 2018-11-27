@@ -1,24 +1,28 @@
 import { Injectable } from '@angular/core';
-import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor,HTTP_INTERCEPTORS  } from '@angular/common/http';
+import { HttpRequest, HttpHandler, HttpEvent,HttpResponse,HttpErrorResponse, HttpInterceptor,HTTP_INTERCEPTORS, HttpHeaderResponse  } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { tap, catchError } from 'rxjs/operators';
 import { LoaderService } from '../services/loader.service';
-
+import { CookieManagerService } from '../services/cookie-manager.service';
+import { environment } from 'src/environments/environment';
+import { Router } from '@angular/router';
 
 @Injectable()
 export class AppAuthInterceptor implements HttpInterceptor {
-    constructor(private appLoader:LoaderService) {}
+    constructor(private appLoader:LoaderService, private cookieManager:CookieManagerService,private _router: Router) {}
 
     intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         return next.handle(request).pipe(catchError(err => {
             if (err.status === 401) {
-                this.appLoader.show("Your session has been expired");
+                let msg = this.cookieManager.get('isLoggedOutInProgress') ? "": "Your session has been expired" ;
+                this.appLoader.show(msg);
                 localStorage.removeItem('flows');
                 localStorage.removeItem('is2FaEnabled');
                 localStorage.removeItem('userPermissions');
                 localStorage.removeItem('user_id');
                 localStorage.removeItem('username');
-                location.reload(true);
+                this.cookieManager.delete('isLoggedOutInProgress');
+                this._router.navigate(['/logout']);
             }
             return throwError(err);
         }))
