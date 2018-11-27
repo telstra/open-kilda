@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
+import org.openkilda.functionaltests.helpers.PathHelper
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -32,6 +34,8 @@ class SwitchRulesSpec extends BaseSpecification {
     NorthboundService northboundService
     @Autowired
     LockKeeperService lockKeeperService
+    @Autowired
+    PathHelper pathHelper
 
     @Shared
     Switch srcSwitch, dstSwitch
@@ -258,32 +262,45 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     def "Able to synchronize rules on a switch (install missing rules)"() {
-        given: "A switch with missing rules"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        given: "Flow exists and all its rules are removed from the switches"
+        def (srcSwitch, dstSwitch) = pathHelper.getSwitchPair(2)
+        def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
 
-        def defaultPlusFlowRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
-        northboundService.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
-        Wrappers.wait(RULES_DELETION_TIME) {
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
+        def defaultPlusFlowRules = [:]
+        involvedSwitches*.dpId.each { defaultPlusFlowRules[it] = northboundService.getSwitchRules(it).flowEntries }
+
+        involvedSwitches*.dpId.each { switchId ->
+            northboundService.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+            //TODO: Investigate if this check is required - seems to work stable without it
+            //Wrappers.wait(RULES_DELETION_TIME) {
+            //    assert northboundService.getSwitchRules(it).flowEntries.size() == srcSwDefaultRules.size()
+            //}
+            Wrappers.wait(RULES_DELETION_TIME) {
+                assert northboundService.validateSwitchRules(switchId).missingRules.size() == flowRulesCount
+            }
         }
-        assert northboundService.validateSwitchRules(srcSwitch.dpId).missingRules.size() == flowRulesCount
 
-        when: "Synchronize rules on the switch"
-        def synchronizedRules = northboundService.synchronizeSwitchRules(srcSwitch.dpId)
+        when: "Synchronize rules on the switches"
+        def synchronizedRules = [:]
+        involvedSwitches*.dpId.each { synchronizedRules[it] = northboundService.synchronizeSwitchRules(it) }
 
         then: "The corresponding rules are installed on the switch"
-        synchronizedRules.installedRules.size() == flowRulesCount
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            compareRules(northboundService.getSwitchRules(srcSwitch.dpId).flowEntries, defaultPlusFlowRules)
+        involvedSwitches*.dpId.each { switchId ->
+            assert synchronizedRules[switchId].installedRules.size() == flowRulesCount
+            assert Wrappers.wait(RULES_INSTALLATION_TIME) {
+                compareRules(northboundService.getSwitchRules(switchId).flowEntries, defaultPlusFlowRules[switchId])
+            }
         }
 
         and: "No missing rules were found after rules validation"
-        with(northboundService.validateSwitchRules(srcSwitch.dpId)) {
-            verifyAll {
-                properRules.size() == flowRulesCount
-                missingRules.empty
-                excessRules.empty
+        involvedSwitches*.dpId.each {
+            with(northboundService.validateSwitchRules(it)) {
+                verifyAll {
+                    properRules.size() == flowRulesCount
+                    missingRules.empty
+                    excessRules.empty
+                }
             }
         }
 

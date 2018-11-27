@@ -1,17 +1,14 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
-import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.model.Flow
 import org.openkilda.messaging.model.SwitchId
 import org.openkilda.northbound.dto.flows.FlowValidationDto
-import org.openkilda.testing.Constants
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Unroll
@@ -40,16 +37,14 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     @Unroll
     def "Flow and switch validation should fail in case of missing rules"() {
         given: "Two flows with #flowConfig configuration"
-        def (src, dest) = switches
-        def flowToBreak = northbound.addFlow(flowHelper.randomFlow(src, dest))
-        def intactFlow = northbound.addFlow(flowHelper.randomFlow(src, dest))
-
-        waitForFlowSetup(flowToBreak.id)
-        waitForFlowSetup(intactFlow.id)
+        def (src, dest) = pathHelper.getSwitchPair(distance)
+        def flowToBreak = flowHelper.addFlow(flowHelper.randomFlow(src, dest))
+        def intactFlow = flowHelper.addFlow(flowHelper.randomFlow(src, dest))
 
         and: "Both flows have the same switches in path"
         def damagedFlowSwitches = pathHelper.getInvolvedSwitches(flowToBreak.id)*.dpId
         def intactFlowSwitches = pathHelper.getInvolvedSwitches(intactFlow.id)*.dpId
+        assert damagedFlowSwitches.size() == distance + 1
         assert damagedFlowSwitches.equals(intactFlowSwitches)
 
         when: "#flowType flow rule from first flow on #switchNo switch gets deleted"
@@ -63,8 +58,8 @@ class FlowValidationNegativeSpec extends BaseSpecification {
 
         and: "Damaged #flowType flow validation should fail, while other direction should be validated successfully"
         def validationResult = northbound.validateFlow(flowToBreak.id)
-        validationResult.findAll {isFlowValid(it)} .size() == 1
-        def invalidFlow = validationResult.findAll {!isFlowValid(it)}
+        validationResult.findAll { isFlowValid(it) }.size() == 1
+        def invalidFlow = validationResult.findAll { !isFlowValid(it) }
         invalidFlow.size() == 1
 
         and: "Flow rule discrepancy should contain dpID of the affected switch and cookie of the damaged flow"
@@ -94,19 +89,15 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         [flowToBreak.id, intactFlow.id].each { flowHelper.deleteFlow(it) }
 
         where:
-        flowConfig      | switches                      | item  | switchNo  | flowType
-        "single switch" | getSingleSwitch()             | 0     | "single"  | "forward"
-        "single switch" | getSingleSwitch()             | 0     | "single"  | "reverse"
-        "neighbouring"  | getNeighbouringSwitches()     | 0     | "first"   | "forward"
-        "neighbouring"  | getNeighbouringSwitches()     | 0     | "first"   | "reverse"
-        "neighbouring"  | getNeighbouringSwitches()     | 1     | "last"    | "forward"
-        "neighbouring"  | getNeighbouringSwitches()     | 1     | "last"    | "reverse"
-        "transit"       | getNonNeighbouringSwitches()  | 0     | "first"   | "forward"
-        "transit"       | getNonNeighbouringSwitches()  | 0     | "first"   | "reverse"
-        "transit"       | getNonNeighbouringSwitches()  | 1     | "middle"  | "forward"
-        "transit"       | getNonNeighbouringSwitches()  | 1     | "middle"  | "reverse"
-        "transit"       | getNonNeighbouringSwitches()  | -1    | "last"    | "forward"
-        "transit"       | getNonNeighbouringSwitches()  | -1    | "last"    | "reverse"
+        flowConfig      | distance | item | switchNo | flowType
+        "single switch" | 0        | 0    | "single" | "forward"
+        "single switch" | 0        | 0    | "single" | "reverse"
+        "neighbouring"  | 1        | 0    | "first"  | "forward"
+        "neighbouring"  | 1        | 1    | "last"   | "forward"
+        "transit"       | 2        | 0    | "first"  | "reverse"
+        "transit"       | 2        | 1    | "middle" | "forward"
+        "transit"       | 2        | 1    | "middle" | "reverse"
+        "transit"       | 2        | -1   | "last"   | "reverse"
     }
 
     /**
@@ -117,7 +108,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
      */
     boolean isFlowValid(FlowValidationDto flow) {
         if (this.profile.equalsIgnoreCase("virtual")) {
-            return flow.discrepancies.findAll {it.field != "meterId"} .empty
+            return flow.discrepancies.findAll { it.field != "meterId" }.empty
         }
         return flow.discrepancies.empty
     }
@@ -125,10 +116,10 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     /**
      * Parses discrepancies in the flow validation result
      * @param flow - FlowValidationDto
-     * @return Map<String, String> in dpId:cookie format
+     * @return Map < String , String >  in dpId:cookie format
      */
     Map<String, String> findRulesDiscrepancies(FlowValidationDto flow) {
-        def discrepancies = flow.discrepancies.findAll {it.field != "meterId"}
+        def discrepancies = flow.discrepancies.findAll { it.field != "meterId" }
         def cookies = [:]
         discrepancies.each { disc ->
             def dpId = (disc.rule =~ /sw:(.*?),/)[0][1]
@@ -137,66 +128,4 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         }
         return cookies
     }
-
-    boolean findDirectLinks(Switch src, Switch dst, List<IslInfoData> links) {
-        def connectingLinks = links.findAll {link ->
-            (link.path[0].switchId == src.dpId) && (link.path[-1].switchId == dst.dpId)
-        }
-        return connectingLinks.empty
-    }
-
-    /**
-     * Finds pair of switches with no direct links between them.
-     * NOTE: distance between switches is NOT guaranteed
-     * @return List<Switch>
-     */
-    def getNonNeighbouringSwitches() {
-        def islInfoData = northbound.getAllLinks()
-        def switches = topologyDefinition.getActiveSwitches()
-        def differentSwitches = [switches, switches].combinations().findAll {src, dst -> src.dpId != dst.dpId}
-
-        return differentSwitches.find {src, dst -> findDirectLinks(src, dst, islInfoData)}
-    }
-
-    /**
-     * Finds pair of swithes with a direct link between them.
-     * @return List<Switch>
-     */
-    def getNeighbouringSwitches() {
-        def switches = topologyDefinition.getActiveSwitches()
-        def islInfoData = northbound.getAllLinks()
-        return [switches, switches].combinations().unique().find { src, dst -> !findDirectLinks(src, dst, islInfoData) }
-    }
-
-    /**
-     * Finds a single switch
-     * @return List<Switch> (convenient for randomFlow() method)
-     */
-    def getSingleSwitch() {
-        def switches = topologyDefinition.getActiveSwitches()
-        return [switches.first(), switches.first()]
-    }
-
-    /**
-     * Waits until flow is in UP state and rules are present on all involved switches
-     * @param flowId - ID of the flow
-     * TODO: Use flowHelper's method after it gets merged
-     */
-    def waitForFlowSetup(String flowId) {
-        assert Wrappers.wait(Constants.WAIT_OFFSET) { "up".equalsIgnoreCase(northbound.getFlow(flowId).status) }
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flowId)*.dpId
-        def dbFlow = null
-
-        assert Wrappers.wait(Constants.WAIT_OFFSET) {
-            dbFlow = database.getFlow(flowId)
-            dbFlow != null
-        } : "Flow doesn't exist in Neo4j"
-
-        def cookies = [dbFlow.left.cookie, dbFlow.right.cookie]
-
-        assert Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
-            involvedSwitches.every { sw -> northbound.getSwitchRules(sw).flowEntries*.cookie.containsAll(cookies) }
-        }
-    }
-
 }

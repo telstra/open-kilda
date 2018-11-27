@@ -24,6 +24,8 @@ class PathHelper {
     @Autowired
     TopologyDefinition topology
     @Autowired
+    TopologyHelper topologyHelper
+    @Autowired
     NorthboundService northbound
     @Autowired
     IslUtils islUtils
@@ -37,8 +39,10 @@ class PathHelper {
      */
     void makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
-        def islToAvoid = getInvolvedIsls(lessPreferablePath).find { !morePreferableIsls.contains(it) &&
-                !morePreferableIsls.contains(islUtils.reverseIsl(it)) }
+        def islToAvoid = getInvolvedIsls(lessPreferablePath).find {
+            !morePreferableIsls.contains(it) &&
+                    !morePreferableIsls.contains(islUtils.reverseIsl(it))
+        }
         log.debug "ISL to avoid: $islToAvoid"
         if (!islToAvoid) {
             throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
@@ -108,7 +112,7 @@ class PathHelper {
      * Get list of Switches involved in given path.
      */
     List<Switch> getInvolvedSwitches(List<PathNode> path) {
-        return (List<Switch>)getInvolvedIsls(path).collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique()
+        return (List<Switch>) getInvolvedIsls(path).collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique()
     }
 
     /**
@@ -126,5 +130,24 @@ class PathHelper {
      */
     int getCost(List<PathNode> path) {
         return getInvolvedIsls(path).sum { islUtils.getIslCost(it) } as int
+    }
+
+    /**
+     * Returns pair of switches with a given number of hops between
+     * //TODO: support island-like topologies
+     * @param distance :
+     *                   2+: Non-neighbouring switches (exact distance NOT guaranteed)
+     *                   1: Neighbouring switches
+     *                   0: Single switch
+     *                   -1: Pair of switches with no links in between (for island-like topologies)
+     * @return List < Switch > - Switch pair with a guaranteed distance in between
+     */
+    List<Switch> getSwitchPair(int distance) {
+        switch (distance) {
+            case 0..Integer.MAX_VALUE - 1: return topologyHelper.findSwitchPairs(
+                    topology.getIslsForActiveSwitches(), distance)[0]
+            case -1: throw new UnsupportedOperationException("Island topologies are not yet supported")
+            default: throw new UnsupportedOperationException("Distance ${distance} is invalid")
+        }
     }
 }
