@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.isl
 
 import static org.junit.Assume.assumeNotNull
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -38,12 +39,13 @@ class IslMovementSpec extends BaseSpecification {
         def isl = topology.islsForActiveSwitches.find {
             it.getAswitch()?.inPort && it.getAswitch()?.outPort
         }
-        assert isl
+        assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
 
         and: "A non-connected a-switch link"
         def notConnectedIsl = topology.notConnectedIsls.find {
             it.srcSwitch != isl.srcSwitch && it.srcSwitch != isl.dstSwitch
         }
+        assumeTrue("Wasn't able to find enough of required a-switch links", notConnectedIsl.asBoolean())
 
         when: "Replug one end of connected link to the not connected one"
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
@@ -69,7 +71,7 @@ class IslMovementSpec extends BaseSpecification {
         def isl = topology.islsForActiveSwitches.find {
             it.getAswitch()?.inPort && it.getAswitch()?.outPort
         }
-        assert isl
+        assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
 
         when: "Replug one end of link into 'itself'"
         def loopedIsl = islUtils.replug(isl, false, isl, true)

@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Unroll
 
-
 @Slf4j
 @Narrative("""The specification covers the following scenarios:
               -- Deleting flow rule from a switch and check if switch and flow validation fails.
