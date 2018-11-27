@@ -110,7 +110,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     
     private void validateUser(final UserInfo userInfo) throws AccessDeniedException {
         UserEntity userEntity = userRepository.findByUserId(userInfo.getUserId());
-        if (!userEntity.getActiveFlag()) {
+        if (userEntity == null || !userEntity.getActiveFlag()) {
             throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
         }
     }
