@@ -28,7 +28,9 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class GroupCollector extends Abstract {
     public static final String BOLT_ID = ComponentId.GROUP_COLLECTOR.toString();
@@ -42,7 +44,7 @@ public class GroupCollector extends Abstract {
     private ExpirableMap<GroupId, CollectorDescriptor> cache;
 
     public GroupCollector(int pingTimeout) {
-        expireDelay = TimeUnit.SECONDS.toMillis(pingTimeout * 2);
+        expireDelay = TimeUnit.SECONDS.toMillis(pingTimeout);
     }
 
     @Override
@@ -66,7 +68,14 @@ public class GroupCollector extends Abstract {
 
     private void expire(Tuple input) {
         long now = input.getLongByField(MonotonicTick.FIELD_ID_TIME_MILLIS);
-        cache.expire(now);
+        List<CollectorDescriptor> expired = cache.expire(now);
+
+        if (!expired.isEmpty()) {
+            log.warn("Groups {} have been expired and dropped ", expired.stream()
+                    .map(CollectorDescriptor::getGroupId)
+                    .map(GroupId::getId)
+                    .collect(Collectors.toList()));
+        }
     }
 
     private void collect(Tuple input) throws AbstractException {
@@ -80,7 +89,9 @@ public class GroupCollector extends Abstract {
     private CollectorDescriptor saveCurrentRecord(Tuple input) throws AbstractException {
         final PingContext pingContext = pullPingContext(input);
 
-        long expireAt = System.currentTimeMillis() + expireDelay;
+        // expiring is only a memory leakage protection in this place
+        // waiting ping command timeout + storm internal processing delay milliseconds
+        long expireAt = System.currentTimeMillis() + pingContext.getTimeout() + expireDelay;
         CollectorDescriptor descriptor = new CollectorDescriptor(expireAt, pingContext.getGroup());
         descriptor = cache.addIfAbsent(descriptor);
 
