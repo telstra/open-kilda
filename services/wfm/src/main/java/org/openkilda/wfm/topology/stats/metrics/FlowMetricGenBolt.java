@@ -49,6 +49,7 @@ import javax.annotation.Nullable;
  */
 public class FlowMetricGenBolt extends MetricGenBolt {
 
+    private static final long DEFAULT_RULES_COOKIE_MASK = 0x8000000000000000L;
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowMetricGenBolt.class);
 
 
@@ -101,7 +102,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         String flowId = "unknown";
         if (flowEntry != null) {
             flowId = flowEntry.getFlowId();
-        } else {
+        } else if (!isDefaultRuleCookie(entry.getCookie())) {
             LOGGER.warn("missed cache for sw {} cookie {}", switchId, entry.getCookie());
         }
 
@@ -132,14 +133,32 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             throws JsonEncodeException, FlowCookieException {
         Map<String, String> tags = new HashMap<>();
         tags.put("switchid", switchId.toOtsdFormat());
-        tags.put("cookie", String.valueOf(entry.getCookie()));
-        tags.put("tableid", String.valueOf(entry.getTableId()));
-        tags.put("flowid", flowId);
-        tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
 
-        collector.emit(tuple("pen.flow.raw.packets", timestamp, entry.getPacketCount(), tags));
-        collector.emit(tuple("pen.flow.raw.bytes", timestamp, entry.getByteCount(), tags));
-        collector.emit(tuple("pen.flow.raw.bits", timestamp, entry.getByteCount() * 8, tags));
+        String packetsMetric;
+        String bytesMetric;
+        String bitesMetric;
+
+        if (isDefaultRuleCookie(entry.getCookie())) {
+            tags.put("cookie", String.format("%X", entry.getCookie()));
+
+            packetsMetric = "pen.switch.flow.system.packets";
+            bytesMetric = "pen.switch.flow.system.bytes";
+            bitesMetric = "pen.switch.flow.system.bits";
+
+        } else {
+            tags.put("cookie", String.valueOf(entry.getCookie()));
+            tags.put("tableid", String.valueOf(entry.getTableId()));
+            tags.put("flowid", flowId);
+            tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
+
+            packetsMetric = "pen.flow.raw.packets";
+            bytesMetric = "pen.flow.raw.bytes";
+            bitesMetric = "pen.flow.raw.bits";
+        }
+
+        collector.emit(tuple(packetsMetric, timestamp, entry.getPacketCount(), tags));
+        collector.emit(tuple(bytesMetric, timestamp, entry.getByteCount(), tags));
+        collector.emit(tuple(bitesMetric, timestamp, entry.getByteCount() * 8, tags));
     }
 
     private void emitIngressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags)
@@ -162,5 +181,9 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
 
         return tags;
+    }
+
+    private boolean isDefaultRuleCookie(long cookie) {
+        return (DEFAULT_RULES_COOKIE_MASK & cookie) != 0;
     }
 }

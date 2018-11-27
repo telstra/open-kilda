@@ -14,6 +14,10 @@ import spock.util.mop.Use
 @Use(TimeCategory)
 @Narrative("Verify that basic stats logging happens.")
 class OpenTsdbSpec extends BaseSpecification {
+    private static final String DROP_RULE_COOKIE = "8000000000000001"
+    private static final String VERIFICATION_BROADCAST_RULE_COOKIE = "8000000000000002"
+    private static final String VERIFICATION_UNICAST_RULE_COOKIE = "8000000000000003"
+    private static final String DROP_VERIFICATION_LOOP_RULE_COOKIE = "8000000000000004"
 
     @Autowired
     OtsdbQueryService otsdb
@@ -38,5 +42,20 @@ class OpenTsdbSpec extends BaseSpecification {
 
     def getUniqueSwitches() {
         topology.activeSwitches.unique { it.ofVersion }
+    }
+
+    @Unroll("Stats are being logged for metric:#metric, tags:#tags")
+    def "Stats for default rules"(metric, tags) {
+        expect: "At least 1 result in the past 2 minutes"
+        otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
+
+        where:
+        [metric, tags] << ([
+                ["pen.switch.flow.system.packets", "pen.switch.flow.system.bytes", "pen.switch.flow.system.bits"],
+                [[cookie: DROP_RULE_COOKIE],
+                 [cookie: VERIFICATION_BROADCAST_RULE_COOKIE],
+                 [cookie: VERIFICATION_UNICAST_RULE_COOKIE],
+                 [cookie: DROP_VERIFICATION_LOOP_RULE_COOKIE]]
+        ].combinations())
     }
 }
