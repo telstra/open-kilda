@@ -17,8 +17,8 @@ FROM kilda/base-ubuntu
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update \
-    && apt install -y --no-install-recommends \
+RUN apt-get -q update \
+    && apt-get -q install -y --no-install-recommends \
         build-essential \
         supervisor \
         nginx \

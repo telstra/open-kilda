@@ -1,9 +1,14 @@
 package org.openkilda.functionaltests.helpers
 
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+import org.openkilda.messaging.model.Flow
+import org.openkilda.messaging.model.FlowPair
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -74,6 +79,26 @@ class FlowHelper {
     }
 
     /**
+     * Adds flow with checking flow status and rules on source and destination switches.
+     * It is supposed if rules are installed on source and destination switches, the flow is completely created.
+     */
+    FlowPayload addFlow(FlowPayload flow) {
+        log.debug("Adding flow '${flow.id}'")
+        def response = northbound.addFlow(flow)
+
+        def flowEntry = null
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+
+            flowEntry = db.getFlow(flow.id)
+            assert flowEntry
+        }
+        checkRulesOnSwitches(flowEntry, RULES_INSTALLATION_TIME, true)
+
+        return response
+    }
+
+    /**
      * Deletes flow with checking rules on source and destination switches.
      * It is supposed if rules absent on source and destination switches, the flow is completely deleted.
      */
@@ -83,21 +108,7 @@ class FlowHelper {
         log.debug("Deleting flow '$flowId'")
         def response = northbound.deleteFlow(flowId)
 
-        def cookies = [flowEntry.left.cookie, flowEntry.right.cookie]
-        def switches = [flowEntry.left.sourceSwitch, flowEntry.left.destinationSwitch].toSet()
-        switches.each { sw ->
-            Wrappers.wait(RULES_DELETION_TIME) {
-                try {
-                    assert !northbound.getSwitchRules(sw).flowEntries*.cookie.containsAll(cookies)
-                } catch (HttpClientErrorException exc) {
-                    if (exc.rawStatusCode == 404) {
-                        log.warn("Switch '$sw' was not found when checking rules after flow deletion")
-                    } else {
-                        throw exc
-                    }
-                }
-            }
-        }
+        checkRulesOnSwitches(flowEntry, RULES_DELETION_TIME, false)
 
         return response
     }
@@ -136,5 +147,28 @@ class FlowHelper {
     private String generateFlowName() {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "")
+    }
+
+    /**
+     * Checks flow rules presence (or absence) on source and destination switches.
+     */
+    private void checkRulesOnSwitches(FlowPair<Flow, Flow> flowEntry, int timeout, boolean rulesPresent) {
+        def cookies = [flowEntry.left.cookie, flowEntry.right.cookie]
+        def switches = [flowEntry.left.sourceSwitch, flowEntry.left.destinationSwitch].toSet()
+        switches.each { sw ->
+            Wrappers.wait(timeout) {
+                try {
+                    def result = northbound.getSwitchRules(sw).flowEntries*.cookie
+                    assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }
+                } catch (HttpClientErrorException exc) {
+                    if (exc.rawStatusCode == 404) {
+                        log.warn("Switch '$sw' was not found when checking rules after flow "
+                                + (rulesPresent ? "creation" : "deletion"))
+                    } else {
+                        throw exc
+                    }
+                }
+            }
+        }
     }
 }

@@ -73,14 +73,14 @@
              <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedState" id="expandedState"/>
            
         </th>
-        <th >
+        <!-- <th >
             <span title="Status">
             Status
            </span>
              <i class="fa fa-search" (click)="toggleSearch($event,'expandedStatus')"></i>
              <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedStatus" id="expandedStatus"/>
            
-        </th>
+        </th> -->
         <th >
             <span title="Description">
                 Description
@@ -102,8 +102,8 @@
         <td>{{row.dst_port || "-"}}</td>
         <td>{{row.dst_vlan || "-"}}</td>
         <td>{{row.maximum_bandwidth / 1000 || "-"}}</td>
-        <td title="{{row.status}}">{{row.state || "-"}}</td>
-        <td title="{{row.status}}">{{row.status || "-"}}</td>
+        <td title="{{row.status || row.state || '-'}}">{{row.state || row.status || "-"}}</td>
+        <!-- <td title="{{row.status}}">{{row.status || "-"}}</td> -->
         <td title="{{row.description}}">{{row.description || "-"}}</td>
         <td ><a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>
       </tr>

@@ -97,15 +97,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     @Override
     public FlowPayload addFlow(FlowPayload payload) {
         HttpEntity<FlowPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
-        log.debug("Adding flow {}", payload.getId());
-
         return restTemplate.exchange("/api/v1/flows", HttpMethod.PUT, httpEntity, FlowPayload.class).getBody();
     }
 
     @Override
     public FlowPayload updateFlow(String flowId, FlowPayload payload) {
         HttpEntity<FlowPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
-
         return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.PUT, httpEntity,
                 FlowPayload.class, flowId).getBody();
     }
@@ -183,6 +180,38 @@ public class NorthboundServiceImpl implements NorthboundService {
 
         Long[] deletedRules = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.DELETE,
                 new HttpEntity(httpHeaders), Long[].class, switchId).getBody();
+        return Arrays.asList(deletedRules);
+    }
+
+    @Override
+    public List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, Integer outPort) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/switches/{switch_id}/rules");
+        if (inPort != null) {
+            uriBuilder.queryParam("in-port", inPort);
+        }
+        if (inVlan != null) {
+            uriBuilder.queryParam("in-vlan", inVlan);
+        }
+        if (outPort != null) {
+            uriBuilder.queryParam("out-port", outPort);
+        }
+
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+
+        Long[] deletedRules = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.DELETE,
+                new HttpEntity(httpHeaders), Long[].class, switchId).getBody();
+        return Arrays.asList(deletedRules);
+    }
+
+    @Override
+    public List<Long> deleteSwitchRules(SwitchId switchId, long cookie) {
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+
+        Long[] deletedRules = restTemplate.exchange(
+                "/api/v1/switches/{switch_id}/rules?cookie={cookie}",
+                HttpMethod.DELETE, new HttpEntity(httpHeaders), Long[].class, switchId, cookie).getBody();
         return Arrays.asList(deletedRules);
     }
 

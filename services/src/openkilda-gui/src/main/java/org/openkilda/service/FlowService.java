@@ -230,8 +230,8 @@ public class FlowService {
                         discrepancy.setBandwidth(true);
 
                         FlowBandwidth flowBandwidth = new FlowBandwidth();
-                        flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth() / 1000);
-                        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+                        flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
+                        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth() * 1000);
                         discrepancy.setBandwidthValue(flowBandwidth);
                     }
                     if (("UP".equalsIgnoreCase(flowInfo.getStatus())
@@ -254,7 +254,7 @@ public class FlowService {
                     discrepancy.setBandwidth(true);
 
                     FlowBandwidth flowBandwidth = new FlowBandwidth();
-                    flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth() / 1000);
+                    flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
                     flowBandwidth.setInventoryBandwidth(0);
                     discrepancy.setBandwidthValue(flowBandwidth);
 
@@ -361,8 +361,8 @@ public class FlowService {
                 if ((flows.get(index).getMaximumBandwidth() / 1000) != inventoryFlow.getMaximumBandwidth()) {
                     discrepancy.setBandwidth(true);
                     FlowBandwidth flowBandwidth = new FlowBandwidth();
-                    flowBandwidth.setControllerBandwidth(flows.get(index).getMaximumBandwidth() / 1000);
-                    flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+                    flowBandwidth.setControllerBandwidth(flows.get(index).getMaximumBandwidth());
+                    flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth() * 1000);
                     discrepancy.setBandwidthValue(flowBandwidth);
 
                 }
@@ -404,7 +404,7 @@ public class FlowService {
                 discrepancy.setBandwidth(true);
 
                 FlowBandwidth flowBandwidth = new FlowBandwidth();
-                flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth() / 1000);
+                flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
                 flowBandwidth.setInventoryBandwidth(0);
                 discrepancy.setBandwidthValue(flowBandwidth);
 

@@ -255,16 +255,17 @@ export class LinkStoreComponent implements OnInit {
 		return return_flag;
   }
   
-  validateUrl(url) { return true;
-    // if(url=='' || url == null){
-    //   return true;
-    // }
-		// var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
-	  //   if(res == null)
-	  //       return false;
-	  //   else
-	  //       return true;
-	}
+  validateUrl(url) { 
+    if(url=='' || url == null){
+      return true;
+    }
+		var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
+	    if(res == null)
+	        return false;
+	    else
+	        return true;
+  }
+  
   enableEditForm(){
     this.isEditable = true;
     this.linkStoreForm.enable();
@@ -293,7 +294,8 @@ export class LinkStoreComponent implements OnInit {
             location.reload();
           },500);
         },(error)=>{
-          this.toastr.error(error['error-auxiliary-message'],'Error');
+          var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Error in deleting link store';
+          this.toastr.error(errorMsg,'Error');
         })
       }
     });
@@ -315,9 +317,10 @@ export class LinkStoreComponent implements OnInit {
             this.linkStoreForm.disable();
             this.isEditable = false;
             this.isEdit = true;
-          },(err)=>{
+          },(error)=>{
             this.loaderService.hide();
-          this.toastr.error(err['error-auxiliary-message'],'Error');
+         var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Error in saving link store';
+          this.toastr.error(errorMsg,'Error');
     });
   }
 

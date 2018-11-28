@@ -202,13 +202,13 @@ export class DygraphService {
         for (let i in getValue) {
           this.numOperator = parseInt(i);
           if (getValue[i] < 0 || getValue[i] == null) {
-            getValue[i] = 0;
+            continue;
           }
           if ( data.length == 2 &&
             typeof getVal[i] !== "undefined" &&
             (getVal[i] < 0 || getVal[i] == null)
           ) {
-            getVal[i] = 0;
+            continue;
           }
           var temparr = [];
           temparr[0] = new Date(Number(this.numOperator * 1000));
@@ -250,11 +250,8 @@ export class DygraphService {
       }else{
         arr.push(null); arr.push(null);
       }
-      
       graphData.push(arr);
-      //graphData.shift();
     }
-    ////graphData.pop();
     return { data: graphData, labels: labels };
   }
 
@@ -263,7 +260,7 @@ export class DygraphService {
     var chars = "0123456789ABCDE".split("");
     var hex = "#";
     for (var i = 0; i < 6; i++) {
-      hex += chars[Math.floor(Math.random() * 16)];
+      hex += chars[Math.floor(Math.random() * 14)];
     }
     var colorCode = hex;
     if (arr.indexOf(colorCode) < 0) {
@@ -307,13 +304,13 @@ export class DygraphService {
            }
         }
      }
-     
      return constructedData;
   }
   computeFlowPathGraphData(data, startDate, endDate, type, timezone,loadfromcookie) {
-    var graphData = [];
+    let newMainArray = [];
     var labels =["Date"];
     var color = [];
+    let cookiesChecked = {};
     if (typeof startDate !== "undefined" && startDate != null) {
       var dat = new Date(startDate);
       var startTime = dat.getTime();
@@ -327,71 +324,59 @@ export class DygraphService {
           arr.push(null);
         }
       }
-      
-      graphData.push(arr);
+       newMainArray.push(arr);
     }
-
-    let metricLength = 0;;
+    let lastHighestMetricLength = 0;
     if (data) {
       if (data.length > 0) {
-        metricLength = data.length;
-        for (var j = 0; j < data.length; j++) {
-          var dataValues = typeof data[j] !== "undefined" ? data[j].dps : 0;
+        let mainArray = [];
+        for (let j = 0; j < data.length; j++) {
+          var dataValues = typeof data[j] !== "undefined" ? data[j].dps : null;
           var metric = typeof data[j] !== "undefined" ? data[j].metric : "";
           if (metric !== "pen.flow.packets") {
             metric = metric + "(switchid=" + data[j].tags.switchid + ", cookie="+data[j].tags['cookie']+")";
             labels.push(metric);
             var colorCode = this.getColorCode(j, color);
-            color.push(colorCode);
-            var k = 1;
-            for (let i in dataValues) {
-              if (dataValues[i] < 0) {
-                dataValues[i] = 0;
+            if(cookiesChecked && typeof(cookiesChecked[data[j].tags['cookie']])!='undefined' && typeof(cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid])!='undefined'){
+              colorCode = cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid]; 
+              color.push(colorCode);
+            }else{
+              if(cookiesChecked && typeof(cookiesChecked[data[j].tags['cookie']])!='undefined'){
+                cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid]=colorCode;
+                color.push(colorCode);
+              }else{
+                cookiesChecked[data[j].tags['cookie']] = [];
+              cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid]=colorCode;
+              color.push(colorCode);
               }
-
-              if (j == 0) {
-                var temparr: any = [];
-                temparr[0] = new Date(Number(parseInt(i) * 1000));
-                temparr[1] = dataValues[i];
-                graphData[k] = temparr;
-              } else {
-                var temparr =
-                  typeof graphData[k] != "undefined" && graphData[k] != null
-                    ? graphData[k]
-                    : [];
-                temparr.push(dataValues[i]);
-                graphData[k] = temparr;
-              }
-              k++;
+              
             }
-          } else if (metric === "pen.flow.packets") {
-            metric = metric + "(" + data[j].tags.flowid + ")";
-            labels.push(metric);
-            color.push("#aad200");
-            var k = 1;
-            for (let i in dataValues) {
-              if (dataValues[i] < 0) {
-                dataValues[i] = 0;
+            if(dataValues){
+              for(let timestamp in dataValues){
+                if(mainArray[timestamp]){
+                  mainArray[timestamp][j]=dataValues[timestamp];
+                }else{
+                  mainArray[timestamp] = [];
+                  mainArray[timestamp][j]=dataValues[timestamp];
+                }
+                if(lastHighestMetricLength < mainArray[timestamp].length){
+                  lastHighestMetricLength =  mainArray[timestamp].length;
+                }
               }
-
-              if (j == 0) {
-                var temparr: any = [];
-                temparr[0] = new Date(Number(parseInt(i) * 1000));
-                temparr[1] = dataValues[i];
-                graphData[k] = temparr;
-              } else {
-                var temparr =
-                  typeof graphData[k] != "undefined" && graphData[k] != null
-                    ? graphData[k]
-                    : [];
-                temparr.push(dataValues[i]);
-                graphData[k] = temparr;
-              }
-              k++;
             }
-          } else {
-            continue;
           }
+        }
+
+        let index=0;
+        for(let timestamp in mainArray){
+          let tempArray = mainArray[timestamp];
+          tempArray.unshift(new Date(Number(parseInt(timestamp) * 1000)));
+          if(tempArray.length < (lastHighestMetricLength+1)){
+            for(let j= tempArray.length; j < lastHighestMetricLength+1; j++){
+              tempArray.push(null);
+            }
+          }
+          newMainArray.push(tempArray);
         }
       }
     }
@@ -399,8 +384,8 @@ export class DygraphService {
       var dat = new Date(endDate);
       var lastTime = dat.getTime();
       var usedDate =
-        graphData && graphData.length
-          ? new Date(graphData[graphData.length - 1][0])
+      newMainArray && newMainArray.length
+          ? new Date(newMainArray[newMainArray.length - 1][0])
           : new Date();
       if (typeof timezone !== "undefined" && timezone == "UTC") {
         lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
@@ -412,17 +397,26 @@ export class DygraphService {
         }
       }
      
-      graphData.push(arr);
+      newMainArray.push(arr);
     }
+    return { labels: labels, data: newMainArray, color: color };
+  }
 
-    let graphDataArray = [];
-    for(let i=0;i < graphData.length; i++){
-      if(graphData[i].length >= metricLength){
-        graphDataArray.push(graphData[i]);
+  legendFormatter(data) {
+    if (data.x == null) {
+      return '<br>' + data.series.map(function(series) { return series.dashHTML + ' ' + series.labelHTML }).join('<br>');
+    }
+  
+    var html = data.xHTML;
+    data.series.forEach(function(series) {
+      if (!series.isVisible) return;
+      var labeledData ="<span style='color:"+series.color+"'>"+series.labelHTML + ': ' + series.yHTML+"</span>";
+      if (series.isHighlighted) {
+        labeledData = '<b>' + labeledData + '</b>';
       }
-    }
-
-    return { labels: labels, data: graphDataArray, color: color };
+       html += '<br>' + labeledData;
+    });
+    return html;
   }
 
 }

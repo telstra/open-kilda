@@ -97,8 +97,11 @@ export class FlowAddComponent implements OnInit {
         this.loaderService.hide();
       },
       error => {
-        this.toaster.error("Unable to fetch switch list", "Error");
+        var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'Unable to fetch switch list';
+       
+        this.toaster.error(errorMsg, "Error");
         this.loaderService.hide();
+
       }
     );
   }
@@ -144,7 +147,8 @@ export class FlowAddComponent implements OnInit {
           this.loaderService.hide();
         },
         error => {
-          this.toaster.error("Unable to get port information", "Error");
+          var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'Unable to get port information';
+          this.toaster.error(errorMsg, "Error");
           this.loaderService.hide();
         }
       );

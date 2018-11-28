@@ -28,11 +28,11 @@ RUN ng build --prod
 WORKDIR /app
 
 #WGET CSS
-RUN wget --output-document=roboto.css https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i
-RUN wget https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css
+RUN wget -q --output-document=roboto.css https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i
+RUN wget -q https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css
 #WGET JS
-RUN wget https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js
-RUN wget --output-document=jquery-3.2.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
+RUN wget -q https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js
+RUN wget -q --output-document=jquery-3.2.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
 
 #MOVING CSS FILES
 RUN mv roboto.css src/main/resources/lib/css/

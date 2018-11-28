@@ -11,6 +11,7 @@ build-base:
 	docker build -t kilda/neo4j:latest services/neo4j
 	docker build -t kilda/opentsdb:latest services/opentsdb
 	docker build -t kilda/logstash:latest services/logstash
+	docker build -t kilda/python3-ubuntu:latest base/kilda-base-python3/
 
 build-latest: update-props build-base compile
 	docker-compose build
@@ -37,6 +38,7 @@ run-test: up-log-mode
 clean-sources:
 	$(MAKE) -C services/src clean
 	$(MAKE) -C services/mininet clean
+	$(MAKE) -C services/lab-service/lab clean
 	mvn -f services/wfm/pom.xml clean
 
 update-parent:
@@ -54,6 +56,7 @@ compile:
 	$(MAKE) -C services/src
 	$(MAKE) -C services/wfm all-in-one
 	$(MAKE) -C services/mininet
+	$(MAKE) -C services/lab-service/lab test
 
 .PHONY: unit unit-java-common unit-java-storm unit-py-te
 unit: update-props unit-java-common unit-java-storm unit-py-te

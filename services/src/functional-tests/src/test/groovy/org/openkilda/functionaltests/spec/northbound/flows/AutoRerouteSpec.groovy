@@ -55,15 +55,14 @@ class AutoRerouteSpec extends BaseSpecification {
     def "Flow is rerouted when one of the flow ISLs fails"() {
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Fail a flow ISL (bring switch port down)"
         Set<Isl> altFlowIsls = []
         def flowIsls = pathHelper.getInvolvedIsls(flowPath)
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
-        def islToFail = flowIsls.find { !(it in altFlowIsls) }
+        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(islUtils.reverseIsl(it) in altFlowIsls) }
         northboundService.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
@@ -83,8 +82,7 @@ class AutoRerouteSpec extends BaseSpecification {
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
         given: "A flow without alternative paths"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(false, true)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         def altPaths = allFlowPaths.findAll { it != flowPath }
@@ -125,8 +123,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         given: "An intermediate-switch flow with one alternative path at least"
         def flow = intermediateSwitchFlow(true)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "An intermediate switch is disconnected"
@@ -163,8 +160,7 @@ class AutoRerouteSpec extends BaseSpecification {
         //TODO(ylobankov): Remove this code once the issue #1464 is resolved.
         assumeTrue("Test is skipped because of the issue #1464", switchType != "single")
 
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
 
         when: "The #switchType switch is disconnected"
         lockKeeperService.knockoutSwitch(sw)
@@ -203,8 +199,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         given: "An intermediate-switch flow without alternative paths"
         def (flow, allFlowPaths) = intermediateSwitchFlow(false, true)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         def altPaths = allFlowPaths.findAll { it != flowPath && it.first().portNo != flowPath.first().portNo }
@@ -253,8 +248,7 @@ class AutoRerouteSpec extends BaseSpecification {
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An intermediate-switch flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Bring all ports down on the source switch that are involved in the current and alternative paths"
@@ -299,8 +293,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         given: "An intermediate-switch flow with one alternative path at least"
         def (flow, allFlowPaths) = intermediateSwitchFlow(true, true)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Disconnect all intermediate switches that are involved in the current and alternative paths"
@@ -358,8 +351,7 @@ class AutoRerouteSpec extends BaseSpecification {
     def "Flow in 'Up' status is not rerouted when discovering a new ISL and more preferable path is available"() {
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make the current flow path less preferable than others"
@@ -367,7 +359,9 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "One of the links not used by flow goes down"
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
-        def islToFail = topology.islsForActiveSwitches.find { !involvedIsls.contains(it) }
+        def islToFail = topology.islsForActiveSwitches.find {
+            !involvedIsls.contains(it) && !involvedIsls.contains(islUtils.reverseIsl(it))
+        }
         northboundService.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'FAILED'"
@@ -396,8 +390,7 @@ class AutoRerouteSpec extends BaseSpecification {
         requireProfiles("virtual")
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make the current flow path less preferable than others"

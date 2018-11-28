@@ -69,7 +69,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
         { sWidth: '9%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
-        { sWidth: '8%' },
+        // { sWidth: '8%' },
         { sWidth: '10%' },{ sWidth: '10%' ,"bSortable": false} ],
       initComplete:function( settings, json ){
         setTimeout(function(){

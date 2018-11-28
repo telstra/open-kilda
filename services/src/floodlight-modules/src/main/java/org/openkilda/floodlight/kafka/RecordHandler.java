@@ -249,9 +249,8 @@ class RecordHandler implements Runnable {
             meterId = allocateMeterId(
                     command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
-            context.getSwitchManager().installMeter(
-                    DatapathId.of(command.getSwitchId().toLong()),
-                    command.getBandwidth(), 1024, meterId);
+            installMeter(DatapathId.of(command.getSwitchId().toLong()), meterId, command.getBandwidth(),
+                    command.getId());
         } else {
             logger.debug("Installing unmetered ingress flow. Switch: {}, cookie: {}",
                     command.getSwitchId(), command.getCookie());
@@ -371,9 +370,8 @@ class RecordHandler implements Runnable {
             meterId = allocateMeterId(
                     command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
 
-            context.getSwitchManager().installMeter(
-                    DatapathId.of(command.getSwitchId().toLong()),
-                    command.getBandwidth(), 1024, meterId);
+            installMeter(DatapathId.of(command.getSwitchId().toLong()), meterId, command.getBandwidth(),
+                    command.getId());
         } else {
             logger.debug("Installing unmetered one switch flow. Switch: {}, cookie: {}",
                     command.getSwitchId(), command.getCookie());
@@ -414,18 +412,24 @@ class RecordHandler implements Runnable {
                 logger.warn("No rules were removed by criteria {} for flow {} from switch {}",
                         criteria, command.getId(), dpid);
             }
-
-            // FIXME(surabujin): QUICK FIX - try to drop meterPool completely
-            Long meterId = command.getMeterId();
-            if (meterId != null) {
-                switchManager.deleteMeter(dpid, meterId);
-            }
-
-            message.setDestination(replyDestination);
-            getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
         } catch (SwitchOperationException e) {
             throw new FlowCommandException(command.getId(), ErrorType.DELETION_FAILURE, e);
         }
+
+        // FIXME(surabujin): QUICK FIX - try to drop meterPool completely
+        Long meterId = command.getMeterId();
+        if (meterId != null) {
+            try {
+                switchManager.deleteMeter(dpid, meterId);
+            } catch (UnsupportedOperationException e) {
+                logger.info("Skip meter {} deletion from switch {}: {}", meterId, dpid, e.getMessage());
+            } catch (SwitchOperationException e) {
+                logger.error("Failed to delete meter {} from switch {}: {}", meterId, dpid, e.getMessage());
+            }
+        }
+
+        message.setDestination(replyDestination);
+        getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
     }
 
     /**
@@ -467,7 +471,8 @@ class RecordHandler implements Runnable {
                 installedRules.addAll(asList(
                         ISwitchManager.DROP_RULE_COOKIE,
                         ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE,
-                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE
+                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE,
+                        ISwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE
                 ));
             }
 
@@ -690,14 +695,18 @@ class RecordHandler implements Runnable {
 
         try {
             DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
-            long txId = context.getSwitchManager().deleteMeter(dpid, request.getMeterId());
+            context.getSwitchManager().deleteMeter(dpid, request.getMeterId());
 
-            DeleteMeterResponse response = new DeleteMeterResponse(txId != 0L);
+            boolean deleted = context.getSwitchManager().dumpMeters(dpid)
+                    .stream()
+                    .anyMatch(config -> config.getMeterId() == request.getMeterId());
+            DeleteMeterResponse response = new DeleteMeterResponse(deleted);
             InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), message.getCorrelationId(),
                     replyDestination);
             producerService.sendMessageAndTrack(replyToTopic, infoMessage);
         } catch (SwitchOperationException e) {
-            logger.info("Meter deletion is unsuccessful. Switch {} not found", request.getSwitchId());
+            logger.error("Failed to delete meter {} from switch {}: {}", request.getMeterId(), request.getSwitchId(),
+                    e.getMessage());
             ErrorData errorData =
                     new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), request.getSwitchId().toString());
             ErrorMessage error = new ErrorMessage(errorData,
@@ -820,6 +829,19 @@ class RecordHandler implements Runnable {
             allocatedId = meterPool.allocate(switchId, flowId, Math.toIntExact(meterId));
         }
         return allocatedId;
+    }
+
+    private void installMeter(DatapathId dpid, long meterId, long bandwidth, String flowId) {
+        try {
+            context.getSwitchManager().installMeter(dpid, bandwidth, 1024, meterId);
+        } catch (UnsupportedOperationException e) {
+            logger.info("Skip meter {} installation for flow {} on switch {}: {}",
+                    meterId, flowId, dpid, e.getMessage());
+        } catch (SwitchOperationException e) {
+            logger.error("Failed to install meter {} for flow {} on switch {}: {}", meterId, flowId, dpid,
+                    e.getMessage());
+        }
+
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {

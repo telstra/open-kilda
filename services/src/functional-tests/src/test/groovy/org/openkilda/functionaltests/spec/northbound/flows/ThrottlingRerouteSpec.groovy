@@ -21,6 +21,8 @@ import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
+import spock.lang.Issue
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
@@ -77,8 +79,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
             allPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make the current path less preferable than alternatives"
@@ -119,8 +120,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def allPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
@@ -167,6 +167,8 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Ignore
+    @Issue("https://github.com/telstra/open-kilda/issues/1636")
     def "Reroute timer is refreshed even if another flow reroute is issued"() {
         def blinkingPeriod = rerouteDelay
         assumeTrue("Configured reroute timeouts are not acceptable for this test. " +
@@ -187,8 +189,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def (Switch srcSwitch2, Switch dstSwitch2) = restSwitches[0..1]
         def flow2 = flowHelper.randomFlow(srcSwitch2, dstSwitch2)
         def (currentPath1, currentPath2) = [flow1, flow2].collect { flow ->
-            northboundService.addFlow(flow)
-            Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+            flowHelper.addFlow(flow)
             PathHelper.convert(northboundService.getFlowPath(flow.id))
         }
         def flow1Isls = pathHelper.getInvolvedIsls(currentPath1)
@@ -200,12 +201,12 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         allPaths1.findAll { it != currentPath1 }.each { pathHelper.makePathMorePreferable(it, currentPath1) }
 
         when: "Unique ISL for the flow1 blinks twice, initiating 2 reroutes of the flow1"
-        def isl1 = flow1Isls.find { !flow2Isls.contains(it) }
+        def isl1 = flow1Isls.find { !flow2Isls.contains(it) && !flow2Isls.contains(islUtils.reverseIsl(it)) }
         2.times { blinkPort(isl1.dstSwitch.dpId, isl1.dstPort) }
 
         and: "Right before timeout ends the flow2 ISL blinks twice"
         TimeUnit.SECONDS.sleep(rerouteDelay - discoveryInterval - 2)
-        def isl2 = flow2Isls.find { !flow1Isls.contains(it) }
+        def isl2 = flow2Isls.find { !flow1Isls.contains(it) && !flow1Isls.contains(islUtils.reverseIsl(it)) }
         2.times { blinkPort(isl2.dstSwitch.dpId, isl2.dstPort) }
 
         then: "The flow1 is still on its path right before the updated timeout runs out"
@@ -236,8 +237,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
             allPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         and: "Make the current path less preferable than alternatives"
@@ -278,8 +278,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Init a flow reroute by blinking a port"
@@ -311,8 +310,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Remove the flow"

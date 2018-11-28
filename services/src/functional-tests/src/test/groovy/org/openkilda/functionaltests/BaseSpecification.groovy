@@ -77,7 +77,12 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
                 def rules = northbound.validateSwitchRules(it.dpId)
                 !rules.excessRules.empty || !rules.missingRules.empty
             }.empty
-            topologyDefinition.activeSwitches.findAll {
+
+            def nonVirtualSwitches = northbound.getActiveSwitches()
+                    .findAll { !it.description.contains("Nicira, Inc") }
+                    .collect { sw -> topologyDefinition.getSwitches().find { it.dpId == sw.switchId } }
+
+            nonVirtualSwitches.findAll {
                 it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).isEmpty()
             }.empty
         }

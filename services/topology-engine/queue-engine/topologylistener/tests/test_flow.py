@@ -13,11 +13,9 @@
 #   limitations under the License.
 #
 import copy
-import itertools
 import json
 import pprint
 
-from topologylistener import flow_utils
 from topologylistener import message_utils
 from topologylistener import messageclasses
 from topologylistener import model
@@ -157,8 +155,6 @@ clazz_to_command = {
 
 
 class TestFlow(share.AbstractTest):
-    correlation_id_counter = itertools.count()
-
     def setUp(self):
         super(TestFlow, self).setUp()
 
@@ -167,10 +163,7 @@ class TestFlow(share.AbstractTest):
         self.allow_all_features()
 
     def test_crud(self):
-        request = self.load_data('flow-create-request.json')
-        flow_info_data = request['payload']
-        self.put_test_flow_marker(flow_info_data)
-        self.fix_direction_markers(flow_info_data)
+        request = self.load_flow_request('flow-create-request.json')
 
         # create
         request['correlation_id'] = self.make_correlation_id()
@@ -276,16 +269,6 @@ class TestFlow(share.AbstractTest):
     def is_flow_exist(self, flow_id):
         with self.open_neo4j_session() as tx:
             return bool(list(self.fetch_db_flow(tx, flow_id)))
-
-    def allow_all_features(self):
-        features = {
-            x: True
-            for x in messageclasses.features_status_transport_to_app_map}
-        features_request = share.feature_toggle_request(**features)
-        self.assertTrue(share.feed_message(share.command(features_request)))
-
-    def make_correlation_id(self):
-        return '{}-{}'.format(self.id(), next(self.correlation_id_counter))
 
     @staticmethod
     def fetch_db_flow(tx, flow_id):
@@ -421,22 +404,6 @@ class TestFlow(share.AbstractTest):
         return [
             flow['src_switch'],
             flow['dst_switch']]
-
-    @staticmethod
-    def put_test_flow_marker(flow_info_data):
-        flow_threads = flow_info_data['payload']
-        for thread in flow_threads.values():
-            thread['cookie'] |= share.cookie_test_data_flag
-
-    @staticmethod
-    def fix_direction_markers(flow_info_data):
-        flow_threads = flow_info_data['payload']
-        direction_to_flag = {
-            'forward': flow_utils.cookie_flag_forward,
-            'reverse': flow_utils.cookie_flag_reverse}
-        for direction in flow_threads:
-            flag = direction_to_flag[direction]
-            flow_threads[direction]['cookie'] |= flag
 
     @staticmethod
     def stream_filter_by_key(stream, key, value):

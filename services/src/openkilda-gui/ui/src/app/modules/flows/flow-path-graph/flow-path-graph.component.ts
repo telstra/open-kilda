@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup } from "@angular/forms";
 import { ToastrService } from "ngx-toastr";
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { copyStyles } from "@angular/animations/browser/src/util";
+import { ClipboardService } from "ngx-clipboard";
 declare var moment: any;
 
 @Component({
@@ -26,7 +27,8 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
     private dygraphService: DygraphService,
     private formBuilder: FormBuilder,
     private toaster: ToastrService,
-    private switchMask: SwitchidmaskPipe
+    private switchMask: SwitchidmaskPipe,
+    private clipBoardService : ClipboardService
   ) {}
 
   ngOnInit() {
@@ -168,10 +170,10 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
 
     this.flowService.getFlowPathStats(requestPayload).subscribe(
       response => {
-        let cookieBasedData = this.dygraphService.getCookieDataforFlowStats(response,this.type);
-        let data = (cookieBasedData && cookieBasedData.length) ? cookieBasedData: [] ;
-        console.log('cookieBasedData',cookieBasedData);
-        console.log('data',data);
+        let dataforgraph = this.dygraphService.getCookieDataforFlowStats(response,this.type);
+        let cookieBasedData = this.dygraphService.getCookieBasedData(response,this.type);
+        this.cookieData = Object.keys(cookieBasedData);
+        let data = (dataforgraph && dataforgraph.length) ? dataforgraph: [] ;
         let graphdata = {
           data: data,
           startDate: fromDate,
@@ -183,15 +185,10 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
         this.dygraphService.changeFlowPathGraphData(graphdata);
       },
       error => {
+        let dataforgraph = this.dygraphService.getCookieDataforFlowStats([],this.type);
         let cookieBasedData = this.dygraphService.getCookieBasedData([],this.type);
         this.cookieData = Object(cookieBasedData).keys;
-        if(this.cookieData && this.cookieData.length){
-          this.selectedCookie = this.cookieData[0];
-        }else{
-         this.selectedCookie = null;
-        }
-        var data = (cookieBasedData && cookieBasedData[this.selectedCookie])?cookieBasedData[this.selectedCookie] :[]
-       
+        var data = (dataforgraph && dataforgraph.length) ? dataforgraph :[]
         let graphdata = {
           data: data,
           startDate: fromDate,
@@ -243,6 +240,11 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
       this.filterForm.controls['endDate'].setValue(endDate);
     }
 
+  }
+  
+  copyToClipCookie(data){
+    this.clipBoardService.copyFromContent(data);
+    this.toaster.success('Copied to clicboard');
   }
 
   changeMetric(){

@@ -10,7 +10,8 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -35,16 +36,19 @@ class SwitchRulesSpec extends BaseSpecification {
     @Shared
     Switch srcSwitch, dstSwitch
     @Shared
-    List defaultRules
+    List srcSwDefaultRules
+    @Shared
+    List dstSwDefaultRules
     @Shared
     int flowRulesCount = 2
 
     def setup() {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
-        defaultRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
+        srcSwDefaultRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
+        dstSwDefaultRules = northboundService.getSwitchRules(dstSwitch.dpId).flowEntries
     }
-    
-    @Unroll("Default rules are installed on #sw.ofVersion switch(#sw.dpId)")
+
+    @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
     def "Default rules are installed on switches"() {
         expect: "Default rules are installed on the #sw.ofVersion switch"
         def cookies = northboundService.getSwitchRules(sw.dpId).flowEntries*.cookie
@@ -84,13 +88,12 @@ class SwitchRulesSpec extends BaseSpecification {
 
         given: "A switch with some rules installed (including default) and not connected to the controller"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
 
         def defaultPlusFlowRules = []
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             defaultPlusFlowRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
-            assert defaultPlusFlowRules.size() == defaultRules.size() + flowRulesCount
+            assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount
         }
 
         lockKeeperService.knockoutSwitch(srcSwitch.dpId)
@@ -107,7 +110,7 @@ class SwitchRulesSpec extends BaseSpecification {
         and: "Delete previously installed rules"
         northboundService.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == defaultRules.size()
+            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
         }
     }
 
@@ -115,12 +118,7 @@ class SwitchRulesSpec extends BaseSpecification {
     def "Able to delete #data.description rules from a switch"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() ==
-                    defaultRules.size() + flowRulesCount
-        }
+        flowHelper.addFlow(flow)
 
         when: "Delete #data.description rules from the switch"
         def deletedRules = northboundService.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
@@ -128,7 +126,9 @@ class SwitchRulesSpec extends BaseSpecification {
         then: "#data.description.capitalize() rules are really deleted"
         deletedRules.size() == data.rulesDeleted
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == data.rulesRemained
+            def actualRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
+            assert actualRules.size() == data.rulesRemained
+            data.deleteRulesAction != DeleteRulesAction.IGNORE_DEFAULTS ?: compareRules(actualRules, srcSwDefaultRules)
         }
 
         and: "Delete the flow"
@@ -138,7 +138,7 @@ class SwitchRulesSpec extends BaseSpecification {
         if (data.rulesRemained == 0) {
             northboundService.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
             Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == defaultRules.size()
+                assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
             }
         }
 
@@ -146,12 +146,113 @@ class SwitchRulesSpec extends BaseSpecification {
         data << [[description      : "non-default",
                   deleteRulesAction: DeleteRulesAction.IGNORE_DEFAULTS,
                   rulesDeleted     : flowRulesCount,
-                  rulesRemained    : defaultRules.size()
+                  rulesRemained    : srcSwDefaultRules.size()
                  ],
                  [description      : "all",
                   deleteRulesAction: DeleteRulesAction.DROP_ALL,
-                  rulesDeleted     : defaultRules.size() + flowRulesCount,
+                  rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount,
                   rulesRemained    : 0
+                 ]
+        ]
+    }
+
+    @Unroll
+    def "Able to delete switch rules by #data.description"() {
+        given: "A switch with some flow rules installed"
+        flowHelper.addFlow(flow)
+
+        when: "Delete switch rules by #data.description"
+        def deletedRules = northboundService.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan, data.outPort)
+
+        then: "The requested rules are really deleted"
+        deletedRules.size() == 1
+        Wrappers.wait(RULES_DELETION_TIME) {
+            def actualRules = northboundService.getSwitchRules(data.switch.dpId).flowEntries
+            assert actualRules.size() == data.defaultRules.size() + flowRulesCount - 1
+            assert filterRules(actualRules, data.inPort, data.inVlan, data.outPort).empty
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        flow << [buildFlow()] * 4
+        data << [[description : "inPort",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : flow.source.portNumber,
+                  inVlan      : null,
+                  outPort     : null
+                 ],
+                 [description : "inVlan",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : null,
+                  inVlan      : flow.source.vlanId,
+                  outPort     : null
+                 ],
+                 [description : "inPort and inVlan",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : flow.source.portNumber,
+                  inVlan      : flow.source.vlanId,
+                  outPort     : null
+                 ],
+                 [description : "outPort",
+                  switch      : dstSwitch,
+                  defaultRules: dstSwDefaultRules,
+                  inPort      : null,
+                  inVlan      : null,
+                  outPort     : flow.destination.portNumber
+                 ]
+        ]
+    }
+
+    @Unroll
+    def "Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact"() {
+        given: "A switch with some flow rules installed"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        when: "Delete switch rules by non-existing #data.description"
+        def deletedRules = northboundService.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan, data.outPort)
+
+        then: "All rules are kept intact"
+        deletedRules.size() == 0
+        northboundService.getSwitchRules(data.switch.dpId).flowEntries.size() ==
+                data.defaultRules.size() + flowRulesCount
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        data << [[description : "inPort",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : Integer.MAX_VALUE - 1,
+                  inVlan      : null,
+                  outPort     : null
+                 ],
+                 [description : "inVlan",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : null,
+                  inVlan      : 4095,
+                  outPort     : null
+                 ],
+                 [description : "inPort and inVlan",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  inPort      : Integer.MAX_VALUE - 1,
+                  inVlan      : 4095,
+                  outPort     : null
+                 ],
+                 [description : "outPort",
+                  switch      : dstSwitch,
+                  defaultRules: dstSwDefaultRules,
+                  inPort      : null,
+                  inVlan      : null,
+                  outPort     : Integer.MAX_VALUE - 1
                  ]
         ]
     }
@@ -159,17 +260,12 @@ class SwitchRulesSpec extends BaseSpecification {
     def "Able to synchronize rules on a switch (install missing rules)"() {
         given: "A switch with missing rules"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northboundService.getFlowStatus(flow.id).status == FlowState.UP
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() ==
-                    defaultRules.size() + flowRulesCount
-        }
+        flowHelper.addFlow(flow)
 
         def defaultPlusFlowRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
         northboundService.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == defaultRules.size()
+            assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
         }
         assert northboundService.validateSwitchRules(srcSwitch.dpId).missingRules.size() == flowRulesCount
 
@@ -207,5 +303,23 @@ class SwitchRulesSpec extends BaseSpecification {
         def nbSwitches = northbound.getAllSwitches()
         topology.getActiveSwitches()
                 .unique { sw -> [nbSwitches.find { it.switchId == sw.dpId }.description, sw.ofVersion].sort() }
+    }
+
+    FlowPayload buildFlow() {
+        flowHelper.randomFlow(srcSwitch, dstSwitch)
+    }
+
+    List<FlowEntry> filterRules(List<FlowEntry> rules, inPort, inVlan, outPort) {
+        if (inPort) {
+            rules = rules.findAll { it.match.inPort == inPort.toString() }
+        }
+        if (inVlan) {
+            rules = rules.findAll { it.match.vlanVid == inVlan.toString() }
+        }
+        if (outPort) {
+            rules = rules.findAll { it.instructions?.applyActions?.flowOutput == outPort.toString() }
+        }
+
+        return rules
     }
 }

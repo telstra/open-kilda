@@ -46,8 +46,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         assert srcSwitch
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 10000
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Make the current path less preferable than alternatives"
@@ -57,7 +56,8 @@ class IntentionalRerouteSpec extends BaseSpecification {
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
         def changedIsls = alternativePaths.collect { altPath ->
-            def thinIsl = pathHelper.getInvolvedIsls(altPath).find { !currentIsls.contains(it) }
+            def thinIsl = pathHelper.getInvolvedIsls(altPath).find { !currentIsls.contains(it) &&
+                    !currentIsls.contains(islUtils.reverseIsl(it)) }
             def newBw = flow.maximumBandwidth - 1
             db.updateLinkProperty(thinIsl, "max_bandwidth", newBw)
             db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", newBw)
@@ -93,8 +93,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         assert srcSwitch
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 10000
-        northboundService.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
+        flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         when: "Make one of the alternative paths to be the most preferable among all others"
@@ -103,7 +102,8 @@ class IntentionalRerouteSpec extends BaseSpecification {
 
         and: "Make the future path to have exact bandwidth to handle the flow"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find { !currentIsls.contains(it) }
+        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find { !currentIsls.contains(it) &&
+                !currentIsls.contains(islUtils.reverseIsl(it))}
         db.updateLinkProperty(thinIsl, "max_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(thinIsl, "available_bandwidth", flow.maximumBandwidth)

@@ -40,6 +40,7 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
 
   getPermissions(){
     this.loadCount++;
+    this.hide = false;
     this.loaderService.show("Loading Permissions");
     this.permissionService.getPermissions().subscribe((permission: Array<object>) => {
       this.allPermissions = permission;
@@ -47,7 +48,6 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
       this.ngAfterViewInit();
     },
     error => {
-      this.loaderService.hide();
       if(error){
         if(error.status == 0){
           this.toastr.info("Connection Refused",'Warning');
@@ -59,6 +59,7 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
       }else{
         this.toastr.error("Something went wrong",'Error');
       }
+      this.rerender();
     });
   }
 
@@ -147,7 +148,7 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
         setTimeout(function(){
           ref.loaderService.hide();
           ref.hide = true;
-        },timerOut);
+        },1500);
       }
     };
     this.getPermissions();

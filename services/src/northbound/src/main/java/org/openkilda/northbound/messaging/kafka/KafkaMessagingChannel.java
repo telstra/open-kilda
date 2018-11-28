@@ -59,8 +59,8 @@ public class KafkaMessagingChannel implements MessagingChannel {
     /**
      * Requests that are in progress of processing.
      */
-    private Map<String, CompletableFuture<InfoData>> pendingRequests = new ConcurrentHashMap<>();
-    private Map<String, CompletableFuture<List<InfoData>>> pendingChunkedRequests = new ConcurrentHashMap<>();
+    private final Map<String, CompletableFuture<InfoData>> pendingRequests = new ConcurrentHashMap<>();
+    private final Map<String, CompletableFuture<List<InfoData>>> pendingChunkedRequests = new ConcurrentHashMap<>();
 
     /**
      * Chains of chunked messages, it is filling by messages one by one as soon as the next linked message is received.
@@ -72,7 +72,7 @@ public class KafkaMessagingChannel implements MessagingChannel {
      * chunked message or not in order to do not have duplicates, because current version of kafka do not guarantee
      * exactly once delivery.
      */
-    private Map<String, Set<String>> chunkedMessageIdsPerRequest = new HashMap<>();
+    private Map<String, Set<String>> chunkedMessageIdsPerRequest = new ConcurrentHashMap<>();
 
     @Value("${northbound.messages.expiration.minutes}")
     private int expiredTime;
@@ -85,7 +85,7 @@ public class KafkaMessagingChannel implements MessagingChannel {
      */
     @PostConstruct
     public void setUp() {
-        messagesChains = new PassiveExpiringMap<>(expiredTime, TimeUnit.MINUTES, new HashMap<>());
+        messagesChains = new PassiveExpiringMap<>(expiredTime, TimeUnit.MINUTES, new ConcurrentHashMap<>());
     }
 
     /**

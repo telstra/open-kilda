@@ -139,7 +139,8 @@ export class FlowDetailComponent implements OnInit {
         this.loaderService.hide();
       },
       error => {
-        this.toaster.error("No flow found", "Error");
+        var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No Flow found';
+        this.toaster.error(errorMsg, "Error");
         this._location.back();
         this.loaderService.hide();
       }

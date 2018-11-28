@@ -3,8 +3,9 @@ switches:
       dp_id: 00:00:00:00:00:00:00:01
       of_version: OF_13
       status: active
+      max_port: 30
       out_ports:
-        - port: 12
+        - port: 10
           vlan_range: 101..150
 
     - name: ofsw2
@@ -27,6 +28,7 @@ switches:
       dp_id: 00:00:00:00:00:00:00:07
       of_version: OF_13
       status: active
+      max_port: 52
       out_ports:
         - port: 10
           vlan_range: 101..150
@@ -35,6 +37,7 @@ switches:
       dp_id: 00:00:00:00:00:00:00:08
       of_version: OF_13
       status: active
+      max_port: 52
       out_ports:
         - port: 10
           vlan_range: 101..150
@@ -43,6 +46,7 @@ switches:
       dp_id: 00:00:00:00:00:00:00:09
       of_version: OF_13
       status: active
+      max_port: 52
       out_ports:
         - port: 10
           vlan_range: 101..150
@@ -140,8 +144,26 @@ isls:
       a_switch:
         in_port: 20
 
-traffgens: []
+traffgens:
+  - name: tg1
+    iface: eth0
+    control_endpoint: http://0.0.0.0:4041
+    switch: ofsw3
+    switch_port: 10
+    status: active
+  - name: tg2
+    iface: eth0
+    control_endpoint: http://0.0.0.0:4042
+    switch: ofsw8
+    switch_port: 10
+    status: active
+  - name: tg3
+    iface: eth0
+    control_endpoint: http://0.0.0.0:4043
+    switch: ofsw1
+    switch_port: 10
+    status: active
 
 traffgen_config:
-    address_pool_base: 0.0.0.0
+    address_pool_base: 172.16.80.0
     address_pool_prefix_len: 20
