@@ -100,7 +100,7 @@ public class NorthboundSteps {
     public void removeMeter(String meterAlias, String switchAlias) {
         Entry<Integer, MeterEntry> meter = topologyUnderTest.getAliasedObject(meterAlias);
         Switch sw = topologyUnderTest.getAliasedObject(switchAlias);
-        deleteMeterResponse = northboundService.deleteMeter(sw.getDpId(), meter.getKey());
+        deleteMeterResponse = northboundService.deleteMeter(sw.getDpId(), (long) meter.getKey());
     }
 
     @Then("^remove meter response is successful$")
