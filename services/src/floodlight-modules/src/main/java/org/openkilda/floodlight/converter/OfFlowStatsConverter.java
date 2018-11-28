@@ -85,6 +85,8 @@ public final class OfFlowStatsConverter {
                         .orElse(null))
                 .ethType(Optional.ofNullable(match.get(MatchField.ETH_TYPE))
                         .map(Objects::toString).orElse(null))
+                .ethSrc(Optional.ofNullable(match.get(MatchField.ETH_SRC))
+                        .map(Objects::toString).orElse(null))
                 .ethDst(Optional.ofNullable(match.get(MatchField.ETH_DST))
                         .map(Objects::toString).orElse(null))
                 .inPort(Optional.ofNullable(match.get(MatchField.IN_PORT))
