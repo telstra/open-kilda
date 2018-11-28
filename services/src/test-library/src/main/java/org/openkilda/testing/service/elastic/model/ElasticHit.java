@@ -13,10 +13,32 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.elastic;
+package org.openkilda.testing.service.elastic.model;
 
-import org.openkilda.testing.service.elastic.model.ElasticResponseDto;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public interface ElasticService {
-    ElasticResponseDto getLogs(ElasticQuery query);
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+class ElasticHit {
+
+    @JsonProperty("_index")
+    String index;
+
+    @JsonProperty("_type")
+    String type;
+
+    @JsonProperty("_id")
+    String messageId;
+
+    @JsonProperty("_score")
+    float score;
+
+    @JsonProperty("_source")
+    ElasticSource source;
 }
