@@ -41,13 +41,8 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"
         def (src, dest) = switches
-        def flowToBreak = flowHelper.randomFlow(src, dest)
-        def intactFlow = flowHelper.randomFlow(src, dest)
-
-        if (src == dest) {
-            flowToBreak = flowHelper.singleSwitchFlow(src)
-            intactFlow = flowHelper.singleSwitchFlow(src)
-        }
+        def flowToBreak = (src == dest) ? flowHelper.singleSwitchFlow(src) : flowHelper.randomFlow(src, dest)
+        def intactFlow = (src == dest) ? flowHelper.singleSwitchFlow(src) : flowHelper.randomFlow(src, dest)
 
         flowToBreak = northbound.addFlow(flowToBreak)
         intactFlow = northbound.addFlow(intactFlow)
