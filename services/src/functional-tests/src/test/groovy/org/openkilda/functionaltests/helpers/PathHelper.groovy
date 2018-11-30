@@ -139,15 +139,10 @@ class PathHelper {
      *                   2+: Non-neighbouring switches (exact distance NOT guaranteed)
      *                   1: Neighbouring switches
      *                   0: Single switch
-     *                   -1: Pair of switches with no links in between (for island-like topologies)
      * @return List < Switch > - Switch pair with a guaranteed distance in between
      */
     List<Switch> getSwitchPair(int distance) {
-        switch (distance) {
-            case 0..Integer.MAX_VALUE - 1: return topologyHelper.findSwitchPairs(
-                    topology.getIslsForActiveSwitches(), distance)[0]
-            case -1: throw new UnsupportedOperationException("Island topologies are not yet supported")
-            default: throw new UnsupportedOperationException("Distance ${distance} is invalid")
-        }
+        return topologyHelper.getSwitchPairs(topology.getIslsForActiveSwitches(), distance)[0]
     }
+
 }
