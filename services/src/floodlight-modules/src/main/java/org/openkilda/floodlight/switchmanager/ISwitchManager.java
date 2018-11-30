@@ -189,11 +189,10 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid      datapath ID of the switch
      * @param bandwidth the bandwidth limit value
-     * @param burstSize the size of the burst
      * @param meterId   the meter ID
      * @throws SwitchOperationException Switch not found
      */
-    void installMeter(DatapathId dpid, long bandwidth, long burstSize, long meterId) throws SwitchOperationException;
+    void installMeter(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
 
     /**
      * Deletes the meter from the switch OF_13.

@@ -62,7 +62,6 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
@@ -526,12 +525,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installMeter(DatapathId dpid, long bandwidth, long burstSize, final long meterId)
+    public void installMeter(DatapathId dpid, long bandwidth, final long meterId)
             throws SwitchOperationException {
         if (meterId > 0L) {
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
 
+            long burstSize = Math.max(config.getFlowMeterMinBurstSizeInKbits(),
+                    (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
@@ -1263,14 +1264,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         try {
             long rate;
+            long burstSize;
             Set<OFMeterFlags> flags;
 
             if (isSwitchSupportsPktpsFlag(sw)) {
-                flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS);
+                flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
+                // With PKTPS flag rate and burst size is in packets
                 rate = ratePkts;
+                burstSize = config.getSystemMeterBurstSizeInPackets();
             } else {
-                flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS);
+                flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
+                // With KBPS flag rate and burst size is in Kbits
                 rate = (ratePkts * config.getDiscoPacketSize()) / 1024L;
+                burstSize = config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
             }
 
             if (meterBandDrop != null && meterBandDrop.getRate() == rate
@@ -1286,7 +1292,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 sendBarrierRequest(sw);
             }
 
-            buildAndInstallMeter(sw, flags, rate, NumberUtils.LONG_ZERO, meterId);
+            buildAndInstallMeter(sw, flags, rate, burstSize, meterId);
         } catch (SwitchOperationException e) {
             logger.warn("Failed to (re)install meter {} on switch {}: {}", meterId, sw.getId(), e.getMessage());
             return null;

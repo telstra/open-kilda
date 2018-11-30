@@ -27,6 +27,7 @@ import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -34,8 +35,6 @@ import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.hamcrest.core.Every.everyItem;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.openkilda.floodlight.Constants.bandwidth;
-import static org.openkilda.floodlight.Constants.burstSize;
 import static org.openkilda.floodlight.Constants.inputPort;
 import static org.openkilda.floodlight.Constants.inputVlanId;
 import static org.openkilda.floodlight.Constants.meterId;
@@ -105,6 +104,8 @@ public class SwitchManagerTest {
     private static final OutputCommands scheme = new ReplaceSchemeOutputCommands();
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private static final long cookie = 123L;
+    private static final long bandwidth = 20000L;
+    private static final long smallBandwidth = 100L;
     private static final String cookieHex = "7B";
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private SwitchManager switchManager;
@@ -304,6 +305,15 @@ public class SwitchManagerTest {
 
     @Test
     public void installBandwidthMeter() throws Exception {
+        runInstallMeterTest(bandwidth, bandwidth / 10);
+    }
+
+    @Test
+    public void installSmallBandwidthMeter() throws Exception {
+        runInstallMeterTest(smallBandwidth, config.getFlowMeterMinBurstSizeInKbits());
+    }
+
+    private void runInstallMeterTest(long bandwidth, long burstSize) throws Exception {
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getId()).andReturn(dpid);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
@@ -318,7 +328,7 @@ public class SwitchManagerTest {
         replay(iofSwitch);
         replay(switchDescription);
 
-        switchManager.installMeter(dpid, bandwidth, burstSize, meterId);
+        switchManager.installMeter(dpid, bandwidth, meterId);
     }
 
     @Test
@@ -754,7 +764,11 @@ public class SwitchManagerTest {
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFMeterModCommand.ADD))));
         assertThat(actual, everyItem(hasProperty("meterId", equalTo(expectedMeterId))));
         assertThat(actual, everyItem(hasProperty("flags",
-                contains(OFMeterFlags.KBPS, OFMeterFlags.STATS))));
+                contains(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST))));
+        for (OFMeterMod mod : actual) {
+            long expectedBurstSize = config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
+            assertThat(mod.getMeters(), everyItem(hasProperty("burstSize", is(expectedBurstSize))));
+        }
     }
 
     @Test
@@ -786,7 +800,11 @@ public class SwitchManagerTest {
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFMeterModCommand.ADD))));
         assertThat(actual, everyItem(hasProperty("meterId", equalTo(expectedMeterId))));
         assertThat(actual, everyItem(hasProperty("flags",
-                contains(OFMeterFlags.PKTPS, OFMeterFlags.STATS))));
+                contains(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST))));
+        for (OFMeterMod mod : actual) {
+            assertThat(mod.getMeters(),
+                    everyItem(hasProperty("burstSize", is(config.getSystemMeterBurstSizeInPackets()))));
+        }
     }
 
     @Test
@@ -821,7 +839,7 @@ public class SwitchManagerTest {
         assertThat(actual.get(1), hasProperty("command", equalTo(OFMeterModCommand.ADD)));
         assertThat(actual.get(1), hasProperty("meterId", equalTo(expectedMeterId)));
         assertThat(actual.get(1), hasProperty("flags",
-                containsInAnyOrder(OFMeterFlags.KBPS, OFMeterFlags.STATS)));
+                containsInAnyOrder(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST)));
     }
 
     @Test
@@ -855,7 +873,7 @@ public class SwitchManagerTest {
         assertThat(actual.get(1), hasProperty("command", equalTo(OFMeterModCommand.ADD)));
         assertThat(actual.get(1), hasProperty("meterId", equalTo(unicastMeter)));
         assertThat(actual.get(1), hasProperty("flags",
-                containsInAnyOrder(OFMeterFlags.PKTPS, OFMeterFlags.STATS)));
+                containsInAnyOrder(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST)));
     }
 
     @Test
@@ -1000,6 +1018,21 @@ public class SwitchManagerTest {
         @Override
         public int getDiscoPacketSize() {
             return 250;
+        }
+
+        @Override
+        public double getFlowMeterBurstCoefficient() {
+            return 0.1;
+        }
+
+        @Override
+        public long getFlowMeterMinBurstSizeInKbits() {
+            return 1024;
+        }
+
+        @Override
+        public long getSystemMeterBurstSizeInPackets() {
+            return 4096;
         }
     }
 }
