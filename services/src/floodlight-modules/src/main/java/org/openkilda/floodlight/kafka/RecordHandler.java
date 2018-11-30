@@ -192,7 +192,7 @@ class RecordHandler implements Runnable {
         } else if (data instanceof DumpPortDescriptionRequest) {
             doDumpPortDescriptionRequest(message);
         } else if (data instanceof DumpMetersRequest) {
-            doDumpMetersRequest(message, replyToTopic, replyDestination);
+            doDumpMetersRequest(message, replyToTopic);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -612,6 +612,8 @@ class RecordHandler implements Runnable {
 
     private void doDumpRulesRequest(final CommandMessage message) {
         DumpRulesRequest request = (DumpRulesRequest) message.getData();
+        String reply = request.getReplyTo();
+        logger.error("REPLY_TOPIC {}", reply);
 
         final IKafkaProducerService producerService = getKafkaProducer();
 
@@ -631,15 +633,15 @@ class RecordHandler implements Runnable {
                     .build();
             InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
                     message.getCorrelationId());
-            producerService.sendMessageAndTrack(context.getKafkaNorthboundTopic(), infoMessage);
+            producerService.sendMessageAndTrack(reply, infoMessage);
         } catch (SwitchOperationException e) {
             logger.info("Dump rules is unsuccessful. Switch {} not found", request.getSwitchId());
             ErrorData errorData = new DumpRulesErrorData(ErrorType.NOT_FOUND, e.getMessage(),
                     "The switch was not found when requesting a rules dump.");
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(),
-                    getDestinationForTopic(context.getKafkaNorthboundTopic()));
-            producerService.sendMessageAndTrack(context.getKafkaNorthboundTopic(), error);
+                    getDestinationForTopic(reply));
+            producerService.sendMessageAndTrack(reply, error);
         }
     }
 
@@ -844,8 +846,7 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDumpMetersRequest(
-            CommandMessage message, String replyToTopic, Destination replyDestination) {
+    private void doDumpMetersRequest(CommandMessage message, String replyToTopic) {
         DumpMetersRequest request = (DumpMetersRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -871,14 +872,16 @@ class RecordHandler implements Runnable {
             ErrorData errorData = new ErrorData(ErrorType.PARAMETERS_INVALID, e.getMessage(), messageString);
             ErrorMessage error =
                     new ErrorMessage(
-                            errorData, System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+                            errorData, System.currentTimeMillis(), message.getCorrelationId(),
+                            getDestinationForTopic(context.getKafkaNorthboundTopic()));
             producerService.sendMessageAndTrack(replyToTopic, error);
         } catch (SwitchNotFoundException e) {
             logger.info("Dumping switch meters is unsuccessful. Switch {} not found", request.getSwitchId());
             ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, e.getMessage(), request.getSwitchId().toString());
             ErrorMessage error =
                     new ErrorMessage(
-                            errorData, System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+                            errorData, System.currentTimeMillis(), message.getCorrelationId(),
+                            getDestinationForTopic(context.getKafkaNorthboundTopic()));
             producerService.sendMessageAndTrack(replyToTopic, error);
         } catch (SwitchOperationException e) {
             logger.error("Unable to dump meters", e);
@@ -886,7 +889,8 @@ class RecordHandler implements Runnable {
                     new ErrorData(ErrorType.NOT_FOUND, e.getMessage(), "Unable to dump meters");
             ErrorMessage error =
                     new ErrorMessage(
-                            errorData, System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+                            errorData, System.currentTimeMillis(), message.getCorrelationId(),
+                            getDestinationForTopic(context.getKafkaNorthboundTopic()));
             producerService.sendMessageAndTrack(replyToTopic, error);
         }
     }

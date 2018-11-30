@@ -29,7 +29,11 @@ public class DumpRulesRequest extends CommandData {
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    public DumpRulesRequest(@JsonProperty("switch_id") SwitchId switchId) {
+    @JsonProperty("reply_to")
+    private String replyTo;
+
+    public DumpRulesRequest(@JsonProperty("switch_id") SwitchId switchId, @JsonProperty("reply_to") String replyTo) {
         this.switchId = switchId;
+        this.replyTo = replyTo;
     }
 }

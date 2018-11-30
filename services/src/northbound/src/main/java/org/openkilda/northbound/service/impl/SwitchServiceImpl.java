@@ -116,7 +116,7 @@ public class SwitchServiceImpl implements SwitchService {
      */
     @Override
     public CompletableFuture<SwitchFlowEntries> getRules(SwitchId switchId, Long cookie, String correlationId) {
-        DumpRulesRequest request = new DumpRulesRequest(switchId);
+        DumpRulesRequest request = new DumpRulesRequest(switchId, northboundTopic);
         CommandMessage commandMessage = new CommandMessage(request, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER);
 

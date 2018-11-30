@@ -227,6 +227,7 @@ def send_dump_rules_request(switch_id, correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.command.switches.DumpRulesRequest'
     message.switch_id = switch_id
+    message.reply_to = config.KAFKA_TOPO_ENG_TOPIC
     send_to_topic(message, correlation_id, MT_COMMAND,
                   topic=config.KAFKA_SPEAKER_TOPIC)
 
