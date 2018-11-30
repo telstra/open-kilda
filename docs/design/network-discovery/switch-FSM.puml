@@ -1,0 +1,51 @@
+@startuml
+[*] --> INIT
+
+state switchSync <<choice>>
+
+INIT --> prepopulate : history-data
+INIT --> setup : managed
+
+prepopulate : setup port workers
+prepopulate : setup ISL workers
+prepopulate --> INIT : next
+
+switchSync --> setup : is-online
+switchSync --> offline : is-offline
+
+setup : enter / set sw state online
+setup : enter / [setup portWorker for portsAdded()]
+setup : enter / [emit online for portAll()]
+setup : enter / [emit port-del for portsRemoved()]
+setup : enter / [emit port-down for portsBecomeDown()]
+setup : enter / [emit port-up for portsBecomeUp()]
+setup --> online : next
+
+online : enter / set sw state online
+online --> online : activate
+online --> offline : deactivate
+online --> portAdd : port-add
+online --> portDel : port-del
+online -u-> unmanaged : unmanaged
+
+portAdd : setup port worker
+portAdd : emit port-add
+portAdd --> online : next
+
+portDel : emit port-del
+portDel --> online : next
+
+offline : enter / set sw state offline
+offline : enter / [emit offline for portAll()]
+offline --> setup : activate
+offline --> offline : deactivate
+
+unmanaged : enter / set sw state unmanaged
+unmanaged : enter / emit port-unmanaged [all ports]
+unmanaged -r-> managementRestore : managed
+
+managementRestore : enter / set sw state managed
+managementRestore : enter / emit port-managed
+managementRestore --> switchSync : next
+
+@enduml

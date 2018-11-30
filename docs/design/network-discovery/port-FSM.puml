@@ -1,0 +1,116 @@
+Internal state:
+* remote endpoint (swId + port) (initial not set)
+* online (boolean) (initial true)
+
+Input signals:
+* port-up
+* port-down
+* port-managed
+* port-unmanaged
+* discovery-timer
+* discovery
+* discovery-pushed
+* enable
+* disable
+* online
+* offline
+
+Output signals:
+* isl-up
+* isl-down
+* isl-disable
+* isl-move
+* isl-push-fail (?)
+* isl-unmanaged
+* push-discovery
+
+@startuml
+[*] --> INIT
+
+INIT -r-> PREPOPULATE : remote-data
+INIT --> OFFLINE : offline
+INIT --> OPERATIONAL : online
+
+PREPOPULATE : enter / set remote
+PREPOPULATE -l-> INIT : next
+
+state OPERATIONAL {
+    [*] --> UNKNOWN
+
+    UNKNOWN : enter / set online true
+    UNKNOWN --> DOWN : port-down
+    UNKNOWN --> UP : port-up
+
+    UP --> DOWN : port-down
+    UP --> makeDiscovery : discovery-timer
+    UP --> DISCOVERED : discovery
+
+    makeDiscovery : enter / push-discovery
+    makeDiscovery --> UP : next
+
+    DOWN --> UP : port-up
+
+    state DISCOVERED {
+        DISCOVERED : enter / record remote if unset
+        DISCOVERED : enter / emit isl-up
+
+        state checkMoved <<choice>>
+
+        [*] --> pending
+        pending --> pushed : discovery-timer
+        pending -d-> checkMoved : discovered
+        pending --> pending : discovery-pushed
+
+        pushed --> confirmed : discovery-pushed
+        pushed --> failed : discovery-timer
+        pushed -d-> checkMoved : discovery
+
+        confirmed : enter / emit push-discovery
+        confirmed --> pending : next
+
+        failed : enter / emit isl-push-fail
+        failed --> pending
+
+        checkMoved -u-> pending : same-remote
+        checkMoved -u-> moved : moved
+
+        moved : enter / emit isl-move
+        moved : enter / emit isl-up
+        moved : enter / record remote
+        moved --> pending : next
+    }
+    DISCOVERED -u-> becomeUndiscovered : port-down
+
+    becomeUndiscovered : enter / emit isl-down
+    becomeUndiscovered --> DOWN : next
+}
+
+OPERATIONAL --> OFFLINE : offline
+OPERATIONAL --> becomeDISABLED : disable
+OPERATIONAL --> becomeUNMANAGED : port-unmanaged
+
+becomeDISABLED : enter / emit isl-disable if have remote
+becomeDISABLED --> DISABLED : next
+
+becomeUNMANAGED : enter / emit isl-unmanaged if have remote
+becomeUNMANAGED --> UNMANAGED : next
+
+DISABLED --> OPERATIONAL : enable
+DISABLED --> DISABLED_OFFLINE : offline
+DISABLED --> DISABLED_UNMANAGED : port-unmanaged
+
+UNMANAGED --> OPERATIONAL : port-managed
+UNMANAGED --> DISABLED : disable
+UNMANAGED --> OFFLINE : offline
+
+OFFLINE --> OPERATIONAL : online
+OFFLINE --> DISABLED : disable
+OFFLINE --> UNMANAGED : port-unmanaged
+
+DISABLED_OFFLINE --> DISABLED : online
+DISABLED_OFFLINE --> OFFLINE : enable
+
+DISABLED_UNMANAGED --> DISABLED : port-managed
+DISABLED_UNMANAGED --> UNMANAGED : enable
+
+@enduml

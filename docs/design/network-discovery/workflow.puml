@@ -1,0 +1,8 @@
+@startuml
+(*) -d-> [event] SpeakerMonitor
+-d-> [event] SwitchFSM
+-r-> [event] PortFSM
+-r-> [event] IslManager
+-r-> [event] IslFSM
+-d-> (*)
+@enduml
