@@ -1,0 +1,40 @@
+@startuml
+[*] --> prepopulate
+
+state switchSync <<choice>>
+
+prepopulate : setup port workers
+prepopulate : setup ISL workers
+prepopulate --> switchSync
+
+switchSync --> refreshPorts : is-online
+switchSync --> offline : is-offline
+
+refreshPorts : for up->down ports: emit down port event
+refreshPorts : for down->up ports: emit up port event
+refreshPorts --> cleanUpPorts
+
+cleanUpPorts : emit port removal event
+cleanUpPorts --> initPorts
+
+initPorts : setup port workers
+initPorts --> online
+
+online : enter / sw-online
+online --> online : activate
+online --> offline : deactivate
+online --> portAdd : port-add
+online --> portDel : port-del
+
+portAdd : setup port worker
+portAdd : emit port-add
+portAdd --> online
+
+portDel : emit port-del
+portDel --> online
+
+offline : enter / emit sw-offline
+offline --> refreshPorts : activate
+offline --> offline : deactivate
+
+@enduml

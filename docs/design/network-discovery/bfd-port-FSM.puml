@@ -1,0 +1,28 @@
+@startuml
+state init <<choice>>
+[*] --> init
+
+init --> invalid : port-is-up
+init --> pending : port-is-down
+
+invalid : emit bfd-invalid
+invalid --> pending : port-down
+invalid --> invalid : associate
+
+pending : emit bfd-pending
+pending --> invalid : port-up
+pending --> bound : associate
+
+bound --> UP : port-up
+
+UP : emit isl-up
+UP --> DOWN : port-down
+UP --> offline : offline
+
+DOWN : emit isl-down
+DOWN --> UP : port-up
+DOWN --> offline : offline
+
+offline --> invalid : online
+
+@enduml

@@ -1,0 +1,131 @@
+Internal state:
+* endpoint-A
+* endpoint-B
+
+Input signals:
+* A-isl-up
+* B-isl-up
+* A-isl-down
+* B-isl-down
+* A-isl-disable
+* B-isl-disable
+* A-isl-move
+* B-isl-move
+* A-isl-push-fail
+* B-isl-push-fail
+* A-push-discovery
+* B-push-discovery
+* A-sw-offline
+* B-sw-offline
+* A-sw-online
+* B-sw-online
+
+* fail-timer
+* no-discovery-timer
+* offline-fail-timer
+
+@startuml
+[*] --> PENDING
+
+state PENDING_ROUTER <<choice>>
+
+state PENDING {
+    [*] --> P_UNKNOWN_A
+
+    P_UNKNOWN_A --> P_ADVANCE_A : A-isl-up
+    P_UNKNOWN_A --> P_WAIT_A : B-push-discovery
+    P_UNKNOWN_A --> DOWN_A : offline-fail-timer
+
+    P_ADVANCE_A --> READY_A : B-push-discovery
+    P_ADVANCE_A --> P_UNKNOWN_A : no-discovery-timer
+
+    P_WAIT_A --> READY_A : A-isl-up
+    P_WAIT_A --> DOWN_A : fail-timer
+    P_WAIT_A --> P_WAIT_A : B-push-discovery
+
+    DOWN_A --> [*] : both DOWN
+
+    READY_A --> P_WAIT_A : B-push-discovery
+    READY_A --> P_ADVANCE_A : A-isl-up
+    READY_A --> P_UNKNOWN_A : no-discovery-timer
+    READY_A --> [*] : both UP
+
+    ||
+
+    [*] --> P_UNKNOWN_B
+
+    P_UNKNOWN_B --> P_ADVANCE_B : B-isl-up
+    P_UNKNOWN_B --> P_WAIT_B : A-push-discovery
+    P_UNKNOWN_B --> DOWN_B : offline-fail-timer
+
+    P_ADVANCE_B --> READY_B : A-push-discovery
+    P_ADVANCE_B --> P_UNKNOWN_B : no-discovery-timer
+
+    P_WAIT_B --> READY_B : B-isl-up
+    P_WAIT_B --> DOWN_B : fail-timer
+    P_WAIT_B --> P_WAIT_B : A-push-discovery
+
+    DOWN_B --> [*] : both DOWN
+
+    READY_B --> P_WAIT_B : A-push-discovery
+    READY_B --> P_ADVANCE_B : B-isl-up
+    READY_B --> P_UNKNOWN_B : no-discovery-timer
+    READY_B --> [*] : both UP
+}
+
+state UP {
+    [*] --> MONITOR_A
+
+    MONITOR_A -> WAIT_A : B-push-discovery
+    MONITOR_A --> ADVANCE_A : A-isl-up
+    MONITOR_A --> UNKNOWN_A : no-discovery-timer
+    
+    ADVANCE_A --> MONITOR_A : B-push-discovery
+    ADVANCE_A --> UNKNOWN_A : no-discovery-timer
+
+    WAIT_A --> MONITOR_A : A-isl-up
+    WAIT_A --> WAIT_A : B-push-discovery
+    WAIT_A --> [*] : fail-timer
+
+    UNKNOWN_A --> [*] : offline-fail-timer
+
+    ||
+
+    [*] --> MONITOR_B
+
+    MONITOR_B -> WAIT_B : B-push-discovery
+    MONITOR_B --> ADVANCE_B : A-isl-up
+    MONITOR_B --> UNKNOWN_B : no-discovery-timer
+    
+    ADVANCE_B --> MONITOR_B : B-push-discovery
+    ADVANCE_B --> UNKNOWN_B : no-discovery-timer
+
+    WAIT_B --> MONITOR_B : A-isl-up
+    WAIT_B --> WAIT_B : B-push-discovery
+    WAIT_B --> [*] : fail-timer
+
+    UNKNOWN_B --> [*] : offline-fail-timer
+}
+
+UP --> DOWN : any
+UP --> OFFLINE_A : A-sw-offline
+UP --> OFFLINE_B : B-sw-offline
+
+PENDING --> PENDING_ROUTER
+PENDING --> OFFLINE_A : A-sw-offline
+PENDING --> OFFLINE_B : B-sw-offline
+
+PENDING_ROUTER --> DOWN : down
+PENDING_ROUTER --> UP : up
+
+DOWN --> PENDING : any-isl-up
+DOWN --> OFFLINE_A : A-sw-offline
+DOWN --> OFFLINE_B : B-sw-offline
+
+OFFLINE_A -d-> OFFLINE : B-sw-offline
+OFFLINE_A --> PENDING : A-sw-online
+OFFLINE_B -d-> OFFLINE : A-sw-offline
+OFFLINE_B --> PENDING : B-sw-online
+OFFLINE --> OFFLINE_A : B-sw-online
+OFFLINE --> OFFLINE_B : A-sw-online
+@enduml
