@@ -56,4 +56,7 @@ public interface SwitchManagerConfig {
     @Min(0)
     @Description("This is burst size for default rule meters in packets.")
     long getSystemMeterBurstSizeInPackets();
+
+    @Key("ovs-meters-enabled")
+    boolean getOvsMetersEnabled();
 }

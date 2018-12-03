@@ -1,0 +1,20 @@
+Package: *
+Pin: release n=cosmic
+Pin-Priority: -10
+
+# 18.04 -> 18.10
+Package: openvswitch-common
+Pin: release n=cosmic
+Pin-Priority: 1000
+
+Package: python3-openvswitch
+Pin: release n=cosmic
+Pin-Priority: 1000
+
+Package: libcap-ng0
+Pin: release n=cosmic
+Pin-Priority: 1000
+
+Package: openvswitch-switch
+Pin: release n=cosmic
+Pin-Priority: 1000
