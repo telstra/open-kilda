@@ -32,22 +32,20 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SessionService implements IService, IInputTranslator {
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
-    private final Map<DatapathId, SwitchSessions> sessionsByDatapath = new HashMap<>();
+    private final Map<DatapathId, SwitchSessions> sessionsByDatapath = new ConcurrentHashMap<>();
 
     /**
      * Create new OF communication session and register it in service.
      */
     public Session open(IOFSwitch sw) {
         SwitchSessions group;
-        synchronized (sessionsByDatapath) {
-            group = sessionsByDatapath.get(sw.getId());
-        }
+        group = sessionsByDatapath.get(sw.getId());
 
         if (group == null) {
             throw new IllegalStateException(String.format(
@@ -80,9 +78,7 @@ public class SessionService implements IService, IInputTranslator {
     @VisibleForTesting
     void handleResponse(DatapathId dpId, OFMessage message) {
         SwitchSessions group;
-        synchronized (sessionsByDatapath) {
-            group = sessionsByDatapath.get(dpId);
-        }
+        group = sessionsByDatapath.get(dpId);
 
         if (group == null) {
             log.error("Switch {} is not registered", dpId);
@@ -95,9 +91,7 @@ public class SessionService implements IService, IInputTranslator {
     void switchConnect(DatapathId dpId) {
         SwitchSessions group = new SwitchSessions();
         SwitchSessions previous;
-        synchronized (sessionsByDatapath) {
-            previous = sessionsByDatapath.put(dpId, group);
-        }
+        previous = sessionsByDatapath.put(dpId, group);
 
         if (previous != null) {
             log.error("Switch {} already registered (connect/disconnect race condition?)", dpId);
@@ -106,9 +100,7 @@ public class SessionService implements IService, IInputTranslator {
 
     void switchDisconnect(DatapathId dpId) {
         SwitchSessions group;
-        synchronized (sessionsByDatapath) {
-            group = sessionsByDatapath.remove(dpId);
-        }
+        group = sessionsByDatapath.remove(dpId);
 
         if (group == null) {
             log.error("Switch {} is not registered (double removal?)", dpId);
