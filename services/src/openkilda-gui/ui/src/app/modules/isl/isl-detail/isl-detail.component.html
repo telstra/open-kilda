@@ -155,7 +155,7 @@
                <input formControlName="fromDate" type="text"  (change)="changeDate('fromDate',$event)" datetime-picker  placeholder="From" class="form-control">
             </div>
            </div>
-           <div class="row form-group clearfix">
+           <div class="row form-group clearfix" *ngIf="!f.auto_reload.value">
             <label class="col-xs-4 col-md-4 text-label">To:</label>
             <div class="col-xs-8 col-md-8">
               <input type="text" formControlName="toDate"    (change)="changeDate('toDate',$event)" datetime-picker  placeholder="From" class="form-control">
