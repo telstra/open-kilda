@@ -216,6 +216,19 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<Long> deleteSwitchRules(SwitchId switchId, int priority) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/switches/{switch_id}/rules");
+        uriBuilder.queryParam("priority", priority);
+
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+
+        Long[] deletedRules = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.DELETE,
+                new HttpEntity(httpHeaders), Long[].class, switchId).getBody();
+        return Arrays.asList(deletedRules);
+    }
+
+    @Override
     public RulesSyncResult synchronizeSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/synchronize", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesSyncResult.class, switchId).getBody();
