@@ -15,7 +15,10 @@
 
 import json
 import time
+import unittest
 import uuid
+
+import pkg_resources
 
 from topologylistener import exc
 from topologylistener import config
@@ -210,6 +213,12 @@ class TestLinkProps02Occupied(Abstract):
         self.assertIsNotNone(response['error'])
 
     def test_cypher_injection(self):
+        py2neo_version = pkg_resources.require('py2neo')[0].parsed_version
+        if pkg_resources.parse_version('4.1.2') <= py2neo_version:
+            raise unittest.SkipTest(
+                'Starting from py2neo-4.1.2 special symbols are alloved in '
+                'field names, it breaks this test scenario.')
+
         link_props = model.LinkProps(
             self.endpoint_alpha, self.endpoint_beta,
             props={'`cost': 1})
