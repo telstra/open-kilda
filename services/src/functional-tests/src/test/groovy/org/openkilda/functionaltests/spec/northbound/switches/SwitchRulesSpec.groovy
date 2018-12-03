@@ -116,27 +116,37 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Able to delete #data.description rules from a switch"() {
+    def "Able to delete rules from a switch (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
 
-        when: "Delete #data.description rules from the switch"
+        when: "Delete rules from the switch"
+        def flowRules = getFlowRules(srcSwitch.dpId)
         def deletedRules = northboundService.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
+        def expectedRules = srcSwDefaultRules
+        switch (data.deleteRulesAction) {
+            case DeleteRulesAction.REMOVE_DEFAULTS:
+                expectedRules = flowRules
+                break
+            case DeleteRulesAction.REMOVE_ADD_DEFAULTS:
+                expectedRules += flowRules
+                break
+        }
 
-        then: "#data.description.capitalize() rules are really deleted"
+        then: "The corresponding rules are really deleted"
         deletedRules.size() == data.rulesDeleted
         Wrappers.wait(RULES_DELETION_TIME) {
             def actualRules = northboundService.getSwitchRules(srcSwitch.dpId).flowEntries
             assert actualRules.size() == data.rulesRemained
-            data.deleteRulesAction != DeleteRulesAction.IGNORE_DEFAULTS ?: compareRules(actualRules, srcSwDefaultRules)
+            data.deleteRulesAction == DeleteRulesAction.DROP_ALL ?: compareRules(actualRules, expectedRules)
         }
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
         and: "Install default rules if necessary"
-        if (data.rulesRemained == 0) {
+        if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
             northboundService.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
             Wrappers.wait(RULES_INSTALLATION_TIME) {
                 assert northboundService.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
@@ -144,15 +154,35 @@ class SwitchRulesSpec extends BaseSpecification {
         }
 
         where:
-        data << [[description      : "non-default",
-                  deleteRulesAction: DeleteRulesAction.IGNORE_DEFAULTS,
-                  rulesDeleted     : flowRulesCount,
-                  rulesRemained    : srcSwDefaultRules.size()
-                 ],
-                 [description      : "all",
+        data << [[// Drop all rules
                   deleteRulesAction: DeleteRulesAction.DROP_ALL,
                   rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount,
-                  rulesRemained    : 0
+                  rulesRemained    : 0,
+                 ],
+                 [// Drop all rules, add back in the base default rules
+                  deleteRulesAction: DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
+                  rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount,
+                  rulesRemained    : srcSwDefaultRules.size(),
+                 ],
+                 [// Don't drop the default rules, but do drop everything else
+                  deleteRulesAction: DeleteRulesAction.IGNORE_DEFAULTS,
+                  rulesDeleted     : flowRulesCount,
+                  rulesRemained    : srcSwDefaultRules.size(),
+                 ],
+                 [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
+                  deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
+                  rulesDeleted     : flowRulesCount,
+                  rulesRemained    : srcSwDefaultRules.size(),
+                 ],
+                 [// Drop all default rules
+                  deleteRulesAction: DeleteRulesAction.REMOVE_DEFAULTS,
+                  rulesDeleted     : srcSwDefaultRules.size(),
+                  rulesRemained    : flowRulesCount,
+                 ],
+                 [// Drop the default, add them back
+                  deleteRulesAction: DeleteRulesAction.REMOVE_ADD_DEFAULTS,
+                  rulesDeleted     : srcSwDefaultRules.size(),
+                  rulesRemained    : srcSwDefaultRules.size() + flowRulesCount,
                  ]
         ]
     }
