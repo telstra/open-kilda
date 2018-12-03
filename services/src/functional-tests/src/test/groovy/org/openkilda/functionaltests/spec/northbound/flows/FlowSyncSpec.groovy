@@ -58,15 +58,15 @@ class FlowSyncSpec extends BaseSpecification {
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
-        def ruleToDelete = getFlowRules(involvedSwitches.first().dpId).first().cookie
+        def ruleToDelete = getFlowRules(involvedSwitches.first()).first().cookie
         involvedSwitches.each { northboundService.deleteSwitchRules(it.dpId, ruleToDelete) }
         involvedSwitches.each { sw ->
-            Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw.dpId).size() == flowRulesCount - 1 }
+            Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw).size() == flowRulesCount - 1 }
         }
 
         when: "Synchronize the flow"
         Map<SwitchId, Long> rulesDurationMap = involvedSwitches.collectEntries {
-            [(it.dpId): getFlowRules(it.dpId).first().durationSeconds]
+            [(it.dpId): getFlowRules(it).first().durationSeconds]
         }
 
         def syncTime = new Date()
@@ -85,7 +85,7 @@ class FlowSyncSpec extends BaseSpecification {
         and: "Missing flow rules are installed (existing ones are reinstalled) on all switches"
         involvedSwitches.each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME) {
-                def flowRules = getFlowRules(sw.dpId)
+                def flowRules = getFlowRules(sw)
                 assert flowRules.size() == flowRulesCount
                 flowRules.each {
                     assert it.durationSeconds < rulesDurationMap[sw.dpId] +
@@ -118,10 +118,10 @@ class FlowSyncSpec extends BaseSpecification {
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
 
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
-        def ruleToDelete = getFlowRules(involvedSwitches.first().dpId).first().cookie
+        def ruleToDelete = getFlowRules(involvedSwitches.first()).first().cookie
         involvedSwitches.each { northboundService.deleteSwitchRules(it.dpId, ruleToDelete) }
         involvedSwitches.each { sw ->
-            Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw.dpId).size() == flowRulesCount - 1 }
+            Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw).size() == flowRulesCount - 1 }
         }
 
         and: "Make one of the alternative flow paths more preferable than the current one"
@@ -129,7 +129,7 @@ class FlowSyncSpec extends BaseSpecification {
 
         when: "Synchronize the flow"
         Map<SwitchId, Long> rulesDurationMap = involvedSwitches.collectEntries {
-            [(it.dpId): getFlowRules(it.dpId).first().durationSeconds]
+            [(it.dpId): getFlowRules(it).first().durationSeconds]
         }
 
         def syncTime = new Date()
@@ -150,7 +150,7 @@ class FlowSyncSpec extends BaseSpecification {
         def involvedSwitchesAfterSync = pathHelper.getInvolvedSwitches(flow.id)
         involvedSwitchesAfterSync.findAll { it in involvedSwitches }.each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME) {
-                def flowRules = getFlowRules(sw.dpId)
+                def flowRules = getFlowRules(sw)
                 assert flowRules.size() == flowRulesCount
                 flowRules.each {
                     assert it.durationSeconds < rulesDurationMap[sw.dpId] +
@@ -161,12 +161,12 @@ class FlowSyncSpec extends BaseSpecification {
 
         and: "Flow rules are installed on new switches involved in the current flow path"
         involvedSwitchesAfterSync.findAll { !(it in involvedSwitches) }.each { sw ->
-            Wrappers.wait(RULES_INSTALLATION_TIME) { assert getFlowRules(sw.dpId).size() == flowRulesCount }
+            Wrappers.wait(RULES_INSTALLATION_TIME) { assert getFlowRules(sw).size() == flowRulesCount }
         }
 
         and: "Flow rules are deleted from switches that are NOT involved in the current flow path"
         involvedSwitches.findAll { !(it in involvedSwitchesAfterSync) }.each { sw ->
-            Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw.dpId).empty }
+            Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw).empty }
         }
 
         and: "Delete the flow and link props, reset link costs"
@@ -175,8 +175,9 @@ class FlowSyncSpec extends BaseSpecification {
         db.resetCosts()
     }
 
-    def getFlowRules(SwitchId switchId) {
-        def defaultCookies = DefaultRule.values()*.cookie
-        northboundService.getSwitchRules(switchId).flowEntries.findAll { !(it.cookie in defaultCookies) }.sort()
+    def getFlowRules(Switch sw) {
+        def defaultCookies = (sw.ofVersion == "OF_12" ? [DefaultRule.VERIFICATION_BROADCAST_RULE] :
+                DefaultRule.values())*.cookie
+        northboundService.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in defaultCookies) }.sort()
     }
 }

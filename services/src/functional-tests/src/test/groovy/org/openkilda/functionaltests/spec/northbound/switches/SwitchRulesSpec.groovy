@@ -11,7 +11,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.messaging.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -122,7 +121,7 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Delete rules from the switch"
-        def flowRules = getFlowRules(srcSwitch.dpId)
+        def flowRules = getFlowRules(srcSwitch)
         def deletedRules = northboundService.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
         def expectedRules = srcSwDefaultRules
         switch (data.deleteRulesAction) {
@@ -247,8 +246,8 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Delete switch rules by #data.description"
-        def deletedRules = northboundService.deleteSwitchRules(
-                data.switch.dpId, getFlowRules(data.switch.dpId).first()."${data.description}")
+        def deletedRules = northboundService.deleteSwitchRules(data.switch.dpId,
+                getFlowRules(data.switch).first()."${data.description}")
 
         then: "The requested rules are really deleted"
         deletedRules.size() == data.rulesDeleted
@@ -376,9 +375,10 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.randomFlow(srcSwitch, dstSwitch)
     }
 
-    List<FlowEntry> getFlowRules(SwitchId switchId) {
-        def defaultCookies = DefaultRule.values()*.cookie
-        northboundService.getSwitchRules(switchId).flowEntries.findAll { !(it.cookie in defaultCookies) }.sort()
+    List<FlowEntry> getFlowRules(Switch sw) {
+        def defaultCookies = (sw.ofVersion == "OF_12" ? [DefaultRule.VERIFICATION_BROADCAST_RULE] :
+                DefaultRule.values())*.cookie
+        northboundService.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in defaultCookies) }.sort()
     }
 
     List<FlowEntry> filterRules(List<FlowEntry> rules, inPort, inVlan, outPort) {
