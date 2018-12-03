@@ -31,11 +31,11 @@ import org.projectfloodlight.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class Session implements AutoCloseable {
@@ -48,7 +48,7 @@ public class Session implements AutoCloseable {
     private boolean error = false;
     private boolean completed = false;
 
-    private final Map<Long, CompletableFuture<Optional<OFMessage>>> requestsByXid = new HashMap<>();
+    private final Map<Long, CompletableFuture<Optional<OFMessage>>> requestsByXid = new ConcurrentHashMap<>();
 
     Session(SwitchSessions group, IOFSwitch sw) {
         this.group = group;
@@ -110,9 +110,7 @@ public class Session implements AutoCloseable {
 
     boolean handleResponse(OFMessage message) {
         CompletableFuture<Optional<OFMessage>> future;
-        synchronized (this) {
-            future = requestsByXid.get(message.getXid());
-        }
+        future = requestsByXid.get(message.getXid());
 
         if (future == null) {
             throw new IllegalArgumentException(String.format(
@@ -139,18 +137,14 @@ public class Session implements AutoCloseable {
     }
 
     Set<Long> getAllXids() {
-        synchronized (requestsByXid) {
-            return ImmutableSet.copyOf(requestsByXid.keySet());
-        }
+        return ImmutableSet.copyOf(requestsByXid.keySet());
     }
 
     private CompletableFuture<Optional<OFMessage>> prepareRequest(OFMessage message) {
         CompletableFuture<Optional<OFMessage>> future = new CompletableFuture<>();
 
         long xid = message.getXid();
-        synchronized (requestsByXid) {
-            requestsByXid.put(xid, future);
-        }
+        requestsByXid.put(xid, future);
         group.bindRequest(this, xid);
 
         return future;
@@ -170,9 +164,7 @@ public class Session implements AutoCloseable {
 
     private Stream<CompletableFuture<Optional<OFMessage>>> incompleteRequestsStream() {
         ImmutableList<CompletableFuture<Optional<OFMessage>>> requestsSafeCopy;
-        synchronized (requestsByXid) {
-            requestsSafeCopy = ImmutableList.copyOf(requestsByXid.values());
-        }
+        requestsSafeCopy = ImmutableList.copyOf(requestsByXid.values());
 
         return requestsSafeCopy.stream()
                 .filter(entry -> !entry.isDone());
