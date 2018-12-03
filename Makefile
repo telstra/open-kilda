@@ -11,7 +11,7 @@ build-base:
 	docker build -t kilda/neo4j:latest services/neo4j
 	docker build -t kilda/opentsdb:latest services/opentsdb
 	docker build -t kilda/logstash:latest services/logstash
-	docker build -t kilda/python3-ubuntu:latest base/kilda-base-python3/
+	docker build -t kilda/base-lab-service:latest base/kilda-base-lab-service/
 
 build-latest: update-props build-base compile
 	docker-compose build
