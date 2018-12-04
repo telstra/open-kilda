@@ -4,6 +4,8 @@ import { ChangepasswordComponent } from '../changepassword/changepassword.compon
 import { environment } from '../../../../environments/environment';
 import { CommonService } from '../../services/common.service';
 import { Router,NavigationEnd } from '@angular/router';
+import { CookieManagerService } from '../../services/cookie-manager.service';
+import { LoaderService } from '../../services/loader.service';
 
 @Component({
   selector: 'app-header',
@@ -17,7 +19,9 @@ export class HeaderComponent implements OnInit, AfterViewInit {
   constructor(
     private modalService: NgbModal,
     public commonService: CommonService,
-    private router:Router
+    private router:Router,
+    private cookieManager: CookieManagerService,
+    private appLoader:LoaderService,
   ) { }
 
   openChangePassword(){
@@ -38,6 +42,16 @@ export class HeaderComponent implements OnInit, AfterViewInit {
 
     this.commonService.sessionReceiver.subscribe((user :any)=>{
       this.username = user.name;
+    });
+  }
+
+  logOut(){ 
+    this.appLoader.show();
+    this.cookieManager.set('isLoggedOutInProgress',1);
+    this.commonService.getLogout().subscribe((data)=>{
+      location.href= environment.appEndPoint+'/login';
+    },err=>{
+      location.href= environment.appEndPoint+'/login';
     });
   }
 

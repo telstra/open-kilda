@@ -28,7 +28,7 @@ import java.util.List;
 @Getter
 public enum StoreUrl {
 
-    LINK_STORE(StoreType.LINK_STORE, new Url[] { Url.GET_LINK, Url.GET_ALL_LINK, Url.GET_LINKS_WITH_PARAMS,
+    LINK_STORE(StoreType.LINK_STORE, new Url[] { Url.GET_LINK, Url.GET_STATUS_LIST, Url.GET_LINKS_WITH_PARAMS,
             Url.GET_CONTRACT, Url.DELETE_CONTRACT });
 
     private StoreType storeType;

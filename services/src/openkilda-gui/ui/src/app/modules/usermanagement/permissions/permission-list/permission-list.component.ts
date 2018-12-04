@@ -132,12 +132,13 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
       retrieve: true,
       autoWidth: true,
       colResize: false,
+      dom: 'tpl',
       "aoColumns": [{
           sWidth: '20%',
         },{
           sWidth: '50%',
         },{
-          sWidth: '30%',
+          sWidth: '30%',"bSortable": false
         }
       ],
       language: {

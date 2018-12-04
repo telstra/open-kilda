@@ -86,5 +86,9 @@ export class FlowsService {
   deletecontract(flowid,contractid){
     return this.httpClient.delete(`${environment.apiEndPoint}/contracts/delete/${flowid}/${contractid}`);
   }
+
+  getStatusList() : Observable<any[]>{
+    return this.httpClient.get<any[]>(`${environment.apiEndPoint}/flows/status`);
+  }
   
 }
