@@ -69,7 +69,7 @@ public class SessionServiceTest extends EasyMockSupport {
     private IOFSwitchService ofSwitchService;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         injectMocks(this);
 
         // configure mocks
@@ -84,7 +84,7 @@ public class SessionServiceTest extends EasyMockSupport {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         verifyAll();
     }
 
@@ -198,9 +198,9 @@ public class SessionServiceTest extends EasyMockSupport {
 
             throw new AssertionError("Expect exception to be thrown");
         } catch (SwitchWriteException e) {
-            Assert.assertTrue(futureAlpha != null);
+            Assert.assertNotNull(futureAlpha);
             expectExceptionResponse(futureAlpha, SessionRevertException.class);
-            Assert.assertTrue(futureBeta == null);
+            Assert.assertNull(futureBeta);
         }
     }
 
@@ -218,7 +218,7 @@ public class SessionServiceTest extends EasyMockSupport {
             }
             throw new AssertionError("Expect exception to be thrown");
         } catch (SwitchWriteException e) {
-            Assert.assertTrue(future != null);
+            Assert.assertNotNull(future);
             expectExceptionResponse(future, SessionCloseException.class);
         }
     }
