@@ -3,6 +3,7 @@ import { Title } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { CommonService } from '../../../common/services/common.service';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
+import { FlowsService } from 'src/app/common/services/flows.service';
 
 @Component({
   selector: 'app-flow',
@@ -18,7 +19,8 @@ export class FlowComponent implements OnInit {
     private titleService : Title,
     private route: ActivatedRoute,
     public commonService: CommonService,
-    private storeLinkService: StoreSettingtService
+    private storeLinkService: StoreSettingtService,
+    private flowService : FlowsService
   ) { 
    
   }
@@ -51,12 +53,20 @@ export class FlowComponent implements OnInit {
     //console.log('event', event,item, this[item]);
   }
 
+  getStatusList(){ 
+    this.flowService.getStatusList().subscribe((statuses)=>{
+        localStorage.setItem('linkStoreStatusList',JSON.stringify(statuses));
+    },function(error){
+      localStorage.setItem('linkStoreStatusList',JSON.stringify([]));
+    })
+  }
   getStoreLinkSettings(){
     let query = {_:new Date().getTime()};
     this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
       if(settings && settings['urls'] && typeof(settings['urls']['get-link']) !='undefined' &&  typeof(settings['urls']['get-link']['url'])!='undefined'){
         localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
         localStorage.setItem('haslinkStoreSetting',"1");
+        this.getStatusList();
       }else{
         localStorage.removeItem('linkStoreSetting');
         localStorage.removeItem('haslinkStoreSetting');

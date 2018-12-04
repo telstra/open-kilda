@@ -1,3 +1,19 @@
+<div class="row">
+  <div class="col-sm-12">
+      <div class="row">
+          <div class="col-sm-4">
+              <div class="form-group input-group-sm">
+                   <input type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
+               </div>
+          </div>
+            <div class="col-sm-8 text-right text-filters mb-3">
+               <a class="cursor-pointer" (click)="refreshList()"><i class="fa fa-refresh"></i>  Refresh</a>
+            </div>
+       </div>
+       
+   </div>
+  <div class="clear clearfix"></div>
+</div>
 <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
 <table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover" style="font-size:13px;">
   <thead>

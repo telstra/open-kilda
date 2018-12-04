@@ -1,4 +1,8 @@
 import { Injectable,EventEmitter } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -12,7 +16,7 @@ export class CommonService {
   sessionReceiver = this.sessionTranmitter.asObservable();
   currentUrl = null;
 
-  constructor() { }
+  constructor(private httpClient:HttpClient) { }
   
   groupBy(array , f)
   {
@@ -67,5 +71,9 @@ export class CommonService {
 
   setUserData(user){
     this.sessionTranmitter.emit(user);
+  }
+
+  getLogout():Observable<any>{
+    return this.httpClient.get<any>(`${environment.appEndPoint}/logout`);
   }
 }

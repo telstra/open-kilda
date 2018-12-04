@@ -40,6 +40,7 @@ export class FailedIslComponent implements OnInit, AfterViewInit, OnDestroy {
       retrieve: true,
       autoWidth: false,
       colResize: false,
+      dom: 'tpl',
       language: {
         searchPlaceholder: "Search"
       },
