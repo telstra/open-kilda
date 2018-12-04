@@ -76,6 +76,7 @@ import { SwitchDatatableComponent } from './modules/switches/switch-datatable/sw
 import { FlowContractsComponent } from './modules/flows/flow-contracts/flow-contracts.component';
 import { ClickOutsideModule } from 'ng-click-outside';
 import { ResetPasswordComponent } from './common/components/reset-password/reset-password.component';
+import { AppAuthProvider } from './common/interceptors/app.auth.interceptor';
 
 @NgModule({
   declarations: [
@@ -164,7 +165,7 @@ import { ResetPasswordComponent } from './common/components/reset-password/reset
     }),
     ClickOutsideModule
   ],
-  providers: [SwitchidmaskPipe, AlertifyService, Title],
+  providers: [SwitchidmaskPipe, AlertifyService, Title,AppAuthProvider],
   bootstrap: [AppComponent],
   entryComponents:[
     OtpComponent,

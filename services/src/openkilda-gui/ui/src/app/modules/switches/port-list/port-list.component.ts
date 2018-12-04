@@ -43,6 +43,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy {
       retrieve: true,
       autoWidth: false,
       colResize: false,
+      dom: 'tpl',
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "aoColumns": [
         { sWidth: '5%' },
@@ -62,7 +63,14 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.portListData();
   	this.getSwitchPortList()
   }
-
+  
+  fulltextSearch(e:any){ 
+      var value = e.target.value;
+        this.dtElement.dtInstance.then((dtInstance: DataTables.Api) => {
+          dtInstance.search(value)
+                  .draw();
+        });
+  }
 
   showPortDetail(item){
      var portDataObject = item;

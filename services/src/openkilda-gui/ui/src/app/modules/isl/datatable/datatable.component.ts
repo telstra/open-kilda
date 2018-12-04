@@ -4,10 +4,11 @@ import {
   OnInit,
   OnDestroy,
   ViewChild,
-  Input,
+  Input,Output,
   Renderer2,
   OnChanges,
-  SimpleChanges
+  SimpleChanges,
+  EventEmitter
 } from "@angular/core";
 import { IslModel } from "../../../common/data-models/isl-model";
 import { IslDetailModel } from "../../../common/data-models/isl-detail-model";
@@ -33,7 +34,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
   dtTrigger: Subject<any> = new Subject();
 
   @Input() data = [];
-
+  @Output() refresh =  new EventEmitter();
   listUrl: string = "";
   listDataObservable= [];
 
@@ -135,13 +136,25 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
     }
   }
 
+  refreshList(){
+    this.refresh.emit();
+  }
+  fulltextSearch(e:any){ 
+      var value = e.target.value;
+        this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+          dtInstance.search(value)
+                  .draw();
+        });
+  }
+
   ngOnInit() {
     let ref = this;
     this.dtOptions = {
       pageLength: 10,
       retrieve: true,
       autoWidth: false,
-      colResize: false,
+      colResize: false,      
+      dom: 'tpl',
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       language: {
         searchPlaceholder: "Search"

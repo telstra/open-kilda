@@ -1,7 +1,7 @@
 export class  LinkStoreModel{
         "urls": any =  {
-            "get-all-link":{
-                "name": "get-all-link",
+            "get-status-list":{
+                "name": "get-status-list",
                 "method-type": "GET",
                 "url": "",
                 "header": "Content-Type:application/json",

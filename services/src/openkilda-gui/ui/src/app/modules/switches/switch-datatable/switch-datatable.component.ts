@@ -1,4 +1,4 @@
-import { Component, OnInit, Input,ViewChild, OnChanges, OnDestroy, AfterViewInit, SimpleChanges, Renderer2 } from '@angular/core';
+import { Component, OnInit, Input,ViewChild, Output, EventEmitter, OnChanges, OnDestroy, AfterViewInit, SimpleChanges, Renderer2 } from '@angular/core';
 import { Subject } from 'rxjs';
 import { DataTableDirective } from 'angular-datatables';
 import { LoaderService } from 'src/app/common/services/loader.service';
@@ -14,6 +14,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
   @ViewChild(DataTableDirective)  datatableElement: DataTableDirective;
   @Input() data =[];
+  @Output() refresh =  new EventEmitter();
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = false;
@@ -37,6 +38,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       pageLength: 10,
       retrieve: true,
       autoWidth: false,
+      dom: 'tpl',
       colResize:false,
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "responsive": true,
@@ -76,6 +78,17 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
   ngOnDestroy(): void {
     this.dtTrigger.unsubscribe();
+  }
+
+  refreshList(){
+    this.refresh.emit();
+  }
+  fulltextSearch(e:any){ 
+      var value = e.target.value;
+        this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+          dtInstance.search(value)
+                  .draw();
+        });
   }
 
   ngOnChanges(change:SimpleChanges){

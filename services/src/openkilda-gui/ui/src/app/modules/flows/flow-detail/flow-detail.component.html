@@ -143,7 +143,7 @@
             <li class="list-group-item">
               <div class="row">
                 <div class="col-sm-4">Maximum Bandwidth:</div>
-                <div class="col-sm-8">{{ flowDetail["maximum_bandwidth"] }}
+                <div class="col-sm-8">{{ (flowDetail["maximum_bandwidth"] / 1000) || "-" }}
                     &nbsp;<i *ngIf="storeLinkSetting && bandWidthDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>

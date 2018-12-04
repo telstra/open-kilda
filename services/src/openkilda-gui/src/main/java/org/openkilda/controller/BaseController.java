@@ -27,12 +27,16 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.ModelAndView;
 
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.UserInfo;
+import org.usermanagement.util.MessageUtils;
+
+import java.nio.file.AccessDeniedException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -43,6 +47,9 @@ public abstract class BaseController implements ErrorController {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private MessageUtils messageUtils;
 
     /**
      * Validate request.
@@ -77,11 +84,17 @@ public abstract class BaseController implements ErrorController {
      * Error.
      *
      * @param model the model
-     * @return the model and view
+     * @throws AccessDeniedException the access denied exception
      */
-    @RequestMapping("/403")
-    public ModelAndView error(final Model model) {
-        return new ModelAndView(IConstants.View.ERROR_403);
+    @RequestMapping("/401")
+    public ModelAndView error(final Model model, HttpServletRequest request) throws AccessDeniedException {
+        String referrer = request.getHeader("referer");
+        ModelAndView modelAndView = new ModelAndView();
+        if (StringUtils.isEmpty(referrer) || referrer.contains("/login")) {
+            modelAndView.setViewName("redirect:/");
+            return modelAndView;
+        }
+        throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
     }
 
     /*

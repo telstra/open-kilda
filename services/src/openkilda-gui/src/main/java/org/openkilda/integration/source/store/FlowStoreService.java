@@ -53,18 +53,18 @@ public class FlowStoreService {
     private AuthService authService;
 
     /**
-     * Gets the all flow list.
+     * Gets the all status list.
      *
-     * @return the all flow list
+     * @return the all status list
      */
-    public List<InventoryFlow> getAllFlows() {
+    public List<String> getAllStatus() {
         try {
-            UrlDto urlDto = storeService.getUrl(StoreType.LINK_STORE, Url.GET_ALL_LINK);
+            UrlDto urlDto = storeService.getUrl(StoreType.LINK_STORE, Url.GET_STATUS_LIST);
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
-            return authService.getResponseList(urlDto, authDto, InventoryFlow.class);
+            return authService.getResponseList(urlDto, authDto, String.class);
         } catch (Exception exception) {
-            LOGGER.error("Exception in getAllFlowList " + exception.getMessage());
+            LOGGER.error("Exception in getAllStatusList " + exception.getMessage());
             throw new StoreIntegrationException(exception);
         }
     }

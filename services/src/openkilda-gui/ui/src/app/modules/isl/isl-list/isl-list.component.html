@@ -1,5 +1,2 @@
-<div class="text-right mb-1">
-    <span class="btn kilda_btn" id="refresh_list" (click)="getISLlistService()">Refresh</span>
-</div>
-<app-datatable [data]="dataSet" *ngIf="!loadingData"></app-datatable>
+<app-datatable [data]="dataSet" (refresh)="getISLlistService()"  *ngIf="!loadingData"></app-datatable>
 

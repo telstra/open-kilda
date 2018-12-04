@@ -66,12 +66,13 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
             });
           });
         }
-        this.loaderService.hide();
+        setTimeout(()=>{
+          this.loaderService.hide();
+        },2000)
       });
     },
     error => {
       this.loaderService.hide();
-      console.log("error", error);
     });
   }
 
