@@ -88,7 +88,12 @@ public class SessionService implements IService, IInputTranslator {
         group.handleResponse(message);
     }
 
-    void switchConnect(DatapathId dpId) {
+    /**
+     * Register switch as available for OF sessions.
+     *
+     * <p>Called from main FL thread, that why we can avoid `synchronization` here.
+     */
+    void switchActivate(DatapathId dpId) {
         SwitchSessions group = new SwitchSessions();
         SwitchSessions previous;
         previous = sessionsByDatapath.put(dpId, group);
@@ -98,7 +103,12 @@ public class SessionService implements IService, IInputTranslator {
         }
     }
 
-    void switchDisconnect(DatapathId dpId) {
+    /**
+     * Unregister switch, close all existing sessions.
+     *
+     * <p>Called from main FL thread, that why we can avoid `synchronization` here.
+     */
+    void switchDeactivate(DatapathId dpId) {
         SwitchSessions group;
         group = sessionsByDatapath.remove(dpId);
 

@@ -40,15 +40,13 @@ class SwitchSessions {
     }
 
     void disconnect() {
-        synchronized (sessionsByXid) {
-            sessionsByXid.values()
-                    // Session can be listed multiple time into sessionsByXid map
-                    // so .disconnect() will be called multiple times. Session.disconnect
-                    // must be ready to be called multiple times
-                    .forEach(Session::disconnect);
+        sessionsByXid.values()
+                // Session can be listed multiple time into sessionsByXid map
+                // so .disconnect() will be called multiple times. Session.disconnect
+                // must be ready to be called multiple times
+                .forEach(Session::disconnect);
 
-            sessionsByXid.clear();
-        }
+        sessionsByXid.clear();
     }
 
     void bindRequest(Session session, long xid) {

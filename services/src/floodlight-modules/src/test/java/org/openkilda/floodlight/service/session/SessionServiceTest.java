@@ -261,7 +261,7 @@ public class SessionServiceTest extends EasyMockSupport {
         replayAll();
 
         subject.setup(moduleContext);
-        subject.switchConnect(sw.getId());
+        subject.switchActivate(sw.getId());
     }
 
     private void completeSessions(IOFSwitch sw) {

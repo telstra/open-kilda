@@ -31,17 +31,17 @@ class SwitchEventsTranslator implements IOFSwitchListener {
 
     @Override
     public void switchAdded(DatapathId switchId) {
-        service.switchConnect(switchId);
+        // do not trace this event
     }
 
     @Override
     public void switchRemoved(DatapathId switchId) {
-        service.switchDisconnect(switchId);
+        // do not trace this event
     }
 
     @Override
     public void switchActivated(DatapathId switchId) {
-        // do not trace this event
+        service.switchActivate(switchId);
     }
 
     @Override
@@ -56,6 +56,6 @@ class SwitchEventsTranslator implements IOFSwitchListener {
 
     @Override
     public void switchDeactivated(DatapathId switchId) {
-        // do not trace this event
+        service.switchDeactivate(switchId);
     }
 }
