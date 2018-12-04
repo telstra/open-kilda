@@ -18,17 +18,22 @@ package org.openkilda.northbound.service.impl;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectChunkedResponses;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
+import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.nbtopology.request.GetFlowsForLinkRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
@@ -60,6 +65,9 @@ public class LinkServiceImpl implements LinkService {
 
     @Autowired
     private LinkMapper linkMapper;
+
+    @Autowired
+    private FlowMapper flowMapper;
 
     @Autowired
     private LinkPropsMapper linkPropsMapper;
@@ -155,5 +163,22 @@ public class LinkServiceImpl implements LinkService {
         }
 
         return new BatchResults(errors.size(), successCount, errors);
+    }
+
+    @Override
+    public CompletableFuture<List<FlowPayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
+                                                                SwitchId dstSwitch, Integer dstPort) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get all flows for a particular link request processing");
+        GetFlowsForLinkRequest data = new GetFlowsForLinkRequest(new NetworkEndpointMask(srcSwitch, srcPort),
+                new NetworkEndpointMask(dstSwitch, dstPort), correlationId);
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(FlowResponse.class::cast)
+                        .map(FlowResponse::getPayload)
+                        .map(flowMapper::toFlowOutput)
+                        .collect(Collectors.toList()));
     }
 }

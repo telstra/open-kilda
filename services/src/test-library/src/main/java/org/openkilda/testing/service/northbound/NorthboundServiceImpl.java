@@ -322,6 +322,27 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<FlowPayload> getLinkFlows(SwitchId srcSwitch, Integer srcPort,
+                                          SwitchId dstSwitch, Integer dstPort) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links/flows");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        FlowPayload[] linkFlows = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload[].class).getBody();
+        return Arrays.asList(linkFlows);
+    }
+
+    @Override
     public FeatureTogglePayload getFeatureToggles() {
         return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglePayload.class).getBody();

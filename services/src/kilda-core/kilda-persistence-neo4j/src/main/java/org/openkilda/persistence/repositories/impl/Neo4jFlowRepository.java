@@ -182,6 +182,27 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
+    public Collection<FlowPair> findAllFlowPairsForIsl(SwitchId srcSwitchId, int srcPort,
+                                                       SwitchId dstSwitchId, int dstPort) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "src_switch", srcSwitchId,
+                "src_port", srcPort,
+                "dst_switch", dstSwitchId,
+                "dst_port", dstPort);
+
+        Iterable<Flow> flows = getSession().query(Flow.class, "MATCH (:switch)-[fc:flow_segment]->(:switch) "
+                + "WHERE fc.src_switch=$src_switch "
+                + "AND fc.src_port=$src_port  "
+                + "AND fc.dst_switch=$dst_switch "
+                + "AND fc.dst_port=$dst_port  "
+                + "OPTIONAL MATCH (src:switch)-[f:flow]->(dst:switch) "
+                + "WHERE fc.flowid=f.flowid  "
+                + "RETURN src, f, dst", parameters);
+
+        return buildFlowPairs(flows);
+    }
+
+    @Override
     Class<Flow> getEntityType() {
         return Flow.class;
     }

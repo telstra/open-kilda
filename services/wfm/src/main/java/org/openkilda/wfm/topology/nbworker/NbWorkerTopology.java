@@ -21,6 +21,7 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
+import org.openkilda.wfm.topology.nbworker.bolts.MessageEncoder;
 import org.openkilda.wfm.topology.nbworker.bolts.ResponseSplitterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.RouterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.SwitchOperationsBolt;
@@ -50,6 +51,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String SWITCHES_BOLT_NAME = "switches-operations-bolt";
     private static final String LINKS_BOLT_NAME = "links-operations-bolt";
     private static final String FLOWS_BOLT_NAME = "flows-operations-bolt";
+    private static final String MESSAGE_ENCODER_BOLT_NAME = "message-encoder-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
     private static final String NB_SPOUT_ID = "nb-spout";
@@ -94,13 +96,23 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(LINKS_BOLT_NAME)
                 .shuffleGrouping(FLOWS_BOLT_NAME);
 
+        MessageEncoder messageEncoder = new MessageEncoder();
+        tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString());
+
         KafkaBolt kafkaNbBolt = createKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
-                .shuffleGrouping(SPLITTER_BOLT_NAME);
+                .shuffleGrouping(SPLITTER_BOLT_NAME)
+                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME);
 
         return tb.createTopology();
     }
 
+    /**
+     * Launches and sets up the workflow manager environment.
+     *
+     * @param args the command-line arguments.
+     */
     public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
