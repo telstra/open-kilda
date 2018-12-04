@@ -235,7 +235,7 @@ public class FlowService {
 
                         FlowBandwidth flowBandwidth = new FlowBandwidth();
                         flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
-                        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth() * 1000);
+                        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
                         discrepancy.setBandwidthValue(flowBandwidth);
                     }
                     if (("UP".equalsIgnoreCase(flowInfo.getStatus())
@@ -371,11 +371,12 @@ public class FlowService {
             if (index >= 0) {
                 FlowDiscrepancy discrepancy = new FlowDiscrepancy();
                 discrepancy.setControllerDiscrepancy(false);
-                if ((flows.get(index).getMaximumBandwidth() / 1000) != inventoryFlow.getMaximumBandwidth()) {
+                if (flows.get(index).getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
+                    discrepancy.setInventoryDiscrepancy(true);
                     discrepancy.setBandwidth(true);
                     FlowBandwidth flowBandwidth = new FlowBandwidth();
                     flowBandwidth.setControllerBandwidth(flows.get(index).getMaximumBandwidth());
-                    flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth() * 1000);
+                    flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
                     discrepancy.setBandwidthValue(flowBandwidth);
 
                 }
@@ -383,6 +384,7 @@ public class FlowService {
                         && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                         || ("DOWN".equalsIgnoreCase(flows.get(index).getStatus())
                                 && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                    discrepancy.setInventoryDiscrepancy(true);
                     discrepancy.setStatus(true);
 
                     FlowState flowState = new FlowState();
