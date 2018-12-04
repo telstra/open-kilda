@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
@@ -112,6 +113,13 @@ public interface SwitchService extends BasicService {
      * @return the synchronization result.
      */
     CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId);
+
+    /**
+     * Dumps all meters from the switch.
+     * @param switchId switch datapath id.
+     * @return meters dump.
+     */
+    CompletableFuture<SwitchMeterEntries> getMeters(SwitchId switchId);
 
     /**
      * Removes meter from the switch.

@@ -56,8 +56,9 @@ class IntentionalRerouteSpec extends BaseSpecification {
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
         def changedIsls = alternativePaths.collect { altPath ->
-            def thinIsl = pathHelper.getInvolvedIsls(altPath).find { !currentIsls.contains(it) &&
-                    !currentIsls.contains(islUtils.reverseIsl(it)) }
+            def thinIsl = pathHelper.getInvolvedIsls(altPath).find {
+                !currentIsls.contains(it) && !currentIsls.contains(islUtils.reverseIsl(it))
+            }
             def newBw = flow.maximumBandwidth - 1
             db.updateLinkProperty(thinIsl, "max_bandwidth", newBw)
             db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", newBw)
@@ -70,8 +71,14 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def rerouteResponse = northboundService.rerouteFlow(flow.id)
 
         then: "The flow is NOT rerouted because of not enough bandwidth on alternative paths"
+        int seqId = 0
+
         !rerouteResponse.rerouted
+        rerouteResponse.path.path == currentPath
+        rerouteResponse.path.path.each { assert it.seqId == seqId++ }
+
         PathHelper.convert(northboundService.getFlowPath(flow.id)) == currentPath
+        northbound.getFlowStatus(flow.id).status == FlowState.UP
 
         and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
         flowHelper.deleteFlow(flow.id)
@@ -102,8 +109,9 @@ class IntentionalRerouteSpec extends BaseSpecification {
 
         and: "Make the future path to have exact bandwidth to handle the flow"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find { !currentIsls.contains(it) &&
-                !currentIsls.contains(islUtils.reverseIsl(it))}
+        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find {
+            !currentIsls.contains(it) && !currentIsls.contains(islUtils.reverseIsl(it))
+        }
         db.updateLinkProperty(thinIsl, "max_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", flow.maximumBandwidth)
         db.updateLinkProperty(thinIsl, "available_bandwidth", flow.maximumBandwidth)
@@ -113,10 +121,16 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def rerouteResponse = northboundService.rerouteFlow(flow.id)
 
         then: "The flow is successfully rerouted and goes through the preferable path"
-        rerouteResponse.rerouted
         def newPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        int seqId = 0
+
+        rerouteResponse.rerouted
+        rerouteResponse.path.path == newPath
+        rerouteResponse.path.path.each { assert it.seqId == seqId++ }
+
         newPath == preferableAltPath
         pathHelper.getInvolvedIsls(newPath).contains(thinIsl)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }

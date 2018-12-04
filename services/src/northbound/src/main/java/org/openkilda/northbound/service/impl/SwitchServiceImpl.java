@@ -24,6 +24,7 @@ import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
@@ -36,6 +37,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesValidateRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
@@ -226,6 +228,16 @@ public class SwitchServiceImpl implements SwitchService {
                 System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
 
         return messagingChannel.sendAndGet(topoEngTopic, syncCommandMessage);
+    }
+
+    @Override
+    public CompletableFuture<SwitchMeterEntries> getMeters(SwitchId switchId) {
+        String requestId = RequestCorrelationId.getId();
+        CommandWithReplyToMessage dumpCommand = new CommandWithReplyToMessage(
+                new DumpMetersRequest(switchId),
+                System.currentTimeMillis(), requestId, Destination.CONTROLLER, northboundTopic);
+        return messagingChannel.sendAndGet(floodlightTopic, dumpCommand)
+                .thenApply(SwitchMeterEntries.class::cast);
     }
 
     @Override

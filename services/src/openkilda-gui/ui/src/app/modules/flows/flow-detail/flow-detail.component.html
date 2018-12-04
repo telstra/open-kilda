@@ -129,7 +129,7 @@
             <li class="list-group-item">
               <div class="row">
                 <div class="col-sm-4">Status:</div>
-                <div class="col-sm-8">{{ flowDetail.status }}
+                <div class="col-sm-8">{{ flowDetail.status || flowDetail.state }}
                    &nbsp; <i *ngIf="storeLinkSetting &&  statusDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>

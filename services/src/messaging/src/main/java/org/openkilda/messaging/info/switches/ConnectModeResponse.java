@@ -22,10 +22,12 @@ import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ConnectModeResponse extends InfoData {
 
+    @JsonProperty("connect_mode")
     protected ConnectModeRequest.Mode mode;
 
     /**
@@ -33,7 +35,7 @@ public class ConnectModeResponse extends InfoData {
      *
      * @param mode the connect mode currently set on the controller
      */
-    public ConnectModeResponse(ConnectModeRequest.Mode mode) {
+    public ConnectModeResponse(@JsonProperty("connect_mode") ConnectModeRequest.Mode mode) {
         this.mode = mode;
     }
 

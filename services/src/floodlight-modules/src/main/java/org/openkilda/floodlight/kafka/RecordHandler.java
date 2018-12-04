@@ -21,10 +21,12 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.ping.PingRequestCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsConverter;
+import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.FlowCommandException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -51,6 +53,7 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
@@ -66,6 +69,8 @@ import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.stats.PortStatus;
@@ -83,6 +88,7 @@ import org.openkilda.messaging.payload.flow.OutputVlanType;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -182,6 +188,8 @@ class RecordHandler implements Runnable {
             doDumpSwitchPortsDescriptionRequest(message, replyToTopic, replyDestination);
         } else if (data instanceof DumpPortDescriptionRequest) {
             doDumpPortDescriptionRequest(message, replyToTopic, replyDestination);
+        } else if (data instanceof DumpMetersRequest) {
+            doDumpMetersRequest(message, replyToTopic, replyDestination);
         } else {
             logger.error("unknown data type: {}", data.toString());
         }
@@ -471,7 +479,8 @@ class RecordHandler implements Runnable {
                 installedRules.addAll(asList(
                         ISwitchManager.DROP_RULE_COOKIE,
                         ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE,
-                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE
+                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE,
+                        ISwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE
                 ));
             }
 
@@ -817,6 +826,53 @@ class RecordHandler implements Runnable {
         }
     }
 
+    private void doDumpMetersRequest(
+            CommandMessage message, String replyToTopic, Destination replyDestination) {
+        DumpMetersRequest request = (DumpMetersRequest) message.getData();
+
+        final IKafkaProducerService producerService = getKafkaProducer();
+
+        try {
+            SwitchId switchId = request.getSwitchId();
+            logger.debug("Get all meters for switch {}", switchId);
+            ISwitchManager switchManager = context.getSwitchManager();
+            List<OFMeterConfig> meterEntries = switchManager.dumpMeters(DatapathId.of(switchId.toLong()));
+            List<MeterEntry> meters = meterEntries.stream()
+                    .map(OfMeterConverter::toMeterEntry)
+                    .collect(Collectors.toList());
+
+            SwitchMeterEntries response = SwitchMeterEntries.builder()
+                    .switchId(switchId)
+                    .meterEntries(meters)
+                    .build();
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
+            producerService.sendMessageAndTrack(replyToTopic, infoMessage);
+        } catch (UnsupportedSwitchOperationException e) {
+            String messageString = "Not supported: " + request.getSwitchId();
+            logger.error(messageString, e);
+            ErrorData errorData = new ErrorData(ErrorType.PARAMETERS_INVALID, e.getMessage(), messageString);
+            ErrorMessage error =
+                    new ErrorMessage(
+                            errorData, System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            producerService.sendMessageAndTrack(replyToTopic, error);
+        } catch (SwitchNotFoundException e) {
+            logger.info("Dumping switch meters is unsuccessful. Switch {} not found", request.getSwitchId());
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, e.getMessage(), request.getSwitchId().toString());
+            ErrorMessage error =
+                    new ErrorMessage(
+                            errorData, System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            producerService.sendMessageAndTrack(replyToTopic, error);
+        } catch (SwitchOperationException e) {
+            logger.error("Unable to dump meters", e);
+            ErrorData errorData =
+                    new ErrorData(ErrorType.NOT_FOUND, e.getMessage(), "Unable to dump meters");
+            ErrorMessage error =
+                    new ErrorMessage(
+                            errorData, System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            producerService.sendMessageAndTrack(replyToTopic, error);
+        }
+    }
+
     private long allocateMeterId(Long meterId, SwitchId switchId, String flowId, Long cookie) {
         long allocatedId;
 
@@ -832,7 +888,7 @@ class RecordHandler implements Runnable {
 
     private void installMeter(DatapathId dpid, long meterId, long bandwidth, String flowId) {
         try {
-            context.getSwitchManager().installMeter(dpid, bandwidth, 1024, meterId);
+            context.getSwitchManager().installMeter(dpid, bandwidth, meterId);
         } catch (UnsupportedOperationException e) {
             logger.info("Skip meter {} installation for flow {} on switch {}: {}",
                     meterId, flowId, dpid, e.getMessage());

@@ -38,11 +38,14 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     Database database
 
     @Unroll
-    def "Flow and switch validation should fail in case of missing rules"() {
+    def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"
         def (src, dest) = switches
-        def flowToBreak = northbound.addFlow(flowHelper.randomFlow(src, dest))
-        def intactFlow = northbound.addFlow(flowHelper.randomFlow(src, dest))
+        def flowToBreak = (src == dest) ? flowHelper.singleSwitchFlow(src) : flowHelper.randomFlow(src, dest)
+        def intactFlow = (src == dest) ? flowHelper.singleSwitchFlow(src) : flowHelper.randomFlow(src, dest)
+
+        flowToBreak = northbound.addFlow(flowToBreak)
+        intactFlow = northbound.addFlow(intactFlow)
 
         waitForFlowSetup(flowToBreak.id)
         waitForFlowSetup(intactFlow.id)

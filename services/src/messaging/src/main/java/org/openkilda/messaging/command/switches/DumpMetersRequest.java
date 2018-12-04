@@ -13,10 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.elastic;
+package org.openkilda.messaging.command.switches;
 
-import org.openkilda.testing.service.elastic.model.ElasticResponseDto;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.SwitchId;
 
-public interface ElasticService {
-    ElasticResponseDto getLogs(ElasticQuery query);
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
+
+@Value
+public class DumpMetersRequest extends CommandData {
+
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
+
+    public DumpMetersRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
+    }
 }

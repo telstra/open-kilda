@@ -134,14 +134,20 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy ,OnC
   loadGraphData(){
     let formdata = this.filterForm.value;
     let flowid = this.flowId;
-
+    let autoReloadTime = Number(
+      this.filterForm.controls["auto_reload_time"].value
+    );
+    
     let direction = formdata.direction;
     let downsampling = formdata.download_sample;
     let metric = formdata.metric;
     let timezone = formdata.timezone;
-
+    if (this.filterForm.controls["auto_reload"]) {
+      formdata.toDate = new Date(new Date(formdata.toDate).getTime() + (autoReloadTime * 1000));
+    }
     let convertedStartDate = moment(new Date(formdata.fromDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
     let convertedEndDate = moment(new Date(formdata.toDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
+    
 
     let startDate = moment(new Date(formdata.fromDate));
     let endDate = moment(new Date(formdata.toDate));

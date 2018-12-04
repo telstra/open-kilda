@@ -70,6 +70,8 @@ public interface NorthboundService {
 
     FlowReroutePayload rerouteFlow(String flowId);
 
+    FlowReroutePayload synchronizeFlow(String flowId);
+
     //switches
 
     SwitchFlowEntries getSwitchRules(SwitchId switchId);
