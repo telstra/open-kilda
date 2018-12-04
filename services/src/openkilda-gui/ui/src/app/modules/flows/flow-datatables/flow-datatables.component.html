@@ -22,7 +22,9 @@
                         </div>
                       </div>
                     </div>
-                 <a class="cursor-pointer" (click)="refreshList('')"><i class="fa fa-refresh"></i>  Refresh</a>
+                  <a *ngIf="storeLinkSetting" class="cursor-pointer" (click)="refreshList(activeStatus.toLowerCase())"><i class="fa fa-refresh"></i>  Refresh</a>
+                 <a *ngIf="!storeLinkSetting" class="cursor-pointer" (click)="refreshList('')"><i class="fa fa-refresh"></i>  Refresh</a>
+           
               </div>
          </div>
          

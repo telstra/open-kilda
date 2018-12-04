@@ -50,7 +50,14 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
 
   ngOnInit(){
     if(this.storeLinkSetting){
-      this.statusParams = ['Active'];
+      var cachedStatus = localStorage.getItem("activeFlowStatusFilter") || null;
+      if(cachedStatus){
+      	this.statusParams = [cachedStatus];
+      }else{
+      	this.statusParams = ['Active'];
+      	localStorage.setItem("activeFlowStatusFilter",this.statusParams.join(","));
+      }
+      
     }
     this.getFlowList(this.statusParams);
   }

@@ -114,6 +114,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   refreshList(status){
     let statusParam = [];
     statusParam.push(status);
+    localStorage.setItem("activeFlowStatusFilter",statusParam.join(","));
     this.refresh.emit({statusParam:statusParam});
   }
   fulltextSearch(e:any){ 
