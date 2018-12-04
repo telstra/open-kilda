@@ -103,7 +103,8 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
          */
         FlowThrottlingBolt flowThrottlingBolt = new FlowThrottlingBolt(
                 topologyConfig.getRerouteThrottlingMinDelay(), topologyConfig.getRerouteThrottlingMaxDelay());
-        int newParallelism = topologyConfig.getNewParallelism();
+        // FIXME(tdurakov): current throttling implementation doesn't properly work with 2. See #1636
+        int newParallelism = 1; //topologyConfig.getNewParallelism();
         builder.setBolt(BOLT_ID_REROUTE_THROTTLING, flowThrottlingBolt, newParallelism)
                 .fieldsGrouping(BOLT_ID_CACHE, StreamType.WFM_REROUTE.toString(), new Fields(CacheBolt.FLOW_ID_FIELD));
 

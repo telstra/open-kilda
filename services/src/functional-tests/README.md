@@ -62,6 +62,11 @@ For example:
 `mvn clean test -Pfunctional -Dtest="spec.northbound.flows.FlowsSpec#Able to create a single-switch flow"`
 Or just run tests from your IDE as regular JUnit tests.
 
+There is property flag `mode.topology.single` in `kilda.properties` file, that defines topology management strategy.
+While it's `true` - topology doesn't deletes after tests end, and you may play with it. But some manual teardown may be required before the next test run.
+Otherwise, topology will be removed after tests run.
+
+
 ### Hardware (Staging)
 - Check your `kilda.properties`. It should point to your staging environment.  
 `spring.profiles.active` should be set to `hardware`.
