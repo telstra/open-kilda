@@ -1,24 +1,28 @@
 package org.openkilda;
 
 
-import static org.openkilda.Constants.BOLT_COORDINATOR;
 import static org.openkilda.Constants.BOLT_HUB;
 import static org.openkilda.Constants.BOLT_TO_FL;
 import static org.openkilda.Constants.BOLT_TO_NB;
 import static org.openkilda.Constants.BOLT_WORKER;
 import static org.openkilda.Constants.KAFKA_SERVER;
-import static org.openkilda.Constants.SPOUT_COORDINATOR;
 import static org.openkilda.Constants.SPOUT_HUB;
 import static org.openkilda.Constants.SPOUT_WORKER;
 import static org.openkilda.Constants.STREAM_HUB_BOLT_TO_NB;
 import static org.openkilda.Constants.STREAM_HUB_BOLT_TO_WORKER_BOLT;
-import static org.openkilda.Constants.STREAM_TO_BOLT_COORDINATOR;
 import static org.openkilda.Constants.STREAM_WORKER_BOLT_TO_FL;
 import static org.openkilda.Constants.STREAM_WORKER_BOLT_TO_HUB_BOLT;
 import static org.openkilda.Constants.TOPIC_FL_TO_WORKER;
 import static org.openkilda.Constants.TOPIC_HUB_TO_NB;
 import static org.openkilda.Constants.TOPIC_NB_TO_HUB;
 import static org.openkilda.Constants.TOPIC_WORKER_TO_FL;
+import static org.openkilda.hubandspoke.Constants.BOLT_COORDINATOR;
+import static org.openkilda.hubandspoke.Constants.SPOUT_COORDINATOR;
+import static org.openkilda.hubandspoke.Constants.STREAM_TO_BOLT_COORDINATOR;
+
+import org.openkilda.hubandspoke.CoordinatorBolt;
+import org.openkilda.hubandspoke.CoordinatorSpout;
+import org.openkilda.hubandspoke.StormToKafkaTranslator;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
@@ -47,14 +51,28 @@ public class Topology {
                 fieldsGrouping(BOLT_WORKER, STREAM_TO_BOLT_COORDINATOR, new Fields("key")).
                 fieldsGrouping(BOLT_HUB, STREAM_TO_BOLT_COORDINATOR, new Fields("key"));
 
+        FlowCrudBolt.Config hubConfig = FlowCrudBolt.Config.builder().
+                componentBoltWorker(BOLT_WORKER).
+                componentSpoutHub(SPOUT_HUB).
+                streamHubBoltToRequester(STREAM_HUB_BOLT_TO_NB).
+                streamHubBoltToWorkerBolt(STREAM_HUB_BOLT_TO_WORKER_BOLT).
+                build();
+
         builder.setSpout(SPOUT_HUB, createKafkaSpout(SPOUT_HUB, TOPIC_NB_TO_HUB));
-        builder.setBolt(BOLT_HUB, new HubBolt(), 10)
+        builder.setBolt(BOLT_HUB, new FlowCrudBolt(hubConfig), 10)
                 .directGrouping(BOLT_WORKER, STREAM_WORKER_BOLT_TO_HUB_BOLT)
                 .fieldsGrouping(SPOUT_HUB, new Fields("key"))
                 .directGrouping(BOLT_COORDINATOR);
 
+        FlWorkerBolt.Config workerConfig = FlWorkerBolt.Config.builder().
+                componentBoltHub(BOLT_HUB).
+                componentSpoutWorker(SPOUT_WORKER).
+                streamWorkerBoltToExternal(STREAM_WORKER_BOLT_TO_FL).
+                streamWorkerBoltToHubBolt(STREAM_WORKER_BOLT_TO_HUB_BOLT).
+                build();
+
         builder.setSpout(SPOUT_WORKER, createKafkaSpout(SPOUT_WORKER, TOPIC_FL_TO_WORKER));
-        builder.setBolt(BOLT_WORKER, new WorkerBolt(), 20).
+        builder.setBolt(BOLT_WORKER, new FlWorkerBolt(workerConfig), 20).
                 fieldsGrouping(BOLT_HUB, STREAM_HUB_BOLT_TO_WORKER_BOLT, new Fields("key")).
                 fieldsGrouping(SPOUT_WORKER, new Fields("key")).
                 directGrouping(BOLT_COORDINATOR);
