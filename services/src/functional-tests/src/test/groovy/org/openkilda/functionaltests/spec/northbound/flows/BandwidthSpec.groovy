@@ -206,18 +206,19 @@ class BandwidthSpec extends BaseSpecification {
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flow.maximumBandwidth = Integer.MAX_VALUE - 1
+        long veryMaxBandwidth = northbound.getAllLinks()*.availableBandwidth.max()
+        flow.maximumBandwidth = veryMaxBandwidth + 1
         flow.ignoreBandwidth = true
         flowHelper.addFlow(flow)
-        assert northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE - 1
+        assert northboundService.getFlow(flow.id).maximumBandwidth == flow.maximumBandwidth
 
         and: "Update the flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
-        flow.maximumBandwidth = Integer.MAX_VALUE
+        flow.maximumBandwidth = veryMaxBandwidth + 2
         northboundService.updateFlow(flow.id, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.getFlow(flow.id).maximumBandwidth == Integer.MAX_VALUE
+        northboundService.getFlow(flow.id).maximumBandwidth == flow.maximumBandwidth
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
