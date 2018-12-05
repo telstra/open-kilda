@@ -15,55 +15,25 @@
 
 package org.openkilda.floodlight.service.kafka;
 
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
-public abstract class AbstractWorker {
-    private static final Logger log = LoggerFactory.getLogger(AbstractWorker.class);
+abstract class AbstractWorker {
+    protected final Producer<String, String> kafkaProducer;
 
-    private final Producer<String, String> kafkaProducer;
-    private final String topic;
+    AbstractWorker(AbstractWorker other) {
+        this(other.kafkaProducer);
+    }
 
-    public AbstractWorker(Producer<String, String> kafkaProducer, String topic) {
+    AbstractWorker(Producer<String, String> kafkaProducer) {
         this.kafkaProducer = kafkaProducer;
-        this.topic = topic;
     }
 
     /**
      * Serialize and send message into kafka topic.
      */
-    public SendStatus sendMessage(Message payload, Callback callback) {
-        log.debug("Send kafka message: {} <== {}", getTopic(), payload);
-        String json = encode(payload);
-        return send(json, callback);
-    }
-
-    protected abstract SendStatus send(String payload, Callback callback);
-
-    protected String encode(Message message) {
-        String encoded;
-        try {
-            encoded = Utils.MAPPER.writeValueAsString(message);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException(String.format("Can not serialize message: %s", e.toString()), e);
-        }
-
-        return encoded;
-    }
-
-    protected Producer<String, String> getKafkaProducer() {
-        return kafkaProducer;
-    }
-
-    protected String getTopic() {
-        return topic;
-    }
+    abstract SendStatus send(ProducerRecord<String, String> record, Callback callback);
 
     void deactivate(long transitionPeriod) {}
 
