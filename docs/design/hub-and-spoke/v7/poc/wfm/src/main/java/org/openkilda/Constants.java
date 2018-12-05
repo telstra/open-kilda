@@ -8,14 +8,11 @@ public final class Constants {
     public static final String STREAM_WORKER_BOLT_TO_FL = "stream-worker-bolt-to-fl";
     public static final String STREAM_WORKER_BOLT_TO_HUB_BOLT = "stream-worker-bolt-to-hub-bolt";
     public static final String STREAM_HUB_BOLT_TO_NB = "stream-hub-bolt-to-nb";
-    public static final String STREAM_TO_BOLT_COORDINATOR = "stream-to-bolt-coordinator";
 
     public static final String SPOUT_HUB = "spout-hub";
     public static final String BOLT_HUB = "bolt-hub";
     public static final String SPOUT_WORKER = "spout-worker";
     public static final String BOLT_WORKER = "bolt-worker";
-    public static final String SPOUT_COORDINATOR = "spout-coordinator";
-    public static final String BOLT_COORDINATOR = "bolt-coordinator";
     public static final String BOLT_TO_FL = "bolt-to-fl";
     public static final String BOLT_TO_NB = "bolt-to-nb";
 

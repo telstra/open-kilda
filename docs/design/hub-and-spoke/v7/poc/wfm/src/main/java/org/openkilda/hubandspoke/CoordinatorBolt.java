@@ -1,9 +1,8 @@
-package org.openkilda;
+package org.openkilda.hubandspoke;
 
-import static org.openkilda.Constants.SPOUT_COORDINATOR;
+import static org.openkilda.hubandspoke.Constants.SPOUT_COORDINATOR;
 
 import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -11,6 +10,8 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,12 +19,15 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-@Slf4j
+
 public class CoordinatorBolt extends BaseRichBolt {
+
+    private static final Logger log = LoggerFactory.getLogger(CoordinatorBolt.class);
+
+    private OutputCollector collector;
 
     private Map<String, Callback> callbacks = new HashMap<>();
     private SortedMap<Long, String> timeouts = new TreeMap<>();
-    private OutputCollector collector;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -45,17 +49,25 @@ public class CoordinatorBolt extends BaseRichBolt {
         CoordinatorCommand command = CoordinatorCommand.valueOf(input.getStringByField("command"));
         switch (command) {
             case REQUEST_CALLBACK:
+
+                if (callbacks.containsKey(key)) {
+                    Callback callback = callbacks.remove(key);
+                    timeouts.remove(callback.triggerTime);
+                }
+
                 Object context = input.getValueByField("context");
                 Values value = new Values(key, context);
-                callbacks.put(key, Callback.of(value, input.getSourceTask()));
                 Long timeout = input.getLongByField("timeout");
-                timeouts.put(System.currentTimeMillis() + timeout, key);
+                long triggerTime = System.currentTimeMillis() + timeout;
+                timeouts.put(triggerTime, key);
+                callbacks.put(key, Callback.of(value, input.getSourceTask(), triggerTime));
+
                 break;
             case CANCEL_CALLBACK:
                 callbacks.remove(key);
                 break;
             default:
-                log.error("invalid command");
+                log.error("Unexpected command for CoordinatorBolt");
         }
     }
 
@@ -76,9 +88,15 @@ public class CoordinatorBolt extends BaseRichBolt {
         }
     }
 
+    public enum CoordinatorCommand {
+        REQUEST_CALLBACK,
+        CANCEL_CALLBACK
+    }
+
     private static @Value(staticConstructor = "of")
     class Callback {
         private final Values values;
         private final int taskId;
+        private final Long triggerTime;
     }
 }

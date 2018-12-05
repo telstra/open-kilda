@@ -1,4 +1,4 @@
-package org.openkilda;
+package org.openkilda.hubandspoke;
 
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.TopologyContext;
