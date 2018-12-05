@@ -20,7 +20,7 @@ activate "ET-NetworkTopologyBolt"
 
 alt SwitchInfoData
 
-alt ADDED
+alt ACTIVATED
     "ET-NetworkTopologyBolt" -> "ET-SwitchService" : createOrUpdateSwitch
 activate "ET-SwitchService"
     "ET-SwitchService" -> DAO : getSwitch
@@ -31,18 +31,7 @@ activate "ET-SwitchService"
     "ET-SwitchService" -> "ET-SwitchService" : create or update switch
     "ET-SwitchService" -> DAO : createOrUpdateSwitch
 deactivate "ET-SwitchService"
-else ACTIVATED
-    "ET-NetworkTopologyBolt" -> "ET-SwitchService" : activateSwitch
-activate "ET-SwitchService"
-    "ET-SwitchService" -> DAO : getSwitch
-    activate DAO
-    DAO -> "ET-SwitchService" : switchFromDao
-    deactivate DAO
-
-    "ET-SwitchService" -> "ET-SwitchService" : set switch status "active"
-    "ET-SwitchService" -> DAO : createOrUpdateSwitch
-deactivate "ET-SwitchService"
-else REMOVED, DEACTIVATED
+else DEACTIVATED
     "ET-NetworkTopologyBolt" -> "ET-SwitchService" : deactivateSwitch
 activate "ET-SwitchService"
     "ET-SwitchService" -> DAO : getSwitch
