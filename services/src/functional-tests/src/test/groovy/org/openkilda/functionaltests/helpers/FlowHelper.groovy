@@ -43,9 +43,10 @@ class FlowHelper {
      * Creates a FlowPayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
      * random port otherwise.
      */
-    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch) {
-        return new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
-                false, false, "autotest flow", null, null)
+    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgens = true) {
+        return new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch, useTraffgens),
+                getFlowEndpoint(dstSwitch, useTraffgens), 500, false, false,
+                "autotest flow", null, null)
     }
 
     /**
@@ -130,7 +131,7 @@ class FlowHelper {
      * in 'allowedPorts'
      */
     private FlowEndpointPayload getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
-                                                boolean useTraffgenPorts = true) {
+            boolean useTraffgenPorts = true) {
         def port = allowedPorts[random.nextInt(allowedPorts.size())]
         if (useTraffgenPorts) {
             def connectedTraffgens = topology.activeTraffGens.findAll { it.switchConnected == sw }
