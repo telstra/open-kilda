@@ -46,7 +46,10 @@ make build-latest
 make up-test-mode
 ```
 - Create the `kilda.properties` file in the `functional-tests` directory.
-- Copy all properties from `kilda.properties.example` to the `kilda.properties` file.
+- Copy all properties from `kilda.properties.example` to the `kilda.properties` file. Please note that this is just an
+example file and some values may diverge from the actual ones. All properties should represent the actual properties
+your Kilda is deployed with. The casual `make up-test-mode` will use properties from `open-kilda/confd/vars/main.yaml`
+during deployment.
 - Change endpoint properties (url, user and password) if needed. It should point
 to your localhost environment. `spring.profiles.active` should be set to `virtual`.
 - Check your `topology.yaml`. This is a file which will be used to spawn a virtual

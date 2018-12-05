@@ -27,4 +27,4 @@ mode.topology.single=true
 reroute.delay=10
 reroute.hardtimeout=30
 discovery.interval=3
-discovery.timeout = 9
+discovery.timeout = 15
