@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -11,6 +12,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -156,8 +158,77 @@ class SwitchRulesSpec extends BaseSpecification {
         ]
     }
 
-    @Unroll
-    def "Able to delete switch rules by #data.description"() {
+    @Unroll("Able to delete switch rules by #data.description")
+    def "Able to delete switch rules by cookie/priority"() {
+        given: "A switch with some flow rules installed"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        when: "Delete switch rules by #data.description"
+        def deletedRules = northboundService.deleteSwitchRules(data.switch.dpId,
+                getFlowRules(data.switch.dpId).first()."$data.description")
+
+        then: "The requested rules are really deleted"
+        deletedRules.size() == data.rulesDeleted
+        Wrappers.wait(RULES_DELETION_TIME) {
+            def actualRules = northboundService.getSwitchRules(data.switch.dpId).flowEntries
+            assert actualRules.size() == data.defaultRules.size() + flowRulesCount - data.rulesDeleted
+            assert actualRules.findAll { it.cookie in deletedRules }.empty
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        data << [[description : "cookie",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  rulesDeleted: 1
+                 ],
+                 [description : "priority",
+                  switch      : dstSwitch,
+                  defaultRules: dstSwDefaultRules,
+                  rulesDeleted: 2
+                 ]
+        ]
+    }
+
+    @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
+    def "Attempt to delete switch rules by supplying non-existing cookie/priority leaves all rules intact"() {
+        given: "A switch with some flow rules installed"
+        //TODO(ylobankov): Remove this code once the issue #1701 is resolved.
+        assumeTrue("Test is skipped because of the issue #1701", data.description != "priority")
+
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        when: "Delete switch rules by non-existing #data.description"
+        def deletedRules = northboundService.deleteSwitchRules(data.switch.dpId, data.value)
+
+        then: "All rules are kept intact"
+        deletedRules.size() == 0
+        northboundService.getSwitchRules(data.switch.dpId).flowEntries.size() ==
+                data.defaultRules.size() + flowRulesCount
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        data << [[description : "cookie",
+                  switch      : srcSwitch,
+                  defaultRules: srcSwDefaultRules,
+                  value       : 0x8000000000000000L
+                 ],
+                 [description : "priority",
+                  switch      : dstSwitch,
+                  defaultRules: dstSwDefaultRules,
+                  value       : 0
+                 ]
+        ]
+    }
+
+    @Unroll("Able to delete switch rules by #data.description")
+    def "Able to delete switch rules by inPort/inVlan/outPort"() {
         given: "A switch with some flow rules installed"
         flowHelper.addFlow(flow)
 
@@ -169,6 +240,7 @@ class SwitchRulesSpec extends BaseSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             def actualRules = northboundService.getSwitchRules(data.switch.dpId).flowEntries
             assert actualRules.size() == data.defaultRules.size() + flowRulesCount - 1
+            assert actualRules.findAll { it.cookie in deletedRules }.empty
             assert filterRules(actualRules, data.inPort, data.inVlan, data.outPort).empty
         }
 
@@ -208,8 +280,8 @@ class SwitchRulesSpec extends BaseSpecification {
         ]
     }
 
-    @Unroll
-    def "Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact"() {
+    @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
+    def "Attempt to delete switch rules by supplying non-existing inPort/inVlan/outPort leaves all rules intact"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
@@ -307,6 +379,11 @@ class SwitchRulesSpec extends BaseSpecification {
 
     FlowPayload buildFlow() {
         flowHelper.randomFlow(srcSwitch, dstSwitch)
+    }
+
+    List<FlowEntry> getFlowRules(SwitchId switchId) {
+        def defaultCookies = DefaultRule.values()*.cookie
+        northboundService.getSwitchRules(switchId).flowEntries.findAll { !(it.cookie in defaultCookies) }.sort()
     }
 
     List<FlowEntry> filterRules(List<FlowEntry> rules, inPort, inVlan, outPort) {
