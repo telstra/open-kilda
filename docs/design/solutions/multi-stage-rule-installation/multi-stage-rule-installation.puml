@@ -1,0 +1,37 @@
+@startuml
+
+title Multi-stage installation of switch rules on flow reroute
+
+control kilda.flow
+participant CrudBolt
+participant TransactionBolt
+control kilda.speaker.flow
+
+kilda.flow -> CrudBolt: (via SplitterBolt)\nFlowRerouteRequest
+CrudBolt -> CrudBolt: Compute the path and store flow entities
+
+CrudBolt -> TransactionBolt: CommandMessage with 4 groups:\n 1. InstallTransitFlow + InstallEgressFlow\n 2. InstallIngressFlow\n 3. RemoveFlow for the old ingress rule\n 4. RemoveFlow for the rest old rules
+
+loop for each command in the 1st group
+    TransactionBolt -> kilda.speaker.flow: Forward to Speaker
+    TransactionBolt -> TransactionBolt: Register as a transaction for the 1st stage
+end
+
+loop for each installed / removed switch rule
+    kilda.flow -> TransactionBolt: (via SpeakerBolt)\nCommandMessage
+    TransactionBolt -> TransactionBolt: Mark corresponding transaction as completed
+	opt Are all transactions of the current stage completed?
+        TransactionBolt -> TransactionBolt: Mark the stage as completed
+
+        loop for each command in the next group
+            TransactionBolt -> kilda.speaker.flow: Forward to Speaker
+            TransactionBolt -> TransactionBolt: Register as a transaction for the next stage
+        end
+	end
+	opt Are all stages completed?
+        TransactionBolt -> StatusBolt: Update the flow status to FlowStatus.UP
+        StatusBolt -> StatusBolt: Set the flow status
+	end
+end
+
+@enduml
