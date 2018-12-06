@@ -1,0 +1,52 @@
+@startuml
+title Reroute all flows which go through a particular ISL
+
+participant Client
+
+participant Northbound
+
+control kilda.northbound
+control kilda.topo.nb
+
+participant NbWorkerTopology
+
+participant Neo4j
+
+control kilda.flow
+
+Client -> Northbound : PATCH /links/flows/reroute\nRequest params:\nsrc_switch, src_port, dst_switch, dst_port
+
+activate Northbound
+Northbound -> kilda.topo.nb : CommandMessage\nRerouteFlowsForLinkRequest
+kilda.topo.nb -> NbWorkerTopology : CommandMessage\nRerouteFlowsForLinkRequest
+activate NbWorkerTopology
+
+NbWorkerTopology -> Neo4j : Query to get link\ninformation
+activate Neo4j
+Neo4j -> NbWorkerTopology : Isl
+deactivate Neo4j
+
+alt
+
+NbWorkerTopology -> Neo4j : Query to get flows for\na particular link
+activate Neo4j
+Neo4j -> NbWorkerTopology : Flows
+deactivate Neo4j
+loop flows
+    NbWorkerTopology -> kilda.flow : CommandMessage\nFlowRerouteRequest
+end
+
+NbWorkerTopology -> kilda.northbound : InfoData\nFlowsResponse
+kilda.northbound -> Northbound : InfoData\nFlowsResponse
+Northbound -> Client : List of flow ids
+
+else link does not exist
+
+NbWorkerTopology -> kilda.northbound : ErrorMessage
+deactivate NbWorkerTopology
+kilda.northbound -> Northbound : ErrorMessage
+Northbound -> Client : HTTP 404: Isl not found
+deactivate Northbound
+end
+
+@enduml
