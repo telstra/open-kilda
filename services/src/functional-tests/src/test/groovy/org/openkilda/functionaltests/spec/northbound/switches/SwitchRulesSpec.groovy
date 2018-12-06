@@ -12,7 +12,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.messaging.model.SwitchId
+import org.openkilda.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
