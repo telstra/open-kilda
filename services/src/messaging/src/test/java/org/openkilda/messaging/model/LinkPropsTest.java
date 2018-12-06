@@ -28,17 +28,17 @@ import java.util.HashMap;
 public class LinkPropsTest implements StringSerializer {
     @Test
     public void serializeLoop() throws Exception {
-        LinkProps origin = makeSubject();
+        LinkPropsDto origin = makeSubject();
         serialize(origin);
 
-        LinkProps reconstructed = (LinkProps) deserialize();
+        LinkPropsDto reconstructed = (LinkPropsDto) deserialize();
         Assert.assertEquals(origin, reconstructed);
     }
 
     /**
-     * Produce {@link LinkProps} object with predefined data.
+     * Produce {@link LinkPropsDto} object with predefined data.
      */
-    public static LinkProps makeSubject() {
+    public static LinkPropsDto makeSubject() {
         NetworkEndpoint source = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
         NetworkEndpoint dest = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 9);
 
@@ -46,12 +46,12 @@ public class LinkPropsTest implements StringSerializer {
         props.put("cost", "10");
 
         long created = System.currentTimeMillis();
-        return new LinkProps(source, dest, props, created, created);
+        return new LinkPropsDto(source, dest, props, created, created);
     }
 
     @Override
     public Object deserialize() throws IOException {
-        return Utils.MAPPER.readValue(strings.poll(), LinkProps.class);
+        return Utils.MAPPER.readValue(strings.poll(), LinkPropsDto.class);
     }
 
     @Override

@@ -24,7 +24,7 @@ import java.io.Serializable;
 import java.util.Map;
 
 @Value
-public class LinkProps implements Serializable {
+public class LinkPropsDto implements Serializable {
     @JsonProperty("source")
     private NetworkEndpoint source;
 
@@ -42,7 +42,7 @@ public class LinkProps implements Serializable {
 
     @Builder
     @JsonCreator
-    public LinkProps(
+    public LinkPropsDto(
             @JsonProperty("source") NetworkEndpoint source,
             @JsonProperty("dest") NetworkEndpoint dest,
             @JsonProperty("props") Map<String, String> props,
@@ -55,7 +55,7 @@ public class LinkProps implements Serializable {
         this.modified = modified;
     }
 
-    public LinkProps(NetworkEndpoint source, NetworkEndpoint dest, Map<String, String> props) {
+    public LinkPropsDto(NetworkEndpoint source, NetworkEndpoint dest, Map<String, String> props) {
         this.source = source;
         this.dest = dest;
         this.props = props;

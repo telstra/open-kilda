@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.te.request;
+package org.openkilda.messaging.nbtopology.request;
 
 import org.openkilda.messaging.model.LinkPropsMask;
 

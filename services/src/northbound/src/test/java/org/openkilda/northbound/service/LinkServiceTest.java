@@ -25,15 +25,14 @@ import static org.mockito.Mockito.mock;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
+import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
+import org.openkilda.messaging.nbtopology.request.LinkPropsRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
-import org.openkilda.messaging.te.request.LinkPropsDrop;
-import org.openkilda.messaging.te.request.LinkPropsPut;
-import org.openkilda.messaging.te.request.LinkPropsRequest;
-import org.openkilda.messaging.te.response.LinkPropsResponse;
+import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
@@ -125,10 +124,10 @@ public class LinkServiceTest {
     public void shouldGetPropsList() {
         final String correlationId = "non-empty-link-props";
 
-        LinkProps linkProps = new LinkProps(
-                        new NetworkEndpoint(new SwitchId("00:00:00:00:00:00:00:01"), 1),
-                        new NetworkEndpoint(new SwitchId("00:00:00:00:00:00:00:02"), 2),
-                        Collections.singletonMap("cost", "2"));
+        org.openkilda.messaging.model.LinkPropsDto linkProps = new org.openkilda.messaging.model.LinkPropsDto(
+                new NetworkEndpoint(new SwitchId("00:00:00:00:00:00:00:01"), 1),
+                new NetworkEndpoint(new SwitchId("00:00:00:00:00:00:00:02"), 2),
+                Collections.singletonMap("cost", "2"));
         LinkPropsData linkPropsData = new LinkPropsData(linkProps);
         messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(linkPropsData));
         RequestCorrelationId.create(correlationId);
@@ -149,10 +148,10 @@ public class LinkServiceTest {
 
         HashMap<String, String> requestProps = new HashMap<>();
         requestProps.put("test", "value");
-        LinkProps linkProps = new LinkProps(
-                    new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
-                    new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 9),
-                    requestProps);
+        org.openkilda.messaging.model.LinkPropsDto linkProps = new org.openkilda.messaging.model.LinkPropsDto(
+                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
+                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 9),
+                requestProps);
         LinkPropsRequest request = new LinkPropsPut(linkProps);
 
         LinkPropsResponse payload = new LinkPropsResponse(request, linkProps, null);
@@ -176,14 +175,14 @@ public class LinkServiceTest {
     public void dropLinkProps() {
         final String correlationId = getClass().getCanonicalName();
 
-        LinkPropsDto input =  new LinkPropsDto("ff:fe:00:00:00:00:00:01", 8,
+        LinkPropsDto input = new LinkPropsDto("ff:fe:00:00:00:00:00:01", 8,
                 "ff:fe:00:00:00:00:00:05", null, null);
 
         LinkPropsDrop request = new LinkPropsDrop(new LinkPropsMask(
                 new NetworkEndpointMask(new SwitchId(input.getSrcSwitch()), input.getSrcPort()),
                 new NetworkEndpointMask(new SwitchId(input.getDstSwitch()), input.getDstPort())));
 
-        LinkProps linkProps = new LinkProps(
+        org.openkilda.messaging.model.LinkPropsDto linkProps = new org.openkilda.messaging.model.LinkPropsDto(
                 new NetworkEndpoint(new SwitchId(input.getSrcSwitch()), input.getSrcPort()),
                 new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 9),
                 new HashMap<>());
