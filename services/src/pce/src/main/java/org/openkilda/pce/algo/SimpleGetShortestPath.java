@@ -15,7 +15,7 @@
 
 package org.openkilda.pce.algo;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.model.AvailableNetwork;
 import org.openkilda.pce.model.SimpleIsl;
 import org.openkilda.pce.model.SimpleSwitch;

@@ -21,8 +21,8 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.pce.model.AvailableNetwork;
 
 import com.google.common.graph.MutableNetwork;
@@ -47,12 +47,12 @@ public class PathComputerMock implements PathComputer {
     }
 
     @Override
-    public List<Flow> getFlow(String flowId) {
+    public List<FlowDto> getFlow(String flowId) {
         return Collections.emptyList();
     }
 
     @Override
-    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork currentNetwork,
+    public FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow, AvailableNetwork currentNetwork,
                                                         Strategy strategy) {
         /*
          * TODO: Implement other strategies? Default is HOPS ...
@@ -72,13 +72,13 @@ public class PathComputerMock implements PathComputer {
                     String.format("Error: No node found destination=%s", flow.getDestinationSwitch()));
         }
 
-        return new FlowPair<>(
+        return new FlowPairDto<>(
                 path(source, destination, flow.getBandwidth()),
                 path(destination, source, flow.getBandwidth()));
     }
 
     @Override
-    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
+    public FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow, Strategy strategy) {
         return getPath(flow, null, strategy);
     }
 
@@ -104,7 +104,7 @@ public class PathComputerMock implements PathComputer {
 
         Set<SwitchInfoData> nodesToProcess = new HashSet<>(network.nodes());
         Set<SwitchInfoData> nodesWereProcess = new HashSet<>();
-        Map<SwitchInfoData, FlowPair<SwitchInfoData, IslInfoData>> predecessors = new HashMap<>();
+        Map<SwitchInfoData, FlowPairDto<SwitchInfoData, IslInfoData>> predecessors = new HashMap<>();
 
         Map<SwitchInfoData, Long> distances = network.nodes().stream()
                 .collect(Collectors.toMap(k -> k, v -> Long.MAX_VALUE));
@@ -131,13 +131,13 @@ public class PathComputerMock implements PathComputer {
                     if (distances.get(target) >= distance) {
                         distances.put(target, distance);
                         nodesToProcess.add(target);
-                        predecessors.put(target, new FlowPair<>(source, edge));
+                        predecessors.put(target, new FlowPairDto<>(source, edge));
                     }
                 }
             }
         }
 
-        FlowPair<SwitchInfoData, IslInfoData> nextHop = predecessors.get(dstSwitch);
+        FlowPairDto<SwitchInfoData, IslInfoData> nextHop = predecessors.get(dstSwitch);
         if (nextHop == null) {
             return null;
         }
@@ -173,12 +173,12 @@ public class PathComputerMock implements PathComputer {
     }
 
     private void collect(IslInfoData isl, PathInfoData path, int seqId) {
-        PathNode source = new PathNode(isl.getPath().get(0));
+        PathNode source = new PathNode(isl.getSource());
         source.setSeqId(seqId);
         source.setSegLatency(isl.getLatency());
         path.getPath().add(source);
 
-        PathNode destination = new PathNode(isl.getPath().get(1));
+        PathNode destination = new PathNode(isl.getDestination());
         destination.setSeqId(seqId + 1);
         path.getPath().add(destination);
 

@@ -15,9 +15,9 @@
 
 package org.openkilda.simulator.interfaces;
 
-import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.simulator.classes.IPortImpl;
 import org.openkilda.simulator.classes.SimulatorException;
 
@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface ISwitch {
-    void modState(SwitchState state) throws SimulatorException;
+    void modState(SwitchChangeType state) throws SimulatorException;
 
     void activate();
 

@@ -29,8 +29,8 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.atdd.staging.service.flowmanager.FlowManagerImpl;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.database.Database;
 import org.openkilda.testing.service.northbound.NorthboundService;

@@ -25,7 +25,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
@@ -42,7 +42,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -157,7 +157,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @return {@link OFInstructionApplyActions}
      */
     private static OFInstructionApplyActions buildInstructionApplyActions(OFFactory ofFactory,
-            List<OFAction> actionList) {
+                                                                          List<OFAction> actionList) {
         return ofFactory.instructions().applyActions(actionList).createBuilder().build();
     }
 
@@ -204,7 +204,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         producerService = context.getServiceImpl(IKafkaProducerService.class);
         switchTracking = context.getServiceImpl(SwitchTrackingService.class);
 
-        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(context, this);
         config = provider.getConfiguration(SwitchManagerConfig.class);
         String connectModeProperty = config.getConnectMode();
 
@@ -1149,8 +1149,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return builder.build();
     }
 
-  
-  
+
+
     /**
      * Create an action to send packet to the controller.
      *

@@ -27,13 +27,13 @@ import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
@@ -88,7 +88,7 @@ public class NorthboundRunTest {
     }
 
     @Given("^health check$")
-    public void healthCheck() throws Throwable {
+    public void healthCheck() {
         assertEquals(200, getHealthCheck());
     }
 

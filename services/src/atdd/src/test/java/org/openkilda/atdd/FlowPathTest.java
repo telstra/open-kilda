@@ -29,9 +29,9 @@ import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.provider.UnroutablePathException;
@@ -52,15 +52,15 @@ import java.util.concurrent.TimeUnit;
 
 public class FlowPathTest {
     private static final String fileName = "topologies/multi-path-topology.json";
-    private static final List<FlowPair<String, String>> shortestPathLinks = Arrays.asList(
-            new FlowPair<>("00:00:00:00:00:00:00:07", "1"), new FlowPair<>("00:00:00:00:00:00:00:03", "2"),
-            new FlowPair<>("00:00:00:00:00:00:00:02", "2"), new FlowPair<>("00:00:00:00:00:00:00:03", "1"));
-    private static final List<FlowPair<String, String>> alternativePathLinks = Arrays.asList(
-            new FlowPair<>("00:00:00:00:00:00:00:02", "3"), new FlowPair<>("00:00:00:00:00:00:00:04", "1"),
-            new FlowPair<>("00:00:00:00:00:00:00:05", "1"), new FlowPair<>("00:00:00:00:00:00:00:04", "2"),
-            new FlowPair<>("00:00:00:00:00:00:00:05", "2"), new FlowPair<>("00:00:00:00:00:00:00:06", "1"),
-            new FlowPair<>("00:00:00:00:00:00:00:06", "2"), new FlowPair<>("00:00:00:00:00:00:00:07", "3"));
-    static final FlowPair<PathInfoData, PathInfoData> expectedShortestPath = new FlowPair<>(
+    private static final List<FlowPairDto<String, String>> shortestPathLinks = Arrays.asList(
+            new FlowPairDto<>("00:00:00:00:00:00:00:07", "1"), new FlowPairDto<>("00:00:00:00:00:00:00:03", "2"),
+            new FlowPairDto<>("00:00:00:00:00:00:00:02", "2"), new FlowPairDto<>("00:00:00:00:00:00:00:03", "1"));
+    private static final List<FlowPairDto<String, String>> alternativePathLinks = Arrays.asList(
+            new FlowPairDto<>("00:00:00:00:00:00:00:02", "3"), new FlowPairDto<>("00:00:00:00:00:00:00:04", "1"),
+            new FlowPairDto<>("00:00:00:00:00:00:00:05", "1"), new FlowPairDto<>("00:00:00:00:00:00:00:04", "2"),
+            new FlowPairDto<>("00:00:00:00:00:00:00:05", "2"), new FlowPairDto<>("00:00:00:00:00:00:00:06", "1"),
+            new FlowPairDto<>("00:00:00:00:00:00:00:06", "2"), new FlowPairDto<>("00:00:00:00:00:00:00:07", "3"));
+    static final FlowPairDto<PathInfoData, PathInfoData> expectedShortestPath = new FlowPairDto<>(
             new PathInfoData(0L, Arrays.asList(
                     new PathNode(new SwitchId(2L), 2, 0, 0L),
                     new PathNode(new SwitchId(3L), 1, 1, 0L),
@@ -71,7 +71,7 @@ public class FlowPathTest {
                     new PathNode(new SwitchId(3L), 2, 1, 0L),
                     new PathNode(new SwitchId(3L), 1, 2, 0L),
                     new PathNode(new SwitchId(2L), 2, 3, 0L))));
-    static final FlowPair<PathInfoData, PathInfoData> expectedAlternatePath = new FlowPair<>(
+    static final FlowPairDto<PathInfoData, PathInfoData> expectedAlternatePath = new FlowPairDto<>(
             new PathInfoData(0L, Arrays.asList(
                     new PathNode(new SwitchId(2L), 3, 0, 0L),
                     new PathNode(new SwitchId(4L), 1, 1, 0L),
@@ -127,7 +127,7 @@ public class FlowPathTest {
     @Then("^shortest path links available bandwidth have available bandwidth (\\d+)$")
     public void checkShortestPathAvailableBandwidthDecreased(long expectedAvailableBandwidth)
             throws InterruptedException {
-        for (FlowPair<String, String> expectedLink : shortestPathLinks) {
+        for (FlowPairDto<String, String> expectedLink : shortestPathLinks) {
             long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     new SwitchId(expectedLink.getLeft()), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
@@ -137,7 +137,7 @@ public class FlowPathTest {
     @Then("^alternative path links available bandwidth have available bandwidth (\\d+)$")
     public void checkAlternativePathAvailableBandwidthDecreased(long expectedAvailableBandwidth)
             throws InterruptedException {
-        for (FlowPair<String, String> expectedLink : alternativePathLinks) {
+        for (FlowPairDto<String, String> expectedLink : alternativePathLinks) {
             long actualBandwidth = getBandwidth(expectedAvailableBandwidth,
                     new SwitchId(expectedLink.getLeft()), expectedLink.getRight());
             assertEquals(expectedAvailableBandwidth, actualBandwidth);
@@ -148,11 +148,11 @@ public class FlowPathTest {
     public void flowPathCorrect(String flowId, String sourceSwitch, int sourcePort, int sourceVlan,
                                 String destinationSwitch, int destinationPort, int destinationVlan, long bandwidth)
             throws UnroutablePathException, InterruptedException, RecoverableException {
-        Flow flow =
-                new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, flowId,
+        FlowDto flow =
+                new FlowDto(FlowUtils.getFlowName(flowId), bandwidth, false, flowId,
                         new SwitchId(sourceSwitch), sourcePort, sourceVlan, new SwitchId(destinationSwitch),
                         destinationPort, destinationVlan);
-        FlowPair<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
+        FlowPairDto<PathInfoData, PathInfoData> path = FlowUtils.getFlowPath(flow);
         System.out.println(path);
         assertEquals(expectedShortestPath, path);
     }
@@ -212,7 +212,7 @@ public class FlowPathTest {
 
     @Then("^flow (.*) has updated timestamp$")
     public void flowRestoredHasValidLastUpdatedTimestamp(String flowId) throws Throwable {
-        List<Flow> flows = dumpFlows();
+        List<FlowDto> flows = dumpFlows();
 
         if (flows == null || flows.isEmpty()) {
             TimeUnit.SECONDS.sleep(2);
@@ -222,7 +222,7 @@ public class FlowPathTest {
         assertNotNull(flows);
         assertEquals(2, flows.size());
 
-        Flow flow = flows.get(0);
+        FlowDto flow = flows.get(0);
         String currentLastUpdated = flow.getLastUpdated();
         System.out.println(format("=====> Flow %s previous timestamp = %s", flowId, previousLastUpdated));
         System.out.println(format("=====> Flow %s current timestamp = %s", flowId, currentLastUpdated));

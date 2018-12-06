@@ -18,7 +18,7 @@ package org.openkilda.messaging.info.event;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.openkilda.messaging.info.CacheTimeTag;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -77,7 +77,7 @@ public class SwitchInfoData extends CacheTimeTag {
      * Switch state.
      */
     @JsonProperty("state")
-    private SwitchState state;
+    private SwitchChangeType state;
 
     /**
      * Switch state.
@@ -90,7 +90,7 @@ public class SwitchInfoData extends CacheTimeTag {
      */
     public SwitchInfoData() { }
 
-    public SwitchInfoData(SwitchId switchId, SwitchState state) {
+    public SwitchInfoData(SwitchId switchId, SwitchChangeType state) {
         this(switchId, state, null, null, null, null);
     }
 
@@ -106,7 +106,7 @@ public class SwitchInfoData extends CacheTimeTag {
      */
     @JsonCreator
     public SwitchInfoData(@JsonProperty("switch_id") final SwitchId switchId,
-                          @JsonProperty("state") final SwitchState state,
+                          @JsonProperty("state") final SwitchChangeType state,
                           @JsonProperty("address") final String address,
                           @JsonProperty("hostname") final String hostname,
                           @JsonProperty("description") final String description,
@@ -142,7 +142,7 @@ public class SwitchInfoData extends CacheTimeTag {
      *
      * @return switch state
      */
-    public SwitchState getState() {
+    public SwitchChangeType getState() {
         return state;
     }
 
@@ -151,7 +151,7 @@ public class SwitchInfoData extends CacheTimeTag {
      *
      * @param state switch state to set
      */
-    public void setState(final SwitchState state) {
+    public void setState(final SwitchChangeType state) {
         this.state = state;
     }
 

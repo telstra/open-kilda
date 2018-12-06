@@ -22,7 +22,7 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.MeterConfigReply;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;

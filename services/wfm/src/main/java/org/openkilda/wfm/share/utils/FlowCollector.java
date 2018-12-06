@@ -15,19 +15,19 @@
 
 package org.openkilda.wfm.share.utils;
 
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FlowCollector {
     private String flowId;
-    private Flow forward = null;
-    private Flow reverse = null;
+    private FlowDto forward = null;
+    private FlowDto reverse = null;
 
-    public void add(Flow flow) {
-        Flow current;
+    public void add(FlowDto flow) {
+        FlowDto current;
 
         boolean isForward = flow.isForward();
         if (isForward) {
@@ -51,7 +51,7 @@ public class FlowCollector {
         flowId = flow.getFlowId();
     }
 
-    public Flow anyDefined() {
+    public FlowDto anyDefined() {
         if (forward != null) {
             return forward;
         }
@@ -63,7 +63,7 @@ public class FlowCollector {
         throw new IllegalArgumentException("No one half-flow pieces defined");
     }
 
-    public BidirectionalFlow make() {
+    public BidirectionalFlowDto make() {
         List<String> missing = new ArrayList<>(2);
         if (forward == null) {
             missing.add("FORWARD is missing");
@@ -79,6 +79,6 @@ public class FlowCollector {
             );
         }
 
-        return new BidirectionalFlow(forward, reverse);
+        return new BidirectionalFlowDto(forward, reverse);
     }
 }

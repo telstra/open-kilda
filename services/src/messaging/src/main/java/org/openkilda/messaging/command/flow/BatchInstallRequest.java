@@ -15,11 +15,12 @@
 
 package org.openkilda.messaging.command.flow;
 
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
 
 import java.util.List;
 
@@ -28,13 +29,13 @@ import java.util.List;
 public class BatchInstallRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("flow_commands")
     private List<BaseInstallFlow> flowCommands;
 
     public BatchInstallRequest(
-            @JsonProperty("switch_id") String switchId,
+            @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("flow_commands") List<BaseInstallFlow> flowCommands) {
         this.switchId = switchId;
         this.flowCommands = flowCommands;

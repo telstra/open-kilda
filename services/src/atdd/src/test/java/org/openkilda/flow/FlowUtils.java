@@ -29,16 +29,16 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
@@ -307,7 +307,7 @@ public final class FlowUtils {
      * @param flow flow
      * @return flow path
      */
-    public static FlowPair<PathInfoData, PathInfoData> getFlowPath(Flow flow)
+    public static FlowPairDto<PathInfoData, PathInfoData> getFlowPath(FlowDto flow)
             throws InterruptedException, UnroutablePathException, RecoverableException {
         Thread.sleep(1000);
         PathComputer pathComputer = new NeoDriver(DefaultParameters.neoAuth.getDriver());
@@ -440,7 +440,7 @@ public final class FlowUtils {
      *
      * @return The JSON document of all flows
      */
-    public static List<Flow> dumpFlows() {
+    public static List<FlowDto> dumpFlows() {
         System.out.println("\n==> Topology-Engine Dump Flows");
 
         long current = System.currentTimeMillis();
@@ -457,8 +457,8 @@ public final class FlowUtils {
         System.out.println(format("===> Topology-Engine Dump Flows Time: %,.3f", getTimeDuration(current)));
 
         try {
-            List<Flow> flows = new ObjectMapper().readValue(response.readEntity(String.class),
-                    new TypeReference<List<Flow>>() {
+            List<FlowDto> flows = new ObjectMapper().readValue(response.readEntity(String.class),
+                    new TypeReference<List<FlowDto>>() {
                     });
             System.out.println(format("====> Topology-Engine Dump Flows = %d", flows.size()));
 

@@ -41,9 +41,9 @@ import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -114,7 +114,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         verifyAll();
     }
 
@@ -123,7 +123,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         Capture<Message> producedMessage = prepareSwitchEvent();
         replayAll();
         service.switchAdded(dpId);
-        verifySwitchEvent(SwitchState.ADDED, producedMessage);
+        verifySwitchEvent(SwitchChangeType.ADDED, producedMessage);
     }
 
     @Test
@@ -131,7 +131,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         Capture<Message> producedMessage = prepareMissingSwitchEvent();
         replayAll();
         service.switchAdded(dpId);
-        verifySwitchEvent(SwitchState.ADDED, producedMessage);
+        verifySwitchEvent(SwitchChangeType.ADDED, producedMessage);
     }
 
     @Test
@@ -140,7 +140,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         switchManager.deactivate(eq(dpId));
         replayAll();
         service.switchRemoved(dpId);
-        verifySwitchEvent(SwitchState.REMOVED, producedMessage);
+        verifySwitchEvent(SwitchChangeType.REMOVED, producedMessage);
     }
 
     @Test
@@ -175,7 +175,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         replayAll();
 
         service.switchActivated(dpId);
-        verifySwitchEvent(SwitchState.ACTIVATED, producedMessage);
+        verifySwitchEvent(SwitchChangeType.ACTIVATED, producedMessage);
 
         List<InfoData> actualProducedMessages = producedMessage.getValues().stream()
                 .skip(1)
@@ -188,12 +188,12 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     }
 
     @Test
-    public void switchDeactivated() throws Exception {
+    public void switchDeactivated() {
         Capture<Message> producedMessage = prepareSwitchEventCommon();
         switchManager.deactivate(eq(dpId));
         replayAll();
         service.switchDeactivated(dpId);
-        verifySwitchEvent(SwitchState.DEACTIVATED, producedMessage);
+        verifySwitchEvent(SwitchChangeType.DEACTIVATED, producedMessage);
     }
 
     @Test
@@ -201,7 +201,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         Capture<Message> producedMessage = prepareSwitchEvent();
         replayAll();
         service.switchChanged(dpId);
-        verifySwitchEvent(SwitchState.CHANGED, producedMessage);
+        verifySwitchEvent(SwitchChangeType.CHANGED, producedMessage);
     }
 
     @Test
@@ -209,7 +209,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         Capture<Message> producedMessage = prepareMissingSwitchEvent();
         replayAll();
         service.switchChanged(dpId);
-        verifySwitchEvent(SwitchState.CHANGED, producedMessage);
+        verifySwitchEvent(SwitchChangeType.CHANGED, producedMessage);
     }
 
     private Capture<Message> prepareSwitchEvent() throws Exception {
@@ -248,7 +248,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         return producedMessage;
     }
 
-    private void verifySwitchEvent(SwitchState expectedState, Capture<Message> producedMessage) {
+    private void verifySwitchEvent(SwitchChangeType expectedState, Capture<Message> producedMessage) {
         assertTrue(producedMessage.hasCaptured());
 
         Message message = producedMessage.getValues().get(0);
@@ -316,7 +316,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         producerService.sendMessageAndTrack(eq(KAFKA_ISL_DISCOVERY_TOPIC), anyObject(InfoMessage.class));
         expectLastCall().andAnswer(new IAnswer<Object>() {
             @Override
-            public Object answer() throws Throwable {
+            public Object answer() {
                 Message sentMessage = (Message) getCurrentArguments()[1];
                 sentMessage.setTimestamp(0);
                 producedMessages.add(sentMessage);

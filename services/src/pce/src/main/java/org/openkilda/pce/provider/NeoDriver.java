@@ -21,11 +21,11 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.algo.SimpleGetShortestPath;
 import org.openkilda.pce.api.FlowAdapter;
@@ -66,7 +66,7 @@ public class NeoDriver implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy)
+    public FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow, Strategy strategy)
             throws UnroutablePathException, RecoverableException {
         AvailableNetwork network = new AvailableNetwork(driver, flow.isIgnoreBandwidth(), flow.getBandwidth());
         return getPath(flow, network, strategy);
@@ -76,7 +76,7 @@ public class NeoDriver implements PathComputer {
      * {@inheritDoc}
      */
     @Override
-    public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, AvailableNetwork network, Strategy strategy)
+    public FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow, AvailableNetwork network, Strategy strategy)
             throws UnroutablePathException, RecoverableException {
 
         long latency = 0L;
@@ -116,13 +116,14 @@ public class NeoDriver implements PathComputer {
             logger.info("No path computation for one-switch flow");
         }
 
-        return new FlowPair<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
+        return new FlowPairDto<>(new PathInfoData(latency, forwardNodes), new PathInfoData(latency, reverseNodes));
     }
 
     /**
      * Create the query based on what the strategy is.
      */
-    private Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> getPathFromNetwork(Flow flow, AvailableNetwork network,
+    private Pair<LinkedList<SimpleIsl>, LinkedList<SimpleIsl>> getPathFromNetwork(FlowDto flow,
+                                                                                  AvailableNetwork network,
                                                                                   Strategy strategy) {
 
         switch (strategy) {
@@ -173,25 +174,25 @@ public class NeoDriver implements PathComputer {
     }
 
     @Override
-    public List<Flow> getFlow(String flowId) {
+    public List<FlowDto> getFlow(String flowId) {
         return getFlows(flowId);
     }
 
     @Override
-    public List<Flow> getFlows(String flowId) {
+    public List<FlowDto> getFlows(String flowId) {
         String where = "WHERE f.flowid= $flow_id ";
         Value parameters = Values.parameters("flow_id", flowId);
         return loadFlows(where, parameters);
     }
 
     @Override
-    public List<Flow> getAllFlows() {
+    public List<FlowDto> getAllFlows() {
         String noWhere = " ";
         return loadFlows(noWhere, null);
     }
 
 
-    private List<Flow> loadFlows(String whereClause, Value parameters) {
+    private List<FlowDto> loadFlows(String whereClause, Value parameters) {
         // FIXME(surabujin): remove cypher(graphQL) injection breach
         String q = ""
                 + "MATCH (:switch)-[f:flow]->(:switch)"
@@ -217,7 +218,7 @@ public class NeoDriver implements PathComputer {
 
         try (Session session = driver.session(AccessMode.READ)) {
             StatementResult queryResults = session.run(q, parameters);
-            List<Flow> results = new ArrayList<>();
+            List<FlowDto> results = new ArrayList<>();
             for (Record record : queryResults.list()) {
                 FlowAdapter adapter = new FlowAdapter(record);
                 results.add(adapter.getFlow());
@@ -263,7 +264,7 @@ public class NeoDriver implements PathComputer {
         sw.setDescription(entity.get("description").asString());
         sw.setHostname(entity.get("hostname").asString());
         String status = entity.get("state").asString();
-        SwitchState st = ("active".equals(status)) ? SwitchState.ACTIVATED : SwitchState.CACHED;
+        SwitchChangeType st = ("active".equals(status)) ? SwitchChangeType.ACTIVATED : SwitchChangeType.CACHED;
         sw.setState(st);
 
         sw.setSwitchId(new SwitchId(entity.get("name").asString()));
@@ -299,21 +300,17 @@ public class NeoDriver implements PathComputer {
                 src.setPortNo(safeAsInt(record.get("src_port")));
                 src.setSegLatency(safeAsInt(record.get("latency")));
 
-                List<PathNode> pathNodes = new ArrayList<>();
-                pathNodes.add(src);
-
                 PathNode dst = new PathNode();
                 dst.setSwitchId(new SwitchId(record.get("dst_switch").asString()));
                 dst.setPortNo(safeAsInt(record.get("dst_port")));
                 dst.setSegLatency(safeAsInt(record.get("latency")));
-                pathNodes.add(dst);
 
                 String status = record.get("status").asString();
                 IslChangeType state = ("active".equals(status)) ? IslChangeType.DISCOVERED : IslChangeType.FAILED;
 
                 IslInfoData isl = new IslInfoData(
                         safeAsInt(record.get("latency")),
-                        pathNodes,
+                        src, dst,
                         safeAsInt(record.get("speed")),
                         state,
                         safeAsInt(record.get("available_bandwidth"))

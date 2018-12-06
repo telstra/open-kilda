@@ -21,10 +21,10 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.cache.NetworkCache;
 
 import org.apache.commons.lang.StringUtils;
@@ -36,11 +36,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CacheWarmingService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CacheWarmingService.class);
-    private final List<MutablePair<Flow, CachedFlowState>> predefinedFlows = new ArrayList<>();
+    private final List<MutablePair<FlowDto, CachedFlowState>> predefinedFlows = new ArrayList<>();
 
     private NetworkCache networkCache;
 
@@ -56,9 +57,9 @@ public class CacheWarmingService {
      */
     public List<PortInfoData> getPortsForDiscovering(SwitchId switchId) {
         List<IslInfoData> links = getActiveLinks(switchId);
+        //TODO(siakovenko): to be removed along with CacheTopology refactoring.
         return links.stream()
-                .map(IslInfoData::getPath)
-                .flatMap(List::stream)
+                .flatMap(link -> Stream.<PathNode>builder().add(link.getSource()).add(link.getDestination()).build())
                 .map(isl -> new PortInfoData(isl.getSwitchId(), isl.getPortNo(), PortChangeType.CACHED))
                 .collect(Collectors.toList());
     }
@@ -70,18 +71,20 @@ public class CacheWarmingService {
      */
     private List<IslInfoData> getActiveLinks(SwitchId switchId) {
         return networkCache.getIslsBySwitch(switchId).stream()
-                .filter(isl -> isLinkAvailable(isl.getPath(), switchId))
+                .filter(isl -> isLinkAvailable(isl.getSource(), isl.getDestination(), switchId))
                 .collect(Collectors.toList());
     }
 
     /**
      * Check whether all switches of link are active.
-     * @param nodes nodes of link
+     * @param source link source
+     * @param destination link destination
      * @param currentSwitchId id of current switch
      * @return result of checking
      */
-    private boolean isLinkAvailable(List<PathNode> nodes, SwitchId currentSwitchId) {
-        return nodes.stream()
+    private boolean isLinkAvailable(PathNode source, PathNode destination, SwitchId currentSwitchId) {
+        //TODO(siakovenko): to be removed along with CacheTopology refactoring.
+        return Stream.<PathNode>builder().add(source).add(destination).build()
                 .allMatch(node -> networkCache.getSwitch(node.getSwitchId()).getState().isActive()
                         || StringUtils.equals(currentSwitchId.toString(), node.getSwitchId().toString()));
     }
@@ -106,7 +109,7 @@ public class CacheWarmingService {
         return result;
     }
 
-    private CommandData getFlowCommandIfNeeded(Flow flow) {
+    private CommandData getFlowCommandIfNeeded(FlowDto flow) {
         CommandData request = null;
 
         if (flow.getState() == FlowState.CACHED && isFlowSwitchesUp(flow)) {
@@ -121,7 +124,7 @@ public class CacheWarmingService {
         return request;
     }
 
-    private boolean isFlowSwitchesUp(Flow flow) {
+    private boolean isFlowSwitchesUp(FlowDto flow) {
         return Objects.nonNull(flow) && flow.getFlowPath().getPath()
                 .stream()
                 .allMatch(node ->
@@ -132,7 +135,7 @@ public class CacheWarmingService {
      * Put flows to local storage with cached state.
      * @param flows that will be added
      */
-    public void addPredefinedFlow(FlowPair<Flow, Flow> flows) {
+    public void addPredefinedFlow(FlowPairDto<FlowDto, FlowDto> flows) {
         if (Objects.nonNull(flows.getLeft())) {
             predefinedFlows.add(new MutablePair<>(flows.getLeft(), CachedFlowState.CACHED));
         }

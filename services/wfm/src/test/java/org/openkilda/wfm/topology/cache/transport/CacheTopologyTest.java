@@ -33,14 +33,14 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.Neo4jFixture;
@@ -73,21 +73,21 @@ public class CacheTopologyTest extends AbstractStormTest {
     private static final String secondFlowId = "second-flow";
     private static final String thirdFlowId = "third-flow";
     private static final SwitchInfoData sw = new SwitchInfoData(new SwitchId("ff:03"),
-            SwitchState.ADDED, "127.0.0.1", "localhost", "test switch", "kilda");
-    private static final FlowPair<Flow, Flow> firstFlow = new FlowPair<>(
-            new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
-            new Flow(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
-    private static final FlowPair<Flow, Flow> secondFlow = new FlowPair<>(
-            new Flow(secondFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+            SwitchChangeType.ADDED, "127.0.0.1", "localhost", "test switch", "kilda");
+    private static final FlowPairDto<FlowDto, FlowDto> firstFlow = new FlowPairDto<>(
+            new FlowDto(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2),
+            new FlowDto(firstFlowId, 10000, false, "", sw.getSwitchId(), 1, 2, sw.getSwitchId(), 1, 2));
+    private static final FlowPairDto<FlowDto, FlowDto> secondFlow = new FlowPairDto<>(
+            new FlowDto(secondFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2),
-            new Flow(secondFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+            new FlowDto(secondFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2));
-    private static final FlowPair<Flow, Flow> thirdFlow = new FlowPair<>(
-            new Flow(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+    private static final FlowPairDto<FlowDto, FlowDto> thirdFlow = new FlowPairDto<>(
+            new FlowDto(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2),
-            new Flow(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
+            new FlowDto(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2));
-    private static final Set<FlowPair<Flow, Flow>> flows = new HashSet<>();
+    private static final Set<FlowPairDto<FlowDto, FlowDto>> flows = new HashSet<>();
 
     private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
@@ -137,7 +137,7 @@ public class CacheTopologyTest extends AbstractStormTest {
 
     @Before
     public void init() throws Exception {
-        sw.setState(SwitchState.ADDED);
+        sw.setState(SwitchChangeType.ADDED);
         flowConsumer.clear();
         teConsumer.clear();
         ctrlConsumer.clear();
@@ -239,7 +239,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     @Test
     public void switchDelete() throws Exception {
         checkSwitchesCount(0);
-        SwitchInfoData data = new SwitchInfoData(new SwitchId("ff:02"), SwitchState.ADDED, "", "", "", "");
+        SwitchInfoData data = new SwitchInfoData(new SwitchId("ff:02"), SwitchChangeType.ADDED, "", "", "", "");
         InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString());
         sendMessage(infoMessage, topology.getConfig().getKafkaTopoCacheTopic());
         checkSwitchesCount(1);
@@ -271,7 +271,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         final String flowId = "flowId";
         sendData(sw);
 
-        SwitchInfoData destSwitch = new SwitchInfoData(destSwitchId, SwitchState.ACTIVATED, StringUtils.EMPTY,
+        SwitchInfoData destSwitch = new SwitchInfoData(destSwitchId, SwitchChangeType.ACTIVATED, StringUtils.EMPTY,
                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY);
         sendData(destSwitch);
 
@@ -279,7 +279,7 @@ public class CacheTopologyTest extends AbstractStormTest {
                 new PathNode(sw.getSwitchId(), 0, 0),
                 new PathNode(destSwitch.getSwitchId(), 0, 1)
         );
-        IslInfoData isl = new IslInfoData(0L, path, 0L, IslChangeType.DISCOVERED, 0L);
+        IslInfoData isl = new IslInfoData(0L, path.get(0), path.get(1), 0L, IslChangeType.DISCOVERED, 0L);
         sendData(isl);
 
         FlowInfoData flowData = buildFlowInfoData(flowId, sw.getSwitchId(), destSwitchId, path);
@@ -309,7 +309,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         sendMessage(info, topology.getConfig().getKafkaTopoCacheTopic());
     }
 
-    private static void sendFlowUpdate(FlowPair<Flow, Flow> flow) throws IOException {
+    private static void sendFlowUpdate(FlowPairDto<FlowDto, FlowDto> flow) throws IOException {
         System.out.println("Flow Topology: Send Flow Creation Request");
         String correlationId = UUID.randomUUID().toString();
         FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
@@ -334,7 +334,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         }
     }
 
-    private static void sendNetworkDumpRequest() throws IOException, InterruptedException {
+    private static void sendNetworkDumpRequest() throws IOException {
         CtrlRequest request = new CtrlRequest("cachetopology/cache", new RequestData("dump"),
                 System.currentTimeMillis(), UUID.randomUUID().toString(), Destination.WFM_CTRL);
         sendMessage(request, topology.getConfig().getKafkaCtrlTopic());
@@ -349,7 +349,7 @@ public class CacheTopologyTest extends AbstractStormTest {
     }
 
     private FlowInfoData buildFlowInfoData(String flowId, SwitchId srcSwitch, SwitchId dstSwitch, List<PathNode> path) {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setFlowId(flowId);
         flow.setSourceSwitch(srcSwitch);
         flow.setDestinationSwitch(dstSwitch);
@@ -357,7 +357,7 @@ public class CacheTopologyTest extends AbstractStormTest {
 
         PathInfoData pathInfoData = new PathInfoData(0L, path);
         flow.setFlowPath(pathInfoData);
-        FlowPair<Flow, Flow> flowPair = new FlowPair<>(flow, flow);
+        FlowPairDto<FlowDto, FlowDto> flowPair = new FlowPairDto<>(flow, flow);
         return new FlowInfoData(flowId, flowPair, FlowOperation.CREATE, UUID.randomUUID().toString());
     }
 

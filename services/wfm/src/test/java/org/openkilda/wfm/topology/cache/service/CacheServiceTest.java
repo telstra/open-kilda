@@ -21,9 +21,9 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.cache.NetworkCache;
 import org.openkilda.pce.model.AvailableNetwork;
@@ -42,9 +42,9 @@ import java.util.UUID;
 public class CacheServiceTest {
 
     private static final String THIRD_FLOW_ID = "third-flow";
-    private static final FlowPair<Flow, Flow> THIRD_FLOW = new FlowPair<>(
-            new Flow(THIRD_FLOW_ID, 10000, false, "", new SwitchId("ff:00"), 1, 2, new SwitchId("ff:00"), 1, 2),
-            new Flow(THIRD_FLOW_ID, 10000, false, "", new SwitchId("ff:00"), 1, 2, new SwitchId("ff:00"), 1, 2));
+    private static final FlowPairDto<FlowDto, FlowDto> THIRD_FLOW = new FlowPairDto<>(
+            new FlowDto(THIRD_FLOW_ID, 10000, false, "", new SwitchId("ff:00"), 1, 2, new SwitchId("ff:00"), 1, 2),
+            new FlowDto(THIRD_FLOW_ID, 10000, false, "", new SwitchId("ff:00"), 1, 2, new SwitchId("ff:00"), 1, 2));
 
     private CacheService cacheService;
     private TestSender sender;
@@ -58,18 +58,18 @@ public class CacheServiceTest {
     private class TestPathComputer implements PathComputer {
 
         @Override
-        public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow,
+        public FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow,
                                                                  AvailableNetwork network, Strategy strategy) {
             return null;
         }
 
         @Override
-        public FlowPair<PathInfoData, PathInfoData> getPath(Flow flow, Strategy strategy) {
+        public FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow, Strategy strategy) {
             return null;
         }
 
         @Override
-        public List<Flow> getFlow(String flowId) {
+        public List<FlowDto> getFlow(String flowId) {
             return null;
         }
 

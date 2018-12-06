@@ -15,43 +15,43 @@
 
 package org.openkilda.pce.provider.rule;
 
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.rule.FlowInstall;
 
 public interface EncapsulationScheme {
-    FlowInstall buildIngressInstallationFlowRule(Flow flow);
+    FlowInstall buildIngressInstallationFlowRule(FlowDto flow);
 
-    FlowInstall buildIngressUpdateFlowRule(Flow flow);
+    FlowInstall buildIngressUpdateFlowRule(FlowDto flow);
 
-    FlowInstall buildIngressDeletionFlowRule(Flow flow);
+    FlowInstall buildIngressDeletionFlowRule(FlowDto flow);
 
-    FlowInstall buildEgressInstallationFlowRule(Flow flow);
+    FlowInstall buildEgressInstallationFlowRule(FlowDto flow);
 
-    FlowInstall buildEgressUpdateFlowRule(Flow flow);
+    FlowInstall buildEgressUpdateFlowRule(FlowDto flow);
 
-    FlowInstall buildEgressDeletionFlowRule(Flow flow);
+    FlowInstall buildEgressDeletionFlowRule(FlowDto flow);
 
-    FlowInstall buildTransitInstallationFlowRule(Flow flow);
+    FlowInstall buildTransitInstallationFlowRule(FlowDto flow);
 
-    FlowInstall buildTransitUpdateFlowRule(Flow flow);
+    FlowInstall buildTransitUpdateFlowRule(FlowDto flow);
 
-    FlowInstall buildTransitDeletionFlowRule(Flow flow);
+    FlowInstall buildTransitDeletionFlowRule(FlowDto flow);
 
-    FlowInstall buildInstallationMeter(Flow flow);
+    FlowInstall buildInstallationMeter(FlowDto flow);
 
-    FlowInstall buildUpdateMeter(Flow flow);
+    FlowInstall buildUpdateMeter(FlowDto flow);
 
-    FlowInstall buildDeletionMeter(Flow flow);
+    FlowInstall buildDeletionMeter(FlowDto flow);
 
-    FlowInstall buildSuspendIngressFlowRule(Flow flow);
+    FlowInstall buildSuspendIngressFlowRule(FlowDto flow);
 
-    FlowInstall buildSuspendEgressFlowRule(Flow flow);
+    FlowInstall buildSuspendEgressFlowRule(FlowDto flow);
 
-    default FlowInstall buildResumeIngressFlowRule(Flow flow) {
+    default FlowInstall buildResumeIngressFlowRule(FlowDto flow) {
         return buildIngressUpdateFlowRule(flow);
     }
 
-    default FlowInstall buildResumeEgressFlowRule(Flow flow) {
+    default FlowInstall buildResumeEgressFlowRule(FlowDto flow) {
         return buildEgressUpdateFlowRule(flow);
     }
 }

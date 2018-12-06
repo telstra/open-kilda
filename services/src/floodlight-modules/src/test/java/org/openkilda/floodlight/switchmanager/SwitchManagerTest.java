@@ -54,8 +54,8 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -134,7 +134,7 @@ public class SwitchManagerTest {
     }
 
     @Test
-    public void installDefaultRules() throws Exception {
+    public void installDefaultRules() {
         // TODO
     }
 
@@ -294,12 +294,12 @@ public class SwitchManagerTest {
     }
 
     @Test
-    public void dumpFlowTable() throws Exception {
+    public void dumpFlowTable() {
         // TODO
     }
 
     @Test
-    public void dumpMeters() throws Exception {
+    public void dumpMeters() {
         // TODO
     }
 

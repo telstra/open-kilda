@@ -6,8 +6,8 @@ import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslInfoData
-import org.openkilda.messaging.model.Flow
-import org.openkilda.messaging.model.SwitchId
+import org.openkilda.messaging.model.FlowDto
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.flows.FlowValidationDto
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -55,7 +55,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         assert damagedFlowSwitches.equals(intactFlowSwitches)
 
         when: "#flowType flow rule from first flow on #switchNo switch gets deleted"
-        Flow damagedFlow = flowType == "forward" ? database.getFlow(flowToBreak.id).left :
+        FlowDto damagedFlow = flowType == "forward" ? database.getFlow(flowToBreak.id).left :
                 database.getFlow(flowToBreak.id).right
         SwitchId damagedSwitch = damagedFlowSwitches[item]
         northbound.deleteSwitchRules(damagedSwitch, damagedFlow.cookie)

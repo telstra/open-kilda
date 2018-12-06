@@ -15,7 +15,6 @@
 
 package org.openkilda.atdd.staging.service;
 
-import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -26,15 +25,15 @@ import static org.mockito.Mockito.when;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
@@ -76,7 +75,7 @@ import java.util.stream.Stream;
 public class StubServiceFactory {
 
     private final Map<String, FlowPayload> flowPayloads = new HashMap<>();
-    private final Map<String, FlowPair<Flow, Flow>> flows = new HashMap<>();
+    private final Map<String, FlowPairDto<FlowDto, FlowDto>> flows = new HashMap<>();
     private int meterCounter = 1;
 
     private final TopologyDefinition topologyDefinition;
@@ -203,23 +202,23 @@ public class StubServiceFactory {
         when(serviceMock.getActiveSwitches())
                 .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
                         .map(sw -> new SwitchInfoData(sw.getDpId(),
-                                SwitchState.ACTIVATED, "", "", "", ""))
+                                SwitchChangeType.ACTIVATED, "", "", "", ""))
                         .collect(toList()));
 
         when(serviceMock.getActiveLinks())
                 .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
                         .flatMap(link -> Stream.of(
                                 new IslInfoData(0,
-                                        asList(new PathNode(link.getSrcSwitch().getDpId(),
-                                                        link.getSrcPort(), 0),
-                                                new PathNode(link.getDstSwitch().getDpId(),
-                                                        link.getDstPort(), 1)),
+                                        new PathNode(link.getSrcSwitch().getDpId(),
+                                                link.getSrcPort(), 0),
+                                        new PathNode(link.getDstSwitch().getDpId(),
+                                                link.getDstPort(), 1),
                                         link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0),
                                 new IslInfoData(0,
-                                        asList(new PathNode(link.getDstSwitch().getDpId(),
-                                                        link.getDstPort(), 0),
-                                                new PathNode(link.getSrcSwitch().getDpId(),
-                                                        link.getSrcPort(), 1)),
+                                        new PathNode(link.getDstSwitch().getDpId(),
+                                                link.getDstPort(), 0),
+                                        new PathNode(link.getSrcSwitch().getDpId(),
+                                                link.getSrcPort(), 1),
                                         link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0)
                         ))
                         .collect(toList()));
@@ -276,10 +275,10 @@ public class StubServiceFactory {
     private void putFlow(String flowId, FlowPayload flowPayload) {
         flowPayloads.put(flowId, flowPayload);
 
-        Flow forwardFlow = FlowPayloadToFlowConverter.buildFlowByFlowPayload(flowPayload);
+        FlowDto forwardFlow = FlowPayloadToFlowConverter.buildFlowByFlowPayload(flowPayload);
         forwardFlow.setMeterId(meterCounter++);
 
-        Flow reverseFlow = new Flow(forwardFlow);
+        FlowDto reverseFlow = new FlowDto(forwardFlow);
         reverseFlow.setSourceSwitch(forwardFlow.getDestinationSwitch());
         reverseFlow.setSourcePort(forwardFlow.getDestinationPort());
         reverseFlow.setSourceVlan(forwardFlow.getDestinationVlan());
@@ -287,7 +286,7 @@ public class StubServiceFactory {
         reverseFlow.setDestinationPort(forwardFlow.getSourcePort());
         reverseFlow.setDestinationVlan(forwardFlow.getSourceVlan());
 
-        flows.put(flowId, new FlowPair<>(forwardFlow, reverseFlow));
+        flows.put(flowId, new FlowPairDto<>(forwardFlow, reverseFlow));
     }
 
     /**

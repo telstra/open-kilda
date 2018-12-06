@@ -7,7 +7,7 @@ import org.openkilda.functionaltests.extension.spring.SpringContextExtension
 import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchState
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -66,7 +66,7 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
         }
         Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
             assert northbound.getAllSwitches().findAll {
-                it.state == SwitchState.ACTIVATED
+                it.state == SwitchChangeType.ACTIVATED
             }.size() == topologyDefinition.activeSwitches.size()
         }
     }

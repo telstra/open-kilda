@@ -15,7 +15,7 @@
 
 package org.openkilda.testing.service.lockkeeper;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 
 import lombok.extern.slf4j.Slf4j;

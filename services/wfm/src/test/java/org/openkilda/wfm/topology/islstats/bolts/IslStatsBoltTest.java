@@ -30,7 +30,7 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -57,11 +57,11 @@ public class IslStatsBoltTest {
     private static final PathNode NODE2 = new PathNode(SWITCH2_ID, SWITCH2_PORT, PATH2_SEQID, PATH2_LATENCY);
 
     private static final int LATENCY = 1000;
-    private static final List<PathNode> PATH = java.util.Arrays.asList(NODE1, NODE2);
     private static final long SPEED = 400L;
     private static final IslChangeType STATE = IslChangeType.DISCOVERED;
     private static final long AVAILABLE_BANDWIDTH = 500L;
-    private static final IslInfoData ISL_INFO_DATA = new IslInfoData(LATENCY, PATH, SPEED, STATE, AVAILABLE_BANDWIDTH);
+    private static final IslInfoData ISL_INFO_DATA = new IslInfoData(LATENCY,
+            NODE1, NODE2, SPEED, STATE, AVAILABLE_BANDWIDTH);
     private static final long TIMESTAMP = 1507433872L;
 
     private IslStatsBolt statsBolt = new IslStatsBolt();

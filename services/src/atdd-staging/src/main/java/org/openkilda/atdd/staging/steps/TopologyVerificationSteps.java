@@ -26,7 +26,7 @@ import org.openkilda.atdd.staging.helpers.TopologyChecker.IslMatcher;
 import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchMatcher;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
@@ -75,8 +75,8 @@ public class TopologyVerificationSteps implements En {
 
         referenceLinks = topologyDefinition.getIslsForActiveSwitches();
         actualLinks = northboundService.getActiveLinks().stream()
-                .filter(sw -> !skippedSwitches.contains(sw.getPath().get(0).getSwitchId()))
-                .filter(sw -> !skippedSwitches.contains(sw.getPath().get(1).getSwitchId()))
+                .filter(sw -> !skippedSwitches.contains(sw.getSource().getSwitchId()))
+                .filter(sw -> !skippedSwitches.contains(sw.getDestination().getSwitchId()))
                 .collect(Collectors.toList());
     }
 

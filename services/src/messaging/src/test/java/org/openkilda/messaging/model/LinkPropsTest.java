@@ -17,6 +17,7 @@ package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Assert;
 import org.junit.Test;

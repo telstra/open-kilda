@@ -35,20 +35,20 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -76,22 +76,23 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final OutputVlanType OUTPUT_VLAN_TYPE = OutputVlanType.REPLACE;
     private static final FlowState FLOW_STATUS = FlowState.UP;
     private static final PortChangeType PORT_CHANGE = PortChangeType.OTHER_UPDATE;
-    private static final SwitchState SWITCH_EVENT = SwitchState.CHANGED;
+    private static final SwitchChangeType SWITCH_EVENT = SwitchChangeType.CHANGED;
     private static final Destination DESTINATION = null;
 
     private static final FlowIdStatusPayload flowIdStatusResponse = new FlowIdStatusPayload(FLOW_NAME, FLOW_STATUS);
 
     private static final String requester = "requester-id";
     private static final SwitchInfoData sw1 = new SwitchInfoData(new SwitchId("ff:01"),
-            SwitchState.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda");
+            SwitchChangeType.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda");
     private static final SwitchInfoData sw2 = new SwitchInfoData(new SwitchId("ff:02"),
-            SwitchState.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda");
+            SwitchChangeType.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda");
     private static final List<PathNode> nodes = Arrays.asList(
             new PathNode(new SwitchId("ff:01"), 1, 0, 0L),
             new PathNode(new SwitchId("ff:02"), 2, 1, 0L));
-    private static final IslInfoData isl = new IslInfoData(0L, nodes, 1000L, IslChangeType.DISCOVERED, 900L);
+    private static final IslInfoData isl = new IslInfoData(0L, nodes.get(0), nodes.get(1), 1000L,
+            IslChangeType.DISCOVERED, 900L);
     private static final PathInfoData path = new PathInfoData(0L, nodes);
-    private static final Flow flowModel = Flow.builder()
+    private static final FlowDto flowModel = FlowDto.builder()
             .flowId(FLOW_NAME)
             .bandwidth(1000)
             .ignoreBandwidth(false)
@@ -234,7 +235,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowDeleteRequestTest() throws IOException, ClassNotFoundException {
-        Flow deleteFlow = new Flow();
+        FlowDto deleteFlow = new FlowDto();
         deleteFlow.setFlowId(flowName);
         FlowDeleteRequest data = new FlowDeleteRequest(deleteFlow);
         System.out.println(data);
@@ -278,8 +279,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowGetBidirectionalResponseTest() throws IOException, ClassNotFoundException {
-        Flow flow = Flow.builder().flowPath(path).build();
-        BidirectionalFlow bidirectionalFlow = BidirectionalFlow.builder().forward(flow).reverse(flow).build();
+        FlowDto flow = FlowDto.builder().flowPath(path).build();
+        BidirectionalFlowDto bidirectionalFlow = BidirectionalFlowDto.builder().forward(flow).reverse(flow).build();
         FlowReadResponse data = new FlowReadResponse(bidirectionalFlow);
         System.out.println(data);
 
@@ -387,7 +388,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void eventIslInfoTest() throws IOException, ClassNotFoundException {
         PathNode payload = new PathNode(SWITCH_ID, INPUT_PORT, 0);
-        IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload),
+        IslInfoData data = new IslInfoData(0L, payload, payload,
                 1000000L, IslChangeType.DISCOVERED, 900000L);
         assertEquals(SWITCH_ID + "_" + String.valueOf(INPUT_PORT), data.getId());
         System.out.println(data);
@@ -405,7 +406,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(payload.hashCode(), resultData.getPath().get(0).hashCode());
+        assertEquals(payload.hashCode(), resultData.getSource().hashCode());
     }
 
     @Test

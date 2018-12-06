@@ -19,8 +19,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.model.SwitchId;
 
 import org.junit.After;
 import org.junit.Before;
@@ -47,7 +47,7 @@ public class ISwitchImplTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
     }
 
     @Test
@@ -71,15 +71,15 @@ public class ISwitchImplTest {
 
     @Test
     public void modState() throws Exception {
-        sw.modState(SwitchState.ACTIVATED);
+        sw.modState(SwitchChangeType.ACTIVATED);
         assertTrue(sw.isActive());
 
-        sw.modState(SwitchState.DEACTIVATED);
+        sw.modState(SwitchChangeType.DEACTIVATED);
         assertFalse(sw.isActive());
     }
 
     @Test
-    public void testActivateDeactivate() throws Exception {
+    public void testActivateDeactivate() {
         sw.deactivate();
         assertFalse(sw.isActive());
 
@@ -88,7 +88,7 @@ public class ISwitchImplTest {
     }
 
     @Test
-    public void testSetDpid() throws Exception {
+    public void testSetDpid() {
 
         SwitchId newDpid = new SwitchId("01:02:03:04:05:06");
         sw.setDpid(newDpid);
@@ -123,27 +123,27 @@ public class ISwitchImplTest {
     }
 
     @Test
-    public void getFlow() throws Exception {
+    public void getFlow() {
     }
 
     @Test
-    public void addFlow() throws Exception {
+    public void addFlow() {
     }
 
     @Test
-    public void modFlow() throws Exception {
+    public void modFlow() {
     }
 
     @Test
-    public void delFlow() throws Exception {
+    public void delFlow() {
     }
 
     @Test
-    public void getPortStats() throws Exception {
+    public void getPortStats() {
     }
 
     @Test
-    public void getPortStats1() throws Exception {
+    public void getPortStats1() {
     }
 
 }

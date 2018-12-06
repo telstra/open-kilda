@@ -28,7 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
 
 import org.junit.Test;
 
@@ -37,172 +37,172 @@ public class InstallOneSwitchFlowTest {
             inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId);
 
     @Test
-    public void toStringTest() throws Exception {
+    public void toStringTest() {
         String flowString = flow.toString();
         assertNotNull(flowString);
         assertFalse(flowString.isEmpty());
     }
 
     @Test
-    public void getOutputVlanType() throws Exception {
+    public void getOutputVlanType() {
         assertEquals(outputVlanType, flow.getOutputVlanType());
     }
 
     @Test
-    public void getBandwidth() throws Exception {
+    public void getBandwidth() {
         assertEquals(bandwidth, flow.getBandwidth().longValue());
     }
 
     @Test
-    public void getMeterId() throws Exception {
+    public void getMeterId() {
         assertEquals(meterId, flow.getMeterId().longValue());
     }
 
     @Test
-    public void getInputVlanId() throws Exception {
+    public void getInputVlanId() {
         assertEquals(inputVlanId, flow.getInputVlanId().intValue());
     }
 
     @Test
-    public void getOutputVlanId() throws Exception {
+    public void getOutputVlanId() {
         assertEquals(outputVlanId, flow.getOutputVlanId().intValue());
     }
 
     @Test
-    public void setBandwidth() throws Exception {
+    public void setBandwidth() {
         flow.setBandwidth(bandwidth);
         assertEquals(bandwidth, flow.getBandwidth().longValue());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullBandwidth() throws Exception {
+    public void setNullBandwidth() {
         flow.setBandwidth(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNegativeBandwidth() throws Exception {
+    public void setNegativeBandwidth() {
         flow.setBandwidth(-1L);
     }
 
     @Test
-    public void setMeterId() throws Exception {
+    public void setMeterId() {
         flow.setMeterId(meterId);
         assertEquals(meterId, flow.getMeterId().longValue());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullInputMeterId() throws Exception {
+    public void setNullInputMeterId() {
         flow.setMeterId(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNegativeInputMeterId() throws Exception {
+    public void setNegativeInputMeterId() {
         flow.setInputVlanId(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullMeterId() throws Exception {
+    public void setNullMeterId() {
         flow.setMeterId(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNegativeMeterId() throws Exception {
+    public void setNegativeMeterId() {
         flow.setMeterId(-1L);
     }
 
     @Test
-    public void setInputVlanId() throws Exception {
+    public void setInputVlanId() {
         flow.setInputVlanId(inputVlanId);
         assertEquals(inputVlanId, flow.getInputVlanId().intValue());
     }
 
     @Test
-    public void setNullInputVlanId() throws Exception {
+    public void setNullInputVlanId() {
         flow.setInputVlanId(null);
         assertEquals(0, flow.getInputVlanId().intValue());
     }
 
     @Test
-    public void setZeroInputVlanId() throws Exception {
+    public void setZeroInputVlanId() {
         flow.setInputVlanId(0);
         assertEquals(0, flow.getInputVlanId().intValue());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNegativeInputVlanId() throws Exception {
+    public void setNegativeInputVlanId() {
         flow.setInputVlanId(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setTooBigInputVlanId() throws Exception {
+    public void setTooBigInputVlanId() {
         flow.setInputVlanId(4096);
     }
 
     @Test
-    public void setOutputVlanId() throws Exception {
+    public void setOutputVlanId() {
         flow.setOutputVlanId(outputVlanId);
         assertEquals(outputVlanId, flow.getOutputVlanId().intValue());
     }
 
     @Test
-    public void setNullOutputVlanId() throws Exception {
+    public void setNullOutputVlanId() {
         flow.setOutputVlanId(null);
         assertEquals(0, flow.getOutputVlanId().intValue());
     }
 
     @Test
-    public void setZeroOutputVlanId() throws Exception {
+    public void setZeroOutputVlanId() {
         flow.setOutputVlanId(0);
         assertEquals(0, flow.getOutputVlanId().intValue());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNegativeOutputVlanId() throws Exception {
+    public void setNegativeOutputVlanId() {
         flow.setOutputVlanId(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setTooBigOutputVlanId() throws Exception {
+    public void setTooBigOutputVlanId() {
         flow.setOutputVlanId(4096);
     }
 
     @Test
-    public void setOutputVlanType() throws Exception {
+    public void setOutputVlanType() {
         flow.setOutputVlanId(outputVlanId);
         flow.setOutputVlanType(outputVlanType);
         assertEquals(outputVlanType, flow.getOutputVlanType());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullOutputVlanType() throws Exception {
+    public void setNullOutputVlanType() {
         flow.setOutputVlanType(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setInvalidOutputVlanType() throws Exception {
+    public void setInvalidOutputVlanType() {
         flow.setOutputVlanType(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setIncorrectNoneOutputVlanType() throws Exception {
+    public void setIncorrectNoneOutputVlanType() {
         flow.setOutputVlanId(outputVlanId);
         flow.setOutputVlanType(OutputVlanType.NONE);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setIncorrectPopOutputVlanType() throws Exception {
+    public void setIncorrectPopOutputVlanType() {
         flow.setOutputVlanId(outputVlanId);
         flow.setOutputVlanType(OutputVlanType.POP);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setIncorrectPushOutputVlanType() throws Exception {
+    public void setIncorrectPushOutputVlanType() {
         flow.setOutputVlanId(0);
         flow.setOutputVlanType(OutputVlanType.PUSH);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setIncorrectReplaceOutputVlanType() throws Exception {
+    public void setIncorrectReplaceOutputVlanType() {
         flow.setOutputVlanId(null);
         flow.setOutputVlanType(OutputVlanType.REPLACE);
     }

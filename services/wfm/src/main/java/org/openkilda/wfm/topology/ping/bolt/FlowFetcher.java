@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.ping.bolt;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.pce.provider.PathComputer;
 import org.openkilda.pce.provider.PathComputerAuth;
 import org.openkilda.wfm.CommandContext;
@@ -81,7 +81,7 @@ public class FlowFetcher extends Abstract {
 
         final CommandContext commandContext = pullContext(input);
         final FlowsHeap heap = new FlowsHeap();
-        for (BidirectionalFlow flow : fetcher.getFlows()) {
+        for (BidirectionalFlowDto flow : fetcher.getFlows()) {
             if (!flow.isPeriodicPings()) {
                 log.debug("Skip flow {} due to isPeriodicPings == false", flow.getFlowId());
                 continue;
@@ -100,10 +100,10 @@ public class FlowFetcher extends Abstract {
     private void handleOnDemandRequest(Tuple input) throws PipelineException {
         log.debug("Handle on demand ping request");
         FlowPingRequest request = pullOnDemandRequest(input);
-        BidirectionalFlow flow;
+        BidirectionalFlowDto flow;
         try {
             FlowCollector collector = new FlowCollector();
-            for (Flow halfFlow : pathComputer.getFlow(request.getFlowId())) {
+            for (FlowDto halfFlow : pathComputer.getFlow(request.getFlowId())) {
                 collector.add(halfFlow);
             }
             flow = collector.make();

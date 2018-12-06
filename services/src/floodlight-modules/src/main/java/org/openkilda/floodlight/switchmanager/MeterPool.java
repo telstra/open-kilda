@@ -15,8 +15,8 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.ResourcePool;
+import org.openkilda.model.SwitchId;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

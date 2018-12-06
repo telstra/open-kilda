@@ -17,10 +17,10 @@ package org.openkilda.pce.provider;
 
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.model.SwitchId;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -96,8 +96,8 @@ public class NeoDriverTest {
             tx.success();
         }
 
-        List<Flow> flows = target.getAllFlows();
-        Flow flow = flows.get(0);
+        List<FlowDto> flows = target.getAllFlows();
+        FlowDto flow = flows.get(0);
         Assert.assertEquals(3, flow.getCookie());
         Assert.assertEquals("f1", flow.getFlowId());
         Assert.assertEquals(true, flow.isIgnoreBandwidth());
@@ -139,7 +139,7 @@ public class NeoDriverTest {
         List<IslInfoData> isls = target.getIsls();
         IslInfoData isl = isls.get(0);
         Assert.assertEquals(200, isl.getSpeed());
-        Assert.assertEquals(new SwitchId("00:01"), isl.getPath().get(0).getSwitchId());
+        Assert.assertEquals(new SwitchId("00:01"), isl.getSource().getSwitchId());
         Assert.assertEquals(IslChangeType.DISCOVERED, isl.getState());
 
         isl = isls.get(1);
@@ -173,11 +173,11 @@ public class NeoDriverTest {
         List<SwitchInfoData> switches = target.getSwitches();
         SwitchInfoData switch1 = switches.get(0);
         Assert.assertEquals(new SwitchId("00:00:00:00:00:00:00:01"), switch1.getSwitchId());
-        Assert.assertEquals(SwitchState.ACTIVATED, switch1.getState());
+        Assert.assertEquals(SwitchChangeType.ACTIVATED, switch1.getState());
 
         SwitchInfoData switch2 = switches.get(1);
         Assert.assertEquals(new SwitchId("00:00:00:00:00:00:00:02"), switch2.getSwitchId());
-        Assert.assertNotEquals(SwitchState.ACTIVATED, switch2.getState());
+        Assert.assertNotEquals(SwitchChangeType.ACTIVATED, switch2.getState());
     }
 
     @Test

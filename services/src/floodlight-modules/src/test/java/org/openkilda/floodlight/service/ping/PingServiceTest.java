@@ -22,7 +22,7 @@ import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -40,7 +40,7 @@ public class PingServiceTest extends EasyMockSupport {
     private PathVerificationService pathVerificationService = new PathVerificationService();
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         injectMocks(this);
 
         moduleContext.addService(IOFSwitchService.class, createMock(IOFSwitchService.class));

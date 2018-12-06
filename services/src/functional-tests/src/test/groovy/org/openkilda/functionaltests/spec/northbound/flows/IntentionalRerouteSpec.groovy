@@ -60,10 +60,10 @@ class IntentionalRerouteSpec extends BaseSpecification {
                 !currentIsls.contains(it) && !currentIsls.contains(islUtils.reverseIsl(it))
             }
             def newBw = flow.maximumBandwidth - 1
-            db.updateLinkProperty(thinIsl, "max_bandwidth", newBw)
-            db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", newBw)
-            db.updateLinkProperty(thinIsl, "available_bandwidth", newBw)
-            db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "available_bandwidth", newBw)
+            db.updateLinkMaxBandwidth(thinIsl, newBw)
+            db.updateLinkMaxBandwidth(islUtils.reverseIsl(thinIsl), newBw)
+            db.updateLinkAvailableBandwidth(thinIsl, newBw)
+            db.updateLinkAvailableBandwidth(islUtils.reverseIsl(thinIsl), newBw)
             thinIsl
         }
 
@@ -112,10 +112,10 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find {
             !currentIsls.contains(it) && !currentIsls.contains(islUtils.reverseIsl(it))
         }
-        db.updateLinkProperty(thinIsl, "max_bandwidth", flow.maximumBandwidth)
-        db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "max_bandwidth", flow.maximumBandwidth)
-        db.updateLinkProperty(thinIsl, "available_bandwidth", flow.maximumBandwidth)
-        db.updateLinkProperty(islUtils.reverseIsl(thinIsl), "available_bandwidth", flow.maximumBandwidth)
+        db.updateLinkMaxBandwidth(thinIsl, flow.maximumBandwidth)
+        db.updateLinkMaxBandwidth(islUtils.reverseIsl(thinIsl), flow.maximumBandwidth)
+        db.updateLinkAvailableBandwidth(thinIsl, flow.maximumBandwidth)
+        db.updateLinkAvailableBandwidth(islUtils.reverseIsl(thinIsl), flow.maximumBandwidth)
 
         and: "Init a reroute of the flow"
         def rerouteResponse = northboundService.rerouteFlow(flow.id)

@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.flow.validation;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.cache.FlowCache;
 import org.openkilda.pce.provider.PathComputer;
 
@@ -49,7 +49,7 @@ public class FlowValidator {
      * @param flow a flow to be validated.
      * @throws FlowValidationException is thrown if a violation is found.
      */
-    public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
+    public void validate(FlowDto flow) throws FlowValidationException, SwitchValidationException {
         checkBandwidth(flow);
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
@@ -57,7 +57,7 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkBandwidth(Flow flow) throws FlowValidationException {
+    void checkBandwidth(FlowDto flow) throws FlowValidationException {
         if (flow.getBandwidth() < 0) {
             throw new FlowValidationException(
                     format("The flow '%s' has invalid bandwidth %d provided.",
@@ -74,9 +74,9 @@ public class FlowValidator {
      * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing flows.
      */
     @VisibleForTesting
-    void checkFlowForEndpointConflicts(Flow requestedFlow) throws FlowValidationException {
+    void checkFlowForEndpointConflicts(FlowDto requestedFlow) throws FlowValidationException {
         // Check the source
-        Set<Flow> conflictsOnSource;
+        Set<FlowDto> conflictsOnSource;
         if (requestedFlow.getSourceVlan() == 0) {
             conflictsOnSource = flowCache.getFlowsForEndpoint(
                     requestedFlow.getSourceSwitch(),
@@ -88,7 +88,7 @@ public class FlowValidator {
                     requestedFlow.getSourceVlan());
         }
 
-        Optional<Flow> conflictedFlow = conflictsOnSource.stream()
+        Optional<FlowDto> conflictedFlow = conflictsOnSource.stream()
                 .filter(flow -> !flow.getFlowId().equals(requestedFlow.getFlowId()))
                 .findAny();
         if (conflictedFlow.isPresent()) {
@@ -101,7 +101,7 @@ public class FlowValidator {
         }
 
         // Check the destination
-        Set<Flow> conflictsOnDest;
+        Set<FlowDto> conflictsOnDest;
         if (requestedFlow.getDestinationVlan() == 0) {
             conflictsOnDest = flowCache.getFlowsForEndpoint(
                     requestedFlow.getDestinationSwitch(),
@@ -133,7 +133,7 @@ public class FlowValidator {
      * @throws SwitchValidationException if switch not found.
      */
     @VisibleForTesting
-    void checkSwitchesExists(Flow requestedFlow) throws SwitchValidationException {
+    void checkSwitchesExists(FlowDto requestedFlow) throws SwitchValidationException {
         final SwitchId sourceId = requestedFlow.getSourceSwitch();
         final SwitchId destinationId = requestedFlow.getDestinationSwitch();
 
@@ -164,7 +164,7 @@ public class FlowValidator {
      * Ensure vlans are not equal in the case when there is an attempt to create one-switch flow for a single port.
      */
     @VisibleForTesting
-    void checkOneSwitchFlowHasNoConflicts(Flow requestedFlow) throws SwitchValidationException {
+    void checkOneSwitchFlowHasNoConflicts(FlowDto requestedFlow) throws SwitchValidationException {
         if (requestedFlow.getSourceSwitch().equals(requestedFlow.getDestinationSwitch())
                 && requestedFlow.getSourcePort() == requestedFlow.getDestinationPort()
                 && requestedFlow.getSourceVlan() == requestedFlow.getDestinationVlan()) {

@@ -16,7 +16,7 @@
 package org.openkilda.northbound.controller;
 
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;

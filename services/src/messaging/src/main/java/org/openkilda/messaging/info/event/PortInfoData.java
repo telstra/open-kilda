@@ -18,7 +18,7 @@ package org.openkilda.messaging.info.event;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;

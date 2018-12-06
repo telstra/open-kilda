@@ -22,8 +22,8 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.model.SwitchId;
 
 import org.apache.commons.lang3.math.NumberUtils;
 import org.neo4j.driver.v1.Value;
@@ -32,8 +32,6 @@ import org.neo4j.driver.v1.types.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -68,14 +66,11 @@ public final class LinksConverter {
         dst.setSegLatency(parseIntValue(relationship.get("latency")));
         dst.setSeqId(1);
 
-        List<PathNode> pathNodes = new ArrayList<>();
-        pathNodes.add(src);
-        pathNodes.add(dst);
-
         IslChangeType state = getStatus(relationship.get("status").asString());
         IslInfoData isl = new IslInfoData(
                 parseIntValue(relationship.get("latency")),
-                pathNodes,
+                src,
+                dst,
                 parseIntValue(relationship.get("speed")),
                 state,
                 parseIntValue(relationship.get("available_bandwidth"))

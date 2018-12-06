@@ -36,8 +36,8 @@ import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.StableAbstractStormTest;
@@ -98,7 +98,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
 
     @AfterClass
-    public static void teardownOnce() throws Exception {
+    public static void teardownOnce() {
         fakeNeo4jDb.stop();
     }
 
@@ -308,8 +308,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         private KafkaBolt kafkaBolt;
 
-        TestingTargetTopology(LaunchEnvironment launchEnvironment, KafkaBolt kafkaBolt)
-                throws Exception {
+        TestingTargetTopology(LaunchEnvironment launchEnvironment, KafkaBolt kafkaBolt) {
             super(launchEnvironment);
             this.kafkaBolt = kafkaBolt;
         }

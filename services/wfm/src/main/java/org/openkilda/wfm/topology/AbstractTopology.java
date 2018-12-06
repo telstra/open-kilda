@@ -22,7 +22,7 @@ import org.openkilda.config.naming.KafkaNamingStrategy;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.naming.TopologyNamingStrategy;
-import org.openkilda.wfm.config.provider.ConfigurationProvider;
+import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
@@ -70,7 +70,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
     protected final KafkaNamingStrategy kafkaNamingStrategy;
     protected final TopologyNamingStrategy topoNamingStrategy;
-    protected final ConfigurationProvider configurationProvider;
+    protected final MultiPrefixConfigurationProvider configurationProvider;
 
     protected final T topologyConfig;
     private final KafkaConfig kafkaConfig;
@@ -236,7 +236,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
         KafkaBolt kafkaBolt = createKafkaBolt(ctrlTopic);
         BoltDeclarer outputSetup = builder.setBolt(BOLT_ID_CTRL_OUTPUT, kafkaBolt)
-                .shuffleGrouping(BOLT_ID_CTRL_ROUTE, route.STREAM_ID_ERROR);
+                .shuffleGrouping(BOLT_ID_CTRL_ROUTE, RouteBolt.STREAM_ID_ERROR);
 
         for (CtrlBoltRef ref : targets) {
             String boltId = ref.getBoltId();

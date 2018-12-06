@@ -15,7 +15,7 @@
 
 package org.openkilda.simulator.messages.simulator.command;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.simulator.messages.LinkMessage;
 
 import com.fasterxml.jackson.annotation.JsonInclude;

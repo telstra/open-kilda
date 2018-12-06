@@ -17,11 +17,11 @@ package org.openkilda.atdd;
 
 import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
@@ -61,7 +61,7 @@ public class FlowPingTest {
     }
 
     @Then("^use flow verification for flow id=\"([^\"]*)\"$")
-    public void useFlowVerificationFor(String flowId) throws Throwable {
+    public void useFlowVerificationFor(String flowId) {
         FlowPayload flow = ongoingFlows.get(flowId);
 
         System.out.println(String.format(
@@ -82,7 +82,7 @@ public class FlowPingTest {
 
     @Then("^flow verification for flow id=\"([^\"]*)\" is (ok|fail) (ok|fail)$")
     public void flowVerificationIsSuccessful(
-            String flowId, String expectForward, String expectReverse) throws Throwable {
+            String flowId, String expectForward, String expectReverse) {
         PingOutput output = flowVerificationResults.get(flowId);
 
         dumpVerificationOutput(output);

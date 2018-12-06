@@ -17,7 +17,7 @@ package org.openkilda.messaging.payload.flow;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;

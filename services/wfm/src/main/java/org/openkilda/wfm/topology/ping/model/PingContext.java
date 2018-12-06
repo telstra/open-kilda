@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
-import org.openkilda.messaging.model.BidirectionalFlow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDirection;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
@@ -40,7 +40,7 @@ public class PingContext implements Serializable {
     private Kinds kind;
     private GroupId group;
 
-    private BidirectionalFlow flow;
+    private BidirectionalFlowDto flow;
     private FlowDirection direction;
     private Long timeout;
 
@@ -50,7 +50,7 @@ public class PingContext implements Serializable {
     private Ping.Errors error;
     private PingMeters meters;
 
-    public PingContext(Kinds kind, BidirectionalFlow flow) {
+    public PingContext(Kinds kind, BidirectionalFlowDto flow) {
         this.kind = kind;
         this.flow = flow;
     }

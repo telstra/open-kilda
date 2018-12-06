@@ -17,11 +17,11 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.provider.Auth;
 import org.openkilda.wfm.topology.nbworker.converters.LinksConverter;
 

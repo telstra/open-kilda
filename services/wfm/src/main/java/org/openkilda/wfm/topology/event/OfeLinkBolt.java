@@ -40,11 +40,11 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.OfeMessageUtils;
 import org.openkilda.wfm.WatchDog;
 import org.openkilda.wfm.ctrl.CtrlAction;
@@ -58,7 +58,6 @@ import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.spout.internal.Timer;
 import org.apache.storm.state.InMemoryKeyValueState;
@@ -434,12 +433,12 @@ public class OfeLinkBolt
 
     private void handleSwitchEvent(Tuple tuple, SwitchInfoData switchData) {
         SwitchId switchId = switchData.getSwitchId();
-        SwitchState state = switchData.getState();
+        SwitchChangeType state = switchData.getState();
         logger.info("DISCO: Switch Event: switch={} state={}", switchId, state);
 
-        if (state == SwitchState.DEACTIVATED) {
+        if (state == SwitchChangeType.DEACTIVATED) {
             passToTopologyEngine(tuple);
-        } else if (state == SwitchState.ACTIVATED) {
+        } else if (state == SwitchChangeType.ACTIVATED) {
             // It's possible that we get duplicated switch up events .. particulary if
             // FL goes down and then comes back up; it'll rebuild its switch / port information.
             // NB: need to account for this, and send along to TE to be conservative.
@@ -484,11 +483,11 @@ public class OfeLinkBolt
     }
 
     private void handleIslEvent(Tuple tuple, IslInfoData discoveredIsl, String correlationId) {
-        PathNode srcNode = discoveredIsl.getPath().get(0);
+        PathNode srcNode = discoveredIsl.getSource();
         final SwitchId srcSwitch = srcNode.getSwitchId();
         final int srcPort = srcNode.getPortNo();
 
-        PathNode dstNode = discoveredIsl.getPath().get(1);
+        PathNode dstNode = discoveredIsl.getDestination();
         final SwitchId dstSwitch = dstNode.getSwitchId();
         final int dstPort = dstNode.getPortNo();
 
@@ -567,14 +566,14 @@ public class OfeLinkBolt
 
         PathNode srcNode = new PathNode(srcSwitch, srcPort, 0);
         PathNode dstNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 1);
-        IslInfoData infoData = new IslInfoData(Lists.newArrayList(srcNode, dstNode), IslChangeType.MOVED);
+        IslInfoData infoData = new IslInfoData(srcNode, dstNode, IslChangeType.MOVED);
         InfoMessage message = new InfoMessage(infoData, System.currentTimeMillis(), correlationId);
         passToTopologyEngine(tuple, message);
 
         // we should send reverse link as well to modify status in TE
         srcNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 0);
         dstNode = new PathNode(srcSwitch, srcPort, 1);
-        IslInfoData reverseLink = new IslInfoData(Lists.newArrayList(srcNode, dstNode), IslChangeType.MOVED);
+        IslInfoData reverseLink = new IslInfoData(srcNode, dstNode, IslChangeType.MOVED);
         message = new InfoMessage(reverseLink, System.currentTimeMillis(), correlationId);
         passToTopologyEngine(tuple, message);
     }

@@ -25,7 +25,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.simulator.classes.IPortImpl;
 import org.openkilda.simulator.classes.ISwitchImpl;
 import org.openkilda.simulator.messages.LinkMessage;
@@ -60,7 +60,7 @@ public class SpeakerBoltTest {
 
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         mapper = new ObjectMapper();
         speakerBolt = new SpeakerBolt();
         speakerBolt.prepare(null, null, null);
@@ -72,7 +72,7 @@ public class SpeakerBoltTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
     }
 
     @Test

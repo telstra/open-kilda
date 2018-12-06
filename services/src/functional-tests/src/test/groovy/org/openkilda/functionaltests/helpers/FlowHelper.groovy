@@ -4,8 +4,8 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.messaging.model.Flow
-import org.openkilda.messaging.model.FlowPair
+import org.openkilda.messaging.model.FlowDto
+import org.openkilda.messaging.model.FlowPairDto
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
@@ -152,7 +152,7 @@ class FlowHelper {
     /**
      * Checks flow rules presence (or absence) on source and destination switches.
      */
-    private void checkRulesOnSwitches(FlowPair<Flow, Flow> flowEntry, int timeout, boolean rulesPresent) {
+    private void checkRulesOnSwitches(FlowPairDto<FlowDto, FlowDto> flowEntry, int timeout, boolean rulesPresent) {
         def cookies = [flowEntry.left.cookie, flowEntry.right.cookie]
         def switches = [flowEntry.left.sourceSwitch, flowEntry.left.destinationSwitch].toSet()
         switches.each { sw ->

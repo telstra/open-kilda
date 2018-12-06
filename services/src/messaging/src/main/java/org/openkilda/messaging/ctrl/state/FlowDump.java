@@ -1,8 +1,8 @@
 package org.openkilda.messaging.ctrl.state;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -17,15 +17,15 @@ import java.util.Set;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FlowDump implements Serializable {
     @JsonProperty("flows")
-    private Set<FlowPair<Flow, Flow>> flows;
+    private Set<FlowPairDto<FlowDto, FlowDto>> flows;
 
     @JsonCreator
     public FlowDump(
-            @JsonProperty("flows") Set<FlowPair<Flow, Flow>> flows) {
+            @JsonProperty("flows") Set<FlowPairDto<FlowDto, FlowDto>> flows) {
         this.flows = flows;
     }
 
-    public Set<FlowPair<Flow, Flow>> getFlows() {
+    public Set<FlowPairDto<FlowDto, FlowDto>> getFlows() {
         return flows;
     }
 }

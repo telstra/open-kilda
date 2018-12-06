@@ -31,16 +31,15 @@ import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -78,7 +77,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     public void completeSwitchActivation(DatapathId dpId) throws SwitchOperationException {
         discoveryLock.readLock().lock();
         try {
-            switchDiscoveryAction(dpId, SwitchState.ACTIVATED);
+            switchDiscoveryAction(dpId, SwitchChangeType.ACTIVATED);
             for (OFPortDesc portDesc : switchManager.getEnabledPhysicalPorts(dpId)) {
                 portDiscoveryAction(dpId, portDesc.getPortNo(), PortChangeType.UP);
             }
@@ -90,46 +89,46 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     @Override
     @NewCorrelationContextRequired
     public void switchAdded(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchState.ADDED);
-        switchDiscovery(switchId, SwitchState.ADDED);
+        logSwitchEvent(switchId, SwitchChangeType.ADDED);
+        switchDiscovery(switchId, SwitchChangeType.ADDED);
     }
 
     @Override
     @NewCorrelationContextRequired
     public void switchRemoved(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchState.REMOVED);
+        logSwitchEvent(switchId, SwitchChangeType.REMOVED);
 
         // TODO(surabujin): must figure out events order/set during lost connection
         switchManager.deactivate(switchId);
-        switchDiscovery(switchId, SwitchState.REMOVED);
+        switchDiscovery(switchId, SwitchChangeType.REMOVED);
     }
 
     @Override
     @NewCorrelationContextRequired
     public void switchActivated(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchState.ACTIVATED);
+        logSwitchEvent(switchId, SwitchChangeType.ACTIVATED);
 
         try {
             switchManager.activate(switchId);
         } catch (SwitchOperationException e) {
-            logger.error("OF switch event ({} - {}): {}", switchId, SwitchState.ACTIVATED, e.getMessage());
+            logger.error("OF switch event ({} - {}): {}", switchId, SwitchChangeType.ACTIVATED, e.getMessage());
         }
     }
 
     @Override
     @NewCorrelationContextRequired
     public void switchDeactivated(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchState.DEACTIVATED);
+        logSwitchEvent(switchId, SwitchChangeType.DEACTIVATED);
 
         switchManager.deactivate(switchId);
-        switchDiscovery(switchId, SwitchState.DEACTIVATED);
+        switchDiscovery(switchId, SwitchChangeType.DEACTIVATED);
     }
 
     @Override
     @NewCorrelationContextRequired
     public void switchChanged(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchState.CHANGED);
-        switchDiscovery(switchId, SwitchState.CHANGED);
+        logSwitchEvent(switchId, SwitchChangeType.CHANGED);
+        switchDiscovery(switchId, SwitchChangeType.CHANGED);
     }
 
     @Override
@@ -144,7 +143,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     }
 
     @Override
-    public void setup(FloodlightModuleContext context) throws FloodlightModuleException {
+    public void setup(FloodlightModuleContext context) {
         producerService = context.getServiceImpl(IKafkaProducerService.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
 
@@ -186,7 +185,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         }
     }
 
-    private void switchDiscovery(DatapathId dpId, SwitchState state) {
+    private void switchDiscovery(DatapathId dpId, SwitchChangeType state) {
         discoveryLock.readLock().lock();
         try {
             switchDiscoveryAction(dpId, state);
@@ -204,10 +203,10 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         }
     }
 
-    private void switchDiscoveryAction(DatapathId dpId, SwitchState event) {
+    private void switchDiscoveryAction(DatapathId dpId, SwitchChangeType event) {
         logger.info("Send switch discovery ({} - {})", dpId, event);
         Message message = null;
-        if (SwitchState.DEACTIVATED != event && SwitchState.REMOVED != event) {
+        if (SwitchChangeType.DEACTIVATED != event && SwitchChangeType.REMOVED != event) {
             try {
                 message = buildSwitchMessage(switchManager.lookupSwitch(dpId), event);
             } catch (SwitchNotFoundException e) {
@@ -251,7 +250,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param eventType type of event
      * @return Message
      */
-    private static Message buildSwitchMessage(IOFSwitch sw, SwitchState eventType) {
+    private static Message buildSwitchMessage(IOFSwitch sw, SwitchChangeType eventType) {
         return buildMessage(IofSwitchConverter.buildSwitchInfoData(sw, eventType));
     }
 
@@ -262,7 +261,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param eventType type of event
      * @return Message
      */
-    private static Message buildSwitchMessage(DatapathId dpId, SwitchState eventType) {
+    private static Message buildSwitchMessage(DatapathId dpId, SwitchChangeType eventType) {
         return buildMessage(new SwitchInfoData(new SwitchId(dpId.getLong()), eventType));
     }
 
@@ -290,7 +289,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null);
     }
 
-    private void logSwitchEvent(DatapathId dpId, SwitchState event) {
+    private void logSwitchEvent(DatapathId dpId, SwitchChangeType event) {
         logger.info("OF switch event ({} - {})", dpId, event);
     }
 
