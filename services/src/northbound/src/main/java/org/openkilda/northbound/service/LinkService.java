@@ -71,4 +71,16 @@ public interface LinkService {
      */
     CompletableFuture<List<FlowPayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
                                                          SwitchId dstSwitch, Integer dstPort);
+
+    /**
+     * Reroute all flows for a particular link.
+     *
+     * @param srcSwitch source switch dpid.
+     * @param srcPort source port number.
+     * @param dstSwitch destination switch dpid.
+     * @param dstPort destination port number.
+     * @return list of flow ids which was sent to reroute.
+     */
+    CompletableFuture<List<String>> rerouteFlowsForLink(SwitchId srcSwitch, Integer srcPort,
+                                                        SwitchId dstSwitch, Integer dstPort);
 }
