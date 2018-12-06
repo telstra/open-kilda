@@ -25,6 +25,7 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
@@ -32,6 +33,7 @@ import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
+import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -54,6 +56,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -189,6 +192,30 @@ public class LinkServiceImpl implements LinkService {
                         .map(FlowResponse.class::cast)
                         .map(FlowResponse::getPayload)
                         .map(flowMapper::toFlowOutput)
+                        .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<List<String>> rerouteFlowsForLink(SwitchId srcSwitch, Integer srcPort,
+                                                                SwitchId dstSwitch, Integer dstPort) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Reroute all flows for a particular link request processing");
+        RerouteFlowsForIslRequest data = null;
+        try {
+            data = new RerouteFlowsForIslRequest(new NetworkEndpoint(srcSwitch, srcPort),
+                    new NetworkEndpoint(dstSwitch, dstPort), correlationId);
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create \"reroute flows for link\" request");
+        }
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(FlowsResponse.class::cast)
+                        .map(FlowsResponse::getFlowIds)
+                        .flatMap(Collection::stream)
                         .collect(Collectors.toList()));
     }
 }
