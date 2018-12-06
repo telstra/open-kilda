@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flow.bolts;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
@@ -85,7 +84,6 @@ public class SplitterBolt extends BaseRichBolt {
         try {
             Message message = tryMessage(request);
             if (message == null
-                    || !Destination.WFM.equals(message.getDestination())
                     || !(message instanceof CommandMessage || message instanceof InfoMessage)) {
                 /*
                  * Due to refactoring the kafka topics, it appears more messages are coming to the splitter than
