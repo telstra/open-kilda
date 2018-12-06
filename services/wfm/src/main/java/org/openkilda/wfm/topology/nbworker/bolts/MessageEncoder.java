@@ -15,7 +15,42 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageData;
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.nbworker.StreamType;
+
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 
 public class MessageEncoder extends KafkaEncoder {
+
+    @Override
+    protected void handleInput(Tuple input) throws AbstractException {
+        MessageData payload = pullPayload(input);
+        try {
+            Message message = wrap(pullContext(input), payload);
+            String json = encode(message);
+
+            if (payload instanceof FlowRerouteRequest) {
+                getOutput().emit(StreamType.REROUTE.toString(), input, new Values(json));
+            } else if (payload instanceof ErrorData) {
+                getOutput().emit(StreamType.ERROR.toString(), input, new Values(null, json));
+            }
+        } catch (IllegalArgumentException e) {
+            log.error(e.getMessage());
+            unhandledInput(input);
+        }
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer outputManager) {
+        outputManager.declareStream(StreamType.REROUTE.toString(), new Fields("message"));
+        outputManager.declareStream(StreamType.ERROR.toString(), STREAM_FIELDS);
+    }
 }

@@ -54,6 +54,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String MESSAGE_ENCODER_BOLT_NAME = "message-encoder-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
+    private static final String FLOW_KAFKA_BOLT_NAME = "flow-kafka-bolt";
     private static final String NB_SPOUT_ID = "nb-spout";
 
     public NbWorkerTopology(LaunchEnvironment env) {
@@ -98,12 +99,17 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
-                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString());
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString());
 
         KafkaBolt kafkaNbBolt = createKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
                 .shuffleGrouping(SPLITTER_BOLT_NAME)
-                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME);
+                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.ERROR.toString());
+
+        KafkaBolt kafkaFlowBolt = createKafkaBolt(topologyConfig.getKafkaFlowTopic());
+        tb.setBolt(FLOW_KAFKA_BOLT_NAME, kafkaFlowBolt, parallelism)
+                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.REROUTE.toString());
 
         return tb.createTopology();
     }
