@@ -35,6 +35,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -146,5 +147,22 @@ public class LinkController {
                                                                 @RequestParam(value = "dst_switch") SwitchId dstSwitch,
                                                                 @RequestParam(value = "dst_port") Integer dstPort) {
         return linkService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
+    }
+
+    /**
+     * Reroute all flows for a particular link.
+     *
+     * @return list of flow ids which was sent to reroute.
+     */
+    @ApiOperation(value = "Reroute all flows for a particular link, based on arguments.", response = String.class,
+            responseContainer = "List")
+    @PatchMapping(path = "/links/flows/reroute",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<String>> rerouteFlowsForLink(@RequestParam(value = "src_switch") SwitchId srcSwitch,
+                                                                @RequestParam(value = "src_port") Integer srcPort,
+                                                                @RequestParam(value = "dst_switch") SwitchId dstSwitch,
+                                                                @RequestParam(value = "dst_port") Integer dstPort) {
+        return linkService.rerouteFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 }
