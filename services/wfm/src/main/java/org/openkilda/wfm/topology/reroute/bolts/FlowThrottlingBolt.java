@@ -13,20 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache.transport;
+package org.openkilda.wfm.topology.reroute.bolts;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.cache.service.ReroutesThrottling;
+import org.openkilda.wfm.topology.reroute.service.ReroutesThrottling;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -39,22 +37,17 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
 
     private static final Logger logger = LoggerFactory.getLogger(FlowThrottlingBolt.class);
 
-    private static final String REROUTES_THROTTLING = "reroutesThrottling";
+    private static final String REROUTES_THROTTLING = "reroutes-throttling";
 
     private final long minDelay;
 
     private final long maxDelay;
 
-    private ReroutesThrottling reroutesThrottling;
+    private transient ReroutesThrottling reroutesThrottling;
 
     public FlowThrottlingBolt(long minDelay, long maxDelay) {
         this.minDelay = minDelay;
         this.maxDelay = maxDelay;
-    }
-
-    @Override
-    public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
-        super.prepare(conf, context, collector);
     }
 
     @Override
@@ -77,8 +70,8 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
 
     @Override
     protected void doWork(Tuple tuple) {
-        reroutesThrottling.putRequest(tuple.getStringByField(CacheBolt.FLOW_ID_FIELD),
-                tuple.getStringByField(CacheBolt.CORRELATION_ID_FIELD));
+        reroutesThrottling.putRequest(tuple.getStringByField(RerouteBolt.FLOW_ID_FIELD),
+                tuple.getStringByField(RerouteBolt.CORRELATION_ID_FIELD));
         outputCollector.ack(tuple);
     }
 

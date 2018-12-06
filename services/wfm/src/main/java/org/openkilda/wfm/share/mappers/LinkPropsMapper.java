@@ -38,6 +38,10 @@ public abstract class LinkPropsMapper {
      * Convert {@link LinkProps} to {@link LinkPropsDto}.
      */
     public LinkPropsDto map(LinkProps linkProps) {
+        if (linkProps == null) {
+            return null;
+        }
+
         Map<String, String> props = new HashMap<>();
         if (linkProps.getCost() != null) {
             props.put(LinkProps.COST_PROP_NAME, Integer.toString(linkProps.getCost()));
@@ -59,6 +63,10 @@ public abstract class LinkPropsMapper {
      * Convert {@link LinkPropsDto} to {@link LinkProps}.
      */
     public LinkProps map(LinkPropsDto linkProps) {
+        if (linkProps == null) {
+            return null;
+        }
+
         LinkProps dbLinkProps = LinkProps.builder()
                 .timeCreate(Optional.ofNullable(linkProps.getCreated()).map(Instant::ofEpochMilli).orElse(null))
                 .timeModify(Optional.ofNullable(linkProps.getModified()).map(Instant::ofEpochMilli).orElse(null))

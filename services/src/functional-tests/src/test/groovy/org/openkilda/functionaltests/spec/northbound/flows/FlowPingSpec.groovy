@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
+import spock.lang.Ignore
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -107,6 +109,7 @@ class FlowPingSpec extends BaseSpecification {
         [srcSwitch, dstSwitch] << ofSwitchCombinations
     }
 
+    @Ignore
     @Issue("https://github.com/telstra/open-kilda/issues/1416")
     @Unroll("Flow ping can detect a broken #description")
     def "Flow ping can detect a broken path"() {
@@ -232,7 +235,7 @@ class FlowPingSpec extends BaseSpecification {
             flowId == wrongFlowId
             !forward
             !reverse
-            error == "Can't read flow $wrongFlowId: Flow pair is incomplete: FORWARD is missing and REVERSE is missing"
+            error == "Flow $wrongFlowId does not exist"
         }
     }
 

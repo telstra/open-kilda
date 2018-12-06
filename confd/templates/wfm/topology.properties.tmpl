@@ -11,6 +11,8 @@ kafka.replication.default = 3
 reroute.throttling.delay.min = {{ getv "/kilda_reroute_throttling_delay_min" }}
 reroute.throttling.delay.max = {{ getv "/kilda_reroute_throttling_delay_max" }}
 
+isl.cost.when.port.down = {{ getv "/kilda_isl_cost_when_port_down" }}
+
 opentsdb.hosts = http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 opentsdb.timeout = {{ getv "/kilda_opentsdb_timeout" }}
 opentsdb.num.spouts = {{ getv "/kilda_opentsdb_num_spouts" }}

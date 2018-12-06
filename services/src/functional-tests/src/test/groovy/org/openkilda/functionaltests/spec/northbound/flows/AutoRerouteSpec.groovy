@@ -131,7 +131,9 @@ class AutoRerouteSpec extends BaseSpecification {
 
         then: "All ISLs going through the intermediate switch are 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
-            northboundService.getAllLinks().findAll { flowPath[1].switchId in it.path*.switchId }.each {
+            northboundService.getAllLinks().findAll {
+                flowPath[1].switchId == it.source.switchId || flowPath[1].switchId == it.destination.switchId
+            }.each {
                 assert it.state == IslChangeType.FAILED
             }
         }
@@ -241,8 +243,10 @@ class AutoRerouteSpec extends BaseSpecification {
 
         where:
         reflowOnSwitchActivation | flowStatus
-        false                    | FlowState.DOWN
         true                     | FlowState.UP
+
+        /*TODO(siakovenko): the feature toggle for reflow is not supported yet.
+        false                    | FlowState.DOWN*/
     }
 
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {

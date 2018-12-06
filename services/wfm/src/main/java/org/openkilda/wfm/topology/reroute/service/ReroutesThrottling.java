@@ -13,18 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.cache.service;
+package org.openkilda.wfm.topology.reroute.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 public class ReroutesThrottling {
-
-    private static final Logger logger = LoggerFactory.getLogger(ReroutesThrottling.class);
 
     private ExtendableTimeWindow extendableTimeWindow;
 
@@ -50,10 +48,10 @@ public class ReroutesThrottling {
      * @param correlationId the correlation ID
      */
     public void putRequest(String flowId, String correlationId) {
-        logger.info("Puts flow {} with correlationId {}", flowId, correlationId);
+        log.info("Puts flow {} with correlationId {}", flowId, correlationId);
         String prevCorrelationId = reroutes.put(flowId, correlationId);
         if (prevCorrelationId != null) {
-            logger.info("Previous flow {} with correlationId {} was dropped.", flowId, prevCorrelationId);
+            log.info("Previous flow {} with correlationId {} was dropped.", flowId, prevCorrelationId);
         }
         extendableTimeWindow.registerEvent();
     }
