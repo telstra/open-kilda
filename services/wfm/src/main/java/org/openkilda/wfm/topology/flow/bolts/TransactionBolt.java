@@ -15,11 +15,14 @@
 
 package org.openkilda.wfm.topology.flow.bolts;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.TransactionBoltState;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -41,35 +44,27 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
 
 /**
  * Transaction Bolt. Tracks OpenFlow Speaker commands transactions.
- * <p/>
- * ALGORITHM NOTES:
- * <p/>
- * 1. The TOPOLOGY_ENGINE_BOLT should send the flow rules first, otherwise the SPEAKER_BOLT logic won't have anything to
- * clear.
  */
 public class TransactionBolt
-        extends BaseStatefulBolt<InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>>>
+        extends BaseStatefulBolt<InMemoryKeyValueState<String, Set<UUID>>>
         implements ICtrlBolt {
-    /**
-     * The logger.
-     */
     private static final Logger logger = LoggerFactory.getLogger(TransactionBolt.class);
 
-    public static final String STREAM_ID_CTRL = "ctrl";
+    private static final String STREAM_ID_CTRL = "ctrl";
 
     /**
      * Transaction ids state.
      * <p/>
      * FIXME(surabujin) in memory status lead to disaster when system restarts during any transition
      */
-    private InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>> transactions;
+    private transient InMemoryKeyValueState<String, Set<UUID>> transactions;
 
-    private TopologyContext context;
-    private OutputCollector outputCollector;
+    private transient TopologyContext context;
+    private transient OutputCollector outputCollector;
 
     @Override
     public void execute(Tuple tuple) {
@@ -82,45 +77,36 @@ public class TransactionBolt
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
-        Long transactionId = (Long) tuple.getValueByField(Utils.TRANSACTION_ID);
+        UUID transactionId = (UUID) tuple.getValueByField(Utils.TRANSACTION_ID);
         SwitchId switchId = (SwitchId) tuple.getValueByField(FlowTopology.SWITCH_ID_FIELD);
         String flowId = (String) tuple.getValueByField(Utils.FLOW_ID);
-        Object message = tuple.getValueByField(FlowTopology.MESSAGE_FIELD);
-        Map<String, Set<Long>> flowTransactions;
-        Set<Long> flowTransactionIds;
+
+        Set<UUID> flowTransactions;
         Values values = null;
 
         try {
+            Object message = tuple.getValueByField(FlowTopology.MESSAGE_FIELD);
+            CommandMessage messageObj = (CommandMessage) Utils.MAPPER.readValue((String) message, Message.class);
             logger.debug("Request tuple={}", tuple);
 
             switch (componentId) {
 
-                case TOPOLOGY_ENGINE_BOLT:
-                    logger.info("Transaction from TopologyEngine: switch-id={}, {}={}, {}={}",
+                case CRUD_BOLT:
+                    logger.info("Transaction from CrudBolt: switch-id={}, {}={}, {}={}",
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
-                    flowTransactions = transactions.get(switchId);
+                    flowTransactions = transactions.get(flowId);
+
                     if (flowTransactions == null) {
-                        flowTransactions = new ConcurrentHashMap<>();
-                        transactions.put(switchId, flowTransactions);
+                        flowTransactions = new ConcurrentHashSet<>();
+                        transactions.put(flowId, flowTransactions);
                     }
 
-                    flowTransactionIds = flowTransactions.get(flowId);
-                    if (flowTransactionIds == null) {
-                        flowTransactionIds = new ConcurrentHashSet<>();
-                        flowTransactions.put(flowId, flowTransactionIds);
-                    }
-
-                    if (!flowTransactionIds.add(transactionId)) {
+                    if (!flowTransactions.add(transactionId)) {
                         throw new RuntimeException(
-                                String.format("Transaction adding failure: id %d already exists", transactionId));
+                                String.format("Transaction adding failure: id %s already exists",
+                                        transactionId.toString()));
                     }
-
-                    logger.info("Set status {}: switch-id={}, {}={}, {}={}", FlowState.IN_PROGRESS,
-                            switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
-
-                    values = new Values(flowId, FlowState.IN_PROGRESS);
-                    outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
                     values = new Values(message);
                     outputCollector.emit(streamId.toString(), tuple, values);
@@ -131,40 +117,31 @@ public class TransactionBolt
                     logger.info("Transaction from Speaker: switch-id={}, {}={}, {}={}",
                             switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
-                    flowTransactions = transactions.get(switchId);
+                    flowTransactions = transactions.get(flowId);
                     if (flowTransactions != null) {
+                        if (flowTransactions.remove(transactionId)) {
 
-                        flowTransactionIds = flowTransactions.get(flowId);
-                        if (flowTransactionIds != null) {
+                            if (flowTransactions.isEmpty()) {
+                                //
+                                // All transactions have been removed .. the Flow
+                                // can now be considered "UP"
+                                //
+                                logger.info(
+                                        "Flow transaction completed for one switch "
+                                                + "(switch: {}, flow: {}, stream: {})", switchId, flowId, streamId);
 
-                            if (flowTransactionIds.remove(transactionId)) {
+                                values = new Values(flowId, FlowState.UP,
+                                        new CommandContext(messageObj.getCorrelationId()));
+                                outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
 
-                                if (flowTransactionIds.isEmpty()) {
-                                    //
-                                    // All transactions have been removed .. the Flow
-                                    // can now be considered "UP"
-                                    //
-                                    logger.info(
-                                            "Flow transaction completed for one switch "
-                                                    + "(switch: {}, flow: {}, stream: {})", switchId, flowId, streamId);
-
-                                    values = new Values(flowId, FlowState.UP);
-                                    outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
-
-                                    flowTransactions.remove(flowId);
-                                } else {
-                                    logger.debug("Transaction {} not empty yet, count = {}",
-                                            transactionId, flowTransactionIds.size()
-                                    );
-                                }
+                                transactions.delete(flowId);
                             } else {
-                                logger.warn("Transaction removing: transaction id not found");
+                                logger.debug("Transaction {} not empty yet, count = {}",
+                                        transactionId, flowTransactions.size()
+                                );
                             }
                         } else {
-                            logger.warn("Transaction removing failure: flow id not found");
-                        }
-                        if (flowTransactions.isEmpty()) {
-                            transactions.delete(switchId);
+                            logger.warn("Transaction removing: transaction id not found");
                         }
                     } else {
                         logger.warn("Transaction removing failure: switch id not found");
@@ -179,7 +156,7 @@ public class TransactionBolt
             logger.error("Set status {}: switch-id={}, {}={}, {}={}",
                     FlowState.DOWN, switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, exception);
 
-            values = new Values(flowId, FlowState.DOWN);
+            values = new Values(flowId, FlowState.DOWN, new CommandContext());
             outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
         } catch (Exception e) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
@@ -197,7 +174,7 @@ public class TransactionBolt
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<SwitchId, Map<String, Set<Long>>> state) {
+    public void initState(InMemoryKeyValueState<String, Set<UUID>> state) {
         transactions = state;
     }
 
@@ -207,8 +184,7 @@ public class TransactionBolt
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatus);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatusContext);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
@@ -224,8 +200,8 @@ public class TransactionBolt
 
     @Override
     public AbstractDumpState dumpState() {
-        Map<SwitchId, Map<String, Set<Long>>> dump = new HashMap<>();
-        for (Map.Entry<SwitchId, Map<String, Set<Long>>> item : transactions) {
+        Map<String, Set<UUID>> dump = new HashMap<>();
+        for (Map.Entry<String, Set<UUID>> item : transactions) {
             dump.put(item.getKey(), item.getValue());
         }
         return new TransactionBoltState(dump);

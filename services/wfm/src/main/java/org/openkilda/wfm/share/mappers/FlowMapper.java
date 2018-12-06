@@ -166,8 +166,6 @@ public abstract class FlowMapper {
         }
 
         switch (status) {
-            case ALLOCATED:
-            case CACHED:
             case IN_PROGRESS:
                 return FlowStatus.IN_PROGRESS;
             case UP:

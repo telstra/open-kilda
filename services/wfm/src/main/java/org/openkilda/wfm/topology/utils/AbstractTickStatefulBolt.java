@@ -22,8 +22,6 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -32,7 +30,6 @@ import java.util.Map;
  */
 public abstract class AbstractTickStatefulBolt<T extends State> extends BaseStatefulBolt<T> {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractTickStatefulBolt.class);
     protected OutputCollector outputCollector;
     /** emitFrequency is in seconds. */
     private Integer emitFrequency;

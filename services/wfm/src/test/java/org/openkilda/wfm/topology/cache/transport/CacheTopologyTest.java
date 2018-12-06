@@ -37,7 +37,6 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -91,7 +90,6 @@ public class CacheTopologyTest extends AbstractStormTest {
             new FlowDto(thirdFlowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
                     new SwitchId("ff:00"), 1, 2));
 
-    private static TestKafkaConsumer teConsumer;
     private static TestKafkaConsumer flowConsumer;
     private static TestKafkaConsumer ctrlConsumer;
 
@@ -118,12 +116,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         Config config = stormConfig();
         cluster.submitTopology(CacheTopologyTest.class.getSimpleName(), config, stormTopology);
 
-        teConsumer = new TestKafkaConsumer(
-                topology.getConfig().getKafkaTopoEngTopic(), Destination.TOPOLOGY_ENGINE,
-                kafkaProperties(UUID.nameUUIDFromBytes(Destination.TOPOLOGY_ENGINE.toString().getBytes()).toString())
-        );
-        teConsumer.start();
-
         flowConsumer = new TestKafkaConsumer(
                 topology.getConfig().getKafkaFlowTopic(), Destination.WFM,
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.WFM.toString().getBytes()).toString())
@@ -141,7 +133,6 @@ public class CacheTopologyTest extends AbstractStormTest {
     public void init() throws Exception {
         sw.setState(SwitchChangeType.ADDED);
         flowConsumer.clear();
-        teConsumer.clear();
         ctrlConsumer.clear();
 
         sendClearState();
@@ -153,32 +144,12 @@ public class CacheTopologyTest extends AbstractStormTest {
     public static void teardownOnce() throws Exception {
         flowConsumer.wakeup();
         flowConsumer.join();
-        teConsumer.wakeup();
-        teConsumer.join();
         ctrlConsumer.wakeup();
         ctrlConsumer.join();
 
         embeddedNeo4jDb.stop();
 
         AbstractStormTest.stopZooKafkaAndStorm();
-    }
-
-    @Test
-    public void cacheReceivesFlowTopologyUpdatesAndSendsToTopologyEngine() throws Exception {
-        System.out.println("Flow Update Test");
-        teConsumer.clear();
-        sendFlowUpdate(thirdFlow);
-
-        ConsumerRecord<String, String> flow = teConsumer.pollMessage();
-
-        Assert.assertNotNull(flow);
-        Assert.assertNotNull(flow.value());
-
-        InfoMessage infoMessage = objectMapper.readValue(flow.value(), InfoMessage.class);
-        FlowInfoData infoData = (FlowInfoData) infoMessage.getData();
-        Assert.assertNotNull(infoData);
-
-        Assert.assertEquals(thirdFlow, infoData.getPayload());
     }
 
     @Test
@@ -321,7 +292,7 @@ public class CacheTopologyTest extends AbstractStormTest {
         System.out.println("Flow Topology: Send Flow Creation Request");
         String correlationId = UUID.randomUUID().toString();
         FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(),
-                flow, FlowOperation.CREATE, correlationId);
+                flow, null, correlationId);
         // TODO: as part of getting rid of OutputTopic, used TopoDiscoTopic. This feels wrong for
         // Flows.
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
@@ -365,19 +336,6 @@ public class CacheTopologyTest extends AbstractStormTest {
         PathInfoData pathInfoData = new PathInfoData(0L, path);
         flow.setFlowPath(pathInfoData);
         FlowPairDto<FlowDto, FlowDto> flowPair = new FlowPairDto<>(flow, flow);
-        return new FlowInfoData(flowId, flowPair, FlowOperation.CREATE, UUID.randomUUID().toString());
-    }
-
-    private static String waitDumpRequest() throws InterruptedException, IOException {
-        ConsumerRecord<String, String> raw;
-        int sec = 0;
-        while ((raw = teConsumer.pollMessage(1000)) == null) {
-            System.out.println("Waiting For Dump Request");
-            Assert.assertTrue("Waiting For Dump Request failed", ++sec < 20);
-        }
-        System.out.println("Waiting For Dump Request");
-
-        Message request = objectMapper.readValue(raw.value(), Message.class);
-        return request.getCorrelationId();
+        return new FlowInfoData(flowId, flowPair, null, UUID.randomUUID().toString());
     }
 }

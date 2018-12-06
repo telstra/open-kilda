@@ -15,18 +15,10 @@
 
 package org.openkilda.messaging.info.flow;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-import java.util.Objects;
 
 /**
  * Captures the results of a FlowCacheSyncRequest.
@@ -38,76 +30,4 @@ public class FlowCacheSyncResponse extends InfoData {
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
-
-    /**
-     * The response payload.
-     */
-    @JsonProperty(Utils.PAYLOAD)
-    protected FlowCacheSyncResults payload;
-
-    /**
-     * Instance constructor.
-     *
-     * @param payload response payload
-     * @throws IllegalArgumentException if payload is null
-     */
-    @JsonCreator
-    public FlowCacheSyncResponse(@JsonProperty(Utils.PAYLOAD) FlowCacheSyncResults payload) {
-        setPayload(payload);
-    }
-
-    /**
-     * Returns response payload.
-     *
-     * @return response payload
-     */
-    public FlowCacheSyncResults getPayload() {
-        return payload;
-    }
-
-    /**
-     * Sets response payload.
-     *
-     * @param payload response payload
-     */
-    public void setPayload(FlowCacheSyncResults payload) {
-        if (payload == null) {
-            throw new IllegalArgumentException("need to set payload");
-        }
-        this.payload = payload;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(Utils.PAYLOAD, payload)
-                .toString();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(payload);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        FlowCacheSyncResponse that = (FlowCacheSyncResponse) object;
-        return Objects.equals(getPayload(), that.getPayload());
-    }
 }

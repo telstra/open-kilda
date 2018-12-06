@@ -57,7 +57,7 @@ public class FlowInfoDataTest implements StringSerializer {
                 .destinationSwitch(dpIdBeta).destinationPort(20).destinationVlan(200)
                 .meterId(1)
                 .transitVlan(1024)
-                .state(FlowState.ALLOCATED)
+                .state(FlowState.IN_PROGRESS)
                 .flowPath(new PathInfoData(20, forwardPath))
                 .build();
         FlowDto reverseFlowThread = forwardFlowThread.toBuilder()
@@ -73,7 +73,7 @@ public class FlowInfoDataTest implements StringSerializer {
         FlowInfoData origin = new FlowInfoData(
                 forwardFlowThread.getFlowId(),
                 new FlowPairDto<>(forwardFlowThread, reverseFlowThread),
-                FlowOperation.CREATE, "unit-test-correlation-id");
+                FlowOperation.PUSH, "unit-test-correlation-id");
 
         InfoMessage wrapper = new InfoMessage(origin, System.currentTimeMillis(), origin.getCorrelationId());
         serialize(wrapper);

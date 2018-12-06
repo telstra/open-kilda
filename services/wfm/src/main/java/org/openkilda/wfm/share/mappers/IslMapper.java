@@ -48,11 +48,13 @@ public abstract class IslMapper {
         src.setSwitchId(isl.getSrcSwitch().getSwitchId());
         src.setPortNo(isl.getSrcPort());
         src.setSegLatency(isl.getLatency());
+        src.setSeqId(0);
 
         PathNode dst = new PathNode();
         dst.setSwitchId(isl.getDestSwitch().getSwitchId());
         dst.setPortNo(isl.getDestPort());
         dst.setSegLatency(isl.getLatency());
+        dst.setSeqId(1);
 
         Long timeCreateMillis = Optional.ofNullable(isl.getTimeCreate()).map(Instant::toEpochMilli).orElse(null);
         Long timeModifyMillis = Optional.ofNullable(isl.getTimeModify()).map(Instant::toEpochMilli).orElse(null);

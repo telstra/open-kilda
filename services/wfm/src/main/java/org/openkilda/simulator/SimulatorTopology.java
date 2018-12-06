@@ -24,8 +24,6 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig> {
     private final String topoName = "simulatorTopology";
@@ -42,8 +40,6 @@ public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig>
     public static final String KAFKA_BOLT_STREAM = "kafka_bolt_stream";
     public static final String SIMULATOR_COMMAND_BOLT = "simulator_command_bolt";
     public static final String SIMULATOR_COMMAND_STREAM = "simulator_command_stream";
-
-    private static final Logger logger = LoggerFactory.getLogger(SimulatorTopology.class);
 
     public SimulatorTopology(LaunchEnvironment env) {
         super(env, SimulatorTopologyConfig.class);

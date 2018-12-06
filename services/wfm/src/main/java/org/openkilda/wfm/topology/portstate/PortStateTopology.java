@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.portstate;
 
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.portstate.bolt.ParsePortInfoBolt;
 import org.openkilda.wfm.topology.portstate.bolt.TopoDiscoParseBolt;
@@ -26,11 +25,8 @@ import org.openkilda.wfm.topology.portstate.spout.SwitchPortsSpout;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig> {
-    private static final Logger logger = LoggerFactory.getLogger(PortStateTopology.class);
 
     public static final String TOPO_DISCO_SPOUT = "topo.disco.spout";
     private static final String WFM_STATS_SPOUT = "wfm.stats.spout";
@@ -47,7 +43,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
     }
 
     @Override
-    public StormTopology createTopology() throws NameCollisionException {
+    public StormTopology createTopology() {
         logger.info("Creating PortStateTopology - {}", topologyName);
 
         TopologyBuilder builder = new TopologyBuilder();

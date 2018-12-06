@@ -27,8 +27,6 @@ import org.openkilda.KafkaUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.ctrl.state.visitor.DumpStateManager;
-import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -50,7 +48,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.glassfish.jersey.client.ClientConfig;
 
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -156,13 +153,6 @@ public class StormTopologyLcm {
     public void allStormTopologiesInTheSameState() {
 
         DumpStateManager actualSateDumpsFromBolts = kafkaUtils.getStateDumpsFromBolts();
-
-        // CacheBolt part
-        Set<FlowPairDto<FlowDto, FlowDto>> actualCacheBoltFlows = actualSateDumpsFromBolts
-                .getCacheBoltState().getFlowDump().getFlows();
-        Set<FlowPairDto<FlowDto, FlowDto>> expectedCacheBoltFlows = expectedStateDumpsFromBolts
-                .getCacheBoltState().getFlowDump().getFlows();
-        assertTrue(CollectionUtils.isEqualCollection(actualCacheBoltFlows, expectedCacheBoltFlows));
 
         // OFELinkBolt
         OFELinkBoltState actualOfeLinkBoltState = actualSateDumpsFromBolts.getOfeLinkBoltState();

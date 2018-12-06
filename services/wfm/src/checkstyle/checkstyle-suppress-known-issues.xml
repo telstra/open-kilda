@@ -19,9 +19,9 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="56" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="74" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="82" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="39" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="35" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/IslStatsTopology.java" lines="64" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/nbworker/NbWorkerTopology.java" lines="108" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/nbworker/NbWorkerTopology.java" lines="104" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="41" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="41" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/portstate/PortStateTopology.java" lines="112" checks="JavadocMethod"/>
@@ -33,7 +33,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/FlowDirectionHelper.java" lines="71" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/FlowDirectionHelper.java" lines="84" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/StatsTopology.java" lines="52" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/AbstractTickStatefulBolt.java" lines="46" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/AbstractTickStatefulBolt.java" lines="43" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FilerBolt.java" lines="53" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FileUtil.java" lines="44" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FileUtil.java" lines="70" checks="SummaryJavadoc"/>

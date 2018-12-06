@@ -43,6 +43,10 @@ neo4j.uri = bolt://neo4j.pendev:7687
 neo4j.user = neo4j
 neo4j.password = temppass
 
+filter.directory =
+logger.level = INFO
+logger.watermark =
+
 #######
 # Discovery
 # - discovery.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0

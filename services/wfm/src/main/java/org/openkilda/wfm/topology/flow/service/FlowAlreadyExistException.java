@@ -13,17 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.wfm.topology.flow.service;
 
 /**
- * Describes how to synchronize the cache.
+ * {@code FlowAlreadyExistException} indicates that a flow already exist.
  */
-public enum SynchronizeCacheAction {
-    // Synchronize / refresh cache : compare the data in cache and DB, propagate updates only for the difference.
-    SYNCHRONIZE_CACHE,
+public class FlowAlreadyExistException extends Exception {
 
-    // Purge cache : re-read data from DB and forcibly propagate updates for all records.
-    INVALIDATE_CACHE,
+    public FlowAlreadyExistException(String flowId) {
+        super(String.format("Flow %s already exists", flowId));
+    }
 
-    NONE
+    public FlowAlreadyExistException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

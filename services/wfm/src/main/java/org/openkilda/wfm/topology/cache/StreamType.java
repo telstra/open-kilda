@@ -32,11 +32,6 @@ public enum StreamType {
     WFM_REROUTE,
 
     /**
-     * Network storage update.
-     */
-    TPE,
-
-    /**
      * Request cache dump.
      */
     CACHE_WFM,

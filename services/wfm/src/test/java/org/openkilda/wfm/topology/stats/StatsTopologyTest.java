@@ -73,6 +73,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 public class StatsTopologyTest extends StableAbstractStormTest {
@@ -80,6 +81,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     private static final long timestamp = System.currentTimeMillis();
 
     private final SwitchId switchId = new SwitchId(1L);
+    private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private final long cookie = 0x4000000000000001L;
     private final String flowId = "f253423454343";
 
@@ -264,7 +266,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         final String flowId = "sync-test-add-ssf";
         final InstallOneSwitchFlow payload =
                 new InstallOneSwitchFlow(
-                        0L, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127,
+                        TRANSACTION_ID, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127,
                         OutputVlanType.PUSH, 1000L, 0L);
         final CommandMessage message = new CommandMessage(payload, timestamp, flowId, Destination.WFM_STATS);
         final String json = MAPPER.writeValueAsString(message);

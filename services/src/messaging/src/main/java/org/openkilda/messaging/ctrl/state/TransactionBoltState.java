@@ -17,7 +17,6 @@ package org.openkilda.messaging.ctrl.state;
 
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.visitor.DumpStateVisitor;
-import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -27,17 +26,18 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TransactionBoltState extends AbstractDumpState {
     @JsonProperty("transaction")
-    Map<SwitchId, Map<String, Set<Long>>> transaction;
+    private Map<String, Set<UUID>> transaction;
 
     @JsonCreator
     public TransactionBoltState(
-            @JsonProperty("transaction") Map<SwitchId, Map<String, Set<Long>>> transaction) {
+            @JsonProperty("transaction") Map<String, Set<UUID>> transaction) {
         this.transaction = transaction;
     }
 

@@ -20,16 +20,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.flow.FlowUtils.dumpFlows;
 import static org.openkilda.flow.FlowUtils.getLinkBandwidth;
 import static org.openkilda.flow.FlowUtils.restoreFlows;
 import static org.openkilda.northbound.dto.links.LinkStatus.FAILED;
 
 import org.openkilda.LinksUtils;
+import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.topo.TopologyHelp;
@@ -45,7 +45,6 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
 
 public class FlowPathTest {
     private static final String fileName = "topologies/multi-path-topology.json";
@@ -209,17 +208,17 @@ public class FlowPathTest {
 
     @Then("^flow (.*) has updated timestamp$")
     public void flowRestoredHasValidLastUpdatedTimestamp(String flowId) throws Throwable {
-        List<FlowDto> flows = dumpFlows();
+        List<FlowPayload> flows = FlowUtils.getFlowDump();
 
         if (flows == null || flows.isEmpty()) {
             TimeUnit.SECONDS.sleep(2);
-            flows = dumpFlows();
+            flows = FlowUtils.getFlowDump();
         }
 
         assertNotNull(flows);
         assertEquals(2, flows.size());
 
-        FlowDto flow = flows.get(0);
+        FlowPayload flow = flows.get(0);
         String currentLastUpdated = flow.getLastUpdated();
         System.out.println(format("=====> Flow %s previous timestamp = %s", flowId, previousLastUpdated));
         System.out.println(format("=====> Flow %s current timestamp = %s", flowId, currentLastUpdated));

@@ -35,6 +35,11 @@ public class FlowPair implements Serializable {
     @NonNull
     public final Flow reverse;
 
+    public void setStatus(FlowStatus status) {
+        forward.setStatus(status);
+        reverse.setStatus(status);
+    }
+
     public boolean isActive() {
         return forward.isActive() && reverse.isActive();
     }

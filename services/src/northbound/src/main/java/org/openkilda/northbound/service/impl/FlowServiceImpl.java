@@ -29,9 +29,7 @@ import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
-import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
@@ -45,7 +43,6 @@ import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -70,7 +67,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
 
-import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -301,6 +297,7 @@ public class FlowServiceImpl implements FlowService {
 
     /**
      * Non-blocking primitive .. just create and send delete request.
+     *
      * @return the request
      */
     private CommandMessage buildDeleteFlowCommand(final String id, final String correlationId) {
@@ -378,7 +375,6 @@ public class FlowServiceImpl implements FlowService {
         // First, send them all, then wait for all the responses.
         // Send the command to both Flow Topology and to TE
         List<CompletableFuture<?>> flowRequests = new ArrayList<>();    // used for error reporting, if needed
-        List<CompletableFuture<?>> teRequests = new ArrayList<>();      // used for error reporting, if needed
         for (int i = 0; i < externalFlows.size(); i++) {
             FlowInfoData data = externalFlows.get(i);
             data.setOperation(op);  // <-- this is what determines PUSH / UNPUSH
@@ -386,42 +382,33 @@ public class FlowServiceImpl implements FlowService {
             InfoMessage flowRequest =
                     new InfoMessage(data, System.currentTimeMillis(), flowCorrelation, Destination.WFM);
             flowRequests.add(messagingChannel.sendAndGet(topic, flowRequest));
-
-            String teCorrelation = correlationId + "-TE-" + i;
-            InfoMessage teRequest =
-                    new InfoMessage(data, System.currentTimeMillis(), teCorrelation, Destination.TOPOLOGY_ENGINE);
-            teRequests.add(messagingChannel.sendAndGet(topoEngTopic, teRequest));
         }
 
-        FlowState expectedState = (op == FlowOperation.PUSH || op == FlowOperation.PUSH_PROPAGATE)
-                ? FlowState.UP
-                : FlowState.DOWN;
+        FlowState expectedState;
+        switch (op) {
+            case PUSH:
+                expectedState = FlowState.UP;
+                break;
+            case PUSH_PROPAGATE:
+                expectedState = FlowState.IN_PROGRESS;
+                break;
+            default:
+                expectedState = FlowState.DOWN;
+        }
 
         CompletableFuture<List<String>> flowFailures = collectResponses(flowRequests, FlowStatusResponse.class)
                 .thenApply(flows ->
                         flows.stream()
-                            .map(FlowStatusResponse::getPayload)
-                            .filter(payload -> payload.getStatus() != expectedState)
-                            .map(payload -> "FAILURE (FlowTopo): Flow " + payload.getId()
-                                    + " NOT in " + expectedState
-                                    + " state: state = " + payload.getStatus())
-                            .collect(Collectors.toList()));
+                                .map(FlowStatusResponse::getPayload)
+                                .filter(payload -> payload.getStatus() != expectedState)
+                                .map(payload -> "FAILURE (FlowTopo): Flow " + payload.getId()
+                                        + " NOT in " + expectedState
+                                        + " state: state = " + payload.getStatus())
+                                .collect(Collectors.toList()));
 
-        CompletableFuture<List<String>> teFailures = collectResponses(teRequests, FlowStatusResponse.class)
-                .thenApply(flows ->
-                     flows.stream()
-                            .map(FlowStatusResponse::getPayload)
-                            .filter(payload -> payload.getStatus() != expectedState)
-                            .map(payload -> "FAILURE (TE): Flow " + payload.getId()
-                                    + " NOT in " + expectedState
-                                    + " state: state = " + payload.getStatus())
-                            .collect(Collectors.toList()));
-
-        return flowFailures.thenCombine(teFailures, (flowErrors, teErrors) -> {
-            BatchResults batchResults = new BatchResults(flowErrors.size() + teErrors.size(),
-                    externalFlows.size() - flowErrors.size() + externalFlows.size() - teErrors.size(),
-                    ListUtils.sum(flowErrors, teErrors));
-
+        return flowFailures.thenApply(failures -> {
+            BatchResults batchResults = new BatchResults(failures.size(),
+                    externalFlows.size() - failures.size(), failures);
             LOGGER.debug("Returned: {}", batchResults);
             return batchResults;
         });
@@ -771,7 +758,6 @@ public class FlowServiceImpl implements FlowService {
             result.setFlowRulesTotal(oneDirection.size());
             result.setSwitchRulesTotal(totalSwitchRules);
             results.add(result);
-
         }
         return results;
     }
@@ -790,15 +776,13 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<FlowCacheSyncResults> syncFlowCache(SynchronizeCacheAction syncCacheAction) {
+    public void invalidateFlowResourcesCache() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Flow cache sync. Action: {}", syncCacheAction);
-        FlowCacheSyncRequest data = new FlowCacheSyncRequest(syncCacheAction);
+        LOGGER.debug("Invalidating Flow Resources Cache.");
+        FlowCacheSyncRequest data = new FlowCacheSyncRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, request)
-                .thenApply(FlowCacheSyncResponse.class::cast)
-                .thenApply(FlowCacheSyncResponse::getPayload);
+        messagingChannel.sendAndGet(topic, request);
     }
 
     private CompletableFuture<FlowReroutePayload> reroute(String flowId, boolean forced) {

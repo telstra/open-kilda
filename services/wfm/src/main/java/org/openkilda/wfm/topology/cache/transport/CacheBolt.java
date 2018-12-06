@@ -23,9 +23,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.switches.SwitchDeleteRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
-import org.openkilda.messaging.ctrl.state.FlowDump;
 import org.openkilda.messaging.ctrl.state.NetworkDump;
-import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -33,14 +31,11 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.NetworkTopologyChange;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.Sender;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
-import org.openkilda.wfm.share.cache.Cache;
-import org.openkilda.wfm.share.cache.FlowCache;
 import org.openkilda.wfm.share.cache.NetworkCache;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.cache.StreamType;
@@ -63,7 +58,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public class CacheBolt
-        extends BaseStatefulBolt<InMemoryKeyValueState<String, Cache>>
+        extends BaseStatefulBolt<InMemoryKeyValueState<String, NetworkCache>>
         implements ICtrlBolt {
     public static final String STREAM_ID_CTRL = "ctrl";
     public static final String FLOW_ID_FIELD = "flowId";
@@ -75,11 +70,6 @@ public class CacheBolt
     private static final String NETWORK_CACHE = "network";
 
     /**
-     * Network cache key.
-     */
-    private static final String FLOW_CACHE = "flow";
-
-    /**
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(CacheBolt.class);
@@ -87,7 +77,7 @@ public class CacheBolt
     /**
      * Network cache cache.
      */
-    private InMemoryKeyValueState<String, Cache> state;
+    private InMemoryKeyValueState<String, NetworkCache> state;
 
     private transient CacheService cacheService;
 
@@ -104,21 +94,15 @@ public class CacheBolt
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<String, Cache> state) {
+    public void initState(InMemoryKeyValueState<String, NetworkCache> state) {
         this.state = state;
-        NetworkCache networkCache = (NetworkCache) state.get(NETWORK_CACHE);
+        NetworkCache networkCache = state.get(NETWORK_CACHE);
         if (networkCache == null) {
             networkCache = new NetworkCache();
             state.put(NETWORK_CACHE, networkCache);
         }
 
-        FlowCache flowCache = (FlowCache) state.get(FLOW_CACHE);
-        if (flowCache == null) {
-            flowCache = new FlowCache();
-            state.put(FLOW_CACHE, flowCache);
-        }
-
-        cacheService = new CacheService(networkCache, flowCache, persistenceManager.getRepositoryFactory());
+        cacheService = new CacheService(networkCache, persistenceManager.getRepositoryFactory());
     }
 
     /**
@@ -167,9 +151,6 @@ public class CacheBolt
                 } else if (data instanceof PortInfoData) {
                     cacheService.handlePortEvent((PortInfoData) data, sender, message.getCorrelationId());
 
-                } else if (data instanceof FlowInfoData) {
-
-                    cacheService.handleFlowEvent((FlowInfoData) data, sender, message.getCorrelationId());
                 } else if (data instanceof NetworkTopologyChange) {
                     logger.debug("Switch flows reroute request");
 
@@ -209,7 +190,6 @@ public class CacheBolt
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer output) {
-        output.declareStream(StreamType.TPE.toString(), AbstractTopology.fieldMessage);
         output.declareStream(StreamType.WFM_REROUTE.toString(), new Fields(FLOW_ID_FIELD, CORRELATION_ID_FIELD));
         output.declareStream(StreamType.OFE.toString(), AbstractTopology.fieldMessage);
         // FIXME(dbogun): use proper tuple format
@@ -218,7 +198,7 @@ public class CacheBolt
 
     @Override
     public AbstractDumpState dumpState() {
-        return new CacheBoltState(cacheService.getNetworkDump(), cacheService.getFlowDump());
+        return new CacheBoltState(cacheService.getNetworkDump());
     }
 
     @VisibleForTesting
@@ -234,8 +214,7 @@ public class CacheBolt
         NetworkDump networkDump = new NetworkDump(
                 new HashSet<>(),
                 new HashSet<>());
-        FlowDump flowDump = new FlowDump(new HashSet<>());
-        return new CacheBoltState(networkDump, flowDump);
+        return new CacheBoltState(networkDump);
     }
 
     @Override
@@ -255,9 +234,6 @@ public class CacheBolt
 
     @Override
     public Optional<AbstractDumpState> dumpResorceCacheState() {
-        return Optional.of(new ResorceCacheBoltState(
-                cacheService.getAllocatedMeters(),
-                cacheService.getAllocatedVlans(),
-                cacheService.getAllocatedCookies()));
+        return Optional.empty();
     }
 }

@@ -242,7 +242,7 @@ public class StubServiceFactory {
                 .thenAnswer(invocation -> {
                     FlowPayload result = SerializationUtils.clone(((FlowPayload) invocation.getArguments()[0]));
                     result.setLastUpdated(LocalTime.now().toString());
-                    result.setStatus(FlowState.ALLOCATED.toString());
+                    result.setStatus(FlowState.IN_PROGRESS.toString());
                     putFlow(result.getId(), result);
                     return result;
                 });

@@ -38,7 +38,6 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
@@ -67,6 +66,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final String FLOW_NAME = "test_flow";
     private static final SwitchId SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:00");
     private static final String CORRELATION_ID = UUID.randomUUID().toString();
+    private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private static final long TIMESTAMP = System.currentTimeMillis();
     private static final int INPUT_PORT = 1;
     private static final int OUTPUT_PORT = 2;
@@ -112,7 +112,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
-        InstallEgressFlow data = new InstallEgressFlow(TIMESTAMP, FLOW_NAME, COOKIE,
+        InstallEgressFlow data = new InstallEgressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE);
         System.out.println(data);
 
@@ -133,7 +133,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void serializeInstallIngressFlowMessageTest() throws IOException, ClassNotFoundException {
-        InstallIngressFlow data = new InstallIngressFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID,
+        InstallIngressFlow data = new InstallIngressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID,
                 INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
@@ -154,7 +154,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void serializeInstallTransitFlowMessageTest() throws IOException, ClassNotFoundException {
-        InstallTransitFlow data = new InstallTransitFlow(TIMESTAMP, FLOW_NAME, COOKIE,
+        InstallTransitFlow data = new InstallTransitFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_VLAN_ID);
         System.out.println(data);
 
@@ -175,7 +175,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void serializeInstallOneSwitchFlowMessageTest() throws IOException, ClassNotFoundException {
-        InstallOneSwitchFlow data = new InstallOneSwitchFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
+        InstallOneSwitchFlow data = new InstallOneSwitchFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
                 OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
@@ -495,7 +495,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void removeCommandTest() throws IOException, ClassNotFoundException {
-        RemoveFlow data = new RemoveFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, METER_ID,
+        RemoveFlow data = new RemoveFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID, METER_ID,
                 DeleteRulesCriteria.builder().cookie(COOKIE).build());
         System.out.println(data);
 
@@ -517,7 +517,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowRerouteCommandTest() throws IOException, ClassNotFoundException {
-        FlowRerouteRequest data = new FlowRerouteRequest(FLOW_NAME, FlowOperation.CREATE, false);
+        FlowRerouteRequest data = new FlowRerouteRequest(FLOW_NAME, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

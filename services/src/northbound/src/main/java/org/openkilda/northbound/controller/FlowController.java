@@ -15,10 +15,8 @@
 
 package org.openkilda.northbound.controller;
 
-import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -299,39 +297,12 @@ public class FlowController {
     }
 
     /**
-     * Make sure any Flow caches are in sync with the DB. This is primarily a janitor primitive.
-     *
-     * @return a detailed response of the sync operation (added, deleted, modified, unchanged flows)
+     * Invalidate (purge) the flow resources cache and initialize it with DB data.
      */
-    @ApiOperation(value = "Sync Flow Cache(s)", response = FlowCacheSyncResults.class)
-    @GetMapping(path = "/cachesync")
-    @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowCacheSyncResults> syncFlowCache() {
-        return flowService.syncFlowCache(SynchronizeCacheAction.NONE);
-    }
-
-    /**
-     * Invalidate (purge) the flow cache and initialize it with DB data.
-     *
-     * @return a response of the invalidate operation
-     */
-    @ApiOperation(value = "Invalidate (purge) Flow Cache(s)", response = FlowCacheSyncResults.class)
+    @ApiOperation(value = "Invalidate (purge) Flow Resources Cache(s)")
     @DeleteMapping(path = "/cache")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowCacheSyncResults> invalidateFlowCache() {
-        return flowService.syncFlowCache(SynchronizeCacheAction.INVALIDATE_CACHE);
+    public void invalidateFlowCache() {
+        flowService.invalidateFlowResourcesCache();
     }
-
-    /**
-     * Refresh (synchronize) the flow cache with DB data.
-     *
-     * @return a detailed response of the refresh operation (added, deleted, modified, unchanged flows)
-     */
-    @ApiOperation(value = "Refresh Flow Cache(s)", response = FlowCacheSyncResults.class)
-    @PatchMapping(path = "/cache")
-    @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowCacheSyncResults> refreshFlowCache() {
-        return flowService.syncFlowCache(SynchronizeCacheAction.SYNCHRONIZE_CACHE);
-    }
-
 }

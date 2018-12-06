@@ -25,8 +25,11 @@ import org.openkilda.model.SwitchId;
 
 import org.junit.Test;
 
+import java.util.UUID;
+
 public class BaseInstallFlowTest {
-    private static BaseInstallFlow flow = new BaseInstallFlow(0L, flowName, 0L, switchId, inputPort, outputPort);
+    private static BaseInstallFlow flow = new BaseInstallFlow(UUID.randomUUID(), flowName, 0L, switchId,
+            inputPort, outputPort);
 
     @Test
     public void getFlowName() {

@@ -33,10 +33,6 @@ public interface CacheTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowTopic();
     }
 
-    default String getKafkaTopoEngTopic() {
-        return getKafkaTopics().getTopoEngTopic();
-    }
-
     default String getKafkaTopoCacheTopic() {
         return getKafkaTopics().getTopoCacheTopic();
     }

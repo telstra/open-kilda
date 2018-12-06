@@ -15,14 +15,11 @@
 
 package org.openkilda.wfm.share.cache;
 
-import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.ResourcePool;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Map;
@@ -34,7 +31,7 @@ import java.util.stream.Collectors;
 /**
  * ResourceManager class contains basic operations on resources.
  */
-public class ResourceCache extends Cache {
+public class ResourceCache {
     /**
      * Flow cookie value mask.
      */
@@ -43,24 +40,28 @@ public class ResourceCache extends Cache {
     /**
      * Minimum vlan id value.
      */
-    static final int MIN_VLAN_ID = 2;
+    @VisibleForTesting
+    public static final int MIN_VLAN_ID = 2;
 
     /**
      * Maximum vlan id value.
      */
-    static final int MAX_VLAN_ID = 4094;
+    @VisibleForTesting
+    public static final int MAX_VLAN_ID = 4094;
 
     /**
      * Minimum meter id value.
      */
-    static final int MIN_METER_ID = 11;
+    @VisibleForTesting
+    public static final int MIN_METER_ID = 11;
 
     /**
      * Maximum meter id value.
      * NB: Should be the same as VLAN range at the least, could be more. The formula ensures we have a sufficient range.
      * As centecs have limit of max value equals to 2560 we set it to 2500.
      */
-    static final int MAX_METER_ID = 2500;
+    @VisibleForTesting
+    public static final int MAX_METER_ID = 2500;
 
     /**
      * Maximum cookie value.
@@ -71,11 +72,6 @@ public class ResourceCache extends Cache {
      * Minimum cookie value.
      */
     static final int MIN_COOKIE = 1;
-
-    /**
-     * Logger.
-     */
-    private static final Logger logger = LoggerFactory.getLogger(ResourceCache.class);
 
     /**
      * Meter pool by switch.
@@ -91,12 +87,6 @@ public class ResourceCache extends Cache {
      * Transit vlan id pool.
      */
     private final ResourcePool vlanPool = new ResourcePool(MIN_VLAN_ID, MAX_VLAN_ID);
-
-    /**
-     * Instance constructor.
-     */
-    public ResourceCache() {
-    }
 
     /**
      * Clears allocated resources.
@@ -207,7 +197,7 @@ public class ResourceCache extends Cache {
      * Deallocates meter id.
      *
      * @param switchId switch id
-     * @param meterId meter id value
+     * @param meterId  meter id value
      * @return deallocated meter id value or null if value was not allocated earlier
      */
     public synchronized Integer deallocateMeterId(SwitchId switchId, Integer meterId) {
@@ -261,57 +251,10 @@ public class ResourceCache extends Cache {
      */
     public Map<SwitchId, Set<Integer>> getAllMeterIds() {
         return meterPool.entrySet().stream()
-                        .collect(Collectors.toMap(
-                                Entry::getKey,
-                                e -> e.getValue().dumpPool())
-                        );
-    }
-
-
-    /**
-     * Allocates flow resources. All flows come here .. single switch and multi switch flows.
-     *
-     * @param flow flow
-     */
-    public void allocateFlow(FlowPairDto<FlowDto, FlowDto> flow) {
-
-        if (flow.left != null) {
-            allocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
-            if (!flow.left.isOneSwitchFlow()) {
-                // Don't allocate if one switch .. it is zero
-                // .. and allocateVlanId *will* allocate if it is zero, which consumes a very
-                // .. limited resource unnecessarily
-                allocateVlanId(flow.left.getTransitVlan());
-            }
-            allocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
-        }
-
-        if (flow.right != null) {
-            if (!flow.right.isOneSwitchFlow()) {
-                // Don't allocate if one switch .. it is zero
-                // .. and allocateVlanId *will* allocate if it is zero, which consumes a very
-                // .. limited resource unnecessarily
-                allocateVlanId(flow.right.getTransitVlan());
-            }
-            allocateMeterId(flow.right.getSourceSwitch(), flow.right.getMeterId());
-        }
-    }
-
-    /**
-     * Deallocates flow resources.
-     *
-     * @param flow flow
-     */
-    public void deallocateFlow(FlowPairDto<FlowDto, FlowDto> flow) {
-        deallocateCookie((int) (FLOW_COOKIE_VALUE_MASK & flow.left.getCookie()));
-
-        deallocateVlanId(flow.left.getTransitVlan());
-        deallocateMeterId(flow.left.getSourceSwitch(), flow.left.getMeterId());
-
-        if (flow.right != null) {
-            deallocateVlanId(flow.right.getTransitVlan());
-            deallocateMeterId(flow.right.getSourceSwitch(), flow.right.getMeterId());
-        }
+                .collect(Collectors.toMap(
+                        Entry::getKey,
+                        e -> e.getValue().dumpPool())
+                );
     }
 
     /**

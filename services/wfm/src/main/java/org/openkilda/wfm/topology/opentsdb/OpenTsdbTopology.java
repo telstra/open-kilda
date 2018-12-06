@@ -30,8 +30,6 @@ import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 
@@ -39,8 +37,6 @@ import java.util.Collections;
  * Apache Storm topology for sending metrics into Open TSDB.
  */
 public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(OpenTsdbTopology.class);
 
     public OpenTsdbTopology(LaunchEnvironment env) {
         super(env, OpenTsdbTopologyConfig.class);
@@ -54,7 +50,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
     @Override
     public StormTopology createTopology() {
-        LOGGER.info("Creating OpenTsdbTopology - {}", topologyName);
+        logger.info("Creating OpenTsdbTopology - {}", topologyName);
 
         TopologyBuilder tb = new TopologyBuilder();
 

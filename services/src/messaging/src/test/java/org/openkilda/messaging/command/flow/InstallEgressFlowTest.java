@@ -30,8 +30,10 @@ import org.openkilda.model.OutputVlanType;
 
 import org.junit.Test;
 
+import java.util.UUID;
+
 public class InstallEgressFlowTest {
-    private InstallEgressFlow flow = new InstallEgressFlow(0L, flowName, 0L, switchId, inputPort,
+    private InstallEgressFlow flow = new InstallEgressFlow(UUID.randomUUID(), flowName, 0L, switchId, inputPort,
             outputPort, transitVlanId, outputVlanId, outputVlanType);
 
     @Test

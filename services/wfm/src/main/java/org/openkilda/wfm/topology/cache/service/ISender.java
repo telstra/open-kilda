@@ -21,8 +21,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 public interface ISender {
 
-    void sendInfoToTopologyEngine(InfoData data, String correlationId) throws JsonProcessingException;
-
     void sendInfoToWfmReroute(InfoData data, String correlationId) throws JsonProcessingException;
 
     void sendCommandToWfmReroute(String flowId, String correlationId);
