@@ -88,7 +88,7 @@ public abstract class KafkaEncoder extends AbstractBolt {
         return new ErrorMessage(payload, System.currentTimeMillis(), commandContext.getCorrelationId());
     }
 
-    private String encode(Message message) throws JsonEncodeException {
+    protected String encode(Message message) throws JsonEncodeException {
         String value;
         try {
             value = Utils.MAPPER.writeValueAsString(message);
