@@ -172,7 +172,7 @@ class LinkSpec extends BaseSpecification {
         then: "Got 404 NotFound"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.contains("ISL does not exist")
+        exc.responseBodyAsString.contains("ISL was not found")
     }
 
     def "Cannot delete active link"() {
