@@ -25,9 +25,9 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
-import org.openkilda.pce.cache.NetworkCache;
+import org.openkilda.wfm.share.cache.NetworkCache;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -16,16 +16,14 @@
     <description>Northbound API service provides API for Kilda controller</description>
 
     <properties>
-        <pce.version>1.0-SNAPSHOT</pce.version>
         <spring.kafka.version>1.2.2.RELEASE</spring.kafka.version>
         <spring.webmvc.version>4.3.10.RELEASE</spring.webmvc.version>
         <spring.boot.version>1.5.6.RELEASE</spring.boot.version>
+        <jetty.version>9.2.22.v20170606</jetty.version>
         <start-class>org.openkilda.northbound.Application</start-class>
 
         <!-- Dependency versions -->
-        <kafka.version>kafka_2.11</kafka.version>
         <swagger.version>2.9.2</swagger.version>
-        <guava.version>24.1-jre</guava.version>
     </properties>
 
     <dependencyManagement>
@@ -36,6 +34,36 @@
                 <version>${spring.boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-server</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-webapp</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-http</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-io</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-servlet</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-util</artifactId>
+                <version>${jetty.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -52,14 +80,14 @@
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
-            <artifactId>pce</artifactId>
-            <version>${pce.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>kilda-persistence-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-persistence-neo4j</artifactId>
+            <version>${project.version}</version>
+            <!-- The scope must be runtime, but it's compile until FlowValidation is moved to WFM -->
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
@@ -131,7 +159,7 @@
         <!-- Kafka -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
-            <artifactId>${kafka.version}</artifactId>
+            <artifactId>kafka_2.11</artifactId>
         </dependency>
 
         <!-- Testing -->
@@ -188,7 +216,6 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -198,6 +225,10 @@
         <dependency>
             <groupId>com.sabre.oss.conf4j</groupId>
             <artifactId>conf4j-spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-ogm-test</artifactId>
         </dependency>
     </dependencies>
 

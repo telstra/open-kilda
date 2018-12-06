@@ -15,16 +15,14 @@
 
 package org.openkilda.wfm.topology.cache.transport;
 
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.PathComputerAuth;
-import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.cache.StreamType;
 
-import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
@@ -80,11 +78,10 @@ public class CacheTopology extends AbstractTopology<CacheTopologyConfig> {
         /*
          * Stores network cache.
          */
-        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        Auth pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
-                neo4jConfig.getLogin(), neo4jConfig.getPassword());
-        CacheBolt cacheBolt = new CacheBolt(pathComputerAuth);
-        ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+
+        CacheBolt cacheBolt = new CacheBolt(persistenceManager);
         BoltDeclarer boltSetup = builder.setBolt(BOLT_ID_CACHE, cacheBolt, parallelism)
                 .shuffleGrouping(SPOUT_ID_COMMON);
         // (carmine) as per above comment, only a single input streamt

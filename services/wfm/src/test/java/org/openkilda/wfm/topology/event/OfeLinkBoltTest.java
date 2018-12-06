@@ -49,7 +49,9 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.tuple.Values;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
 import org.mockito.Mockito;
@@ -71,6 +73,11 @@ public class OfeLinkBoltTest extends AbstractStormTest {
     private OutputCollectorMock outputDelegate;
     private OFEventWfmTopologyConfig config;
 
+    @BeforeClass
+    public static void setupOnce() throws Exception {
+        AbstractStormTest.startZooKafkaAndStorm();
+    }
+
     @Before
     public void before() throws CmdLineException, ConfigurationException {
         OfEventWfmTopology manager = new OfEventWfmTopology(
@@ -90,6 +97,11 @@ public class OfeLinkBoltTest extends AbstractStormTest {
 
         bolt.prepare(stormConfig(), context, output);
         bolt.initState(new InMemoryKeyValueState<>());
+    }
+
+    @AfterClass
+    public static void teardownOnce() throws Exception {
+        AbstractStormTest.stopZooKafkaAndStorm();
     }
 
     @Test

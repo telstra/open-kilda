@@ -24,13 +24,10 @@ import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.DefaultParameters.topologyPassword;
 import static org.openkilda.DefaultParameters.topologyUsername;
 
-import org.openkilda.DefaultParameters;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
@@ -43,10 +40,6 @@ import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
-import org.openkilda.pce.RecoverableException;
-import org.openkilda.pce.provider.NeoDriver;
-import org.openkilda.pce.provider.PathComputer;
-import org.openkilda.pce.provider.UnroutablePathException;
 import org.openkilda.topo.exceptions.TopologyProcessingException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -307,12 +300,15 @@ public final class FlowUtils {
      * @param flow flow
      * @return flow path
      */
-    public static FlowPairDto<PathInfoData, PathInfoData> getFlowPath(FlowDto flow)
-            throws InterruptedException, UnroutablePathException, RecoverableException {
-        Thread.sleep(1000);
-        PathComputer pathComputer = new NeoDriver(DefaultParameters.neoAuth.getDriver());
-        return pathComputer.getPath(flow, PathComputer.Strategy.COST);
-    }
+    // TODO: fix this in the scope of TE refactoring.
+    //    public static FlowPairDto<PathInfoData, PathInfoData> getFlowPath(FlowDto flow)
+    //            throws InterruptedException, UnroutableFlowException, RecoverableException {
+    //        Thread.sleep(1000);
+    //
+    //        Neo4jTransactionManager txManager = new Neo4jTransactionManager(DefaultParameters.neoConfig);
+    //        PathComputer pathComputer = new InMemoryPathComputer(new IslRepositoryImpl(txManager));
+    //        return pathComputer.getPath(flow, PathComputer.Strategy.COST);
+    //    }
 
     /**
      * Poll flow status via getFlowStatus calls until it become equal to expected. Or until timeout.

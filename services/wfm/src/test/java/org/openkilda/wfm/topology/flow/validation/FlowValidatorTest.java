@@ -15,23 +15,29 @@
 
 package org.openkilda.wfm.topology.flow.validation;
 
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.provider.PathComputerAuth;
-import org.openkilda.wfm.topology.flow.MockedPathComputerAuth;
+import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.cache.FlowCache;
 
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.util.Optional;
+
 public class FlowValidatorTest {
-    private FlowValidator target = new FlowValidator(flowCache, pathComputerAuth.getPathComputer());
+    private FlowValidator target;
 
     private static final FlowCache flowCache = new FlowCache();
-    private static final PathComputerAuth pathComputerAuth = new MockedPathComputerAuth();
     private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:00:00:00:00:01");
     private static final int SRC_PORT = 1;
     private static final int SRC_VLAN = 1;
@@ -56,6 +62,17 @@ public class FlowValidatorTest {
         flow.setDestinationPort(DST_PORT);
         flow.setDestinationVlan(DST_VLAN);
         flowCache.pushFlow(new FlowPairDto<>(flow, flow));
+    }
+
+    @Before
+    public void setUp() {
+        SwitchRepository switchRepository = mock(SwitchRepository.class);
+        when(switchRepository.findById(eq(SRC_SWITCH))).thenReturn(Optional.of(new Switch()));
+        when(switchRepository.findById(eq(DST_SWITCH))).thenReturn(Optional.of(new Switch()));
+        when(switchRepository.exists(eq(SRC_SWITCH))).thenReturn(true);
+        when(switchRepository.exists(eq(DST_SWITCH))).thenReturn(true);
+
+        target = new FlowValidator(flowCache, switchRepository);
     }
 
     @Test(expected = FlowValidationException.class)
@@ -187,7 +204,7 @@ public class FlowValidatorTest {
         flow.setDestinationSwitch(FAIL_DST_SWITCH);
         String expectedMessage =
                 String.format("Source switch %s and Destination switch %s are not connected to the controller",
-                FAIL_SRC_SWITCH, FAIL_DST_SWITCH);
+                        FAIL_SRC_SWITCH, FAIL_DST_SWITCH);
 
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);

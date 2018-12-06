@@ -17,7 +17,6 @@ northbound.messages.expiration.minutes=15
 northbound.kafka.listener.threads=10
 northbound.kafka.session.timeout=30000
 
-neo4j.hosts = {{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo4j.user = {{ getv "/kilda_neo4j_user" }}
 neo4j.password = {{ getv "/kilda_neo4j_password" }}

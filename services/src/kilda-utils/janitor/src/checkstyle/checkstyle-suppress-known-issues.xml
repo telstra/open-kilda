@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Puppy Crawl//DTD Suppressions 1.2//EN"
+        "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="15" checks="EmptyLineSeparator"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="17" checks="AvoidStarImport"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="18" checks="AvoidStarImport"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="22" checks="AvoidStarImport"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="25" checks="AvoidStarImport"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="25" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="26" checks="CustomImportOrder"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="34" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="38" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="39" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="40" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="41" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="42" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="43" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="46" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="50" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="51" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="52" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="53" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="54" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="55" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="62" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="62" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="63" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="63" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="64" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="64" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="65" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="65" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="66" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="66" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="67" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="70" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="74" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="74" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="75" checks="OperatorWrap"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="75" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="79" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="80" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="81" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="82" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="83" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="84" checks="MemberName"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="89" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="91" checks="JavadocTagContinuationIndentation"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="93" checks="MethodName"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="97" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="99" checks="JavadocTagContinuationIndentation"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="101" checks="MethodName"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="106" checks="JavadocMethod"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="112" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="118" checks="EmptyCatchBlock"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="118" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="118" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="140" checks="NeedBraces"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="145" checks="WhitespaceAfter"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="156" checks="NonEmptyAtclauseDescription"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="200" checks="WhitespaceAfter"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="216" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="222" checks="EmptyCatchBlock"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="222" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="222" checks="WhitespaceAround"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="261" checks="CommentsIndentation"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="268" checks="ParenPad"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="268" checks="ParenPad"/>
+    <suppress files="src/main/java/org/openkilda/pce/janitor/FlowJanitor.java" lines="270" checks="NeedBraces"/>
+</suppressions>

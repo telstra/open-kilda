@@ -15,27 +15,28 @@
 
 package org.openkilda.wfm.topology.cache.service;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.SwitchId;
-import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.cache.NetworkCache;
-import org.openkilda.pce.model.AvailableNetwork;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.TestSender;
+import org.openkilda.wfm.share.cache.FlowCache;
+import org.openkilda.wfm.share.cache.NetworkCache;
 import org.openkilda.wfm.topology.cache.StreamType;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,42 +52,18 @@ public class CacheServiceTest {
 
     @Before
     public void init() {
-        cacheService = new CacheService(new NetworkCache(), new FlowCache(), new TestPathComputer());
+        SwitchRepository switchRepository = mock(SwitchRepository.class);
+        IslRepository islRepository = mock(IslRepository.class);
+        FlowRepository flowRepository = mock(FlowRepository.class);
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
+        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+
+        cacheService = new CacheService(new NetworkCache(), new FlowCache(), repositoryFactory);
+
         sender = new TestSender();
-    }
-
-    private class TestPathComputer implements PathComputer {
-
-        @Override
-        public FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow,
-                                                                 AvailableNetwork network, Strategy strategy) {
-            return null;
-        }
-
-        @Override
-        public FlowPairDto<PathInfoData, PathInfoData> getPath(FlowDto flow, Strategy strategy) {
-            return null;
-        }
-
-        @Override
-        public List<FlowDto> getFlow(String flowId) {
-            return null;
-        }
-
-        @Override
-        public AvailableNetwork getAvailableNetwork(boolean ignoreBandwidth, long requestedBandwidth) {
-            return null;
-        }
-
-        @Override
-        public List<SwitchInfoData> getSwitches() {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public List<IslInfoData> getIsls() {
-            return Collections.emptyList();
-        }
     }
 
     @Test

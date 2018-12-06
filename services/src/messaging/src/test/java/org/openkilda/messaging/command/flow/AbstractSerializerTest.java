@@ -29,6 +29,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -45,6 +46,7 @@ import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.OutputVlanType;
@@ -56,6 +58,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -549,6 +552,30 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(resultCommand.getData() != null);
 
         HealthCheckCommandData resultData = (HealthCheckCommandData) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
+        assertEquals(data.hashCode(), resultData.hashCode());
+    }
+
+    @Test
+    public void dumpNetworkResponseTest() throws IOException, ClassNotFoundException {
+        NetworkInfoData data = new NetworkInfoData(requester,
+                new HashSet<>(Arrays.asList(sw1, sw2)),
+                new HashSet<>(),
+                Collections.singleton(isl),
+                Collections.singleton(new FlowPairDto<>(flowModel, flowModel)));
+        System.out.println(data);
+
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        serialize(info);
+
+        Message message = (Message) deserialize();
+        assertTrue(message instanceof InfoMessage);
+
+        InfoMessage resultInfo = (InfoMessage) message;
+        assertTrue(resultInfo.getData() != null);
+
+        NetworkInfoData resultData = (NetworkInfoData) resultInfo.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());

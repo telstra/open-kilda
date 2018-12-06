@@ -21,14 +21,11 @@ import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.topology.TestKafkaProducer;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
-import org.apache.storm.testing.CompleteTopologyParam;
-import org.apache.storm.testing.MkClusterParam;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
 import org.kohsuke.args4j.CmdLineException;
@@ -38,17 +35,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Properties;
 
-/**
- * Created by carmine on 4/4/17.
- */
+@Slf4j
 public abstract class AbstractStormTest {
     protected static String CONFIG_NAME = "class-level-overlay.properties";
-    protected static String NEO4J_LISTEN_ADDRESS = "localhost:27600";
 
     protected static TestKafkaProducer kProducer;
     protected static LocalCluster cluster;
-    protected static MkClusterParam clusterParam;
-    protected static CompleteTopologyParam completeTopologyParam;
     static TestUtils.KafkaTestFixture server;
 
     @ClassRule
@@ -85,25 +77,32 @@ public abstract class AbstractStormTest {
         return config;
     }
 
-    @BeforeClass
-    public static void setupOnce() throws Exception {
-        System.out.println("------> Creating Sheep \uD83D\uDC11\n");
+    protected static void startZooKafkaAndStorm() throws Exception {
+        log.info("Starting Zookeeper and Kafka...");
 
         makeConfigFile();
 
         server = new TestUtils.KafkaTestFixture(makeUnboundConfig(ZookeeperConfig.class));
         server.start();
 
+        log.info("Zookeeper and Kafka started.");
+        log.info("Starting local Storm cluster...");
+
         cluster = new LocalCluster();
         kProducer = new TestKafkaProducer(kafkaProperties());
+
+        log.info("Storm started.");
     }
 
-    @AfterClass
-    public static void teardownOnce() throws Exception {
-        System.out.println("------> Killing Sheep \uD83D\uDC11\n");
+    protected static void stopZooKafkaAndStorm() throws Exception {
         kProducer.close();
+
+        log.info("Stopping local Storm cluster...");
         cluster.shutdown();
+        log.info("Storm stopped.");
+        log.info("Stopping Zookeeper and Kafka...");
         server.stop();
+        log.info("Zookeeper and Kafka stopped.");
     }
 
     protected static <T> T makeUnboundConfig(Class<T> configurationType)

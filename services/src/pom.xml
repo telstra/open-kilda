@@ -16,12 +16,13 @@
         <module>api</module>
         <module>configuration</module>
         <module>test-library</module>
-        <module>pce</module>
         <module>floodlight-modules</module>
         <module>northbound</module>
         <module>atdd</module>
         <module>functional-tests</module>
         <module>atdd-staging</module>
+        <module>kilda-pce</module>
+        <module>kilda-utils</module>
     </modules>
 
     <properties>

@@ -33,13 +33,6 @@ public abstract class Neo4jBasedTest {
         testServer = new TestServer(true, true, 5);
 
         persistenceManager = new Neo4jPersistenceManager(new Neo4jConfig() {
-
-            @Override
-            public String getHost() {
-                //TODO(siakovenko): must be removed on PCE refactoring
-                throw new UnsupportedOperationException("Deprecated");
-            }
-
             @Override
             public String getUri() {
                 return testServer.getUri();

@@ -24,11 +24,6 @@ import java.io.Serializable;
 @Configuration
 @Key("neo4j")
 public interface Neo4jConfig extends Serializable {
-    //TODO(siakovenko): must be removed on PCE refactoring
-    @Deprecated
-    @Key("hosts")
-    String getHost();
-
     @Key("uri")
     String getUri();
 
