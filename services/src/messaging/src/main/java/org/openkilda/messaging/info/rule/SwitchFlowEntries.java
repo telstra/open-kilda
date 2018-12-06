@@ -16,7 +16,7 @@
 package org.openkilda.messaging.info.rule;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

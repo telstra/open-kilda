@@ -15,7 +15,10 @@
 
 package org.openkilda.wfm.topology.portstate.bolt;
 
+import static org.openkilda.model.PortStatus.UP;
+
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.wfm.error.MessageException;
@@ -58,7 +61,8 @@ public class WfmStatsParseBolt extends AbstractKafkaParserBolt {
         data.getPorts()
                 .stream()
                 .forEach(port -> collector.emit(WFM_TO_PARSE_PORT_INFO_STREAM, new Values(
-                        new PortInfoData(data.getSwitchId(), port.getId(), port.getStatus()))));
+                        new PortInfoData(data.getSwitchId(), port.getId(),
+                                port.getStatus() == UP ? PortChangeType.UP : PortChangeType.DOWN))));
     }
 
     @Override

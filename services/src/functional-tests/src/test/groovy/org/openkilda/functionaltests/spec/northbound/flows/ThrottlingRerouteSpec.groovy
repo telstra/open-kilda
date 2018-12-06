@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
+import spock.lang.Ignore
+import spock.lang.Issue
+
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -10,7 +13,7 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.model.SwitchId
+import org.openkilda.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.switches.PortDto
 import org.openkilda.testing.model.topology.TopologyDefinition

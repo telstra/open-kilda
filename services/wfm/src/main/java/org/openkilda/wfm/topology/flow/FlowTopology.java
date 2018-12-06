@@ -15,11 +15,14 @@
 
 package org.openkilda.wfm.topology.flow;
 
+import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
+
 import org.openkilda.messaging.Utils;
-import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.pce.PathComputerConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
@@ -27,18 +30,16 @@ import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
 import org.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
-import org.openkilda.wfm.topology.flow.bolts.TopologyEngineBolt;
+import org.openkilda.wfm.topology.flow.bolts.StatusBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 
-import org.apache.storm.generated.ComponentObject;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,28 +53,14 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
     public static final String ERROR_TYPE_FIELD = "error-type";
     public static final Fields fieldFlowId = new Fields(Utils.FLOW_ID);
     public static final Fields fieldSwitchId = new Fields(SWITCH_ID_FIELD);
-    public static final Fields fieldsFlowIdStatus = new Fields(Utils.FLOW_ID, STATUS_FIELD);
+    public static final Fields fieldsFlowIdStatusContext = new Fields(Utils.FLOW_ID, STATUS_FIELD, FIELD_ID_CONTEXT);
     public static final Fields fieldsMessageFlowId = new Fields(MESSAGE_FIELD, Utils.FLOW_ID);
     public static final Fields fieldsMessageErrorType = new Fields(MESSAGE_FIELD, ERROR_TYPE_FIELD);
     public static final Fields fieldsMessageSwitchIdFlowIdTransactionId =
             new Fields(MESSAGE_FIELD, SWITCH_ID_FIELD, Utils.FLOW_ID, Utils.TRANSACTION_ID);
 
-    private static final Logger logger = LoggerFactory.getLogger(FlowTopology.class);
-
-    private final PathComputerAuth pathComputerAuth;
-
     public FlowTopology(LaunchEnvironment env) {
         super(env, FlowTopologyConfig.class);
-
-        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
-                neo4jConfig.getLogin(), neo4jConfig.getPassword());
-    }
-
-    public FlowTopology(LaunchEnvironment env, PathComputerAuth pathComputerAuth) {
-        super(env, FlowTopologyConfig.class);
-
-        this.pathComputerAuth = pathComputerAuth;
     }
 
     @Override
@@ -87,10 +74,11 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         /*
          * Spout receives all Northbound requests.
          */
-        builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(),
-                         createKafkaSpout(topologyConfig.getKafkaFlowTopic(),
-                                          ComponentType.NORTHBOUND_KAFKA_SPOUT.toString()),
-                         parallelism);
+
+        KafkaSpoutConfig<String, String> kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
+                ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), topologyConfig.getKafkaFlowTopic()).build();
+        KafkaSpout<String, String> kafkaSpout = new KafkaSpout<>(kafkaSpoutConfig);
+        builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), kafkaSpout, parallelism);
 
         /*
          * Bolt splits requests on streams.
@@ -104,9 +92,10 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          * Bolt handles flow CRUD operations.
          * It groups requests by flow-id.
          */
-        CrudBolt crudBolt = new CrudBolt(pathComputerAuth);
-        ComponentObject.serialized_java(org.apache.storm.utils.Utils.javaSerialize(pathComputerAuth));
-
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
+        CrudBolt crudBolt = new CrudBolt(persistenceManager, pathComputerConfig);
         BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 // TODO: this READ is used for single and for all flows. But all flows shouldn't be fieldsGrouping.
@@ -119,48 +108,14 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.REROUTE.toString(), fieldFlowId)
                 // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
                 // tackle during multi instance testing
-                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
-                .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
-                .fieldsGrouping(
-                        ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
-        //        .shuffleGrouping(
-        //                ComponentType.LCM_FLOW_SYNC_BOLT.toString(), LcmFlowCacheSyncBolt.STREAM_ID_SYNC_FLOW_CACHE);
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
-        /*
-         * Bolt sends cache updates.
-         */
-        KafkaBolt cacheKafkaBolt = createKafkaBolt(topologyConfig.getKafkaTopoCacheTopic());
-        builder.setBolt(ComponentType.CACHE_KAFKA_BOLT.toString(), cacheKafkaBolt, parallelism)
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.STATUS.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CACHE_SYNC.toString());
 
-        /*
-         * Spout receives Topology Engine response
-         */
-        // FIXME(surabujin): can be replaced with NORTHBOUND_KAFKA_SPOUT (same topic)
-        KafkaSpout topologyKafkaSpout = createKafkaSpout(
-                topologyConfig.getKafkaFlowTopic(), ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString());
-        builder.setSpout(ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString(), topologyKafkaSpout, parallelism);
-
-        /*
-         * Bolt processes Topology Engine responses, groups by flow-id field
-         */
-        TopologyEngineBolt topologyEngineBolt = new TopologyEngineBolt();
-        builder.setBolt(ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), topologyEngineBolt, parallelism)
-                .shuffleGrouping(ComponentType.TOPOLOGY_ENGINE_KAFKA_SPOUT.toString());
-
-        /*
-         * Bolt sends Speaker requests
-         */
-        KafkaBolt speakerKafkaBolt = createKafkaBolt(topologyConfig.getKafkaSpeakerFlowTopic());
-        builder.setBolt(ComponentType.SPEAKER_KAFKA_BOLT.toString(), speakerKafkaBolt, parallelism)
-                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.DELETE.toString());
+        StatusBolt statusBolt = new StatusBolt(persistenceManager);
+        builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString())
+                .shuffleGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString());
 
         /*
          * Spout receives Speaker responses
@@ -183,12 +138,17 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         TransactionBolt transactionBolt = new TransactionBolt();
         boltSetup = builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
                 .fieldsGrouping(
-                        ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
-                .fieldsGrouping(
-                        ComponentType.TOPOLOGY_ENGINE_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId)
-                .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
-                .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.DELETE.toString(), fieldSwitchId);
+                        ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
+                .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
+
+        /*
+         * Bolt sends Speaker requests
+         */
+        KafkaBolt speakerKafkaBolt = createKafkaBolt(topologyConfig.getKafkaSpeakerFlowTopic());
+        builder.setBolt(ComponentType.SPEAKER_KAFKA_BOLT.toString(), speakerKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.CREATE.toString())
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
 
         /*
          * Error processing bolt

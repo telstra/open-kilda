@@ -275,7 +275,6 @@ confd/templates/topology-engine/topology_engine.ini.tmpl
 [kafka]
 consumer.group={{ getv "/kilda_kafka_te_consumer_group" }}
 flow.topic={{ getv "/kilda_kafka_topic_flow" }}
-cache.topic={{ getv "/kilda_kafka_topic_topo_cache" }}
 speaker.topic={{ getv "/kilda_kafka_topic_speaker" }}
 topo.eng.topic={{ getv "/kilda_kafka_topic_topo_eng" }}
 northbound.topic={{ getv "/kilda_kafka_topic_northbound" }}

@@ -21,7 +21,7 @@ import static org.junit.Assert.assertSame;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -33,7 +33,7 @@ public class DiscoveryLinkTest {
     private static final int portNumber = 1;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         dn = new DiscoveryLink(switchName, portNumber, 1, 10);
     }
 

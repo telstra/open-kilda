@@ -97,8 +97,8 @@ public class IslUtils {
      */
     public Optional<IslInfoData> getIslInfo(List<IslInfoData> islsInfo, Isl isl) {
         return islsInfo.stream().filter(link -> {
-            PathNode src = link.getPath().get(0);
-            PathNode dst = link.getPath().get(1);
+            PathNode src = link.getSource();
+            PathNode dst = link.getDestination();
             return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort()
                     && src.getSwitchId().equals(isl.getSrcSwitch().getDpId())
                     && dst.getSwitchId().equals(isl.getDstSwitch().getDpId());

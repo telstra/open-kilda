@@ -68,12 +68,11 @@ import org.openkilda.messaging.error.rule.DumpRulesErrorData;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
-import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.stats.PortStatus;
+import org.openkilda.messaging.info.stats.PortStatusData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
@@ -82,8 +81,9 @@ import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.PortStatus;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -636,7 +636,7 @@ class RecordHandler implements Runnable {
      */
     private void doBatchInstall(final CommandMessage message) throws FlowCommandException {
         BatchInstallRequest request = (BatchInstallRequest) message.getData();
-        final String switchId = request.getSwitchId();
+        final SwitchId switchId = request.getSwitchId();
         logger.debug("Processing flow commands for switch {}", switchId);
 
         for (BaseInstallFlow command : request.getFlowCommands()) {
@@ -671,10 +671,10 @@ class RecordHandler implements Runnable {
                 try {
                     IOFSwitch sw = entry.getValue();
 
-                    Set<PortStatus> statuses = new HashSet<>();
+                    Set<PortStatusData> statuses = new HashSet<>();
                     for (OFPortDesc portDesc : switchManager.getPhysicalPorts(sw.getId())) {
-                        statuses.add(new PortStatus(portDesc.getPortNo().getPortNumber(),
-                                                    portDesc.isEnabled() ? PortChangeType.UP : PortChangeType.DOWN));
+                        statuses.add(new PortStatusData(portDesc.getPortNo().getPortNumber(),
+                                                    portDesc.isEnabled() ? PortStatus.UP : PortStatus.DOWN));
                     }
 
                     SwitchPortStatusData response = SwitchPortStatusData.builder()

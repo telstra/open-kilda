@@ -33,4 +33,4 @@ supervisor.slots.ports:
 nimbus.childopts: "-Xmx128m"
 ui.childopts: "-Xmx128m"
 supervisor.childopts: "-Xmx128m"
-worker.childopts: "-Xmx128m"
+worker.childopts: "-Xmx256m"

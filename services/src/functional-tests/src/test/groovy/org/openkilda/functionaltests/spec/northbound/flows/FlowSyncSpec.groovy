@@ -10,8 +10,8 @@ import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -48,7 +48,7 @@ class FlowSyncSpec extends BaseSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
             allLinks.every { link ->
-                def switchIds = link.path*.switchId
+                def switchIds = [link.source.switchId, link.destination.switchId]
                 !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
             }
         } ?: assumeTrue("No suiting switches found to build an intermediate-switch flow.", false)
@@ -107,7 +107,7 @@ class FlowSyncSpec extends BaseSpecification {
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
             possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             allLinks.every { link ->
-                def switchIds = link.path*.switchId
+                def switchIds = [link.source.switchId, link.destination.switchId]
                 !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
             } && possibleFlowPaths.size() > 1
         } ?: assumeTrue("No suiting switches found to build an intermediate-switch flow with two possible paths " +

@@ -6,16 +6,13 @@ import static org.junit.Assert.assertNotNull;
 import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowOperationException;
 import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.PathDto;
-import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
@@ -101,13 +98,11 @@ public class FlowIgnoreBandwidthTest {
             + "and ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) have ignore_bandwidth flag in TE$")
     public void flowHaveIgnoreBandwidthFlagInTe(String source, String dest) {
         String flowId = lookupCreatedFlowId(source, dest);
-        FlowPair<Flow, Flow> flowPair = TopologyHelp.getFlow(flowId);
+        FlowPayload flow = FlowUtils.getFlow(flowId);
 
-        Assert.assertNotNull(flowPair);
+        Assert.assertNotNull(flow);
         Assert.assertTrue(
-                "Permanent flows storage ignore ignore_bandwidth flag", flowPair.getLeft().isIgnoreBandwidth());
-        Assert.assertTrue(
-                "Permanent flows storage ignore ignore_bandwidth flag", flowPair.getRight().isIgnoreBandwidth());
+                "Permanent flows storage ignore ignore_bandwidth flag", flow.isIgnoreBandwidth());
     }
 
     @When("^drop created flow between ([0-9a-f]{2}(?::[0-9a-f]{2}){7}) and ([0-9a-f]{2}(?::[0-9a-f]{2}){7})$")

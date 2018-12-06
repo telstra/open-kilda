@@ -23,7 +23,7 @@ import org.openkilda.SwitchesUtils;
 import org.openkilda.atdd.utils.controller.ControllerUtils;
 import org.openkilda.atdd.utils.controller.FloodlightQueryException;
 import org.openkilda.atdd.utils.controller.PortEntry;
-import org.openkilda.messaging.command.switches.PortStatus;
+import org.openkilda.model.PortStatus;
 import org.openkilda.northbound.dto.switches.PortDto;
 
 import cucumber.api.java.en.And;

@@ -15,55 +15,81 @@
 
 package org.openkilda.wfm.topology.flow.validation;
 
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.provider.PathComputerAuth;
-import org.openkilda.wfm.topology.flow.MockedPathComputerAuth;
+import static java.util.Collections.singletonList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import org.junit.BeforeClass;
+import org.openkilda.model.Flow;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
+
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-public class FlowValidatorTest {
-    private FlowValidator target = new FlowValidator(flowCache, pathComputerAuth.getPathComputer());
+import java.util.Optional;
 
-    private static final FlowCache flowCache = new FlowCache();
-    private static final PathComputerAuth pathComputerAuth = new MockedPathComputerAuth();
-    private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:00:00:00:00:01");
+public class FlowValidatorTest {
+    private FlowValidator target;
+
+    private static final SwitchId SRC_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:01");
     private static final int SRC_PORT = 1;
     private static final int SRC_VLAN = 1;
-    private static final SwitchId DST_SWITCH = new SwitchId("00:00:00:00:00:00:00:02");
+    private static final SwitchId DST_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:02");
     private static final int DST_PORT = 5;
     private static final int DST_VLAN = 5;
-    private static final SwitchId FAIL_SRC_SWITCH = new SwitchId("00:00:00:00:00:00:00:03");
-    private static final SwitchId FAIL_DST_SWITCH = new SwitchId("00:00:00:00:00:00:00:04");
+    private static final SwitchId FAIL_SRC_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:03");
+    private static final SwitchId FAIL_DST_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:04");
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    @BeforeClass
-    public static void initCache() {
-        Flow flow = new Flow();
-        flow.setFlowId("1");
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setSourcePort(SRC_PORT);
-        flow.setSourceVlan(SRC_VLAN);
+    @Before
+    public void setUp() {
+        SwitchRepository switchRepository = mock(SwitchRepository.class);
 
-        flow.setDestinationSwitch(DST_SWITCH);
-        flow.setDestinationPort(DST_PORT);
-        flow.setDestinationVlan(DST_VLAN);
-        flowCache.pushFlow(new FlowPair<>(flow, flow));
+        when(switchRepository.findById(eq(SRC_SWITCH_ID))).thenReturn(Optional.of(new Switch()));
+        when(switchRepository.findById(eq(DST_SWITCH_ID))).thenReturn(Optional.of(new Switch()));
+        when(switchRepository.exists(eq(SRC_SWITCH_ID))).thenReturn(true);
+        when(switchRepository.exists(eq(DST_SWITCH_ID))).thenReturn(true);
+        when(switchRepository.findById(eq(SRC_SWITCH_ID))).thenReturn(
+                Optional.of(Switch.builder().switchId(SRC_SWITCH_ID).build()));
+        when(switchRepository.findById(eq(DST_SWITCH_ID))).thenReturn(
+                Optional.of(Switch.builder().switchId(DST_SWITCH_ID).build()));
+
+        FlowRepository flowRepository = mock(FlowRepository.class);
+        Flow flow = new Flow();
+        flow.setFlowId("test_flow");
+        flow.setSrcVlan(SRC_VLAN);
+        flow.setDestVlan(DST_VLAN);
+        when(flowRepository.findFlowIdsByEndpoint(eq(SRC_SWITCH_ID), eq(SRC_PORT))).thenReturn(singletonList(flow));
+        when(flowRepository.findFlowIdsByEndpoint(eq(DST_SWITCH_ID), eq(DST_PORT))).thenReturn(singletonList(flow));
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+
+        target = new FlowValidator(repositoryFactory);
     }
 
     @Test(expected = FlowValidationException.class)
     public void shouldFailIfSourceVlanIsZeroAndPortIsOccupied() throws FlowValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setSourcePort(SRC_PORT);
-        flow.setSourceVlan(0);
+        flow.setFlowId("another_test_flow");
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        Switch destSwitch = new Switch();
+        destSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setDestSwitch(destSwitch);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(SRC_PORT);
+        flow.setSrcVlan(0);
+
 
         target.checkFlowForEndpointConflicts(flow);
     }
@@ -71,9 +97,15 @@ public class FlowValidatorTest {
     @Test(expected = FlowValidationException.class)
     public void shouldFailIfSourceVlanIsAlreadyOccupied() throws FlowValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setSourcePort(SRC_PORT);
-        flow.setSourceVlan(SRC_VLAN);
+        flow.setFlowId("another_test_flow");
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        Switch destSwitch = new Switch();
+        destSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setDestSwitch(destSwitch);
+        flow.setSrcPort(SRC_PORT);
+        flow.setSrcVlan(SRC_VLAN);
 
         target.checkFlowForEndpointConflicts(flow);
     }
@@ -81,48 +113,68 @@ public class FlowValidatorTest {
     @Test
     public void shouldNotFailIfSourceVlanIsNotOccupied() throws FlowValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setSourcePort(SRC_PORT);
-        flow.setSourceVlan(SRC_VLAN + 1);
-
+        flow.setFlowId("another_test_flow");
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        Switch destSwitch = new Switch();
+        destSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(SRC_PORT);
+        flow.setSrcVlan(SRC_VLAN + 1);
+        flow.setDestSwitch(destSwitch);
+        flow.setDestPort(DST_PORT);
+        flow.setDestVlan(DST_VLAN + 1);
         target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)
     public void shouldFailIfDestinationVlanIsZeroAndPortIsOccupied() throws FlowValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setSourcePort(SRC_PORT);
-        flow.setSourceVlan(SRC_VLAN + 1);
-        flow.setDestinationSwitch(DST_SWITCH);
-        flow.setDestinationPort(DST_PORT);
-        flow.setDestinationVlan(0);
-
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        Switch destSwitch = new Switch();
+        destSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(SRC_PORT);
+        flow.setSrcVlan(SRC_VLAN);
+        flow.setDestSwitch(destSwitch);
+        flow.setDestPort(DST_PORT);
+        flow.setDestVlan(0);
+        flow.setFlowId("another_test_flow");
         target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)
     public void shouldFailIfDestinationVlanIsAlreadyOccupied() throws FlowValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setSourcePort(SRC_PORT);
-        flow.setSourceVlan(SRC_VLAN + 1);
-        flow.setDestinationSwitch(DST_SWITCH);
-        flow.setDestinationPort(DST_PORT);
-        flow.setDestinationVlan(DST_VLAN);
-
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        Switch destSwitch = new Switch();
+        destSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(SRC_PORT);
+        flow.setSrcVlan(SRC_VLAN + 1);
+        flow.setDestSwitch(destSwitch);
+        flow.setDestPort(DST_PORT);
+        flow.setDestVlan(DST_VLAN);
+        flow.setFlowId("another_test_flow");
         target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test
     public void shouldNotFailIfDestinationVlanIsNotOccupied() throws FlowValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setSourcePort(SRC_PORT);
-        flow.setSourceVlan(SRC_VLAN + 1);
-        flow.setDestinationSwitch(DST_SWITCH);
-        flow.setDestinationPort(DST_PORT);
-        flow.setDestinationVlan(DST_VLAN + 1);
+        flow.setFlowId("another_test_flow");
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        Switch destSwitch = new Switch();
+        destSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(SRC_PORT);
+        flow.setSrcVlan(SRC_VLAN + 1);
+        flow.setDestSwitch(destSwitch);
+        flow.setDestPort(DST_PORT);
+        flow.setDestVlan(DST_VLAN + 1);
 
         target.checkFlowForEndpointConflicts(flow);
     }
@@ -138,8 +190,12 @@ public class FlowValidatorTest {
     @Test
     public void shouldNotFailOnCheckSwitches() throws SwitchValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setDestinationSwitch(DST_SWITCH);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        Switch destSwitch = new Switch();
+        destSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setDestSwitch(destSwitch);
 
         target.checkSwitchesExists(flow);
     }
@@ -147,8 +203,10 @@ public class FlowValidatorTest {
     @Test
     public void shouldNotFailOnSingleSwitchCheck() throws SwitchValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setDestinationSwitch(SRC_SWITCH);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setDestSwitch(srcSwitch);
 
         target.checkSwitchesExists(flow);
     }
@@ -156,9 +214,15 @@ public class FlowValidatorTest {
     @Test
     public void shouldFailOnSourceSwitchCheck() throws SwitchValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(FAIL_SRC_SWITCH);
-        flow.setDestinationSwitch(DST_SWITCH);
-        String expectedMessage = String.format("Source switch %s is not connected to the controller", FAIL_SRC_SWITCH);
+        Switch failSrcSwitch = new Switch();
+        failSrcSwitch.setSwitchId(FAIL_SRC_SWITCH_ID);
+
+        Switch destSwitch = new Switch();
+        destSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setSrcSwitch(failSrcSwitch);
+        flow.setDestSwitch(destSwitch);
+        String expectedMessage = String.format("Source switch %s is not connected to the controller",
+                FAIL_SRC_SWITCH_ID);
 
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);
@@ -169,10 +233,14 @@ public class FlowValidatorTest {
     @Test
     public void shouldFailOnDestinationSwitchCheck() throws SwitchValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setDestinationSwitch(FAIL_DST_SWITCH);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        Switch failDestSwitch = new Switch();
+        failDestSwitch.setSwitchId(FAIL_DST_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setDestSwitch(failDestSwitch);
         String expectedMessage =
-                String.format("Destination switch %s is not connected to the controller", FAIL_DST_SWITCH);
+                String.format("Destination switch %s is not connected to the controller", FAIL_DST_SWITCH_ID);
 
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);
@@ -183,11 +251,15 @@ public class FlowValidatorTest {
     @Test
     public void shouldFailOnSourceAndDestinationSwitchCheck() throws SwitchValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(FAIL_SRC_SWITCH);
-        flow.setDestinationSwitch(FAIL_DST_SWITCH);
+        Switch failSrcSwitch = new Switch();
+        failSrcSwitch.setSwitchId(FAIL_SRC_SWITCH_ID);
+        flow.setSrcSwitch(failSrcSwitch);
+        Switch failDestSwitch = new Switch();
+        failDestSwitch.setSwitchId(FAIL_DST_SWITCH_ID);
+        flow.setDestSwitch(failDestSwitch);
         String expectedMessage =
                 String.format("Source switch %s and Destination switch %s are not connected to the controller",
-                FAIL_SRC_SWITCH, FAIL_DST_SWITCH);
+                        FAIL_SRC_SWITCH_ID, FAIL_DST_SWITCH_ID);
 
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);
@@ -198,14 +270,16 @@ public class FlowValidatorTest {
     @Test
     public void shouldFailOnOneSwitchFlowWithEqualPortsAndVlans() throws SwitchValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setDestinationSwitch(SRC_SWITCH);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setDestSwitch(srcSwitch);
 
-        flow.setSourcePort(SRC_PORT);
-        flow.setDestinationPort(SRC_PORT);
+        flow.setSrcPort(SRC_PORT);
+        flow.setDestPort(SRC_PORT);
 
-        flow.setSourceVlan(SRC_VLAN);
-        flow.setDestinationVlan(SRC_VLAN);
+        flow.setSrcVlan(SRC_VLAN);
+        flow.setDestVlan(SRC_VLAN);
 
         String expectedMessage = "It is not allowed to create one-switch flow for the same ports and vlans";
 
@@ -218,14 +292,16 @@ public class FlowValidatorTest {
     @Test
     public void shouldNotFailOnOneSwitchFlowWithEqualPortsButDifferentVlans() throws SwitchValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setDestinationSwitch(SRC_SWITCH);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setDestSwitch(srcSwitch);
 
-        flow.setSourcePort(SRC_PORT);
-        flow.setDestinationPort(SRC_PORT);
+        flow.setSrcPort(SRC_PORT);
+        flow.setDestPort(SRC_PORT);
 
-        flow.setSourceVlan(SRC_VLAN);
-        flow.setDestinationVlan(DST_VLAN);
+        flow.setSrcVlan(SRC_VLAN);
+        flow.setDestVlan(DST_VLAN);
 
         target.checkOneSwitchFlowHasNoConflicts(flow);
     }
@@ -233,14 +309,17 @@ public class FlowValidatorTest {
     @Test
     public void shouldNotFailOnOneSwitchFlowWithEqualVlansButDifferentPorts() throws SwitchValidationException {
         Flow flow = new Flow();
-        flow.setSourceSwitch(SRC_SWITCH);
-        flow.setDestinationSwitch(SRC_SWITCH);
 
-        flow.setSourcePort(SRC_PORT);
-        flow.setDestinationPort(DST_PORT);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setDestSwitch(srcSwitch);
 
-        flow.setSourceVlan(SRC_VLAN);
-        flow.setDestinationVlan(SRC_VLAN);
+        flow.setSrcPort(SRC_PORT);
+        flow.setDestPort(DST_PORT);
+
+        flow.setSrcVlan(SRC_VLAN);
+        flow.setDestVlan(SRC_VLAN);
 
         target.checkOneSwitchFlowHasNoConflicts(flow);
     }

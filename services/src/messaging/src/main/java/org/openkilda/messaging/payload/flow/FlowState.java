@@ -23,11 +23,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public enum FlowState {
     /**
-     * Flow allocated state.
-     */
-    ALLOCATED("Allocated"),
-
-    /**
      * Flow creating/deleting state.
      */
     IN_PROGRESS("In progress"),
@@ -40,12 +35,7 @@ public enum FlowState {
     /**
      * Flow down state.
      */
-    DOWN("Down"),
-
-    /**
-     * Flow is cached. It means this flow is read from db and cached.
-     */
-    CACHED("Cached");
+    DOWN("Down");
 
     /**
      * Flow state.
@@ -84,8 +74,18 @@ public enum FlowState {
         return this == UP;
     }
 
-    public boolean isActiveOrCached() {
-        return this == UP || this == CACHED;
+    /**
+     * Get enum by it's attribute.
+     * @param value enum's attribute
+     * @return Enum value
+     */
+    public  static FlowState getByValue(String value) {
+        for (FlowState f: values()) {
+            if (f.state.equals(value)) {
+                return f;
+            }
+        }
+        throw new IllegalArgumentException("Invalid value for FlowState");
     }
 }
 

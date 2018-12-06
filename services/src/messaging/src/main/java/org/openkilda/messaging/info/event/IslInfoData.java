@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.info.event;
 
+import org.openkilda.messaging.info.CacheTimeTag;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -22,7 +24,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -31,7 +32,7 @@ import java.util.Objects;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class IslInfoData extends PathInfoData {
+public class IslInfoData extends CacheTimeTag {
     /**
      * Serialization version number constant.
      */
@@ -67,6 +68,12 @@ public class IslInfoData extends PathInfoData {
     @JsonProperty("time_modify")
     private final Long timeModifyMillis;
 
+    @JsonProperty("latency_ns")
+    protected long latency;
+
+    private PathNode source;
+    private PathNode destination;
+
     /**
      * Copy constructor.
      *
@@ -75,7 +82,8 @@ public class IslInfoData extends PathInfoData {
     public IslInfoData(IslInfoData that) {
         this(
                 that.getLatency(),
-                that.getPath(),
+                that.getSource(),
+                that.getDestination(),
                 that.getSpeed(),
                 that.getAvailableBandwidth(),
                 that.getState(),
@@ -84,34 +92,35 @@ public class IslInfoData extends PathInfoData {
     }
 
     /**
-     * Simple constructor for an ISL with only path and state.
-     * @param path path of ISL.
-     * @param state current state.
+     * Simple constructor for an ISL with only source/destination and state.
      */
-    public IslInfoData(List<PathNode> path, IslChangeType state) {
-        this(-1, path, 0, 0, state, null, null);
+    public IslInfoData(PathNode source, PathNode destination, IslChangeType state) {
+        this(-1, source, destination, 0, 0, state, null, null);
     }
 
-    public IslInfoData(long latency, List<PathNode> path, long speed, IslChangeType state, long availableBandwidth) {
-        this(latency, path, speed, availableBandwidth, state, null, null);
+    public IslInfoData(long latency, PathNode source, PathNode destination, long speed,
+                       IslChangeType state, long availableBandwidth) {
+        this(latency, source, destination, speed, availableBandwidth, state, null, null);
     }
 
     @JsonCreator
     public IslInfoData(@JsonProperty("latency_ns") long latency,
-                       @JsonProperty("path") List<PathNode> path,
+                       @JsonProperty("source") PathNode source,
+                       @JsonProperty("destination") PathNode destination,
                        @JsonProperty("speed") long speed,
                        @JsonProperty("available_bandwidth") long availableBandwidth,
                        @JsonProperty("state") IslChangeType state,
                        @JsonProperty("time_create") Long timeCreateMillis,
                        @JsonProperty("time_modify") Long timeModifyMillis) {
-        super(latency, path);
-
+        this.latency = latency;
+        this.source = source;
+        this.destination = destination;
         this.speed = speed;
         this.availableBandwidth = availableBandwidth;
         this.state = state;
         this.timeCreateMillis = timeCreateMillis;
         this.timeModifyMillis = timeModifyMillis;
-        this.id = String.format("%s_%d", path.get(0).getSwitchId(), path.get(0).getPortNo());
+        this.id = String.format("%s_%d", source.getSwitchId(), source.getPortNo());
     }
 
     /**
@@ -138,8 +147,6 @@ public class IslInfoData extends PathInfoData {
      */
     @JsonIgnore
     public boolean isSelfLooped() {
-        PathNode source = this.getPath().get(0);
-        PathNode destination = this.getPath().get(1);
         return Objects.equals(source.getSwitchId(), destination.getSwitchId());
     }
 
@@ -148,7 +155,7 @@ public class IslInfoData extends PathInfoData {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, path, speed, availableBandwidth, state);
+        return Objects.hash(latency, source, destination, speed, availableBandwidth, state);
     }
 
     /**
@@ -165,7 +172,8 @@ public class IslInfoData extends PathInfoData {
 
         IslInfoData that = (IslInfoData) object;
         return Objects.equals(getLatency(), that.getLatency())
-                && Objects.equals(getPath(), that.getPath())
+                && Objects.equals(getSource(), that.getSource())
+                && Objects.equals(getDestination(), that.getDestination())
                 && Objects.equals(getSpeed(), that.getSpeed())
                 && Objects.equals(getAvailableBandwidth(), that.getAvailableBandwidth())
                 && Objects.equals(getState(), that.getState());

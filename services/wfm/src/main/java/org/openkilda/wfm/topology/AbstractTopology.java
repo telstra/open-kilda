@@ -22,7 +22,7 @@ import org.openkilda.config.naming.KafkaNamingStrategy;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.naming.TopologyNamingStrategy;
-import org.openkilda.wfm.config.provider.ConfigurationProvider;
+import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
@@ -57,7 +57,7 @@ import java.util.Properties;
  * Represents abstract topology.
  */
 public abstract class AbstractTopology<T extends AbstractTopologyConfig> implements Topology {
-    private static final Logger logger = LoggerFactory.getLogger(AbstractTopology.class);
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     public static final String SPOUT_ID_CTRL = "ctrl.in";
     public static final String BOLT_ID_CTRL_ROUTE = "ctrl.route";
@@ -70,7 +70,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
     protected final KafkaNamingStrategy kafkaNamingStrategy;
     protected final TopologyNamingStrategy topoNamingStrategy;
-    protected final ConfigurationProvider configurationProvider;
+    protected final MultiPrefixConfigurationProvider configurationProvider;
 
     protected final T topologyConfig;
     private final KafkaConfig kafkaConfig;
@@ -129,8 +129,9 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     protected static int handleLaunchException(Exception error) {
-        int errorCode;
+        final Logger log = LoggerFactory.getLogger(AbstractTopology.class);
 
+        int errorCode;
         try {
             throw error;
         } catch (CmdLineException e) {
@@ -143,10 +144,10 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
             System.err.println(e.getMessage());
             errorCode = 3;
         } catch (TException e) {
-            logger.error("Unable to complete topology setup: {}", e.getMessage());
+            log.error("Unable to complete topology setup: {}", e.getMessage());
             errorCode = 4;
         } catch (Exception e) {
-            logger.error("Unhandled exception", e);
+            log.error("Unhandled exception", e);
             errorCode = 1;
         }
 
@@ -236,7 +237,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
         KafkaBolt kafkaBolt = createKafkaBolt(ctrlTopic);
         BoltDeclarer outputSetup = builder.setBolt(BOLT_ID_CTRL_OUTPUT, kafkaBolt)
-                .shuffleGrouping(BOLT_ID_CTRL_ROUTE, route.STREAM_ID_ERROR);
+                .shuffleGrouping(BOLT_ID_CTRL_ROUTE, RouteBolt.STREAM_ID_ERROR);
 
         for (CtrlBoltRef ref : targets) {
             String boltId = ref.getBoltId();

@@ -16,7 +16,7 @@
 package org.openkilda.messaging.info.flow;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.BidirectionalFlow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -36,7 +36,7 @@ public class FlowReadResponse extends InfoData {
      * The response payload.
      */
     @JsonProperty("payload")
-    protected BidirectionalFlow payload;
+    protected BidirectionalFlowDto payload;
 
     /**
      * Instance constructor.
@@ -44,7 +44,7 @@ public class FlowReadResponse extends InfoData {
      * @param payload response payload
      */
     @JsonCreator
-    public FlowReadResponse(@JsonProperty("payload") BidirectionalFlow payload) {
+    public FlowReadResponse(@JsonProperty("payload") BidirectionalFlowDto payload) {
         this.payload = payload;
     }
 }

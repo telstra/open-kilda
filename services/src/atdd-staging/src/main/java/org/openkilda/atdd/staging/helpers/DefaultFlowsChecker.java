@@ -15,7 +15,7 @@
 
 package org.openkilda.atdd.staging.helpers;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.testing.service.floodlight.model.FlowApplyActions;
 import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
 import org.openkilda.testing.service.floodlight.model.FlowEntry;

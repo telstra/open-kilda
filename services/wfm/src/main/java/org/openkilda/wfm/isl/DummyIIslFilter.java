@@ -16,7 +16,7 @@
 package org.openkilda.wfm.isl;
 
 import org.openkilda.messaging.model.DiscoveryLink;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import java.util.HashSet;
 import java.util.Set;

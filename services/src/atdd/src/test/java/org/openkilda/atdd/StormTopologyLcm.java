@@ -27,13 +27,11 @@ import org.openkilda.KafkaUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.ctrl.state.visitor.DumpStateManager;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.topo.TestUtils;
 import org.openkilda.topo.TopologyHelp;
 
@@ -50,7 +48,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.glassfish.jersey.client.ClientConfig;
 
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -153,16 +150,9 @@ public class StormTopologyLcm {
      * topologies.
      */
     @And("^all storm topologies in the same state$")
-    public void allStormTopologiesInTheSameState() throws Throwable {
+    public void allStormTopologiesInTheSameState() {
 
         DumpStateManager actualSateDumpsFromBolts = kafkaUtils.getStateDumpsFromBolts();
-
-        // CacheBolt part
-        Set<FlowPair<Flow, Flow>> actualCacheBoltFlows = actualSateDumpsFromBolts
-                .getCacheBoltState().getFlowDump().getFlows();
-        Set<FlowPair<Flow, Flow>> expectedCacheBoltFlows = expectedStateDumpsFromBolts
-                .getCacheBoltState().getFlowDump().getFlows();
-        assertTrue(CollectionUtils.isEqualCollection(actualCacheBoltFlows, expectedCacheBoltFlows));
 
         // OFELinkBolt
         OFELinkBoltState actualOfeLinkBoltState = actualSateDumpsFromBolts.getOfeLinkBoltState();
@@ -176,7 +166,7 @@ public class StormTopologyLcm {
         assertTrue(trafficIsOk(true));
     }
 
-    private boolean trafficIsOk(boolean expectedResult) throws Throwable {
+    private boolean trafficIsOk(boolean expectedResult) {
 
         //TODO: move that to utils
         if (isTrafficTestsEnabled()) {

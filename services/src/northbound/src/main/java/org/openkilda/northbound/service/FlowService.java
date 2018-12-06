@@ -15,9 +15,7 @@
 
 package org.openkilda.northbound.service;
 
-import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -149,10 +147,7 @@ public interface FlowService extends BasicService {
     CompletableFuture<PingOutput> pingFlow(String flowId, PingInput payload);
 
     /**
-     * Sync the FlowCache in the flow topology (in case it is out of sync.
-     *
-     * @param syncCacheAction describes how to synchronize the cache.
-     * @return details on performed updates.
+     * Invalidate FlowResourcesCache in the flow topology.
      */
-    CompletableFuture<FlowCacheSyncResults> syncFlowCache(SynchronizeCacheAction syncCacheAction);
+    void invalidateFlowResourcesCache();
 }

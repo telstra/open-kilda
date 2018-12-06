@@ -23,10 +23,9 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FI
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
-import org.openkilda.pce.provider.AuthNeo4j;
-import org.openkilda.pce.provider.PathComputerAuth;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.Neo4jConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
@@ -38,13 +37,9 @@ import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
-
-    private static final Logger logger = LoggerFactory.getLogger(StatsTopology.class);
 
     public StatsTopology(LaunchEnvironment env) {
         super(env, StatsTopologyConfig.class);
@@ -53,7 +48,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     /**
      * main.
      */
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         try {
             LaunchEnvironment env = new LaunchEnvironment(args);
             (new StatsTopology(env)).setup();
@@ -91,10 +86,9 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(STATS_KILDA_SPEAKER_SPOUT.name());
 
         // Cache bolt get data from NEO4J on start
-        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
-        AuthNeo4j pathComputerAuth = new PathComputerAuth(neo4jConfig.getHost(),
-                neo4jConfig.getLogin(), neo4jConfig.getPassword());
-        builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(pathComputerAuth), parallelism)
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(persistenceManager), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
 

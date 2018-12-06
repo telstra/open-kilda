@@ -44,13 +44,16 @@ clean-sources:
 update-parent:
 	mvn --non-recursive -f services/src/pom.xml install -DskipTests
 
+update-core:
+	mvn -f services/src/kilda-core/pom.xml install -DskipTests
+
 update-pce:
-	mvn -f services/src/pce/pom.xml install -DskipTests
+	mvn -f services/src/kilda-pce/pom.xml install -DskipTests
 
 update-msg:
 	mvn -f services/src/messaging/pom.xml install -DskipTests
 
-update: update-parent update-msg update-pce
+update: update-parent update-core update-msg update-pce
 
 compile:
 	$(MAKE) -C services/src

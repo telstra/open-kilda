@@ -27,13 +27,12 @@ import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 
@@ -48,13 +47,13 @@ import java.util.stream.Collectors;
 public class NorthboundRunTest {
     private static final FlowState expectedFlowStatus = FlowState.UP;
     private static final List<PathNodePayload> expectedForwardFlowPath = Arrays.asList(
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:03"), 11, 2),
+            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:03"), 1, 2),
             new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:04"), 1, 2),
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:05"), 1, 12));
+            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:05"), 1, 2));
     private static final List<PathNodePayload> expectedReverseFlowPath = Arrays.asList(
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:05"), 12, 1),
+            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:05"), 2, 1),
             new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:04"), 2, 1),
-            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:03"), 2, 11));
+            new PathNodePayload(new SwitchId("de:ad:be:ef:00:00:00:03"), 2, 1));
 
     @Then("^path of flow (\\w+) could be read$")
     public void checkFlowPath(final String flowId) {
@@ -88,7 +87,7 @@ public class NorthboundRunTest {
     }
 
     @Given("^health check$")
-    public void healthCheck() throws Throwable {
+    public void healthCheck() {
         assertEquals(200, getHealthCheck());
     }
 
@@ -151,18 +150,10 @@ public class NorthboundRunTest {
         cookies.forEach(cookie -> System.out.println(cookie));
     }
 
-    @Then("^synchronize flow cache is successful with (\\d+) dropped flows$")
-    public void synchronizeFlowCache(final int droppedFlowsCount) {
-        FlowCacheSyncResults results = FlowUtils.syncFlowCache();
-        assertNotNull(results);
-        assertEquals(droppedFlowsCount, results.getDroppedFlows().size());
-    }
-
     @Then("^invalidate flow cache is successful with (\\d+) dropped flows$")
     public void invalidateFlowCache(final int droppedFlowsCount) {
-        FlowCacheSyncResults results = FlowUtils.invalidateFlowCache();
-        assertNotNull(results);
-        assertEquals(droppedFlowsCount, results.getDroppedFlows().size());
+        boolean result = FlowUtils.invalidateFlowCache();
+        assertTrue(result);
     }
 
     @When("^flow (\\w+) could be deleted from DB$")

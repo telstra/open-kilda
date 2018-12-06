@@ -1,10 +1,13 @@
 package org.openkilda.messaging.model;
 
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.ToString;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -12,13 +15,14 @@ import java.util.Objects;
 @JsonSerialize
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@ToString(callSuper = true)
 public class DiscoveryNode implements Serializable {
 
-    /** Never stop checking for an ISL */
-    public final static int FORLORN_NEVER = -1;
+    // Never stop checking for an ISL.
+    public static final int FORLORN_NEVER = -1;
 
     @JsonProperty("switch_id")
-    private final String switchId;
+    private final SwitchId switchId;
 
     @JsonProperty("port_id")
     private final String portId;
@@ -33,7 +37,7 @@ public class DiscoveryNode implements Serializable {
     @JsonProperty("check_interval")
     private int checkInterval;
 
-    /** Only increases if we get a response **/
+    // Only increases if we get a response.
     @JsonProperty("consecutive_failure")
     private int consecutiveFailure;
 
@@ -49,11 +53,11 @@ public class DiscoveryNode implements Serializable {
      *  - If foundIsl is false, and we get failures, don't send anything to TE
      *  - If foundIsl is true, and we get success, and timeCounter > 0, then update TE
      *  - If foundIsl is true, and we get failure, and timeCounter = 0, then update TE
-     *
+     *<p/>
      *  TODO: we should consider adding a policy to determine how/when to notify TE upon ISL Failure.
      *          We've discussed something like "on 3rd failure", but should look at flapping history, etc.
      *          At Present, before "update TE on state change" added, we notifief TE of each event.
-     *
+     * <p/>
      * To enable richer business rules (flapping), probably should include some history about counts.
      * To be clear, this class isn't where the business logic / policy goes; it is just the
      * holder of information.
@@ -67,7 +71,7 @@ public class DiscoveryNode implements Serializable {
      * method signatures, it is very similar to DiscoverManager, which uses consecutive failure
      * limit, which is a different concept compared to forlorn.
      */
-    public DiscoveryNode(String switchId, String portId, int checkInterval, int forlornThreshold) {
+    public DiscoveryNode(SwitchId switchId, String portId, int checkInterval, int forlornThreshold) {
         this.switchId = switchId;
         this.portId = portId;
         this.timeCounter = 0;
@@ -79,7 +83,7 @@ public class DiscoveryNode implements Serializable {
     }
 
     @JsonCreator
-    public DiscoveryNode(@JsonProperty("switch_id") final String switchId,
+    public DiscoveryNode(@JsonProperty("switch_id") final SwitchId switchId,
             @JsonProperty("port_id") final String portId,
             @JsonProperty("attempts") final int attempts,
             @JsonProperty("time_counter") final int timeCounter,
@@ -100,12 +104,11 @@ public class DiscoveryNode implements Serializable {
         this.foundIsl = foundIsl;
     }
 
-
-    public void setFoundIsl(boolean foundIsl){
+    public void setFoundIsl(boolean foundIsl) {
         this.foundIsl = foundIsl;
     }
 
-    public boolean isFoundIsl(){
+    public boolean isFoundIsl() {
         return this.foundIsl;
     }
 
@@ -120,11 +123,13 @@ public class DiscoveryNode implements Serializable {
     }
 
     /**
+     * Check whether consecutiveFailure is greater than limit.
+     *
      * @return true if consecutiveFailure is greater than limit
      */
     public boolean forlorn() {
         if (forlornThreshold == FORLORN_NEVER) { // never gonna give a link up.
-             return false;
+            return false;
         }
         return consecutiveFailure > forlornThreshold;
     }
@@ -137,11 +142,11 @@ public class DiscoveryNode implements Serializable {
         consecutiveSuccess = 0;
     }
 
-    public int getConsecutiveFailure(){
+    public int getConsecutiveFailure() {
         return this.consecutiveFailure;
     }
 
-    public int getConsecutiveSuccess(){
+    public int getConsecutiveSuccess() {
         return this.consecutiveSuccess;
     }
 
@@ -166,6 +171,8 @@ public class DiscoveryNode implements Serializable {
     }
 
     /**
+     * Check whether attempts is greater than attemptLimit.
+     *
      * @param attemptLimit the limit to test against
      * @return true if attempts is greater than attemptLimit.
      */
@@ -185,7 +192,7 @@ public class DiscoveryNode implements Serializable {
         return timeCounter >= checkInterval;
     }
 
-    public String getSwitchId() {
+    public SwitchId getSwitchId() {
         return switchId;
     }
 
@@ -202,23 +209,11 @@ public class DiscoveryNode implements Serializable {
             return false;
         }
         DiscoveryNode that = (DiscoveryNode) o;
-        return Objects.equals(getSwitchId(), that.getSwitchId()) &&
-                Objects.equals(getPortId(), that.getPortId());
+        return Objects.equals(getSwitchId(), that.getSwitchId()) && Objects.equals(getPortId(), that.getPortId());
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(getSwitchId(), getPortId());
-    }
-
-    @Override
-    public String toString() {
-        return "DiscoveryNode{" +
-                "switchId='" + switchId + '\'' +
-                ", portId='" + portId + '\'' +
-                ", attempts=" + attempts +
-                ", consecutiveFailure=" + consecutiveFailure +
-                ", consecutiveSuccess=" + consecutiveSuccess +
-                '}';
     }
 }

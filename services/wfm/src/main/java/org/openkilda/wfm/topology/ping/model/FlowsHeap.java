@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
-import org.openkilda.messaging.model.BidirectionalFlow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -24,7 +24,7 @@ import java.util.List;
 public class FlowsHeap {
     private final HashSet<FlowRef> set = new HashSet<>();
 
-    public void add(BidirectionalFlow flow) {
+    public void add(BidirectionalFlowDto flow) {
         set.add(new FlowRef(flow.getFlowId(), flow.getForward().getCookie()));
         set.add(new FlowRef(flow.getFlowId(), flow.getReverse().getCookie()));
     }

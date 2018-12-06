@@ -116,8 +116,8 @@ public class IslSteps {
         IslChangeType expectedIslState = IslChangeType.valueOf(islStatus);
         changedIsls.forEach(isl -> {
             IslChangeType actualIslState = northboundService.getAllLinks().stream().filter(link -> {
-                PathNode src = link.getPath().get(0);
-                PathNode dst = link.getPath().get(1);
+                PathNode src = link.getSource();
+                PathNode dst = link.getDestination();
                 return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort()
                         && src.getSwitchId().equals(isl.getSrcSwitch().getDpId())
                         && dst.getSwitchId().equals(isl.getDstSwitch().getDpId());
@@ -231,8 +231,8 @@ public class IslSteps {
 
         List<IslInfoData> allLinks = northboundService.getAllLinks();
         List<IslChangeType> actualIslStates = isls.stream().map(isl -> allLinks.stream().filter(link -> {
-            PathNode src = link.getPath().get(0);
-            PathNode dst = link.getPath().get(1);
+            PathNode src = link.getSource();
+            PathNode dst = link.getDestination();
             return src.getPortNo() == isl.getSrcPort() && dst.getPortNo() == isl.getDstPort()
                     && src.getSwitchId().equals(isl.getSrcSwitch().getDpId())
                     && dst.getSwitchId().equals(isl.getDstSwitch().getDpId());

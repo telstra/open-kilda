@@ -14,15 +14,17 @@ floodlight.controller.uri=tcp:kilda:6653
 lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
 lab-api.endpoint=http://localhost:8288
-
 otsdb.endpoint=http://localhost:4242
 
-spring.profiles.active=virtual
+elasticsearch.endpoint = https://localhost:9200
+elasticsearch.username = username
+elasticsearch.password = password
 
-# not delete topology after tests
+spring.profiles.active=virtual
+# not delete topology after test runs
 mode.topology.single=true
 
 reroute.delay=10
 reroute.hardtimeout=30
 discovery.interval=3
-discovery.timeout = 9
+discovery.timeout = 15

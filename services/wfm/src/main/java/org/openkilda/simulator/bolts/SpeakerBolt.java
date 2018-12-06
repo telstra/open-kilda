@@ -24,9 +24,9 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.Commands;
 import org.openkilda.simulator.classes.IPortImpl;
@@ -67,10 +67,10 @@ public class SpeakerBolt extends BaseRichBolt {
 
     public enum TupleFields {
         COMMAND,
-        DATA;
+        DATA
     }
 
-    protected String makeSwitchMessage(ISwitchImpl sw, SwitchState state) throws IOException {
+    protected String makeSwitchMessage(ISwitchImpl sw, SwitchChangeType state) throws IOException {
         SwitchInfoData data = new SwitchInfoData(
                 new SwitchId(sw.getDpid().toString()),
                 state,
@@ -107,8 +107,8 @@ public class SpeakerBolt extends BaseRichBolt {
         if (switches.get(dpid) == null) {
             ISwitchImpl sw = new ISwitchImpl(dpid, data.getNumOfPorts(), PortStateType.DOWN);
             switches.put(new SwitchId(sw.getDpid().toString()), sw);
-            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ADDED)));
-            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ACTIVATED)));
+            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchChangeType.ADDED)));
+            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchChangeType.ACTIVATED)));
         }
         return values;
     }
@@ -134,8 +134,8 @@ public class SpeakerBolt extends BaseRichBolt {
 
             switches.put(new SwitchId(sw.getDpid().toString()), sw);
 
-            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ADDED)));
-            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchState.ACTIVATED)));
+            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchChangeType.ADDED)));
+            values.add(new Values("INFO", makeSwitchMessage(sw, SwitchChangeType.ACTIVATED)));
 
             for (IPortImpl p : sw.getPorts()) {
                 PortChangeType changeType =
@@ -166,15 +166,13 @@ public class SpeakerBolt extends BaseRichBolt {
         IPortImpl localPort = sw.getPort(data.getPortNumber());
 
         if (localPort.isActiveIsl()) {
-            List<PathNode> path = new ArrayList<>();
-            PathNode path1 = new PathNode(new SwitchId(sw.getDpid().toString()), localPort.getNumber(), 0);
-            path1.setSegLatency(localPort.getLatency());
-            PathNode path2 = new PathNode(new SwitchId(localPort.getPeerSwitch()), localPort.getPeerPortNum(), 1);
-            path.add(path1);
-            path.add(path2);
+            PathNode source = new PathNode(new SwitchId(sw.getDpid().toString()), localPort.getNumber(), 0);
+            source.setSegLatency(localPort.getLatency());
+            PathNode destination = new PathNode(new SwitchId(localPort.getPeerSwitch()), localPort.getPeerPortNum(), 1);
             IslInfoData islInfoData = new IslInfoData(
                     localPort.getLatency(),
-                    path,
+                    source,
+                    destination,
                     100000,
                     IslChangeType.DISCOVERED,
                     100000);
@@ -194,11 +192,11 @@ public class SpeakerBolt extends BaseRichBolt {
          *     and active ISL.
          * 2.  Check the status of the destination port, in Path[1], and if activeISL then emit to Kafka
          */
-        ISwitchImpl sw = getSwitch(data.getPath().get(1).getSwitchId());
+        ISwitchImpl sw = getSwitch(data.getDestination().getSwitchId());
         if (!sw.isActive()) {
             return;
         }
-        IPortImpl port = sw.getPort(data.getPath().get(1).getPortNo());
+        IPortImpl port = sw.getPort(data.getDestination().getPortNo());
 
         if (port.isActiveIsl()) {
             long now = Instant.now().toEpochMilli();
@@ -325,7 +323,7 @@ public class SpeakerBolt extends BaseRichBolt {
         if (command.equals(Commands.DO_DISCOVER_ISL_COMMAND.name())) {
             discoverIsl(tuple, (DiscoverIslCommandData) data);
         } else {
-            logger.error("Unknown switch command: {}".format(command));
+            logger.error("Unknown switch command: {}", command);
             return;
         }
 

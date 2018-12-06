@@ -21,15 +21,14 @@ import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.model.LinkProps;
 import org.openkilda.messaging.model.NetworkEndpointMask;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
+import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
-import org.openkilda.messaging.te.request.LinkPropsDrop;
-import org.openkilda.messaging.te.request.LinkPropsPut;
-import org.openkilda.messaging.te.response.LinkPropsResponse;
+import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
@@ -64,9 +63,6 @@ public class LinkServiceImpl implements LinkService {
 
     @Autowired
     private LinkPropsMapper linkPropsMapper;
-
-    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
-    private String topologyEngineTopic;
 
     /**
      * The kafka topic for the nb topology.
@@ -114,7 +110,7 @@ public class LinkServiceImpl implements LinkService {
         List<CompletableFuture<?>> pendingRequest = new ArrayList<>(linkPropsList.size());
 
         for (LinkPropsDto requestItem : linkPropsList) {
-            LinkProps linkProps;
+            org.openkilda.messaging.model.LinkPropsDto linkProps;
             try {
                 linkProps = linkPropsMapper.toLinkProps(requestItem);
             } catch (IllegalArgumentException e) {
@@ -125,7 +121,7 @@ public class LinkServiceImpl implements LinkService {
             String requestId = idFactory.produceChained(RequestCorrelationId.getId());
             CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
 
-            pendingRequest.add(messagingChannel.sendAndGet(topologyEngineTopic, message));
+            pendingRequest.add(messagingChannel.sendAndGet(nbworkerTopic, message));
         }
 
         return collectResponses(pendingRequest, LinkPropsResponse.class)
@@ -141,7 +137,7 @@ public class LinkServiceImpl implements LinkService {
             String requestId = idFactory.produceChained(RequestCorrelationId.getId());
             CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
 
-            pendingRequest.add(messagingChannel.sendAndGetChunked(topologyEngineTopic, message));
+            pendingRequest.add(messagingChannel.sendAndGetChunked(nbworkerTopic, message));
         }
 
         return collectChunkedResponses(pendingRequest, LinkPropsResponse.class)

@@ -15,15 +15,10 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.openkilda.messaging.command.CommandData;
 
-import java.util.Objects;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Sync the FlowCache request.
@@ -35,52 +30,4 @@ public class FlowCacheSyncRequest extends CommandData {
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
-
-    @JsonProperty("sync_cache")
-    private SynchronizeCacheAction synchronizeCache;
-
-    /**
-     * Instance constructor.
-     *
-     * @throws IllegalArgumentException if payload is null
-     */
-    @JsonCreator
-    public FlowCacheSyncRequest(
-            @JsonProperty("sync_cache") SynchronizeCacheAction synchronizeCache) {
-        this.synchronizeCache = Objects.requireNonNull(synchronizeCache, "sync_cache must not be null");
-    }
-
-    public SynchronizeCacheAction getSynchronizeCache() {
-        return synchronizeCache;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this).toString();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return super.hashCode();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-        return true;
-    }
 }

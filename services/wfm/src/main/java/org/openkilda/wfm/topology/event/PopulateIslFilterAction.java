@@ -20,15 +20,12 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoveryFilterEntity;
 import org.openkilda.messaging.command.discovery.DiscoveryFilterPopulateData;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.wfm.AbstractAction;
 import org.openkilda.wfm.IKildaBolt;
 import org.openkilda.wfm.error.MessageFormatException;
-import org.openkilda.wfm.error.UnsupportedActionException;
 import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.protocol.KafkaMessage;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +40,7 @@ public class PopulateIslFilterAction extends AbstractAction {
     }
 
     @Override
-    protected void handle() throws MessageFormatException, UnsupportedActionException, JsonProcessingException {
+    protected void handle() throws MessageFormatException {
         KafkaMessage input = new KafkaMessage(getTuple());
         Message message = input.getPayload();
 
@@ -65,7 +62,7 @@ public class PopulateIslFilterAction extends AbstractAction {
         filter.clear();
         for (DiscoveryFilterEntity entity : payload.getFilter()) {
             logger.info("Add ISL filter record - switcID=\"{}\" portId=\"{}\"", entity.switchId, entity.portId);
-            filter.add(new SwitchId(entity.switchId), entity.portId);
+            filter.add(entity.switchId, entity.portId);
         }
     }
 

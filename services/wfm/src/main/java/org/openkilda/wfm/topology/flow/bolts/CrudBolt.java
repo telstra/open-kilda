@@ -17,21 +17,18 @@ package org.openkilda.wfm.topology.flow.bolts;
 
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.messaging.info.flow.FlowOperation.DELETE;
-import static org.openkilda.messaging.info.flow.FlowOperation.UPDATE;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
+import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
+import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
-import org.openkilda.messaging.ctrl.state.FlowDump;
 import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ErrorData;
@@ -48,37 +45,43 @@ import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.pce.RecoverableException;
-import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.cache.ResourceCache;
-import org.openkilda.pce.model.AvailableNetwork;
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.FlowInfo;
-import org.openkilda.pce.provider.PathComputer;
-import org.openkilda.pce.provider.PathComputer.Strategy;
-import org.openkilda.pce.provider.PathComputerAuth;
-import org.openkilda.pce.provider.UnroutablePathException;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowStatus;
+import org.openkilda.model.SwitchId;
+import org.openkilda.pce.PathComputerConfig;
+import org.openkilda.pce.PathComputerFactory;
+import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
-import org.openkilda.wfm.share.utils.FlowCollector;
-import org.openkilda.wfm.share.utils.PathComputerFlowFetcher;
+import org.openkilda.wfm.share.cache.ResourceCache;
+import org.openkilda.wfm.share.mappers.FlowMapper;
+import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
+import org.openkilda.wfm.topology.flow.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.flow.service.FlowCommandSender;
+import org.openkilda.wfm.topology.flow.service.FlowNotFoundException;
+import org.openkilda.wfm.topology.flow.service.FlowResourcesManager;
+import org.openkilda.wfm.topology.flow.service.FlowService;
+import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -89,26 +92,18 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
 
 public class CrudBolt
-        extends BaseStatefulBolt<InMemoryKeyValueState<String, FlowCache>>
+        extends BaseStatefulBolt<InMemoryKeyValueState<String, ResourceCache>>
         implements ICtrlBolt {
 
-    public static final String STREAM_ID_CTRL = "ctrl";
+    private static final String STREAM_ID_CTRL = "ctrl";
 
-    /**
-     * The logger.
-     */
     private static final Logger logger = LoggerFactory.getLogger(CrudBolt.class);
 
     /**
@@ -116,53 +111,45 @@ public class CrudBolt
      */
     private static final String FLOW_CACHE = "flow";
 
-    /**
-     * Path computation instance.
-     */
-    private PathComputer pathComputer;
-    private final PathComputerAuth pathComputerAuth;
+    private final PersistenceManager persistenceManager;
 
-    /**
-     * Flows state.
-     */
-    private InMemoryKeyValueState<String, FlowCache> caches;
+    private final PathComputerConfig pathComputerConfig;
 
-    private TopologyContext context;
-    private OutputCollector outputCollector;
+    private transient RepositoryFactory repositoryFactory;
 
-    /**
-     * Flow cache.
-     */
-    private FlowCache flowCache;
+    private transient FlowService flowService;
 
-    private FlowValidator flowValidator;
+    private transient FlowCommandFactory commandFactory;
 
-    /**
-     * Instance constructor.
-     *
-     * @param pathComputerAuth {@link Auth} instance
-     */
-    public CrudBolt(PathComputerAuth pathComputerAuth) {
-        this.pathComputerAuth = pathComputerAuth;
+    private transient PathComputerFactory pathComputerFactory;
+
+    private transient FlowResourcesManager flowResourcesManager;
+
+    private transient FlowValidator flowValidator;
+
+    private transient TopologyContext context;
+    private transient OutputCollector outputCollector;
+
+    public CrudBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig) {
+        this.persistenceManager = persistenceManager;
+        this.pathComputerConfig = pathComputerConfig;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<String, FlowCache> state) {
-        this.caches = state;
-
-        // TODO - do we have to use InMemoryKeyValue, or is there some other InMemory option?
-        //  The reason for the qestion .. we are only putting in one object.
-        flowCache = state.get(FLOW_CACHE);
-        if (flowCache == null) {
-            flowCache = new FlowCache();
-            this.caches.put(FLOW_CACHE, flowCache);
+    public void initState(InMemoryKeyValueState<String, ResourceCache> state) {
+        ResourceCache resourceCache = state.get(FLOW_CACHE);
+        if (resourceCache == null) {
+            resourceCache = new ResourceCache();
+            state.put(FLOW_CACHE, resourceCache);
         }
-        initFlowCache();
 
-        flowValidator = new FlowValidator(flowCache, pathComputerAuth.getPathComputer());
+        flowResourcesManager = new FlowResourcesManager(resourceCache);
+        flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager, flowValidator);
+
+        initFlowResourcesManager();
     }
 
     /**
@@ -170,12 +157,15 @@ public class CrudBolt
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(
+                StreamType.CREATE.toString(),
+                FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId
+        );
+        outputFieldsDeclarer.declareStream(
+                StreamType.DELETE.toString(),
+                FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId
+        );
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
-        outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
@@ -189,7 +179,10 @@ public class CrudBolt
         this.context = topologyContext;
         this.outputCollector = outputCollector;
 
-        pathComputer = pathComputerAuth.getPathComputer();
+        repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowValidator = new FlowValidator(repositoryFactory);
+        pathComputerFactory = new PathComputerFactory(pathComputerConfig, repositoryFactory);
+        commandFactory = new FlowCommandFactory();
     }
 
     /**
@@ -258,50 +251,15 @@ public class CrudBolt
                     }
                     break;
 
-                case SPEAKER_BOLT:
-                case TRANSACTION_BOLT:
-
-                    FlowState newStatus = (FlowState) tuple.getValueByField(FlowTopology.STATUS_FIELD);
-
-                    logger.info("Flow {} status {}: component={}, stream={}", flowId, newStatus, componentId, streamId);
-
-                    switch (streamId) {
-                        case STATUS:
-                            //TODO: SpeakerBolt & TransactionBolt don't supply a tuple with correlationId
-                            handleStateRequest(flowId, newStatus, tuple, correlationId);
-                            break;
-                        default:
-                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
-                            break;
-                    }
-                    break;
-
-                case TOPOLOGY_ENGINE_BOLT:
-
-                    ErrorMessage errorMessage = (ErrorMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
-
-                    logger.info("Flow {} error: component={}, stream={}", flowId, componentId, streamId);
-
-                    switch (streamId) {
-                        case STATUS:
-                            handleErrorRequest(flowId, errorMessage, tuple);
-                            break;
-                        default:
-                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
-                            break;
-                    }
-                    break;
-
                 default:
                     logger.debug("Unexpected component: {}", componentId);
                     break;
             }
-        } catch (RecoverableException e) {
+            //} catch (RecoverableException e) {
             // FIXME(surabujin): implement retry limit
-            logger.error(
-                    "Recoverable error (do not try to recoverable it until retry limit will be implemented): {}", e);
+            // logger.error(
+            // "Recoverable error (do not try to recoverable it until retry limit will be implemented): {}", e);
             // isRecoverable = true;
-
         } catch (CacheException exception) {
             String logMessage = format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
             logger.error("{}, {}={}, {}={}, component={}, stream={}", logMessage, Utils.CORRELATION_ID,
@@ -313,15 +271,10 @@ public class CrudBolt
             Values error = new Values(errorMessage, exception.getErrorType());
             outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
 
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message {}", tuple, exception);
-
         } catch (Exception e) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
 
         } finally {
-            outputCollector.ack(tuple);
-
             logger.debug("Command message ack: component={}, stream={}, tuple={}",
                     tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
 
@@ -334,391 +287,213 @@ public class CrudBolt
     }
 
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
-        logger.debug("CACHE SYNCE: {}", message);
+        logger.info("Synchronize FlowResourcesManager.");
 
-        // NB: This is going to be a "bulky" operation - get all flows from DB, and synchronize with the cache.
+        initFlowResourcesManager();
 
-        List<String> droppedFlows = new ArrayList<>();
-        List<String> addedFlows = new ArrayList<>();
-        List<String> modifiedFlowChanges = new ArrayList<>();
-        List<String> modifiedFlowIds = new ArrayList<>();
-        List<String> unchangedFlows = new ArrayList<>();
-
-        List<FlowInfo> flowInfos = pathComputer.getFlowInfo();
-
-        // Instead of determining left/right .. store based on flowid_& cookie
-        HashMap<String, FlowInfo> flowToInfo = new HashMap<>();
-        for (FlowInfo fi : flowInfos) {
-            flowToInfo.put(fi.getFlowId() + fi.getCookie(), fi);
-        }
-
-        // We first look at comparing what is in the DB to what is in the Cache
-        for (FlowInfo fi : flowInfos) {
-            String flowid = fi.getFlowId();
-            if (flowCache.cacheContainsFlow(flowid)) {
-                // TODO: better, more holistic comparison
-                // TODO: if the flow is modified, then just leverage drop / add primitives.
-                // TODO: Ensure that the DB is always the source of truth - cache and db ops part of transaction.
-                // Need to compare both sides
-                FlowPair<Flow, Flow> fc = flowCache.getFlow(flowid);
-
-                final int count = modifiedFlowChanges.size();
-                if (fi.getCookie() != fc.left.getCookie() && fi.getCookie() != fc.right.getCookie()) {
-                    modifiedFlowChanges
-                            .add("cookie: " + flowid + ":" + fi.getCookie() + ":" + fc.left.getCookie() + ":" + fc.right
-                                    .getCookie());
-                }
-                if (fi.getMeterId() != fc.left.getMeterId() && fi.getMeterId() != fc.right.getMeterId()) {
-                    modifiedFlowChanges
-                            .add("meter: " + flowid + ":" + fi.getMeterId() + ":" + fc.left.getMeterId() + ":"
-                                    + fc.right.getMeterId());
-                }
-                if (fi.getTransitVlanId() != fc.left.getTransitVlan() && fi.getTransitVlanId() != fc.right
-                        .getTransitVlan()) {
-                    modifiedFlowChanges
-                            .add("transit: " + flowid + ":" + fi.getTransitVlanId() + ":" + fc.left.getTransitVlan()
-                                    + ":" + fc.right.getTransitVlan());
-                }
-                if (!fi.getSrcSwitchId().equals(fc.left.getSourceSwitch()) && !fi.getSrcSwitchId()
-                        .equals(fc.right.getSourceSwitch())) {
-                    modifiedFlowChanges
-                            .add("switch: " + flowid + "|" + fi.getSrcSwitchId() + "|" + fc.left.getSourceSwitch() + "|"
-                                    + fc.right.getSourceSwitch());
-                }
-
-                if (count == modifiedFlowChanges.size()) {
-                    unchangedFlows.add(flowid);
-                } else {
-                    modifiedFlowIds.add(flowid);
-                }
-            } else {
-                // TODO: need to get the flow from the DB and add it properly
-                addedFlows.add(flowid);
-
-            }
-        }
-
-        // Now we see if the cache holds things not in the DB
-        for (FlowPair<Flow, Flow> flow : flowCache.dumpFlows()) {
-            String key = flow.left.getFlowId() + flow.left.getCookie();
-            // compare the left .. if it is in, then check the right .. o/w remove it (no need to check right
-            if (!flowToInfo.containsKey(key)) {
-                droppedFlows.add(flow.left.getFlowId());
-            } else {
-                key = flow.right.getFlowId() + flow.right.getCookie();
-                if (!flowToInfo.containsKey(key)) {
-                    droppedFlows.add(flow.right.getFlowId());
-                }
-            }
-        }
-
-        FlowCacheSyncRequest request = (FlowCacheSyncRequest) message.getData();
-        if (request.getSynchronizeCache() == SynchronizeCacheAction.SYNCHRONIZE_CACHE) {
-            synchronizeCache(addedFlows, modifiedFlowIds, droppedFlows, tuple, message.getCorrelationId());
-        } else if (request.getSynchronizeCache() == SynchronizeCacheAction.INVALIDATE_CACHE) {
-            invalidateCache(addedFlows, modifiedFlowIds, droppedFlows, tuple, message.getCorrelationId());
-        }
-
-        FlowCacheSyncResults results = new FlowCacheSyncResults(
-                droppedFlows, addedFlows, modifiedFlowChanges, unchangedFlows);
-        Values northbound = new Values(new InfoMessage(new FlowCacheSyncResponse(results),
+        Values values = new Values(new InfoMessage(new FlowCacheSyncResponse(),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
     }
 
-    /**
-     * Synchronize the cache, propagate updates further (i.e. emit FlowOperation.CACHE)
-     */
-    private void synchronizeCache(List<String> addedFlowIds, List<String> modifiedFlowIds, List<String> droppedFlowIds,
-            Tuple tuple, String correlationId) {
-        logger.info("Synchronizing the flow cache data: {} dropped, {} added, {} modified.",
-                droppedFlowIds.size(), addedFlowIds.size(), modifiedFlowIds.size());
-
-        deleteFromCache(droppedFlowIds, tuple, correlationId);
-
-        // override added/modified flows in the cache
-        Stream.concat(addedFlowIds.stream(), modifiedFlowIds.stream())
-                .map(pathComputer::getFlows)
-                .filter(flows -> !flows.isEmpty())
-                .map(flows -> {
-                    FlowCollector flowPair = new FlowCollector();
-                    flows.forEach(flowPair::add);
-                    return flowPair;
-                })
-                .forEach(flowPair -> {
-                    final BidirectionalFlow bidirectionalFlow = flowPair.make();
-                    final FlowPair<Flow, Flow> flow = new FlowPair<>(
-                            bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
-                    final String flowId = flow.getLeft().getFlowId();
-                    logger.debug("Refresh the flow: {}", flowId);
-
-                    flowCache.pushFlow(flow);
-
-                    // propagate updates further
-                    emitCacheSyncInfoMessage(flowId, flow, tuple, correlationId);
-                });
-    }
-
-    /**
-     * Purge and re-initialize the cache, propagate updates further (i.e. emit FlowOperation.CACHE)
-     */
-    private void invalidateCache(List<String> addedFlowIds, List<String> modifiedFlowIds, List<String> droppedFlowIds,
-            Tuple tuple, String correlationId) {
-        logger.info("Invalidating the flow cache data: {} dropped, {} added, {} modified.",
-                droppedFlowIds.size(), addedFlowIds.size(), modifiedFlowIds.size());
-
-        deleteFromCache(droppedFlowIds, tuple, correlationId);
-
-        initFlowCache();
-
-        // propagate updates further
-        flowCache.dumpFlows()
-                .forEach(flow -> {
-                    final String flowId = flow.getLeft().getFlowId();
-                    logger.debug("Refresh the flow: {}", flowId);
-
-                    emitCacheSyncInfoMessage(flowId, flow, tuple, correlationId);
-                });
-    }
-
-    /**
-     * Remove the flows from the cache and propagate changes further (i.e. emit FlowOperation.DELETE)
-     */
-    private void deleteFromCache(List<String> droppedFlowIds, Tuple tuple, String correlationId) {
-        droppedFlowIds.forEach(flowId -> {
-            logger.debug("Delete the flow: {}", flowId);
-
-            flowCache.removeFlow(flowId);
-
-            emitCacheSyncInfoMessage(flowId, null, tuple, correlationId);
-        });
-    }
-
-    private void emitCacheSyncInfoMessage(String flowId, @Nullable FlowPair<Flow, Flow> flow,
-            Tuple tuple, String correlationId) {
-        String subCorrelationId = format("%s-%s", correlationId, flowId);
-        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.CACHE, subCorrelationId);
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), subCorrelationId);
+    private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) {
+        final String errorType = "Can not push flow";
 
         try {
-            Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-            outputCollector.emit(StreamType.CACHE_SYNC.toString(), tuple, topology);
-        } catch (JsonProcessingException e) {
-            logger.error("Unable to serialize the message: {}", infoMessage);
+            logger.info("PUSH flow: {} :: {}", flowId, message);
+            FlowInfoData fid = (FlowInfoData) message.getData();
+            FlowPair flow = FlowMapper.INSTANCE.map(fid.getPayload());
+
+            FlowStatus flowStatus = (fid.getOperation() == FlowOperation.PUSH_PROPAGATE)
+                    ? FlowStatus.IN_PROGRESS : FlowStatus.UP;
+            flow.setStatus(flowStatus);
+
+            flowService.saveFlow(flow,
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple) {
+                        @Override
+                        public void sendInstallRulesCommand(Flow flow, List<FlowSegment> segments) {
+                            if (fid.getOperation() == FlowOperation.PUSH_PROPAGATE) {
+                                super.sendInstallRulesCommand(flow, segments);
+                            }
+                        }
+                    });
+
+            logger.info("PUSHed the flow: {}", flow);
+
+            Values values = new Values(new InfoMessage(
+                    new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowMapper.INSTANCE.map(flowStatus))),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+        } catch (FlowAlreadyExistException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.ALREADY_EXISTS, errorType, e.getMessage());
+        } catch (Exception e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.CREATION_FAILURE, errorType, e.getMessage());
         }
     }
 
-    private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
-        logger.info("PUSH flow: {} :: {}", flowId, message);
-        FlowInfoData fid = (FlowInfoData) message.getData();
-        FlowPair<Flow, Flow> flow = fid.getPayload();
+    private void handleUnpushRequest(String flowId, InfoMessage message, Tuple tuple) {
+        final String errorType = "Can not unpush flow";
 
-        flowCache.pushFlow(flow);
+        try {
+            logger.info("UNPUSH flow: {} :: {}", flowId, message);
 
-        // Update Cache
-        FlowInfoData data = new FlowInfoData(flow.getLeft().getFlowId(), flow, FlowOperation.PUSH,
-                message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
+            FlowInfoData fid = (FlowInfoData) message.getData();
 
-        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(
-                new FlowIdStatusPayload(flowId, FlowState.UP)), message.getTimestamp(),
-                message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+            FlowPair deletedFlow = flowService.deleteFlow(flowId,
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple) {
+                        @Override
+                        public void sendRemoveRuleCommand(Flow flow, List<FlowSegment> segments) {
+                            if (fid.getOperation() == FlowOperation.UNPUSH_PROPAGATE) {
+                                super.sendRemoveRuleCommand(flow, segments);
+                            }
+                        }
+                    });
+
+            logger.info("UNPUSHed the flow: {}", deletedFlow);
+
+            Values values = new Values(new InfoMessage(
+                    new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (Exception e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.DELETION_FAILURE, errorType, e.getMessage());
+        }
     }
 
-    private void handleUnpushRequest(String flowId, InfoMessage message, Tuple tuple) throws IOException {
-        logger.info("UNPUSH flow: {} :: {}", flowId, message);
+    private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) {
+        final String errorType = "Can not delete flow";
 
-        FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
+        try {
+            FlowPair deletedFlow = flowService.deleteFlow(flowId,
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple));
 
-        // Update Cache
-        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.UNPUSH, message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
+            logger.info("Deleted the flow: {}", deletedFlow);
 
-
-        Values northbound = new Values(new InfoMessage(new FlowStatusResponse(
-                new FlowIdStatusPayload(flowId, FlowState.DOWN)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+            Values values = new Values(new InfoMessage(buildFlowResponse(deletedFlow.getForward()),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (Exception e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.DELETION_FAILURE, errorType, e.getMessage());
+        }
     }
 
-
-    private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) throws IOException {
-        FlowPair<Flow, Flow> flow = flowCache.deleteFlow(flowId);
-
-        logger.info("Deleted flow: {}", flowId);
-
-        FlowInfoData data = new FlowInfoData(flowId, flow, DELETE, message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.DELETE.toString(), tuple, topology);
-
-        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
-    }
-
-    private void handleCreateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
-        Flow requestedFlow = ((FlowCreateRequest) message.getData()).getPayload();
-
-        FlowPair<PathInfoData, PathInfoData> path;
+    private void handleCreateRequest(CommandMessage message, Tuple tuple) {
         final String errorType = "Could not create flow";
-        try {
-            flowValidator.validate(requestedFlow);
 
-            path = pathComputer.getPath(requestedFlow, Strategy.COST);
-            logger.info("Creating flow {}. Found path: {}, correlationId: {}", requestedFlow.getFlowId(), path,
-                    message.getCorrelationId());
+        try {
+            Flow flow = FlowMapper.INSTANCE.map(((FlowCreateRequest) message.getData()).getPayload());
+
+            FlowPair createdFlow = flowService.createFlow(flow,
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple));
+
+            logger.info("Created the flow: {}", createdFlow);
+
+            Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     e.getType(), errorType, e.getMessage());
         } catch (SwitchValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.DATA_INVALID, errorType, e.getMessage());
-        } catch (UnroutablePathException e) {
-            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType,
-                    "Not enough bandwidth found or path not found");
-        }
-
-        FlowPair<Flow, Flow> flow = flowCache.createFlow(requestedFlow, path);
-        logger.info("Created flow: {}, correlationId: {}", flow, message.getCorrelationId());
-
-        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, FlowOperation.CREATE,
-                message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.CREATE.toString(), tuple, topology);
-
-        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
-    }
-
-    private void handleRerouteRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
-        FlowRerouteRequest request = (FlowRerouteRequest) message.getData();
-        final String flowId = request.getFlowId();
-        final String correlationId = message.getCorrelationId();
-        logger.warn("Handling reroute request with correlationId {}", correlationId);
-
-        FlowPair<Flow, Flow> flow = flowCache.getFlow(flowId);
-        switch (request.getOperation()) {
-            case UPDATE:
-                final Flow flowForward = flow.getLeft();
-
-                try {
-                    logger.warn("Origin flow {} path: {} correlationId {}", flowId, flowForward.getFlowPath(),
-                            correlationId);
-                    AvailableNetwork network = pathComputer.getAvailableNetwork(flowForward.isIgnoreBandwidth(),
-                            flowForward.getBandwidth());
-                    network.addIslsOccupiedByFlow(flowId, flowForward.isIgnoreBandwidth(), flowForward.getBandwidth());
-                    FlowPair<PathInfoData, PathInfoData> path =
-                            pathComputer.getPath(flow.getLeft(), network, Strategy.COST);
-                    logger.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {} correlationId {}",
-                            flowId, path.getLeft(), path.getRight(), correlationId);
-                    boolean isFoundNewPath = (
-                            !path.getLeft().equals(flow.getLeft().getFlowPath())
-                                       || !path.getRight().equals(flow.getRight().getFlowPath())
-                                       || !isFlowActive(flow));
-                    //no need to emit changes if path wasn't changed and flow is active.
-                    //force means to update flow even if path is not changed.
-                    if (isFoundNewPath || request.isForce()) {
-                        flow.getLeft().setState(FlowState.DOWN);
-                        flow.getRight().setState(FlowState.DOWN);
-
-                        flow = flowCache.updateFlow(flow.getLeft(), path);
-                        logger.warn("Rerouted flow with new path: {}, correlationId {}", flow, correlationId);
-
-                        FlowInfoData data = new FlowInfoData(flowId, flow, UPDATE, correlationId);
-                        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
-                        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-                        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
-                    } else {
-                        logger.warn("Reroute {} is unsuccessful: can't find new path. CorrelationId: {}",
-                                flowId, correlationId);
-                    }
-
-                    logger.debug("Sending response to NB. Correlation id {}", correlationId);
-                    FlowRerouteResponse response = new FlowRerouteResponse(flow.left.getFlowPath(), isFoundNewPath);
-                    Values values = new Values(new InfoMessage(response, message.getTimestamp(),
-                            correlationId, Destination.NORTHBOUND));
-                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
-                } catch (UnroutablePathException e) {
-                    logger.warn("There is no path available for the flow {}, correlationId: {}", flowId,
-                            correlationId);
-                    flow.getLeft().setState(FlowState.DOWN);
-                    flow.getRight().setState(FlowState.DOWN);
-                    throw new MessageException(correlationId, System.currentTimeMillis(),
-                            ErrorType.NOT_FOUND, "Could not reroute flow", "Path was not found");
-                }
-                break;
-
-            case CREATE:
-                logger.warn("State flow: {}={}, correlationId: {}", flowId, FlowState.UP, correlationId);
-                flow.getLeft().setState(FlowState.UP);
-                flow.getRight().setState(FlowState.UP);
-                break;
-
-            case DELETE:
-                logger.warn("State flow: {}={}, correlationId: {}", flowId, FlowState.DOWN, correlationId);
-                flow.getLeft().setState(FlowState.DOWN);
-                flow.getRight().setState(FlowState.DOWN);
-                break;
-
-            default:
-                logger.warn("Flow {} undefined reroute operation", request.getOperation());
-                break;
-        }
-    }
-
-    private void handleUpdateRequest(CommandMessage message, Tuple tuple) throws IOException, RecoverableException {
-        Flow requestedFlow = ((FlowUpdateRequest) message.getData()).getPayload();
-        String correlationId = message.getCorrelationId();
-
-        FlowPair<PathInfoData, PathInfoData> path;
-        final String errorType = "Could not update flow";
-        try {
-            flowValidator.validate(requestedFlow);
-
-            AvailableNetwork network = pathComputer.getAvailableNetwork(requestedFlow.isIgnoreBandwidth(),
-                    requestedFlow.getBandwidth());
-            network.addIslsOccupiedByFlow(requestedFlow.getFlowId(),
-                    requestedFlow.isIgnoreBandwidth(), requestedFlow.getBandwidth());
-            path = pathComputer.getPath(requestedFlow, network, Strategy.COST);
-            logger.info("Updated flow path: {}, correlationId {}", path, correlationId);
-
-        } catch (FlowValidationException e) {
+        } catch (FlowAlreadyExistException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.ALREADY_EXISTS, errorType, e.getMessage());
+        } catch (UnroutableFlowException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found : " + e.getMessage());
+        } catch (Exception e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.CREATION_FAILURE, errorType, e.getMessage());
+        }
+    }
+
+    private void handleRerouteRequest(CommandMessage message, Tuple tuple) {
+        FlowRerouteRequest request = (FlowRerouteRequest) message.getData();
+        final String flowId = request.getFlowId();
+        final String errorType = "Could not reroute flow";
+
+        try {
+            ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(),
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple));
+
+            if (reroutedFlow.getNewFlow() != null) {
+                logger.warn("Rerouted flow with new path: {}", reroutedFlow);
+            } else {
+                // There's no new path found, but the current flow may still be active.
+                logger.warn("Reroute {} is unsuccessful: can't find new path.", flowId);
+            }
+
+            PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow()
+                    .getForward().getFlowPath());
+            PathInfoData resultPath = Optional.ofNullable(reroutedFlow.getNewFlow())
+                    .map(flow -> FlowPathMapper.INSTANCE.map(flow.getForward().getFlowPath()))
+                    .orElse(currentPath);
+
+            FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
+            Values values = new Values(new InfoMessage(response, message.getTimestamp(),
+                    message.getCorrelationId(), Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (UnroutableFlowException e) {
+            logger.warn("There is no path available for the flow {}", flowId);
+            flowService.updateFlowStatus(flowId, FlowStatus.DOWN);
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, "Path was not found");
+        } catch (Exception e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
+        }
+    }
+
+    private void handleUpdateRequest(CommandMessage message, Tuple tuple) {
+        final String errorType = "Could not update flow";
+
+        try {
+            Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
+
+            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple));
+
+            logger.info("Updated the flow: {}", updatedFlow);
+
+            Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow.getForward()),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+        } catch (FlowValidationException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    e.getType(), errorType, e.getMessage());
         } catch (SwitchValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.DATA_INVALID, errorType, e.getMessage());
-        } catch (UnroutablePathException e) {
+        } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType, "Path was not found");
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (UnroutableFlowException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found");
+        } catch (Exception e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
-
-        FlowPair<Flow, Flow> flow = flowCache.updateFlow(requestedFlow, path);
-        logger.info("Updated flow: {}, correlationId {}", flow, correlationId);
-
-        FlowInfoData data = new FlowInfoData(requestedFlow.getFlowId(), flow, UPDATE,
-                message.getCorrelationId());
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), message.getCorrelationId());
-        Values topology = new Values(MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.UPDATE.toString(), tuple, topology);
-
-        Values northbound = new Values(new InfoMessage(new FlowResponse(buildFlowResponse(flow)),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<BidirectionalFlow> flows = flowCache.dumpFlows().stream()
-                .map(BidirectionalFlow::new)
+        List<BidirectionalFlowDto> flows = flowService.getFlows().stream()
+                .map(x -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(x)))
                 .collect(Collectors.toList());
 
         logger.debug("Dump flows: found {} items", flows.size());
@@ -730,7 +505,7 @@ public class CrudBolt
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
         } else {
             int i = 0;
-            for (BidirectionalFlow flow : flows) {
+            for (BidirectionalFlowDto flow : flows) {
                 Message response = new ChunkedInfoMessage(new FlowReadResponse(flow), System.currentTimeMillis(),
                         requestId, i++, flows.size());
 
@@ -740,80 +515,29 @@ public class CrudBolt
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        BidirectionalFlow flow = new BidirectionalFlow(flowCache.getFlow(flowId));
+        FlowPair flowPair = flowService.getFlowPair(flowId)
+                .orElseThrow(() -> new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                        ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
 
+        BidirectionalFlowDto flow =
+                new BidirectionalFlowDto(FlowMapper.INSTANCE.map(flowPair));
         logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
-        Values northbound = new Values(
-                new InfoMessage(
-                        new FlowReadResponse(flow),
-                        message.getTimestamp(),
-                        message.getCorrelationId(),
-                        Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, northbound);
+        Values values = new Values(new InfoMessage(new FlowReadResponse(flow),
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
     }
 
     /**
-     * This method changes the state of the Flow. It sets the state of both left and right to the
-     * same state.
-     * It is currently called from 2 places - a failed update (set flow to DOWN), and a STATUS
-     * update from the TransactionBolt.
-     */
-    private void handleStateRequest(String flowId, FlowState state, Tuple tuple, String correlationId)
-            throws IOException {
-        FlowPair<Flow, Flow> flow = flowCache.getFlow(flowId);
-        logger.info("State flow: {}={}", flowId, state);
-        flow.getLeft().setState(state);
-        flow.getRight().setState(state);
-
-        FlowInfoData data = new FlowInfoData(flowId, flow, FlowOperation.STATE, correlationId);
-        InfoMessage infoMessage = new InfoMessage(data, System.currentTimeMillis(), correlationId);
-
-        Values topology = new Values(Utils.MAPPER.writeValueAsString(infoMessage));
-        outputCollector.emit(StreamType.STATUS.toString(), tuple, topology);
-
-    }
-
-    private void handleErrorRequest(String flowId, ErrorMessage message, Tuple tuple) throws IOException {
-        ErrorType errorType = message.getData().getErrorType();
-        message.getData().setErrorDescription("topology-engine internal error");
-
-        logger.info("Flow {} {} failure", errorType, flowId);
-
-        switch (errorType) {
-            case CREATION_FAILURE:
-                flowCache.removeFlow(flowId);
-                break;
-
-            case UPDATE_FAILURE:
-                handleStateRequest(flowId, FlowState.DOWN, tuple, message.getCorrelationId());
-                break;
-
-            case DELETION_FAILURE:
-                break;
-
-            case INTERNAL_ERROR:
-                break;
-
-            default:
-                logger.warn("Flow {} undefined failure", flowId);
-
-        }
-
-        Values error = new Values(message, errorType);
-        outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
-    }
-
-    /**
-     * Builds response flow.
+     * Builds flow response entity.
      *
-     * @param flow cache flow
-     * @return response flow model
+     * @param flow a flow for payload
+     * @return flow response entity
      */
-    private Flow buildFlowResponse(FlowPair<Flow, Flow> flow) {
-        Flow response = new Flow(flow.left);
-        response.setCookie(response.getCookie() & ResourceCache.FLOW_COOKIE_VALUE_MASK);
-        return response;
+    private FlowResponse buildFlowResponse(Flow flow) {
+        FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
+        flowDto.setCookie(flow.getCookie() & ResourceCache.FLOW_COOKIE_VALUE_MASK);
+        return new FlowResponse(flowDto);
     }
 
     private ErrorMessage buildErrorMessage(String correlationId, ErrorType type, String message, String description) {
@@ -821,24 +545,17 @@ public class CrudBolt
                 System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
     }
 
-    private boolean isFlowActive(FlowPair<Flow, Flow> flowPair) {
-        return flowPair.getLeft().getState().isActive() && flowPair.getRight().getState().isActive();
-    }
+    private void initFlowResourcesManager() {
+        flowResourcesManager.clear();
 
-    private void initFlowCache() {
-        PathComputerFlowFetcher flowFetcher = new PathComputerFlowFetcher(pathComputer);
-
-        for (BidirectionalFlow bidirectionalFlow : flowFetcher.getFlows()) {
-            FlowPair<Flow, Flow> flowPair = new FlowPair<>(
-                    bidirectionalFlow.getForward(), bidirectionalFlow.getReverse());
-            flowCache.pushFlow(flowPair);
-        }
+        repositoryFactory.createFlowRepository().findAllFlowPairs()
+                .forEach(flowPair -> flowResourcesManager.registerUsedByFlow(flowPair));
     }
 
     @Override
     public AbstractDumpState dumpState() {
-        FlowDump flowDump = new FlowDump(flowCache.dumpFlows());
-        return new CrudBoltState(flowDump);
+        // Not implemented
+        return new CrudBoltState();
     }
 
     @VisibleForTesting
@@ -851,9 +568,8 @@ public class CrudBolt
     @Override
     public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
         // Not implemented
-        return new CrudBoltState(new FlowDump(new HashSet<>()));
+        return new CrudBoltState();
     }
-
 
     @Override
     public String getCtrlStreamId() {
@@ -873,8 +589,60 @@ public class CrudBolt
     @Override
     public Optional<AbstractDumpState> dumpResorceCacheState() {
         return Optional.of(new ResorceCacheBoltState(
-                flowCache.getAllocatedMeters(),
-                flowCache.getAllocatedVlans(),
-                flowCache.getAllocatedCookies()));
+                flowResourcesManager.getAllocatedMeters(),
+                flowResourcesManager.getAllocatedVlans(),
+                flowResourcesManager.getAllocatedCookies()));
+    }
+
+    class CrudFlowCommandSender implements FlowCommandSender {
+        private final String correlationId;
+        private final Tuple tuple;
+
+        CrudFlowCommandSender(String correlationId, Tuple tuple) {
+            this.correlationId = correlationId;
+            this.tuple = tuple;
+        }
+
+        @Override
+        public void sendInstallRulesCommand(Flow flow, List<FlowSegment> segments) {
+            List<BaseInstallFlow> rules = commandFactory.createInstallRulesForFlow(flow, segments);
+            List<Values> messages = new ArrayList<>(rules.size());
+            // Reverse as ingress rule must be created the last.
+            for (BaseInstallFlow rule : Lists.reverse(rules)) {
+                CommandMessage message = new CommandMessage(rule, System.currentTimeMillis(), correlationId,
+                        Destination.CONTROLLER);
+                try {
+                    messages.add(new Values(MAPPER.writeValueAsString(message), rule.getSwitchId(), flow.getFlowId(),
+                            rule.getTransactionId()));
+                } catch (JsonProcessingException ex) {
+                    throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                            ErrorType.INTERNAL_ERROR, format("Unable to serialize message: %s", message),
+                            ex.getMessage());
+                }
+            }
+            // Build all message first and them emit.
+            messages.forEach(values -> outputCollector.emit(StreamType.CREATE.toString(), tuple, values));
+        }
+
+        @Override
+        public void sendRemoveRuleCommand(Flow flow, List<FlowSegment> segments) {
+            List<RemoveFlow> rules = commandFactory.createRemoveRulesForFlow(flow, segments);
+            List<Values> messages = new ArrayList<>(rules.size());
+            // Do NOT reverse as ingress rule must be removed the first.
+            for (RemoveFlow rule : rules) {
+                CommandMessage message = new CommandMessage(rule, System.currentTimeMillis(), correlationId,
+                        Destination.CONTROLLER);
+                try {
+                    messages.add(new Values(MAPPER.writeValueAsString(message), rule.getSwitchId(), flow.getFlowId(),
+                            rule.getTransactionId()));
+                } catch (JsonProcessingException ex) {
+                    throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                            ErrorType.INTERNAL_ERROR, format("Unable to serialize message: %s", message),
+                            ex.getMessage());
+                }
+            }
+            // Build all message first and them emit.
+            messages.forEach(values -> outputCollector.emit(StreamType.DELETE.toString(), tuple, values));
+        }
     }
 }

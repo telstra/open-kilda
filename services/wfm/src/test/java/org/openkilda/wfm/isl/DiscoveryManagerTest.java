@@ -26,7 +26,7 @@ import static org.junit.Assert.assertTrue;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -64,7 +64,7 @@ public class DiscoveryManagerTest {
      * Init method.
      */
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         islHealthCheckInterval = 0; // means check ever tick
         islHealthFailureLimit  = 1; // for testing, failure after 1 tick;
         maxAttemptsLimit = 2;

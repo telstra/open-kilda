@@ -8,8 +8,8 @@ import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -43,7 +43,7 @@ class FlowCrudSpec extends BaseSpecification {
     @Autowired
     NorthboundService northboundService
     @Autowired
-    TraffExamService traffExam;
+    TraffExamService traffExam
 
     @Shared
     FlowTrafficExamBuilder examBuilder
@@ -228,7 +228,7 @@ class FlowCrudSpec extends BaseSpecification {
                     flowToConflict.id = dominantFlow.id
                 },
                 getError: { FlowPayload flowToError ->
-                    "Can not create flow: Flow $flowToError.id already exists"
+                    "Could not create flow: Flow $flowToError.id already exists"
                 }
             ]
         ]

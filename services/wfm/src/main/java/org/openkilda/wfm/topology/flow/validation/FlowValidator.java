@@ -18,29 +18,30 @@ package org.openkilda.wfm.topology.flow.validation;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.pce.cache.FlowCache;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.model.Flow;
+import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * {@code FlowValidator} performs checks against the flow validation rules.
  */
 public class FlowValidator {
 
-    private final FlowCache flowCache;
+    private final FlowRepository flowRepository;
 
-    private PathComputer pathComputer;
+    private final SwitchRepository switchRepository;
 
-    public FlowValidator(FlowCache flowCache, PathComputer pathComputer) {
-        this.flowCache = flowCache;
-        this.pathComputer = pathComputer;
+    public FlowValidator(RepositoryFactory repositoryFactory) {
+        this.flowRepository = repositoryFactory.createFlowRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
     }
 
     /**
@@ -76,52 +77,45 @@ public class FlowValidator {
     @VisibleForTesting
     void checkFlowForEndpointConflicts(Flow requestedFlow) throws FlowValidationException {
         // Check the source
-        Set<Flow> conflictsOnSource;
-        if (requestedFlow.getSourceVlan() == 0) {
-            conflictsOnSource = flowCache.getFlowsForEndpoint(
-                    requestedFlow.getSourceSwitch(),
-                    requestedFlow.getSourcePort());
-        } else {
-            conflictsOnSource = flowCache.getFlowsForEndpoint(
-                    requestedFlow.getSourceSwitch(),
-                    requestedFlow.getSourcePort(),
-                    requestedFlow.getSourceVlan());
-        }
+        Collection<Flow> conflictsOnSource;
+        conflictsOnSource = flowRepository.findFlowIdsByEndpoint(requestedFlow.getSrcSwitch().getSwitchId(),
+                                                                 requestedFlow.getSrcPort());
 
-        Optional<Flow> conflictedFlow = conflictsOnSource.stream()
-                .filter(flow -> !flow.getFlowId().equals(requestedFlow.getFlowId()))
+
+        Optional<String> conflictedFlow = conflictsOnSource.stream()
+                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId())
+                        && (flow.getSrcVlan() == 0 || flow.getSrcVlan() == requestedFlow.getSrcVlan()
+                                || requestedFlow.getSrcVlan() == 0))
+                .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
             throw new FlowValidationException(
                     format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getSourcePort(),
-                            requestedFlow.getSourceSwitch(),
-                            conflictedFlow.get().getFlowId()),
+                            requestedFlow.getSrcPort(),
+                            requestedFlow.getSrcSwitch().getSwitchId(),
+                            conflictedFlow.get()),
                     ErrorType.ALREADY_EXISTS);
         }
 
         // Check the destination
-        Set<Flow> conflictsOnDest;
-        if (requestedFlow.getDestinationVlan() == 0) {
-            conflictsOnDest = flowCache.getFlowsForEndpoint(
-                    requestedFlow.getDestinationSwitch(),
-                    requestedFlow.getDestinationPort());
-        } else {
-            conflictsOnDest = flowCache.getFlowsForEndpoint(
-                    requestedFlow.getDestinationSwitch(),
-                    requestedFlow.getDestinationPort(),
-                    requestedFlow.getDestinationVlan());
-        }
+        Collection<Flow> conflictsOnDest;
+        conflictsOnDest = flowRepository.findFlowIdsByEndpoint(
+                    requestedFlow.getDestSwitch().getSwitchId(),
+                    requestedFlow.getDestPort());
+
 
         conflictedFlow = conflictsOnDest.stream()
-                .filter(flow -> !flow.getFlowId().equals(requestedFlow.getFlowId()))
+                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId())
+                        && (flow.getDestVlan() == 0 || flow.getDestVlan() == requestedFlow.getDestVlan()
+                        || requestedFlow.getDestVlan() == 0))
+                .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
             throw new FlowValidationException(
                     format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getDestinationPort(),
-                            requestedFlow.getDestinationSwitch(),
-                            conflictedFlow.get().getFlowId()),
+                            requestedFlow.getDestPort(),
+                            requestedFlow.getDestSwitch().getSwitchId(),
+                            conflictedFlow.get()),
                     ErrorType.ALREADY_EXISTS);
         }
     }
@@ -134,17 +128,17 @@ public class FlowValidator {
      */
     @VisibleForTesting
     void checkSwitchesExists(Flow requestedFlow) throws SwitchValidationException {
-        final SwitchId sourceId = requestedFlow.getSourceSwitch();
-        final SwitchId destinationId = requestedFlow.getDestinationSwitch();
+        final SwitchId sourceId = requestedFlow.getSrcSwitch().getSwitchId();
+        final SwitchId destinationId = requestedFlow.getDestSwitch().getSwitchId();
 
         boolean source;
         boolean destination;
 
         if (Objects.equals(sourceId, destinationId)) {
-            source = destination = pathComputer.getSwitchById(sourceId).isPresent();
+            source = destination = switchRepository.exists(sourceId);
         } else {
-            source = pathComputer.getSwitchById(sourceId).isPresent();
-            destination = pathComputer.getSwitchById(destinationId).isPresent();
+            source = switchRepository.exists(sourceId);
+            destination = switchRepository.exists(destinationId);
         }
 
         if (!source && !destination) {
@@ -165,9 +159,9 @@ public class FlowValidator {
      */
     @VisibleForTesting
     void checkOneSwitchFlowHasNoConflicts(Flow requestedFlow) throws SwitchValidationException {
-        if (requestedFlow.getSourceSwitch().equals(requestedFlow.getDestinationSwitch())
-                && requestedFlow.getSourcePort() == requestedFlow.getDestinationPort()
-                && requestedFlow.getSourceVlan() == requestedFlow.getDestinationVlan()) {
+        if (requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())
+                && requestedFlow.getSrcPort() == requestedFlow.getDestPort()
+                && requestedFlow.getSrcVlan() == requestedFlow.getDestVlan()) {
 
             throw new SwitchValidationException(
                     "It is not allowed to create one-switch flow for the same ports and vlans");

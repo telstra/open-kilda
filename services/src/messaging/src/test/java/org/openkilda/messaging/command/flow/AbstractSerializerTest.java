@@ -29,26 +29,27 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkInfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -56,6 +57,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,6 +66,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final String FLOW_NAME = "test_flow";
     private static final SwitchId SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:00");
     private static final String CORRELATION_ID = UUID.randomUUID().toString();
+    private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private static final long TIMESTAMP = System.currentTimeMillis();
     private static final int INPUT_PORT = 1;
     private static final int OUTPUT_PORT = 2;
@@ -76,22 +79,23 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final OutputVlanType OUTPUT_VLAN_TYPE = OutputVlanType.REPLACE;
     private static final FlowState FLOW_STATUS = FlowState.UP;
     private static final PortChangeType PORT_CHANGE = PortChangeType.OTHER_UPDATE;
-    private static final SwitchState SWITCH_EVENT = SwitchState.CHANGED;
+    private static final SwitchChangeType SWITCH_EVENT = SwitchChangeType.CHANGED;
     private static final Destination DESTINATION = null;
 
     private static final FlowIdStatusPayload flowIdStatusResponse = new FlowIdStatusPayload(FLOW_NAME, FLOW_STATUS);
 
     private static final String requester = "requester-id";
     private static final SwitchInfoData sw1 = new SwitchInfoData(new SwitchId("ff:01"),
-            SwitchState.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda");
+            SwitchChangeType.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda");
     private static final SwitchInfoData sw2 = new SwitchInfoData(new SwitchId("ff:02"),
-            SwitchState.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda");
+            SwitchChangeType.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda");
     private static final List<PathNode> nodes = Arrays.asList(
             new PathNode(new SwitchId("ff:01"), 1, 0, 0L),
             new PathNode(new SwitchId("ff:02"), 2, 1, 0L));
-    private static final IslInfoData isl = new IslInfoData(0L, nodes, 1000L, IslChangeType.DISCOVERED, 900L);
+    private static final IslInfoData isl = new IslInfoData(0L, nodes.get(0), nodes.get(1), 1000L,
+            IslChangeType.DISCOVERED, 900L);
     private static final PathInfoData path = new PathInfoData(0L, nodes);
-    private static final Flow flowModel = Flow.builder()
+    private static final FlowDto flowModel = FlowDto.builder()
             .flowId(FLOW_NAME)
             .bandwidth(1000)
             .ignoreBandwidth(false)
@@ -108,7 +112,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
-        InstallEgressFlow data = new InstallEgressFlow(TIMESTAMP, FLOW_NAME, COOKIE,
+        InstallEgressFlow data = new InstallEgressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE);
         System.out.println(data);
 
@@ -129,7 +133,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void serializeInstallIngressFlowMessageTest() throws IOException, ClassNotFoundException {
-        InstallIngressFlow data = new InstallIngressFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID,
+        InstallIngressFlow data = new InstallIngressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID,
                 INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
@@ -150,7 +154,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void serializeInstallTransitFlowMessageTest() throws IOException, ClassNotFoundException {
-        InstallTransitFlow data = new InstallTransitFlow(TIMESTAMP, FLOW_NAME, COOKIE,
+        InstallTransitFlow data = new InstallTransitFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_VLAN_ID);
         System.out.println(data);
 
@@ -171,7 +175,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void serializeInstallOneSwitchFlowMessageTest() throws IOException, ClassNotFoundException {
-        InstallOneSwitchFlow data = new InstallOneSwitchFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
+        InstallOneSwitchFlow data = new InstallOneSwitchFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
                 OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
@@ -234,7 +238,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowDeleteRequestTest() throws IOException, ClassNotFoundException {
-        Flow deleteFlow = new Flow();
+        FlowDto deleteFlow = new FlowDto();
         deleteFlow.setFlowId(flowName);
         FlowDeleteRequest data = new FlowDeleteRequest(deleteFlow);
         System.out.println(data);
@@ -278,8 +282,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowGetBidirectionalResponseTest() throws IOException, ClassNotFoundException {
-        Flow flow = Flow.builder().flowPath(path).build();
-        BidirectionalFlow bidirectionalFlow = BidirectionalFlow.builder().forward(flow).reverse(flow).build();
+        FlowDto flow = FlowDto.builder().flowPath(path).build();
+        BidirectionalFlowDto bidirectionalFlow = BidirectionalFlowDto.builder().forward(flow).reverse(flow).build();
         FlowReadResponse data = new FlowReadResponse(bidirectionalFlow);
         System.out.println(data);
 
@@ -387,7 +391,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void eventIslInfoTest() throws IOException, ClassNotFoundException {
         PathNode payload = new PathNode(SWITCH_ID, INPUT_PORT, 0);
-        IslInfoData data = new IslInfoData(0L, Collections.singletonList(payload),
+        IslInfoData data = new IslInfoData(0L, payload, payload,
                 1000000L, IslChangeType.DISCOVERED, 900000L);
         assertEquals(SWITCH_ID + "_" + String.valueOf(INPUT_PORT), data.getId());
         System.out.println(data);
@@ -405,7 +409,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(payload.hashCode(), resultData.getPath().get(0).hashCode());
+        assertEquals(payload.hashCode(), resultData.getSource().hashCode());
     }
 
     @Test
@@ -491,7 +495,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void removeCommandTest() throws IOException, ClassNotFoundException {
-        RemoveFlow data = new RemoveFlow(TIMESTAMP, FLOW_NAME, COOKIE, SWITCH_ID, METER_ID,
+        RemoveFlow data = new RemoveFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID, METER_ID,
                 DeleteRulesCriteria.builder().cookie(COOKIE).build());
         System.out.println(data);
 
@@ -513,7 +517,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowRerouteCommandTest() throws IOException, ClassNotFoundException {
-        FlowRerouteRequest data = new FlowRerouteRequest(FLOW_NAME, FlowOperation.CREATE, false);
+        FlowRerouteRequest data = new FlowRerouteRequest(FLOW_NAME, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -548,6 +552,30 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(resultCommand.getData() != null);
 
         HealthCheckCommandData resultData = (HealthCheckCommandData) resultCommand.getData();
+        System.out.println(resultData);
+        assertEquals(data, resultData);
+        assertEquals(data.hashCode(), resultData.hashCode());
+    }
+
+    @Test
+    public void dumpNetworkResponseTest() throws IOException, ClassNotFoundException {
+        NetworkInfoData data = new NetworkInfoData(requester,
+                new HashSet<>(Arrays.asList(sw1, sw2)),
+                new HashSet<>(),
+                Collections.singleton(isl),
+                Collections.singleton(new FlowPairDto<>(flowModel, flowModel)));
+        System.out.println(data);
+
+        InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        serialize(info);
+
+        Message message = (Message) deserialize();
+        assertTrue(message instanceof InfoMessage);
+
+        InfoMessage resultInfo = (InfoMessage) message;
+        assertTrue(resultInfo.getData() != null);
+
+        NetworkInfoData resultData = (NetworkInfoData) resultInfo.getData();
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());

@@ -40,8 +40,8 @@ public final class TopologyChecker {
      * @return whether the link matches the definition
      */
     public static boolean isIslEqual(TopologyDefinition.Isl linkDef, IslInfoData islInfoData) {
-        PathNode discoveredSrcNode = islInfoData.getPath().get(0);
-        PathNode discoveredDstNode = islInfoData.getPath().get(1);
+        PathNode discoveredSrcNode = islInfoData.getSource();
+        PathNode discoveredDstNode = islInfoData.getDestination();
         return discoveredSrcNode.getSwitchId().equals(linkDef.getSrcSwitch().getDpId())
                 && discoveredSrcNode.getPortNo() == linkDef.getSrcPort()
                 && discoveredDstNode.getSwitchId().equals(linkDef.getDstSwitch().getDpId())

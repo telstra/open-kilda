@@ -1,7 +1,6 @@
 [kafka]
 consumer.group=python-tpe-tl-consumer
 flow.topic=kilda.flow
-cache.topic=kilda.topo.cache
 speaker.topic=kilda.speaker
 speaker.flow.topic=kilda.speaker.flow
 topo.eng.topic=kilda.topo.eng

@@ -41,14 +41,14 @@ import org.openkilda.atdd.staging.helpers.FlowSet;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
@@ -183,8 +183,8 @@ public class FlowCrudSteps implements En {
             assertThat(format("A flow creation request for '%s' failed.", flow.getId()), result,
                     reflectEquals(flow, "lastUpdated", "status"));
             assertThat(format("Flow status for '%s' was not set to '%s'. Received status: '%s'",
-                    flow.getId(), FlowState.ALLOCATED, result.getStatus()),
-                    result.getStatus(), equalTo(FlowState.ALLOCATED.toString()));
+                    flow.getId(), FlowState.IN_PROGRESS, result.getStatus()),
+                    result.getStatus(), equalTo(FlowState.IN_PROGRESS.toString()));
             assertThat(format("The flow '%s' is missing lastUpdated field", flow.getId()), result,
                     hasProperty("lastUpdated", notNullValue()));
         }
@@ -192,8 +192,8 @@ public class FlowCrudSteps implements En {
 
     @Then("^each flow is created and stored in TopologyEngine$")
     public void eachFlowIsCreatedAndStoredInTopologyEngine() {
-        List<Flow> expextedFlows = flows.stream()
-                .map(flow -> new Flow(flow.getId(),
+        List<FlowDto> expextedFlows = flows.stream()
+                .map(flow -> new FlowDto(flow.getId(),
                         flow.getMaximumBandwidth(),
                         flow.isIgnoreBandwidth(), flow.isPeriodicPings(), 0,
                         flow.getDescription(), null,
@@ -206,8 +206,8 @@ public class FlowCrudSteps implements En {
                         0, 0, null, null))
                 .collect(toList());
 
-        for (Flow expectedFlow : expextedFlows) {
-            FlowPair<Flow, Flow> flowPair = Failsafe.with(retryPolicy()
+        for (FlowDto expectedFlow : expextedFlows) {
+            FlowPairDto<FlowDto, FlowDto> flowPair = Failsafe.with(retryPolicy()
                     .retryWhen(null))
                     .get(() -> db.getFlow(expectedFlow.getFlowId()));
 
@@ -360,7 +360,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow has meters installed with (\\d+) max bandwidth$")
     public void eachFlowHasMetersInstalledWithBandwidth(long bandwidth) {
         for (FlowPayload flow : flows) {
-            FlowPair<Flow, Flow> flowPair = db.getFlow(flow.getId());
+            FlowPairDto<FlowDto, FlowDto> flowPair = db.getFlow(flow.getId());
 
             try {
                 MetersEntriesMap forwardSwitchMeters = floodlightService
@@ -387,7 +387,7 @@ public class FlowCrudSteps implements En {
     public void noExcessiveMetersInstalledOnActiveSwitches() {
         ListValuedMap<SwitchId, Integer> switchMeters = new ArrayListValuedHashMap<>();
         for (FlowPayload flow : flows) {
-            FlowPair<Flow, Flow> flowPair = db.getFlow(flow.getId());
+            FlowPairDto<FlowDto, FlowDto> flowPair = db.getFlow(flow.getId());
             if (flowPair != null) {
                 switchMeters.put(flowPair.getLeft().getSourceSwitch(), flowPair.getLeft().getMeterId());
                 switchMeters.put(flowPair.getRight().getSourceSwitch(), flowPair.getRight().getMeterId());
@@ -444,7 +444,7 @@ public class FlowCrudSteps implements En {
     @And("^each flow can not be read from TopologyEngine$")
     public void eachFlowCanNotBeReadFromTopologyEngine() {
         for (FlowPayload flow : flows) {
-            FlowPair<Flow, Flow> result = Failsafe.with(retryPolicy()
+            FlowPairDto<FlowDto, FlowDto> result = Failsafe.with(retryPolicy()
                     .abortWhen(null)
                     .retryIf(Objects::nonNull))
                     .get(() -> db.getFlow(flow.getId()));
@@ -538,8 +538,8 @@ public class FlowCrudSteps implements En {
             PathNodePayload from = flowPath.get(i - 1);
             PathNodePayload to = flowPath.get(i);
             IslInfoData isl = allLinks.stream().filter(link ->
-                    link.getPath().get(0).getSwitchId().equals(from.getSwitchId())
-                            && link.getPath().get(1).getSwitchId().equals(to.getSwitchId()))
+                    link.getSource().getSwitchId().equals(from.getSwitchId())
+                            && link.getDestination().getSwitchId().equals(to.getSwitchId()))
                     .findFirst().get();
             minBw = Math.min(isl.getAvailableBandwidth(), minBw);
             minSpeed = Math.min(isl.getSpeed(), minSpeed);
@@ -563,7 +563,7 @@ public class FlowCrudSteps implements En {
     @Then("^response flow has bandwidth equal to '(.*)'$")
     public void responseFlowHasBandwidth(String bwAlias) {
         long expectedBw = topologyUnderTest.getAliasedObject(bwAlias);
-        assertThat((long) flowResponse.getMaximumBandwidth(), equalTo(expectedBw));
+        assertThat(flowResponse.getMaximumBandwidth(), equalTo(expectedBw));
     }
 
     @Then("^response flow has bandwidth equal to (\\d+)$")

@@ -16,7 +16,7 @@
 package org.openkilda.floodlight;
 
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaProducerProxy;
@@ -66,8 +66,8 @@ public class KafkaChannel implements IFloodlightModule {
     }
 
     @Override
-    public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
+    public void init(FloodlightModuleContext moduleContext) {
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(moduleContext, this);
         config = provider.getConfiguration(KafkaChannelConfig.class);
         topics = provider.getConfiguration(KafkaTopicsConfig.class);
     }

@@ -22,7 +22,7 @@ import org.openkilda.floodlight.model.PingData;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -58,7 +58,7 @@ public class PingRequestCommand extends PingCommand {
     }
 
     @Override
-    public Command call() throws Exception {
+    public Command call() {
         try {
             checkDestination();
             send(checkSource());

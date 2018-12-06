@@ -20,7 +20,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasItems;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -32,12 +31,12 @@ import static org.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
@@ -98,7 +97,7 @@ public class FlowCrudBasicRunTest {
     @When("^flow (.*) creation request with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) is failed$")
     public void failedFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                    final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                                   final int destinationVlan, final int bandwidth) throws Exception {
+                                   final int destinationVlan, final int bandwidth) {
         flowPayload = new FlowPayload(FlowUtils.getFlowName(flowId),
                 new FlowEndpointPayload(new SwitchId(sourceSwitch), sourcePort, sourceVlan),
                 new FlowEndpointPayload(new SwitchId(destinationSwitch), destinationPort, destinationVlan),
@@ -113,21 +112,18 @@ public class FlowCrudBasicRunTest {
     public void checkFlowCreation(final String flowId, final String sourceSwitch, final int sourcePort,
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                   final int destinationVlan, final long bandwidth) throws Exception {
-        Flow expectedFlow =
-                new Flow(FlowUtils.getFlowName(flowId), bandwidth, false, false, 0, flowId, null,
+        FlowDto expectedFlow =
+                new FlowDto(FlowUtils.getFlowName(flowId), bandwidth, false, false, 0, flowId, null,
                         new SwitchId(sourceSwitch), new SwitchId(destinationSwitch), sourcePort, destinationPort,
                         sourceVlan, destinationVlan, 0, 0, null, null);
 
-        List<Flow> flows = validateFlowStored(expectedFlow);
-
-        assertFalse(flows.isEmpty());
-        assertTrue(flows.contains(expectedFlow));
+        assertTrue(validateFlowStored(expectedFlow));
     }
 
     @Then("^flow (.*) with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) could be read$")
     public void checkFlowRead(final String flowId, final String sourceSwitch, final int sourcePort,
                               final int sourceVlan, final String destinationSwitch, final int destinationPort,
-                              final int destinationVlan, final int bandwidth) throws Exception {
+                              final int destinationVlan, final int bandwidth) {
         FlowPayload flow = FlowUtils.getFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(flow);
 
@@ -165,7 +161,7 @@ public class FlowCrudBasicRunTest {
                                   final int sourceVlan, final String destinationSwitch, final int destinationPort,
                                   final int destinationVlan, final int bandwidth) throws Exception {
         int unknownFlowCount = -1; // use -1 to communicate "I don't know what it should be")
-        final int expectedFlowCount = getFlowCount(unknownFlowCount) - 2;
+        final int expectedFlowCount = getFlowCount(unknownFlowCount) - 1;
 
         FlowPayload response = FlowUtils.deleteFlow(FlowUtils.getFlowName(flowId));
         assertNotNull(response);
@@ -212,6 +208,8 @@ public class FlowCrudBasicRunTest {
 
         List<String> discrepancies = flowValidationResults.stream()
                 .flatMap(item -> item.getDiscrepancies().stream())
+                //TODO: We have to skip discrepancies in meters because don't install them in Mininet.
+                .filter(item -> !item.getField().equals("meterId"))
                 .map(PathDiscrepancyDto::getRule)
                 .collect(Collectors.toList());
 
@@ -227,21 +225,21 @@ public class FlowCrudBasicRunTest {
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are installed$")
     public void checkRulesInstall(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                   final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                  final int bandwidth) throws Throwable {
+                                  final int bandwidth) {
         // TODO: implement
     }
 
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are updated with (\\d+)$")
     public void checkRulesUpdate(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                  final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                 final int bandwidth, final int newBandwidth) throws Throwable {
+                                 final int bandwidth, final int newBandwidth) {
         // TODO: implement
     }
 
     @Then("^rules with (.*) (\\d+) (\\d+) and (.*) (\\d+) (\\d+) and (\\d+) are deleted$")
     public void checkRulesDeletion(final String sourceSwitch, final int sourcePort, final int sourceVlan,
                                    final String destinationSwitch, final int destinationPort, final int destinationVlan,
-                                   final int bandwidth) throws Throwable {
+                                   final int bandwidth) {
         // TODO: implement
     }
 
@@ -398,8 +396,8 @@ public class FlowCrudBasicRunTest {
 
     @Then("^flows count is (\\d+)$")
     public void checkFlowCount(int expectedFlowsCount) throws Exception {
-        int actualFlowCount = getFlowCount(expectedFlowsCount * 2);
-        assertEquals(expectedFlowsCount * 2, actualFlowCount);
+        int actualFlowCount = getFlowCount(expectedFlowsCount);
+        assertEquals(expectedFlowsCount, actualFlowCount);
     }
 
     @When("^flow (.*) push request for (.*) is successful$")
@@ -416,7 +414,7 @@ public class FlowCrudBasicRunTest {
         BatchResults result = FlowUtils.pushFlow(flowInfoData, true);
         assertNotNull(result);
         assertEquals(0, result.getFailures());
-        assertEquals(2, result.getSuccesses()); // 2 separate requests into TE and Flow Topology
+        assertEquals(1, result.getSuccesses());
     }
 
     /**
@@ -426,27 +424,29 @@ public class FlowCrudBasicRunTest {
      *      understanding where the request is at, and what an appropriate time to wait is.
      *      One Option is to look at Kafka queues and filter for what we are looking for.
      */
-    private List<Flow> validateFlowStored(Flow expectedFlow) throws Exception {
-        List<Flow> flows = FlowUtils.dumpFlows();
-        flows.forEach(this::resetImmaterialFields);
+    private boolean validateFlowStored(FlowDto expectedFlow) throws Exception {
+        List<FlowPayload> flows = FlowUtils.getFlowDump().stream()
+                .filter(flow -> flow.getId().equals(expectedFlow.getFlowId()))
+                .collect(Collectors.toList());
 
-        if (!flows.contains(expectedFlow) || flows.size() % 2 != 0) {
+        if (flows.size() != 1) {
             TimeUnit.SECONDS.sleep(2);
-            flows = FlowUtils.dumpFlows();
-            flows.forEach(this::resetImmaterialFields);
+            flows = FlowUtils.getFlowDump().stream()
+                    .filter(flow -> flow.getId().equals(expectedFlow.getFlowId()))
+                    .collect(Collectors.toList());
         }
 
-        return flows;
+        return flows.size() == 1;
     }
 
     /**
-     * Return the count, based on dumpFlows().
+     * Return the count, based on getFlowDump().
      *
      * @param expectedFlowsCount -1 if unknown.
      * @return the count, based on dumpFlows().
      */
     private int getFlowCount(int expectedFlowsCount) throws Exception {
-        List<Flow> flows = FlowUtils.dumpFlows();
+        List<FlowPayload> flows = FlowUtils.getFlowDump();
 
         // pass in -1 if the count is unknown
         if (expectedFlowsCount >= 0) {
@@ -458,7 +458,7 @@ public class FlowCrudBasicRunTest {
                     break;
                 }
                 TimeUnit.SECONDS.sleep(2);
-                flows = FlowUtils.dumpFlows();
+                flows = FlowUtils.getFlowDump();
             }
             if (expectedFlowsCount != flows.size()) {
                 System.out.println(format("\n=====> FLOW COUNT doesn't match, flows: %s",
@@ -466,14 +466,5 @@ public class FlowCrudBasicRunTest {
             }
         }
         return flows.size();
-    }
-
-    private void resetImmaterialFields(Flow flow) {
-        flow.setTransitVlan(0);
-        flow.setMeterId(0);
-        flow.setCookie(0);
-        flow.setLastUpdated(null);
-        flow.setFlowPath(null);
-        flow.setState(null);
     }
 }
