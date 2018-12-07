@@ -22,7 +22,6 @@ import org.openkilda.messaging.nbtopology.request.GetFlowsForLinkRequest;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
@@ -56,7 +55,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws AbstractException {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws IslNotFoundException {
         List<? extends InfoData> result = null;
         if (request instanceof GetFlowsForLinkRequest) {
             result = processGetFlowsForLinkRequest((GetFlowsForLinkRequest) request);

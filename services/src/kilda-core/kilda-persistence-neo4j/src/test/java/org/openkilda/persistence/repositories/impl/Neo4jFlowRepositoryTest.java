@@ -458,14 +458,14 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchA)
                 .destSwitch(switchB)
-                .cookie(0x4000000000000001L)
+                .cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 1L)
                 .build();
 
         Flow reverseFlow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchB)
                 .destSwitch(switchA)
-                .cookie(0x2000000000000001L)
+                .cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 1L)
                 .build();
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
@@ -479,7 +479,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .build();
         flowSegmentRepository.createOrUpdate(segment);
 
-        Collection<FlowPair> foundFlowPair = flowRepository.findAllFlowPairsForIsl(switchA.getSwitchId(), 1,
+        Collection<FlowPair> foundFlowPair = flowRepository.findAllFlowPairsWithSegment(switchA.getSwitchId(), 1,
                                                                                    switchB.getSwitchId(), 100);
         assertThat(foundFlowPair, Matchers.hasSize(1));
         assertThat(foundFlowPair.iterator().next().getForward(), Matchers.equalTo(forwardFlow));

@@ -23,6 +23,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForLinkRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
@@ -170,8 +171,8 @@ public class LinkServiceImpl implements LinkService {
                                                                 SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get all flows for a particular link request processing");
-        GetFlowsForLinkRequest data = new GetFlowsForLinkRequest(new NetworkEndpointMask(srcSwitch, srcPort),
-                new NetworkEndpointMask(dstSwitch, dstPort), correlationId);
+        GetFlowsForLinkRequest data = new GetFlowsForLinkRequest(new NetworkEndpoint(srcSwitch, srcPort),
+                new NetworkEndpoint(dstSwitch, dstPort), correlationId);
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)

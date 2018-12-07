@@ -53,10 +53,9 @@ public class FlowOperationsService {
             throws IslNotFoundException {
 
         if (Optional.empty().equals(islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort))) {
-            throw new IslNotFoundException(String.format("There is no ISL between %s-%d and %s-%d.",
-                    srcSwitchId, srcPort, dstSwitchId, dstPort));
+            throw new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort);
         }
 
-        return flowRepository.findAllFlowPairsForIsl(srcSwitchId, srcPort, dstSwitchId, dstPort);
+        return flowRepository.findAllFlowPairsWithSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
     }
 }

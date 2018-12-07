@@ -182,8 +182,8 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public Collection<FlowPair> findAllFlowPairsForIsl(SwitchId srcSwitchId, int srcPort,
-                                                       SwitchId dstSwitchId, int dstPort) {
+    public Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
+                                                            SwitchId dstSwitchId, int dstPort) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "src_switch", srcSwitchId,
                 "src_port", srcPort,

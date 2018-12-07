@@ -15,7 +15,7 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
-import org.openkilda.messaging.model.NetworkEndpointMask;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -27,16 +27,16 @@ import lombok.Getter;
 public class GetFlowsForLinkRequest extends FlowsBaseRequest {
 
     @JsonProperty("source")
-    private NetworkEndpointMask source;
+    private NetworkEndpoint source;
 
     @JsonProperty("destination")
-    private NetworkEndpointMask destination;
+    private NetworkEndpoint destination;
 
     @JsonProperty("correlation_id")
     protected String correlationId;
 
-    public GetFlowsForLinkRequest(@JsonProperty("source") NetworkEndpointMask source,
-                                  @JsonProperty("destination") NetworkEndpointMask destination,
+    public GetFlowsForLinkRequest(@JsonProperty("source") NetworkEndpoint source,
+                                  @JsonProperty("destination") NetworkEndpoint destination,
                                   @JsonProperty("correlation_id") String correlationId) {
         this.source = source;
         this.destination = destination;

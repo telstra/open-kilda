@@ -44,5 +44,6 @@ public interface FlowRepository extends Repository<Flow> {
 
     void updateStatus(String flowId, FlowStatus status);
 
-    Collection<FlowPair> findAllFlowPairsForIsl(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
+    Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
+                                                     SwitchId dstSwitchId, int dstPort);
 }

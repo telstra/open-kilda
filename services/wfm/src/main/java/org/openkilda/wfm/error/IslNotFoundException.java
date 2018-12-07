@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.error;
 
+import org.openkilda.model.SwitchId;
+
 public class IslNotFoundException extends AbstractException {
-    public IslNotFoundException(String s) {
-        super(s);
+    public IslNotFoundException(SwitchId srcSwitchId, Integer srcPort, SwitchId dstSwitchId, Integer dstPort) {
+        super(String.format("There is no ISL between %s-%d and %s-%d.", srcSwitchId, srcPort, dstSwitchId, dstPort));
     }
 }

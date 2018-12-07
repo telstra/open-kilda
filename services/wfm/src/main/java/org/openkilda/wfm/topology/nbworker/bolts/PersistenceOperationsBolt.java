@@ -23,7 +23,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
@@ -64,10 +63,8 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
                     e.getMessage(),
                     "ISL does not exist.");
             getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
-        } catch (AbstractException e) {
-            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         }
     }
 
-    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws AbstractException;
+    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws IslNotFoundException;
 }
