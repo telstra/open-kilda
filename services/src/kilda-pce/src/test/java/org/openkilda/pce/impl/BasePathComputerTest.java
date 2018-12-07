@@ -23,12 +23,11 @@ public abstract class BasePathComputerTest {
     protected static final int ALLOWED_DEPTH = 35;
     protected static final int DEFAULT_COST = 700;
 
-    protected void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
-                           int cost, int latency) {
+    protected Isl buildLink(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int cost, int latency) {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
 
-        Isl isl = Isl.builder()
+        return Isl.builder()
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .srcPort(srcPort)
@@ -36,6 +35,11 @@ public abstract class BasePathComputerTest {
                 .cost(cost)
                 .latency(latency)
                 .build();
+    }
+
+    protected void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
+                           int cost, int latency) {
+        Isl isl = buildLink(srcDpid, dstDpid, srcPort, dstPort, cost, latency);
         network.addLink(isl);
     }
 }

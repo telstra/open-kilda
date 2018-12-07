@@ -18,8 +18,8 @@ package org.openkilda.pce.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.impl.model.Edge;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
@@ -49,14 +49,14 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         network.removeSelfLoops().reduceByCost();
 
         BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(2, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_4);
-        List<Isl> fpath = pairPath.getLeft();
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_4);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(2));
-        assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(2));
-        assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch());
     }
 
     @Test
@@ -65,14 +65,14 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         network.removeSelfLoops().reduceByCost();
 
         BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(2, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_4, SWITCH_ID_1);
-        List<Isl> fpath = pairPath.getLeft();
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_4, SWITCH_ID_1);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(2));
-        assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(2));
-        assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch());
     }
 
     @Test
@@ -81,14 +81,14 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         network.removeSelfLoops().reduceByCost();
 
         BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(4, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_4);
-        List<Isl> fpath = pairPath.getLeft();
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_4);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(4));
-        assertEquals(SWITCH_ID_5, fpath.get(3).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_5, fpath.get(3).getSrcSwitch());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(4));
-        assertEquals(SWITCH_ID_5, rpath.get(0).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_5, rpath.get(0).getDestSwitch());
     }
 
     @Test
@@ -97,14 +97,14 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         network.removeSelfLoops().reduceByCost();
 
         BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(3, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
-        List<Isl> fpath = pairPath.getLeft();
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(3));
-        assertEquals(SWITCH_ID_3, fpath.get(2).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_3, fpath.get(2).getSrcSwitch());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(3));
-        assertEquals(SWITCH_ID_3, rpath.get(0).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_3, rpath.get(0).getDestSwitch());
     }
 
     private AvailableNetwork buildLongAndExpensivePathsNetwork() {
@@ -133,16 +133,16 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         network.removeSelfLoops().reduceByCost();
 
         BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_E, SWITCH_ID_F);
-        List<Isl> fpath = pairPath.getLeft();
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_E, SWITCH_ID_F);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(2));
-        assertEquals(SWITCH_ID_E, fpath.get(0).getSrcSwitch().getSwitchId());
-        assertEquals(SWITCH_ID_F, fpath.get(1).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_E, fpath.get(0).getSrcSwitch());
+        assertEquals(SWITCH_ID_F, fpath.get(1).getDestSwitch());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(2));
-        assertEquals(SWITCH_ID_F, rpath.get(0).getSrcSwitch().getSwitchId());
-        assertEquals(SWITCH_ID_E, rpath.get(1).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_F, rpath.get(0).getSrcSwitch());
+        assertEquals(SWITCH_ID_E, rpath.get(1).getDestSwitch());
     }
 
     @Test(expected = SwitchNotFoundException.class)
@@ -161,7 +161,7 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         AvailableNetwork network = buildEqualCostsNetwork();
         network.removeSelfLoops().reduceByCost();
         BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
+        Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
 
         List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(paths.getLeft());
         List<SwitchId> backwardSwitchPath = Lists.reverse(getSwitchIdsFlowPath(paths.getRight()));
@@ -192,7 +192,7 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         AvailableNetwork network = buildExpensiveNetwork();
         network.removeSelfLoops().reduceByCost();
         BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
+        Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
 
         List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(paths.getLeft());
         List<SwitchId> reverseSwitchPath = Lists.reverse(getSwitchIdsFlowPath(paths.getRight()));
@@ -216,12 +216,12 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         return network;
     }
 
-    private List<SwitchId> getSwitchIdsFlowPath(List<Isl> path) {
+    private List<SwitchId> getSwitchIdsFlowPath(List<Edge> path) {
         List<SwitchId> switchIds = new ArrayList<>();
         if (!path.isEmpty()) {
-            switchIds.add(path.get(0).getSrcSwitch().getSwitchId());
-            for (Isl isl : path) {
-                switchIds.add(isl.getDestSwitch().getSwitchId());
+            switchIds.add(path.get(0).getSrcSwitch());
+            for (Edge edge : path) {
+                switchIds.add(edge.getDestSwitch());
             }
         }
         return switchIds;

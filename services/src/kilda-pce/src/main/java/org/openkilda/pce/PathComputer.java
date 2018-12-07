@@ -16,6 +16,7 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
+import org.openkilda.pce.impl.AvailableNetwork;
 
 /**
  * Represents computation operations on flow path.
@@ -41,6 +42,28 @@ public interface PathComputer {
      *                                    to be a potential new path.
      * @return {@link PathPair} instances
      */
-    PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
-            throws UnroutableFlowException, RecoverableException;
+    default PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
+            throws UnroutableFlowException, RecoverableException {
+        return getPathFromAvailableNetwork(buildNetwork(flow, reuseAllocatedFlowBandwidth), flow);
+    }
+
+    /**
+     * Build {@code AvailableNetwork} graph view.
+     *
+     * @param flow              the {@link Flow} instance.
+     * @param allowSameFlowPath whether to allow the existing flow path to be a potential new path or not.
+     * @return {@link AvailableNetwork} instance
+     * @throws RecoverableException if exception occurs in DAO layer
+     */
+    AvailableNetwork buildNetwork(Flow flow, boolean allowSameFlowPath) throws RecoverableException;
+
+    /**
+     * Gets path between source and destination switch for specified flow.
+     *
+     * @param network           the {@link AvailableNetwork} graph view.
+     * @param flow              the {@link Flow} instance.
+     * @return {@link PathPair} instances
+     * @throws UnroutableFlowException if path not found.
+     */
+    PathPair getPathFromAvailableNetwork(AvailableNetwork network, Flow flow) throws UnroutableFlowException;
 }

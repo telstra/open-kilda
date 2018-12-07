@@ -24,6 +24,7 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.RecoverableException;
 import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.impl.model.Edge;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 
@@ -51,37 +52,7 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
-            throws UnroutableFlowException, RecoverableException {
-
-        if (flow.getSrcSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
-            log.info("No path computation for one-switch flow");
-            return PathPair.builder()
-                    .forward(new FlowPath(0, Collections.emptyList(), null))
-                    .reverse(new FlowPath(0, Collections.emptyList(), null))
-                    .build();
-        }
-
-        AvailableNetwork network = buildNetwork(flow, reuseAllocatedFlowBandwidth);
-
-        Pair<List<Isl>, List<Isl>> biPath;
-        try {
-            biPath = pathFinder.findPathInNetwork(network, flow.getSrcSwitch().getSwitchId(),
-                    flow.getDestSwitch().getSwitchId());
-        } catch (SwitchNotFoundException e) {
-            throw new UnroutableFlowException("Can't find a switch for the flow path : " + e.getMessage(),
-                    e, flow.getFlowId());
-        }
-        if (biPath.getLeft().isEmpty() || biPath.getRight().isEmpty()) {
-            throw new UnroutableFlowException(format("Can't find a path from %s to %s (bandwidth=%d%s)",
-                    flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth(),
-                    flow.isIgnoreBandwidth() ? " ignored" : ""), flow.getFlowId());
-        }
-
-        return convertToPathPair(biPath);
-    }
-
-    private AvailableNetwork buildNetwork(Flow flow, boolean reuseAllocatedFlowBandwidth) throws RecoverableException {
+    public AvailableNetwork buildNetwork(Flow flow, boolean reuseAllocatedFlowBandwidth) throws RecoverableException {
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.
@@ -103,40 +74,67 @@ public class InMemoryPathComputer implements PathComputer {
         return network;
     }
 
-    private PathPair convertToPathPair(Pair<List<Isl>, List<Isl>> biPath) {
+    @Override
+    public PathPair getPathFromAvailableNetwork(AvailableNetwork network, Flow flow) throws UnroutableFlowException {
+        if (flow.getSrcSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
+            log.info("No path computation for one-switch flow");
+            return PathPair.builder()
+                    .forward(new FlowPath(0, Collections.emptyList(), null))
+                    .reverse(new FlowPath(0, Collections.emptyList(), null))
+                    .build();
+        }
+
+        Pair<List<Edge>, List<Edge>> biPath;
+        try {
+            biPath = pathFinder.findPathInNetwork(network, flow.getSrcSwitch().getSwitchId(),
+                    flow.getDestSwitch().getSwitchId());
+        } catch (SwitchNotFoundException e) {
+            throw new UnroutableFlowException("Can't find a switch for the flow path : " + e.getMessage(),
+                    e, flow.getFlowId());
+        }
+        if (biPath.getLeft().isEmpty() || biPath.getRight().isEmpty()) {
+            throw new UnroutableFlowException(format("Can't find a path from %s to %s (bandwidth=%d%s)",
+                    flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth(),
+                    flow.isIgnoreBandwidth() ? " ignored" : ""), flow.getFlowId());
+        }
+
+        return convertToPathPair(biPath);
+    }
+
+    private PathPair convertToPathPair(Pair<List<Edge>, List<Edge>> biPath) {
         long latency = 0L;
         List<FlowPath.Node> forwardNodes = new LinkedList<>();
         List<FlowPath.Node> reverseNodes = new LinkedList<>();
 
         int seqId = 0;
-        List<Isl> forwardIsl = biPath.getLeft();
-        for (Isl isl : forwardIsl) {
-            latency += isl.getLatency();
+        List<Edge> forwardEdges = biPath.getLeft();
+        for (Edge edge : forwardEdges) {
+            latency += edge.getLatency();
             forwardNodes.add(FlowPath.Node.builder()
-                    .switchId(isl.getSrcSwitch().getSwitchId())
-                    .portNo(isl.getSrcPort())
+                    .switchId(edge.getSrcSwitch())
+                    .portNo(edge.getSrcPort())
                     .seqId(seqId++)
-                    .segmentLatency((long) isl.getLatency())
+                    .segmentLatency((long) edge.getLatency())
                     .build());
             forwardNodes.add(FlowPath.Node.builder()
-                    .switchId(isl.getDestSwitch().getSwitchId())
-                    .portNo(isl.getDestPort())
+                    .switchId(edge.getDestSwitch())
+                    .portNo(edge.getDestPort())
                     .seqId(seqId++)
                     .build());
         }
 
         seqId = 0;
-        List<Isl> reverseIsl = biPath.getRight();
-        for (Isl isl : reverseIsl) {
+        List<Edge> reverseEdges = biPath.getRight();
+        for (Edge edge : reverseEdges) {
             reverseNodes.add(FlowPath.Node.builder()
-                    .switchId(isl.getSrcSwitch().getSwitchId())
-                    .portNo(isl.getSrcPort())
+                    .switchId(edge.getSrcSwitch())
+                    .portNo(edge.getSrcPort())
                     .seqId(seqId++)
-                    .segmentLatency((long) isl.getLatency())
+                    .segmentLatency((long) edge.getLatency())
                     .build());
             reverseNodes.add(FlowPath.Node.builder()
-                    .switchId(isl.getDestSwitch().getSwitchId())
-                    .portNo(isl.getDestPort())
+                    .switchId(edge.getDestSwitch())
+                    .portNo(edge.getDestPort())
                     .seqId(seqId++)
                     .build());
         }

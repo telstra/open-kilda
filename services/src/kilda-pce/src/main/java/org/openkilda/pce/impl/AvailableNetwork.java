@@ -15,24 +15,24 @@
 
 package org.openkilda.pce.impl;
 
-import static java.util.Comparator.comparingInt;
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.minBy;
-import static java.util.stream.Collectors.toList;
+import static java.util.Objects.requireNonNull;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.impl.model.Edge;
+import org.openkilda.pce.impl.model.Node;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Semantically, this class represents an "available network". That means everything in it is available for path
@@ -42,67 +42,45 @@ import java.util.Optional;
 @ToString
 public class AvailableNetwork {
     @VisibleForTesting
-    final Map<SwitchId, Switch> switches = new HashMap<>();
+    final Map<SwitchId, Node> switches = new HashMap<>();
 
-    public Switch getSwitch(SwitchId dpid) {
-        return switches.get(dpid);
+    /**
+     * Returns a graph switch node by switchId.
+     *
+     * @return the switch node.
+     */
+    public Node getSwitchNode(SwitchId switchId) {
+        return switches.get(switchId);
     }
 
     /**
-     * Creates switches (if they are not created yet) and ISL between them.
+     * Creates nodes (if they are not created yet) and edge between them.
      */
     void addLink(Isl isl) {
-        Switch srcSwitch = getOrInitSwitch(isl.getSrcSwitch());
-        Switch dstSwitch = getOrInitSwitch(isl.getDestSwitch());
+        Node srcSwitch = getOrInitSwitch(requireNonNull(isl.getSrcSwitch()));
+        Edge edge = Edge.fromIsl(isl);
 
-        // Remove if the same already exists.
-        if (srcSwitch.getOutgoingLinks().removeIf(link -> link.getDestSwitch().equals(isl.getDestSwitch())
-                && link.getDestPort() == isl.getDestPort())) {
+        if (srcSwitch.getOutboundEdges().contains(edge)) {
             log.warn("Duplicate ISL has been added to AvailableNetwork: {}", isl);
+            return;
         }
 
-        if (dstSwitch.getIncomingLinks().removeIf(link -> link.getSrcSwitch().equals(isl.getSrcSwitch())
-                && link.getSrcPort() == isl.getSrcPort())) {
-            log.warn("Duplicate ISL has been added to AvailableNetwork: {}", isl);
-        }
-
-        // Clone the object to unbind the src and dest fields in Isl entity.
-        Isl copiedIsl = isl.toBuilder().srcSwitch(srcSwitch).destSwitch(dstSwitch).build();
-        srcSwitch.getOutgoingLinks().add(copiedIsl);
-        dstSwitch.getIncomingLinks().add(copiedIsl);
+        srcSwitch.addEdge(edge);
     }
 
-    private Switch getOrInitSwitch(Switch sw) {
-        // Clone the object to unbind the relations' fields in Switch entity.
-        return switches.computeIfAbsent(sw.getSwitchId(),
-                swId -> sw.toBuilder().outgoingLinks(new ArrayList<>()).incomingLinks(new ArrayList<>()).build());
+    private Node getOrInitSwitch(Switch sw) {
+        return switches.computeIfAbsent(sw.getSwitchId(), Node::new);
     }
 
     /**
      * Call this function to reduce the network to single (directed) links between src and dst switches.
      */
     public void reduceByCost() {
-        for (Switch sw : switches.values()) {
-            if (sw.getOutgoingLinks().isEmpty()) {
+        for (Node sw : switches.values()) {
+            if (sw.getOutboundEdges().isEmpty()) {
                 log.warn("Switch {} has NO OUTBOUND isls", sw.getSwitchId());
             } else {
-                List<Isl> reducedOutgoingLinks = sw.getOutgoingLinks().stream()
-                        .collect(groupingBy(Isl::getDestSwitch, minBy(comparingInt(Isl::getCost)))).values().stream()
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .collect(toList());
-                sw.setOutgoingLinks(reducedOutgoingLinks);
-            }
-
-            if (sw.getIncomingLinks().isEmpty()) {
-                log.warn("Switch {} has NO INBOUND isls", sw.getSwitchId());
-            } else {
-                List<Isl> reducedIncomingLinks = sw.getIncomingLinks().stream()
-                        .collect(groupingBy(Isl::getSrcSwitch, minBy(comparingInt(Isl::getCost)))).values().stream()
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .collect(toList());
-                sw.setIncomingLinks(reducedIncomingLinks);
+                sw.reduceByCost();
             }
         }
     }
@@ -113,10 +91,51 @@ public class AvailableNetwork {
      * @return this
      */
     AvailableNetwork removeSelfLoops() {
-        for (Switch sw : switches.values()) {
-            sw.getOutgoingLinks().removeIf(link -> link.getSrcSwitch().equals(link.getDestSwitch()));
-            sw.getIncomingLinks().removeIf(link -> link.getSrcSwitch().equals(link.getDestSwitch()));
+        for (Node sw : switches.values()) {
+            sw.getOutboundEdges().removeIf(link -> link.getSrcSwitch().equals(link.getDestSwitch()));
         }
         return this;
+    }
+
+    /**
+     * Excludes switches from network, that are used by {@param isls} ISLs.
+     *
+     * @param isls ISLs to exclude used switches
+     * @return this
+     */
+    public AvailableNetwork excludeSwitches(Collection<Isl> isls) {
+        Set<SwitchId> toExclude = new HashSet<>();
+        for (Isl isl : isls) {
+            toExclude.add(isl.getSrcSwitch().getSwitchId());
+            toExclude.add(isl.getDestSwitch().getSwitchId());
+        }
+
+        for (Entry<SwitchId, Node> entry: switches.entrySet()) {
+            entry.getValue().filterEdges(
+                    edge -> !toExclude.contains(edge.getSrcSwitch()) && !toExclude.contains(edge.getDestSwitch()));
+        }
+        return this;
+    }
+
+    /**
+     * Excludes {@param isls} ISLs from network.
+     *
+     * @param isls ISLs to exclude
+     * @return this
+     */
+    public AvailableNetwork excludeIsls(Collection<Isl> isls) {
+        for (Isl isl : isls) {
+            excludeEdge(Edge.fromIsl(isl));
+        }
+        return this;
+    }
+
+    private void excludeEdge(Edge edge) {
+        SwitchId src = edge.getSrcSwitch();
+        if (switches.containsKey(src)) {
+            switches.get(src)
+                    .getOutboundEdges()
+                    .removeIf(link -> link.equals(edge));
+        }
     }
 }

@@ -19,9 +19,9 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
 
-import org.openkilda.model.Isl;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.impl.model.Edge;
+import org.openkilda.pce.impl.model.Node;
 
 import com.google.common.collect.Lists;
 import lombok.Value;
@@ -29,7 +29,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -70,23 +69,23 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     }
 
     @Override
-    public Pair<List<Isl>, List<Isl>> findPathInNetwork(AvailableNetwork network,
+    public Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
                                                         SwitchId startSwitchId, SwitchId endSwitchId)
             throws SwitchNotFoundException {
-        Switch start = network.getSwitch(startSwitchId);
+        Node start = network.getSwitchNode(startSwitchId);
         if (start == null) {
             throw new SwitchNotFoundException(
                     format("SOURCE node doesn't exist. It isn't in the AVAILABLE network: %s", startSwitchId));
         }
 
-        Switch end = network.getSwitch(endSwitchId);
+        Node end = network.getSwitchNode(endSwitchId);
         if (end == null) {
             throw new SwitchNotFoundException(
                     format("DESTINATION node doesn't exist. It isn't in the AVAILABLE network: %s", endSwitchId));
         }
 
-        List<Isl> forwardPath = getPath(start, end, Integer.MAX_VALUE);
-        List<Isl> reversePath = getPath(end, start, Integer.MAX_VALUE, forwardPath);
+        List<Edge> forwardPath = getPath(network, startSwitchId, endSwitchId, Integer.MAX_VALUE);
+        List<Edge> reversePath = getPath(network, endSwitchId, startSwitchId, Integer.MAX_VALUE, forwardPath);
         return Pair.of(forwardPath, reversePath);
     }
 
@@ -96,20 +95,21 @@ public class BestCostAndShortestPathFinder implements PathFinder {
      *
      * @return An ordered list that represents the path from start to end, or an empty list
      */
-    private List<Isl> getPath(Switch start, Switch end, long maximumCost) {
+    private List<Edge> getPath(AvailableNetwork network,
+                              SwitchId startSwitchId, SwitchId endSwitchId, long maximumCost) {
         long bestCost = maximumCost; // Need to be long because it stores sum of ints.
         SearchNode bestPath = null;
 
         Deque<SearchNode> toVisit = new LinkedList<>(); // working list
-        Map<Switch, SearchNode> visited = new HashMap<>();
+        Map<SwitchId, SearchNode> visited = new HashMap<>();
 
-        toVisit.add(new SearchNode(start, allowedDepth, 0, emptyList()));
+        toVisit.add(new SearchNode(startSwitchId, allowedDepth, 0, emptyList()));
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
 
             // Determine if this node is the destination node.
-            if (current.dstSw.equals(end)) {
+            if (current.dstSw.equals(endSwitchId)) {
                 // We found the destination
                 if (current.parentCost < bestCost) {
                     // We found a best path. If we don't get here, then the entire graph will be
@@ -139,12 +139,12 @@ public class BestCostAndShortestPathFinder implements PathFinder {
 
             // At this stage .. haven't found END, haven't gone too deep, and we are not over cost.
             // So, add the outbound isls.
-            current.dstSw.getOutgoingLinks().stream()
-                    .sorted(Comparator.comparing(isl -> isl.getDestSwitch().getSwitchId()))
-                    .forEach(isl -> toVisit.add(current.addNode(isl)));
+            for (Edge edge : network.getSwitchNode(current.dstSw).getOutboundEdges()) {
+                toVisit.add(current.addNode(edge));
+            }
         }
 
-        return (bestPath != null) ? bestPath.parentPath : new LinkedList<>();
+        return (bestPath != null) ? bestPath.parentPath : emptyList();
     }
 
     /**
@@ -158,16 +158,17 @@ public class BestCostAndShortestPathFinder implements PathFinder {
      * @param hint The path to use as a starting point. It can be in reverse order (we'll reverse it)
      * @return An ordered list that represents the path from start to end.
      */
-    private List<Isl> getPath(Switch start, Switch end, long maximumCost, List<Isl> hint) {
+    private List<Edge> getPath(AvailableNetwork network,
+                               SwitchId startSwitchId, SwitchId endSwitchId, long maximumCost, List<Edge> hint) {
         long hintedReverseCost = maximumCost; // Need to be long because it stores sum of ints.
         SearchNode hintedReversePath = null;
 
         // First, see if the first and last nodes match our start and end, or whether the list
         // needs to be reversed
         if (hint != null && !hint.isEmpty()) {
-            Switch from = hint.get(0).getSrcSwitch();
-            Switch to = hint.get(hint.size() - 1).getDestSwitch();
-            if (start.equals(to) && end.equals(from)) {
+            SwitchId from = hint.get(0).getSrcSwitch();
+            SwitchId to = hint.get(hint.size() - 1).getDestSwitch();
+            if (startSwitchId.equals(to) && endSwitchId.equals(from)) {
                 log.trace("getPath w/ Hint: Reversing the path from {}->{} to {}->{}", from, to, to, from);
                 // looks like hint wasn't reversed .. revers the order, and swap src/dst.
                 hint = swapSrcDst(Lists.reverse(hint));
@@ -177,10 +178,10 @@ public class BestCostAndShortestPathFinder implements PathFinder {
             }
 
             // If the start/end equals from/to, then confirm the path and see if we can use it.
-            if (start.equals(from) && end.equals(to)) {
+            if (startSwitchId.equals(from) && endSwitchId.equals(to)) {
                 log.trace("getPath w/ Hint: hint matches start/ed {}->{}", from, to);
                 // need to validate that the path exists .. and if so .. set bestCost and bestPath
-                SearchNode best = confirmIsls(hint);
+                SearchNode best = confirmIsls(network, hint);
                 if (best != null) {
                     log.debug("getPath w/ Hint: the hint path EXISTS for {}->{}", from, to);
                     hintedReverseCost = best.parentCost;
@@ -192,59 +193,46 @@ public class BestCostAndShortestPathFinder implements PathFinder {
             }
         }
 
-        List<Isl> altReversePath = getPath(start, end, hintedReverseCost);
-        return altReversePath.isEmpty() && hintedReversePath != null ? hintedReversePath.parentPath : altReversePath;
+        List<Edge> altReservePath = getPath(network, startSwitchId, endSwitchId, hintedReverseCost);
+        return altReservePath.isEmpty() && hintedReversePath != null ? hintedReversePath.parentPath : altReservePath;
     }
 
     /**
-     * This helper function is used with getPath(hint) and will swap the src and dst of each isl in the list.
+     * This helper function is used with getPath(hint) and will swap the src and dst of each edge in the list.
      */
-    private List<Isl> swapSrcDst(List<Isl> originalIsls) {
-        // this swaps the src and dst fields
-        return originalIsls.stream()
-                .map(original -> {
-                    Isl swapped = new Isl();
-                    swapped.setSrcSwitch(original.getDestSwitch());
-                    swapped.setDestSwitch(original.getSrcSwitch());
-                    swapped.setSrcPort(original.getDestPort());
-                    swapped.setDestPort(original.getSrcPort());
-                    swapped.setCost(original.getCost());
-                    swapped.setLatency(original.getLatency());
-                    return swapped;
-                })
+    private List<Edge> swapSrcDst(List<Edge> originalEdges) {
+        return originalEdges.stream()
+                .map(Edge::swap)
                 .collect(Collectors.toList());
     }
 
     /**
      * This helper function is used with getPath(hint) to confirm the hint path exists.
      */
-    private SearchNode confirmIsls(List<Isl> srcIsls) {
+    private SearchNode confirmIsls(AvailableNetwork network, List<Edge> srcEdges) {
         long totalCost = 0;
-        LinkedList<Isl> confirmedIsls = new LinkedList<>();
+        LinkedList<Edge> confirmedEdges = new LinkedList<>();
         boolean validPath = true;
 
-        for (Isl i : srcIsls) {
-            Switch srcSwitch = i.getSrcSwitch();
+        for (Edge srcEdge : srcEdges) {
+            Node srcSwitch = network.getSwitchNode(srcEdge.getSrcSwitch());
             if (srcSwitch == null) {
                 throw new IllegalStateException(
-                        format("confirmIsls: Found a null switch during getPath(hint): %s", i.getSrcSwitch()));
+                        format("confirmIsls: Found a null switch during getPath(hint): %s", srcEdge.getSrcSwitch()));
             }
 
-            Set<Isl> pathsToDst = srcSwitch.getOutgoingLinks().stream()
-                    .filter(link -> link.getDestSwitch().equals(i.getDestSwitch()))
+            Set<Edge> pathsToDst = srcSwitch.getOutboundEdges().stream()
+                    .filter(edge -> edge.getDestSwitch().equals(srcEdge.getDestSwitch()))
                     .collect(toSet());
             if (pathsToDst.isEmpty()) {
-                log.debug("No ISLS from {} to {}", i.getSrcSwitch(), i.getDestSwitch());
+                log.debug("No ISLS from {} to {}", srcEdge.getSrcSwitch(), srcEdge.getDestSwitch());
             }
 
             boolean foundThisOne = false;
-            for (Isl orig : pathsToDst) {
-                if (i.getSrcSwitch().getSwitchId().equals(orig.getSrcSwitch().getSwitchId())
-                        && i.getSrcPort() == orig.getSrcPort()
-                        && i.getDestSwitch().getSwitchId().equals(orig.getDestSwitch().getSwitchId())
-                        && i.getDestPort() == orig.getDestPort()) {
+            for (Edge orig : pathsToDst) {
+                if (srcEdge.equals(orig)) {
                     foundThisOne = true;
-                    confirmedIsls.add(orig);
+                    confirmedEdges.add(orig);
                     totalCost += getCost(orig);
                     break; // stop looking, we found the isl
                 }
@@ -257,15 +245,15 @@ public class BestCostAndShortestPathFinder implements PathFinder {
 
         if (validPath) {
             return new SearchNode(
-                    confirmedIsls.peekLast().getDestSwitch(),
-                    this.allowedDepth - confirmedIsls.size(),
+                    confirmedEdges.peekLast().getDestSwitch(),
+                    this.allowedDepth - confirmedEdges.size(),
                     totalCost,
-                    confirmedIsls);
+                    confirmedEdges);
         }
         return null;
     }
 
-    private int getCost(Isl isl) {
+    private int getCost(Edge isl) {
         if (isl.getCost() == 0) {
             log.warn("Found ZERO COST ISL: {}", isl);
             return defaultLinkCost;
@@ -280,21 +268,21 @@ public class BestCostAndShortestPathFinder implements PathFinder {
      */
     @Value
     private class SearchNode {
-        final Switch dstSw;
+        final SwitchId dstSw;
         final int allowedDepth;
         final long parentCost; // Need to be long because it stores sum of ints.
-        final List<Isl> parentPath;
+        final List<Edge> parentPath;
         // NB: We could consider tracking the child path as well .. to facilitate
         //     re-calc if we find a better parentPath.
 
-        SearchNode addNode(Isl nextIsl) {
-            List<Isl> newParentPath = new ArrayList<>(this.parentPath);
-            newParentPath.add(nextIsl);
+        SearchNode addNode(Edge nextEdge) {
+            List<Edge> newParentPath = new ArrayList<>(this.parentPath);
+            newParentPath.add(nextEdge);
 
             return new SearchNode(
-                    nextIsl.getDestSwitch(),
+                    nextEdge.getDestSwitch(),
                     allowedDepth - 1,
-                    parentCost + getCost(nextIsl),
+                    parentCost + getCost(nextEdge),
                     newParentPath);
         }
     }

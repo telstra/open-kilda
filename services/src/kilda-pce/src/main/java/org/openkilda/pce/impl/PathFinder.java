@@ -15,8 +15,8 @@
 
 package org.openkilda.pce.impl;
 
-import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.impl.model.Edge;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -31,7 +31,7 @@ public interface PathFinder {
      *
      * @return an ordered list that represents the path from start to end, or an empty list if no path found.
      */
-    Pair<List<Isl>, List<Isl>> findPathInNetwork(AvailableNetwork network,
-                                                 SwitchId startSwitchId, SwitchId endSwitchId)
+    Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
+                                                  SwitchId startSwitchId, SwitchId endSwitchId)
             throws SwitchNotFoundException;
 }
