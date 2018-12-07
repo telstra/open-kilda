@@ -34,7 +34,6 @@ RUN    wget -O - https://debian.neo4j.org/neotechnology.gpg.key | apt-key add - 
 WORKDIR /var/lib/neo4j
 
 COPY neo4j-config/neo4j.conf /etc/neo4j/neo4j.conf
-COPY neo4j-config/auth /var/lib/neo4j/data/dbms/auth
 COPY init/neo4j-queries.cql /app/neo4j-queries.cql
 COPY init/init.sh /app/init.sh
 
