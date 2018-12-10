@@ -65,6 +65,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.DumpRulesErrorData;
+import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
@@ -136,9 +137,11 @@ class RecordHandler implements Runnable {
         } catch (SwitchOperationException e) {
             logger.error("Unable to handle request {}: {}", message.getData().getClass().getName(), e.getMessage());
         } catch (FlowCommandException e) {
-            ErrorMessage error = new ErrorMessage(
-                    e.makeErrorResponse(),
-                    System.currentTimeMillis(), message.getCorrelationId(), replyDestination);
+            String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+            ErrorData errorData = new FlowCommandErrorData(e.getFlowId(), e.getCookie(), e.getTransactionId(),
+                    e.getErrorType(), errorMessage, e.getMessage());
+            ErrorMessage error = new ErrorMessage(errorData, System.currentTimeMillis(),
+                    message.getCorrelationId(), replyDestination);
             getKafkaProducer().sendMessageAndTrack(replyToTopic, error);
         } catch (Exception e) {
             logger.error("Unhandled exception", e);
@@ -240,7 +243,8 @@ class RecordHandler implements Runnable {
             message.setDestination(replyDestination);
             getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
         } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
+            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                    ErrorType.CREATION_FAILURE, e);
         }
     }
 
@@ -290,7 +294,8 @@ class RecordHandler implements Runnable {
             message.setDestination(replyDestination);
             getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
         } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
+            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                    ErrorType.CREATION_FAILURE, e);
         }
     }
 
@@ -327,7 +332,8 @@ class RecordHandler implements Runnable {
             message.setDestination(replyDestination);
             getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
         } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
+            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                    ErrorType.CREATION_FAILURE, e);
         }
     }
 
@@ -363,7 +369,8 @@ class RecordHandler implements Runnable {
             message.setDestination(replyDestination);
             getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
         } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), ErrorType.CREATION_FAILURE, e);
+            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                    ErrorType.CREATION_FAILURE, e);
         }
     }
 
@@ -421,7 +428,8 @@ class RecordHandler implements Runnable {
                         criteria, command.getId(), dpid);
             }
         } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), ErrorType.DELETION_FAILURE, e);
+            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                    ErrorType.DELETION_FAILURE, e);
         }
 
         // FIXME(surabujin): QUICK FIX - try to drop meterPool completely
@@ -597,7 +605,7 @@ class RecordHandler implements Runnable {
 
     }
 
-    private void doDumpRulesRequest(final CommandMessage message,  String replyToTopic, Destination replyDestination) {
+    private void doDumpRulesRequest(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         DumpRulesRequest request = (DumpRulesRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -651,8 +659,8 @@ class RecordHandler implements Runnable {
                 } else if (command instanceof InstallOneSwitchFlow) {
                     installOneSwitchFlow((InstallOneSwitchFlow) command);
                 } else {
-                    throw new FlowCommandException(command.getId(), ErrorType.REQUEST_INVALID,
-                            "Unsupported command for batch install.");
+                    throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                            ErrorType.REQUEST_INVALID, "Unsupported command for batch install.");
                 }
             } catch (SwitchOperationException e) {
                 logger.error("Error during flow installation", e);
@@ -674,7 +682,7 @@ class RecordHandler implements Runnable {
                     Set<PortStatusData> statuses = new HashSet<>();
                     for (OFPortDesc portDesc : switchManager.getPhysicalPorts(sw.getId())) {
                         statuses.add(new PortStatusData(portDesc.getPortNo().getPortNumber(),
-                                                    portDesc.isEnabled() ? PortStatus.UP : PortStatus.DOWN));
+                                portDesc.isEnabled() ? PortStatus.UP : PortStatus.DOWN));
                     }
 
                     SwitchPortStatusData response = SwitchPortStatusData.builder()
@@ -723,11 +731,11 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doConfigurePort(final CommandMessage message, final String replyToTopic, 
-            final Destination replyDestination) {
+    private void doConfigurePort(final CommandMessage message, final String replyToTopic,
+                                 final Destination replyDestination) {
         PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
-        
-        logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(), 
+
+        logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(),
                 request.getPortNumber());
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -745,7 +753,7 @@ class RecordHandler implements Runnable {
             producerService.sendMessageAndTrack(replyToTopic, infoMessage);
         } catch (SwitchOperationException e) {
             logger.error("Port configuration request failed. " + e.getMessage(), e);
-            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(), 
+            ErrorData errorData = new ErrorData(ErrorType.DATA_INVALID, e.getMessage(),
                     "Port configuration request failed");
             ErrorMessage error = new ErrorMessage(errorData,
                     System.currentTimeMillis(), message.getCorrelationId(), replyDestination);

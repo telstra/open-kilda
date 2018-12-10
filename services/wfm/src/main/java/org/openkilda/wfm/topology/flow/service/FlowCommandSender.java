@@ -15,13 +15,22 @@
 
 package org.openkilda.wfm.topology.flow.service;
 
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
-
-import java.util.List;
+import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
 
 public interface FlowCommandSender {
-    void sendInstallRulesCommand(Flow flow, List<FlowSegment> segments);
+    /**
+     * Constructs and sends the install rule commands for the given flow pair.
+     */
+    void sendInstallRulesCommand(FlowPairWithSegments flowPair);
 
-    void sendRemoveRuleCommand(Flow flow, List<FlowSegment> segments);
+    /**
+     * Constructs and sends the update (or install + delete) rule commands for the given flow pair.
+     */
+    void sendUpdateRulesCommand(UpdatedFlowPairWithSegments flowPair);
+
+    /**
+     * Constructs and sends the remove rule commands for the given flow pair.
+     */
+    void sendRemoveRulesCommand(FlowPairWithSegments flowPair);
 }

@@ -180,30 +180,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldUpdateFlowStatus() {
-        Flow flow = Flow.builder()
-                .flowId(TEST_FLOW_ID)
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .status(FlowStatus.IN_PROGRESS)
-                .build();
-        flowRepository.createOrUpdate(flow);
-
-        flow = Flow.builder()
-                .flowId(TEST_FLOW_ID)
-                .srcSwitch(switchB)
-                .destSwitch(switchA)
-                .status(FlowStatus.IN_PROGRESS)
-                .build();
-        flowRepository.createOrUpdate(flow);
-
-        flowRepository.updateStatus(flow.getFlowId(), FlowStatus.UP);
-
-        flowRepository.findById(TEST_FLOW_ID)
-                .forEach(foundFlow -> assertEquals(FlowStatus.UP, foundFlow.getStatus()));
-    }
-
-    @Test
     public void shouldDeleteFoundFlow() {
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
@@ -480,7 +456,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         flowSegmentRepository.createOrUpdate(segment);
 
         Collection<FlowPair> foundFlowPair = flowRepository.findAllFlowPairsWithSegment(switchA.getSwitchId(), 1,
-                                                                                   switchB.getSwitchId(), 100);
+                switchB.getSwitchId(), 100);
         assertThat(foundFlowPair, Matchers.hasSize(1));
         assertThat(foundFlowPair.iterator().next().getForward(), Matchers.equalTo(forwardFlow));
         assertThat(foundFlowPair.iterator().next().getReverse(), Matchers.equalTo(reverseFlow));

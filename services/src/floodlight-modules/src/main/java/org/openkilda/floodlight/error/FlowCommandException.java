@@ -15,35 +15,50 @@
 
 package org.openkilda.floodlight.error;
 
-import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 
+import java.util.UUID;
+
+/**
+ * {@code FlowCommandException} indicates a processing failure for a flow command.
+ */
 public class FlowCommandException extends Exception {
     private final String flowId;
+    private final Long cookie;
+    private final UUID transactionId;
     private final ErrorType type;
 
-    public FlowCommandException(String flowId, ErrorType type, SwitchOperationException cause) {
+    public FlowCommandException(String flowId, Long cookie, UUID transactionId,
+                                ErrorType type, SwitchOperationException cause) {
         super(cause);
         this.flowId = flowId;
+        this.cookie = cookie;
+        this.transactionId = transactionId;
         this.type = type;
     }
 
-    public FlowCommandException(String flowId, ErrorType type, String message) {
+    public FlowCommandException(String flowId, Long cookie, UUID transactionId,
+                                ErrorType type, String message) {
         super(message);
         this.flowId = flowId;
+        this.cookie = cookie;
+        this.transactionId = transactionId;
         this.type = type;
-    }
-
-    public ErrorData makeErrorResponse() {
-        String message = getCause() != null ? getCause().getMessage() : getMessage();
-        return new ErrorData(getType(), message, getFlowId());
     }
 
     public String getFlowId() {
         return flowId;
     }
 
-    public ErrorType getType() {
+    public Long getCookie() {
+        return cookie;
+    }
+
+    public UUID getTransactionId() {
+        return transactionId;
+    }
+
+    public ErrorType getErrorType() {
         return type;
     }
 }

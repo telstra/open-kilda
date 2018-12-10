@@ -35,6 +35,8 @@ import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
@@ -42,7 +44,6 @@ import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
@@ -110,10 +111,9 @@ public class FlowService extends BaseFlowService {
         });
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
-        sender.sendInstallRulesCommand(result.flowPair.getForward(), result.forwardSegments);
-        sender.sendInstallRulesCommand(result.flowPair.getReverse(), result.reverseSegments);
+        sender.sendInstallRulesCommand(result);
 
-        return result.flowPair;
+        return result.getFlowPair();
     }
 
     /**
@@ -150,8 +150,7 @@ public class FlowService extends BaseFlowService {
         });
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
-        sender.sendInstallRulesCommand(flowPair.getForward(), result.forwardSegments);
-        sender.sendInstallRulesCommand(flowPair.getReverse(), result.reverseSegments);
+        sender.sendInstallRulesCommand(result);
     }
 
     /**
@@ -184,10 +183,9 @@ public class FlowService extends BaseFlowService {
         }).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
-        sender.sendRemoveRuleCommand(result.flowPair.getForward(), result.forwardSegments);
-        sender.sendRemoveRuleCommand(result.flowPair.getReverse(), result.reverseSegments);
+        sender.sendRemoveRulesCommand(result);
 
-        return result.flowPair;
+        return result.getFlowPair();
     }
 
     /**
@@ -242,12 +240,9 @@ public class FlowService extends BaseFlowService {
         }).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
-        sender.sendRemoveRuleCommand(result.oldFlowPair.getForward(), result.oldForwardSegments);
-        sender.sendRemoveRuleCommand(result.oldFlowPair.getReverse(), result.oldReverseSegments);
-        sender.sendInstallRulesCommand(result.flowPair.getForward(), result.forwardSegments);
-        sender.sendInstallRulesCommand(result.flowPair.getReverse(), result.reverseSegments);
+        sender.sendUpdateRulesCommand(result);
 
-        return result.flowPair;
+        return result.getFlowPair();
     }
 
     /**
@@ -306,15 +301,12 @@ public class FlowService extends BaseFlowService {
                     .reverseSegments(newReverseSegments).build();
         });
 
-        log.warn("Rerouted flow with new path: {}", result.flowPair);
+        log.warn("Rerouted flow with new path: {}", result.getFlowPair());
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
-        sender.sendRemoveRuleCommand(currentFlow.getForward(), result.oldForwardSegments);
-        sender.sendRemoveRuleCommand(currentFlow.getReverse(), result.oldReverseSegments);
-        sender.sendInstallRulesCommand(result.flowPair.getForward(), result.forwardSegments);
-        sender.sendInstallRulesCommand(result.flowPair.getReverse(), result.reverseSegments);
+        sender.sendUpdateRulesCommand(result);
 
-        return new ReroutedFlow(currentFlow, result.flowPair);
+        return new ReroutedFlow(currentFlow, result.getFlowPair());
     }
 
     private FlowPair buildFlowPair(Flow flow, PathPair pathPair) {
@@ -406,29 +398,5 @@ public class FlowService extends BaseFlowService {
     public static class ReroutedFlow {
         FlowPair oldFlow;
         FlowPair newFlow;
-    }
-
-    @AllArgsConstructor
-    private static class FlowPairWithSegments {
-        FlowPair flowPair;
-        List<FlowSegment> forwardSegments;
-        List<FlowSegment> reverseSegments;
-    }
-
-    private static class UpdatedFlowPairWithSegments extends FlowPairWithSegments {
-        FlowPair oldFlowPair;
-        List<FlowSegment> oldForwardSegments;
-        List<FlowSegment> oldReverseSegments;
-
-        @Builder
-        public UpdatedFlowPairWithSegments(FlowPair flowPair,
-                                           List<FlowSegment> forwardSegments, List<FlowSegment> reverseSegments,
-                                           FlowPair oldFlowPair,
-                                           List<FlowSegment> oldForwardSegments, List<FlowSegment> oldReverseSegments) {
-            super(flowPair, forwardSegments, reverseSegments);
-            this.oldFlowPair = oldFlowPair;
-            this.oldForwardSegments = oldForwardSegments;
-            this.oldReverseSegments = oldReverseSegments;
-        }
     }
 }
