@@ -83,9 +83,15 @@ public class FlowValidator {
 
 
         Optional<String> conflictedFlow = conflictsOnSource.stream()
-                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId())
-                        && (flow.getSrcVlan() == 0 || flow.getSrcVlan() == requestedFlow.getSrcVlan()
+                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> (flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
+                            && flow.getSrcPort() == requestedFlow.getSrcPort()
+                            && (flow.getSrcVlan() == requestedFlow.getSrcVlan() || flow.getSrcVlan() == 0
                                 || requestedFlow.getSrcVlan() == 0))
+                        || (flow.getDestSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
+                            && flow.getDestPort() == requestedFlow.getSrcPort()
+                            && (flow.getDestVlan() == requestedFlow.getSrcVlan() || flow.getDestVlan() == 0
+                                || requestedFlow.getSrcVlan() == 0)))
                 .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
@@ -105,9 +111,15 @@ public class FlowValidator {
 
 
         conflictedFlow = conflictsOnDest.stream()
-                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId())
-                        && (flow.getDestVlan() == 0 || flow.getDestVlan() == requestedFlow.getDestVlan()
-                        || requestedFlow.getDestVlan() == 0))
+                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> (flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getDestSwitch().getSwitchId())
+                            && flow.getSrcPort() == requestedFlow.getDestPort()
+                            && (flow.getSrcVlan() == requestedFlow.getDestVlan() || flow.getSrcVlan() == 0
+                                || requestedFlow.getDestVlan() == 0))
+                      || (flow.getDestSwitch().getSwitchId().equals(requestedFlow.getDestSwitch().getSwitchId())
+                            && flow.getDestPort() == requestedFlow.getDestPort()
+                            && (flow.getDestVlan() == requestedFlow.getDestVlan() || flow.getDestVlan() == 0
+                                || requestedFlow.getDestVlan() == 0)))
                 .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
