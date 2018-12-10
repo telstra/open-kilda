@@ -20,6 +20,8 @@ import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
@@ -171,8 +173,15 @@ public class LinkServiceImpl implements LinkService {
                                                                 SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get all flows for a particular link request processing");
-        GetFlowsForLinkRequest data = new GetFlowsForLinkRequest(new NetworkEndpoint(srcSwitch, srcPort),
-                new NetworkEndpoint(dstSwitch, dstPort), correlationId);
+        GetFlowsForLinkRequest data = null;
+        try {
+            data = new GetFlowsForLinkRequest(new NetworkEndpoint(srcSwitch, srcPort),
+                    new NetworkEndpoint(dstSwitch, dstPort), correlationId);
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create \"get flows for link\" request");
+        }
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
