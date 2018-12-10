@@ -1,11 +1,12 @@
 package org.openkilda.functionaltests.spec.logging
 
-import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.service.elastic.ElasticQueryBuilder
 import org.openkilda.testing.service.elastic.ElasticService
 import org.openkilda.testing.service.elastic.model.KildaTags
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -22,9 +23,9 @@ class CheckLoggingSpec extends BaseSpecification {
     def "Check Floodlight logging"() {
         when: "Retrieve floodlight logs for last 5 minutes"
         def result = elasticService.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT).
-                    setTimeRange(300).build())
+                setTimeRange(300).build())
 
-        assert result?.hits?.total > 0 : "No logs could be found for Floodlight"
+        assert result?.hits?.total > 0: "No logs could be found for Floodlight"
 
         then: "There should be discovery messages"
         result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMessage) }
@@ -46,20 +47,18 @@ class CheckLoggingSpec extends BaseSpecification {
         then: "Northbound, Storm and Topology Engine should log these actions within 1 minute"
         Wrappers.wait(timeout, 10) {
             def nbLogs = elasticService.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
-                         setTimeRange(timeout * 2).setLevel("ERROR").build())
+                    setTimeRange(timeout * 2).setLevel("ERROR").build())
             def stormLogs = elasticService.getLogs(new ElasticQueryBuilder().setTags(KildaTags.STORM_WORKER).
-                        setTimeRange(timeout * 2).setLevel("ERROR").build())
+                    setTimeRange(timeout * 2).setLevel("ERROR").build())
             def tpLogs = elasticService.getLogs(new ElasticQueryBuilder().setTags(KildaTags.TOPOLOGY_ENGINE).
-                        setTimeRange(timeout * 2).setLevel("INFO").build())
+                    setTimeRange(timeout * 2).setLevel("INFO").build())
 
-            assert nbLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowId) } :
+            assert nbLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowId) }:
                     "Northbound should generate an error message about not being able to find a flow"
-            assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowId) } :
+            assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowId) }:
                     "Storm should generate an error message about not being able to find a flow"
-            assert tpLogs?.hits?.hits?.any { hit -> hit.source.message.contains(switchId.toString()) } :
+            assert tpLogs?.hits?.hits?.any { hit -> hit.source.message.contains(switchId.toString()) }:
                     "Topology Engine should generate an info message in case of a switch rules validation event"
-
-            return true
         }
     }
 }

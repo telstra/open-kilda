@@ -55,15 +55,16 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
             }
         }
         northbound.toggleFeature(features)
-        northbound.deleteAllFlows()
 
         labService.getLab()
+
         //wait until topology is discovered
         Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.DISCOVERED
             }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
         }
+        //wait until switches are activated
         Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
             assert northbound.getAllSwitches().findAll {
                 it.state == SwitchChangeType.ACTIVATED
