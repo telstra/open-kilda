@@ -24,7 +24,7 @@ import lombok.Getter;
 @SuppressWarnings("squid:MaximumInheritanceDepth")
 @ReadRequest
 @Getter
-public class GetFlowsForLinkRequest extends FlowsBaseRequest {
+public class GetFlowsForIslRequest extends FlowsBaseRequest {
 
     @JsonProperty("source")
     private NetworkEndpoint source;
@@ -35,9 +35,9 @@ public class GetFlowsForLinkRequest extends FlowsBaseRequest {
     @JsonProperty("correlation_id")
     protected String correlationId;
 
-    public GetFlowsForLinkRequest(@JsonProperty("source") NetworkEndpoint source,
-                                  @JsonProperty("destination") NetworkEndpoint destination,
-                                  @JsonProperty("correlation_id") String correlationId) {
+    public GetFlowsForIslRequest(@JsonProperty("source") NetworkEndpoint source,
+                                 @JsonProperty("destination") NetworkEndpoint destination,
+                                 @JsonProperty("correlation_id") String correlationId) {
         this.source = source;
         this.destination = destination;
         this.correlationId = correlationId;

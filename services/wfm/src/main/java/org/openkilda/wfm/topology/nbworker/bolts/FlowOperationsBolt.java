@@ -18,13 +18,12 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.messaging.nbtopology.request.GetFlowsForLinkRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
-import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 
 import org.apache.storm.task.OutputCollector;
@@ -57,8 +56,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     @SuppressWarnings("unchecked")
     List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws IslNotFoundException {
         List<? extends InfoData> result = null;
-        if (request instanceof GetFlowsForLinkRequest) {
-            result = processGetFlowsForLinkRequest((GetFlowsForLinkRequest) request);
+        if (request instanceof GetFlowsForIslRequest) {
+            result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -66,7 +65,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         return (List<InfoData>) result;
     }
 
-    private List<FlowResponse> processGetFlowsForLinkRequest(GetFlowsForLinkRequest request)
+    private List<FlowResponse> processGetFlowsForLinkRequest(GetFlowsForIslRequest request)
             throws IslNotFoundException {
         SwitchId srcSwitch = request.getSource().getDatapath();
         Integer srcPort = request.getSource().getPortNumber();
@@ -82,8 +81,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
-        declarer.declareStream(StreamType.ERROR.toString(),
-                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

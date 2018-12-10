@@ -27,7 +27,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
-import org.openkilda.messaging.nbtopology.request.GetFlowsForLinkRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
@@ -173,9 +173,9 @@ public class LinkServiceImpl implements LinkService {
                                                                 SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get all flows for a particular link request processing");
-        GetFlowsForLinkRequest data = null;
+        GetFlowsForIslRequest data = null;
         try {
-            data = new GetFlowsForLinkRequest(new NetworkEndpoint(srcSwitch, srcPort),
+            data = new GetFlowsForIslRequest(new NetworkEndpoint(srcSwitch, srcPort),
                     new NetworkEndpoint(dstSwitch, dstPort), correlationId);
         } catch (IllegalArgumentException e) {
             logger.error("Can not parse arguments: {}", e.getMessage());

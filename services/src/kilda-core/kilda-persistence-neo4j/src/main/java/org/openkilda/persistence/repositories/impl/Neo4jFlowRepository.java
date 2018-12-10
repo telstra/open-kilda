@@ -195,7 +195,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 + "AND fc.src_port=$src_port  "
                 + "AND fc.dst_switch=$dst_switch "
                 + "AND fc.dst_port=$dst_port  "
-                + "OPTIONAL MATCH (src:switch)-[f:flow]->(dst:switch) "
+                + "MATCH (src:switch)-[f:flow]->(dst:switch) "
                 + "WHERE fc.flowid=f.flowid  "
                 + "RETURN src, f, dst", parameters);
 

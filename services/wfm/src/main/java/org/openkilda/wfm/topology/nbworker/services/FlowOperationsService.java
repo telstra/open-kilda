@@ -25,7 +25,6 @@ import org.openkilda.wfm.error.IslNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
-import java.util.Optional;
 
 @Slf4j
 public class FlowOperationsService {
@@ -52,7 +51,7 @@ public class FlowOperationsService {
                                                 SwitchId dstSwitchId, Integer dstPort)
             throws IslNotFoundException {
 
-        if (Optional.empty().equals(islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort))) {
+        if (!islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort).isPresent()) {
             throw new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort);
         }
 

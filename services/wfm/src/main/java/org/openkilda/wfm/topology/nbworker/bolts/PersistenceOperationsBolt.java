@@ -23,11 +23,14 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -50,7 +53,7 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         super.prepare(stormConf, context, collector);
     }
 
-    protected void handleInput(Tuple input) {
+    protected void handleInput(Tuple input) throws AbstractException {
         BaseRequest request = (BaseRequest) input.getValueByField("request");
         final String correlationId = input.getStringByField("correlationId");
         log.debug("Received operation request");
@@ -66,5 +69,11 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         }
     }
 
-    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws IslNotFoundException;
+    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws AbstractException;
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declareStream(StreamType.ERROR.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+    }
 }
