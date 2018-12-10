@@ -85,7 +85,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     public Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled() {
         Filter periodicPingsFilter = new Filter(PERIODIC_PINGS_PROPERTY_NAME, ComparisonOperator.EQUALS, true);
 
-        Collection<Flow> flows = getSession().loadAll(getEntityType(), periodicPingsFilter, DEPTH_LIST);
+        Collection<Flow> flows = getSession().loadAll(getEntityType(), periodicPingsFilter, DEPTH_LOAD_ENTITY);
         return buildFlowPairs(flows);
     }
 
