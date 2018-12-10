@@ -26,7 +26,8 @@ import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Required;
+import org.neo4j.ogm.annotation.Transient;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.io.Serializable;
@@ -37,8 +38,8 @@ import java.util.List;
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "incomingLinks", "outgoingLinks", "flows", "flowSegments"})
-@ToString(exclude = {"incomingLinks", "outgoingLinks", "flows", "flowSegments"})
+@EqualsAndHashCode(exclude = {"entityId", "incomingLinks", "outgoingLinks"})
+@ToString(exclude = {"incomingLinks", "outgoingLinks"})
 @NodeEntity(label = "switch")
 public class Switch implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -51,6 +52,7 @@ public class Switch implements Serializable {
 
     @Property(name = "name")
     @Convert(graphPropertyType = String.class)
+    @Required
     private SwitchId switchId;
 
     @Property(name = "state")
@@ -66,22 +68,21 @@ public class Switch implements Serializable {
 
     private String description;
 
-    @Relationship(type = "isl", direction = Relationship.INCOMING)
+    /**
+     * TODO(siakovenko): incomingLinks and outgoingLinks are marked as transient as Neo4j OGM handles load strategy
+     * "depth" improperly: when a relation entity is being loaded, OGM fetches ALL relations of start and end nodes
+     * of the requested relation. Even with the "depth" = 1.
+     */
+    @Transient
     private List<Isl> incomingLinks;
 
-    @Relationship(type = "isl", direction = Relationship.OUTGOING)
+    @Transient
     private List<Isl> outgoingLinks;
-
-    @Relationship(type = "flow", direction = Relationship.UNDIRECTED)
-    private List<Flow> flows;
-
-    @Relationship(type = "flow_segments", direction = Relationship.UNDIRECTED)
-    private List<Flow> flowSegments;
 
     @Builder(toBuilder = true)
     Switch(SwitchId switchId, SwitchStatus status, String address, String hostname, //NOSONAR
             String controller, String description,
-            List<Isl> incomingLinks, List<Isl> outgoingLinks, List<Flow> flows, List<Flow> flowSegments) {
+            List<Isl> incomingLinks, List<Isl> outgoingLinks) {
         this.switchId = switchId;
         this.status = status;
         this.address = address;
@@ -90,7 +91,5 @@ public class Switch implements Serializable {
         this.description = description;
         this.incomingLinks = incomingLinks;
         this.outgoingLinks = outgoingLinks;
-        this.flows = flows;
-        this.flowSegments = flowSegments;
     }
 }

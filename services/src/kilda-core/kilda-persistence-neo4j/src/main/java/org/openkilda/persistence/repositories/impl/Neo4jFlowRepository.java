@@ -64,7 +64,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     public Collection<Flow> findById(String flowId) {
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
 
-        return getSession().loadAll(getEntityType(), flowIdFilter, DEPTH_LIST);
+        return getSession().loadAll(getEntityType(), flowIdFilter, DEPTH_LOAD_ENTITY);
     }
 
     @Override
