@@ -15,11 +15,23 @@
 
 package org.openkilda.wfm.topology.flow.bolts;
 
+import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
+import static org.openkilda.messaging.Utils.MAPPER;
+
+import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.BaseFlow;
+import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.BatchFlowCommandsRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.TransactionBoltState;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
@@ -29,8 +41,9 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.transactions.FlowCommandRegistry;
 
-import org.apache.storm.shade.org.eclipse.jetty.util.ConcurrentHashSet;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -41,7 +54,9 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -49,133 +64,153 @@ import java.util.UUID;
 /**
  * Transaction Bolt. Tracks OpenFlow Speaker commands transactions.
  */
-public class TransactionBolt
-        extends BaseStatefulBolt<InMemoryKeyValueState<String, Set<UUID>>>
+public class TransactionBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, FlowCommandRegistry>>
         implements ICtrlBolt {
     private static final Logger logger = LoggerFactory.getLogger(TransactionBolt.class);
 
     private static final String STREAM_ID_CTRL = "ctrl";
+    private static final String FLOW_COMMAND_REGISTRY_STATE_KEY = "transactions";
+
+    private final Duration transactionExpirationTime;
 
     /**
-     * Transaction ids state.
-     * <p/>
-     * FIXME(surabujin) in memory status lead to disaster when system restarts during any transition
+     * FIXME(surabujin) in memory status lead to disaster when system restarts during any transition.
      */
-    private transient InMemoryKeyValueState<String, Set<UUID>> transactions;
+    private transient FlowCommandRegistry flowCommandRegistry;
 
     private transient TopologyContext context;
     private transient OutputCollector outputCollector;
 
+    public TransactionBolt(Duration transactionExpirationTime) {
+        this.transactionExpirationTime = requireNonNull(transactionExpirationTime);
+    }
+
     @Override
     public void execute(Tuple tuple) {
-
         if (CtrlAction.boltHandlerEntrance(this, tuple)) {
             return;
         }
 
-        logger.trace("States before: {}", transactions);
+        logger.debug("Request tuple={}", tuple);
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
-        StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
-        UUID transactionId = (UUID) tuple.getValueByField(Utils.TRANSACTION_ID);
-        SwitchId switchId = (SwitchId) tuple.getValueByField(FlowTopology.SWITCH_ID_FIELD);
-        String flowId = (String) tuple.getValueByField(Utils.FLOW_ID);
-
-        Set<UUID> flowTransactions;
-        Values values = null;
 
         try {
-            Object message = tuple.getValueByField(FlowTopology.MESSAGE_FIELD);
-            CommandMessage messageObj = (CommandMessage) Utils.MAPPER.readValue((String) message, Message.class);
-            logger.debug("Request tuple={}", tuple);
+            Message message = (Message) tuple.getValueByField(FlowTopology.MESSAGE_FIELD);
+            String flowId = tuple.getStringByField(Utils.FLOW_ID);
 
             switch (componentId) {
-
                 case CRUD_BOLT:
-                    logger.info("Transaction from CrudBolt: switch-id={}, {}={}, {}={}",
-                            switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
+                    if (message instanceof CommandMessage) {
+                        CommandData data = ((CommandMessage) message).getData();
+                        if (data instanceof BatchFlowCommandsRequest) {
+                            @SuppressWarnings("unchecked")
+                            List<List<BaseFlow>> commandGroups = ((BatchFlowCommandsRequest) data).getGroups().stream()
+                                    .map(group -> (List<BaseFlow>) group.getFlowCommands())
+                                    .collect(toList());
+                            logger.info("Transactions from CrudBolt: {}={}, {}",
+                                    Utils.FLOW_ID, flowId, commandGroups);
 
-                    flowTransactions = transactions.get(flowId);
+                            flowCommandRegistry.registerBatch(flowId, commandGroups);
 
-                    if (flowTransactions == null) {
-                        flowTransactions = new ConcurrentHashSet<>();
-                        transactions.put(flowId, flowTransactions);
+                            processCommands(flowId, tuple, message.getCorrelationId());
+                        } else {
+                            logger.error("Skip undefined command message: {}", message);
+                        }
+                    } else {
+                        logger.error("Skip undefined message: {}", message);
                     }
-
-                    if (!flowTransactions.add(transactionId)) {
-                        throw new RuntimeException(
-                                String.format("Transaction adding failure: id %s already exists",
-                                        transactionId.toString()));
-                    }
-
-                    values = new Values(message);
-                    outputCollector.emit(streamId.toString(), tuple, values);
                     break;
 
                 case SPEAKER_BOLT:
+                    if (message instanceof CommandMessage) {
+                        CommandData data = ((CommandMessage) message).getData();
+                        if (data instanceof BaseFlow) {
+                            UUID transactionId = ((BaseFlow) data).getTransactionId();
+                            logger.info("Successful transaction from Speaker: {}={}, {}={}",
+                                    Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
 
-                    logger.info("Transaction from Speaker: switch-id={}, {}={}, {}={}",
-                            switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
+                            flowCommandRegistry.removeCommand(flowId, transactionId);
 
-                    flowTransactions = transactions.get(flowId);
-                    if (flowTransactions != null) {
-                        if (flowTransactions.remove(transactionId)) {
-
-                            if (flowTransactions.isEmpty()) {
-                                //
-                                // All transactions have been removed .. the Flow
-                                // can now be considered "UP"
-                                //
-                                logger.info(
-                                        "Flow transaction completed for one switch "
-                                                + "(switch: {}, flow: {}, stream: {})", switchId, flowId, streamId);
-
-                                values = new Values(flowId, FlowState.UP,
-                                        new CommandContext(messageObj.getCorrelationId()));
-                                outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
-
-                                transactions.delete(flowId);
-                            } else {
-                                logger.debug("Transaction {} not empty yet, count = {}",
-                                        transactionId, flowTransactions.size()
-                                );
-                            }
+                            processCommands(flowId, tuple, message.getCorrelationId());
                         } else {
-                            logger.warn("Transaction removing: transaction id not found");
+                            logger.error("Skip undefined command message: {}", message);
                         }
+
+                    } else if (message instanceof ErrorMessage) {
+                        ErrorData data = ((ErrorMessage) message).getData();
+                        if (data instanceof FlowCommandErrorData) {
+                            FlowCommandErrorData errorData = (FlowCommandErrorData) data;
+                            UUID transactionId = errorData.getTransactionId();
+                            logger.error("Failed transaction from Speaker: {}={}, {}={}",
+                                    Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId);
+
+                            flowCommandRegistry.removeBatch(flowId, transactionId);
+
+                            Values values = new Values(flowId, FlowState.DOWN,
+                                    new CommandContext(message.getCorrelationId()));
+                            outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+                        } else {
+                            logger.error("Skip undefined error message: {}", message);
+                        }
+
                     } else {
-                        logger.warn("Transaction removing failure: switch id not found");
+                        logger.error("Skip undefined message: {}", message);
                     }
                     break;
 
                 default:
-                    logger.debug("Skip undefined message: message={}", tuple);
+                    logger.error("Unexpected component: {} in {}", componentId, tuple);
                     break;
             }
-        } catch (RuntimeException exception) {
-            logger.error("Set status {}: switch-id={}, {}={}, {}={}",
-                    FlowState.DOWN, switchId, Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, exception);
 
-            values = new Values(flowId, FlowState.DOWN, new CommandContext());
-            outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+            checkForExpiredCommands(tuple, message.getCorrelationId());
+
+        } catch (JsonProcessingException e) {
+            logger.error("Could not serialize message", e);
         } catch (Exception e) {
-            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+            logger.error("Unhandled exception", e);
         } finally {
             outputCollector.ack(tuple);
 
-            logger.debug("Transaction message ack: component={}, stream={}, tuple={}, values={}",
-                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
+            logger.debug("Transaction message ack: {}", tuple);
+        }
+    }
+
+    private void processCommands(String flowId, Tuple tuple, String correlationId) throws JsonProcessingException {
+        List<? extends BaseFlow> groupCommands = flowCommandRegistry.pollNextGroup(flowId);
+        for (BaseFlow command : groupCommands) {
+            CommandMessage message = new CommandMessage(command,
+                    System.currentTimeMillis(), correlationId, Destination.CONTROLLER);
+            StreamType streamId = command instanceof BaseInstallFlow ? StreamType.CREATE : StreamType.DELETE;
+            outputCollector.emit(streamId.toString(), tuple, new Values(MAPPER.writeValueAsString(message)));
         }
 
-        logger.trace("States after: {}", transactions);
+        if (!flowCommandRegistry.hasCommand(flowId)) {
+            logger.info("Flow transactions completed for flow: {}", flowId);
+            Values values = new Values(flowId, FlowState.UP, new CommandContext(correlationId));
+            outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+        }
+    }
+
+    private void checkForExpiredCommands(Tuple tuple, String correlationId) {
+        Set<String> affectedFlows = flowCommandRegistry.removeExpiredBatch(transactionExpirationTime);
+        affectedFlows.forEach(flowId -> {
+            Values values = new Values(flowId, FlowState.DOWN, new CommandContext(correlationId));
+            outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+        });
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<String, Set<UUID>> state) {
-        transactions = state;
+    public void initState(InMemoryKeyValueState<String, FlowCommandRegistry> state) {
+        flowCommandRegistry = state.get(FLOW_COMMAND_REGISTRY_STATE_KEY);
+        if (flowCommandRegistry == null) {
+            flowCommandRegistry = new FlowCommandRegistry();
+            state.put(FLOW_COMMAND_REGISTRY_STATE_KEY, flowCommandRegistry);
+        }
     }
 
     /**
@@ -184,6 +219,7 @@ public class TransactionBolt
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatusContext);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
@@ -201,7 +237,7 @@ public class TransactionBolt
     @Override
     public AbstractDumpState dumpState() {
         Map<String, Set<UUID>> dump = new HashMap<>();
-        for (Map.Entry<String, Set<UUID>> item : transactions) {
+        for (Map.Entry<String, Set<UUID>> item : flowCommandRegistry.getTransactions().entrySet()) {
             dump.put(item.getKey(), item.getValue());
         }
         return new TransactionBoltState(dump);

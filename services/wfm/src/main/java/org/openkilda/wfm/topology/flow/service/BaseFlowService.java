@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flow.service;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
@@ -51,12 +52,18 @@ public class BaseFlowService {
     }
 
     /**
-     * Updates the status of a flow.
+     * Updates the status of a flow(s).
      *
-     * @param flowId     the flow to update.
-     * @param flowStatus the status to set.
+     * @param flowId a flow ID used to locate the flow(s).
+     * @param status the status to set.
      */
-    public void updateFlowStatus(String flowId, FlowStatus flowStatus) {
-        flowRepository.updateStatus(flowId, flowStatus);
+    public void updateFlowStatus(String flowId, FlowStatus status) {
+        transactionManager.doInTransaction(() -> {
+            Collection<Flow> flows = flowRepository.findById(flowId);
+            flows.forEach(flow -> {
+                flow.setStatus(status);
+                flowRepository.createOrUpdate(flow);
+            });
+        });
     }
 }

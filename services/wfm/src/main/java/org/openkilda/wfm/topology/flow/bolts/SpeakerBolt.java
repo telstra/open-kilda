@@ -19,15 +19,12 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.flow.BaseFlow;
+import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.CommandContext;
+import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 
@@ -42,20 +39,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Speaker Bolt. Processes replies from OpenFlow Speaker service.
  */
 public class SpeakerBolt extends BaseRichBolt {
-    /**
-     * The logger.
-     */
     private static final Logger logger = LoggerFactory.getLogger(SpeakerBolt.class);
 
-    /**
-     * Output collector.
-     */
     private OutputCollector outputCollector;
 
     /**
@@ -63,83 +53,45 @@ public class SpeakerBolt extends BaseRichBolt {
      */
     @Override
     public void execute(Tuple tuple) {
+        logger.debug("Request tuple={}", tuple);
+
         String request = tuple.getString(0);
-        Values values = null;
 
         try {
-
             Message message = MAPPER.readValue(request, Message.class);
-            logger.debug("Request tuple={}", tuple);
-
             if (!Destination.WFM_TRANSACTION.equals(message.getDestination())) {
                 return;
             }
 
             if (message instanceof CommandMessage) {
-
                 CommandData data = ((CommandMessage) message).getData();
-
-                if (data instanceof BaseInstallFlow) {
-                    UUID transactionId = ((BaseInstallFlow) data).getTransactionId();
-                    SwitchId switchId = ((BaseInstallFlow) data).getSwitchId();
-                    String flowId = ((BaseInstallFlow) data).getId();
-
-                    logger.debug("Flow install message: {}={}, switch-id={}, {}={}, {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
-                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
-
-                    values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
-                    // FIXME(surabujin): looks like TE ignore this messages
-                    outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
-
-                } else if (data instanceof RemoveFlow) {
-
-                    UUID transactionId = ((RemoveFlow) data).getTransactionId();
-                    SwitchId switchId = ((RemoveFlow) data).getSwitchId();
-                    String flowId = ((RemoveFlow) data).getId();
-
-                    logger.debug("Flow remove message: {}={}, switch-id={}, {}={}, {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), switchId,
-                            Utils.FLOW_ID, flowId, Utils.TRANSACTION_ID, transactionId, request);
-
-                    values = new Values(MAPPER.writeValueAsString(message), switchId, flowId, transactionId);
-                    outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
-
+                if (data instanceof BaseFlow) {
+                    logger.debug("Successful install/remove flow message: {}", message);
+                    outputCollector.emit(StreamType.STATUS.toString(), tuple,
+                            new Values(message, ((BaseFlow) data).getId()));
                 } else {
-                    logger.debug("Skip undefined command message: {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                    logger.error("Skip undefined command message: {}", message);
                 }
             } else if (message instanceof ErrorMessage) {
-                String flowId = ((ErrorMessage) message).getData().getErrorDescription();
-                FlowState status = FlowState.DOWN;
-
-                // TODO: Should add debug message if receiving ErrorMessage.
-                if (flowId != null) {
-                    logger.error("Flow error message: {}={}, {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), Utils.FLOW_ID, flowId, request);
-
-                    values = new Values(flowId, status, new CommandContext(message.getCorrelationId()));
-                    outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+                ErrorData data = ((ErrorMessage) message).getData();
+                if (data instanceof FlowCommandErrorData) {
+                    logger.error("Flow error message: {}", message);
+                    outputCollector.emit(StreamType.STATUS.toString(), tuple,
+                            new Values(message, ((FlowCommandErrorData) data).getFlowId()));
                 } else {
-                    logger.debug("Skip error message without flow-id: {}={}, message={}",
-                            Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                    logger.error("Skip undefined error message: {}", message);
                 }
-
             } else {
-                // TODO: should this be a warn or error? Probably, after refactored / specific
-                // topics
-                logger.debug("Skip undefined message: {}={}, message={}",
-                        Utils.CORRELATION_ID, message.getCorrelationId(), request);
+                logger.error("Skip undefined message: {}", message);
             }
-        } catch (IOException exception) {
-            logger.error("\n\nCould not deserialize message={}", request, exception);
+        } catch (IOException e) {
+            logger.error("Could not deserialize message: {}", request, e);
         } catch (Exception e) {
-            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+            logger.error("Unhandled exception", e);
         } finally {
             outputCollector.ack(tuple);
 
-            logger.debug("Speaker message ack: component={}, stream={}, tuple={}, values={}",
-                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
+            logger.debug("Speaker message ack: {}", tuple);
         }
     }
 
@@ -148,11 +100,7 @@ public class SpeakerBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(
-                StreamType.CREATE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(
-                StreamType.DELETE.toString(), FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId);
-        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsFlowIdStatusContext);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
     }
 
     /**

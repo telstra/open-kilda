@@ -16,16 +16,17 @@
 package org.openkilda.wfm.topology.flow.bolts;
 
 import static java.lang.String.format;
-import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.BatchFlowCommandsRequest;
+import org.openkilda.messaging.command.flow.FlowCommandGroup;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
@@ -68,6 +69,8 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
 import org.openkilda.wfm.topology.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.service.FlowCommandSender;
@@ -79,9 +82,7 @@ import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -93,6 +94,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -157,14 +159,9 @@ public class CrudBolt
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(
-                StreamType.CREATE.toString(),
-                FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId
-        );
-        outputFieldsDeclarer.declareStream(
-                StreamType.DELETE.toString(),
-                FlowTopology.fieldsMessageSwitchIdFlowIdTransactionId
-        );
+        outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
@@ -190,10 +187,11 @@ public class CrudBolt
      */
     @Override
     public void execute(Tuple tuple) {
-
         if (CtrlAction.boltHandlerEntrance(this, tuple)) {
             return;
         }
+
+        logger.debug("Request tuple={}", tuple);
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         // FIXME(surabujin): do not use any "default" correlation id
@@ -203,8 +201,6 @@ public class CrudBolt
 
         boolean isRecoverable = false;
         try {
-            logger.debug("Request tuple={}", tuple);
-
             switch (componentId) {
                 case SPLITTER_BOLT:
                     Message msg = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
@@ -244,15 +240,15 @@ public class CrudBolt
                         case DUMP:
                             handleDumpRequest(cmsg, tuple);
                             break;
-                        default:
 
-                            logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
+                        default:
+                            logger.error("Unexpected stream: {} in {}", streamId, tuple);
                             break;
                     }
                     break;
 
                 default:
-                    logger.debug("Unexpected component: {}", componentId);
+                    logger.error("Unexpected component: {} in {}", componentId, tuple);
                     break;
             }
             //} catch (RecoverableException e) {
@@ -272,11 +268,9 @@ public class CrudBolt
             outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
 
         } catch (Exception e) {
-            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
-
+            logger.error("Unhandled exception", e);
         } finally {
-            logger.debug("Command message ack: component={}, stream={}, tuple={}",
-                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple);
+            logger.debug("Command message ack: {}", tuple);
 
             if (isRecoverable) {
                 outputCollector.fail(tuple);
@@ -309,11 +303,11 @@ public class CrudBolt
             flow.setStatus(flowStatus);
 
             flowService.saveFlow(flow,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple) {
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE) {
                         @Override
-                        public void sendInstallRulesCommand(Flow flow, List<FlowSegment> segments) {
+                        public void sendInstallRulesCommand(FlowPairWithSegments flowWithSegments) {
                             if (fid.getOperation() == FlowOperation.PUSH_PROPAGATE) {
-                                super.sendInstallRulesCommand(flow, segments);
+                                super.sendInstallRulesCommand(flowWithSegments);
                             }
                         }
                     });
@@ -342,11 +336,11 @@ public class CrudBolt
             FlowInfoData fid = (FlowInfoData) message.getData();
 
             FlowPair deletedFlow = flowService.deleteFlow(flowId,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple) {
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.DELETE) {
                         @Override
-                        public void sendRemoveRuleCommand(Flow flow, List<FlowSegment> segments) {
+                        public void sendRemoveRulesCommand(FlowPairWithSegments flowWithSegments) {
                             if (fid.getOperation() == FlowOperation.UNPUSH_PROPAGATE) {
-                                super.sendRemoveRuleCommand(flow, segments);
+                                super.sendRemoveRulesCommand(flowWithSegments);
                             }
                         }
                     });
@@ -371,7 +365,7 @@ public class CrudBolt
 
         try {
             FlowPair deletedFlow = flowService.deleteFlow(flowId,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple));
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.DELETE));
 
             logger.info("Deleted the flow: {}", deletedFlow);
 
@@ -394,7 +388,7 @@ public class CrudBolt
             Flow flow = FlowMapper.INSTANCE.map(((FlowCreateRequest) message.getData()).getPayload());
 
             FlowPair createdFlow = flowService.createFlow(flow,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple));
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
 
@@ -426,10 +420,10 @@ public class CrudBolt
 
         try {
             ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(),
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple));
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             if (reroutedFlow.getNewFlow() != null) {
-                logger.warn("Rerouted flow with new path: {}", reroutedFlow);
+                logger.warn("Rerouted flow: {}", reroutedFlow);
             } else {
                 // There's no new path found, but the current flow may still be active.
                 logger.warn("Reroute {} is unsuccessful: can't find new path.", flowId);
@@ -466,7 +460,7 @@ public class CrudBolt
             Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
 
             FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple));
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);
 
@@ -597,52 +591,97 @@ public class CrudBolt
     class CrudFlowCommandSender implements FlowCommandSender {
         private final String correlationId;
         private final Tuple tuple;
+        private final StreamType stream;
 
-        CrudFlowCommandSender(String correlationId, Tuple tuple) {
+        CrudFlowCommandSender(String correlationId, Tuple tuple, StreamType stream) {
             this.correlationId = correlationId;
             this.tuple = tuple;
+            this.stream = stream;
         }
 
         @Override
-        public void sendInstallRulesCommand(Flow flow, List<FlowSegment> segments) {
-            List<BaseInstallFlow> rules = commandFactory.createInstallRulesForFlow(flow, segments);
-            List<Values> messages = new ArrayList<>(rules.size());
-            // Reverse as ingress rule must be created the last.
-            for (BaseInstallFlow rule : Lists.reverse(rules)) {
-                CommandMessage message = new CommandMessage(rule, System.currentTimeMillis(), correlationId,
-                        Destination.CONTROLLER);
-                try {
-                    messages.add(new Values(MAPPER.writeValueAsString(message), rule.getSwitchId(), flow.getFlowId(),
-                            rule.getTransactionId()));
-                } catch (JsonProcessingException ex) {
-                    throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                            ErrorType.INTERNAL_ERROR, format("Unable to serialize message: %s", message),
-                            ex.getMessage());
-                }
-            }
-            // Build all message first and them emit.
-            messages.forEach(values -> outputCollector.emit(StreamType.CREATE.toString(), tuple, values));
+        public void sendInstallRulesCommand(FlowPairWithSegments flowWithSegments) {
+            List<FlowCommandGroup> commandGroups = new ArrayList<>();
+
+            Flow forward = flowWithSegments.getFlowPair().getForward();
+            Flow reverse = flowWithSegments.getFlowPair().getReverse();
+            createInstallTransitAndEgressRules(forward, flowWithSegments.getForwardSegments())
+                    .ifPresent(commandGroups::add);
+            createInstallTransitAndEgressRules(reverse, flowWithSegments.getReverseSegments())
+                    .ifPresent(commandGroups::add);
+            // The ingress rule must be installed the last.
+            commandGroups.add(createInstallIngressRules(forward, flowWithSegments.getForwardSegments()));
+            commandGroups.add(createInstallIngressRules(reverse, flowWithSegments.getReverseSegments()));
+
+            sendRulesCommand(forward.getFlowId(), commandGroups);
         }
 
         @Override
-        public void sendRemoveRuleCommand(Flow flow, List<FlowSegment> segments) {
-            List<RemoveFlow> rules = commandFactory.createRemoveRulesForFlow(flow, segments);
-            List<Values> messages = new ArrayList<>(rules.size());
-            // Do NOT reverse as ingress rule must be removed the first.
-            for (RemoveFlow rule : rules) {
-                CommandMessage message = new CommandMessage(rule, System.currentTimeMillis(), correlationId,
-                        Destination.CONTROLLER);
-                try {
-                    messages.add(new Values(MAPPER.writeValueAsString(message), rule.getSwitchId(), flow.getFlowId(),
-                            rule.getTransactionId()));
-                } catch (JsonProcessingException ex) {
-                    throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                            ErrorType.INTERNAL_ERROR, format("Unable to serialize message: %s", message),
-                            ex.getMessage());
-                }
-            }
-            // Build all message first and them emit.
-            messages.forEach(values -> outputCollector.emit(StreamType.DELETE.toString(), tuple, values));
+        public void sendUpdateRulesCommand(UpdatedFlowPairWithSegments flowWithSegments) {
+            List<FlowCommandGroup> commandGroups = new ArrayList<>();
+
+            Flow newForward = flowWithSegments.getFlowPair().getForward();
+            Flow newReverse = flowWithSegments.getFlowPair().getReverse();
+            createInstallTransitAndEgressRules(newForward, flowWithSegments.getForwardSegments())
+                    .ifPresent(commandGroups::add);
+            createInstallTransitAndEgressRules(newReverse, flowWithSegments.getReverseSegments())
+                    .ifPresent(commandGroups::add);
+            // The ingress rule must be installed the last.
+            commandGroups.add(createInstallIngressRules(newForward, flowWithSegments.getForwardSegments()));
+            commandGroups.add(createInstallIngressRules(newReverse, flowWithSegments.getReverseSegments()));
+
+            Flow oldForward = flowWithSegments.getOldFlowPair().getForward();
+            Flow oldReverse = flowWithSegments.getOldFlowPair().getReverse();
+            commandGroups.add(createRemoveIngressRules(oldForward, flowWithSegments.getOldForwardSegments()));
+            commandGroups.add(createRemoveIngressRules(oldReverse, flowWithSegments.getOldReverseSegments()));
+            createRemoveTransitAndEgressRules(oldForward, flowWithSegments.getOldForwardSegments())
+                    .ifPresent(commandGroups::add);
+            createRemoveTransitAndEgressRules(oldReverse, flowWithSegments.getOldReverseSegments())
+                    .ifPresent(commandGroups::add);
+
+            sendRulesCommand(newForward.getFlowId(), commandGroups);
+        }
+
+        @Override
+        public void sendRemoveRulesCommand(FlowPairWithSegments flowWithSegments) {
+            List<FlowCommandGroup> commandGroups = new ArrayList<>();
+
+            Flow forward = flowWithSegments.getFlowPair().getForward();
+            Flow reverse = flowWithSegments.getFlowPair().getReverse();
+            commandGroups.add(createRemoveIngressRules(forward, flowWithSegments.getForwardSegments()));
+            commandGroups.add(createRemoveIngressRules(reverse, flowWithSegments.getReverseSegments()));
+            createRemoveTransitAndEgressRules(forward, flowWithSegments.getForwardSegments())
+                    .ifPresent(commandGroups::add);
+            createRemoveTransitAndEgressRules(reverse, flowWithSegments.getReverseSegments())
+                    .ifPresent(commandGroups::add);
+
+            sendRulesCommand(forward.getFlowId(), commandGroups);
+        }
+
+        private Optional<FlowCommandGroup> createInstallTransitAndEgressRules(Flow flow, List<FlowSegment> segments) {
+            List<InstallTransitFlow> rules = commandFactory.createInstallTransitAndEgressRulesForFlow(flow, segments);
+            return !rules.isEmpty() ? Optional.of(new FlowCommandGroup(rules)) : Optional.empty();
+        }
+
+        private FlowCommandGroup createInstallIngressRules(Flow flow, List<FlowSegment> segments) {
+            return new FlowCommandGroup(Collections.singletonList(
+                    commandFactory.createInstallIngressRulesForFlow(flow, segments)));
+        }
+
+        private Optional<FlowCommandGroup> createRemoveTransitAndEgressRules(Flow flow, List<FlowSegment> segments) {
+            List<RemoveFlow> rules = commandFactory.createRemoveTransitAndEgressRulesForFlow(flow, segments);
+            return !rules.isEmpty() ? Optional.of(new FlowCommandGroup(rules)) : Optional.empty();
+        }
+
+        private FlowCommandGroup createRemoveIngressRules(Flow flow, List<FlowSegment> segments) {
+            return new FlowCommandGroup(Collections.singletonList(
+                    commandFactory.createRemoveIngressRulesForFlow(flow, segments)));
+        }
+
+        private void sendRulesCommand(String flowId, List<FlowCommandGroup> commandGroups) {
+            CommandMessage message = new CommandMessage(new BatchFlowCommandsRequest(commandGroups),
+                    System.currentTimeMillis(), correlationId, Destination.CONTROLLER);
+            outputCollector.emit(stream.toString(), tuple, new Values(message, flowId));
         }
     }
 }
