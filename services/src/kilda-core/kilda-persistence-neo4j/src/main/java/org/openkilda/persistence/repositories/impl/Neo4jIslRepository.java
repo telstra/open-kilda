@@ -59,7 +59,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment("srcSwitch", Switch.class));
         Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);
 
-        return getSession().loadAll(getEntityType(), srcSwitchFilter.and(srcPortFilter), DEPTH_LIST);
+        return getSession().loadAll(getEntityType(), srcSwitchFilter.and(srcPortFilter), DEPTH_LOAD_ENTITY);
     }
 
     @Override
@@ -69,7 +69,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment("destSwitch", Switch.class));
         Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
 
-        return getSession().loadAll(getEntityType(), dstSwitchFilter.and(dstPortFilter), DEPTH_LIST);
+        return getSession().loadAll(getEntityType(), dstSwitchFilter.and(dstPortFilter), DEPTH_LOAD_ENTITY);
     }
 
     @Override
@@ -84,7 +84,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
 
         Collection<Isl> isls = getSession().loadAll(getEntityType(),
-                srcSwitchFilter.and(srcPortFilter).and(dstSwitchFilter).and(dstPortFilter), DEPTH_LIST);
+                srcSwitchFilter.and(srcPortFilter).and(dstSwitchFilter).and(dstPortFilter), DEPTH_LOAD_ENTITY);
         if (isls.size() > 1) {
             throw new PersistenceException(format("Found more that 1 ISL entity with %s_%d - %s_%d",
                     srcSwitchId, srcPort, dstSwitchId, dstPort));

@@ -43,7 +43,7 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
     public Collection<FlowSegment> findByFlowIdAndCookie(String flowId, long flowCookie) {
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
         Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, flowCookie);
-        return getSession().loadAll(getEntityType(), flowIdFilter.and(cookieFilter), DEPTH_LIST);
+        return getSession().loadAll(getEntityType(), flowIdFilter.and(cookieFilter), DEPTH_LOAD_ENTITY);
     }
 
     @Override

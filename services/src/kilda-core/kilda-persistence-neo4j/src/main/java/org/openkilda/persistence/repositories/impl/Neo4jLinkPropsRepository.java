@@ -58,6 +58,6 @@ public class Neo4jLinkPropsRepository extends Neo4jGenericRepository<LinkProps> 
             filters.and(new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort));
         }
 
-        return getSession().loadAll(getEntityType(), filters, DEPTH_LIST);
+        return getSession().loadAll(getEntityType(), filters, DEPTH_LOAD_ENTITY);
     }
 }
