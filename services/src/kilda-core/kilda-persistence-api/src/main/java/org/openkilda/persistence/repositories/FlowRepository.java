@@ -17,7 +17,6 @@ package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
@@ -43,8 +42,6 @@ public interface FlowRepository extends Repository<Flow> {
     void createOrUpdate(FlowPair flowPair);
 
     void delete(FlowPair flowPair);
-
-    void updateStatus(String flowId, FlowStatus status);
 
     Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
                                                      SwitchId dstSwitchId, int dstPort);

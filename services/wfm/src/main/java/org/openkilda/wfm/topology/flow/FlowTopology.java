@@ -48,16 +48,13 @@ import java.util.List;
  * Flow topology.
  */
 public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
-    public static final String SWITCH_ID_FIELD = "switch-id";
-    public static final String STATUS_FIELD = "status";
+    public static final String FLOW_STATUS_FIELD = "status";
     public static final String ERROR_TYPE_FIELD = "error-type";
     public static final Fields fieldFlowId = new Fields(Utils.FLOW_ID);
-    public static final Fields fieldSwitchId = new Fields(SWITCH_ID_FIELD);
-    public static final Fields fieldsFlowIdStatusContext = new Fields(Utils.FLOW_ID, STATUS_FIELD, FIELD_ID_CONTEXT);
+    public static final Fields fieldsFlowIdStatusContext =
+            new Fields(Utils.FLOW_ID, FLOW_STATUS_FIELD, FIELD_ID_CONTEXT);
     public static final Fields fieldsMessageFlowId = new Fields(MESSAGE_FIELD, Utils.FLOW_ID);
     public static final Fields fieldsMessageErrorType = new Fields(MESSAGE_FIELD, ERROR_TYPE_FIELD);
-    public static final Fields fieldsMessageSwitchIdFlowIdTransactionId =
-            new Fields(MESSAGE_FIELD, SWITCH_ID_FIELD, Utils.FLOW_ID, Utils.TRANSACTION_ID);
 
     public FlowTopology(LaunchEnvironment env) {
         super(env, FlowTopologyConfig.class);
@@ -111,11 +108,9 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
-
         StatusBolt statusBolt = new StatusBolt(persistenceManager);
         builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
-                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString())
-                .shuffleGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString());
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString());
 
         /*
          * Spout receives Speaker responses
@@ -135,11 +130,12 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         /*
          * Transaction bolt.
          */
-        TransactionBolt transactionBolt = new TransactionBolt();
+        TransactionBolt transactionBolt = new TransactionBolt(topologyConfig.getCommandTransactionExpirationTime());
         boltSetup = builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
-                .fieldsGrouping(
-                        ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId)
-                .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.CREATE.toString(), fieldSwitchId);
+                .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
 
         /*
@@ -148,7 +144,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         KafkaBolt speakerKafkaBolt = createKafkaBolt(topologyConfig.getKafkaSpeakerFlowTopic());
         builder.setBolt(ComponentType.SPEAKER_KAFKA_BOLT.toString(), speakerKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString());
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.DELETE.toString());
 
         /*
          * Error processing bolt
