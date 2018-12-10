@@ -20,7 +20,6 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.mappers.FlowMapper;
-import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.service.BaseFlowService;
@@ -54,26 +53,26 @@ public class StatusBolt extends AbstractBolt {
     @Override
     public void handleInput(Tuple tuple) {
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
-        ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         try {
             switch (streamId) {
                 case STATUS:
-                    FlowState state = (FlowState) tuple.getValueByField(FlowTopology.STATUS_FIELD);
                     String flowId = tuple.getStringByField(Utils.FLOW_ID);
-                    logger.info("State flow: {}={}", flowId, state);
+                    FlowState state = (FlowState) tuple.getValueByField(FlowTopology.FLOW_STATUS_FIELD);
+                    logger.info("Set status {} for: {}={}", state, Utils.FLOW_ID, flowId);
                     flowService.updateFlowStatus(flowId, FlowMapper.INSTANCE.map(state));
                     break;
                 default:
-                    logger.debug("Unexpected stream: component={}, stream={}", componentId, streamId);
+                    logger.error("Unexpected stream: {} in {}", streamId, tuple);
                     break;
             }
 
         } catch (Exception e) {
-            logger.error("Failed to update status for: component={}, stream={}", componentId, streamId, e);
+            logger.error("Failed to update status for: {}", tuple, e);
         }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
+        // The bolt doesn't emit anything.
     }
 }

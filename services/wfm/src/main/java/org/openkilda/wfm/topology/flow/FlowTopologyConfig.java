@@ -18,9 +18,19 @@ package org.openkilda.wfm.topology.flow;
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Converter;
+import com.sabre.oss.conf4j.annotation.Default;
+import com.sabre.oss.conf4j.annotation.Key;
+import com.sabre.oss.conf4j.converter.DurationConverter;
+
+import java.time.Duration;
 
 @Configuration
 public interface FlowTopologyConfig extends AbstractTopologyConfig {
+    @Key("command.transaction.expiration-time")
+    @Default("PT1H")
+    @Converter(DurationConverter.class)
+    Duration getCommandTransactionExpirationTime();
 
     default String getKafkaFlowTopic() {
         return getKafkaTopics().getFlowTopic();
