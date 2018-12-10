@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -61,7 +63,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         and: "All switches and links are active. No flows and link props are present"
         def links = northbound.getAllLinks()
         verifyAll {
-            northbound.activeSwitches.size() == topologyDefinition.activeSwitches.size()
+            Wrappers.wait(WAIT_OFFSET) { northbound.activeSwitches.size() == topologyDefinition.activeSwitches.size() }
             links.findAll { it.state == IslChangeType.FAILED }.empty
             links.findAll {
                 it.state == IslChangeType.DISCOVERED
