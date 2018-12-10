@@ -153,8 +153,26 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
+    def "Unable to get flows with invalid query parameters (#item is invalid) "() {
+        when: "Get flows with invalid #item"
+        northboundService.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
+
+        then: "An error is received (400 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+
+        where:
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+
+    }
+
+    @Unroll
     def "Unable to get flows without full specifying a particular link (#item is missing)"() {
-        when: "Get flows without specifying a particular link"
+        when: "Get flows without specifying #item"
         northboundService.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
         then: "An error is received (400 code)"
