@@ -35,17 +35,17 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 public abstract class KafkaEncoder extends AbstractBolt {
-    public static final String FIELD_ID_PAYLOAD = "payload";
+    public static final String FIELD_ID_PAYLOAD = FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE;
+    public static final String FIELD_ID_KEY = FieldNameBasedTupleToKafkaMapper.BOLT_KEY;
 
-    public static final Fields STREAM_FIELDS = new Fields(
-            FieldNameBasedTupleToKafkaMapper.BOLT_KEY, FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
+    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
 
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         MessageData payload = pullPayload(input);
         try {
             Message message = wrap(pullContext(input), payload);
-            getOutput().emit(input, new Values(null, message));
+            getOutput().emit(input, new Values(pullKey(input), message));
         } catch (IllegalArgumentException e) {
             log.error(e.getMessage());
             unhandledInput(input);
@@ -54,6 +54,16 @@ public abstract class KafkaEncoder extends AbstractBolt {
 
     protected MessageData pullPayload(Tuple input) throws PipelineException {
         return pullValue(input, FIELD_ID_PAYLOAD, MessageData.class);
+    }
+
+    protected String pullKey(Tuple input) {
+        String key;
+        try {
+            key = input.getStringByField(FIELD_ID_KEY);
+        } catch (IllegalArgumentException e) {
+            key = null;
+        }
+        return key;
     }
 
     protected Message wrap(CommandContext commandContext, MessageData payload) {

@@ -21,4 +21,8 @@ public class SwitchNotFoundException extends AbstractException {
     public SwitchNotFoundException(SwitchId switchId) {
         super(String.format("Switch %s not found.", switchId));
     }
+
+    protected SwitchNotFoundException(String message) {
+        super(message);
+    }
 }

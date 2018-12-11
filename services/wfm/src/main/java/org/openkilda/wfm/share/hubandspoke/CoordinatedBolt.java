@@ -55,7 +55,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
             log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             if (autoAck) {
-                getOutput().ack(input);
+                ack(input);
             }
         }
     }
@@ -71,8 +71,8 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * @param key request's identifier.
      */
     protected void cancelCallback(String key, Tuple tuple) throws PipelineException {
-        emit(CoordinatorBolt.INCOME_STREAM, tuple,
-                new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0));
+        emitWithContext(CoordinatorBolt.INCOME_STREAM, tuple,
+                        new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0));
     }
 
     /**
@@ -90,7 +90,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * @param timeout how long coordinator waits for a response. If no response received - timeout error occurs.
      */
     protected void registerCallback(String key, int timeout, Tuple tuple) throws PipelineException {
-        emit(CoordinatorBolt.INCOME_STREAM, tuple,
-                new Values(key, CoordinatorCommand.REQUEST_CALLBACK, timeout));
+        emitWithContext(CoordinatorBolt.INCOME_STREAM, tuple,
+                        new Values(key, CoordinatorCommand.REQUEST_CALLBACK, timeout));
     }
 }

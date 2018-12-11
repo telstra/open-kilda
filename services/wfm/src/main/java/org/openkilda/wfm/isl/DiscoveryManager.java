@@ -17,8 +17,8 @@ package org.openkilda.wfm.isl;
 
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.annotations.VisibleForTesting;

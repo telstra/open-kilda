@@ -22,23 +22,24 @@ import static org.junit.Assert.assertTrue;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
 
 /**
  * The DiscoveryManager is the main class that governs ISL discovery. It develops a list of
@@ -350,9 +351,24 @@ public class DiscoveryManagerTest {
         // now send SwitchUp and confirm sw1 all go back to not found, sw2 unchanged
         List<NetworkEndpoint> allEndpoints = ImmutableList.of(srcNode1, srcNode2, srcNode3);
         List<NetworkEndpoint> affectedEndpoints = filterEndpointsByDatapath(srcNode1.getDatapath(), allEndpoints);
+
+        InetSocketAddress switchAddress = new InetSocketAddress(
+                InetAddress.getByAddress(new byte[]{127, 0, 0, 1}), 32768);
+        InetSocketAddress speakerAddress = new InetSocketAddress(
+                InetAddress.getByAddress(new byte[]{127, 0, 0, (byte) 254}), 6653);
+        SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
+                    .manufacturer("OF switch manufacturer")
+                    .hardware("OF cappable HW")
+                    .software("software")
+                    .serialNumber("aabbcc")
+                    .datapath("datapath description")
+                    .build();
         SpeakerSwitchView switchView = new SpeakerSwitchView(
                 srcNode1.getDatapath(),
-                ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
+                switchAddress,
+                speakerAddress,
+                "OF_13", switchDescription,
+                Collections.emptySet(),
                 affectedEndpoints.stream()
                         .map(entry -> new SpeakerSwitchPortView(entry.getPortNumber(), SpeakerSwitchPortView.State.UP))
                         .collect(Collectors.toList()));

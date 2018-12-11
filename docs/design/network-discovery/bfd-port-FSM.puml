@@ -1,28 +1,72 @@
+Internal data
+* BFD-discriminator
+* isUp (initial false)
+
+Internal signals
+* fail
+
+Input signals
+* port-up
+* port-down
+* bisl-up [ISL-FSM]
+* FL-ok
+* FL-fail
+* FL-timeout
+* isl-move [ISL-FSM]
+* kill
+
+Output signals
+* bfd-up
+* bfd-down
+* bfd-kill
+
 @startuml
-state init <<choice>>
-[*] --> init
+title BFD port FSM
 
-init --> invalid : port-is-up
-init --> pending : port-is-down
+[*] --> INIT
 
-invalid : emit bfd-invalid
-invalid --> pending : port-down
-invalid --> invalid : associate
+state initChoice <<choice>>
+INIT --> initChoice : history
 
-pending : emit bfd-pending
-pending --> invalid : port-up
-pending --> bound : associate
+initChoice --> IDLE : [BFD-discriminator is empty]
+initChoice --> CLEANING : [BFD-discriminator is set]
 
-bound --> UP : port-up
+IDLE --> INSTALLING : bisl-up
+IDLE -l-> FAIL : port-up
 
-UP : emit isl-up
+INSTALLING --> UP : port-up
+INSTALLING --> CLEANING : FL-fail
+INSTALLING --> CLEANING : isl-move
+INSTALLING --> FAIL : fail
+INSTALLING : enter / allocate BFD-discriminator
+INSTALLING : enter / emit BFD-session setup
+
+state cleaningChoice <<choice>>
+
+CLEANING --> cleaningChoice : FL-ok / release BFD-discriminator
+CLEANING --> FAIL : FL-fail
+CLEANING --> FAIL : FL-timeout
+CLEANING : enter / emit BFD-session remove
+CLEANING : port-up / set isUp = true
+CLEANING : port-down / set isUp = false
+
+cleaningChoice --> IDLE : [not isUp]
+cleaningChoice --> WAIT_RELEASE : [isUp]
+
+WAIT_RELEASE --> IDLE : port-down
+WAIT_RELEASE : exit : set isUp = false
+
 UP --> DOWN : port-down
-UP --> offline : offline
+UP --> CLEANING : isl-move
+UP -> [*] : kill / emit bfd-kill
+UP : enter / emit bfd-up
+UP : enter / set isUp = true
 
-DOWN : emit isl-down
 DOWN --> UP : port-up
-DOWN --> offline : offline
+DOWN --> CLEANING : isl-move
+DOWN : enter / emit bfd-down
+DOWN : enter / set isUp = false
 
-offline --> invalid : online
+FAIL -r-> IDLE : port-down
 
 @enduml

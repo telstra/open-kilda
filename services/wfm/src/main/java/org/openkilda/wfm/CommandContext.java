@@ -39,6 +39,21 @@ public class CommandContext implements Serializable {
         this(correlationId, System.currentTimeMillis());
     }
 
+    protected CommandContext(String correlationId, long createTime) {
+        this.correlationId = correlationId;
+        this.createTime = createTime;
+    }
+
+    /**
+     * Create new {@link CommandContext} object using data from current one. Produced object receive extended/nested
+     * correlation ID i.e. it contain original correlation ID plus part passed in argument.
+     */
+    public CommandContext makeNested(String correlationIdExtension) {
+        CommandContext nested = new CommandContext(correlationIdExtension + " : " + correlationId);
+        nested.merge(this);
+        return nested;
+    }
+
     /**
      * Merge data from other CommandContext object.
      *
@@ -46,9 +61,4 @@ public class CommandContext implements Serializable {
      * created.
      */
     public void merge(CommandContext other) { }
-
-    protected CommandContext(String correlationId, long createTime) {
-        this.correlationId = correlationId;
-        this.createTime = System.currentTimeMillis();
-    }
 }

@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.error;
 
-import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
@@ -23,16 +23,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class NoFeatureException extends AbstractException {
-    public NoFeatureException(DatapathId dpId, Switch.Feature missingFeature, Set<Switch.Feature> switchFeatures) {
+    public NoFeatureException(DatapathId dpId, SpeakerSwitchView.Feature missingFeature,
+                              Set<SpeakerSwitchView.Feature> switchFeatures) {
         super(formatMessage(dpId, missingFeature, switchFeatures));
     }
 
     private static String formatMessage(
-            DatapathId dpId, Switch.Feature missingFeature, Set<Switch.Feature> switchFeatures) {
+            DatapathId dpId, SpeakerSwitchView.Feature missingFeature, Set<SpeakerSwitchView.Feature> switchFeatures) {
         return String.format("Switch %s does not support feature %s (supported features: %s)",
                              dpId, missingFeature,
                              switchFeatures.stream()
-                                     .map(Switch.Feature::toString)
+                                     .map(SpeakerSwitchView.Feature::toString)
                                      .collect(Collectors.joining(", ")));
     }
 }

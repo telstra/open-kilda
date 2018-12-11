@@ -18,9 +18,12 @@ package org.openkilda.wfm;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 
+import lombok.AccessLevel;
+import lombok.Getter;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseRichBolt;
+import org.apache.storm.tuple.MessageId;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
@@ -28,13 +31,19 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 public abstract class AbstractBolt extends BaseRichBolt {
     public static final String FIELD_ID_CONTEXT = "context";
 
     protected transient Logger log = makeLog();
+
+    @Getter(AccessLevel.PROTECTED)
     private transient OutputCollector output;
+    @Getter(AccessLevel.PROTECTED)
+    private transient Integer taskId;
 
     @Override
     public void execute(Tuple input) {
@@ -46,21 +55,64 @@ public abstract class AbstractBolt extends BaseRichBolt {
         } catch (Exception e) {
             log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
-            output.ack(input);
+            ack(input);
         }
+    }
+
+    protected void emit(Tuple anchor, List<Object> payload) {
+        log.debug("emit tuple into default stream: {}", payload);
+        output.emit(anchor, payload);
+    }
+
+    protected void emit(String stream, Tuple anchor, List<Object> payload) {
+        log.debug("emit tuple into {} stream: {}", stream, payload);
+        output.emit(stream, anchor, payload);
+    }
+
+    protected void emitWithContext(String stream, Tuple input, Values payload) throws PipelineException {
+        payload.add(pullContext(input));
+        log.debug("emit tuple into {} stream: {}", stream, payload);
+        getOutput().emit(stream, input, payload);
     }
 
     protected abstract void handleInput(Tuple input) throws AbstractException;
 
+    protected void ack(Tuple input) {
+        final MessageId messageId = input.getMessageId();
+        if (messageId != null) {
+            log.debug("ACK tuple id {}", messageId);
+        }
+        output.ack(input);
+    }
+
     protected void unhandledInput(Tuple input) {
+        Iterator<String> fields = input.getFields().iterator();
+        Iterator<Object> values = input.getValues().iterator();
+        StringBuilder payload = new StringBuilder();
+        boolean isFirst = true;
+        while (fields.hasNext() || values.hasNext()) {
+            if (!isFirst) {
+                payload.append(", ");
+            }
+            isFirst = false;
+
+            String name = fields.next();
+            payload.append(name != null ? name : "(unknown)");
+            payload.append(": ");
+            Object v = values.next();
+            payload.append(v != null ? v.getClass().getName() : "null");
+        }
+
         log.error(
-                "{} is unable to handle input tuple from {} stream {} - have topology being build correctly?",
-                getClass().getName(), input.getSourceComponent(), input.getSourceStreamId());
+                "{} is unable to handle input tuple from \"{}\" stream \"{}\" [{}] - have topology being build"
+                + " correctly?",
+                getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), payload);
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.output = collector;
+        this.taskId = context.getThisTaskId();
 
         init();
     }
@@ -90,15 +142,6 @@ public abstract class AbstractBolt extends BaseRichBolt {
             throw new PipelineException(this, input, field, e.toString());
         }
         return value;
-    }
-
-    protected OutputCollector getOutput() {
-        return output;
-    }
-
-    protected void emit(String stream, Tuple input, Values values) throws PipelineException {
-        values.add(pullContext(input));
-        getOutput().emit(stream, input, values);
     }
 
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {

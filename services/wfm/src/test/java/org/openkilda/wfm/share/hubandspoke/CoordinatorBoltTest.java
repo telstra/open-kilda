@@ -22,8 +22,10 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,9 +40,14 @@ public class CoordinatorBoltTest {
     @Mock
     private OutputCollector collector;
 
+    @Mock
+    private TopologyContext topologyContext;
+
     @Before
     public void setup() {
-        target.prepare(null, null, collector);
+        when(topologyContext.getThisTaskId()).thenReturn(1);
+
+        target.prepare(null, topologyContext, collector);
 
         reset(collector);
     }

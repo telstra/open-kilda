@@ -1,7 +1,8 @@
 # WFM topology management
 
-TOPOLOGY := wfm flow stats islstats opentsdb portstate nbworker ping reroute
+TOPOLOGY := discovery flow stats islstats opentsdb portstate nbworker ping reroute
 
+ENTRY_discovery := org.openkilda.wfm.topology.discovery.DiscoveryTopology
 ENTRY_wfm := org.openkilda.wfm.topology.event.OfEventWfmTopology
 ENTRY_flow := org.openkilda.wfm.topology.flow.FlowTopology
 ENTRY_stats := org.openkilda.wfm.topology.stats.StatsTopology

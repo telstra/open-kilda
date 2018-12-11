@@ -1,0 +1,49 @@
+Internal state
+* endpoint (construct time)
+* remote
+
+Input signals
+* discovery
+* fail
+* physical-down
+* bfd-up
+* bfd-down
+* bfd-kill
+
+Ouput signals
+* isl-move
+* isl-up
+* isl-down
+* physical-down
+
+@startuml
+title UniISL FSM
+
+[*] --> UNKNOWN
+
+state moveChoice <<choice>>
+
+UNKNOWN --> moveChoice : discovery
+UNKNOWN --> DOWN : fail
+UNKNOWN --> DOWN : physical-down
+
+UP --> moveChoice : discovery
+UP --> DOWN : fail
+UP --> DOWN : physical-down
+UP --> BFD : bfd-up
+UP : enter / set remote
+UP : enter / emit isl-up
+
+moveChoice --> UP : [remote not changed]
+moveChoice --> UP : [remote is changed] / emit isl-move
+
+DOWN --> moveChoice : discovery
+DOWN --> BFD : bfd-up
+DOWN : enter / emit isl-down
+
+BFD --> DOWN : physical-down
+BFD --> DOWN : bfd-down
+BFD --> UP : bfd-kill
+BFD : enter / emit isl-up
+
+@enduml

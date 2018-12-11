@@ -33,13 +33,16 @@ import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
+import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -48,6 +51,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -284,6 +288,15 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     }
 
     private SpeakerSwitchView buildSwitch(IOFSwitch sw) {
+        SwitchDescription ofDescription = sw.getSwitchDescription();
+        SpeakerSwitchDescription description = SpeakerSwitchDescription.builder()
+                .manufacturer(ofDescription.getManufacturerDescription())
+                .hardware(ofDescription.getHardwareDescription())
+                .software(ofDescription.getSoftwareDescription())
+                .serialNumber(ofDescription.getSerialNumber())
+                .datapath(ofDescription.getDatapathDescription())
+                .build();
+        Set<SpeakerSwitchView.Feature> features = featureDetector.detectSwitch(sw);
         List<SpeakerSwitchPortView> ports = switchManager.getPhysicalPorts(sw).stream()
                 .map(port -> new SpeakerSwitchPortView(
                         port.getPortNo().getPortNumber(),
@@ -291,8 +304,12 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
                                 ? SpeakerSwitchPortView.State.UP
                                 : SpeakerSwitchPortView.State.DOWN))
                 .collect(Collectors.toList());
-        Set<SpeakerSwitchView.Feature> features = featureDetector.detectSwitch(sw);
-        return new SpeakerSwitchView(new SwitchId(sw.getId().getLong()), features, ports);
+        return new SpeakerSwitchView(new SwitchId(sw.getId().getLong()),
+                                     (InetSocketAddress) sw.getInetAddress(),
+                                     (InetSocketAddress) (sw.getConnectionByCategory(
+                                                     LogicalOFMessageCategory.MAIN).getRemoteInetAddress()),
+                                     sw.getOFFactory().getVersion().toString(),
+                                     description, features, ports);
     }
 
     private void logSwitchEvent(DatapathId dpId, SwitchChangeType event) {
