@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,15 +15,17 @@
 
 package org.openkilda.wfm.topology.stats;
 
-/**
- * Represents stream used in {@link StatsTopology}.
- */
-public enum StatsStreamType {
-    PORT_STATS,
-    METER_STATS,
-    CACHE_DATA,
-    METER_CONFIG_STATS,
-    FLOW_STATS,
-    STATS_RESPONSE,
-    CACHE_UPDATE,
+import lombok.Value;
+
+import java.io.Serializable;
+
+@Value
+public class FlowByMeterCacheEntry implements Serializable {
+    private String flowId;
+    private Long cookie;
+
+    public FlowByMeterCacheEntry(String flowId, Long cookie) {
+        this.flowId = flowId;
+        this.cookie = cookie;
+    }
 }

@@ -33,6 +33,8 @@ import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.messaging.info.stats.MeterConfigReply;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
+import org.openkilda.messaging.info.stats.MeterStatsData;
+import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
@@ -52,6 +54,7 @@ import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.Testing;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -74,6 +77,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 public class StatsTopologyTest extends StableAbstractStormTest {
@@ -192,35 +196,71 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     }
 
     @Test
+    public void meterDefaultRulesStatsTest() throws JsonProcessingException {
+        int defaultRuleMeterId = 2;
+
+        runMeterStatsTest(defaultRuleMeterId, switchId, datapoint -> {
+            assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
+            assertThat(datapoint.getTags().get("cookie"), is("8000000000000002"));
+            assertThat(datapoint.getTime(), is(timestamp));
+            assertThat(datapoint.getMetric(), startsWith("pen.switch.flow.system.meter"));
+        });
+    }
+
+    @Test
+    public void meterFLowRulesStatsTest() throws JsonProcessingException {
+        SwitchId switchForMeters = new SwitchId(1234);
+        String flowWithMeters = "flowWithMeter";
+        createFlow(switchForMeters, flowWithMeters);
+        long meterId = 456L; // must be > 15 (IDs <= 15 are for default rule meters)
+
+        runMeterStatsTest(meterId, switchForMeters, datapoint -> {
+            assertThat(datapoint.getTags().get("switchid"), is(switchForMeters.toOtsdFormat()));
+            assertThat(datapoint.getTags().get("flowid"), is(flowWithMeters));
+            assertThat(datapoint.getTags().get("cookie"), is(String.valueOf(cookie)));
+            assertThat(datapoint.getTime(), is(timestamp));
+            assertThat(datapoint.getMetric(), startsWith("pen.flow.meter"));
+        });
+    }
+
+    private void runMeterStatsTest(long meterId, SwitchId switchId, Consumer<Datapoint> assertConsumer)
+            throws JsonProcessingException {
+        MeterStatsEntry entry = new MeterStatsEntry(meterId, 5, 6);
+        MeterStatsData data = new MeterStatsData(switchId, Collections.singletonList(entry));
+        InfoMessage message = new InfoMessage(data, timestamp, CORRELATION_ID, Destination.WFM_STATS);
+
+        //mock kafka spout
+        MockedSources sources = new MockedSources();
+        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
+                new Values(MAPPER.writeValueAsString(message)));
+        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
+                new Values(MAPPER.writeValueAsString(message))
+        );
+
+        completeTopologyParam.setMockedSources(sources);
+
+        //execute topology
+        Testing.withTrackedCluster(clusterParam, (cluster) -> {
+            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
+            StormTopology stormTopology = topology.createTopology();
+
+            //verify results
+            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
+            ArrayList<FixedTuple> tuples =
+                    (ArrayList<FixedTuple>) result.get(StatsComponentType.METER_STATS_METRIC_GEN.name());
+            assertThat(tuples.size(), is(3));
+            tuples.stream()
+                    .map(this::readFromJson)
+                    .forEach(assertConsumer);
+        });
+    }
+
+    @Test
     public void flowStatsTest() throws Exception {
         //mock kafka spout
         MockedSources sources = new MockedSources();
 
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-
-        Switch sw = new Switch();
-        sw.setSwitchId(switchId);
-        repositoryFactory.createSwitchRepository().createOrUpdate(sw);
-
-        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
-        Flow flow = new Flow();
-        flow.setFlowId(flowId);
-        flow.setCookie(cookie);
-        flow.setMeterId(2);
-        flow.setTransitVlan(1);
-        flow.setSrcSwitch(sw);
-        flow.setSrcPort(1);
-        flow.setSrcVlan(5);
-        flow.setDestSwitch(sw);
-        flow.setDestPort(2);
-        flow.setDestVlan(5);
-        flow.setBandwidth(200);
-        flow.setIgnoreBandwidth(true);
-        flow.setDescription("description");
-        flow.setTimeModify(Instant.EPOCH);
-        flow.setFlowPath(new FlowPath(0, Collections.emptyList(), null));
-
-        flowRepository.createOrUpdate(flow);
+        createFlow(switchId, flowId);
 
         List<FlowStatsEntry> entries = Collections.singletonList(
                 new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
@@ -264,10 +304,11 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     public void cacheSyncSingleSwitchFlowAdd() throws Exception {
         final SwitchId switchId = new SwitchId(1L);
         final String flowId = "sync-test-add-ssf";
+        final Long meterId = 42L;
         final InstallOneSwitchFlow payload =
                 new InstallOneSwitchFlow(
                         TRANSACTION_ID, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127,
-                        OutputVlanType.PUSH, 1000L, 0L);
+                        OutputVlanType.PUSH, 1000L, meterId);
         final CommandMessage message = new CommandMessage(payload, timestamp, flowId, Destination.WFM_STATS);
         final String json = MAPPER.writeValueAsString(message);
 
@@ -295,13 +336,45 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                         Assert.assertEquals(CacheFilterBolt.Commands.UPDATE, item.values.get(0));
                         Assert.assertEquals(flowId, item.values.get(1));
                         Assert.assertEquals(switchId, item.values.get(2));
-                        MeasurePoint affectedPoint = (MeasurePoint) item.values.get(4);
+                        MeasurePoint affectedPoint = (MeasurePoint) item.values.get(5);
+
+                        if (affectedPoint == MeasurePoint.INGRESS) {
+                            Assert.assertEquals(meterId, item.values.get(4));
+                        }
 
                         seenEvents.add(affectedPoint);
                     });
 
             Assert.assertEquals(expectedEvents, seenEvents);
         });
+    }
+
+    private void createFlow(SwitchId switchId, String flowId) {
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+
+        Switch sw = new Switch();
+        sw.setSwitchId(switchId);
+        repositoryFactory.createSwitchRepository().createOrUpdate(sw);
+
+        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
+        Flow flow = new Flow();
+        flow.setFlowId(flowId);
+        flow.setCookie(cookie);
+        flow.setMeterId(456);
+        flow.setTransitVlan(1);
+        flow.setSrcSwitch(sw);
+        flow.setSrcPort(1);
+        flow.setSrcVlan(5);
+        flow.setDestSwitch(sw);
+        flow.setDestPort(2);
+        flow.setDestVlan(5);
+        flow.setBandwidth(200);
+        flow.setIgnoreBandwidth(true);
+        flow.setDescription("description");
+        flow.setTimeModify(Instant.EPOCH);
+        flow.setFlowPath(new FlowPath(0, Collections.emptyList(), null));
+
+        flowRepository.createOrUpdate(flow);
     }
 
     private Datapoint readFromJson(FixedTuple tuple) {
