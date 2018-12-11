@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.openkilda.floodlight.statistics;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
+import org.openkilda.floodlight.converter.OfMeterStatsConverter;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
@@ -46,6 +47,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFMeterStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFPortStatsProp;
 import org.projectfloodlight.openflow.protocol.OFPortStatsPropEthernet;
 import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
@@ -118,6 +120,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                     () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
                         gatherPortStats(iofSwitch);
                         gatherFlowStats(iofSwitch);
+                        gatherMeterStats(iofSwitch);
                     }), interval, interval, TimeUnit.SECONDS);
         }
     }
@@ -224,6 +227,23 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                         return new FlowStatsData(switchId, replies);
                     }, "flow", CorrelationContext.getId()));
         }
+    }
+
+    @NewCorrelationContextRequired
+    private void gatherMeterStats(IOFSwitch iofSwitch) {
+        OFFactory factory = iofSwitch.getOFFactory();
+        SwitchId switchId = new SwitchId(iofSwitch.getId().toString());
+
+        OFMeterStatsRequest meterStatsRequest = factory
+                .buildMeterStatsRequest()
+                .setMeterId(OFPM_ALL)
+                .build();
+
+        logger.trace("Getting meter stats for switch={}", iofSwitch.getId());
+
+        Futures.addCallback(iofSwitch.writeStatsRequest(meterStatsRequest),
+                new RequestCallback<>(data -> OfMeterStatsConverter.toMeterStatsData(data, switchId),
+                        "meter", CorrelationContext.getId()));
     }
 
     private class RequestCallback<T extends OFStatsReply> implements FutureCallback<List<T>> {
