@@ -80,6 +80,6 @@ org.openkilda.floodlight.switchmanager.SwitchManager.connect-mode=AUTO
 org.openkilda.floodlight.switchmanager.SwitchManager.broadcast-rate-limit=200
 org.openkilda.floodlight.switchmanager.SwitchManager.unicast-rate-limit=200
 org.openkilda.floodlight.switchmanager.SwitchManager.disco-packet-size=250
-org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-burst-coefficient=0.1
+org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-burst-coefficient={{ getv "/kilda_floodlight_flow_meter_burst_coefficient" }}
 org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-min-burst-size-in-kbits=1024
 org.openkilda.floodlight.switchmanager.SwitchManager.system-meter-burst-size-in-packets=4096
