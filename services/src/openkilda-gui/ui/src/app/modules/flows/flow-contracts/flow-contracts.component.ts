@@ -48,14 +48,14 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
         searchPlaceholder: "Search"
       },
       "aoColumns": [
-        { sWidth: '7%' },
+        { sWidth: '13%' },
         { sWidth: '9%' },
         { sWidth: '12%' },
         { sWidth: '15%' },
         { sWidth: '15%'},
         { sWidth: '13%' },
         { sWidth: '8%' },
-        { sWidth: '10%', "bSortable": false },
+        { sWidth: '7%', "bSortable": false },
         ],
       initComplete:function( settings, json ){
         setTimeout(function(){
