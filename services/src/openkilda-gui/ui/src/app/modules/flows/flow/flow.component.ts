@@ -54,11 +54,14 @@ export class FlowComponent implements OnInit {
   }
 
   getStatusList(){ 
-    this.flowService.getStatusList().subscribe((statuses)=>{
-        localStorage.setItem('linkStoreStatusList',JSON.stringify(statuses));
-    },function(error){
-      localStorage.setItem('linkStoreStatusList',JSON.stringify([]));
-    })
+    if(!localStorage.getItem('linkStoreStatusList')){
+        this.flowService.getStatusList().subscribe((statuses)=>{
+            localStorage.setItem('linkStoreStatusList',JSON.stringify(statuses));
+        },function(error){
+          localStorage.setItem('linkStoreStatusList',JSON.stringify([]));
+        })
+    }
+    
   }
   getStoreLinkSettings(){
     let query = {_:new Date().getTime()};

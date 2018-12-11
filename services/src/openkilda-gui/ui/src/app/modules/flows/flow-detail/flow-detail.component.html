@@ -129,8 +129,9 @@
             <li class="list-group-item">
               <div class="row">
                 <div class="col-sm-4">Status:</div>
-                <div class="col-sm-8">{{ flowDetail.status || flowDetail.state }}
-                   &nbsp; <i *ngIf="storeLinkSetting &&  statusDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
+                <div class="col-sm-8">{{ flowDetail.status || "-" }}
+                   &nbsp; <i title="Flow is not active in kilda controller" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')" class="fa fa-exclamation-triangle text-orange"></i>
+                   <i title="Flow is not active in inventory" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.inventory == '-')" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>
             </li>
@@ -142,8 +143,8 @@
             </li>
             <li class="list-group-item">
               <div class="row">
-                <div class="col-sm-4">Maximum Bandwidth:</div>
-                <div class="col-sm-8">{{ (flowDetail["maximum_bandwidth"] / 1000) || "-" }}
+                <div class="col-sm-4">Maximum Bandwidth(Mbps):</div>
+                <div class="col-sm-8">{{ flowDetail["maximum_bandwidth"] / 1000 }}
                     &nbsp;<i *ngIf="storeLinkSetting && bandWidthDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>
@@ -227,10 +228,19 @@
                 <thead class="thead-light"><tr><th>Discrepancy</th><th>Kilda Controller</th><th>Link Store</th></tr></thead>
               <tbody>
                 <tr *ngIf="statusDescrepancy"><td>Status</td><td>{{ descrepancyData.status.controller}}</td><td>{{ descrepancyData.status.inventory}}</td></tr>
-                <tr *ngIf="bandWidthDescrepancy"><td>Bandwidth</td><td>{{ descrepancyData.bandwidth.controller}}</td><td>{{ descrepancyData.bandwidth.inventory}}</td></tr>
+                <tr *ngIf="bandWidthDescrepancy"><td>Bandwidth(Kbps)</td><td>{{ descrepancyData.bandwidth.controller}}</td><td>{{ descrepancyData.bandwidth.inventory}}</td></tr>
               </tbody>
             </table>
+            <div class="note-container">
+                <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')">
+                   <strong>*Note:</strong> Flow is not active in kilda controller</p>
+                   
+                   <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.inventory == '-' ) ">
+                    <strong>*Note:</strong> Flow is not active in inventory</p>
+  
+            </div>
           </div>
+          
       </div>
       </div>
     </div>

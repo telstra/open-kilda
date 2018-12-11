@@ -23,7 +23,13 @@ export class IslListComponent implements OnInit, AfterViewInit {
 
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - ISL');
-    this.getISLlistService();
+    var islList = JSON.parse(localStorage.getItem("ISL_LIST"));
+    if (islList) {
+      this.dataSet = islList;
+      this.loadingData = false;
+    } else {
+      this.getISLlistService();
+    }
   }
 
   getISLlistService(){
@@ -32,6 +38,7 @@ export class IslListComponent implements OnInit, AfterViewInit {
     let query = {_:new Date().getTime()};
     this.islListService.getIslList(query).subscribe(
       (data: Array<object>) => {
+        localStorage.setItem('ISL_LIST',JSON.stringify(data));
         if (!data || data.length == 0) {
           this.toastr.info("No ISL Available", "Information");
           this.dataSet = [];
