@@ -15,6 +15,9 @@ import spock.util.mop.Use
 @Narrative("Verify that basic stats logging happens.")
 class OpenTsdbSpec extends BaseSpecification {
 
+    private static final String VERIFICATION_BROADCAST_RULE_COOKIE = "8000000000000002"
+    private static final String VERIFICATION_UNICAST_RULE_COOKIE = "8000000000000003"
+
     @Autowired
     OtsdbQueryService otsdb
     @Autowired
@@ -34,6 +37,31 @@ class OpenTsdbSpec extends BaseSpecification {
                 uniqueSwitches.collect { [switchid: it.dpId.toOtsdFormat()] }].combinations()
                 + [["pen.isl.latency"], uniqueSwitches.collect { [src_switch: it.dpId.toOtsdFormat()] }].combinations()
                 + [["pen.isl.latency"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations())
+    }
+
+    @Unroll("Stats are being logged for metric:#metric, tags:#tags")
+    def "Stats for default rule meters"(metric, tags) {
+        requireProfiles("hardware")
+        
+        expect: "At least 1 result in the past 2 minutes"
+        otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
+        where:
+        [metric, tags] << ([
+                ["pen.switch.flow.system.meter.packets", "pen.switch.flow.system.meter.bytes",
+                 "pen.switch.flow.system.meter.bits"],
+                [[cookie: VERIFICATION_BROADCAST_RULE_COOKIE],
+                 [cookie: VERIFICATION_UNICAST_RULE_COOKIE]]
+        ].combinations())
+    }
+
+    @Unroll("Stats are being logged for metric:#metric")
+    def "Stats for flow meters"(metric) {
+        requireProfiles("hardware")
+
+        expect: "At least 1 result in the past 2 minutes"
+        otsdb.query(2.minutes.ago, metric, [:]).dps.size() > 0
+        where:
+        metric << ["pen.flow.meter.packets", "pen.flow.meter.bytes", "pen.flow.meter.bits"]
     }
 
     def getUniqueSwitches() {
