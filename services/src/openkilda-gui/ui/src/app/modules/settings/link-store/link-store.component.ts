@@ -84,7 +84,7 @@ export class LinkStoreComponent implements OnInit {
       })      
     });
     
-
+   
     this.storesettingservice.getLinkStoreUrl().subscribe((response)=>{
       if(response && response.length){
 				for(var i=0; i < response.length; i++) { 
@@ -223,15 +223,18 @@ export class LinkStoreComponent implements OnInit {
     },(error)=>{
 
     })
+    this.loaderService.show('loading link store details..');
     this.storesettingservice.getLinkStoreDetails().subscribe((jsonResponse)=>{
+      this.loaderService.hide();
       if(jsonResponse && jsonResponse['urls'] && typeof(jsonResponse['urls']['get-link']) !='undefined' &&  typeof(jsonResponse['urls']['get-link']['url'])!='undefined'){
 				this.linkStoreObj = jsonResponse;
 				this.linkStoreForm.setValue(jsonResponse);
         this.linkStoreForm.disable();
         this.isEdit = true;
+        
 			}
     },(error)=>{
-
+      this.loaderService.hide();
     })
   }
 

@@ -73,6 +73,7 @@ export class IdentityServerComponent implements OnInit {
         "body":[""]
       })
     });
+    this.loaderService.show('loading identity details..');
     this.storesettingservice.getIdentityServerConfigurations().subscribe((jsonResponse)=>{
       if(jsonResponse && jsonResponse['oauth-generate-token-url'] && typeof(jsonResponse['oauth-generate-token-url']['url']) !== 'undefined' ){
         this.commonService.setIdentityServer(true);
@@ -80,7 +81,12 @@ export class IdentityServerComponent implements OnInit {
         this.identityServerForm.setValue(jsonResponse);
         this.identityServerForm.disable();
         this.isEdit = true;
-			}
+        this.loaderService.hide();
+			}else{
+        this.loaderService.hide();
+      }
+    },(err)=>{
+      this.loaderService.hide();
     })
   }
 
