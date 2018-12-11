@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
+import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 
@@ -43,7 +44,7 @@ public class SpeakerBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(SpeakerBolt.class);
     private static final String PORT_STATS_STREAM = StatsStreamType.PORT_STATS.toString();
     private static final String METER_CFG_STATS_STREAM = StatsStreamType.METER_CONFIG_STATS.toString();
-    private static final String FLOW_STATS_STREAM = StatsStreamType.FLOW_STATS.toString();
+    private static final String CACHE_STREAM = StatsStreamType.CACHE_DATA.toString();
 
     private OutputCollector outputCollector;
 
@@ -54,7 +55,6 @@ public class SpeakerBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         logger.debug("Ingoing tuple: {}", tuple);
         String request = tuple.getString(0);
-        //String request = tuple.getStringByField("value");
         try {
             Message stats = Utils.MAPPER.readValue(request, Message.class);
             if (!Destination.WFM_STATS.equals(stats.getDestination()) || !(stats instanceof InfoMessage)) {
@@ -68,9 +68,12 @@ public class SpeakerBolt extends BaseRichBolt {
             } else if (data instanceof MeterConfigStatsData) {
                 logger.debug("Meter config stats message: {}", new Values(request));
                 outputCollector.emit(METER_CFG_STATS_STREAM, tuple, new Values(message));
+            } else if (data instanceof MeterStatsData) {
+                logger.debug("Meter stats message: {}", new Values(request));
+                outputCollector.emit(CACHE_STREAM, tuple, new Values(message));
             } else if (data instanceof FlowStatsData) {
                 logger.debug("Flow stats message: {}", new Values(request));
-                outputCollector.emit(FLOW_STATS_STREAM, tuple, new Values(message));
+                outputCollector.emit(CACHE_STREAM, tuple, new Values(message));
             }
         } catch (IOException exception) {
             logger.error("Could not deserialize message={}", request, exception);
@@ -87,7 +90,7 @@ public class SpeakerBolt extends BaseRichBolt {
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(PORT_STATS_STREAM, fieldMessage);
         outputFieldsDeclarer.declareStream(METER_CFG_STATS_STREAM, fieldMessage);
-        outputFieldsDeclarer.declareStream(FLOW_STATS_STREAM, fieldMessage);
+        outputFieldsDeclarer.declareStream(CACHE_STREAM, fieldMessage);
     }
 
     /**

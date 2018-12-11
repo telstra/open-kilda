@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.stats;
 
 import static org.openkilda.wfm.topology.stats.StatsComponentType.FLOW_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STATS_METRIC_GEN;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
@@ -32,6 +33,7 @@ import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
 import org.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
+import org.openkilda.wfm.topology.stats.metrics.MeterStatsMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
 
 import org.apache.storm.generated.StormTopology;
@@ -90,24 +92,25 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
         builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(persistenceManager), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
-                .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
+                .fieldsGrouping(statsOfsBolt, StatsStreamType.CACHE_DATA.toString(), fieldMessage);
 
         builder.setBolt(PORT_STATS_METRIC_GEN.name(), new PortMetricGenBolt(), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.PORT_STATS.toString(), fieldMessage);
-        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(), new MeterConfigMetricGenBolt(),
-                parallelism)
-                .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(),
-                        fieldMessage);
+
+        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(), new MeterConfigMetricGenBolt(), parallelism)
+                .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(), fieldMessage);
 
         logger.debug("starting flow_stats_metric_gen");
-        builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
-                new FlowMetricGenBolt(),
-                parallelism)
+        builder.setBolt(FLOW_STATS_METRIC_GEN.name(), new FlowMetricGenBolt(), parallelism)
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), fieldMessage);
+
+        builder.setBolt(METER_STATS_METRIC_GEN.name(), new MeterStatsMetricGenBolt(), parallelism)
+                .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.METER_STATS.toString(), fieldMessage);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
+                .shuffleGrouping(METER_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name());
 

@@ -38,6 +38,13 @@ public interface ISwitchManager extends IFloodlightService {
     /** OVS software switch manufacturer constant value. */
     String OVS_MANUFACTURER = "Nicira, Inc.";
 
+    /**
+     * Default rule cookies.
+     * NOTE: If you are planing to add new default rule with meter you must make sure that new meterId was added into
+     * 'DEFAULT_RULE_METER_IDS' array which is placed in 'MeterStatsMetricGenBolt.java'
+     * 'PACKET_IN_RULES_METERS_MASK' is used to generate meterId for default rule
+     * by conjunction of the mask and default rule cookie.
+     */
     long DROP_RULE_COOKIE = 0x8000000000000001L;
     long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
     long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;

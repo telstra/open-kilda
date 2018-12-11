@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats;
+package org.openkilda.model;
 
-/**
- * Represents stream used in {@link StatsTopology}.
- */
-public enum StatsStreamType {
-    PORT_STATS,
-    METER_STATS,
-    CACHE_DATA,
-    METER_CONFIG_STATS,
-    FLOW_STATS,
-    STATS_RESPONSE,
-    CACHE_UPDATE,
+public final class Constants {
+    public static final long DEFAULT_RULES_COOKIE_MASK = 0x8000000000000000L;
+
+    private Constants() {
+        throw new UnsupportedOperationException();
+    }
 }
