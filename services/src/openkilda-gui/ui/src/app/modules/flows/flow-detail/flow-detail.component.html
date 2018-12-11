@@ -130,7 +130,8 @@
               <div class="row">
                 <div class="col-sm-4">Status:</div>
                 <div class="col-sm-8">{{ flowDetail.status || "-" }}
-                   &nbsp; <i title="Flow is not active in kilda controller" *ngIf="storeLinkSetting &&  statusDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
+                   &nbsp; <i title="Flow is not active in kilda controller" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')" class="fa fa-exclamation-triangle text-orange"></i>
+                   <i title="Flow is not active in invetory" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.inventory == '-')" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>
             </li>
@@ -231,8 +232,11 @@
               </tbody>
             </table>
             <div class="note-container">
-                <p class="col-md-6 alert alert-warning" *ngIf="descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active' ">
+                <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')">
                    <strong>*Note:</strong> Flow is not active in kilda controller</p>
+                   
+                   <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.inventory == '-' ) ">
+                    <strong>*Note:</strong> Flow is not active in inventory</p>
   
             </div>
           </div>

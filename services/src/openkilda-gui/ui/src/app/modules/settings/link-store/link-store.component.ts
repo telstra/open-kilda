@@ -30,6 +30,7 @@ export class LinkStoreComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.loaderService.show('Loading link store details..');
     this.linkStoreForm = this.formbuilder.group({
        "urls":this.formbuilder.group({
               "get-status-list":this.formbuilder.group({
@@ -84,7 +85,6 @@ export class LinkStoreComponent implements OnInit {
       })      
     });
     
-   
     this.storesettingservice.getLinkStoreUrl().subscribe((response)=>{
       if(response && response.length){
 				for(var i=0; i < response.length; i++) { 
@@ -218,26 +218,37 @@ export class LinkStoreComponent implements OnInit {
                       })
 							     break;
 					 }
-				}
+        }
+        this.loadStoreDetail();
 			}
     },(error)=>{
-
+      this.loadStoreDetail();
     })
-    this.loaderService.show('loading link store details..');
+    
+  }
+  loadStoreDetail(){
+    var self = this;
     this.storesettingservice.getLinkStoreDetails().subscribe((jsonResponse)=>{
-      this.loaderService.hide();
       if(jsonResponse && jsonResponse['urls'] && typeof(jsonResponse['urls']['get-link']) !='undefined' &&  typeof(jsonResponse['urls']['get-link']['url'])!='undefined'){
 				this.linkStoreObj = jsonResponse;
 				this.linkStoreForm.setValue(jsonResponse);
         this.linkStoreForm.disable();
         this.isEdit = true;
+        setTimeout(function(){
+          self.loaderService.hide();
+        },300);
         
-			}
+			}else{
+        setTimeout(function(){
+          self.loaderService.hide();
+        },300);
+      }
     },(error)=>{
-      this.loaderService.hide();
+      setTimeout(function(){
+        self.loaderService.hide();
+      },300);
     })
   }
-
   get i() {
     return this.linkStoreForm.controls;
   }
