@@ -116,6 +116,8 @@ public interface NorthboundService {
 
     BatchResults deleteLinkProps(List<LinkPropsDto> keys);
 
+    List<FlowPayload> getLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
+
     //feature toggles
 
     FeatureTogglePayload getFeatureToggles();

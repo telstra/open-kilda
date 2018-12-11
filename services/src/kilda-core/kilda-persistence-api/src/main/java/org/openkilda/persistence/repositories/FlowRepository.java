@@ -43,4 +43,7 @@ public interface FlowRepository extends Repository<Flow> {
     void delete(FlowPair flowPair);
 
     void updateStatus(String flowId, FlowStatus status);
+
+    Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
+                                                     SwitchId dstSwitchId, int dstPort);
 }
