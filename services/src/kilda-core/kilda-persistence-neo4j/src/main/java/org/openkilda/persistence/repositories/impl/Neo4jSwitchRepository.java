@@ -51,7 +51,7 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
 
     @Override
     public Optional<Switch> findById(SwitchId switchId) {
-        return findById(getSession(), switchId, DEPTH_LIST);
+        return findById(getSession(), switchId, DEPTH_LOAD_ENTITY);
     }
 
     private Optional<Switch> findById(Session session, SwitchId switchId, int entityLoadDepth) {

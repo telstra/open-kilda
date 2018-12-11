@@ -32,6 +32,8 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<FlowPair> findAllFlowPairs();
 
+    Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled();
+
     Collection<Flow> findFlowIdsByEndpoint(SwitchId switchId, int port);
 
     Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port);

@@ -34,7 +34,7 @@ import java.util.Map;
  * Base Neo4J OGM implementation of {@link Repository}.
  */
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
-    static final int DEPTH_LIST = 1;
+    static final int DEPTH_LOAD_ENTITY = 1;
     static final int DEPTH_CREATE_UPDATE_ENTITY = 0;
 
     private final Neo4jSessionFactory sessionFactory;
@@ -51,7 +51,7 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
 
     @Override
     public Collection<T> findAll() {
-        return getSession().loadAll(getEntityType(), DEPTH_LIST);
+        return getSession().loadAll(getEntityType(), DEPTH_LOAD_ENTITY);
     }
 
     @Override

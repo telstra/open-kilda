@@ -28,6 +28,7 @@ import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.RelationshipEntity;
+import org.neo4j.ogm.annotation.Required;
 import org.neo4j.ogm.annotation.StartNode;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
@@ -53,9 +54,11 @@ public class FlowSegment implements Serializable {
 
     @NonNull
     @Property(name = "flowid")
+    @Required
     private String flowId;
 
     @Property(name = "cookie")
+    @Required
     private long cookie;
 
     /**
