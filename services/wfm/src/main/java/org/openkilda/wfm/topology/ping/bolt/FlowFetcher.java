@@ -80,18 +80,13 @@ public class FlowFetcher extends Abstract {
 
     private void handlePeriodicRequest(Tuple input) throws PipelineException {
         log.debug("Handle periodic ping request");
-        final List<BidirectionalFlowDto> flows = flowRepository.findAllFlowPairs().stream()
+        final List<BidirectionalFlowDto> flows = flowRepository.findFlowPairsWithPeriodicPingsEnabled().stream()
                 .map(pair -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(pair)))
                 .collect(Collectors.toList());
 
         final CommandContext commandContext = pullContext(input);
         final FlowsHeap heap = new FlowsHeap();
         for (BidirectionalFlowDto flow : flows) {
-            if (!flow.isPeriodicPings()) {
-                log.debug("Skip flow {} due to isPeriodicPings == false", flow.getFlowId());
-                continue;
-            }
-
             PingContext pingContext = new PingContext(Kinds.PERIODIC, flow);
             emit(input, pingContext, commandContext);
 

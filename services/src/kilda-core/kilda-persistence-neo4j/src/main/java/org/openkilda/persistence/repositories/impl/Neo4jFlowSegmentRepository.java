@@ -21,9 +21,8 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 
 import com.google.common.collect.ImmutableMap;
-import org.neo4j.ogm.cypher.ComparisonOperator;
-import org.neo4j.ogm.cypher.Filter;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -41,9 +40,16 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
 
     @Override
     public Collection<FlowSegment> findByFlowIdAndCookie(String flowId, long flowCookie) {
-        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
-        Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, flowCookie);
-        return getSession().loadAll(getEntityType(), flowIdFilter.and(cookieFilter), DEPTH_LIST);
+        Map<String, Object> parameters = ImmutableMap.of(
+                "flow_cookie", flowCookie,
+                "flow_id", flowId
+        );
+
+        String query = "MATCH (src) - [fs:flow_segment {  cookie: $flow_cookie,  flowid: $flow_id }] -> (dst) "
+                     + "RETURN src, fs, dst";
+        Collection<FlowSegment> flowSegments = new ArrayList<>();
+        getSession().query(getEntityType(), query, parameters).forEach(flowSegments::add);
+        return flowSegments;
     }
 
     @Override

@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
  */
 public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements FlowRepository {
     private static final String FLOW_ID_PROPERTY_NAME = "flowid";
+    private static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
 
     private final FlowStatusConverter flowStatusConverter = new FlowStatusConverter();
 
@@ -63,7 +64,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     public Collection<Flow> findById(String flowId) {
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
 
-        return getSession().loadAll(getEntityType(), flowIdFilter, DEPTH_LIST);
+        return getSession().loadAll(getEntityType(), flowIdFilter, DEPTH_LOAD_ENTITY);
     }
 
     @Override
@@ -79,6 +80,15 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     public Collection<FlowPair> findAllFlowPairs() {
         return buildFlowPairs(findAll());
     }
+
+    @Override
+    public Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled() {
+        Filter periodicPingsFilter = new Filter(PERIODIC_PINGS_PROPERTY_NAME, ComparisonOperator.EQUALS, true);
+
+        Collection<Flow> flows = getSession().loadAll(getEntityType(), periodicPingsFilter, DEPTH_LOAD_ENTITY);
+        return buildFlowPairs(flows);
+    }
+
 
     private Collection<FlowPair> buildFlowPairs(Iterable<Flow> flows) {
         Map<String, FlowPair.FlowPairBuilder> flowPairsMap = new HashMap<>();
