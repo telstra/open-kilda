@@ -19,25 +19,29 @@ import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_OFS_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.FLOW_STATS;
+import static org.openkilda.wfm.topology.stats.StatsStreamType.METER_STATS;
 
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
+import org.openkilda.messaging.info.stats.MeterStatsData;
+import org.openkilda.messaging.info.stats.MeterStatsEntry;
+import org.openkilda.messaging.info.stats.MeterStatsReply;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.topology.stats.CacheFlowEntry;
+import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.topology.stats.FlowByCookieCacheEntry;
+import org.openkilda.wfm.topology.stats.FlowByMeterCacheEntry;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
+import javafx.util.Pair;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -47,14 +51,16 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CacheBolt extends BaseRichBolt {
+public class CacheBolt extends AbstractBolt {
 
-    public static final String CACHE_FIELD = "cache";
+    public static final String COOKIE_CACHE_FIELD = "cookie_cache";
+    public static final String METER_CACHE_FIELD = "meter_cache";
 
     public static final Fields fieldsMessageFlowStats =
             new Fields(
                     MESSAGE_FIELD,
-                    CACHE_FIELD);
+                    COOKIE_CACHE_FIELD,
+                    METER_CACHE_FIELD);
     /**
      * The logger.
      */
@@ -66,13 +72,11 @@ public class CacheBolt extends BaseRichBolt {
      */
     private final PersistenceManager persistenceManager;
 
-    private TopologyContext context;
-    private OutputCollector outputCollector;
-
     /**
-     * Cookie to flow map.
+     * Cookie to flow and meter to flow maps.
      */
-    private Map<Long, CacheFlowEntry> cookieToFlow = new HashMap<>();
+    private Map<Long, FlowByCookieCacheEntry> cookieToFlow = new HashMap<>();
+    private Map<Pair<SwitchId, Long>, FlowByMeterCacheEntry> switchAndMeterToFlow = new HashMap<>();
 
     public CacheBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -81,12 +85,18 @@ public class CacheBolt extends BaseRichBolt {
     private void initFlowCache(FlowRepository flowRepository) {
         try {
             flowRepository.findAll().forEach(
-                    flow -> cookieToFlow.put(flow.getCookie(), new CacheFlowEntry(
-                            flow.getFlowId(),
-                            flow.getSrcSwitch().getSwitchId().toOtsdFormat(),
-                            flow.getDestSwitch().getSwitchId().toOtsdFormat()))
+                    flow -> {
+                        cookieToFlow.put(flow.getCookie(), new FlowByCookieCacheEntry(
+                                flow.getFlowId(),
+                                flow.getSrcSwitch().getSwitchId().toOtsdFormat(),
+                                flow.getDestSwitch().getSwitchId().toOtsdFormat()));
+
+                        switchAndMeterToFlow.put(
+                                new Pair<>(flow.getSrcSwitch().getSwitchId(), (long) flow.getMeterId()),
+                                new FlowByMeterCacheEntry(flow.getFlowId(), flow.getCookie()));
+                    }
             );
-            logger.debug("initFlowCache: {}", cookieToFlow);
+            logger.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
             logger.info("Stats Cache: Initialized");
         } catch (Exception ex) {
             logger.error("Error on initFlowCache", ex);
@@ -97,12 +107,8 @@ public class CacheBolt extends BaseRichBolt {
      * {@inheritDoc}
      */
     @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.context = topologyContext;
-        this.outputCollector = outputCollector;
-
+    public void init() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-
         initFlowCache(repositoryFactory.createFlowRepository());
     }
 
@@ -110,55 +116,84 @@ public class CacheBolt extends BaseRichBolt {
      * {@inheritDoc}
      */
     @Override
-    public void execute(Tuple tuple) {
+    protected void handleInput(Tuple tuple) {
+        StatsComponentType componentId = StatsComponentType.valueOf(tuple.getSourceComponent());
 
-        try {
+        if (componentId == STATS_CACHE_FILTER_BOLT) {
 
-            StatsComponentType componentId = StatsComponentType.valueOf(tuple.getSourceComponent());
+            Long cookie = tuple.getLongByField(FieldsNames.COOKIE.name());
+            Long meterId = tuple.getLongByField(FieldsNames.METER.name());
+            String flow = tuple.getStringByField(FieldsNames.FLOW.name());
+            SwitchId switchId = new SwitchId(tuple.getValueByField(FieldsNames.SWITCH.name()).toString());
 
-            if (componentId == STATS_CACHE_FILTER_BOLT) {
+            Commands command = (Commands) tuple.getValueByField(FieldsNames.COMMAND.name());
+            MeasurePoint measurePoint = (MeasurePoint) tuple.getValueByField(FieldsNames.MEASURE_POINT.name());
 
-                Long cookie = tuple.getLongByField(FieldsNames.COOKIE.name());
-                String flow = tuple.getStringByField(FieldsNames.FLOW.name());
-                String sw = new SwitchId(tuple.getValueByField(FieldsNames.SWITCH.name()).toString()).toOtsdFormat();
-
-                Commands command = (Commands) tuple.getValueByField(FieldsNames.COMMAND.name());
-                MeasurePoint measurePoint = (MeasurePoint) tuple.getValueByField(FieldsNames.MEASURE_POINT.name());
-
-                switch (command) {
-                    case UPDATE:
-                        updateCacheEntry(cookie, flow, sw, measurePoint);
-                        break;
-                    case REMOVE:
-                        cookieToFlow.remove(cookie);
-                        break;
-                    default:
-                        logger.error("invalid command");
-                        break;
-                }
-
-                logger.debug("updated cookieToFlow: {}", cookieToFlow);
-            } else if (componentId == STATS_OFS_BOLT) {
-                InfoMessage message = (InfoMessage) tuple.getValueByField(MESSAGE_FIELD);
-
-                FlowStatsData data = (FlowStatsData) message.getData();
-
-                Map<Long, CacheFlowEntry> dataCache = new HashMap<>();
-                for (FlowStatsReply reply : data.getStats()) {
-                    for (FlowStatsEntry entry : reply.getEntries()) {
-                        if (cookieToFlow.containsKey(entry.getCookie())) {
-                            CacheFlowEntry cacheFlowEntry = cookieToFlow.get(entry.getCookie());
-                            dataCache.put(entry.getCookie(), cacheFlowEntry);
-                        }
-                    }
-                }
-                logger.debug("execute:dataCache: {}", dataCache);
-                Values values = new Values(message, dataCache);
-                outputCollector.emit(FLOW_STATS.name(), tuple, values);
+            switch (command) {
+                case UPDATE:
+                    updateCacheEntry(cookie, meterId, flow, switchId, measurePoint);
+                    break;
+                case REMOVE:
+                    cookieToFlow.remove(cookie);
+                    switchAndMeterToFlow.remove(new Pair<>(switchId, meterId));
+                    break;
+                default:
+                    logger.error("invalid command");
+                    break;
             }
-        } finally {
-            outputCollector.ack(tuple);
+
+            logger.debug("updated cookieToFlow: {}", cookieToFlow);
+        } else if (componentId == STATS_OFS_BOLT) {
+            InfoMessage message = (InfoMessage) tuple.getValueByField(MESSAGE_FIELD);
+            Map<Long, FlowByCookieCacheEntry> cookieDataCache = null;
+            Map<Pair<SwitchId, Long>, FlowByMeterCacheEntry> meterDataCache = null;
+            String streamId;
+
+            if (message.getData() instanceof FlowStatsData) {
+                streamId = FLOW_STATS.name();
+                cookieDataCache = createCookieToFlowCache((FlowStatsData) message.getData());
+                logger.debug("execute:cookieDataCache: {}", cookieDataCache);
+            } else if (message.getData() instanceof MeterStatsData) {
+                streamId = METER_STATS.name();
+                meterDataCache = createSwitchAndMeterToFlowCache((MeterStatsData) message.getData());
+                logger.debug("execute:meterDataCache: {}", meterDataCache);
+            } else {
+                unhandledInput(tuple);
+                return;
+            }
+
+            Values values = new Values(message, cookieDataCache, meterDataCache);
+            getOutput().emit(streamId, tuple, values);
         }
+    }
+
+    private Map<Long, FlowByCookieCacheEntry> createCookieToFlowCache(FlowStatsData data) {
+        Map<Long, FlowByCookieCacheEntry> cache = new HashMap<>();
+
+        for (FlowStatsReply reply : data.getStats()) {
+            for (FlowStatsEntry entry : reply.getEntries()) {
+                if (cookieToFlow.containsKey(entry.getCookie())) {
+                    FlowByCookieCacheEntry flowByCookieCacheEntry = cookieToFlow.get(entry.getCookie());
+                    cache.put(entry.getCookie(), flowByCookieCacheEntry);
+                }
+            }
+        }
+        return cache;
+    }
+
+    private Map<Pair<SwitchId, Long>, FlowByMeterCacheEntry> createSwitchAndMeterToFlowCache(MeterStatsData data) {
+        Map<Pair<SwitchId, Long>, FlowByMeterCacheEntry> cache = new HashMap<>();
+
+        for (MeterStatsReply reply : data.getStats()) {
+            for (MeterStatsEntry entry : reply.getEntries()) {
+                Pair<SwitchId, Long> key = new Pair<>(data.getSwitchId(), entry.getMeterId());
+                if (switchAndMeterToFlow.containsKey(key)) {
+                    FlowByMeterCacheEntry cacheEntry = switchAndMeterToFlow.get(key);
+                    cache.put(key, cacheEntry);
+                }
+            }
+        }
+        return cache;
     }
 
     /**
@@ -166,18 +201,27 @@ public class CacheBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(FLOW_STATS.name(),
-                fieldsMessageFlowStats);
+        outputFieldsDeclarer.declareStream(FLOW_STATS.name(), fieldsMessageFlowStats);
+        outputFieldsDeclarer.declareStream(METER_STATS.name(), fieldsMessageFlowStats);
     }
 
-    private void updateCacheEntry(Long cookie, String flowId, String sw, MeasurePoint measurePoint) {
-        CacheFlowEntry current = cookieToFlow.get(cookie);
-        CacheFlowEntry replacement;
+    private void updateCacheEntry(
+            Long cookie, Long meterId, String flowId, SwitchId switchId, MeasurePoint measurePoint) {
+        FlowByCookieCacheEntry current = cookieToFlow.get(cookie);
+        FlowByCookieCacheEntry replacement;
         if (current != null) {
-            replacement = current.replace(sw, measurePoint);
+            replacement = current.replace(switchId.toOtsdFormat(), measurePoint);
         } else {
-            replacement = new CacheFlowEntry(flowId).replace(sw, measurePoint);
+            replacement = new FlowByCookieCacheEntry(flowId).replace(switchId.toOtsdFormat(), measurePoint);
         }
         cookieToFlow.put(cookie, replacement);
+
+        if (meterId != null) {
+            putToMeterCacheMap(switchId, meterId, new FlowByMeterCacheEntry(flowId, cookie));
+        }
+    }
+
+    private void putToMeterCacheMap(SwitchId switchId, Long meterId, FlowByMeterCacheEntry entry) {
+        switchAndMeterToFlow.put(new Pair<>(switchId, meterId), entry);
     }
 }

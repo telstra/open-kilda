@@ -25,7 +25,7 @@ import java.io.Serializable;
 @Value
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public class CacheFlowEntry implements Serializable {
+public class FlowByCookieCacheEntry implements Serializable {
 
     @NonNull
     private String flowId;
@@ -33,7 +33,7 @@ public class CacheFlowEntry implements Serializable {
     private String ingressSwitch;
     private String egressSwitch;
 
-    public CacheFlowEntry(String flowId) {
+    public FlowByCookieCacheEntry(String flowId) {
         this(flowId, null, null);
     }
 
@@ -41,8 +41,8 @@ public class CacheFlowEntry implements Serializable {
      * Make "clone" of existing object, replace ingressSwitch or egressSwitch with new value. Switch that must be
      * replaced determined by point argument value.
      */
-    public CacheFlowEntry replace(String sw, MeasurePoint point) {
-        CacheFlowEntryBuilder replacement = toBuilder();
+    public FlowByCookieCacheEntry replace(String sw, MeasurePoint point) {
+        FlowByCookieCacheEntryBuilder replacement = toBuilder();
         switch (point) {
             case INGRESS:
                 replacement.ingressSwitch(sw);
