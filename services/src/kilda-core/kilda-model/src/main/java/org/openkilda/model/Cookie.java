@@ -46,4 +46,20 @@ public class Cookie {
     public static String toString(long cookie) {
         return String.format("0x%016X", cookie);
     }
+
+    /**
+     * Create Cookie from meter ID of default rule by using of `DEFAULT_RULES_MASK`.
+     *
+     * @param meterId meter ID
+     * @return cookie
+     * @throws IllegalArgumentException if meter ID is out of range of default meter ID range
+     */
+    public static Cookie createCookieForDefaultRule(long meterId) {
+        if (!MeterId.isMeterIdOfDefaultRule(meterId)) {
+            throw new IllegalArgumentException(
+                    String.format("Meter ID '%s' is not a meter ID of default rule.", meterId));
+        }
+
+        return new Cookie(meterId | DEFAULT_RULES_MASK);
+    }
 }

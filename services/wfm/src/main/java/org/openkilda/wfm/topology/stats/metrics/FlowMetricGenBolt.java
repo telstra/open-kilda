@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.stats.metrics;
 
 import static org.openkilda.messaging.Utils.TIMESTAMP;
-import static org.openkilda.wfm.topology.stats.StatsTopology.FLOW_STATS_FIELD;
-import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.CACHE_FIELD;
+import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
+import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.COOKIE_CACHE_FIELD;
 
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
@@ -54,10 +54,10 @@ public class FlowMetricGenBolt extends MetricGenBolt {
 
     @Override
     public void execute(Tuple input) {
-        Map<Long, CacheFlowEntry> dataCache = (Map<Long, CacheFlowEntry>) input.getValueByField(CACHE_FIELD);
+        Map<Long, CacheFlowEntry> dataCache = (Map<Long, CacheFlowEntry>) input.getValueByField(COOKIE_CACHE_FIELD);
         LOGGER.debug("dataCache in FlowMetricGenBolt {}", dataCache);
 
-        FlowStatsData data = (FlowStatsData) input.getValueByField(FLOW_STATS_FIELD);
+        FlowStatsData data = (FlowStatsData) input.getValueByField(STATS_FIELD);
         long timestamp = input.getLongByField(TIMESTAMP);
         SwitchId switchId = data.getSwitchId();
 
