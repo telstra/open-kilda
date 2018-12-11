@@ -16,12 +16,13 @@ neo.uri=bolt://localhost:7687
 lab-api.endpoint=http://localhost:8288
 otsdb.endpoint=http://localhost:4242
 
-elasticsearch.endpoint = https://localhost:9200
+elasticsearch.endpoint = http://localhost:9200
 elasticsearch.username = username
 elasticsearch.password = password
 
 spring.profiles.active=virtual
 # not delete topology after test runs
+# for now in case of hardware profile it must be set to True if topology already exists
 mode.topology.single=true
 
 reroute.delay=10
