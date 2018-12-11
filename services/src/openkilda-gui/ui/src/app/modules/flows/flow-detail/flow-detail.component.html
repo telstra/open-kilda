@@ -228,7 +228,7 @@
                 <thead class="thead-light"><tr><th>Discrepancy</th><th>Kilda Controller</th><th>Link Store</th></tr></thead>
               <tbody>
                 <tr *ngIf="statusDescrepancy"><td>Status</td><td>{{ descrepancyData.status.controller}}</td><td>{{ descrepancyData.status.inventory}}</td></tr>
-                <tr *ngIf="bandWidthDescrepancy"><td>Bandwidth</td><td>{{ descrepancyData.bandwidth.controller}}</td><td>{{ descrepancyData.bandwidth.inventory}}</td></tr>
+                <tr *ngIf="bandWidthDescrepancy"><td>Bandwidth(Kbps)</td><td>{{ descrepancyData.bandwidth.controller}}</td><td>{{ descrepancyData.bandwidth.inventory}}</td></tr>
               </tbody>
             </table>
             <div class="note-container">
