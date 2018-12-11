@@ -13,14 +13,15 @@ floodlight.controller.uri={{ getv "/kilda_floodlight_controller_uri" }}
 
 lockkeeper.endpoint={{ getv "/kilda_aswitch_endpoint" }}:{{ getv "/kilda_aswitch_port" }}
 neo.uri=bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
-lab-api.endpoint={{ getv "/kilda_lab_api_endpoint" }}:8288
-
+lab-api.endpoint={{ getv "/kilda_lab_api_endpoint" }}:{{ getv "/kilda_lab_api_port" }}
 otsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
+
 elasticsearch.endpoint = {{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
 elasticsearch.username = {{ getv "/kilda_logging_elasticsearch_user" }}
 elasticsearch.password = {{ getv "/kilda_logging_elasticsearch_pass" }}
 
 spring.profiles.active={{ getv "/kilda_test_profile" }}
+mode.topology.single={{ getv "/kilda_test_topology_single" }}
 
 reroute.delay={{ getv "/kilda_reroute_throttling_delay_min" }}
 reroute.hardtimeout={{ getv "/kilda_reroute_throttling_delay_max" }}
