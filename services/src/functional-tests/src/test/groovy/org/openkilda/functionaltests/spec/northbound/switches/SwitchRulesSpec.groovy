@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -12,8 +13,8 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -173,6 +174,56 @@ class SwitchRulesSpec extends BaseSpecification {
                   deleteRulesAction: DeleteRulesAction.REMOVE_ADD_DEFAULTS,
                   rulesDeleted     : srcSwDefaultRules.size(),
                   getExpectedRules : { switchId, defaultRules -> defaultRules + getFlowRules(switchId) }
+                 ]
+        ]
+    }
+
+    @Unroll
+    def "Able to delete default rule from a switch (delete-action=#data.deleteRulesAction)"() {
+        assumeFalse("Unable to run the test because an OF_ 12 switch has one broadcast rule as the default",
+                dstSwitch.ofVersion == "OF_12" && data.cookie != DefaultRule.VERIFICATION_BROADCAST_RULE.cookie)
+
+        given: "A switch with some flow rules installed"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        when: "Delete rules from the switch"
+        def flowRules = getFlowRules(dstSwitch.dpId)
+        def deletedRules = northboundService.deleteSwitchRules(dstSwitch.dpId, data.deleteRulesAction)
+
+        then: "The corresponding rules are really deleted"
+        deletedRules.size() == 1
+        Wrappers.wait(RULES_DELETION_TIME) {
+            def actualRules = northboundService.getSwitchRules(dstSwitch.dpId).flowEntries
+            assert actualRules.findAll { it.cookie in deletedRules }.empty
+            compareRules(actualRules, dstSwDefaultRules.findAll { it.cookie != data.cookie } + flowRules)
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        and: "Install default rules back"
+        northboundService.installSwitchRules(dstSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northboundService.getSwitchRules(dstSwitch.dpId).flowEntries.size() == dstSwDefaultRules.size()
+        }
+
+        where:
+        data << [[// Drop just the default / base drop rule
+                  deleteRulesAction: DeleteRulesAction.REMOVE_DROP,
+                  cookie           : DefaultRule.DROP_RULE.cookie
+                 ],
+                 [// Drop just the verification (broadcast) rule only
+                  deleteRulesAction: DeleteRulesAction.REMOVE_BROADCAST,
+                  cookie           : DefaultRule.VERIFICATION_BROADCAST_RULE.cookie
+                 ],
+                 [// Drop just the verification (unicast) rule only
+                  deleteRulesAction: DeleteRulesAction.REMOVE_UNICAST,
+                  cookie           : DefaultRule.VERIFICATION_UNICAST_RULE.cookie
+                 ],
+                 [// Remove the verification loop drop rule only
+                  deleteRulesAction: DeleteRulesAction.REMOVE_VERIFICATION_LOOP,
+                  cookie           : DefaultRule.DROP_LOOP_RULE.cookie
                  ]
         ]
     }

@@ -15,15 +15,22 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.AbstractException;
+import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.topology.nbworker.StreamType;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -46,14 +53,27 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         super.prepare(stormConf, context, collector);
     }
 
-    protected void handleInput(Tuple input) {
+    protected void handleInput(Tuple input) throws AbstractException {
         BaseRequest request = (BaseRequest) input.getValueByField("request");
         final String correlationId = input.getStringByField("correlationId");
         log.debug("Received operation request");
 
-        List<InfoData> result = processRequest(input, request);
-        getOutput().emit(input, new Values(result, correlationId));
+        try {
+            List<InfoData> result = processRequest(input, request);
+            getOutput().emit(input, new Values(result, correlationId));
+        } catch (IslNotFoundException e) {
+            ErrorData data = new ErrorData(ErrorType.NOT_FOUND,
+                    e.getMessage(),
+                    "ISL does not exist.");
+            getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
+        }
     }
 
-    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request);
+    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws AbstractException;
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declareStream(StreamType.ERROR.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+    }
 }

@@ -1,0 +1,131 @@
+@startuml
+
+title Event handling in Event topology
+
+participant Floodlight
+control kilda.topo.disco
+participant "ET-OfeLinkBolt"
+participant "ET-NetworkTopologyBolt"
+participant "ET-SwitchService"
+participant DAO
+participant "ET-IslService"
+participant "ET-PortService"
+participant "ET-Sender"
+control kilda.topo.reroute
+
+Floodlight -> kilda.topo.disco : InfoData:\n-SwitchInfoData\n-IslInfoData\n-PortInfoData
+kilda.topo.disco -> "ET-OfeLinkBolt" : InfoData:\n-SwitchInfoData\n-IslInfoData\n-PortInfoData
+"ET-OfeLinkBolt" -> "ET-NetworkTopologyBolt" : InfoData:\n-SwitchInfoData\n-IslInfoData\n-PortInfoData
+activate "ET-NetworkTopologyBolt"
+
+alt SwitchInfoData
+
+alt ADDED
+    "ET-NetworkTopologyBolt" -> "ET-SwitchService" : createOrUpdateSwitch
+activate "ET-SwitchService"
+    "ET-SwitchService" -> DAO : getSwitch
+    activate DAO
+    DAO -> "ET-SwitchService" : switchFromDao
+    deactivate DAO
+
+    "ET-SwitchService" -> "ET-SwitchService" : create or update switch
+    "ET-SwitchService" -> DAO : createOrUpdateSwitch
+deactivate "ET-SwitchService"
+else ACTIVATED
+    "ET-NetworkTopologyBolt" -> "ET-SwitchService" : activateSwitch
+activate "ET-SwitchService"
+    "ET-SwitchService" -> DAO : getSwitch
+    activate DAO
+    DAO -> "ET-SwitchService" : switchFromDao
+    deactivate DAO
+
+    "ET-SwitchService" -> "ET-SwitchService" : set switch status "active"
+    "ET-SwitchService" -> DAO : createOrUpdateSwitch
+deactivate "ET-SwitchService"
+else REMOVED, DEACTIVATED
+    "ET-NetworkTopologyBolt" -> "ET-SwitchService" : deactivateSwitch
+activate "ET-SwitchService"
+    "ET-SwitchService" -> DAO : getSwitch
+    activate DAO
+    DAO -> "ET-SwitchService" : switchFromDao
+    deactivate DAO
+
+    "ET-SwitchService" -> "ET-SwitchService" : set switch status "inactive"
+    "ET-SwitchService" -> DAO : createOrUpdateSwitch
+deactivate "ET-SwitchService"
+end
+
+
+else IslInfoData
+
+alt DISCOVERED
+"ET-NetworkTopologyBolt" -> "ET-IslService" : createIsl
+activate "ET-IslService"
+    "ET-IslService" -> DAO : getIsl
+    activate DAO
+    DAO -> "ET-IslService" : islFromDao
+    deactivate DAO
+
+    "ET-IslService" -> DAO : createOrUpdateIsl
+    "ET-IslService" -> DAO : pullPropertiesFromLinkProps
+    "ET-IslService" -> DAO : updateIslBandwidth
+    "ET-IslService" -> "ET-NetworkTopologyBolt" : response
+deactivate "ET-IslService"
+
+    opt transaction was successful
+        "ET-NetworkTopologyBolt" -> "ET-Sender" : sendCommandToRerouteInactiveFlows
+        activate "ET-Sender"
+        "ET-Sender" -> kilda.topo.reroute : CommandMessage\nRerouteInactiveFlows
+        deactivate "ET-Sender"
+    end
+
+else FAILED, MOVED
+"ET-NetworkTopologyBolt" -> "ET-IslService" : islDiscoveryFailed
+activate "ET-IslService"
+    "ET-IslService" -> DAO : getIslByEndpoint
+    activate DAO
+    DAO -> "ET-IslService" : islFromDao
+    deactivate DAO
+    "ET-IslService" -> "ET-IslService" : set isl status "moved"
+    "ET-IslService" -> DAO : createOrUpdateIsl
+    "ET-IslService" -> "ET-NetworkTopologyBolt" : response
+deactivate "ET-IslService"
+
+    opt transaction was successful
+        "ET-NetworkTopologyBolt" -> "ET-Sender" : sendCommandToRerouteAffectedFlows
+        activate "ET-Sender"
+        "ET-Sender" -> kilda.topo.reroute : CommandMessage\nRerouteAffectedFlows
+        deactivate "ET-Sender"
+    end
+end
+
+
+else PortInfoData
+
+alt DOWN, DELETE
+"ET-NetworkTopologyBolt" -> "ET-PortService" : portDown
+activate "ET-PortService"
+    "ET-PortService" -> DAO : getIslByEndpoint
+    activate DAO
+    DAO -> "ET-PortService" : islFromDao
+    deactivate DAO
+    "ET-PortService" -> "ET-PortService" : set isl status "inactive"
+    "ET-PortService" -> DAO : createOrUpdateIsl
+    "ET-PortService" -> "ET-PortService" : increase cost
+    "ET-PortService" -> DAO : update link props if they exist
+    "ET-PortService" -> DAO : createOrUpdateIsl
+    "ET-PortService" -> "ET-NetworkTopologyBolt" : response
+deactivate "ET-PortService"
+
+    opt transaction was successful
+        "ET-NetworkTopologyBolt" -> "ET-Sender" : sendCommandToRerouteAffectedFlows
+        deactivate "ET-NetworkTopologyBolt"
+        activate "ET-Sender"
+        "ET-Sender" -> kilda.topo.reroute : CommandMessage\nRerouteAffectedFlows
+        deactivate "ET-Sender"
+    end
+end
+
+end
+
+@enduml

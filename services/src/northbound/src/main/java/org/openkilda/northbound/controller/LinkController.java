@@ -16,6 +16,7 @@
 package org.openkilda.northbound.controller;
 
 import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
@@ -29,6 +30,7 @@ import io.swagger.annotations.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -112,5 +114,22 @@ public class LinkController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<BatchResults> delLinkProps(@RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.delLinkProps(keysAndProps);
+    }
+
+    /**
+     * Get all flows for a particular link.
+     *
+     * @return list of flows for a particular link.
+     */
+    @ApiOperation(value = "Get all flows for a particular link, based on arguments.", response = FlowPayload.class,
+            responseContainer = "List")
+    @GetMapping(path = "/links/flows",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<FlowPayload>> getFlowsForLink(@RequestParam(value = "src_switch") SwitchId srcSwitch,
+                                                                @RequestParam(value = "src_port") Integer srcPort,
+                                                                @RequestParam(value = "dst_switch") SwitchId dstSwitch,
+                                                                @RequestParam(value = "dst_port") Integer dstPort) {
+        return linkService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 }

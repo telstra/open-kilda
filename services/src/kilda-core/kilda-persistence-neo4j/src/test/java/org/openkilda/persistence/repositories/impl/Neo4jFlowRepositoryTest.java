@@ -451,4 +451,38 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         Collection<String> foundFlowIds = flowRepository.findDownFlowIds();
         assertThat(foundFlowIds, Matchers.hasSize(1));
     }
+
+    @Test
+    public void shouldFindFlowPairForIsl() {
+        Flow forwardFlow = Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 1L)
+                .build();
+
+        Flow reverseFlow = Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchB)
+                .destSwitch(switchA)
+                .cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 1L)
+                .build();
+
+        flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
+
+        FlowSegment segment = FlowSegment.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchA)
+                .srcPort(1)
+                .destSwitch(switchB)
+                .destPort(100)
+                .build();
+        flowSegmentRepository.createOrUpdate(segment);
+
+        Collection<FlowPair> foundFlowPair = flowRepository.findAllFlowPairsWithSegment(switchA.getSwitchId(), 1,
+                                                                                   switchB.getSwitchId(), 100);
+        assertThat(foundFlowPair, Matchers.hasSize(1));
+        assertThat(foundFlowPair.iterator().next().getForward(), Matchers.equalTo(forwardFlow));
+        assertThat(foundFlowPair.iterator().next().getReverse(), Matchers.equalTo(reverseFlow));
+    }
 }
