@@ -41,10 +41,12 @@ FL --> PD
 rectangle "Reroute topology" {
     (Reroute affected\nflows) as RAF
     (Reroute inactive\nflows) as RIF
+    (Reroute all flows\nfor a particular link) as RAFFPL
 }
 
 SRC --> RAF
 SRC --> RIF
+SRC --> RAFFPL
 
 rectangle "Flow topology" {
     (Compute new path) as CP
@@ -52,5 +54,6 @@ rectangle "Flow topology" {
 
 RAF --> CP
 RIF --> CP
+RAFFPL --> CP
 
 @enduml

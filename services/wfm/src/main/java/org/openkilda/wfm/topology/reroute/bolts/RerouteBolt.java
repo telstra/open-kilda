@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
+import org.openkilda.messaging.command.reroute.RerouteAllFlowsForIsl;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.persistence.PersistenceManager;
@@ -97,6 +98,17 @@ public class RerouteBolt extends AbstractBolt {
 
             emitRerouteCommands(tuple, inactiveFlows, message.getCorrelationId(),
                     rerouteInactiveFlows.getReason());
+
+        } else if (commandData instanceof RerouteAllFlowsForIsl) {
+            RerouteAllFlowsForIsl rerouteAllFlowsForIsl = (RerouteAllFlowsForIsl) commandData;
+            PathNode source = rerouteAllFlowsForIsl.getSource();
+            PathNode destination = rerouteAllFlowsForIsl.getDestination();
+            Collection<String> inactiveFlows =
+                    rerouteService.getAllFlowIdsForIsl(source.getSwitchId(), source.getPortNo(),
+                                                       destination.getSwitchId(), destination.getPortNo());
+
+            emitRerouteCommands(tuple, inactiveFlows, message.getCorrelationId(),
+                    rerouteAllFlowsForIsl.getReason());
 
         } else {
             logger.warn("Skip undefined message type {}", request);

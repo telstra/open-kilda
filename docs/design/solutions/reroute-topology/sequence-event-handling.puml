@@ -72,7 +72,7 @@ activate "ET-IslService"
     "ET-IslService" -> "ET-NetworkTopologyBolt" : response
 deactivate "ET-IslService"
 
-    opt transaction was successful
+    opt transaction was successful and ISL is not "Under maintenance"
         "ET-NetworkTopologyBolt" -> "ET-Sender" : sendCommandToRerouteInactiveFlows
         activate "ET-Sender"
         "ET-Sender" -> kilda.topo.reroute : CommandMessage\nRerouteInactiveFlows
@@ -91,10 +91,15 @@ activate "ET-IslService"
     "ET-IslService" -> "ET-NetworkTopologyBolt" : response
 deactivate "ET-IslService"
 
-    opt transaction was successful
+    alt transaction was successful and ISL is not "Under maintenance"
         "ET-NetworkTopologyBolt" -> "ET-Sender" : sendCommandToRerouteAffectedFlows
         activate "ET-Sender"
         "ET-Sender" -> kilda.topo.reroute : CommandMessage\nRerouteAffectedFlows
+        deactivate "ET-Sender"
+    else transaction was successful and ISL is "Under maintenance"
+        "ET-NetworkTopologyBolt" -> "ET-Sender" : sendCommandToRerouteAllFlowsForIsl
+        activate "ET-Sender"
+        "ET-Sender" -> kilda.topo.reroute : CommandMessage\nRerouteAllFlowsForIsl
         deactivate "ET-Sender"
     end
 end

@@ -22,6 +22,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class RerouteService {
@@ -50,5 +51,21 @@ public class RerouteService {
     public Collection<String> getInactiveFlows() {
         log.info("Get inactive flow ids");
         return flowRepository.findDownFlowIds();
+    }
+
+    /**
+     * Get all flow ids for a particular isl.
+     *
+     * @param srcSwitchId source switch id.
+     * @param srcPort     source port.
+     * @param dstSwitchId destination switch id.
+     * @param dstPort     destination port.
+     */
+    public Collection<String> getAllFlowIdsForIsl(SwitchId srcSwitchId, int srcPort,
+                                               SwitchId dstSwitchId, int dstPort) {
+        log.info("Get inactive flow ids");
+        return flowRepository.findAllFlowPairsWithSegment(srcSwitchId, srcPort, dstSwitchId, dstPort).stream()
+                .map(flowPair -> flowPair.getForward().getFlowId())
+                .collect(Collectors.toList());
     }
 }
