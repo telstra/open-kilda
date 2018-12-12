@@ -400,6 +400,7 @@ public class FlowCrudSteps implements En {
             try {
                 List<Integer> actualMeters = floodlightService.getMeters(sw.getDpId()).values().stream()
                         .map(MeterEntry::getMeterId)
+                        .filter(meterId -> meterId > 3) //TODO: codify default meter IDs
                         .collect(toList());
 
                 if (!expectedMeters.isEmpty() || !actualMeters.isEmpty()) {

@@ -60,8 +60,12 @@ public class CleanupSteps implements En {
         topologyDefinition.getActiveSwitches()
                 .forEach(sw -> {
                     try {
-                        assertThat(format("Switch %s has unexpected meters installed", sw),
-                                floodlightService.getMeters(sw.getDpId()).values(), empty());
+                        floodlightService.getMeters(sw.getDpId()).values().forEach(
+                                meterEntry -> {
+                                    assertTrue(format("Switch %s has unexpected meters installed", sw),
+                                            meterEntry.getMeterId() <= 3);
+                                }
+                        );
                     } catch (UnsupportedOperationException ex) {
                         //TODO: a workaround for not implemented dumpMeters on OF_12 switches.
                         log.warn("Switch {} doesn't support dumping of meters. {}", sw.getDpId(), ex.getMessage());
