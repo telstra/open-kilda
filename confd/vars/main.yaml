@@ -3,6 +3,7 @@
 kilda_environment_naming_prefix: ""
 kilda_environment_role: "devel"
 kilda_test_profile: "virtual"
+kilda_test_topology_single: True
 
 kilda_neo4j_host: "neo4j.pendev"
 kilda_neo4j_bolt_port: "7687"
@@ -43,6 +44,7 @@ kilda_topology_engine_rest_port: "80"
 kilda_northbound_endpoint: "http://northbound.pendev"
 kilda_northbound_rest_port: "8080"
 kilda_lab_api_endpoint: "http://127.0.0.1"
+kilda_lab_api_port: "8288"
 
 kilda_northbound_username: "kilda"
 kilda_northbound_password: "kilda"
