@@ -20,6 +20,7 @@ import static org.junit.Assert.assertThat;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.UnroutableFlowException;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
@@ -44,7 +45,7 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
     private static final SwitchId SWITCH_ID_5 = new SwitchId("00:00:00:00:00:00:00:05");
 
     @Test
-    public void shouldChooseExpensiveOverTooDeep() throws SwitchNotFoundException {
+    public void shouldChooseExpensiveOverTooDeep() throws SwitchNotFoundException, UnroutableFlowException {
         AvailableNetwork network = buildLongAndExpensivePathsNetwork();
         network.removeSelfLoops().reduceByCost();
 
@@ -60,7 +61,8 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
     }
 
     @Test
-    public void shouldChooseExpensiveOverTooDeepForReverseOrder() throws SwitchNotFoundException {
+    public void shouldChooseExpensiveOverTooDeepForReverseOrder()
+            throws SwitchNotFoundException, UnroutableFlowException {
         AvailableNetwork network = buildLongAndExpensivePathsNetwork();
         network.removeSelfLoops().reduceByCost();
 
@@ -76,7 +78,7 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
     }
 
     @Test
-    public void shouldChooseDeeperOverExpensive() throws SwitchNotFoundException {
+    public void shouldChooseDeeperOverExpensive() throws SwitchNotFoundException, UnroutableFlowException {
         AvailableNetwork network = buildLongAndExpensivePathsNetwork();
         network.removeSelfLoops().reduceByCost();
 
@@ -92,7 +94,7 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
     }
 
     @Test
-    public void shouldChooseCheaperWithSameDepth() throws SwitchNotFoundException {
+    public void shouldChooseCheaperWithSameDepth() throws SwitchNotFoundException, UnroutableFlowException {
         AvailableNetwork network = buildLongAndExpensivePathsNetwork();
         network.removeSelfLoops().reduceByCost();
 
@@ -128,7 +130,7 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
 
 
     @Test
-    public void shouldReturnTheShortestPath() throws SwitchNotFoundException {
+    public void shouldReturnTheShortestPath() throws SwitchNotFoundException, UnroutableFlowException {
         AvailableNetwork network = buildTestNetwork();
         network.removeSelfLoops().reduceByCost();
 
@@ -146,7 +148,7 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
     }
 
     @Test(expected = SwitchNotFoundException.class)
-    public void failToFindASwitch() throws SwitchNotFoundException {
+    public void failToFindASwitch() throws SwitchNotFoundException, UnroutableFlowException {
         AvailableNetwork network = buildTestNetwork();
         network.removeSelfLoops().reduceByCost();
 
@@ -156,8 +158,15 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
         forward.findPathInNetwork(network, srcDpid, SWITCH_ID_F);
     }
 
+    @Test(expected = UnroutableFlowException.class)
+    public void failToFindReversePath() throws SwitchNotFoundException, UnroutableFlowException {
+        AvailableNetwork network = buildNetworkWithoutReversePathAvailable();
+        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
+        forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
+    }
+
     @Test
-    public void testForwardAndBackwardPathsEquality() throws SwitchNotFoundException {
+    public void testForwardAndBackwardPathsEquality() throws SwitchNotFoundException, UnroutableFlowException {
         AvailableNetwork network = buildEqualCostsNetwork();
         network.removeSelfLoops().reduceByCost();
         BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
@@ -188,7 +197,45 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
     }
 
     @Test
-    public void shouldHandleVeryExpensiveLinks() throws SwitchNotFoundException {
+    public void testForwardAndBackwardPathsEqualityEvenWhenReverseHasCheaperPath()
+            throws SwitchNotFoundException, UnroutableFlowException {
+        // since our ISLs are bidirectional and cost may vary, we need to be sure that cost on reverse ISL won't be
+        // taken into account during searching of reverse path.
+        AvailableNetwork network = buildNetworkWithBandwidthInReversePathBiggerThanForward();
+        network.removeSelfLoops().reduceByCost();
+        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
+        Pair<List<Isl>, List<Isl>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
+
+        List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(paths.getLeft());
+        List<SwitchId> backwardSwitchPath = Lists.reverse(getSwitchIdsFlowPath(paths.getRight()));
+        assertEquals(forwardSwitchPath, backwardSwitchPath);
+    }
+
+    private AvailableNetwork buildNetworkWithBandwidthInReversePathBiggerThanForward() {
+        /*
+         *   Topology:
+         *
+         *   SW1---SW2---SW4
+         *          |     |
+         *         SW3---SW5
+         *
+         *   All ISLs have equal cost.
+         */
+        AvailableNetwork network = new AvailableNetwork();
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 100);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_4, 3, 4, 100);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 68, 100);
+        addLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 10, 100);
+        addLink(network, SWITCH_ID_5, SWITCH_ID_3, 8, 7, 10000, 100);
+        addLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100, 100);
+        addLink(network, SWITCH_ID_5, SWITCH_ID_4, 10, 9, 100, 100);
+
+        return network;
+    }
+
+
+    @Test
+    public void shouldHandleVeryExpensiveLinks() throws SwitchNotFoundException, UnroutableFlowException {
         AvailableNetwork network = buildExpensiveNetwork();
         network.removeSelfLoops().reduceByCost();
         BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
@@ -282,4 +329,17 @@ public class BestCostAndShortestPathFinderTest extends BasePathComputerTest {
                 50, 7, 0, 3);
         return network;
     }
+
+    private AvailableNetwork buildNetworkWithoutReversePathAvailable() {
+        /*
+         *   Topology:
+         *
+         *   SW1---SW2---SW3
+         */
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 100, 100);
+        addLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, 100, 100);
+        return network;
+    }
+
 }
