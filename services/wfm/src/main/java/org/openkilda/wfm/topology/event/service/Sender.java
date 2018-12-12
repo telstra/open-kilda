@@ -20,6 +20,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
+import org.openkilda.messaging.command.reroute.RerouteAllFlowsForIsl;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.SwitchId;
@@ -46,13 +47,20 @@ public class Sender {
         this.correlationId = correlationId;
     }
 
-    public void sendRerouteInactiveFlowsMessage(String reason) {
+    void sendRerouteInactiveFlowsMessage(String reason) {
         RerouteInactiveFlows request = new RerouteInactiveFlows(reason);
         sendRerouteMessage(request);
     }
 
-    public void sendRerouteAffectedFlowsMessage(SwitchId switchId, int port, String reason) {
+    void sendRerouteAffectedFlowsMessage(SwitchId switchId, int port, String reason) {
         RerouteAffectedFlows request = new RerouteAffectedFlows(new PathNode(switchId, port, 0), reason);
+        sendRerouteMessage(request);
+    }
+
+    void sendRerouteAllFlowsForIslMessage(SwitchId srcSwitchId, int srcPort,
+                                          SwitchId dstSwitchId, int dstPort, String reason) {
+        RerouteAllFlowsForIsl request = new RerouteAllFlowsForIsl(new PathNode(srcSwitchId, srcPort, 0),
+                new PathNode(dstSwitchId, dstPort, 0), reason);
         sendRerouteMessage(request);
     }
 

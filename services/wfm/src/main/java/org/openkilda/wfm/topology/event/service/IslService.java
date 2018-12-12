@@ -58,10 +58,14 @@ public class IslService {
     public void createOrUpdateIsl(Isl isl, Sender sender) {
         createOrUpdateIsl(isl);
 
-        String reason = String.format("Create or update ISL: %s_%d-%s_%d. ISL status: %s",
-                isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
-                isl.getDestSwitch().getSwitchId(), isl.getDestPort(), isl.getStatus());
-        sender.sendRerouteInactiveFlowsMessage(reason);
+        Optional<Isl> foundIsl = islRepository.findByEndpoints(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
+                isl.getDestSwitch().getSwitchId(), isl.getDestPort());
+        if (foundIsl.isPresent() && !foundIsl.get().isUnderMaintenance()) {
+            String reason = String.format("Create or update ISL: %s_%d-%s_%d. ISL status: %s",
+                    isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
+                    isl.getDestSwitch().getSwitchId(), isl.getDestPort(), isl.getStatus());
+            sender.sendRerouteInactiveFlowsMessage(reason);
+        }
     }
 
     /**
@@ -209,9 +213,21 @@ public class IslService {
     public void islDiscoveryFailed(Isl isl, Sender sender) {
         islDiscoveryFailed(isl);
 
-        String reason = String.format("ISL discovery failed. Endpoint: %s_%d. ISL status: %s",
-                isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(), isl.getStatus());
-        sender.sendRerouteAffectedFlowsMessage(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(), reason);
+        islRepository.findBySrcEndpoint(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort()).forEach(link -> {
+            if (link.isUnderMaintenance()) {
+                String reason = String.format(
+                        "ISL (under maintenance) discovery failed. Endpoint: %s_%d-%s_%d. ISL status: %s",
+                        link.getSrcSwitch().getSwitchId(), link.getSrcPort(),
+                        link.getDestSwitch().getSwitchId(), link.getDestPort(), link.getStatus());
+                sender.sendRerouteAllFlowsForIslMessage(link.getSrcSwitch().getSwitchId(), link.getSrcPort(),
+                        link.getDestSwitch().getSwitchId(), link.getDestPort(), reason);
+            } else {
+                String reason = String.format("ISL discovery failed. Endpoint: %s_%d-%s_%d. ISL status: %s",
+                        link.getSrcSwitch().getSwitchId(), link.getSrcPort(),
+                        link.getDestSwitch().getSwitchId(), link.getDestPort(), link.getStatus());
+                sender.sendRerouteAffectedFlowsMessage(link.getSrcSwitch().getSwitchId(), link.getSrcPort(), reason);
+            }
+        });
     }
 
     /**

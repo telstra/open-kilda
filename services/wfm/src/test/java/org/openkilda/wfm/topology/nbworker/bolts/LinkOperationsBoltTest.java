@@ -73,7 +73,7 @@ public class LinkOperationsBoltTest {
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_1).build());
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_2).build());
 
-        LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager);
+        LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager, 10000);
         bolt.prepare(null, null, null);
         LinkPropsPut linkPropsPutRequest = new LinkPropsPut(new LinkPropsDto(
                 new NetworkEndpoint(SWITCH_ID_1, 1),
