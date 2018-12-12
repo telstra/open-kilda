@@ -33,6 +33,8 @@ kilda_floodlight_password: "kilda"
 kilda_floodlight_controller_uri: "tcp:kilda:6653"
 kilda_floodlight_command_processor_deferred_requests_limit: 8
 kilda_floodlight_flow_meter_burst_coefficient: 1.05
+kilda_floodlight_consumer_executors: 20
+kilda_floodlight_consumer_disco_executors: 20
 
 kilda_aswitch_port: "5001"
 kilda_aswitch_endpoint: "http://127.0.0.1"
