@@ -29,8 +29,7 @@ import org.openkilda.persistence.Neo4jPersistenceManager;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
-import org.openkilda.wfm.error.IllegalIslStateException;
-import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.error.AbstractException;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -68,7 +67,7 @@ public class LinkOperationsBoltTest {
     }
 
     @Test
-    public void shouldCreateLinkProps() throws IslNotFoundException, IllegalIslStateException {
+    public void shouldCreateLinkProps() throws AbstractException {
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_1).build());

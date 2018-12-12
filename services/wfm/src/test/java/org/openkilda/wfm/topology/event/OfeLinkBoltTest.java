@@ -165,7 +165,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
 
         PathNode source = new PathNode(switchId, port, 0);
         PathNode destination = new PathNode(switchId, port, 1);
-        IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED);
+        IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED, false);
         InfoMessage inputMessage = new InfoMessage(isl, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);

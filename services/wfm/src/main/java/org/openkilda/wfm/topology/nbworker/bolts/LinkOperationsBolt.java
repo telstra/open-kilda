@@ -25,6 +25,7 @@ import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
+import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
@@ -36,8 +37,9 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.wfm.error.IllegalIslStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.mappers.LinkPropsMapper;
-import org.openkilda.wfm.topology.nbworker.services.IslService;
+import org.openkilda.wfm.topology.nbworker.services.LinkOperationsService;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -54,16 +56,19 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends PersistenceOperationsBolt {
-    private transient IslService islService;
+    private transient LinkOperationsService linkOperationsService;
 
     public LinkOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        this.islService = new IslService(repositoryFactory);
+        this.linkOperationsService = new LinkOperationsService(repositoryFactory, transactionManager);
     }
 
     @Override
@@ -80,6 +85,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
             result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
         } else if (request instanceof DeleteLinkRequest) {
             result = Collections.singletonList(deleteLink((DeleteLinkRequest) request));
+        } else if (request instanceof UpdateLinkUnderMaintenanceRequest) {
+            result = updateLinkUnderMaintenanceFlag((UpdateLinkUnderMaintenanceRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -88,7 +95,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<IslInfoData> getAllLinks() {
-        return islService.getAllIsls();
+        return linkOperationsService.getAllIsls();
     }
 
     private List<LinkPropsData> getLinkProps(LinkPropsGet request) {
@@ -205,7 +212,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     private DeleteIslResponse deleteLink(DeleteLinkRequest request) {
         boolean deleted;
         try {
-            deleted = islService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
+            deleted = linkOperationsService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
                     request.getDstSwitch(), request.getDstPort());
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
@@ -213,6 +220,26 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), "ISL is in illegal state.");
         }
         return new DeleteIslResponse(deleted);
+    }
+
+    private List<IslInfoData> updateLinkUnderMaintenanceFlag(UpdateLinkUnderMaintenanceRequest request) {
+        SwitchId srcSwitch = request.getSource().getDatapath();
+        Integer srcPort = request.getSource().getPortNumber();
+        SwitchId dstSwitch = request.getDestination().getDatapath();
+        Integer dstPort = request.getDestination().getPortNumber();
+        boolean underMaintenance = request.isUnderMaintenance();
+
+        List<Isl> isl;
+        try {
+            isl = linkOperationsService.updateLinkUnderMaintenanceFlag(srcSwitch, srcPort,
+                    dstSwitch, dstPort, underMaintenance);
+        } catch (IslNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+        }
+
+        return isl.stream()
+                .map(IslMapper.INSTANCE::map)
+                .collect(Collectors.toList());
     }
 
     @Override
