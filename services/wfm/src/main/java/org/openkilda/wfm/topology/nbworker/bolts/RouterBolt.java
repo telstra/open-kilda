@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
@@ -31,20 +30,10 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.io.IOException;
-
 public class RouterBolt extends AbstractBolt {
     @Override
     protected void handleInput(Tuple input) {
-        String request = input.getString(0);
-
-        Message message;
-        try {
-            message = Utils.MAPPER.readValue(request, Message.class);
-        } catch (IOException e) {
-            log.error("Error during parsing request for NBWorker topology", e);
-            return;
-        }
+        Message message = (Message) input.getValue(0);
 
         if (message instanceof CommandMessage) {
             log.debug("Received command message {}", message);
