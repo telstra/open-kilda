@@ -30,7 +30,7 @@ export class LinkStoreComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.loaderService.show('Loading link store details..');
+    this.loaderService.show('Loading Link Store Details..');
     this.linkStoreForm = this.formbuilder.group({
        "urls":this.formbuilder.group({
               "get-status-list":this.formbuilder.group({
@@ -303,7 +303,7 @@ export class LinkStoreComponent implements OnInit {
         this.loaderService.show('Deleting link store details...');
         this.storesettingservice.deleteLinkStore('/store/link-store-config/delete').subscribe((res:any)=>{
           this.loaderService.hide();
-          this.toastr.success("Link store setting deleted successfully",'Success');
+          this.toastr.success("Link Store Setting Deleted Successfully",'Success');
           setTimeout(function(){
             location.reload();
           },500);
@@ -323,11 +323,11 @@ export class LinkStoreComponent implements OnInit {
       }
       this.submitted = false;
     var obj = this.linkStoreForm.value;
-    this.loaderService.show('saving identity server details');
+    this.loaderService.show('Saving Identity Server Details');
     this.storesettingservice.submitLinkData('/store/link-store-config/save',obj).subscribe((response:any)=>{
             this.linkStoreForm.setValue(response || {});
             this.loaderService.hide();
-						this.toastr.success("Link store details saved successfully", 'Success');
+						this.toastr.success("Link Store Details Saved Successfully", 'Success');
             this.linkStoreForm.disable();
             this.isEditable = false;
             this.isEdit = true;
