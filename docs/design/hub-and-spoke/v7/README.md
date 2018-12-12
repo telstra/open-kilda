@@ -48,6 +48,13 @@ bolt in case of any problems on the worker side.
 ### Happy path without concurrent asynchronous calls (simple case)
 ![wfm-no-concurrent-request](wfm-no-concurrent-request.png)
 
+### Error handling and idempotent operations
+An idempotent operation can be performed multiple times without changing the result beyond the 
+initial application. Put more simply, an operation is idempotent if you can repeat it over and 
+over again without causing any unwanted side effect or harm to the system, always producing the 
+same result. Well, idempotent is good other bad. If you can write your operations as idempotent
+do that. If not you need to write additional validation before retries. 
+
 ## PoC components
 
 CoordinatorSpout - spout that infinitely pulls tuple to CoordinatorBolt.
@@ -68,7 +75,7 @@ fl.py - Floodlight analog that reads messages from Kafka and responds to them.
 - The rest-api.http file contains 3 requests: one for happy path, one for errors on the hub, and last one - for worker error.
 
 links:
-https://www.enterpriseintegrationpatterns.com/patterns/conversation/FireAndForget.html
-https://en.wikipedia.org/wiki/Spoke%E2%80%93hub_distribution_paradigm
-
+- https://www.enterpriseintegrationpatterns.com/patterns/conversation/FireAndForget.html
+- https://en.wikipedia.org/wiki/Spoke%E2%80%93hub_distribution_paradigm
+- https://www.infoworld.com/article/3263724/devops/idempotence-and-the-discipline-of-devops.html
 
