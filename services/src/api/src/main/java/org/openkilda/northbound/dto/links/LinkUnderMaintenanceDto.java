@@ -21,26 +21,24 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class LinkDto {
+public class LinkUnderMaintenanceDto {
 
-    @JsonProperty("speed")
-    private long speed;
+    @JsonProperty("src_switch")
+    private String srcSwitch;
 
-    @JsonProperty("available_bandwidth")
-    private long availableBandwidth;
+    @JsonProperty("src_port")
+    private Integer srcPort;
 
-    @JsonProperty("state")
-    protected LinkStatus state;
+    @JsonProperty("dst_switch")
+    private String dstSwitch;
+
+    @JsonProperty("dst_port")
+    private Integer dstPort;
 
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
-
-    @JsonProperty("path")
-    private List<PathDto> path;
 }
