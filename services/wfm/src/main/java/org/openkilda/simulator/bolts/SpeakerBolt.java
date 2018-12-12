@@ -175,7 +175,7 @@ public class SpeakerBolt extends BaseRichBolt {
                     destination,
                     100000,
                     IslChangeType.DISCOVERED,
-                    100000);
+                    100000, false);
             collector.emit(SimulatorTopology.SWITCH_BOLT_STREAM, tuple,
                     new Values(
                             localPort.getPeerSwitch().toLowerCase(),
