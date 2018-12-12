@@ -75,7 +75,7 @@ import java.util.stream.Collectors;
 @Service
 public class SwitchServiceImpl implements SwitchService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(SwitchServiceImpl.class);
 
     @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
@@ -101,7 +101,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<List<SwitchDto>> getSwitches() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Get switch request received");
+        logger.debug("Get switch request received");
         CommandMessage request = new CommandMessage(new GetSwitchesRequest(), System.currentTimeMillis(),
                 correlationId);
 
@@ -134,7 +134,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Delete switch rules request received: deleteAction={}", deleteAction);
+        logger.info("Delete switch rules request received: switch={}, deleteAction={}", switchId, deleteAction);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, null);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -148,7 +148,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Delete switch rules request received: criteria={}", criteria);
+        logger.info("Delete switch rules request received: switch={}, criteria={}", switchId, criteria);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, null, criteria);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -165,7 +165,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<List<Long>> installRules(SwitchId switchId, InstallRulesAction installAction) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Install switch rules request received");
+        logger.info("Install switch rules request received: switch={}, action={}", switchId, installAction);
 
         SwitchRulesInstallRequest data = new SwitchRulesInstallRequest(switchId, installAction);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -182,7 +182,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<ConnectModeRequest.Mode> connectMode(ConnectModeRequest.Mode mode) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Set/Get switch connect mode request received: mode = {}", mode);
+        logger.debug("Set/Get switch connect mode request received: mode = {}", mode);
 
         ConnectModeRequest data = new ConnectModeRequest(mode);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -209,6 +209,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId) {
         CompletableFuture<RulesValidationResult> validationStage = validateRules(switchId);
+        logger.info("Sync rules request for switch {}", switchId);
 
         return validationStage
                 .thenCompose(validationResult -> syncRules(switchId, validationResult.getMissingRules())

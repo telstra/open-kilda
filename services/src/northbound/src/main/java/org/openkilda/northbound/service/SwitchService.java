@@ -34,7 +34,7 @@ import org.openkilda.northbound.dto.switches.SwitchDto;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public interface SwitchService extends BasicService {
+public interface SwitchService {
 
     /**
      * Get all available switches.

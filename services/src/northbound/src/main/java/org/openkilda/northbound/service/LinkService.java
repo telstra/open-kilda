@@ -24,7 +24,7 @@ import org.openkilda.northbound.dto.links.LinkPropsDto;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public interface LinkService extends BasicService {
+public interface LinkService {
 
     /**
      * Returns all links at the controller.

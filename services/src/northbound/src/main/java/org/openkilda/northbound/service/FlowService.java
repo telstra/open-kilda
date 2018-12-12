@@ -31,7 +31,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * FlowService is for operations on flows, primarily against the Flow Topology.
  */
-public interface FlowService extends BasicService {
+public interface FlowService {
     /**
      * Creates flow.
      *
