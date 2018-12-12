@@ -25,7 +25,7 @@ bolt_hub ->x] : some error
 coordinator ->> bolt_hub : callback
 alt retry
     loop
-        bolt_hub ->> bolt_hub: rerun all from start
+        bolt_hub ->> bolt_hub: rerun all failed operations
     end
 else cleanup if retry failed
     bolt_hub -> bolt_hub : cleanup

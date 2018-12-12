@@ -29,7 +29,7 @@ bolt_hub ->x bolt_hub: some error
 ack ->> sp_hub : fail
 alt retry
     loop
-        sp_hub ->> bolt_hub: rerun all from start
+        sp_hub ->> bolt_hub: rerun all \nfailed operations
     end
 else cleanup if retry failed
     sp_hub ->> bolt_hub : tuple with\ncleanup request

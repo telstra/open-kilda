@@ -35,7 +35,7 @@ coordinator ->> bolt_work : callback
 
 alt retry
     loop
-        sp_work ->> bolt_work: rerun async op
+        sp_work ->> bolt_work: emit tuple for async process
     end
 else cleanup if retry failed
     bolt_work -> bolt_work : cleanup
