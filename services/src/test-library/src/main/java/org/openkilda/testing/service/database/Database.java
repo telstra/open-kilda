@@ -28,6 +28,8 @@ public interface Database {
 
     boolean updateLinkAvailableBandwidth(Isl islToUpdate, long value);
 
+    boolean updateLinkCost(Isl islToUpdate, int value);
+
     boolean revertIslBandwidth(Isl isl);
 
     boolean removeInactiveIsls();
