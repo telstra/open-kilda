@@ -34,6 +34,7 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateIslUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -216,6 +217,31 @@ public class LinkServiceImpl implements LinkService {
                         .map(FlowsResponse.class::cast)
                         .map(FlowsResponse::getFlowIds)
                         .flatMap(Collection::stream)
+                        .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(SwitchId srcSwitch, Integer srcPort,
+                                                                      SwitchId dstSwitch, Integer dstPort,
+                                                                      Boolean underMaintenance) {
+
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Update under maintenance link request processing");
+        UpdateIslUnderMaintenanceRequest data = null;
+        try {
+            data = new UpdateIslUnderMaintenanceRequest(new NetworkEndpoint(srcSwitch, srcPort),
+                    new NetworkEndpoint(dstSwitch, dstPort), underMaintenance);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create 'update ISL Under maintenance' request");
+        }
+
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(IslInfoData.class::cast)
+                        .map(linkMapper::toLinkDto)
                         .collect(Collectors.toList()));
     }
 }

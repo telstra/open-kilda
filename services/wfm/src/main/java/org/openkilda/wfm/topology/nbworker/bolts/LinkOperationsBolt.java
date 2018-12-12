@@ -22,6 +22,7 @@ import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
+import org.openkilda.messaging.nbtopology.request.UpdateIslUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.model.Isl;
@@ -30,9 +31,14 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
+import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.error.MessageException;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.mappers.LinkPropsMapper;
+import org.openkilda.wfm.topology.nbworker.services.LinkOperationsService;
 
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -41,17 +47,29 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends PersistenceOperationsBolt {
+    private transient LinkOperationsService linkOperationsService;
+
     public LinkOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+        super.prepare(stormConf, context, collector);
+        this.linkOperationsService = new LinkOperationsService(repositoryFactory, transactionManager);
+    }
+
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws MessageException {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
             result = getAllLinks();
@@ -61,6 +79,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
             result = Collections.singletonList(putLinkProps((LinkPropsPut) request));
         } else if (request instanceof LinkPropsDrop) {
             result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
+        } else if (request instanceof UpdateIslUnderMaintenanceRequest) {
+            result = updateIslUnderMaintenanceFlag((UpdateIslUnderMaintenanceRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -186,8 +206,30 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         }
     }
 
+    private List<IslInfoData> updateIslUnderMaintenanceFlag(UpdateIslUnderMaintenanceRequest request)
+            throws MessageException {
+        SwitchId srcSwitch = request.getSource().getDatapath();
+        Integer srcPort = request.getSource().getPortNumber();
+        SwitchId dstSwitch = request.getDestination().getDatapath();
+        Integer dstPort = request.getDestination().getPortNumber();
+        boolean underMaintenance = request.isUnderMaintenance();
+
+        List<Isl> isl;
+        try {
+            isl = linkOperationsService.updateIslUnderMaintenanceFlag(srcSwitch, srcPort,
+                    dstSwitch, dstPort, underMaintenance);
+        } catch (IslNotFoundException e) {
+            throw new MessageException(e.getMessage(), e);
+        }
+
+        return isl.stream()
+                .map(IslMapper.INSTANCE::map)
+                .collect(Collectors.toList());
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
     }
 }

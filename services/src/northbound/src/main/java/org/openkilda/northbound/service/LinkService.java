@@ -83,4 +83,18 @@ public interface LinkService {
      */
     CompletableFuture<List<String>> rerouteFlowsForLink(SwitchId srcSwitch, Integer srcPort,
                                                         SwitchId dstSwitch, Integer dstPort);
+
+    /**
+     * Update "Under maintenance flag".
+     *
+     * @param srcSwitch source switch dpid.
+     * @param srcPort source port number.
+     * @param dstSwitch destination switch dpid.
+     * @param dstPort destination port number.
+     * @param underMaintenance under maintenance flag.
+     * @return updated link.
+     */
+    CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(SwitchId srcSwitch, Integer srcPort,
+                                                               SwitchId dstSwitch, Integer dstPort,
+                                                               Boolean underMaintenance);
 }
