@@ -83,4 +83,11 @@ public interface LinkService extends BasicService {
      */
     CompletableFuture<List<String>> rerouteFlowsForLink(SwitchId srcSwitch, Integer srcPort,
                                                         SwitchId dstSwitch, Integer dstPort);
+
+    /**
+     * Update "Under maintenance flag".
+     * @param linkDto link parameters.
+     * @return updated link.
+     */
+    CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(LinkDto linkDto);
 }
