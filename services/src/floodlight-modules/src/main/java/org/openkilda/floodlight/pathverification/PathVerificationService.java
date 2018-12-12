@@ -490,7 +490,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
             long speed = getSwitchPortSpeed(input.getDpId(), inPort);
             IslInfoData path = new IslInfoData(latency, source, destination, speed, IslChangeType.DISCOVERED,
-                    getAvailableBandwidth(speed));
+                    getAvailableBandwidth(speed), false);
 
             Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
 

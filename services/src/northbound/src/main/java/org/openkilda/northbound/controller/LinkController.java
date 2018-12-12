@@ -22,6 +22,7 @@ import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.service.LinkService;
 
@@ -164,5 +165,19 @@ public class LinkController {
                                                                 @RequestParam(value = "dst_switch") SwitchId dstSwitch,
                                                                 @RequestParam(value = "dst_port") Integer dstPort) {
         return linkService.rerouteFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
+    }
+
+    /**
+     * Update "Under maintenance" flag in the link.
+     *
+     * @return updated link.
+     */
+    @ApiOperation(value = "Update \"Under maintenance\" flag for the link.", response = LinkDto.class,
+            responseContainer = "List")
+    @PatchMapping(path = "/links/under-maintenance",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<LinkDto>> updateLinkUnderMaintenance(@RequestBody LinkUnderMaintenanceDto link) {
+        return linkService.updateLinkUnderMaintenance(link);
     }
 }

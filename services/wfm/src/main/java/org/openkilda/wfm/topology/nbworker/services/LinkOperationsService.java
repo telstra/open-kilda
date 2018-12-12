@@ -19,27 +19,63 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.error.IllegalIslStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.IslMapper;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class IslService {
-    private static final Logger logger =
-            LoggerFactory.getLogger(org.openkilda.wfm.topology.nbworker.services.IslService.class);
+@Slf4j
+public class LinkOperationsService {
 
     private IslRepository islRepository;
+    private TransactionManager transactionManager;
 
-    public IslService(RepositoryFactory repositoryFactory) {
+    public LinkOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
+        this.transactionManager = transactionManager;
+    }
+
+    /**
+     * Update the "Under maintenance" flag in isl.
+     *
+     * @param srcSwitchId source switch id.
+     * @param srcPort source port.
+     * @param dstSwitchId destination switch id.
+     * @param dstPort destination port.
+     * @param underMaintenance "Under maintenance" flag.
+     * @return updated isl.
+     * @throws IslNotFoundException if there is no isl with these parameters.
+     */
+    public List<Isl> updateLinkUnderMaintenanceFlag(SwitchId srcSwitchId, Integer srcPort,
+                                                    SwitchId dstSwitchId, Integer dstPort,
+                                                    boolean underMaintenance) throws IslNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            Optional<Isl> foundIsl = islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort);
+            Optional<Isl> foundReverceIsl = islRepository.findByEndpoints(dstSwitchId, dstPort, srcSwitchId, srcPort);
+            if (!(foundIsl.isPresent() && foundReverceIsl.isPresent())) {
+                return Optional.<List<Isl>>empty();
+            }
+
+            Isl isl = foundIsl.get();
+            Isl reverceIsl = foundReverceIsl.get();
+
+            isl.setUnderMaintenance(underMaintenance);
+            reverceIsl.setUnderMaintenance(underMaintenance);
+
+            islRepository.createOrUpdate(isl);
+            islRepository.createOrUpdate(reverceIsl);
+
+            return Optional.of(Arrays.asList(isl, reverceIsl));
+        }).orElseThrow(() -> new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort));
     }
 
     /**
@@ -67,8 +103,8 @@ public class IslService {
      */
     public boolean deleteIsl(SwitchId sourceSwitch, int sourcePort, SwitchId destinationSwitch, int destinationPort)
             throws IllegalIslStateException, IslNotFoundException {
-        logger.info("Delete ISL with following parameters: "
-                + "source switch '%s', source port '%d', destination switch '%s', destination port '%d'",
+        log.info("Delete ISL with following parameters: "
+                        + "source switch '%s', source port '%d', destination switch '%s', destination port '%d'",
                 sourceSwitch, sourcePort, destinationSwitch, destinationPort);
 
         Optional<Isl> isl = islRepository.findByEndpoints(sourceSwitch, sourcePort, destinationSwitch, destinationPort);

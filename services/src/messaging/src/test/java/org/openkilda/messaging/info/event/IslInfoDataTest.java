@@ -29,7 +29,7 @@ public class IslInfoDataTest {
         final SwitchId switchId = new SwitchId("00:00:00:00:00:00:00:01");
         PathNode source = new PathNode(switchId, 1, 0);
         PathNode destination = new PathNode(switchId, 2, 1);
-        IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED);
+        IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED, false);
 
         assertTrue(isl.isSelfLooped());
     }
@@ -40,7 +40,7 @@ public class IslInfoDataTest {
         final SwitchId dstSwitch = new SwitchId("00:00:00:00:00:00:00:02");
         PathNode source = new PathNode(srcSwitch, 1, 0);
         PathNode destination = new PathNode(dstSwitch, 2, 1);
-        IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED);
+        IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED, false);
 
         assertFalse(isl.isSelfLooped());
     }

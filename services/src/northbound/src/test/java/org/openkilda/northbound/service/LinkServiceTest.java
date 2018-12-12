@@ -92,7 +92,7 @@ public class LinkServiceTest {
 
         IslInfoData islInfoData = new IslInfoData(
                 new PathNode(switchId, 1, 0), new PathNode(switchId, 2, 1),
-                IslChangeType.DISCOVERED);
+                IslChangeType.DISCOVERED, false);
 
         messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(islInfoData));
         RequestCorrelationId.create(correlationId);
