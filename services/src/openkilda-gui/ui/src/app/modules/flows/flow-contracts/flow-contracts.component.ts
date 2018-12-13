@@ -39,6 +39,7 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
     this.dtOptions = {
       pageLength: 10,
       deferRender: true,
+      dom: 'tpl',
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       retrieve: true,
       autoWidth: false,
@@ -55,7 +56,7 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
         { sWidth: '15%'},
         { sWidth: '13%' },
         { sWidth: '8%' },
-        { sWidth: '7%', "bSortable": false },
+        { sWidth: '10%', "bSortable": false },
         ],
       initComplete:function( settings, json ){
         setTimeout(function(){
@@ -73,6 +74,14 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
         this.data  = change.data.currentValue;
       }
     }
+  }
+
+  fulltextSearch(e:any){ 
+    var value = e.target.value;
+      this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+        dtInstance.search(value)
+                .draw();
+      });
   }
 
   ngAfterViewInit(){

@@ -32,7 +32,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
   }
 
   getFlowPath(flowId) {
-    this.loaderService.show("Fetching flow path");
+    this.loaderService.show("Loading Flow Path...");
     this.flowService.getFlowPath(flowId).subscribe(
       data => {
         this.flowPathData = data;
