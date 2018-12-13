@@ -62,7 +62,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws MessageException {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) throws MessageException {
         List<? extends InfoData> result = null;
         if (request instanceof GetFlowsForIslRequest) {
             result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);

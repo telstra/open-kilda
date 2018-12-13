@@ -41,4 +41,7 @@ public class LinkUnderMaintenanceDto {
 
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
+
+    @JsonProperty("evacuate")
+    private boolean evacuate;
 }

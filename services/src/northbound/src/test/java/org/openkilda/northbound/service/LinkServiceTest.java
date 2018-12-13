@@ -40,6 +40,7 @@ import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkStatus;
+import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.dto.links.PathDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.impl.LinkServiceImpl;
@@ -198,6 +199,38 @@ public class LinkServiceTest {
         assertThat(result.getFailures(), is(0));
         assertThat(result.getSuccesses(), is(1));
         assertTrue(result.getMessages().isEmpty());
+    }
+
+    @Test
+    public void testLinkUnderMaintenance() {
+        String correlationId = "links-list";
+        SwitchId switchId = new SwitchId(1L);
+        boolean underMaintenance = false;
+        boolean evacuate = false;
+
+        IslInfoData islInfoData = new IslInfoData(
+                new PathNode(switchId, 1, 0), new PathNode(switchId, 2, 1),
+                IslChangeType.DISCOVERED);
+
+        messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(islInfoData));
+        RequestCorrelationId.create(correlationId);
+
+        LinkUnderMaintenanceDto linkUnderMaintenanceDto
+                = new LinkUnderMaintenanceDto(islInfoData.getSource().getSwitchId().toString(),
+                                              islInfoData.getSource().getPortNo(),
+                                              islInfoData.getDestination().getSwitchId().toString(),
+                                              islInfoData.getDestination().getPortNo(), underMaintenance);
+        List<LinkDto> result = linkService.updateIslUnderMaintenance(linkUnderMaintenanceDto, evacuate).join();
+        assertFalse("List of link shouldn't be empty", result.isEmpty());
+
+        LinkDto link = result.get(0);
+        assertEquals(0, link.getSpeed());
+        assertEquals(LinkStatus.DISCOVERED, link.getState());
+
+        assertFalse(link.getPath().isEmpty());
+        PathDto path = link.getPath().get(0);
+        assertEquals(switchId.toString(), path.getSwitchId());
+        assertEquals(1, path.getPortNo());
     }
 
     @TestConfiguration

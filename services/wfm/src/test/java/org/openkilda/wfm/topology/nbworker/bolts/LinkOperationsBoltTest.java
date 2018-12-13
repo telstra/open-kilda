@@ -81,7 +81,8 @@ public class LinkOperationsBoltTest {
                 new NetworkEndpoint(SWITCH_ID_2, 1),
                 Collections.emptyMap()));
 
-        LinkPropsResponse response = (LinkPropsResponse) bolt.processRequest(null, linkPropsPutRequest).get(0);
+        LinkPropsResponse response = (LinkPropsResponse) bolt.processRequest(null, linkPropsPutRequest,
+                "test_correlation_id").get(0);
         assertNotNull(response.getLinkProps());
     }
 }
