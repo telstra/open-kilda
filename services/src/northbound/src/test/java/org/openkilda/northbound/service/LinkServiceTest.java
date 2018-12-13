@@ -36,6 +36,7 @@ import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
@@ -50,6 +51,7 @@ import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mapstruct.factory.Mappers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -198,6 +200,32 @@ public class LinkServiceTest {
         assertThat(result.getFailures(), is(0));
         assertThat(result.getSuccesses(), is(1));
         assertTrue(result.getMessages().isEmpty());
+    }
+
+    @Test
+    public void testLinkUnderMaintenance() {
+        String correlationId = "links-list";
+        SwitchId switchId = new SwitchId(1L);
+
+        IslInfoData islInfoData = new IslInfoData(
+                new PathNode(switchId, 1, 0), new PathNode(switchId, 2, 1),
+                IslChangeType.DISCOVERED);
+
+        messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(islInfoData));
+        RequestCorrelationId.create(correlationId);
+
+        LinkMapper linkMapper = Mappers.getMapper(LinkMapper.class);
+        List<LinkDto> result = linkService.updateIslUnderMaintenance(linkMapper.toLinkDto(islInfoData), false).join();
+        assertFalse("List of link shouldn't be empty", result.isEmpty());
+
+        LinkDto link = result.get(0);
+        assertEquals(0, link.getSpeed());
+        assertEquals(LinkStatus.DISCOVERED, link.getState());
+
+        assertFalse(link.getPath().isEmpty());
+        PathDto path = link.getPath().get(0);
+        assertEquals(switchId.toString(), path.getSwitchId());
+        assertEquals(1, path.getPortNo());
     }
 
     @TestConfiguration

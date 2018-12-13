@@ -34,16 +34,21 @@ public class UpdateIslUnderMaintenanceRequest extends LinksBaseRequest {
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
 
+    @JsonProperty("evacuate")
+    private boolean evacuate;
+
     @JsonProperty("correlation_id")
     protected String correlationId;
 
     public UpdateIslUnderMaintenanceRequest(@JsonProperty("source") NetworkEndpoint source,
                                             @JsonProperty("destination") NetworkEndpoint destination,
                                             @JsonProperty("under_maintenance") boolean underMaintenance,
+                                            @JsonProperty("evacuate") boolean evacuate,
                                             @JsonProperty("correlation_id") String correlationId) {
         this.source = source;
         this.destination = destination;
         this.underMaintenance = underMaintenance;
+        this.evacuate = evacuate;
         this.correlationId = correlationId;
     }
 }

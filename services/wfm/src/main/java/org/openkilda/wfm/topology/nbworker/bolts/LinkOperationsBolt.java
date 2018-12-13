@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
@@ -25,6 +26,8 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.request.UpdateIslUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPair;
 import org.openkilda.model.Isl;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
@@ -35,6 +38,8 @@ import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.mappers.LinkPropsMapper;
+import org.openkilda.wfm.topology.nbworker.StreamType;
+import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.LinkOperationsService;
 
 import org.apache.storm.task.OutputCollector;
@@ -42,6 +47,7 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -53,6 +59,7 @@ import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends PersistenceOperationsBolt {
     private transient LinkOperationsService linkOperationsService;
+    private transient FlowOperationsService flowOperationsService;
 
     private int islCostWhenUnderMaintenance;
 
@@ -69,6 +76,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         super.prepare(stormConf, context, collector);
         this.linkOperationsService =
                 new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
+        this.flowOperationsService = new FlowOperationsService(repositoryFactory);
     }
 
     @Override
@@ -84,7 +92,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         } else if (request instanceof LinkPropsDrop) {
             result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
         } else if (request instanceof UpdateIslUnderMaintenanceRequest) {
-            result = updateIslUnderMaintenanceFlag((UpdateIslUnderMaintenanceRequest) request);
+            result = updateIslUnderMaintenanceFlag((UpdateIslUnderMaintenanceRequest) request, tuple);
         } else {
             unhandledInput(tuple);
         }
@@ -210,17 +218,27 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         }
     }
 
-    private List<IslInfoData> updateIslUnderMaintenanceFlag(UpdateIslUnderMaintenanceRequest request)
+    private List<IslInfoData> updateIslUnderMaintenanceFlag(UpdateIslUnderMaintenanceRequest request, Tuple tuple)
             throws IslNotFoundException {
         SwitchId srcSwitch = request.getSource().getDatapath();
         Integer srcPort = request.getSource().getPortNumber();
         SwitchId dstSwitch = request.getDestination().getDatapath();
         Integer dstPort = request.getDestination().getPortNumber();
         boolean underMaintenance = request.isUnderMaintenance();
+        boolean evacuate = request.isEvacuate();
 
         List<Isl> isl = linkOperationsService.updateIslUnderMaintenanceFlag(srcSwitch, srcPort,
                 dstSwitch, dstPort, underMaintenance);
 
+        if (underMaintenance && evacuate) {
+            flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+                    .map(FlowPair::getForward)
+                    .map(Flow::getFlowId).forEach(flowId -> {
+                        FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);
+                        getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest,
+                                request.getCorrelationId()));
+                    });
+        }
         return isl.stream()
                 .map(IslMapper.INSTANCE::map)
                 .collect(Collectors.toList());
@@ -230,5 +248,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
+        declarer.declareStream(StreamType.REROUTE.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

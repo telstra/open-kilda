@@ -12,6 +12,8 @@ participant NbWorkerTopology
 
 participant Neo4j
 
+control kilda.flow
+
 Client -> Northbound : PATCH /links/under-maintenance\nRequest body: LinkDto
 
 activate Northbound
@@ -26,10 +28,21 @@ deactivate Neo4j
 
 alt
 
+NbWorkerTopology -> NbWorkerTopology : Update cost
 NbWorkerTopology -> Neo4j : Update isl
 NbWorkerTopology -> kilda.northbound : InfoData\nIslInfoData
 kilda.northbound -> Northbound : InfoData\nIslInfoData
 Northbound -> Client : LinkDto
+
+opt isl is "Under maintenance" and evacuate
+NbWorkerTopology -> Neo4j : Query to get flows for\na particular link
+activate Neo4j
+Neo4j -> NbWorkerTopology : Flows
+deactivate Neo4j
+loop flows
+    NbWorkerTopology -> kilda.flow : CommandMessage\nFlowRerouteRequest
+end
+end
 
 else link does not exist
 

@@ -221,7 +221,7 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(LinkDto link) {
+    public CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(LinkDto link, boolean evacuate) {
 
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Update under maintenance link request processing");
@@ -232,7 +232,7 @@ public class LinkServiceImpl implements LinkService {
                             link.getPath().get(0).getPortNo()),
                     new NetworkEndpoint(new SwitchId(link.getPath().get(1).getSwitchId()),
                             link.getPath().get(1).getPortNo()),
-                    link.isUnderMaintenance(), correlationId);
+                    link.isUnderMaintenance(), evacuate, correlationId);
         } catch (IllegalArgumentException | IndexOutOfBoundsException | NullPointerException e) {
             logger.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
