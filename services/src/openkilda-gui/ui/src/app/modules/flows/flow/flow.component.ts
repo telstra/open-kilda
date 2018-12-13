@@ -64,25 +64,32 @@ export class FlowComponent implements OnInit {
           localStorage.setItem('linkStoreStatusList',JSON.stringify([]));
           this.loaderService.hide();
         });
+    }else{
+      this.loaderService.hide();
     }
     
   }
   getStoreLinkSettings(){
-    this.loaderService.show('Checking Link Store Configuration..');
-    let query = {_:new Date().getTime()};
-    this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
-      if(settings && settings['urls'] && typeof(settings['urls']['get-link']) !='undefined' &&  typeof(settings['urls']['get-link']['url'])!='undefined'){
-        localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
-        localStorage.setItem('haslinkStoreSetting',"1");
-        this.getStatusList();
-      }else{
-        localStorage.removeItem('linkStoreSetting');
-        localStorage.removeItem('haslinkStoreSetting');
+    if(!localStorage.getItem('linkStoreSetting')){
+      this.loaderService.show('Checking Link Store Configuration..');
+      let query = {_:new Date().getTime()};
+      this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
+        if(settings && settings['urls'] && typeof(settings['urls']['get-link']) !='undefined' &&  typeof(settings['urls']['get-link']['url'])!='undefined'){
+          localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
+          localStorage.setItem('haslinkStoreSetting',"1");
+          this.getStatusList();
+        }else{
+          localStorage.removeItem('linkStoreSetting');
+          localStorage.removeItem('haslinkStoreSetting');
+          this.loaderService.hide();
+        }
+      },(err)=>{
         this.loaderService.hide();
-      }
-    },(err)=>{
-      this.loaderService.hide();
-    });
+      });
+    }else{
+      this.getStatusList();
+    }
+   
   }
 
 }
