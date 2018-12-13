@@ -36,11 +36,16 @@ public class UpdateLinkUnderMaintenanceRequest extends LinksBaseRequest {
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
 
+    @JsonProperty("evacuate")
+    private boolean evacuate;
+
     public UpdateLinkUnderMaintenanceRequest(@JsonProperty("source") NetworkEndpoint source,
-                                             @JsonProperty("destination") NetworkEndpoint destination,
-                                             @JsonProperty("under_maintenance") boolean underMaintenance) {
+                                            @JsonProperty("destination") NetworkEndpoint destination,
+                                            @JsonProperty("under_maintenance") boolean underMaintenance,
+                                            @JsonProperty("evacuate") boolean evacuate) {
         this.source = source;
         this.destination = destination;
         this.underMaintenance = underMaintenance;
+        this.evacuate = evacuate;
     }
 }
