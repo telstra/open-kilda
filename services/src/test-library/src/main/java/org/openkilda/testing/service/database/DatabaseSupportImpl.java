@@ -73,7 +73,7 @@ public class DatabaseSupportImpl implements Database {
      * Updates max_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value       max bandwidth to set
+     * @param value max bandwidth to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
@@ -95,7 +95,7 @@ public class DatabaseSupportImpl implements Database {
      * Updates available_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value       max bandwidth to set
+     * @param value max bandwidth to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
@@ -106,6 +106,28 @@ public class DatabaseSupportImpl implements Database {
                     islToUpdate.getDstSwitch().getDpId(), islToUpdate.getDstPort());
             isl.ifPresent(link -> {
                 link.setAvailableBandwidth(value);
+                islRepository.createOrUpdate(link);
+            });
+
+            return isl.isPresent();
+        });
+    }
+
+    /**
+     * Updates cost property on a certain ISL.
+     *
+     * @param islToUpdate ISL to be changed
+     * @param value cost to set
+     * @return true if at least 1 ISL was affected.
+     */
+    @Override
+    public boolean updateLinkCost(Isl islToUpdate, int value) {
+        return transactionManager.doInTransaction(() -> {
+            Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
+                    islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
+                    islToUpdate.getDstSwitch().getDpId(), islToUpdate.getDstPort());
+            isl.ifPresent(link -> {
+                link.setCost(value);
                 islRepository.createOrUpdate(link);
             });
 

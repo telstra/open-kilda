@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -8,6 +9,7 @@ import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -17,6 +19,7 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
+import org.openkilda.testing.tools.IslUtils
 
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
@@ -40,6 +43,8 @@ class FlowCrudSpec extends BaseSpecification {
     FlowHelper flowHelper
     @Autowired
     PathHelper pathHelper
+    @Autowired
+    IslUtils islUtils
     @Autowired
     NorthboundService northboundService
     @Autowired
@@ -368,6 +373,41 @@ class FlowCrudSpec extends BaseSpecification {
                 }
             ]
         ]
+    }
+
+    def "A flow cannot be created with asymmetric forward and reverse paths"() {
+        given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
+        List<List<PathNode>> possibleFlowPaths = []
+        int pathNodeCount = 2
+        def (Switch srcSwitch, Switch dstSwitch) = topology.getIslsForActiveSwitches().find {
+            possibleFlowPaths = db.getPaths(it.srcSwitch.dpId, it.dstSwitch.dpId)*.path.sort { it.size() }
+            possibleFlowPaths.size() > 1 && possibleFlowPaths.max { it.size() }.size() > pathNodeCount
+        }.collect {
+            [it.srcSwitch, it.dstSwitch]
+        }.flatten() ?: assumeTrue("No suiting active neighboring switches with two possible flow paths at least and " +
+                "different number of hops found", false)
+
+        and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
+        possibleFlowPaths.findAll { it.size() == pathNodeCount }.each {
+            pathHelper.getInvolvedIsls(it).each { db.updateLinkCost(it, Integer.MAX_VALUE) }
+        }
+
+        when: "Create a flow"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        then: "The flow is built through one of the long paths"
+        def flowPath = northboundService.getFlowPath(flow.id)
+        !(PathHelper.convert(flowPath) in possibleFlowPaths.findAll { it.size() == pathNodeCount })
+
+        and: "The flow has symmetric forward and reverse paths even though there is a more preferable reverse path"
+        def forwardIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath))
+        def reverseIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath, "reversePath"))
+        forwardIsls.collect { islUtils.reverseIsl(it) }.reverse() == reverseIsls
+
+        and: "Delete the flow and reset costs"
+        flowHelper.deleteFlow(flow.id)
+        db.resetCosts()
     }
 
     @Shared

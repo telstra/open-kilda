@@ -73,7 +73,7 @@ export class IdentityServerComponent implements OnInit {
         "body":[""]
       })
     });
-    this.loaderService.show('Loading identity details..');
+    this.loaderService.show('Loading Identity Server Details..');
     this.storesettingservice.getIdentityServerConfigurations().subscribe((jsonResponse)=>{
       if(jsonResponse && jsonResponse['oauth-generate-token-url'] && typeof(jsonResponse['oauth-generate-token-url']['url']) !== 'undefined' ){
         this.commonService.setIdentityServer(true);
@@ -127,7 +127,7 @@ export class IdentityServerComponent implements OnInit {
 			var tokenUrl = this.identityServerForm.value['oauth-generate-token-url'].url;
 			var refreshTokenUrl = this.identityServerForm.value['oauth-refresh-token-url'].url;
       var postData = decodeURIComponent("grant_type=password&username="+username+"&password="+password);
-      this.loaderService.show('Validating identity server details');
+      this.loaderService.show('Validating Identity Server Details');
 			this.storesettingservice.generateorRefreshToken(tokenUrl,postData).subscribe(
         (response:any)=>{
 			 if(response && response.access_token){
@@ -152,11 +152,11 @@ export class IdentityServerComponent implements OnInit {
 
    submitIdentityData() {
     var obj = this.identityServerForm.value;
-    this.loaderService.show('Saving identity server details');
+    this.loaderService.show('Saving Identity Server Details');
     this.storesettingservice.submitIdentity('/auth/oauth-two-config/save',obj).subscribe((response:any)=>{
             this.identityServerForm.setValue(response || {});
             this.loaderService.hide();
-						this.toastr.success("Identity Server Details saved successfully", 'Success');
+						this.toastr.success("Identity Server Details Saved Successfully", 'Success');
             this.identityServerForm.disable();
             this.isEditable = false;
             this.commonService.setIdentityServer(true);

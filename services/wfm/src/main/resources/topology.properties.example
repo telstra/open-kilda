@@ -28,6 +28,10 @@ reroute.throttling.delay.max = 600
 
 isl.cost.when.port.down = 10000
 
+port.up.down.throttling.delay.seconds.min = 1
+port.up.down.throttling.delay.seconds.warm.up = 5
+port.up.down.throttling.delay.seconds.cool.down = 5
+
 opentsdb.hosts = http://opentsdb.pendev:4242
 opentsdb.timeout = 30
 opentsdb.num.spouts = 1

@@ -106,7 +106,7 @@ export class FlowDetailComponent implements OnInit {
   openTab(tab) {
     this.openedTab = tab;
     if(tab == 'contracts'){
-      this.loaderService.show('Loading contracts..');
+      this.loaderService.show('Loading Contracts..');
       this.flowService.getcontract(this.flowDetail.flowid).subscribe(data=>{
         this.contracts  = data || [];
         this.isLoadedcontract = true;
@@ -127,7 +127,7 @@ export class FlowDetailComponent implements OnInit {
     this.loadStatsGraph = true;
     this.clearResyncedFlow();
     this.clearValidatedFlow();
-    this.loaderService.show("Fetching Flow Detail");
+    this.loaderService.show("Loading Flow Detail");
     this.bandWidthDescrepancy  = false;
     this.statusDescrepancy = false;
     this.flowService.getFlowDetailById(flowId).subscribe(

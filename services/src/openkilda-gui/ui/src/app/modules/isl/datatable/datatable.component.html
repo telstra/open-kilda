@@ -47,15 +47,15 @@
         <i class="fa fa-search" (click)="toggleSearch($event,'expandedState')"></i>
         <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedState" [hidden]="!expandedState"/>
       </th>
-      <th  ><span title="Available Speed(%)">Available Speed(%)</span>
-        <i class="fa fa-search" (click)="toggleSearch($event,'expandedAvailableSpeed')"></i>
-        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedAvailableSpeed" [hidden]="!expandedAvailableSpeed"/>
-      </th>
-      <th ><span title="Speed(Mbps)">Speed(Mbps)</span>
+       <th><span title="Bandwidth(Mbps)">Bandwidth(Mbps)</span>
         <i class="fa fa-search" (click)="toggleSearch($event,'expandedSpeed')"></i>
         <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedSpeed" [hidden]="!expandedSpeed"/>
       </th>
-      <th ><span title="Available Bandwidth(Mbps)">Available Bandwidth(Mbps) </span>
+      <th><span title="Available Bandwidth(%)">Available Bandwidth(%)</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedAvailableSpeed')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedAvailableSpeed" [hidden]="!expandedAvailableSpeed"/>
+      </th>
+      <th><span title="Available Bandwidth(Mbps)">Available Bandwidth(Mbps) </span>
         <i class="fa fa-search" (click)="toggleSearch($event,'expandedAvailableBandwidth')"></i>
         <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedAvailableBandwidth" [hidden]="!expandedAvailableBandwidth"/>
       </th>
@@ -95,12 +95,13 @@
       <td class="divTableCell" title="{{ checkValue(listItem.state) }}" (click)="showIslDetail(listItem)">
         {{checkValue(listItem.state)}}
       </td>
+      <td class="divTableCell" title="{{ checkValueInt(listItem.speed) }}" (click)="showIslDetail(listItem)">
+          {{checkValueInt(listItem.speed)}}
+        </td>
       <td class="divTableCell" title="{{ getPercentage(listItem.available_bandwidth, listItem.speed) }}" (click)="showIslDetail(listItem)">
         {{getPercentage(listItem.available_bandwidth, listItem.speed)}}
       </td>
-      <td class="divTableCell" title="{{ checkValueInt(listItem.speed) }}" (click)="showIslDetail(listItem)">
-        {{checkValueInt(listItem.speed)}}
-      </td>
+     
       <td class="divTableCell" title="{{ checkValueInt(listItem.available_bandwidth) }}" (click)="showIslDetail(listItem)">
         {{checkValueInt(listItem.available_bandwidth)}}
       </td>

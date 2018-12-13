@@ -53,11 +53,11 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
       var cachedStatus = localStorage.getItem("activeFlowStatusFilter") || null;
       if(cachedStatus){
       	this.statusParams = [cachedStatus];
-      }else{
-      	this.statusParams = ['Active'];
+      }
+      if(this.statusParams.length <=0){
+        this.statusParams = ['Active'];
       	localStorage.setItem("activeFlowStatusFilter",this.statusParams.join(","));
       }
-      
     }
     this.getFlowList(this.statusParams);
   }
@@ -131,17 +131,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
      },1000);
   }
   ngOnChanges(change:SimpleChanges){
-      /*if(change.srcSwitch.currentValue){
-        this.expandedSrcSwitchName =  true;
-      }else{
-        this.expandedSrcSwitchName =  false;
-      }
-     if(change.dstSwitch.currentValue){
-        this.expandedTargetSwitchName = true;
-      }else{
-        this.expandedTargetSwitchName = false;
-      } 
-     this.triggerSearch();*/
+     
   }
 
 }
