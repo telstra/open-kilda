@@ -130,8 +130,8 @@
               <div class="row">
                 <div class="col-sm-4">Status:</div>
                 <div class="col-sm-8">{{ flowDetail.status || "-" }}
-                   &nbsp; <i title="Flow is not active in kilda controller" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')" class="fa fa-exclamation-triangle text-orange"></i>
-                   <i title="Flow is not active in inventory" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.inventory == '-')" class="fa fa-exclamation-triangle text-orange"></i>
+                   &nbsp; <i title="Flow doesn't exist in the controller" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')" class="fa fa-exclamation-triangle text-orange"></i>
+                   <i title="Flow doesn't exist in the inventory" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.inventory == '-')" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>
             </li>
@@ -242,10 +242,10 @@
           </div>
           <div class="note-container">
             <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')">
-               <strong>*Note:</strong> Flow is not active in kilda controller</p>
+               <strong>*Note:</strong> Flow doesn't exist in the controller</p>
                
                <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.inventory == '-' ) ">
-                <strong>*Note:</strong> Flow is not active in inventory</p>
+                <strong>*Note:</strong> Flow doesn't exist in the inventory</p>
 
         </div>
       </div>
