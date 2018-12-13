@@ -63,7 +63,7 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         log.debug("Received operation request");
 
         try {
-            List<InfoData> result = processRequest(input, request);
+            List<InfoData> result = processRequest(input, request, correlationId);
             getOutput().emit(input, new Values(result, correlationId));
         } catch (IslNotFoundException e) {
             ErrorData data = new ErrorData(ErrorType.NOT_FOUND,
@@ -73,7 +73,8 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         }
     }
 
-    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws AbstractException;
+    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId)
+            throws AbstractException;
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

@@ -162,7 +162,10 @@ public class LinkController {
     @PatchMapping(path = "/links/under-maintenance",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(@RequestBody LinkUnderMaintenanceDto link) {
-        return linkService.updateIslUnderMaintenance(link);
+    public CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(@RequestBody LinkUnderMaintenanceDto link,
+                                                                      @RequestParam(value = "evacuate",
+                                                                              defaultValue = "false")
+                                                                              boolean evacuate) {
+        return linkService.updateIslUnderMaintenance(link, evacuate);
     }
 }

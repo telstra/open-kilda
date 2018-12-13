@@ -90,5 +90,5 @@ public interface LinkService {
      * @param linkDto link parameters.
      * @return updated link.
      */
-    CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(LinkUnderMaintenanceDto linkDto);
+    CompletableFuture<List<LinkDto>> updateIslUnderMaintenance(LinkUnderMaintenanceDto linkDto, boolean evacuate);
 }
