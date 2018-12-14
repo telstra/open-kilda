@@ -50,6 +50,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.testing.Constants;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.database.Database;
@@ -400,7 +401,7 @@ public class FlowCrudSteps implements En {
             try {
                 List<Integer> actualMeters = floodlightService.getMeters(sw.getDpId()).values().stream()
                         .map(MeterEntry::getMeterId)
-                        .filter(meterId -> meterId > 3) //TODO: codify default meter IDs
+                        .filter(meterId -> meterId > Constants.MAX_DEFAULT_METER_ID)
                         .collect(toList());
 
                 if (!expectedMeters.isEmpty() || !actualMeters.isEmpty()) {

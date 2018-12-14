@@ -22,6 +22,7 @@ public final class Constants {
     public static final Integer SWITCHES_ACTIVATION_TIME = 10;
     public static final Integer RULES_DELETION_TIME = 5;
     public static final Integer RULES_INSTALLATION_TIME = 5;
+    public static final Integer MAX_DEFAULT_METER_ID = 15;
 
     private Constants() {
         throw new UnsupportedOperationException();
