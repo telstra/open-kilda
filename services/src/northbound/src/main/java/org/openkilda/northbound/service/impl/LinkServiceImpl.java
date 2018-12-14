@@ -89,12 +89,22 @@ public class LinkServiceImpl implements LinkService {
     private MessagingChannel messagingChannel;
 
     @Override
-    public CompletableFuture<List<LinkDto>> getLinks() {
+    public CompletableFuture<List<LinkDto>> getLinks(SwitchId srcSwitch, Integer srcPort,
+                                                     SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get links request received");
-        CommandMessage request = new CommandMessage(new GetLinksRequest(), System.currentTimeMillis(), correlationId);
+        GetLinksRequest request = null;
+        try {
+            request = new GetLinksRequest(new NetworkEndpointMask(srcSwitch, srcPort),
+                    new NetworkEndpointMask(dstSwitch, dstPort));
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create 'get links' request");
+        }
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
                 .thenApply(response -> response.stream()
                         .map(IslInfoData.class::cast)
                         .map(linkMapper::toLinkDto)

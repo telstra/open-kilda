@@ -47,8 +47,9 @@ public class IslService {
      *
      * @return List of ISLs
      */
-    public List<IslInfoData> getAllIsls() {
-        return islRepository.findAll().stream()
+    public List<IslInfoData> getAllIsls(SwitchId srcSwitch, Integer srcPort,
+                                        SwitchId dstSwitch, Integer dstPort) {
+        return islRepository.findAllIslsByEndpoints(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                 .map(IslMapper.INSTANCE::map)
                 .collect(Collectors.toList());
     }
