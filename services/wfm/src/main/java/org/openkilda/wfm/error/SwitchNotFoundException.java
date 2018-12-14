@@ -15,16 +15,10 @@
 
 package org.openkilda.wfm.error;
 
-public class MessageException extends AbstractException {
-    public MessageException() {
-        super("Exception raised parsing message");
-    }
+import org.openkilda.model.SwitchId;
 
-    public MessageException(String s) {
-        super(s);
-    }
-
-    public MessageException(String message, Throwable cause) {
-        super(message, cause);
+public class SwitchNotFoundException extends AbstractException {
+    public SwitchNotFoundException(SwitchId switchId) {
+        super(String.format("Switch %s not found.", switchId));
     }
 }
