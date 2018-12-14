@@ -41,8 +41,8 @@ public class NoviBfdSession extends NoviBfdEndpoint {
     @JsonCreator
     @Builder(toBuilder = true)
     public NoviBfdSession(
-            @JsonProperty("target") Switch target,
-            @JsonProperty("remote") Switch remote,
+            @JsonProperty("target") SpeakerSwitchView target,
+            @JsonProperty("remote") SpeakerSwitchView remote,
             @JsonProperty("physical-port-number") int physicalPortNumber,
             @JsonProperty("udp-port-number") int udpPortNumber,
             @JsonProperty("discriminator") int discriminator,

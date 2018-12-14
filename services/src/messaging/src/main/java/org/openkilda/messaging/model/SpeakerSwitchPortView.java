@@ -25,10 +25,10 @@ import java.io.Serializable;
 
 /**
  * Represent details about physical switch port. Should not be used as independent entity, only as part
- * of {@link Switch} definition.
+ * of {@link SpeakerSwitchView} definition.
  */
 @Value
-public class SwitchPort implements Serializable {
+public class SpeakerSwitchPortView implements Serializable {
     @JsonProperty(value = "number", required = true)
     private int number;
 
@@ -38,7 +38,7 @@ public class SwitchPort implements Serializable {
 
     @Builder
     @JsonCreator
-    public SwitchPort(
+    public SpeakerSwitchPortView(
             @JsonProperty("number") int number,
             @JsonProperty("state") @NonNull State state) {
         this.number = number;
@@ -47,6 +47,6 @@ public class SwitchPort implements Serializable {
 
     public enum State {
         UP,
-        DOWN;
+        DOWN
     }
 }

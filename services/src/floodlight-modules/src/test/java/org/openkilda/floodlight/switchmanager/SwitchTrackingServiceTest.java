@@ -41,8 +41,8 @@ import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.Switch;
-import org.openkilda.messaging.model.SwitchPort;
+import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
@@ -80,12 +80,14 @@ import java.util.Set;
 public class SwitchTrackingServiceTest extends EasyMockSupport {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
     private static final DatapathId dpId = DatapathId.of(0x7fff);
-    private static InetAddress switchIpAddress;
-    private static final Set<Switch.Feature> switchFeatures = Collections.singleton(Switch.Feature.METERS);
+    private static final Set<SpeakerSwitchView.Feature> switchFeatures = Collections.singleton(
+            SpeakerSwitchView.Feature.METERS);
 
     private final SwitchTrackingService service = new SwitchTrackingService();
 
     private final FloodlightModuleContext moduleContext = new FloodlightModuleContext();
+
+    private InetAddress switchIpAddress;
 
     @Mock
     private SwitchManager switchManager;
@@ -131,11 +133,11 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
     @Test
     public void switchAdded() throws Exception {
-        Switch expectedSwitchRecord = makeSwitchRecord(true, true);
-        Capture<Message> producedMessage = prepareAliveSwitchEvent(expectedSwitchRecord);
+        SpeakerSwitchView expectedSwitchView = makeSwitchRecord(dpId, switchFeatures, true, true);
+        Capture<Message> producedMessage = prepareAliveSwitchEvent(expectedSwitchView);
         replayAll();
         service.switchAdded(dpId);
-        verifySwitchEvent(SwitchChangeType.ADDED, expectedSwitchRecord, producedMessage);
+        verifySwitchEvent(SwitchChangeType.ADDED, expectedSwitchView, producedMessage);
     }
 
     @Test
@@ -158,8 +160,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
     @Test
     public void switchActivate() throws Exception {
-        Switch expectedSwitchRecord = makeSwitchRecord(true, true);
-        switchActivateTest(prepareAliveSwitchEvent(expectedSwitchRecord), expectedSwitchRecord);
+        SpeakerSwitchView expectedSwitchView = makeSwitchRecord(dpId, switchFeatures, true, true);
+        switchActivateTest(prepareAliveSwitchEvent(expectedSwitchView), expectedSwitchView);
     }
 
     @Test
@@ -167,7 +169,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         switchActivateTest(prepareRemovedSwitchEvent(), null);
     }
 
-    private void switchActivateTest(Capture<Message> producedMessage, Switch expectedSwitchRecord) throws Exception {
+    private void switchActivateTest(Capture<Message> producedMessage, SpeakerSwitchView expectedSwitchView)
+            throws Exception {
         switchManager.activate(dpId);
         expectLastCall().andAnswer(new IAnswer<Object>() {
             @Override
@@ -180,7 +183,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         replayAll();
 
         service.switchActivated(dpId);
-        verifySwitchEvent(SwitchChangeType.ACTIVATED, expectedSwitchRecord, producedMessage);
+        verifySwitchEvent(SwitchChangeType.ACTIVATED, expectedSwitchView, producedMessage);
         assertEquals(1, producedMessage.getValues().size());
     }
 
@@ -195,7 +198,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
     @Test
     public void switchChanged() throws Exception {
-        Switch expectedSwitchRecord = makeSwitchRecord(true, true);
+        SpeakerSwitchView expectedSwitchRecord = makeSwitchRecord(dpId, switchFeatures, true, true);
         Capture<Message> producedMessage = prepareAliveSwitchEvent(expectedSwitchRecord);
         replayAll();
         service.switchChanged(dpId);
@@ -210,9 +213,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         verifySwitchEvent(SwitchChangeType.CHANGED, null, producedMessage);
     }
 
-    private Capture<Message> prepareAliveSwitchEvent(Switch switchRecord) throws Exception {
+    private Capture<Message> prepareAliveSwitchEvent(SpeakerSwitchView switchView) throws Exception {
         IOFSwitch sw = createMock(IOFSwitch.class);
-
         expect(sw.getId()).andReturn(dpId).anyTimes();
         expect(sw.getInetAddress())
                 .andReturn(new InetSocketAddress(switchIpAddress, 32769));
@@ -231,15 +233,15 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
         expect(switchManager.lookupSwitch(eq(dpId))).andReturn(sw);
 
-        List<OFPortDesc> physicalPorts = new ArrayList<>(switchRecord.getPorts().size());
+        List<OFPortDesc> physicalPorts = new ArrayList<>(switchView.getPorts().size());
         int idx = 1;
-        for (SwitchPort port : switchRecord.getPorts()) {
-            physicalPorts.add(makePhysicalPortMock(idx++, port.getState() == SwitchPort.State.UP));
+        for (SpeakerSwitchPortView port : switchView.getPorts()) {
+            physicalPorts.add(makePhysicalPortMock(idx++, port.getState() == SpeakerSwitchPortView.State.UP));
         }
         expect(switchManager.getPhysicalPorts(sw)).andReturn(physicalPorts);
 
         expect(switchManager.getSwitchIpAddress(sw)).andReturn(switchIpAddress);
-        expect(featureDetector.detectSwitch(sw)).andReturn(ImmutableSet.of(Switch.Feature.METERS));
+        expect(featureDetector.detectSwitch(sw)).andReturn(ImmutableSet.of(SpeakerSwitchView.Feature.METERS));
 
         return prepareSwitchEventCommon(dpId);
     }
@@ -258,7 +260,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         return producedMessage;
     }
 
-    private void verifySwitchEvent(SwitchChangeType expectedState, Switch expectedSwitchRecord,
+    private void verifySwitchEvent(SwitchChangeType expectedState, SpeakerSwitchView expectedSwitchView,
                                    Capture<Message> producedMessage) {
         assertTrue(producedMessage.hasCaptured());
 
@@ -272,7 +274,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         assertEquals(new SwitchId(dpId.getLong()), switchInfo.getSwitchId());
         assertEquals(expectedState, switchInfo.getState());
 
-        assertEquals(expectedSwitchRecord, switchInfo.getSwitchRecord());
+        assertEquals(expectedSwitchView, switchInfo.getSwitchView());
     }
 
     @Test
@@ -313,9 +315,9 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         expect(switchManager.getSwitchIpAddress(iofSwitch2)).andReturn(Inet4Address.getByName("127.0.2.2"));
 
         expect(featureDetector.detectSwitch(iofSwitch1))
-                .andReturn(ImmutableSet.of(Switch.Feature.METERS));
+                .andReturn(ImmutableSet.of(SpeakerSwitchView.Feature.METERS));
         expect(featureDetector.detectSwitch(iofSwitch2))
-                .andReturn(ImmutableSet.of(Switch.Feature.METERS, Switch.Feature.BFD));
+                .andReturn(ImmutableSet.of(SpeakerSwitchView.Feature.METERS, SpeakerSwitchView.Feature.BFD));
 
         ArrayList<Message> producedMessages = new ArrayList<>();
         // setup hook for verify that we create new message for producer
@@ -343,38 +345,37 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         ArrayList<Message> expectedMessages = new ArrayList<>();
         expectedMessages.add(new InfoMessage(new NetworkDumpBeginMarker(), 0, correlationId));
         expectedMessages.add(new InfoMessage(
-                new NetworkDumpSwitchData(new Switch(
+                new NetworkDumpSwitchData(new SpeakerSwitchView(
                         new SwitchId(swAid.getLong()),
                         Inet4Address.getByName("127.0.2.1"),
-                        ImmutableSet.of(Switch.Feature.METERS),
+                        ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
                         ImmutableList.of(
-                                new SwitchPort(1, SwitchPort.State.UP),
-                                new SwitchPort(2, SwitchPort.State.UP)))), 0, correlationId));
+                                new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
+                                new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP)))), 0, correlationId));
         expectedMessages.add(new InfoMessage(
-                new NetworkDumpSwitchData(new Switch(
+                new NetworkDumpSwitchData(new SpeakerSwitchView(
                         new SwitchId(swBid.getLong()),
                         Inet4Address.getByName("127.0.2.2"),
-                        ImmutableSet.of(Switch.Feature.METERS, Switch.Feature.BFD),
+                        ImmutableSet.of(SpeakerSwitchView.Feature.METERS, SpeakerSwitchView.Feature.BFD),
                         ImmutableList.of(
-                                new SwitchPort(3, SwitchPort.State.UP),
-                                new SwitchPort(4, SwitchPort.State.UP),
-                                new SwitchPort(5, SwitchPort.State.DOWN)))), 0, correlationId));
+                                new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP),
+                                new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP),
+                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN)))), 0, correlationId));
         expectedMessages.add(new InfoMessage(new NetworkDumpEndMarker(), 0, correlationId));
 
         assertEquals(expectedMessages, producedMessages);
     }
 
-    private Switch makeSwitchRecord(boolean... portState) {
-        return this.makeSwitchRecord(dpId, switchIpAddress, switchFeatures, portState);
-    }
-
-    private Switch makeSwitchRecord(DatapathId datapath, InetAddress ipAddress, Set<Switch.Feature> features,
-                                    boolean... portState) {
-        List<SwitchPort> ports = new ArrayList<>(portState.length);
+    private SpeakerSwitchView makeSwitchRecord(DatapathId datapath, Set<SpeakerSwitchView.Feature> features,
+                                               boolean... portState) {
+        List<SpeakerSwitchPortView> ports = new ArrayList<>(portState.length);
         for (int idx = 0; idx < portState.length; idx++) {
-            ports.add(new SwitchPort(idx + 1, portState[idx] ? SwitchPort.State.UP : SwitchPort.State.DOWN));
+            ports.add(new SpeakerSwitchPortView(idx + 1,
+                                                portState[idx]
+                                                        ? SpeakerSwitchPortView.State.UP
+                                                        : SpeakerSwitchPortView.State.DOWN));
         }
-        return new Switch(new SwitchId(datapath.getLong()), ipAddress, features, ports);
+        return new SpeakerSwitchView(new SwitchId(datapath.getLong()), switchIpAddress, features, ports);
     }
 
     private OFPortDesc makePhysicalPortMock(int number, boolean isEnabled) {

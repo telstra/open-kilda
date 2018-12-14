@@ -46,7 +46,7 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
-import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.OutputVlanType;
@@ -56,7 +56,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -456,10 +456,10 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventSwitchInfoTest() throws IOException, ClassNotFoundException {
-        Switch switchRecord = new Switch(SWITCH_ID, Inet4Address.getByName("127.0.2.2"),
-                                         Collections.emptySet(), Collections.emptyList());
+        SpeakerSwitchView switchView = new SpeakerSwitchView(
+                SWITCH_ID, InetAddress.getByName("127.0.0.1"), Collections.emptySet(), Collections.emptyList());
         SwitchInfoData data = new SwitchInfoData(
-                SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller", false, switchRecord);
+                SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller", false, switchView);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
