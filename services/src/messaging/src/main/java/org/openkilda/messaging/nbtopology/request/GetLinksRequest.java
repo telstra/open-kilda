@@ -15,9 +15,26 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
+import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+
+@SuppressWarnings("squid:MaximumInheritanceDepth")
+@Getter
 @ReadRequest
 public class GetLinksRequest extends LinksBaseRequest {
 
+    @JsonProperty("source")
+    private NetworkEndpointMask source;
+
+    @JsonProperty("destination")
+    private NetworkEndpointMask destination;
+
+    public GetLinksRequest(@JsonProperty("source") NetworkEndpointMask source,
+                        @JsonProperty("destination") NetworkEndpointMask destination) {
+        this.source = source;
+        this.destination = destination;
+    }
 }

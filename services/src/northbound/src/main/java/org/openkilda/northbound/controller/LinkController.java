@@ -66,11 +66,15 @@ public class LinkController {
      *
      * @return list of links.
      */
-    @ApiOperation(value = "Get all links", response = LinkDto.class, responseContainer = "List")
+    @ApiOperation(value = "Get all links, based on arguments.", response = LinkDto.class, responseContainer = "List")
     @GetMapping(path = "/links")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<List<LinkDto>> getLinks() {
-        return linkService.getLinks();
+    public CompletableFuture<List<LinkDto>> getLinks(
+            @RequestParam(value = "src_switch", required = false) SwitchId srcSwitch,
+            @RequestParam(value = "src_port", required = false) Integer srcPort,
+            @RequestParam(value = "dst_switch", required = false) SwitchId dstSwitch,
+            @RequestParam(value = "dst_port", required = false) Integer dstPort) {
+        return linkService.getLinks(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
     /**
