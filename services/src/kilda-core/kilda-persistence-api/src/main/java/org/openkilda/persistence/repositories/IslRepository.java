@@ -28,6 +28,9 @@ public interface IslRepository extends Repository<Isl> {
 
     Optional<Isl> findByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 
+    Collection<Isl> findAllIslsByEndpoints(SwitchId srcSwitchId, Integer srcPort,
+                                           SwitchId dstSwitchId, Integer dstPort);
+
     /**
      * Finds active ISLs for the path occupied by the flow, filtering out ISLs that don't have enough available
      * bandwidth.

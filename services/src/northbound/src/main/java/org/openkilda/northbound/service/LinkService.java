@@ -29,7 +29,8 @@ public interface LinkService {
     /**
      * Returns all links at the controller.
      */
-    CompletableFuture<List<LinkDto>> getLinks();
+    CompletableFuture<List<LinkDto>> getLinks(SwitchId srcSwitch, Integer srcPort,
+                                              SwitchId dstSwitch, Integer dstPort);
 
     /**
      * These results are not related to the ISL links per se .. they are based on any link

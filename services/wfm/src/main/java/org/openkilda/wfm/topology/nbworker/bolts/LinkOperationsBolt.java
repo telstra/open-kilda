@@ -54,7 +54,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
-            result = getAllLinks();
+            result = getAllLinks((GetLinksRequest) request);
         } else if (request instanceof LinkPropsGet) {
             result = getLinkProps((LinkPropsGet) request);
         } else if (request instanceof LinkPropsPut) {
@@ -68,9 +68,15 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         return (List<InfoData>) result;
     }
 
-    private List<IslInfoData> getAllLinks() {
+    private List<IslInfoData> getAllLinks(GetLinksRequest request) {
         IslRepository islRepository = repositoryFactory.createIslRepository();
-        return islRepository.findAll().stream()
+
+        Integer srcPort = request.getSource().getPortNumber();
+        SwitchId srcSwitch = request.getSource().getDatapath();
+        Integer dstPort = request.getDestination().getPortNumber();
+        SwitchId dstSwitch = request.getDestination().getDatapath();
+
+        return islRepository.findAllIslsByEndpoints(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                 .map(IslMapper.INSTANCE::map)
                 .collect(Collectors.toList());
     }
