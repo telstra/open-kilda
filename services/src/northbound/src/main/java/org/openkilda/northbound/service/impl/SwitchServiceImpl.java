@@ -46,6 +46,7 @@ import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
+import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
@@ -110,6 +111,22 @@ public class SwitchServiceImpl implements SwitchService {
                         .map(SwitchInfoData.class::cast)
                         .map(switchMapper::toSwitchDto)
                         .collect(Collectors.toList()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<SwitchDto> getSwitch(SwitchId switchId) {
+        LOGGER.debug("Get one switch request");
+        CommandMessage request = new CommandMessage(new GetSwitchRequest(switchId), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(messages -> messages.stream()
+                        .map(SwitchInfoData.class::cast)
+                        .map(switchMapper::toSwitchDto)
+                        .collect(Collectors.toList()).get(0));
     }
 
     /**
