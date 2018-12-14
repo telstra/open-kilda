@@ -106,7 +106,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
-                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString());
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString());
 
         KafkaBolt kafkaNbBolt = createKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
