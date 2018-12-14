@@ -97,7 +97,9 @@ public class LinkServiceTest {
         messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(islInfoData));
         RequestCorrelationId.create(correlationId);
 
-        List<LinkDto> result = linkService.getLinks().join();
+        List<LinkDto> result =
+                linkService.getLinks(islInfoData.getSource().getSwitchId(), islInfoData.getSource().getPortNo(),
+                        islInfoData.getDestination().getSwitchId(), islInfoData.getDestination().getPortNo()).join();
         assertFalse("List of link shouldn't be empty", result.isEmpty());
 
         LinkDto link = result.get(0);
