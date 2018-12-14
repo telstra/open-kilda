@@ -5,36 +5,44 @@ state switchSync <<choice>>
 
 prepopulate : setup port workers
 prepopulate : setup ISL workers
-prepopulate --> switchSync
+prepopulate --> switchSync : managed
 
-switchSync --> refreshPorts : is-online
+switchSync --> recovery : is-online
 switchSync --> offline : is-offline
 
-refreshPorts : for up->down ports: emit down port event
-refreshPorts : for down->up ports: emit up port event
-refreshPorts --> cleanUpPorts
+recovery : enter / set sw state online
+recovery : enter / [setup portWorker for portsAdded()]
+recovery : enter / [emit online for portAll()]
+recovery : enter / [emit port-del for portsRemoved()]
+recovery : enter / [emit port-down for portsBecomeDown()]
+recovery : enter / [emit port-up for portsBecomeUp()]
+recovery --> online : next
 
-cleanUpPorts : emit port removal event
-cleanUpPorts --> initPorts
-
-initPorts : setup port workers
-initPorts --> online
-
-online : enter / sw-online
+online : enter / set sw state online
 online --> online : activate
 online --> offline : deactivate
 online --> portAdd : port-add
 online --> portDel : port-del
+online -u-> unmanaged : unmanaged
 
 portAdd : setup port worker
 portAdd : emit port-add
-portAdd --> online
+portAdd --> online : next
 
 portDel : emit port-del
-portDel --> online
+portDel --> online : next
 
-offline : enter / emit sw-offline
-offline --> refreshPorts : activate
+offline : enter / set sw state offline
+offline : enter / [emit offline for portAll()]
+offline --> recovery : activate
 offline --> offline : deactivate
+
+unmanaged : enter / set sw state unmanaged
+unmanaged : enter / emit port-unmanaged [all ports]
+unmanaged -r-> managementRestore : managed
+
+managementRestore : enter / set sw state managed
+managementRestore : enter / emit port-managed
+managementRestore --> switchSync : next
 
 @enduml

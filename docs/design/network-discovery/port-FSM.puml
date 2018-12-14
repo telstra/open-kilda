@@ -5,6 +5,8 @@ Internal state:
 Input signals:
 * port-up
 * port-down
+* port-managed
+* port-unmanaged
 * discovery-timer
 * discovery
 * discovery-pushed
@@ -18,60 +20,85 @@ Output signals:
 * isl-down
 * isl-disable
 * isl-move
-* isl-push-fail
+* isl-push-fail (?)
+* isl-unmanaged
 * push-discovery
 
 @startuml
-state init <<choice>>
-state enableCheck <<choice>>
-state movedCheck <<choice>>
+state OPERATIONAL {
+    [*] --> UNKNOWN
 
-[*] --> init
-init --> DOWN : port-is-down
-init --> UP : port-is-up
+    UNKNOWN : enter / set online true
+    UNKNOWN --> DOWN : port-down
+    UNKNOWN --> UP : port-up
 
-UP --> DOWN : port-down
-UP --> offline : offline
-UP --> UP : discovery-timer\n(push-discovery)
-UP --> disabled : disable
-UP --> movedCheck : discovery
+    UP --> DOWN : port-down
+    UP --> makeDiscovery : discovery-timer
+    UP --> DISCOVERED : discovery
 
-DOWN --> UP : port-up
-DOWN --> offline : offline
-DOWN --> disabled : disable
+    makeDiscovery : enter / push-discovery
+    makeDiscovery --> UP : next
 
-offline : enter / set online false
-offline --> init : online\n(set online true)
-offline -r-> disabled : disable
+    DOWN --> UP : port-up
 
-disabled --> enableCheck : enable
+    state DISCOVERED {
+        DISCOVERED : enter / record remote
+        DISCOVERED : enter / emit isl-up
 
-enableCheck --> offline : not isOnline
-enableCheck --> init : isOnline
+        state checkMoved <<choice>>
 
-movedCheck --> discovered : new or same
-movedCheck --> bound : change
+        [*] --> pending
+        pending --> pushed : discovery-timer
+        pending -d-> checkMoved : discovered
+        pending --> pending : discovery-pushed
 
-discovered : enter / record remote
-discovered : enter / emit isl-up
-discovered --> disabled : disable\n(emit isl-disable)
-discovered --> discoveredDOWN : port-down
-discovered --> offline : offline
-discovered --> movedCheck : discovery
-discovered --> waitPush : discovery-timer
+        pushed --> confirmed : discovery-pushed
+        pushed --> failed : discovery-timer
+        pushed -d-> checkMoved : discovery
 
-discoveredDOWN : enter / emit isl-down
-discoveredDOWN --> disabled : disable\n(emit isl-disable)
-discoveredDOWN --> offline : offline
-discoveredDOWN --> UP : port-up
+        confirmed : enter / emit push-discovery
+        confirmed --> pending : next
 
-bound : enter / emit isl-move
-bound --> discovered : bound-confirm
+        failed : enter / emit isl-push-fail
+        failed --> pending
 
-waitPush : enter / push-discovery
-waitPush --> discovered : discovery-pushed\n(emit push-discovery)
-waitPush --> discovered : discovery-timer\n(emit isl-push-fail)
-waitPush --> offline : offline
-waitPush --> disabled : disable\n(emit isl-disable)
+        checkMoved -u-> pending : same-remote
+        checkMoved -u-> moved : moved
+
+        moved : enter / emit isl-move
+        moved : enter / record remote
+        moved --> pending : next
+    }
+    DISCOVERED -u-> becomeUndiscovered : port-down
+
+    becomeUndiscovered : enter / emit isl-down
+    becomeUndiscovered --> DOWN : next
+}
+
+OPERATIONAL --> OFFLINE : offline
+OPERATIONAL --> becomeDISABLED : disable
+OPERATIONAL --> becomeUNMANAGED : port-unmanaged
+
+becomeDISABLED : enter / emit isl-disable if have remote
+becomeDISABLED --> DISABLED : next
+
+becomeUNMANAGED : enter / emit isl-unmanaged if have remote
+becomeUNMANAGED --> UNMANAGED : next
+
+DISABLED --> OPERATIONAL : enable
+DISABLED --> DISABLED_OFFLINE : offline
+DISABLED --> DISABLED_UNMANAGED : port-unmanaged
+
+UNMANAGED --> OPERATIONAL : port-managed
+UNMANAGED --> DISABLED : disable
+
+OFFLINE -u-> OPERATIONAL : online
+OFFLINE --> DISABLED : disable
+
+DISABLED_OFFLINE --> DISABLED : online
+DISABLED_OFFLINE --> OFFLINE : enable
+
+DISABLED_UNMANAGED --> DISABLED : port-managed
+DISABLED_UNMANAGED --> UNMANAGED : enable
 
 @enduml

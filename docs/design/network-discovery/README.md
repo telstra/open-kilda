@@ -46,6 +46,11 @@ To simplify event routing from switch and ports one more
 layer required - `ISL management`. This layer trace correspondence between 
 endpoints (switch + port) and ISLs.
 
+One extra layer of event processing - is SpeakerMonitor - it responsible for
+speaker outage detection. It monitor speaker connection consuming `heart-beat`
+events from speaker. In case of outage it produce `UNMANAGEMENT` notification
+for next layer (switches FSM) and initiate state sync when speaker
+communication restores.
 
 ## First layer - switch events processor
 ![Switch FSM](switch-FSM.png)
