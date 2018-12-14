@@ -88,7 +88,7 @@ export class FlowEditComponent implements OnInit {
 
   /**Get flow detail via api call */
   getFlowDetail(flowId) {
-    this.loaderService.show("Fetching Flow Detail");
+    this.loaderService.show("Loading Flow Detail");
     this.flowService.getFlowDetailById(flowId).subscribe(
       flow => {
         this.flowDetailData = flow;
@@ -121,7 +121,7 @@ export class FlowEditComponent implements OnInit {
   /** Get switches list via api call */
   getSwitchList() {
     let ref = this;
-    this.loaderService.show("Fetching Flow Detail");
+    this.loaderService.show("Loading Flow Detail");
     this.switchService.getSwitchList().subscribe(
       response => {
         response.forEach(function(s) {
@@ -149,7 +149,7 @@ export class FlowEditComponent implements OnInit {
         "legacy"
       );
       if(!flag){
-        this.loaderService.show("Fetching ports");
+        this.loaderService.show("Loading Ports");
       }
       
       this.switchService.getSwitchPortsStats(switchId).subscribe(

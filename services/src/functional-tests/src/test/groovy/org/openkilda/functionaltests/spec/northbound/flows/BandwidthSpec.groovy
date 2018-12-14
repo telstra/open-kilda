@@ -225,8 +225,16 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
         given: "Two active neighboring switches"
-        def isl = topology.getIslsForActiveSwitches().first()
-        def (srcSwitch, dstSwitch) = [isl.srcSwitch, isl.dstSwitch]
+        def isls = topology.getIslsForActiveSwitches()
+        def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
+
+        // We need to handle the case when there are parallel links between chosen switches. So we make all parallel
+        // links except the first link not preferable to avoid flow reroute when updating the flow.
+        List<List<PathNode>> allFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.sort { it.size() }
+        List<List<PathNode>> parallelPaths = allFlowPaths.findAll { it.size() == 2 }
+        if (parallelPaths.size() > 1) {
+            parallelPaths[1..-1].each { pathHelper.makePathMorePreferable(parallelPaths.first(), it) }
+        }
 
         when: "Create a flow with a valid small bandwidth"
         def maximumBandwidth = 1000
@@ -240,7 +248,7 @@ class BandwidthSpec extends BaseSpecification {
         def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
         involvedIsls.size() == 1
-        involvedIsls.first() == isl
+        involvedIsls.first() == pathHelper.getInvolvedIsls(parallelPaths.first()).first()
 
         when: "Update flow bandwidth to maximum link speed"
         def linkSpeed = islUtils.getIslInfo(involvedIsls.first()).get().speed

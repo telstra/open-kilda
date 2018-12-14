@@ -1,8 +1,5 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
-import spock.lang.Ignore
-import spock.lang.Issue
-
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -13,8 +10,8 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.model.SwitchId
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.switches.PortDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -67,6 +64,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
                 rerouteDelay > discoveryInterval * 2 + 1)
     }
 
+    @Ignore("Should be reworked due to https://github.com/telstra/open-kilda/issues/1729")
     def "Reroute is not performed while new reroutes are being issued (alt path available)"() {
         def blinkingPeriod = rerouteDelay
         assumeTrue("Configured reroute timeouts are not acceptable for this test. " +
@@ -114,6 +112,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Ignore("Should be reworked due to https://github.com/telstra/open-kilda/issues/1729")
     def "Reroute is not performed while new reroutes are being issued (no alt path)"() {
         def blinkingPeriod = rerouteDelay
         assumeTrue("Configured reroute timeouts are not acceptable for this test. " +
@@ -230,6 +229,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
     }
 
+    @Ignore("Should be reworked due to https://github.com/telstra/open-kilda/issues/1729")
     def "Reroute is performed after hard timeout even if new reroutes are still being issued"() {
         given: "A flow with alternate paths available"
         def switches = topology.getActiveSwitches()

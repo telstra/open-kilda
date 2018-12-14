@@ -21,6 +21,11 @@ package org.openkilda.pce;
 public class UnroutableFlowException extends Exception {
     private final String flowId;
 
+    public UnroutableFlowException(String message) {
+        super(message);
+        this.flowId = null;
+    }
+
     public UnroutableFlowException(String message, String flowId) {
         super(message);
 

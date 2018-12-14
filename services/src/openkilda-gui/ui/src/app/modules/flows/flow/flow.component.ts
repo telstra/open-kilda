@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { CommonService } from '../../../common/services/common.service';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
 import { FlowsService } from 'src/app/common/services/flows.service';
+import { LoaderService } from 'src/app/common/services/loader.service';
 
 @Component({
   selector: 'app-flow',
@@ -20,7 +21,8 @@ export class FlowComponent implements OnInit {
     private route: ActivatedRoute,
     public commonService: CommonService,
     private storeLinkService: StoreSettingtService,
-    private flowService : FlowsService
+    private flowService : FlowsService,
+    private loaderService: LoaderService,
   ) { 
    
   }
@@ -57,24 +59,37 @@ export class FlowComponent implements OnInit {
     if(!localStorage.getItem('linkStoreStatusList')){
         this.flowService.getStatusList().subscribe((statuses)=>{
             localStorage.setItem('linkStoreStatusList',JSON.stringify(statuses));
-        },function(error){
+            this.loaderService.hide();
+        },(error)=>{
           localStorage.setItem('linkStoreStatusList',JSON.stringify([]));
-        })
+          this.loaderService.hide();
+        });
+    }else{
+      this.loaderService.hide();
     }
     
   }
   getStoreLinkSettings(){
-    let query = {_:new Date().getTime()};
-    this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
-      if(settings && settings['urls'] && typeof(settings['urls']['get-link']) !='undefined' &&  typeof(settings['urls']['get-link']['url'])!='undefined'){
-        localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
-        localStorage.setItem('haslinkStoreSetting',"1");
-        this.getStatusList();
-      }else{
-        localStorage.removeItem('linkStoreSetting');
-        localStorage.removeItem('haslinkStoreSetting');
-      }
-    });
+    if(!localStorage.getItem('linkStoreSetting')){
+      this.loaderService.show('Checking Link Store Configuration..');
+      let query = {_:new Date().getTime()};
+      this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
+        if(settings && settings['urls'] && typeof(settings['urls']['get-link']) !='undefined' &&  typeof(settings['urls']['get-link']['url'])!='undefined'){
+          localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
+          localStorage.setItem('haslinkStoreSetting',"1");
+          this.getStatusList();
+        }else{
+          localStorage.removeItem('linkStoreSetting');
+          localStorage.removeItem('haslinkStoreSetting');
+          this.loaderService.hide();
+        }
+      },(err)=>{
+        this.loaderService.hide();
+      });
+    }else{
+      this.getStatusList();
+    }
+   
   }
 
 }

@@ -127,8 +127,6 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
           .subtract(4, "hour")
           .format("YYYY/MM/DD HH:mm:ss");
         toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
-        /* $('#forwardFromdatepicker').val(fromStartDate);
-				$('#forwardTodatepicker').val(toEndDate); */
       } else {
         startDate = moment()
           .subtract(4, "hour")
@@ -141,8 +139,6 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
           .subtract(4, "hour")
           .format("YYYY/MM/DD HH:mm:ss");
         toEndDate = moment().format("YYYY/MM/DD HH:mm:ss");
-        /* $('#forwardFromdatepicker').val(fromStartDate);
-				$('#forwardTodatepicker').val(toEndDate); */
       }
     }
 

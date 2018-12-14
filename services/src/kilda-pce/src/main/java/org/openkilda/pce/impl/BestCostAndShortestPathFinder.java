@@ -22,10 +22,12 @@ import static java.util.stream.Collectors.toSet;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.UnroutableFlowException;
 
 import com.google.common.collect.Lists;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -35,6 +37,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -72,7 +75,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     @Override
     public Pair<List<Isl>, List<Isl>> findPathInNetwork(AvailableNetwork network,
                                                         SwitchId startSwitchId, SwitchId endSwitchId)
-            throws SwitchNotFoundException {
+            throws SwitchNotFoundException, UnroutableFlowException {
         Switch start = network.getSwitch(startSwitchId);
         if (start == null) {
             throw new SwitchNotFoundException(
@@ -85,8 +88,17 @@ public class BestCostAndShortestPathFinder implements PathFinder {
                     format("DESTINATION node doesn't exist. It isn't in the AVAILABLE network: %s", endSwitchId));
         }
 
-        List<Isl> forwardPath = getPath(start, end, Integer.MAX_VALUE);
-        List<Isl> reversePath = getPath(end, start, Integer.MAX_VALUE, forwardPath);
+        List<Isl> forwardPath = getPath(start, end);
+        if (forwardPath.isEmpty()) {
+            throw new UnroutableFlowException(format("Can't find a path from %s to %s", start, end));
+        }
+
+        List<Isl> reversePath = getReversePath(end, start, forwardPath);
+        if (reversePath.isEmpty()) {
+            throw new UnroutableFlowException(format("Can't find a reverse path from %s to %s. Forward path : %s",
+                    end, start, StringUtils.join(forwardPath, ", ")));
+        }
+
         return Pair.of(forwardPath, reversePath);
     }
 
@@ -96,8 +108,8 @@ public class BestCostAndShortestPathFinder implements PathFinder {
      *
      * @return An ordered list that represents the path from start to end, or an empty list
      */
-    private List<Isl> getPath(Switch start, Switch end, long maximumCost) {
-        long bestCost = maximumCost; // Need to be long because it stores sum of ints.
+    private List<Isl> getPath(Switch start, Switch end) {
+        long bestCost = Integer.MAX_VALUE; // Need to be long because it stores sum of ints.
         SearchNode bestPath = null;
 
         Deque<SearchNode> toVisit = new LinkedList<>(); // working list
@@ -155,45 +167,35 @@ public class BestCostAndShortestPathFinder implements PathFinder {
      * Whereas it's possible that could build up the SearchNodes for this path (if found) and put them into the visited
      * bucket, we'll start without that optimization and decide later whether adding it provides any efficiencies
      *
-     * @param hint The path to use as a starting point. It can be in reverse order (we'll reverse it)
+     * @param src a source switch to start searching reverse path.
+     * @param dst a switch to which reverse path will be found.
+     * @param forwardPath The path to use as a starting point. It can be in reverse order (we'll reverse it)
      * @return An ordered list that represents the path from start to end.
      */
-    private List<Isl> getPath(Switch start, Switch end, long maximumCost, List<Isl> hint) {
-        long hintedReverseCost = maximumCost; // Need to be long because it stores sum of ints.
-        SearchNode hintedReversePath = null;
-
+    private List<Isl> getReversePath(Switch src, Switch dst, List<Isl> forwardPath) {
         // First, see if the first and last nodes match our start and end, or whether the list
         // needs to be reversed
-        if (hint != null && !hint.isEmpty()) {
-            Switch from = hint.get(0).getSrcSwitch();
-            Switch to = hint.get(hint.size() - 1).getDestSwitch();
-            if (start.equals(to) && end.equals(from)) {
-                log.trace("getPath w/ Hint: Reversing the path from {}->{} to {}->{}", from, to, to, from);
-                // looks like hint wasn't reversed .. revers the order, and swap src/dst.
-                hint = swapSrcDst(Lists.reverse(hint));
-                // re-run from and to .. it should now match.
-                from = hint.get(0).getSrcSwitch();
-                to = hint.get(hint.size() - 1).getDestSwitch();
-            }
 
-            // If the start/end equals from/to, then confirm the path and see if we can use it.
-            if (start.equals(from) && end.equals(to)) {
-                log.trace("getPath w/ Hint: hint matches start/ed {}->{}", from, to);
-                // need to validate that the path exists .. and if so .. set bestCost and bestPath
-                SearchNode best = confirmIsls(hint);
-                if (best != null) {
-                    log.debug("getPath w/ Hint: the hint path EXISTS for {}->{}", from, to);
-                    hintedReverseCost = best.parentCost;
-                    hintedReversePath = best;
-                } else {
-                    log.info("getPath w/ Hint: the hint path DOES NOT EXIST for {}->{}, will find new path",
-                            from, to);
-                }
+        List<Isl> reversePath = Lists.reverse(forwardPath);
+        reversePath = swapSrcDst(reversePath);
+
+        if (isPathEndpointsCorrect(src, dst, reversePath)) {
+            if (isPathValid(reversePath)) {
+                log.debug("Reverse path is available from {} to {}", src.getSwitchId(), dst.getSwitchId());
+                return reversePath;
+            } else {
+                log.warn(format("Failed to find symmetric reverse path from %s to %s. Forward path: %s",
+                        src.getSwitchId(), dst.getSwitchId(), StringUtils.join(forwardPath, ", ")));
             }
         }
 
-        List<Isl> altReversePath = getPath(start, end, hintedReverseCost);
-        return altReversePath.isEmpty() && hintedReversePath != null ? hintedReversePath.parentPath : altReversePath;
+        // find an alternative path
+        return getPath(src, dst);
+    }
+
+    private boolean isPathEndpointsCorrect(Switch src, Switch dst, List<Isl> path) {
+        return Objects.equals(src, path.get(0).getSrcSwitch())
+                && Objects.equals(dst, path.get(path.size() - 1).getDestSwitch());
     }
 
     /**
@@ -216,14 +218,12 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     }
 
     /**
-     * This helper function is used with getPath(hint) to confirm the hint path exists.
+     * This helper function is used with getReversePath(hint) to confirm the hint path exists.
      */
-    private SearchNode confirmIsls(List<Isl> srcIsls) {
-        long totalCost = 0;
-        LinkedList<Isl> confirmedIsls = new LinkedList<>();
+    private boolean isPathValid(List<Isl> path) {
         boolean validPath = true;
 
-        for (Isl i : srcIsls) {
+        for (Isl i : path) {
             Switch srcSwitch = i.getSrcSwitch();
             if (srcSwitch == null) {
                 throw new IllegalStateException(
@@ -244,8 +244,6 @@ public class BestCostAndShortestPathFinder implements PathFinder {
                         && i.getDestSwitch().getSwitchId().equals(orig.getDestSwitch().getSwitchId())
                         && i.getDestPort() == orig.getDestPort()) {
                     foundThisOne = true;
-                    confirmedIsls.add(orig);
-                    totalCost += getCost(orig);
                     break; // stop looking, we found the isl
                 }
             }
@@ -255,14 +253,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
             }
         }
 
-        if (validPath) {
-            return new SearchNode(
-                    confirmedIsls.peekLast().getDestSwitch(),
-                    this.allowedDepth - confirmedIsls.size(),
-                    totalCost,
-                    confirmedIsls);
-        }
-        return null;
+        return validPath;
     }
 
     private int getCost(Isl isl) {

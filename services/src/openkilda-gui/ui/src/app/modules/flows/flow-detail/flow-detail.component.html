@@ -130,8 +130,8 @@
               <div class="row">
                 <div class="col-sm-4">Status:</div>
                 <div class="col-sm-8">{{ flowDetail.status || "-" }}
-                   &nbsp; <i title="Flow is not active in kilda controller" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')" class="fa fa-exclamation-triangle text-orange"></i>
-                   <i title="Flow is not active in inventory" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.inventory == '-')" class="fa fa-exclamation-triangle text-orange"></i>
+                   &nbsp; <i title="Flow doesn't exist in the controller" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')" class="fa fa-exclamation-triangle text-orange"></i>
+                   <i title="Flow doesn't exist in the inventory" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.inventory == '-')" class="fa fa-exclamation-triangle text-orange"></i>
                 </div>
               </div>
             </li>
@@ -164,10 +164,10 @@
           <li [ngClass]="{'active': openedTab == 'graph'}">
             <a href="javascript:void(0);" (click)="openTab('graph');">Graph</a>
           </li>
-          <li [ngClass]="{'active': openedTab == 'path'}">
+          <li [ngClass]="{'active': openedTab == 'path'}" *ngIf="(storeLinkSetting  && flowDetail.status)  || !(storeLinkSetting)">
             <a href="javascript:void(0);" (click)="openTab('path');">Path</a>
           </li>
-          <li *ngIf="commonService.hasPermission('fw_permission_validate')" [ngClass]="{'active': openedTab == 'validate'}">
+          <li *ngIf="commonService.hasPermission('fw_permission_validate') && ((storeLinkSetting  && flowDetail.status)  || !(storeLinkSetting))" [ngClass]="{'active': openedTab == 'validate'}">
             <a href="javascript:void(0);" (click)="openTab('validate');">Validate</a>
           </li>
           <li *ngIf="storeLinkSetting" [ngClass]="{'active': openedTab == 'contracts'}">
@@ -224,23 +224,30 @@
         </div>
         <div class="tab-pane" [ngClass]="{'active': openedTab == 'descrepancy'}">
           <div class="table-responsive">
-            <table class="table table-bordered table-hover">
-                <thead class="thead-light"><tr><th>Discrepancy</th><th>Kilda Controller</th><th>Link Store</th></tr></thead>
+            <table class="row-border hover dataTable no-footer">
+                <thead class="thead-light"><tr class="tableHeading"><th>Discrepancy</th><th>Kilda Controller</th><th>Link Store</th></tr></thead>
               <tbody>
-                <tr *ngIf="statusDescrepancy"><td>Status</td><td>{{ descrepancyData.status.controller}}</td><td>{{ descrepancyData.status.inventory}}</td></tr>
-                <tr *ngIf="bandWidthDescrepancy"><td>Bandwidth(Kbps)</td><td>{{ descrepancyData.bandwidth.controller}}</td><td>{{ descrepancyData.bandwidth.inventory}}</td></tr>
+                <tr *ngIf="statusDescrepancy" >
+                  <td class="divTableCell">Status</td>
+                  <td class="divTableCell">{{ descrepancyData.status.controller}}</td>
+                  <td class="divTableCell">{{ descrepancyData.status.inventory}}</td>
+                </tr>
+                <tr *ngIf="bandWidthDescrepancy">
+                  <td class="divTableCell">Bandwidth(Kbps)</td>
+                  <td class="divTableCell">{{ descrepancyData.bandwidth.controller}}</td>
+                  <td class="divTableCell">{{ descrepancyData.bandwidth.inventory}}</td>
+                </tr>
               </tbody>
             </table>
-            <div class="note-container">
-                <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')">
-                   <strong>*Note:</strong> Flow is not active in kilda controller</p>
-                   
-                   <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.inventory == '-' ) ">
-                    <strong>*Note:</strong> Flow is not active in inventory</p>
-  
-            </div>
           </div>
-          
+          <div class="note-container">
+            <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')">
+               <strong>*Note:</strong> Flow doesn't exist in the controller</p>
+               
+               <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.inventory == '-' ) ">
+                <strong>*Note:</strong> Flow doesn't exist in the inventory</p>
+
+        </div>
       </div>
       </div>
     </div>

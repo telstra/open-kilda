@@ -46,6 +46,15 @@ public interface OFEventWfmTopologyConfig extends AbstractTopologyConfig {
     @Key("isl.cost.when.port.down")
     int getIslCostWhenPortDown();
 
+    @Key("port.up.down.throttling.delay.seconds.min")
+    int getPortUpDownThrottlingDelaySecondsMin();
+
+    @Key("port.up.down.throttling.delay.seconds.warm.up")
+    int getPortUpDownThrottlingDelaySecondsWarmUp();
+
+    @Key("port.up.down.throttling.delay.seconds.cool.down")
+    int getPortUpDownThrottlingDelaySecondsCoolDown();
+
     @Configuration
     @Key("discovery")
     interface DiscoveryConfig {

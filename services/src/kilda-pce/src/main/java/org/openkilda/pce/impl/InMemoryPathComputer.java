@@ -71,11 +71,10 @@ public class InMemoryPathComputer implements PathComputer {
         } catch (SwitchNotFoundException e) {
             throw new UnroutableFlowException("Can't find a switch for the flow path : " + e.getMessage(),
                     e, flow.getFlowId());
-        }
-        if (biPath.getLeft().isEmpty() || biPath.getRight().isEmpty()) {
-            throw new UnroutableFlowException(format("Can't find a path from %s to %s (bandwidth=%d%s)",
-                    flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth(),
-                    flow.isIgnoreBandwidth() ? " ignored" : ""), flow.getFlowId());
+        } catch (UnroutableFlowException e) {
+            String message = format("Failed to find path with requested bandwidth=%s: %s",
+                    flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth(), e.getMessage());
+            throw new UnroutableFlowException(message, flow.getFlowId());
         }
 
         return convertToPathPair(biPath);
