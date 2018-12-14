@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package org.openkilda.messaging.info.event;
 
 import org.openkilda.messaging.info.CacheTimeTag;
-import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -65,7 +65,7 @@ public class SwitchInfoData extends CacheTimeTag {
      * {@link SwitchInfoData} object.
      */
     @JsonProperty("switch")
-    private Switch switchRecord;
+    private SpeakerSwitchView switchView;
 
     public SwitchInfoData(SwitchId switchId, SwitchChangeType state) {
         this(switchId, state, null, null, null, null, false);
@@ -85,7 +85,7 @@ public class SwitchInfoData extends CacheTimeTag {
      * @param hostname    switch name
      * @param description switch description
      * @param controller  switch controller
-     * @param switchRecord data for ISL/switch discovery
+     * @param switchView data for ISL/switch discovery
      */
     @Builder(toBuilder = true)
     @JsonCreator
@@ -96,14 +96,14 @@ public class SwitchInfoData extends CacheTimeTag {
                           @JsonProperty("description") String description,
                           @JsonProperty("controller") String controller,
                           @JsonProperty("under_maintenance") boolean underMaintenance,
-                          @JsonProperty("switch") Switch switchRecord) {
+                          @JsonProperty("switch") SpeakerSwitchView switchView) {
         this.switchId = switchId;
         this.state = state;
         this.address = address;
         this.hostname = hostname;
         this.description = description;
         this.controller = controller;
+        this.switchView = switchView;
         this.underMaintenance = underMaintenance;
-        this.switchRecord = switchRecord;
     }
 }

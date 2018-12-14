@@ -22,8 +22,8 @@ import static org.junit.Assert.assertTrue;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.Switch;
-import org.openkilda.messaging.model.SwitchPort;
+import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
@@ -350,14 +350,13 @@ public class DiscoveryManagerTest {
         // now send SwitchUp and confirm sw1 all go back to not found, sw2 unchanged
         List<NetworkEndpoint> allEndpoints = ImmutableList.of(srcNode1, srcNode2, srcNode3);
         List<NetworkEndpoint> affectedEndpoints = filterEndpointsByDatapath(srcNode1.getDatapath(), allEndpoints);
-        Switch switchRecord = new Switch(
+        SpeakerSwitchView switchView = new SpeakerSwitchView(
                 srcNode1.getDatapath(),
-                Inet4Address.getByName("127.0.2.2"), ImmutableSet.of(Switch.Feature.METERS),
+                ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
                 affectedEndpoints.stream()
-                        .map(entry -> new SwitchPort(entry.getPortNumber(), SwitchPort.State.UP))
-                        .collect(Collectors.toList())
-        );
-        dm.registerSwitch(switchRecord);
+                        .map(entry -> new SpeakerSwitchPortView(entry.getPortNumber(), SpeakerSwitchPortView.State.UP))
+                        .collect(Collectors.toList()));
+        dm.registerSwitch(switchView);
 
         for (NetworkEndpoint entry : allEndpoints) {
             LinkState expectedState = affectedEndpoints.contains(entry) ? LinkState.UNKNOWN : LinkState.ACTIVE;

@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.feature;
 
-import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
@@ -24,5 +24,5 @@ import java.util.Optional;
 public abstract class AbstractFeature {
     protected static final String MANUFACTURER_NICIRA = "Nicira, Inc.";
 
-    public abstract Optional<Switch.Feature> discover(IOFSwitch sw);
+    public abstract Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw);
 }

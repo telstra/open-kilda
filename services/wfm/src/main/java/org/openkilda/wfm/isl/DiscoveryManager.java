@@ -17,8 +17,8 @@ package org.openkilda.wfm.isl;
 
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.Switch;
-import org.openkilda.messaging.model.SwitchPort;
+import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -258,16 +258,16 @@ public class DiscoveryManager {
     /**
      * Register switch.
      *
-     * @param switchRecord switch's discovery data
+     * @param switchView switch's discovery data
      */
-    public void registerSwitch(Switch switchRecord) {
-        SwitchId datapath = switchRecord.getDatapath();
+    public void registerSwitch(SpeakerSwitchView switchView) {
+        SwitchId datapath = switchView.getDatapath();
         logger.info("Register switch {} into ISL discovery manager", datapath);
 
-        for (SwitchPort port : switchRecord.getPorts()) {
+        for (SpeakerSwitchPortView port : switchView.getPorts()) {
             String logPrefix = String.format(
                     "Switch %s connect-time port %d state - %s", datapath, port.getNumber(), port.getState());
-            if (port.getState() == SwitchPort.State.UP) {
+            if (port.getState() == SpeakerSwitchPortView.State.UP) {
                 logger.info("{}: add to discovery(reset fail counters)", logPrefix);
                 registerPort(datapath, port.getNumber())
                         .resetState();
