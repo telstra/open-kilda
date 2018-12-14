@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
@@ -54,7 +56,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws IslNotFoundException {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetFlowsForIslRequest) {
             result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);
@@ -65,18 +67,21 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         return (List<InfoData>) result;
     }
 
-    private List<FlowResponse> processGetFlowsForLinkRequest(GetFlowsForIslRequest request)
-            throws IslNotFoundException {
+    private List<FlowResponse> processGetFlowsForLinkRequest(GetFlowsForIslRequest request) {
         SwitchId srcSwitch = request.getSource().getDatapath();
         Integer srcPort = request.getSource().getPortNumber();
         SwitchId dstSwitch = request.getDestination().getDatapath();
         Integer dstPort = request.getDestination().getPortNumber();
 
-        return flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
-                .map(FlowPair::getForward)
-                .map(FlowMapper.INSTANCE::map)
-                .map(FlowResponse::new)
-                .collect(Collectors.toList());
+        try {
+            return flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+                    .map(FlowPair::getForward)
+                    .map(FlowMapper.INSTANCE::map)
+                    .map(FlowResponse::new)
+                    .collect(Collectors.toList());
+        } catch (IslNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+        }
     }
 
     @Override
