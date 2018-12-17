@@ -7,7 +7,6 @@ left to right direction
 rectangle "Event topology" {
     rectangle "Switch operations" {
         (Create or update\nswitch) as CUS
-        (Activate switch) as AS
         (Deactivate switch) as DS
     }
 
@@ -32,7 +31,6 @@ rectangle "Event topology" {
 }
 
 FL --> CUS
-FL --> AS
 FL --> DS
 FL --> CUI
 FL --> IDF

@@ -72,11 +72,6 @@ public class SwitchServiceTest extends Neo4jBasedTest {
         Switch foundSwitch = switchRepository.findById(switchId).get();
 
         assertEquals(SwitchStatus.INACTIVE, foundSwitch.getStatus());
-
-        switchService.activateSwitch(sw);
-        foundSwitch = switchRepository.findById(switchId).get();
-
-        assertEquals(SwitchStatus.ACTIVE, foundSwitch.getStatus());
     }
 
     private Switch createSwitch(SwitchId switchId, String description, SwitchStatus switchStatus) {

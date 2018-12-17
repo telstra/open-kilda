@@ -57,25 +57,6 @@ public class SwitchService {
     }
 
     /**
-     * Set active status in the switch in neo4j.
-     *
-     * @param sw switch.
-     */
-    public void activateSwitch(Switch sw) {
-        log.debug("Activate switch {}", sw.getSwitchId());
-        transactionManager.doInTransaction(() -> processActivateSwitch(sw));
-    }
-
-    private void processActivateSwitch(Switch sw) {
-        Switch daoSwitch = switchRepository.findById(sw.getSwitchId())
-                .orElseGet(() -> Switch.builder().switchId(sw.getSwitchId()).build());
-
-        daoSwitch.setStatus(SwitchStatus.ACTIVE);
-        switchRepository.createOrUpdate(daoSwitch);
-    }
-
-
-    /**
      * Set inactive status in the switch in neo4j.
      *
      * @param sw switch.
