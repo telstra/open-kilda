@@ -22,7 +22,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Service to handle feature toggles requests.
  */
-public interface FeatureTogglesService extends BasicService {
+public interface FeatureTogglesService {
 
     /**
      * Changes feature toggles values.
