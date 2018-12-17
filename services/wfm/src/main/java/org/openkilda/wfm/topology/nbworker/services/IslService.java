@@ -61,11 +61,11 @@ public class IslService {
      * @param destinationSwitch ISL destination switch
      * @param destinationPort ISL destination port
      *
-     * @return deleted ISL
+     * @return True if ISL was deleted, False otherwise
      * @throws IslNotFoundException if ISL is not found
      * @throws IllegalIslStateException if ISL is in 'active' state
      */
-    public Isl deleteIsl(SwitchId sourceSwitch, int sourcePort, SwitchId destinationSwitch, int destinationPort)
+    public boolean deleteIsl(SwitchId sourceSwitch, int sourcePort, SwitchId destinationSwitch, int destinationPort)
             throws IllegalIslStateException, IslNotFoundException {
         logger.info("Delete ISL with following parameters: "
                 + "source switch '%s', source port '%d', destination switch '%s', destination port '%d'",
@@ -83,6 +83,7 @@ public class IslService {
         }
 
         islRepository.delete(isl.get());
-        return isl.get();
+
+        return !islRepository.findByEndpoints(sourceSwitch, sourcePort, destinationSwitch, destinationPort).isPresent();
     }
 }

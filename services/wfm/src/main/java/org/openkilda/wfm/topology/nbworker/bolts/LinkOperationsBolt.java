@@ -203,9 +203,9 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
 
     private DeleteIslResponse deleteLink(DeleteLinkRequest request)
             throws IllegalIslStateException, IslNotFoundException {
-        Isl isl = islService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
-                                       request.getDstSwitch(), request.getDstPort());
-        return new DeleteIslResponse(isl);
+        boolean deleted = islService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
+                                               request.getDstSwitch(), request.getDstPort());
+        return new DeleteIslResponse(deleted);
     }
 
     @Override
