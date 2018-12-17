@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package org.openkilda.messaging.nbtopology.response;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.model.Isl;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,11 +24,11 @@ import lombok.Value;
 @Value
 public class DeleteIslResponse extends InfoData {
 
-    @JsonProperty("isl")
-    private Isl isl;
+    @JsonProperty("deleted")
+    private boolean deleted;
 
     @JsonCreator
-    public DeleteIslResponse(@JsonProperty("isl") Isl isl) {
-        this.isl = isl;
+    public DeleteIslResponse(@JsonProperty("deleted") boolean deleted) {
+        this.deleted = deleted;
     }
 }

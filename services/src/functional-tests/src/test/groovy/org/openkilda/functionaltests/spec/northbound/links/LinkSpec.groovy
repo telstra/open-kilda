@@ -164,7 +164,7 @@ class LinkSpec extends BaseSpecification {
 
     def "Cannot delete nonexistent link"() {
         given: "Parameters of nonexistent link"
-        def parameters = new LinkParametersDto("srcSwitch1", 100, "dstSwitch1", 100)
+        def parameters = new LinkParametersDto(new SwitchId(1), 100, new SwitchId(2), 100)
 
         when: "Try to delete nonexistent link"
         northbound.deleteLink(parameters)
@@ -178,8 +178,8 @@ class LinkSpec extends BaseSpecification {
     def "Cannot delete active link"() {
         given: "Parameters for active link"
         def link = northbound.getActiveLinks()[0]
-        def parameters = new LinkParametersDto(link.source.switchId.toString(), link.source.portNo,
-                link.destination.switchId.toString(), link.destination.portNo)
+        def parameters = new LinkParametersDto(link.source.switchId, link.source.portNo,
+                                               link.destination.switchId, link.destination.portNo)
 
         when: "Try to delete active link"
         northbound.deleteLink(parameters)
@@ -202,7 +202,7 @@ class LinkSpec extends BaseSpecification {
             northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort)
                     .every { it.state == IslChangeType.FAILED }
         }
-        def parameters = new LinkParametersDto(srcSwitch.toString(), srcPort, dstSwitch.toString(), dstPort)
+        def parameters = new LinkParametersDto(srcSwitch, srcPort, dstSwitch, dstPort)
 
         when: "Try to delete inactive link"
         def res = northbound.deleteLink(parameters)

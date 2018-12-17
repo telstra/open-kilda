@@ -21,7 +21,7 @@ public class IllegalIslStateException extends AbstractException {
     public IllegalIslStateException(SwitchId srcSwitch, Integer srcPort,
                                     SwitchId dstSwitch, Integer dstPort, String s) {
         super(String.format("Link with following parameters is in illegal state: "
-                          + "source switch '%s', source port '%d', destination switch '%s', destination port '%d'. %s",
+                          + "source '%s_%d', destination '%s_%d'. %s",
                 srcSwitch, srcPort, dstSwitch, dstPort, s));
     }
 }
