@@ -25,6 +25,15 @@ Output signals:
 * push-discovery
 
 @startuml
+[*] --> INIT
+
+INIT -r-> PREPOPULATE : remote-data
+INIT --> OFFLINE : offline
+INIT --> OPERATIONAL : online
+
+PREPOPULATE : enter / set remote
+PREPOPULATE -l-> INIT : next
+
 state OPERATIONAL {
     [*] --> UNKNOWN
 
@@ -42,7 +51,7 @@ state OPERATIONAL {
     DOWN --> UP : port-up
 
     state DISCOVERED {
-        DISCOVERED : enter / record remote
+        DISCOVERED : enter / record remote if unset
         DISCOVERED : enter / emit isl-up
 
         state checkMoved <<choice>>
@@ -66,6 +75,7 @@ state OPERATIONAL {
         checkMoved -u-> moved : moved
 
         moved : enter / emit isl-move
+        moved : enter / emit isl-up
         moved : enter / record remote
         moved --> pending : next
     }
@@ -91,9 +101,11 @@ DISABLED --> DISABLED_UNMANAGED : port-unmanaged
 
 UNMANAGED --> OPERATIONAL : port-managed
 UNMANAGED --> DISABLED : disable
+UNMANAGED --> OFFLINE : offline
 
-OFFLINE -u-> OPERATIONAL : online
+OFFLINE --> OPERATIONAL : online
 OFFLINE --> DISABLED : disable
+OFFLINE --> UNMANAGED : port-unmanaged
 
 DISABLED_OFFLINE --> DISABLED : online
 DISABLED_OFFLINE --> OFFLINE : enable
