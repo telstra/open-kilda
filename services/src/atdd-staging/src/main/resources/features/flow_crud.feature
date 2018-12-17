@@ -22,14 +22,16 @@ Feature: Flow CRUD
     And each flow is valid per Northbound validation
     And all active switches have correct rules installed per Northbound validation
     And each flow has meters installed with 750 max bandwidth
+    # Kilda shapes traffic inaccurately when the bandwidth is too low due to a high burst rate on Centec switches.
+    # Avoid using values less than 512 kbps or use higher tolerance intervals.
     And each flow has traffic going with bandwidth not less than 700 and not greater than 820
 
-    Then each flow can be updated with 250 max bandwidth and new vlan
+    Then each flow can be updated with 1250 max bandwidth and new vlan
     And each flow is in UP state
     And each flow is valid per Northbound validation
     And all active switches have correct rules installed per Northbound validation
-    And each flow has meters installed with 250 max bandwidth
-    And each flow has traffic going with bandwidth not less than 200 and not greater than 300
+    And each flow has meters installed with 1250 max bandwidth
+    And each flow has traffic going with bandwidth not less than 1200 and not greater than 1350
 
     Then each flow can be deleted
     And each flow can not be read from Northbound
