@@ -9,6 +9,7 @@ import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
+import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.floodlight.FloodlightService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -86,7 +87,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
 
             nonVirtualSwitches.findAll {
                 it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
-                    it.key > 15 // ids that <=15 are reserved for 'default' meters for default rules
+                    it.key > Constants.MAX_DEFAULT_METER_ID
                 }.isEmpty()
             }.empty
         }
