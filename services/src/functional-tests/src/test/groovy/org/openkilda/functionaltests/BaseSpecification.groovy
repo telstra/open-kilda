@@ -64,7 +64,9 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         and: "All switches and links are active. No flows and link props are present"
         def links = northbound.getAllLinks()
         verifyAll {
-            Wrappers.wait(WAIT_OFFSET) { northbound.activeSwitches.size() == topologyDefinition.activeSwitches.size() }
+            Wrappers.wait(WAIT_OFFSET) {
+                assert northbound.activeSwitches.size() == topologyDefinition.activeSwitches.size()
+            }
             links.findAll { it.state == IslChangeType.FAILED }.empty
             links.findAll {
                 it.state == IslChangeType.DISCOVERED
