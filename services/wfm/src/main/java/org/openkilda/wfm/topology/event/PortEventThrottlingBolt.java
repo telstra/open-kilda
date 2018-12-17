@@ -37,6 +37,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+/**
+ * The bolt implement similar antiflapping approach as for reroute.
+ *
+ * <p>Introduce a logic where we wait for a "Port UP" event after a "Port Down" for
+ * "throttling_delay_seconds_min" seconds.
+ * <br>If the last event in a series is "UP", then do not initiate "ISL_Down".
+ *
+ * @see PortEventThrottlingService for more details
+ */
 public class PortEventThrottlingBolt extends AbstractTickRichBolt {
 
     private static final Logger logger = LoggerFactory.getLogger(PortEventThrottlingBolt.class);
