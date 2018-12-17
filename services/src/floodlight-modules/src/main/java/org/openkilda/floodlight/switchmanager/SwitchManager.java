@@ -694,7 +694,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         logger.debug("Installing verification rule for {}", dpid);
         ArrayList<OFAction> actionList = new ArrayList<>(3);
         actionList.add(actionSendToController(sw));
-        actionList.add(actionSetDstMac(sw, dpidToMac(sw)));
+        actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
 
         long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
         long meterId = cookie & PACKET_IN_RULES_METERS_MASK;
@@ -762,7 +762,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         } else {
             Builder builder = ofFactory.buildMatch();
             builder.setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST));
-            builder.setExact(MatchField.ETH_SRC, dpidToMac(sw));
+            builder.setExact(MatchField.ETH_SRC, dpIdToMac(sw.getId()));
             Match match = builder.build();
 
             OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null,
@@ -912,7 +912,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      *
      * @param ofFactory OF factory for the switch
      * @param inputPort input port for the match
-     * @param vlanId    vlanID to match on; 0 means match on port
+     * @param vlanId vlanID to match on; 0 means match on port
      * @return {@link Match}
      */
     private Match matchFlow(final OFFactory ofFactory, final int inputPort, final int vlanId) {
@@ -941,7 +941,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Builds OFAction list based on flow parameters for replace scheme.
      *
      * @param ofFactory OF factory for the switch
-     * @param outputVlanId   set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param outputVlanId set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @return list of {@link OFAction}
      */
@@ -970,7 +970,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Builds OFAction list based on flow parameters for push scheme.
      *
      * @param ofFactory OF factory for the switch
-     * @param outputVlanId   set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param outputVlanId set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @return list of {@link OFAction}
      */
@@ -1003,7 +1003,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Chooses encapsulation scheme for building OFAction list.
      *
      * @param ofFactory OF factory for the switch
-     * @param outputVlanId   set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param outputVlanId set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @return list of {@link OFAction}
      */
@@ -1126,30 +1126,26 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Create a MAC address based on the DPID.
-     *
-     * @param sw switch object
-     * @return {@link MacAddress}
+     * {@inheritDoc}
      */
-    private MacAddress dpidToMac(final IOFSwitch sw) {
-        return MacAddress.of(Arrays.copyOfRange(sw.getId().getBytes(), 2, 8));
+    @Override
+    public MacAddress dpIdToMac(DatapathId dpId) {
+        return MacAddress.of(Arrays.copyOfRange(dpId.getBytes(), 2, 8));
     }
 
     /**
      * Create a match object for the verification packets.
      *
-     * @param sw          siwtch object
+     * @param sw switch object
      * @param isBroadcast if broadcast then set a generic match; else specific to switch Id
      * @return {@link Match}
      */
     private Match matchVerification(final IOFSwitch sw, final boolean isBroadcast) {
-        MacAddress dstMac = isBroadcast ? MacAddress.of(VERIFICATION_BCAST_PACKET_DST) : dpidToMac(sw);
+        MacAddress dstMac = isBroadcast ? MacAddress.of(VERIFICATION_BCAST_PACKET_DST) : dpIdToMac(sw.getId());
         Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
         return builder.build();
     }
-
-
 
     /**
      * Create an action to send packet to the controller.
@@ -1166,7 +1162,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     /**
      * Create an action to set the DstMac of a packet.
      *
-     * @param sw         switch object
+     * @param sw switch object
      * @param macAddress MacAddress to set
      * @return {@link OFAction}
      */
@@ -1176,8 +1172,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return actions.buildSetField()
                 .setField(oxms.buildEthDst().setValue(macAddress).build()).build();
     }
-
-
 
     /**
      * A simple Match rule based on destination mac address and mask.
@@ -1198,8 +1192,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return match;
     }
 
-
-
     /**
      * Pushes a single flow modification command to the switch with the given datapath ID.
      *
@@ -1212,7 +1204,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private long pushFlow(final IOFSwitch sw, final String flowId, final OFMessage flowMod) throws OfInstallException {
         logger.info("installing {} flow: {}", flowId, flowMod);
 
-        if (! sw.write(flowMod)) {
+        if (!sw.write(flowMod)) {
             throw new OfInstallException(sw.getId(), flowMod);
         }
 
@@ -1220,11 +1212,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Wrap IOFSwitchService.getSwitch call to check protect from null return value.
-     *
-     * @param  dpId switch identifier
-     * @return open flow switch descriptor
-     * @throws SwitchNotFoundException switch operation exception
+     * {@inheritDoc}
      */
     @Override
     public IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchNotFoundException {
@@ -1314,6 +1302,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     /**
      * Creates meter instruction for OF versions 1.3 and 1.4 or adds meter to actions.
+     *
      * @param meterId meter to be installed.
      * @param sw switch information.
      * @param ofFactory OF factory for the switch.
