@@ -20,8 +20,10 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 
+import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFBufferId;
@@ -66,6 +68,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
 
@@ -100,6 +103,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
 

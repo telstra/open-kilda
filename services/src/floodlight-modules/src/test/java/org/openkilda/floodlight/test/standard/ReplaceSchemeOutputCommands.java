@@ -19,8 +19,10 @@ import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 
+import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -57,6 +59,7 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
 

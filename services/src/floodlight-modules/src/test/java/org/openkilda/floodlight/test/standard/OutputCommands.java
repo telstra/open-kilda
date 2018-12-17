@@ -28,9 +28,11 @@ import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 import org.openkilda.floodlight.OFFactoryMock;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 
+import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -80,6 +82,14 @@ public interface OutputCommands {
         return ingressMatchVlanIdFlowMod(inputPort, outputPort, inputVlan, transitVlan, meterId, cookie);
     }
 
+    /**
+     * Build transit rule for flow.
+     * @param inputPort input port.
+     * @param outputPort output port.
+     * @param transitVlan vlan value.
+     * @param cookie cookie for the rule.
+     * @return built command.
+     */
     default OFFlowAdd transitFlowMod(int inputPort, int outputPort, int transitVlan, long cookie) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
@@ -103,6 +113,16 @@ public interface OutputCommands {
                 .build();
     }
 
+    /**
+     * Create rule for one switch replace flow.
+     * @param inputPort input port.
+     * @param outputPort output port.
+     * @param inputVlan input vlan.
+     * @param outputVlan output vlan.
+     * @param meterId meter id.
+     * @param cookie cookie for rule.
+     * @return built OFFlowAdd command.
+     */
     default OFFlowAdd oneSwitchReplaceFlowMod(int inputPort, int outputPort, int inputVlan, int outputVlan,
                                               long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
@@ -129,10 +149,19 @@ public interface OutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
     }
 
+    /**
+     * Create rule for one switch flow.
+     * @param inputPort input port.
+     * @param outputPort output port.
+     * @param meterId meter id.
+     * @param cookie cookie for rule.
+     * @return built OFFlowAdd command.
+     */
     default OFFlowAdd oneSwitchNoneFlowMod(int inputPort, int outputPort, long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
@@ -152,10 +181,19 @@ public interface OutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
     }
 
+    /**
+     * Create rule for one switch pop flow.
+     * @param inputPort input port.
+     * @param outputPort output port.
+     * @param meterId meter id.
+     * @param cookie cookie for rule.
+     * @return built OFFlowAdd command.
+     */
     default OFFlowAdd oneSwitchPopFlowMod(int inputPort, int outputPort, int inputVlan, long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
@@ -177,10 +215,20 @@ public interface OutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
     }
 
+    /**
+     * Create rule for one switch push flow.
+     * @param inputPort input port.
+     * @param outputPort output port.
+     * @param outputVlan output vlan.
+     * @param meterId meter id.
+     * @param cookie cookie for rule.
+     * @return built OFFlowAdd command.
+     */
     default OFFlowAdd oneSwitchPushFlowMod(int inputPort, int outputPort, int outputVlan, long meterId, long cookie) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
@@ -208,10 +256,18 @@ public interface OutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
     }
 
+    /**
+     * Create meter.
+     * @param bandwidth rate for the meter.
+     * @param burstSize burst size.
+     * @param meterId meter identifier.
+     * @return created OFMeterMod.
+     */
     default OFMeterMod installMeter(long bandwidth, long burstSize, long meterId) {
         return ofFactory.buildMeterMod()
                 .setMeterId(meterId)
@@ -225,6 +281,11 @@ public interface OutputCommands {
                 .build();
     }
 
+    /**
+     * Create droop loop rule.
+     * @param dpid datapath of the switch.
+     * @return created OFFlowAdd.
+     */
     default OFFlowAdd installDropLoopRule(DatapathId dpid) {
         Match match = ofFactory.buildMatch()
                 .setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST))
