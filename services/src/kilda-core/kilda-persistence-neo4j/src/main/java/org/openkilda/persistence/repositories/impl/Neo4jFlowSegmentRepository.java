@@ -21,10 +21,12 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -80,6 +82,18 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
 
         return Optional.ofNullable(getSession().queryForObject(Long.class, query, parameters))
                 .orElse(0L);
+    }
+
+    @Override
+    public Collection<FlowSegment> findByFlowGroupId(String flowGroupId) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("flow_group_id", flowGroupId);
+        String query = "MATCH (:switch)-[fl:flow {group_id: $flow_group_id}]->(:switch) "
+                + "MATCH (src:switch)-[fs:flow_segment]->(dst:switch) "
+                + "WHERE fs.flowid = fl.flowid "
+                + "RETURN src, fs, dst";
+
+        return Lists.newArrayList(getSession().query(FlowSegment.class, query, parameters));
     }
 
     @Override
