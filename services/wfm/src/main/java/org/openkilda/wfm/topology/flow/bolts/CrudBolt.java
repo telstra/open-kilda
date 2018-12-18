@@ -389,9 +389,11 @@ public class CrudBolt
         final String errorType = "Could not create flow";
 
         try {
-            Flow flow = FlowMapper.INSTANCE.map(((FlowCreateRequest) message.getData()).getPayload());
+            FlowCreateRequest request = (FlowCreateRequest) message.getData();
+            Flow flow = FlowMapper.INSTANCE.map(request.getPayload());
 
             FlowPair createdFlow = flowService.createFlow(flow,
+                    request.getDiverseFlowId(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
@@ -411,6 +413,9 @@ public class CrudBolt
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found : " + e.getMessage());
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, "The flow not found :  " + e.getMessage());
         } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());

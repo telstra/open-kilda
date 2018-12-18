@@ -7,8 +7,6 @@ Main goal is to find shortest diverse path with minimal overlapping.
 ## NB contract changes
 Request: add optional flow id, to make new flow diverse with.
 
-Response: diversity counters, for number of intersections by switch and by ISL in diversity flow group.
-
 ## DB changes
 Flow relation keeps `flow group` id as a property.
 
@@ -16,16 +14,12 @@ Flow relation keeps `flow group` id as a property.
 Initial, construct AvailableNetwork as usual.
 Then fill AvailableNetwork diversity weights on edges(ISLs) and nodes(switches) what are used by paths in diverse group with some constants, passed as system parameters.
 
-To avoid excessive complexity in weight strategies, propose always add static weights what are filling by additional AvailableNetworkFactory building strategy, like diversity.
-Such static weights are either zero in default AvailableNetwork building scenario, or meaningful constant if we explicitly asked to fill them.
+To avoid excessive complexity in weight strategies, propose always add static weights what are filling by additional AvailableNetworkFactory building options, like diversity.
+Such static weights are either zero in default AvailableNetwork building scenario, or meaningful constant, if target flow has "flow group" property.
 
 The final Edge weight computing formulas are: 
 - `edge src sw static weight + edge strategy result + edge static weight + edge dest sw static weight` for the first Edge in path.
 - `edge strategy result + edge static weight + edge dest sw static weight` for the rest Edges in path.
-
-## Intersection count
-Responsibility of IntersectionCounter class. Will compute intersection counts from collection of all FlowSegments in flow group. 
-Return two numbers, intersection count by ISL and by switch.
 
 ## Reroutes
 The same logic is used. Reroute will fail only if path not found.
