@@ -124,7 +124,7 @@ class LinkSpec extends BaseSpecification {
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
             [flow1, flow2, flow3, flow4].each {
-                assert northboundService.getFlowStatus(flow1.id).status == FlowState.UP
+                assert northboundService.getFlowStatus(it.id).status == FlowState.UP
             }
         }
 
