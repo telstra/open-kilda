@@ -82,15 +82,24 @@ public class FlowService extends BaseFlowService {
      * The flow is created with IN_PROGRESS status.
      *
      * @param flow   the flow to be created.
+     * @param diverseFlowId the flow id to build diverse group.
      * @param sender the command sender for flow rules installation.
      * @return the created flow with the path and resources set.
      */
-    public FlowPair createFlow(Flow flow, FlowCommandSender sender) throws RecoverableException,
-            UnroutableFlowException, FlowAlreadyExistException, FlowValidationException, SwitchValidationException {
+    public FlowPair createFlow(Flow flow, String diverseFlowId, FlowCommandSender sender) throws RecoverableException,
+            UnroutableFlowException, FlowAlreadyExistException, FlowValidationException, SwitchValidationException,
+            FlowNotFoundException {
         flowValidator.validate(flow);
 
         if (doesFlowExist(flow.getFlowId())) {
             throw new FlowAlreadyExistException(flow.getFlowId());
+        }
+
+        if (diverseFlowId != null) {
+            if (!doesFlowExist(diverseFlowId)) {
+                throw new FlowNotFoundException(diverseFlowId);
+            }
+            flow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
         }
 
         // TODO: the strategy is defined either per flow or system-wide.
@@ -208,36 +217,42 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The updated flow has IN_PROGRESS status.
      *
-     * @param flowId  the flow to be replaced.
-     * @param newFlow the flow to be applied.
-     * @param sender  the command sender for flow rules installation and deletion.
+     * @param updatingFlow  the flow to be updated.
+     * @param diverseFlowId the flow id to build diverse group.
+     * @param sender        the command sender for flow rules installation and deletion.
      * @return the updated flow with the path and resources set.
      */
-    public FlowPair updateFlow(String flowId, Flow newFlow, FlowCommandSender sender) throws RecoverableException,
-            UnroutableFlowException, FlowNotFoundException, FlowValidationException, SwitchValidationException {
-        flowValidator.validate(newFlow);
+    public FlowPair updateFlow(Flow updatingFlow, String diverseFlowId, FlowCommandSender sender)
+            throws RecoverableException, UnroutableFlowException, FlowNotFoundException, FlowValidationException,
+            SwitchValidationException {
+        flowValidator.validate(updatingFlow);
 
-        // TODO: the strategy is defined either per flow or system-wide.
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(newFlow, true);
-
-        newFlow.setStatus(FlowStatus.IN_PROGRESS);
+        updatingFlow.setStatus(FlowStatus.IN_PROGRESS);
 
         UpdatedFlowPairWithSegments result = transactionManager.doInTransaction(() -> {
-            Optional<FlowPair> foundFlowPair = getFlowPair(flowId);
-            if (!foundFlowPair.isPresent()) {
-                return Optional.<UpdatedFlowPairWithSegments>empty();
+            FlowPair currentFlow = getFlowPair(updatingFlow.getFlowId())
+                    .orElseThrow(() -> new FlowNotFoundException(updatingFlow.getFlowId()));
+
+            if (diverseFlowId != null && !doesFlowExist(diverseFlowId)) {
+                throw new FlowNotFoundException(diverseFlowId);
             }
 
-            FlowPair currentFlow = foundFlowPair.get();
+            if (diverseFlowId == null) {
+                updatingFlow.setGroupId(null);
+            } else {
+                updatingFlow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
+            }
+
+            PathComputer pathComputer = pathComputerFactory.getPathComputer();
+            PathPair pathPair = pathComputer.getPath(updatingFlow, true);
 
             List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
             List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());
             List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
 
-            log.info("Updating the flow with {} and path: {}", newFlow, pathPair);
+            log.info("Updating the flow with {} and path: {}", updatingFlow, pathPair);
 
-            FlowPair newFlowWithResources = flowResourcesManager.allocateFlow(buildFlowPair(newFlow, pathPair));
+            FlowPair newFlowWithResources = flowResourcesManager.allocateFlow(buildFlowPair(updatingFlow, pathPair));
 
             List<FlowSegment> newForwardSegments = buildFlowSegments(newFlowWithResources.getForward());
             List<FlowSegment> newReverseSegments = buildFlowSegments(newFlowWithResources.getReverse());
@@ -253,11 +268,11 @@ public class FlowService extends BaseFlowService {
 
             flowResourcesManager.deallocateFlow(currentFlow);
 
-            return Optional.of(UpdatedFlowPairWithSegments.builder()
+            return UpdatedFlowPairWithSegments.builder()
                     .oldFlowPair(currentFlow).oldForwardSegments(forwardSegments).oldReverseSegments(reverseSegments)
                     .flowPair(newFlowWithResources).forwardSegments(newForwardSegments)
-                    .reverseSegments(newReverseSegments).build());
-        }).orElseThrow(() -> new FlowNotFoundException(flowId));
+                    .reverseSegments(newReverseSegments).build();
+        });
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendUpdateRulesCommand(result);
@@ -426,6 +441,12 @@ public class FlowService extends BaseFlowService {
         Set<Switch> switches = new HashSet<>();
         flowSegments.forEach(flowSegment -> switches.add(flowSegment.getSrcSwitch()));
         switchRepository.lockSwitches(switches.toArray(new Switch[0]));
+    }
+
+    private String getOrCreateFlowGroupId(String flowId) {
+        log.info("Getting flow group for flow with id ", flowId);
+        return flowRepository.getOrCreateFlowGroupId(flowId)
+                .orElseThrow(() -> new IllegalArgumentException(new FlowNotFoundException(flowId)));
     }
 
     @Value

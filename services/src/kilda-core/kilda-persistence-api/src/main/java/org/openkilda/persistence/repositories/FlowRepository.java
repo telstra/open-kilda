@@ -50,6 +50,8 @@ public interface FlowRepository extends Repository<Flow> {
 
     void delete(FlowPair flowPair);
 
+    Optional<String> getOrCreateFlowGroupId(String flowId);
+
     Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
                                                      SwitchId dstSwitchId, int dstPort);
 

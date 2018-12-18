@@ -421,9 +421,11 @@ public class CrudBolt
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.CREATE_FLOW);
 
-            Flow flow = FlowMapper.INSTANCE.map(((FlowCreateRequest) message.getData()).getPayload());
+            FlowCreateRequest request = (FlowCreateRequest) message.getData();
+            Flow flow = FlowMapper.INSTANCE.map(request.getPayload());
 
             FlowPair createdFlow = flowService.createFlow(flow,
+                    request.getDiverseFlowId(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
@@ -443,6 +445,9 @@ public class CrudBolt
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found : " + e.getMessage());
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, "The flow not found :  " + e.getMessage());
         } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());
@@ -495,9 +500,11 @@ public class CrudBolt
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
 
-            Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
+            FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
+            Flow flow = FlowMapper.INSTANCE.map((request).getPayload());
 
-            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,
+            FlowPair updatedFlow = flowService.updateFlow(flow,
+                    request.getDiverseFlowId(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);

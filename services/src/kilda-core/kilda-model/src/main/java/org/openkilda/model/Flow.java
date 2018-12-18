@@ -145,6 +145,9 @@ public class Flow implements Serializable {
     @Property(name = "meter_id")
     private Integer meterId;
 
+    @Property(name = "group_id")
+    private String groupId;
+
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
 
@@ -173,7 +176,7 @@ public class Flow implements Serializable {
     Flow(String flowId, long cookie, //NOSONAR
             Switch srcSwitch, Switch destSwitch, int srcPort, int srcVlan, int destPort, int destVlan,
             FlowPath flowPath, long bandwidth, String description, int transitVlan,
-            Integer meterId, boolean ignoreBandwidth, boolean periodicPings,
+            Integer meterId, String groupId, boolean ignoreBandwidth, boolean periodicPings,
             FlowStatus status, Integer maxLatency, Integer priority, Instant timeModify) {
         this.flowId = flowId;
         this.cookie = cookie;
@@ -188,6 +191,7 @@ public class Flow implements Serializable {
         this.description = description;
         this.transitVlan = transitVlan;
         this.meterId = meterId;
+        this.groupId = groupId;
         this.ignoreBandwidth = ignoreBandwidth;
         this.periodicPings = periodicPings;
         this.status = status;

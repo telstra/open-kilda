@@ -46,9 +46,13 @@ class FlowHelper {
     FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
             List<FlowPayload> existingFlows = []) {
         Wrappers.retry(3, 0) {
-            def newFlow = new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
-                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow",
-                    null, null, null, null)
+            def newFlow = FlowPayload.builder()
+                .id(generateFlowName())
+                .source(getFlowEndpoint(srcSwitch, useTraffgenPorts))
+                .destination(getFlowEndpoint(dstSwitch, useTraffgenPorts))
+                .maximumBandwidth(500)
+                .description("autotest flow")
+                .build()
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
@@ -67,8 +71,13 @@ class FlowHelper {
         def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
         allowedPorts = allowedPorts - srcEndpoint.portNumber //do not pick the same port as in src
         def dstEndpoint = getFlowEndpoint(sw, allowedPorts)
-        return new FlowPayload(generateFlowName(), srcEndpoint, dstEndpoint, 500,
-                false, false, "autotest flow", null, null, null, null)
+        return FlowPayload.builder()
+                .id(generateFlowName())
+                .source(srcEndpoint)
+                .destination(dstEndpoint)
+                .maximumBandwidth(500)
+                .description("autotest flow")
+                .build()
     }
 
     /**
@@ -82,8 +91,13 @@ class FlowHelper {
         if (srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
             dstEndpoint.vlanId--
         }
-        return new FlowPayload(generateFlowName(), srcEndpoint, dstEndpoint, 500,
-                false, false, "autotest flow", null, null, null, null)
+        return FlowPayload.builder()
+                .id(generateFlowName())
+                .source(srcEndpoint)
+                .destination(dstEndpoint)
+                .maximumBandwidth(500)
+                .description("autotest flow")
+                .build()
     }
 
     /**
