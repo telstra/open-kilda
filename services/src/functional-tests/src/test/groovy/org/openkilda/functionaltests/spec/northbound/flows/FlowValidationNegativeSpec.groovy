@@ -151,8 +151,8 @@ class FlowValidationNegativeSpec extends BaseSpecification {
      */
     def getNonNeighbouringSwitches() {
         def islInfoData = northbound.getAllLinks()
-        def switches = topologyDefinition.getActiveSwitches()
-        def differentSwitches = [switches, switches].combinations().findAll { src, dst -> src.dpId != dst.dpId }
+        def switches = topology.getActiveSwitches()
+        def differentSwitches = [switches, switches].combinations().findAll {src, dst -> src.dpId != dst.dpId}
 
         return differentSwitches.find { src, dst -> findDirectLinks(src, dst, islInfoData) }
     }
@@ -162,7 +162,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
      * @return List<Switch>
      */
     def getNeighbouringSwitches() {
-        def switches = topologyDefinition.getActiveSwitches()
+        def switches = topology.getActiveSwitches()
         def islInfoData = northbound.getAllLinks()
         return [switches, switches].combinations().unique().find { src, dst -> !findDirectLinks(src, dst, islInfoData) }
     }
@@ -172,7 +172,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
      * @return List<Switch>   (convenient for randomFlow() method)
      */
     def getSingleSwitch() {
-        def switches = topologyDefinition.getActiveSwitches()
+        def switches = topology.getActiveSwitches()
         return [switches.first(), switches.first()]
     }
 }

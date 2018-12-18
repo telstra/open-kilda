@@ -34,9 +34,6 @@ import spock.lang.Unroll
 @CleanupSwitches
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
 class FlowCrudSpec extends BaseSpecification {
-
-    @Autowired
-    TopologyDefinition topology
     @Autowired
     Database db
     @Autowired
@@ -54,7 +51,7 @@ class FlowCrudSpec extends BaseSpecification {
     FlowTrafficExamBuilder examBuilder
 
     def setupOnce() {
-        examBuilder = new FlowTrafficExamBuilder(topologyDefinition, traffExam)
+        examBuilder = new FlowTrafficExamBuilder(topology, traffExam)
     }
 
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
@@ -125,7 +122,7 @@ class FlowCrudSpec extends BaseSpecification {
     @Unroll("Able to create a second flow if #data.description")
     def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
         when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topologyDefinition.activeSwitches
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow1)
 
@@ -522,7 +519,7 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     Switch findSwitch(SwitchId swId) {
-        topologyDefinition.activeSwitches.find { it.dpId == swId }
+        topology.activeSwitches.find { it.dpId == swId }
     }
 
     def getConflictingData() {
