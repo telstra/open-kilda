@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.model.HealthCheck;
@@ -92,7 +93,9 @@ public interface NorthboundService {
 
     List<SwitchInfoData> getAllSwitches();
 
-    DeleteMeterResult deleteMeter(SwitchId switchId, Integer meterId);
+    DeleteMeterResult deleteMeter(SwitchId switchId, Long meterId);
+
+    SwitchMeterEntries getAllMeters(SwitchId switchId);
 
     PortDto configurePort(SwitchId switchId, Integer portNo, Object config);
 
