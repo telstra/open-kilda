@@ -64,6 +64,10 @@ public class FlowPayload implements Serializable {
     @JsonProperty("last-updated")
     private String lastUpdated;
 
+    // request only
+    @JsonProperty("diverse-flowid")
+    private String diverseFlowId;
+
     @JsonProperty("status")
     private String status;
 
@@ -88,6 +92,7 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("periodic-pings") Boolean periodicPings,
                        @JsonProperty("description") String description,
                        @JsonProperty("last-updated") String lastUpdated,
+                       @JsonProperty("diverse-flowid") String diverseFlowId,
                        @JsonProperty("status") String status) {
         setId(id);
         setSource(source);
@@ -103,6 +108,7 @@ public class FlowPayload implements Serializable {
 
         this.description = description;
         this.lastUpdated = lastUpdated;
+        this.diverseFlowId = diverseFlowId;
         this.status = status;
     }
 
