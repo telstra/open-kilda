@@ -37,6 +37,8 @@
         <jetty.version>9.2.22.v20170606</jetty.version>
         <neo4j.version>3.3.3</neo4j.version>
         <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
+        <java-uuid-generator.version>3.1.5</java-uuid-generator.version>
+        <failsafe.version>1.0.5</failsafe.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
@@ -354,6 +356,18 @@
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-bolt</artifactId>
             <version>${neo4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.uuid</groupId>
+            <artifactId>java-uuid-generator</artifactId>
+            <version>${java-uuid-generator.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.jodah</groupId>
+            <artifactId>failsafe</artifactId>
+            <version>${failsafe.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
