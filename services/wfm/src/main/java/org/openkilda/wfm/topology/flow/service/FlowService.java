@@ -53,6 +53,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 public class FlowService extends BaseFlowService {
@@ -85,12 +86,17 @@ public class FlowService extends BaseFlowService {
      * @param sender the command sender for flow rules installation.
      * @return the created flow with the path and resources set.
      */
-    public FlowPair createFlow(Flow flow, FlowCommandSender sender) throws RecoverableException,
-            UnroutableFlowException, FlowAlreadyExistException, FlowValidationException, SwitchValidationException {
+    public FlowPair createFlow(Flow flow, String diverseFlowId, FlowCommandSender sender) throws RecoverableException,
+            UnroutableFlowException, FlowAlreadyExistException, FlowValidationException, SwitchValidationException,
+            FlowNotFoundException {
         flowValidator.validate(flow);
 
         if (doesFlowExist(flow.getFlowId())) {
             throw new FlowAlreadyExistException(flow.getFlowId());
+        }
+
+        if (diverseFlowId != null) {
+            flow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
         }
 
         // TODO: the strategy is defined either per flow or system-wide.
@@ -426,6 +432,20 @@ public class FlowService extends BaseFlowService {
         Set<Switch> switches = new HashSet<>();
         flowSegments.forEach(flowSegment -> switches.add(flowSegment.getSrcSwitch()));
         switchRepository.lockSwitches(switches.toArray(new Switch[0]));
+    }
+
+    private String getOrCreateFlowGroupId(String flowId) throws FlowNotFoundException {
+        FlowPair diverseFlow = flowRepository.findFlowPairById(flowId)
+                .orElseThrow(() -> new FlowNotFoundException(flowId));
+
+        if (diverseFlow.getForward().getGroupId() == null) {
+            String groupId = UUID.randomUUID().toString();
+
+            diverseFlow.getForward().setGroupId(groupId);
+            diverseFlow.getReverse().setGroupId(groupId);
+            transactionManager.doInTransaction(() ->  flowRepository.createOrUpdate(diverseFlow));
+        }
+        return diverseFlow.getForward().getGroupId();
     }
 
     @Value

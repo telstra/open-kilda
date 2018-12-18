@@ -22,7 +22,6 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
-import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
@@ -55,16 +54,9 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
+    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowResources)
             throws UnroutableFlowException, RecoverableException {
-        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth), flow);
-    }
-
-    @Override
-    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
-            throws UnroutableFlowException, RecoverableException {
-        return getPath(
-                availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth, buildStrategy), flow);
+        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowResources), flow);
     }
 
     private PathPair getPath(AvailableNetwork network, Flow flow)

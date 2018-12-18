@@ -45,13 +45,22 @@ public class Node {
     @NonNull
     private final SwitchId switchId;
 
-    @Setter
-    private int cost;
-
     @NonNull
     private Set<Edge> incomingLinks;
     @NonNull
     private Set<Edge> outgoingLinks;
+
+    @Setter
+    private int diversityWeight;
+
+    /**
+     * Gets sum of weights, that filling is ruled by AvailableNetwork construction.
+     *
+     * @return the node total static weight.
+     */
+    public long getStaticWeight() {
+        return diversityWeight;
+    }
 
     /**
      * Constructs {@link Node} instance with passed {@link SwitchId}.

@@ -189,7 +189,7 @@ public class FlowServiceImpl implements FlowService {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Create flow: {}", input);
 
-        FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input));
+        FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input), input.getDiverseFlowId());
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
