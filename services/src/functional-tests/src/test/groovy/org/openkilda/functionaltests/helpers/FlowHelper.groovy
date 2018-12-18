@@ -38,6 +38,17 @@ class FlowHelper {
     def random = new Random()
     def faker = new Faker()
     def allowedVlans = 101..4095
+    def switchPortsMap = [:]
+
+    /**
+     * Returns a special map where the key is a switch ID and the value is a list of switch ports occupied by flows.
+     */
+    private def getSwitchPortsMap() {
+        if (!switchPortsMap) {
+            switchPortsMap = topology.getActiveSwitches().collectEntries { [it.dpId, []] }
+        }
+        return switchPortsMap
+    }
 
     /**
      * Creates a FlowPayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
@@ -131,13 +142,17 @@ class FlowHelper {
      */
     private FlowEndpointPayload getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
                                                 boolean useTraffgenPorts = true) {
-        def port = allowedPorts[random.nextInt(allowedPorts.size())]
+        allowedPorts -= getSwitchPortsMap()[sw.dpId]
+        int port = allowedPorts[random.nextInt(allowedPorts.size())]
+        switchPortsMap[sw.dpId] << port
+
         if (useTraffgenPorts) {
             def connectedTraffgens = topology.activeTraffGens.findAll { it.switchConnected == sw }
             if (!connectedTraffgens.empty) {
                 port = connectedTraffgens.find { allowedPorts.contains(it.switchPort) }?.switchPort ?: port
             }
         }
+
         return new FlowEndpointPayload(sw.dpId, port, allowedVlans[random.nextInt(allowedVlans.size())])
     }
 

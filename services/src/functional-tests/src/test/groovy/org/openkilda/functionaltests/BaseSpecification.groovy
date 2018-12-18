@@ -92,4 +92,8 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
             }.empty
         }
     }
+
+    def cleanup() {
+        flowHelper.switchPortsMap.clear()
+    }
 }

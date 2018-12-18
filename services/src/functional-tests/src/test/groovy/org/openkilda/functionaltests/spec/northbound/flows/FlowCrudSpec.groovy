@@ -303,19 +303,6 @@ class FlowCrudSpec extends BaseSpecification {
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
         def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
 
-        // TODO(ylobankov): Delete this code once we add such a functionality to flow helper.
-        // It is a kind of dirty workaround to not get a conflict at the point of the second flow creation.
-        def random = new Random()
-        def srcSwitchAllowedPorts = topology.getAllowedPortsForSwitch(srcSwitch)
-        def dstSwitchAllowedPorts = topology.getAllowedPortsForSwitch(dstSwitch)
-        while (!(flow1.source.portNumber != flow2.source.portNumber &&
-                flow1.destination.portNumber != flow2.destination.portNumber)) {
-            flow1.source.portNumber = random.nextInt(srcSwitchAllowedPorts.size())
-            flow1.destination.portNumber = random.nextInt(dstSwitchAllowedPorts.size())
-            flow2.source.portNumber = random.nextInt(srcSwitchAllowedPorts.size())
-            flow2.destination.portNumber = random.nextInt(dstSwitchAllowedPorts.size())
-        }
-
         def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         data.makeFlowsConflicting(flow1, conflictingFlow.tap { it.id = flow2.id })
 
