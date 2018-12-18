@@ -6,6 +6,7 @@ participant NB
 participant FlowTopology as Storm
 participant "PathComputer" as Computer
 participant "AvailableNetwork" as Network
+participant "DiverseProcessor" as Processor
 database "Neo4J" as DB
 
 activate Client
@@ -35,7 +36,9 @@ group Get AvailableNetwork
     deactivate Computer
 end
 
-Storm -> Network: excludeSwitches() with flows used ISLs
+Storm -> Processor: process AvailableNetwork with diverse ISLs
+Processor -> Network: Update link costs
+Processor --> Storm: Updated AvailableNetwork
 
 group Find path
     Storm -> Computer: getPathWithAvailableNetwork
@@ -45,21 +48,7 @@ group Find path
     deactivate Computer
 end
 
-alt path don't exists (try diverse by ISL)
-    Storm -> Network: excludeIsls() with flows used ISLs
-    note right of Storm
-        Repeat "Find path" with new AvailableNetwork
-    end note
-
-else path don't exists (try to find partial diverse path)
-    Storm -> Network: increase weights for ISL used by diverse flows
-    note right of Storm
-        Repeat "Find path" with new AvailableNetwork
-    end note
-end
-
 alt path found
-    Storm -> DB: update FlowGroup with computation strategy
     Storm -> DB: create new flow with flow group id
     Storm --> NB: computed FlowPair
     NB --> Client: Flow Response

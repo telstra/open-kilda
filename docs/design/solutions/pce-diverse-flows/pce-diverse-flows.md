@@ -10,18 +10,14 @@ Request: add flow id to make new flow diverse with
 Response: applied diverse path computation strategy for computed diverse path
 
 ## DB changes
-Create "FlowGroup" new node type in neo4j, that store current diverse strategy.
+Create "FlowGroup" new node type in neo4j.
 Flow relation keeps "FlowGroup" id as a property
 
 ## Algorithm
-Client adds diverse flow id into NB create flow request.
-First, system tries to find a diverse path with excluded switches.
-If such path doesn't exists, tries to find path with excluded ISLs.
-If such path also doesn't exists, tries to find partially diverse path on full network graph.
-The applied diverse path computation strategy is persisted and returned to client.
+Construct AvailableNetwork as usual, then update costs on ISL and switches what are used by paths in diverse group
 
 ## Reroutes
-On reroutes, rerouted path will be suits with at least group diverse strategy, or will be failed.
+The same logic is used. Reroute will fail only if path not found.
  
 ## Sequence Diagram
 ![Ability to create diverse flows](pce-diverse-flows-create.png)
