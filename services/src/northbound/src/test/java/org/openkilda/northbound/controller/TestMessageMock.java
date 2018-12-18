@@ -70,9 +70,14 @@ public class TestMessageMock implements MessagingChannel {
     static final String TEST_SWITCH_ID = "ff:01";
     static final long TEST_SWITCH_RULE_COOKIE = 1L;
     static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(SWITCH_ID, 1, 1);
-    static final FlowPayload flow =
-            new FlowPayload(FLOW_ID, flowEndpoint, flowEndpoint, 10000, false, false, FLOW_ID, null,
-            FlowState.UP.getState());
+    static final FlowPayload flow = FlowPayload.builder()
+            .id(FLOW_ID)
+            .source(flowEndpoint)
+            .destination(flowEndpoint)
+            .maximumBandwidth(10000)
+            .description(FLOW_ID)
+            .status(FlowState.UP.getState())
+            .build();
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.UP);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
     static final List<PathNodePayload> pathPayloadsList =
