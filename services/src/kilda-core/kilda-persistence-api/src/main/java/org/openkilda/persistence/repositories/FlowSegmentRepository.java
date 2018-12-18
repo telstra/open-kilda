@@ -26,4 +26,11 @@ public interface FlowSegmentRepository extends Repository<FlowSegment> {
     Collection<FlowSegment> findByDestSwitchId(SwitchId switchId);
 
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
+
+    /**
+     * Finds flow segments that are used by flows in flow group.
+     *
+     * @param flowGroupId the flow group id.
+     */
+    Collection<FlowSegment> findByFlowGroupId(String flowGroupId);
 }
