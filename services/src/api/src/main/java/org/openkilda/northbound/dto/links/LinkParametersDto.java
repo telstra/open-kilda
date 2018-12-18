@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.dto.links;
 
-import org.openkilda.model.SwitchId;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -35,16 +33,16 @@ import java.io.Serializable;
 @JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class LinkParametersDto implements Serializable {
 
-    private SwitchId srcSwitch;
+    private String srcSwitch;
     private Integer srcPort;
-    private SwitchId dstSwitch;
+    private String dstSwitch;
     private Integer dstPort;
 
     @Builder
     @JsonCreator
-    public LinkParametersDto(@JsonProperty(value = "src_switch", required = true) SwitchId srcSwitch,
+    public LinkParametersDto(@JsonProperty(value = "src_switch", required = true) String srcSwitch,
                              @JsonProperty(value = "src_port", required = true) Integer srcPort,
-                             @JsonProperty(value = "dst_switch", required = true) SwitchId dstSwitch,
+                             @JsonProperty(value = "dst_switch", required = true) String dstSwitch,
                              @JsonProperty(value = "dst_port", required = true) Integer dstPort) {
         this.srcSwitch = srcSwitch;
         this.srcPort = srcPort;

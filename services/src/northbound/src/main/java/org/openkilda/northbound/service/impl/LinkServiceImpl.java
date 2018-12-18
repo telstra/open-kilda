@@ -201,8 +201,15 @@ public class LinkServiceImpl implements LinkService {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Delete link request received: {}", linkParameters);
 
-        DeleteLinkRequest request = new DeleteLinkRequest(linkParameters.getSrcSwitch(), linkParameters.getSrcPort(),
-                                                          linkParameters.getDstSwitch(), linkParameters.getDstPort());
+        DeleteLinkRequest request;
+        try {
+            request = new DeleteLinkRequest(new SwitchId(linkParameters.getSrcSwitch()), linkParameters.getSrcPort(),
+                                            new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort());
+        } catch (IllegalArgumentException e) {
+            logger.error("Could not parse delete link request arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create 'delete link' request");
+        }
 
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)

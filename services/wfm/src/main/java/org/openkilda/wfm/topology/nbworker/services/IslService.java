@@ -79,7 +79,7 @@ public class IslService {
 
         if (isl.get().getStatus() == IslStatus.ACTIVE) {
             throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
-                    "ISL must not be in active state.");
+                    "ISL must NOT be in active state.");
         }
 
         islRepository.delete(isl.get());

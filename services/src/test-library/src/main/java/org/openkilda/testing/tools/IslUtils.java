@@ -124,8 +124,8 @@ public class IslUtils {
     }
 
     public LinkParametersDto getLinkParameters(Isl isl) {
-        return new LinkParametersDto(isl.getSrcSwitch().getDpId(), isl.getSrcPort(),
-                isl.getDstSwitch().getDpId(), isl.getDstPort());
+        return new LinkParametersDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId().toString(), isl.getDstPort());
     }
 
     /**
