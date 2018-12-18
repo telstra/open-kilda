@@ -205,8 +205,8 @@ class LinkSpec extends BaseSpecification {
     def "Cannot delete active link"() {
         given: "Parameters for active link"
         def link = northboundService.getActiveLinks()[0]
-        def parameters = new LinkParametersDto(link.path[0].switchId, link.path[0].portNo,
-                                               link.path[1].switchId, link.path[1].portNo)
+        def parameters = new LinkParametersDto(link.source.switchId, link.source.portNo,
+                                               link.destination.switchId, link.destination.portNo)
 
         when: "Try to delete active link"
         northboundService.deleteLink(parameters)
@@ -220,10 +220,10 @@ class LinkSpec extends BaseSpecification {
     def "Can delete inactive link"() {
         given: "Parameters for inactive link"
         def link = northboundService.getActiveLinks()[0]
-        def srcSwitch = link.path[0].switchId
-        def srcPort = link.path[0].portNo
-        def dstSwitch = link.path[1].switchId
-        def dstPort = link.path[1].portNo
+        def srcSwitch = link.source.switchId
+        def srcPort = link.source.portNo
+        def dstSwitch = link.destination.switchId
+        def dstPort = link.destination.portNo
         northboundService.portDown(srcSwitch, srcPort)
         assert Wrappers.wait(WAIT_OFFSET) {
             northboundService.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort)
