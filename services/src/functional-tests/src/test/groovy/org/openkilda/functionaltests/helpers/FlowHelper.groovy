@@ -47,7 +47,7 @@ class FlowHelper {
             List<FlowPayload> existingFlows = []) {
         Wrappers.retry(3, 0) {
             def newFlow = new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
-                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null)
+                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null,null,  null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
@@ -67,7 +67,7 @@ class FlowHelper {
         allowedPorts = allowedPorts - srcEndpoint.portNumber //do not pick the same port as in src
         def dstEndpoint = getFlowEndpoint(sw, allowedPorts)
         return new FlowPayload(generateFlowName(), srcEndpoint, dstEndpoint, 500,
-                false, false, "autotest flow", null, null)
+                false, false, "autotest flow", null, null, null)
     }
 
     /**
@@ -82,7 +82,7 @@ class FlowHelper {
             dstEndpoint.vlanId--
         }
         return new FlowPayload(generateFlowName(), srcEndpoint, dstEndpoint, 500,
-                false, false, "autotest flow", null, null)
+                false, false, "autotest flow", null, null, null)
     }
 
     /**

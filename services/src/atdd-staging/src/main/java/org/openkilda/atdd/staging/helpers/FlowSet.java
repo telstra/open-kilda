@@ -251,8 +251,14 @@ public class FlowSet {
             FlowEndpointPayload srcEndpoint = new FlowEndpointPayload(srcSwitch.getDpId(), srcPort, srcVlan);
             FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort, destVlan);
 
-            return new FlowPayload(flowId, srcEndpoint, destEndpoint,
-                    1, false, false, flowId, null, FlowState.UP.getState());
+            return FlowPayload.builder()
+                    .id(flowId)
+                    .source(srcEndpoint)
+                    .destination(destEndpoint)
+                    .maximumBandwidth(1)
+                    .description(flowId)
+                    .status(FlowState.UP.getState())
+                    .build();
         }
     }
 }

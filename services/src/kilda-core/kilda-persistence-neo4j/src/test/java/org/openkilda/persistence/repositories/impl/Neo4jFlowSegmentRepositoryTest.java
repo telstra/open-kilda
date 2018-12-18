@@ -18,10 +18,12 @@ package org.openkilda.persistence.repositories.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jBasedTest;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -33,13 +35,16 @@ import org.junit.Test;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Neo4jFlowSegmentRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
+    static final String TEST_FLOW_ID2 = "test_flow_2";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
 
     static FlowSegmentRepository flowSegmentRepository;
+    static FlowRepository flowRepository;
     static SwitchRepository switchRepository;
 
     private Switch switchA;
@@ -48,6 +53,7 @@ public class Neo4jFlowSegmentRepositoryTest extends Neo4jBasedTest {
     @BeforeClass
     public static void setUp() {
         flowSegmentRepository = new Neo4jFlowSegmentRepository(neo4jSessionFactory, txManager);
+        flowRepository = new Neo4jFlowRepository(neo4jSessionFactory, txManager);
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
     }
 
@@ -146,5 +152,40 @@ public class Neo4jFlowSegmentRepositoryTest extends Neo4jBasedTest {
         List<FlowSegment> foundSegment = Lists.newArrayList(
                 flowSegmentRepository.findByFlowIdAndCookie(TEST_FLOW_ID, 1));
         assertThat(foundSegment, Matchers.hasSize(1));
+    }
+
+    @Test
+    public void shouldFindFlowSegmentsByFlowGroupId() {
+        String flowGroup = "flow_group";
+
+        flowSegmentRepository.createOrUpdate(FlowSegment.builder()
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .flowId(TEST_FLOW_ID)
+                .build());
+        flowSegmentRepository.createOrUpdate(FlowSegment.builder()
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .flowId(TEST_FLOW_ID2)
+                .build());
+
+        flowRepository.createOrUpdate(Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .groupId(flowGroup)
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .build());
+        flowRepository.createOrUpdate(Flow.builder()
+                .flowId(TEST_FLOW_ID2)
+                .groupId(flowGroup)
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .build());
+
+        List<FlowSegment> segments = Lists.newArrayList(flowSegmentRepository.findByFlowGroupId(flowGroup));
+        assertThat(segments, Matchers.hasSize(2));
+        assertThat(
+                segments.stream().map(FlowSegment::getFlowId).collect(Collectors.toSet()),
+                Matchers.contains(TEST_FLOW_ID, TEST_FLOW_ID2));
     }
 }
