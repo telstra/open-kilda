@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.stats
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.testing.model.topology.TopologyDefinition

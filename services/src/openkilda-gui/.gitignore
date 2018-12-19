@@ -1,0 +1,8 @@
+target/
+tmp/
+.deps/
+
+ui/node_modules
+
+src/main/resources/lib/css/
+src/main/resources/lib/javascript/

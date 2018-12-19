@@ -181,17 +181,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public void updateStatus(String flowId, FlowStatus status) {
-        transactionManager.doInTransaction(() -> {
-            Collection<Flow> flows = findById(flowId);
-            flows.forEach(flow -> {
-                flow.setStatus(status);
-                createOrUpdate(flow);
-            });
-        });
-    }
-
-    @Override
     public Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
                                                             SwitchId dstSwitchId, int dstPort) {
         Map<String, Object> parameters = ImmutableMap.of(

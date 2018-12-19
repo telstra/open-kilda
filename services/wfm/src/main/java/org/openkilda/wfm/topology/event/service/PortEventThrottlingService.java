@@ -29,6 +29,34 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The service throttling Port UP / DOWN flapping event.
+ *
+ * <p>For using it you need to:
+ * - pass port events (only UP or DOWN) via processEvent function.
+ * - periodically call getPortInfos function.
+ *
+ * <h2>Details of idea.</h2>
+ *
+ * <p>Each port has states:
+ * <br>- Nothing (not presented in portStats map)
+ * <br>- WarmingUp (PortState.coolingState == false)
+ * <br>- CoolingDown (PortState.coolingState == true)
+ *
+ * <p>Initially, the port has state Nothing.
+ * <br>If the service receives "Port Up" in Nothing state it must emit "Port Up" without state change.
+ * <br>If the service receives "Port Down" in Nothing state it changes state to WarmingUp.
+ * <br>If the service does not receive "Port Up" after delay_seconds_min, it emits "Port Down" event and goes to
+ * CoolingDown state.
+ * <br>If In CoolingDown state the service receives event, it calculates current port state and restarts
+ * seconds_cool_down timer.
+ * <br>After seconds_cool_down of not receiving any events, state changes to Nothing. If the current port state is Up
+ * the service emit "Port Up" event.
+ *
+ * <p>In case with WarmingUp state, when delays between every "Port Down" / "Port Up" were less then delay_seconds_min
+ * and the last "Port Down" / "Port Up" event was during last delay_seconds_min period of delay_seconds_warm_up,
+ * the service emit "Port Down" event and go to CoolingDown state.
+ */
 @Slf4j
 public class PortEventThrottlingService {
     private final Clock clock;
@@ -74,7 +102,7 @@ public class PortEventThrottlingService {
         SwitchPort switchPort = new SwitchPort(data.getSwitchId(), data.getPortNo());
         PortState portState = portStats.get(switchPort);
         if (data.getState() == PortChangeType.UP && portState == null) {
-            log.info("Update port {}_{} to UP immediately", data.getSwitchId(), data.getPortNo());
+            log.info("Update port {}-{} to UP immediately", data.getSwitchId(), data.getPortNo());
             return true;
         }
         if (portState == null) {
@@ -86,12 +114,12 @@ public class PortEventThrottlingService {
             portState.lastEventTime = now;
             portState.portIsUp = false;
             portState.coolingState = false;
-            log.info("First Port DOWN state received for {}_{} change port to WarmingUp state",
+            log.info("First Port DOWN state received for {}-{} change port to WarmingUp state",
                     data.getSwitchId(), data.getPortNo());
         } else {
             portState.portIsUp = data.getState() == PortChangeType.UP;
             portState.lastEventTime = getNow();
-            log.info("Collecting state for port {}_{}. Original correlationId: {}.",
+            log.info("Collecting state for port {}-{}. Original correlationId: {}.",
                     data.getSwitchId(), data.getPortNo(), portState.initialCorrelationId);
         }
         return false;
@@ -134,7 +162,7 @@ public class PortEventThrottlingService {
                 if (portState.portIsUp) {
                     result.add(getPortInfoContainer(switchPort, portState, true));
                 }
-                log.info("CoolingDown period ends for port {}_{} and status is: {}. Original correlationId: {}.",
+                log.info("CoolingDown period ends for port {}-{} and status is: {}. Original correlationId: {}.",
                         switchPort.switchId, switchPort.port, portState.portIsUp ? "UP" : "DOWN",
                         portState.initialCorrelationId);
             }
@@ -145,7 +173,7 @@ public class PortEventThrottlingService {
                 result.add(getPortInfoContainer(switchPort, portState, false));
                 portState.lastEventTime = now;
                 portState.coolingState = true;
-                log.info("Port {}_{} was in DOWN state for too long. Change state to CoolingDown. "
+                log.info("Port {}-{} was in DOWN state for too long. Change state to CoolingDown. "
                                 + "Original correlationId: {}.", switchPort.switchId, switchPort.port,
                         portState.initialCorrelationId);
             } else if (portState.isWarmUpEnded(now)) {
@@ -156,12 +184,12 @@ public class PortEventThrottlingService {
                     result.add(getPortInfoContainer(switchPort, portState, false));
                     portState.lastEventTime = now;
                     portState.coolingState = true;
-                    log.info("WarmingUp period ends for port {}_{}. The port goes to CoolingDown state. "
+                    log.info("WarmingUp period ends for port {}-{}. The port goes to CoolingDown state. "
                                     + "Original correlationId: {}.", switchPort.switchId, switchPort.port,
                             portState.initialCorrelationId);
                 } else {
                     switchPortsToDelete.add(switchPort);
-                    log.info("WarmingUp period ends for port {}_{}. Original correlationId: {}.",
+                    log.info("WarmingUp period ends for port {}-{}. Original correlationId: {}.",
                             switchPort.switchId, switchPort.port, portState.initialCorrelationId);
                 }
             }
@@ -171,6 +199,8 @@ public class PortEventThrottlingService {
             PortInfoData portInfoData =
                     new PortInfoData(switchPort.switchId, switchPort.port,
                             isUp ? PortChangeType.UP : PortChangeType.DOWN);
+            log.info("Sending status: {} for port {}-{}.", portState.portIsUp ? "UP" : "DOWN", switchPort.switchId,
+                    switchPort.port);
             return new PortInfoContainer(portInfoData, portState.initialCorrelationId);
         }
     }

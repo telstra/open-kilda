@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
+import org.openkilda.testing.Constants;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.northbound.NorthboundService;
@@ -60,8 +61,12 @@ public class CleanupSteps implements En {
         topologyDefinition.getActiveSwitches()
                 .forEach(sw -> {
                     try {
-                        assertThat(format("Switch %s has unexpected meters installed", sw),
-                                floodlightService.getMeters(sw.getDpId()).values(), empty());
+                        floodlightService.getMeters(sw.getDpId()).values().forEach(
+                                meterEntry ->
+                                        assertTrue(format("Switch %s has unexpected meters installed", sw),
+                                                meterEntry.getMeterId() <= Constants.MAX_DEFAULT_METER_ID)
+
+                        );
                     } catch (UnsupportedOperationException ex) {
                         //TODO: a workaround for not implemented dumpMeters on OF_12 switches.
                         log.warn("Switch {} doesn't support dumping of meters. {}", sw.getDpId(), ex.getMessage());

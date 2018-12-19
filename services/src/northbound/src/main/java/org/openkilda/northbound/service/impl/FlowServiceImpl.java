@@ -95,7 +95,7 @@ public class FlowServiceImpl implements FlowService {
     /**
      * The logger.
      */
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(FlowServiceImpl.class);
 
     /**
      * when getting the switch rules, we'll ignore cookie filter.
@@ -184,7 +184,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowPayload> createFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Create flow: {}", input);
+        logger.info("Create flow: {}", input);
 
         FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input));
         CommandMessage request = new CommandMessage(
@@ -201,7 +201,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowPayload> getFlow(final String id) {
-        logger.debug("Get flow: {}={}", FLOW_ID, id);
+        logger.debug("Get flow request for flow {}", id);
 
         return getBidirectionalFlow(id, RequestCorrelationId.getId())
                 .thenApply(BidirectionalFlowDto::getForward)
@@ -214,7 +214,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowPayload> updateFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Update flow: {}={}", FLOW_ID, input.getId());
+        logger.info("Update flow request for flow {}", input.getId());
 
         FlowUpdateRequest payload = new FlowUpdateRequest(new FlowDto(input));
         CommandMessage request = new CommandMessage(
@@ -232,7 +232,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<List<FlowPayload>> getAllFlows() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Get flows request processing");
+        logger.debug("Get flows request processing");
         FlowsDumpRequest data = new FlowsDumpRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -251,7 +251,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<List<FlowPayload>> deleteAllFlows() {
         CompletableFuture<List<FlowPayload>> result = new CompletableFuture<>();
-        LOGGER.debug("DELETE ALL FLOWS");
+        logger.warn("Delete all flows request");
         // TODO: Need a getFlowIDs .. since that is all we need
         CompletableFuture<List<FlowPayload>> getFlowsStage = this.getAllFlows();
 
@@ -274,7 +274,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowPayload> deleteFlow(final String id) {
-        logger.debug("Delete flow: {}={}", FLOW_ID, id);
+        logger.info("Delete flow request for flow: {}", id);
         final String correlationId = RequestCorrelationId.getId();
 
         return sendDeleteFlow(id, correlationId);
@@ -306,7 +306,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowIdStatusPayload> statusFlow(final String id) {
-        logger.debug("Flow status: {}={}", FLOW_ID, id);
+        logger.debug("Flow status request for flow: {}", id);
         return getBidirectionalFlow(id, RequestCorrelationId.getId())
                 .thenApply(flowMapper::toFlowIdStatusPayload);
     }
@@ -316,7 +316,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowPathPayload> pathFlow(final String id) {
-        LOGGER.debug("Flow path: {}={}", FLOW_ID, id);
+        logger.debug("Flow path request for flow {}", id);
         return getBidirectionalFlow(id, RequestCorrelationId.getId())
                 .thenApply(flowMapper::toFlowPathPayload);
     }
@@ -363,9 +363,8 @@ public class FlowServiceImpl implements FlowService {
     private CompletableFuture<BatchResults> flowPushUnpush(List<FlowInfoData> externalFlows, FlowOperation op) {
         final String correlationId = RequestCorrelationId.getId();
         String collect = externalFlows.stream().map(FlowInfoData::getFlowId).collect(Collectors.joining());
-        LOGGER.debug("Flow {}: id: {}",
-                op, collect);
-        LOGGER.debug("Size of list: {}", externalFlows.size());
+        logger.debug("Flow {}: id: {}", op, collect);
+        logger.debug("Size of list: {}", externalFlows.size());
         // First, send them all, then wait for all the responses.
         // Send the command to both Flow Topology and to TE
         List<CompletableFuture<?>> flowRequests = new ArrayList<>();    // used for error reporting, if needed
@@ -403,7 +402,7 @@ public class FlowServiceImpl implements FlowService {
         return flowFailures.thenApply(failures -> {
             BatchResults batchResults = new BatchResults(failures.size(),
                     externalFlows.size() - failures.size(), failures);
-            LOGGER.debug("Returned: {}", batchResults);
+            logger.debug("Returned: {}", batchResults);
             return batchResults;
         });
     }
@@ -413,11 +412,13 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowReroutePayload> rerouteFlow(String flowId) {
+        logger.info("Reroute flow request for flow {}", flowId);
         return reroute(flowId, false);
     }
 
     @Override
     public CompletableFuture<FlowReroutePayload> syncFlow(String flowId) {
+        logger.info("Forced reroute request for flow {}", flowId);
         return reroute(flowId, true);
     }
 
@@ -772,7 +773,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public void invalidateFlowResourcesCache() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Invalidating Flow Resources Cache.");
+        logger.debug("Invalidating Flow Resources Cache.");
         FlowCacheSyncRequest data = new FlowCacheSyncRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 

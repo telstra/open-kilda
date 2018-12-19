@@ -58,7 +58,7 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
-            (#flow.source.datapath - #flow.destination.datapath)")
+(#flow.source.datapath - #flow.destination.datapath)")
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
         flowHelper.addFlow(flow)

@@ -102,16 +102,11 @@ public class NetworkTopologyBolt extends AbstractBolt {
 
         switch (data.getState()) {
 
-            case ADDED:
+            case ACTIVATED:
                 switchService.createOrUpdateSwitch(SwitchMapper.INSTANCE.map(data));
                 break;
 
-            case ACTIVATED:
-                switchService.activateSwitch(SwitchMapper.INSTANCE.map(data));
-                break;
-
             case DEACTIVATED:
-            case REMOVED:
                 switchService.deactivateSwitch(SwitchMapper.INSTANCE.map(data));
                 break;
 

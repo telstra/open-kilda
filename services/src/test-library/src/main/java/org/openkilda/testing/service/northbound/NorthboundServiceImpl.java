@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
@@ -365,9 +366,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public DeleteMeterResult deleteMeter(SwitchId switchId, Integer meterId) {
+    public DeleteMeterResult deleteMeter(SwitchId switchId, Long meterId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/meter/{meter_id}", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), DeleteMeterResult.class, switchId, meterId).getBody();
+    }
+
+    @Override
+    public SwitchMeterEntries getAllMeters(SwitchId switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/meters", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchMeterEntries.class, switchId).getBody();
     }
 
     @Override
