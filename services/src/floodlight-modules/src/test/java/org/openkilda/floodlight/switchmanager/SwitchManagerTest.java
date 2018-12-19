@@ -49,6 +49,8 @@ import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
+import static org.openkilda.model.MeterId.MIN_SYSTEM_RULE_METER_ID;
 
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.SwitchOperationException;
@@ -420,7 +422,26 @@ public class SwitchManagerTest {
         replay(iofSwitch);
         replay(switchDescription);
 
-        switchManager.installMeter(dpid, bandwidth, meterId);
+        switchManager.installMeterForFlow(dpid, bandwidth, meterId);
+    }
+
+    @Test
+    public void installFlowMeterWithNegativeIdTest() throws SwitchOperationException {
+        runInstallMeterWithInvalidId(-1L);
+    }
+
+    @Test
+    public void installFlowMeterWithIdForDefaultRuleTest() throws SwitchOperationException {
+        // IDs for system rules are from 1 to 31 inclusively
+        for (int id = MIN_SYSTEM_RULE_METER_ID; id < MAX_SYSTEM_RULE_METER_ID; id++) {
+            runInstallMeterWithInvalidId(id);
+        }
+    }
+
+    private void runInstallMeterWithInvalidId(long meterId) throws SwitchOperationException {
+        SwitchManager mock = mock(SwitchManager.class);
+        mock.installMeterForFlow(dpid, bandwidth, meterId);
+        expectLastCall().andThrow(new InvalidMeterIdException(null, null));
     }
 
     @Test
