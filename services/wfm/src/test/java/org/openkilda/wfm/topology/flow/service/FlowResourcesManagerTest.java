@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.flow.service;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.openkilda.model.MeterId.MAX_FLOW_METER_ID;
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Flow;
@@ -58,12 +60,12 @@ public class FlowResourcesManagerTest {
         Flow forward = newFlow.getForward();
         assertEquals(1 | Flow.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
         assertEquals(2, forward.getTransitVlan());
-        assertEquals(Integer.valueOf(11), forward.getMeterId());
+        assertEquals(Integer.valueOf(MIN_FLOW_METER_ID), forward.getMeterId());
 
         Flow reverse = newFlow.getReverse();
         assertEquals(1 | Flow.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
         assertEquals(3, reverse.getTransitVlan());
-        assertEquals(Integer.valueOf(12), reverse.getMeterId());
+        assertEquals(Integer.valueOf(MIN_FLOW_METER_ID + 1), reverse.getMeterId());
     }
 
     @Test
@@ -78,12 +80,12 @@ public class FlowResourcesManagerTest {
         Flow forward = lastFlow.getForward();
         assertEquals(2 | Flow.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
         assertEquals(4, forward.getTransitVlan());
-        assertEquals(Integer.valueOf(13), forward.getMeterId());
+        assertEquals(Integer.valueOf(MIN_FLOW_METER_ID + 2), forward.getMeterId());
 
         Flow reverse = lastFlow.getReverse();
         assertEquals(2 | Flow.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
         assertEquals(5, reverse.getTransitVlan());
-        assertEquals(Integer.valueOf(14), reverse.getMeterId());
+        assertEquals(Integer.valueOf(MIN_FLOW_METER_ID + 3), reverse.getMeterId());
     }
 
     @Test
@@ -122,7 +124,7 @@ public class FlowResourcesManagerTest {
     @Test
     public void shouldNotConsumeMetersForUnmeteredFlows() {
         // for forward and reverse flows 2 meters are allocated, so just try max / 2 + 1 attempts
-        final int attemps = (ResourceCache.MAX_METER_ID - ResourceCache.MIN_METER_ID) / 2 + 1;
+        final int attemps = (MAX_FLOW_METER_ID - MIN_FLOW_METER_ID) / 2 + 1;
 
         for (int i = 0; i < attemps; i++) {
             fourthFlow.setFlowId(format("fourth-flow-%d", i));
