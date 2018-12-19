@@ -13,7 +13,7 @@
 		"transit_vlan_id": 100,
 		"output_vlan_type": "PUSH",
 		"bandwidth": 100000,
-		"meter_id": 1
+		"meter_id": 40
 	}
 }
 

@@ -26,6 +26,7 @@ import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
@@ -543,9 +544,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installMeter(DatapathId dpid, long bandwidth, final long meterId)
+    public void installMeterForFlow(DatapathId dpid, long bandwidth, final long meterId)
             throws SwitchOperationException {
-        if (meterId > 0L) {
+        if (meterId >= MIN_FLOW_METER_ID) {
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
             long burstSize = Math.max(config.getFlowMeterMinBurstSizeInKbits(),
@@ -559,7 +560,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
-            throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
+            String message = meterId <= 0
+                    ? "Meter id must be positive." : "Meter IDs from 1 to 31 inclusively are for default rules.";
+
+            throw new InvalidMeterIdException(dpid,
+                    format("Could not install meter '%d' onto switch '%s'. %s", meterId, dpid, message));
         }
     }
 
