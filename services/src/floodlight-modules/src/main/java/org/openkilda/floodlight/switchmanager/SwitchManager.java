@@ -526,9 +526,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installMeter(DatapathId dpid, long bandwidth, final long meterId)
+    @SuppressWarnings("squid:S1135")
+    public void installMeterForFlow(DatapathId dpid, long bandwidth, final long meterId)
             throws SwitchOperationException {
-        if (meterId > 0L) {
+        // TODO: Instead of this value use MIN_METER_ID constant from pool of meter IDs
+        if (meterId >= 32L) {
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
             long burstSize;
@@ -543,9 +545,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
+            String message = meterId <= 0
+                    ? "Meter id must be positive." : "Meter IDs from 1 to 31 inclusively are for default rules.";
+
             throw new InvalidMeterIdException(dpid,
-                    format("Could not install meter '%d' onto switch '%s'. Meter id must be positive.",
-                            meterId, dpid));
+                    format("Could not install meter '%d' onto switch '%s'. %s", meterId, dpid, message));
         }
     }
 

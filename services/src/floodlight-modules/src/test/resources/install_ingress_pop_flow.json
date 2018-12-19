@@ -13,6 +13,6 @@
 		"transit_vlan_id": 100,
 		"output_vlan_type": "POP",
 		"bandwidth": 100000,
-		"meter_id": 1
+		"meter_id": 40
 	}
 }

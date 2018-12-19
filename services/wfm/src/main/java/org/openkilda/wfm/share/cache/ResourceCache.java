@@ -51,9 +51,13 @@ public class ResourceCache {
 
     /**
      * Minimum meter id value.
+     * This value is used to allocate meter IDs for flows. But also we need to allocate meter IDs for default rules.
+     * To do it special mask 'PACKET_IN_RULES_METERS_MASK' is used. With the help of this mask we take last 5 bits of
+     * default rule cookie to create meter ID. That means we have range 1..31 for default rule meter IDs.
+     * MIN_METER_ID is used to do not intersect flow meter IDs with this range.
      */
     @VisibleForTesting
-    public static final int MIN_METER_ID = 11;
+    public static final int MIN_METER_ID = 32;
 
     /**
      * Maximum meter id value.
