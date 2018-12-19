@@ -328,7 +328,26 @@ public class SwitchManagerTest {
         replay(iofSwitch);
         replay(switchDescription);
 
-        switchManager.installMeter(dpid, bandwidth, meterId);
+        switchManager.installMeterForFlow(dpid, bandwidth, meterId);
+    }
+
+    @Test
+    public void installFlowMeterWithNegativeIdTest() throws SwitchOperationException {
+        runInstallMeterWithInvalidId(-1L);
+    }
+
+    @Test
+    public void installFlowMeterWithIdForDefaultRuleTest() throws SwitchOperationException {
+        // IDs for default rules are from 1 to 31 inclusively
+        for (int id = 1; id < 32; id++) {
+            runInstallMeterWithInvalidId(id);
+        }
+    }
+
+    private void runInstallMeterWithInvalidId(long meterId) throws SwitchOperationException {
+        SwitchManager mock = mock(SwitchManager.class);
+        mock.installMeterForFlow(dpid, bandwidth, -1);
+        expectLastCall().andThrow(new InvalidMeterIdException(null, null));
     }
 
     @Test

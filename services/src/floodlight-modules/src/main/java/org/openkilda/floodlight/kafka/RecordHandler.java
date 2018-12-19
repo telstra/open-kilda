@@ -896,7 +896,7 @@ class RecordHandler implements Runnable {
 
     private void installMeter(DatapathId dpid, long meterId, long bandwidth, String flowId) {
         try {
-            context.getSwitchManager().installMeter(dpid, bandwidth, meterId);
+            context.getSwitchManager().installMeterForFlow(dpid, bandwidth, meterId);
         } catch (UnsupportedOperationException e) {
             logger.info("Skip meter {} installation for flow {} on switch {}: {}",
                     meterId, flowId, dpid, e.getMessage());

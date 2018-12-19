@@ -53,7 +53,7 @@ public class ResourceCache {
      * Minimum meter id value.
      */
     @VisibleForTesting
-    public static final int MIN_METER_ID = 11;
+    public static final int MIN_METER_ID = 32;
 
     /**
      * Maximum meter id value.
