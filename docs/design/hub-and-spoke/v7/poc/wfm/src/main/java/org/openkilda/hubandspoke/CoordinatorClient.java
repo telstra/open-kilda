@@ -30,7 +30,7 @@ public abstract class CoordinatorClient extends BaseRichBolt {
         this.collector = collector;
     }
 
-    protected void cancelCallback(String key) {
+    public void cancelCallback(String key) {
         collector.emit(STREAM_TO_BOLT_COORDINATOR, new Values(
                 key, CoordinatorCommand.CANCEL_CALLBACK.name(),
                 0,
@@ -38,11 +38,11 @@ public abstract class CoordinatorClient extends BaseRichBolt {
         ));
     }
 
-    protected void registerCallback(String key) {
+    public void registerCallback(String key) {
         registerCallback(key, defaultTimeout);
     }
 
-    protected void registerCallback(String key, long timeout) {
+    public void registerCallback(String key, long timeout) {
         collector.emit(STREAM_TO_BOLT_COORDINATOR, new Values(
                 key, CoordinatorCommand.REQUEST_CALLBACK.name(),
                 timeout,
@@ -50,7 +50,7 @@ public abstract class CoordinatorClient extends BaseRichBolt {
         ));
     }
 
-    protected void declareCoordinatorStream(OutputFieldsDeclarer declarer) {
+    public void declareCoordinatorStream(OutputFieldsDeclarer declarer) {
         declarer.declareStream(STREAM_TO_BOLT_COORDINATOR, new Fields("key", "command", "timeout", "context"));
     }
 
