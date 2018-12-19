@@ -6,6 +6,7 @@ from gevent.queue import Queue, Empty
 
 import uuid
 import logging
+import json
 
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
@@ -56,7 +57,7 @@ def flow_create():
         queues[request_id.hex] = queue
         payload = request.get_json()
         producer.send('nb-to-hub', key=request_id.hex,
-                      value=str(payload['length']))
+                      value=json.dumps(payload))
         producer.flush()
         result = queue.get(block=True, timeout=10)
 

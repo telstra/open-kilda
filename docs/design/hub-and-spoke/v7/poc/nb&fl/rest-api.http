@@ -18,7 +18,8 @@ Cache-Control: no-cache
 Content-Type: application/json
 
 {
-  "length": 0
+  "length": 10,
+  "error": 0
 }
 
 ###
@@ -30,7 +31,8 @@ Cache-Control: no-cache
 Content-Type: application/json
 
 {
-  "length": -1
+  "length": 10,
+  "error": 1
 }
 
 ###
