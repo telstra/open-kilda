@@ -1,11 +1,14 @@
 package org.openkilda;
 
 import org.openkilda.hubandspoke.HubBolt;
+import org.openkilda.model.FlowCreate;
+import org.openkilda.model.FlowCreate.Error;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,24 +37,29 @@ public class FlowCrudBolt extends HubBolt {
     protected void processIncomeTuple(Tuple input) {
         String key = mapper.getKeyFromTuple(input);
         registerCallback(key);
-        int hops = Integer.valueOf(mapper.getMessageFromTuple(input));
-        state.put(key, hops);
-        if (hops > 0) {
-            log.info("pass messages to worker");
-            for (int i = 0; i < hops; ++i) {
+        try {
+            FlowCreate flowCreate = Utils.MAPPER.readValue(mapper.getMessageFromTuple(input), FlowCreate.class);
+            int hops = flowCreate.getLength();
+            FlowCreate.Error error = flowCreate.getError();
+            state.put(key, hops);
+
+            if (error == null) {
+                log.info("pass messages to worker");
+                for (int i = 0; i < hops; ++i) {
+                    collector.emit(streamHubBoltToWorkerBolt, new Values(
+                            String.format("%s-%d", mapper.getKeyFromTuple(input), i),
+                            String.format("operation %d", i)));
+                }
+            } else if (error == Error.IN_WORKER) {
+                log.info("pass message with error to worker");
                 collector.emit(streamHubBoltToWorkerBolt, new Values(
-                        String.format("%s-%d", mapper.getKeyFromTuple(input), i),
-                        String.format("operation %d", i)));
+                        String.format("%s-%d", mapper.getKeyFromTuple(input), -1),
+                        String.format("operation %d", -1)));
+            } else if (error == Error.IN_HUB) {
+                log.info("error in hub. do nothing and waiting for callback");
             }
-        }
-        else if (hops == -1) {
-            log.info("pass message with error to worker");
-            collector.emit(streamHubBoltToWorkerBolt, new Values(
-                    String.format("%s-%d", mapper.getKeyFromTuple(input), -1),
-                    String.format("operation %d", -1)));
-        }
-        else {
-            log.info("error in hub. do nothing and waiting for callback");
+        } catch (IOException e) {
+            log.error("can't read message", e);
         }
     }
 
