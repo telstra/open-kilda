@@ -3,6 +3,7 @@ import { DygraphService } from "../../../common/services/dygraph.service";
 import { FormGroup, FormBuilder, Validators } from "@angular/forms";
 import { FlowsService } from "../../../common/services/flows.service";
 import { ToastrService } from "ngx-toastr";
+import { CommonService } from "src/app/common/services/common.service";
 
 declare var moment: any;
 
@@ -18,12 +19,14 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy ,OnC
   autoReloadTimerId = null;
   flowMetrics = [];
   packetMetrics = [];
+  getautoReloadValues = this.commonService.getAutoreloadValues();
   filterForm: FormGroup;
   constructor(
     private dygraphService: DygraphService,
     private formBuiler: FormBuilder,
     private flowService: FlowsService,
-    private toaster: ToastrService
+    private toaster: ToastrService,
+    private commonService:CommonService
   ) {
     
   }
