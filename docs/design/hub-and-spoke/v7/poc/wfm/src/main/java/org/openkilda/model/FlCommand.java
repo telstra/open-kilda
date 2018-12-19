@@ -4,31 +4,28 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sun.istack.Nullable;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 
 import java.io.Serializable;
 
-
-@Value
+@Data
 @Builder
-public class FlowCreate implements Serializable {
-
+public class FlCommand implements Serializable {
     @JsonProperty("flowid")
     private String flowid;
 
-    @JsonProperty("length")
-    private int length;
+    @JsonProperty("ruleid")
+    private int ruleId;
 
     @JsonProperty("error")
     private FlowCreateError error;
 
     @JsonCreator
-    public FlowCreate(@JsonProperty("flowid") String flowid,
-                      @JsonProperty("length") int length,
-                      @JsonProperty("error") @Nullable FlowCreateError error) {
+    public FlCommand(@JsonProperty("flowid") String flowid,
+                     @JsonProperty("ruleid") int ruleId,
+                     @JsonProperty("error") @Nullable FlowCreateError error) {
         this.flowid = flowid;
-        this.length = length;
+        this.ruleId = ruleId;
         this.error = error;
     }
-
 }

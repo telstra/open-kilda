@@ -1,6 +1,6 @@
 
 import logging
-
+import json
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
 
@@ -26,11 +26,12 @@ def kafka_recive_loop():
     consumer.subscribe(['worker-to-fl'])
     for message in consumer:
         logger.info(message)
-        if "-1" in message.value:
-            logger.error("invalid operation id")
+        value = json.loads(message.value)
+        if "IN_FL" == value['error']:
+            logger.error("error in fl do nothing")
         else:
             producer.send('fl-to-worker', key=message.key,
-                          value='processed {}'.format(message.value))
+                          value='processed {}'.format(value['ruleid']))
 
 
 if __name__ == "__main__":
