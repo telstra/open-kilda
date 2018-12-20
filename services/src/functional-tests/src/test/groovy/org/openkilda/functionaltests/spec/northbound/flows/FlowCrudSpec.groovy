@@ -141,69 +141,73 @@ class FlowCrudSpec extends BaseSpecification {
 
         where:
         data << [
-            [
-                description: "same switch-port but vlans on src and dst are swapped",
-                getSecondFlow: { FlowPayload existingFlow ->
-                    return getFlowHelper().randomFlow(findSwitch(existingFlow.source.datapath),
-                            findSwitch(existingFlow.destination.datapath)).tap {
-                        it.source.portNumber = existingFlow.source.portNumber
-                        it.source.vlanId = existingFlow.destination.vlanId
-                        it.destination.portNumber = existingFlow.destination.portNumber
-                        it.destination.vlanId = existingFlow.source.vlanId
-                    }
-                }
-            ],
-            [
-                description: "same switch-port but vlans on src and dst are different",
-                getSecondFlow: { FlowPayload existingFlow ->
-                    return getFlowHelper().randomFlow(findSwitch(existingFlow.source.datapath),
-                            findSwitch(existingFlow.destination.datapath)).tap {
-                        it.source.portNumber = existingFlow.source.portNumber
-                        it.source.vlanId = existingFlow.source.vlanId + 1
-                        it.destination.portNumber = existingFlow.destination.portNumber
-                        it.destination.vlanId = existingFlow.destination.vlanId + 1
-                    }
-                }
-            ],
-            [
-                description: "vlan-port of new src = vlan-port of existing dst (but different switches)",
-                getSecondFlow: { FlowPayload existingFlow ->
-                    //src for new flow will be on different switch not related to existing flow
-                    //thus two flows will have same dst but different src
-                    def newSrcSwitch = getTopology().activeSwitches.find {
-                        ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
-                    }
-                    return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(existingFlow.destination.datapath)).tap {
-                        it.source.vlanId = existingFlow.destination.vlanId
-                        it.source.portNumber = existingFlow.destination.portNumber
-                        it.destination.vlanId = existingFlow.destination.vlanId + 1
-                    }
-                }
-            ],
-            [
-                description: "vlan-port of new dst = vlan-port of existing src (but different switches)",
-                getSecondFlow: { FlowPayload existingFlow ->
-                    def newSrcSwitch = getTopology().activeSwitches.find {
-                        ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
-                    }
-                    return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(existingFlow.destination.datapath)).tap {
-                        it.destination.vlanId = existingFlow.source.vlanId
-                        it.destination.portNumber = existingFlow.source.portNumber
-                    }
-                }
-            ],
-            [
-                description: "vlan of new dst = vlan of existing src and port of new dst = port of existing dst",
-                getSecondFlow: { FlowPayload existingFlow ->
-                    def newSrcSwitch = getTopology().activeSwitches.find {
-                        ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
-                    }
-                    return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(existingFlow.destination.datapath)).tap {
-                        it.destination.vlanId = existingFlow.source.vlanId
-                        it.destination.portNumber = existingFlow.destination.portNumber
-                    }
-                }
-            ]
+                [
+                        description  : "same switch-port but vlans on src and dst are swapped",
+                        getSecondFlow: { FlowPayload existingFlow ->
+                            return getFlowHelper().randomFlow(findSwitch(existingFlow.source.datapath),
+                                    findSwitch(existingFlow.destination.datapath)).tap {
+                                it.source.portNumber = existingFlow.source.portNumber
+                                it.source.vlanId = existingFlow.destination.vlanId
+                                it.destination.portNumber = existingFlow.destination.portNumber
+                                it.destination.vlanId = existingFlow.source.vlanId
+                            }
+                        }
+                ],
+                [
+                        description  : "same switch-port but vlans on src and dst are different",
+                        getSecondFlow: { FlowPayload existingFlow ->
+                            return getFlowHelper().randomFlow(findSwitch(existingFlow.source.datapath),
+                                    findSwitch(existingFlow.destination.datapath)).tap {
+                                it.source.portNumber = existingFlow.source.portNumber
+                                it.source.vlanId = existingFlow.source.vlanId + 1
+                                it.destination.portNumber = existingFlow.destination.portNumber
+                                it.destination.vlanId = existingFlow.destination.vlanId + 1
+                            }
+                        }
+                ],
+                [
+                        description  : "vlan-port of new src = vlan-port of existing dst (but different switches)",
+                        getSecondFlow: { FlowPayload existingFlow ->
+                            //src for new flow will be on different switch not related to existing flow
+                            //thus two flows will have same dst but different src
+                            def newSrcSwitch = getTopology().activeSwitches.find {
+                                ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
+                            }
+                            return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(
+                                    existingFlow.destination.datapath)).tap {
+                                it.source.vlanId = existingFlow.destination.vlanId
+                                it.source.portNumber = existingFlow.destination.portNumber
+                                it.destination.vlanId = existingFlow.destination.vlanId + 1
+                            }
+                        }
+                ],
+                [
+                        description  : "vlan-port of new dst = vlan-port of existing src (but different switches)",
+                        getSecondFlow: { FlowPayload existingFlow ->
+                            def newSrcSwitch = getTopology().activeSwitches.find {
+                                ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
+                            }
+                            return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(
+                                    existingFlow.destination.datapath)).tap {
+                                it.destination.vlanId = existingFlow.source.vlanId
+                                it.destination.portNumber = existingFlow.source.portNumber
+                            }
+                        }
+                ],
+                [
+                        description  : "vlan of new dst = vlan of existing src and port of new dst = port of " +
+                                "existing dst",
+                        getSecondFlow: { FlowPayload existingFlow ->
+                            def newSrcSwitch = getTopology().activeSwitches.find {
+                                ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
+                            }
+                            return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(
+                                    existingFlow.destination.datapath)).tap {
+                                it.destination.vlanId = existingFlow.source.vlanId
+                                it.destination.portNumber = existingFlow.destination.portNumber
+                            }
+                        }
+                ]
         ]
     }
 
@@ -257,7 +261,7 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Unroll("Unable to create flow with #data.conflict")
-    def "Unable to create flow with conflicting vlans or flowIds"() {
+    def "Unable to create flow with conflicting vlans or flow IDs"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -280,99 +284,58 @@ class FlowCrudSpec extends BaseSpecification {
         and: "Cleanup: delete the dominant flow"
         flowHelper.deleteFlow(flow.id)
 
-        where: data << [
-            [
-                conflict: "the same vlans on same port on src",
-                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
-                    flowToConflict.source.portNumber = dominantFlow.source.portNumber
-                    flowToConflict.source.vlanId = dominantFlow.source.vlanId
-                },
-                getError: { FlowPayload flowToError ->
-                    portError(flowToError.source.portNumber, flowToError.source.datapath, flowToError.id)
-                }
-            ],
-            [
-                conflict: "the same vlans on same port on dst",
-                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
-                    flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
-                    flowToConflict.destination.vlanId = dominantFlow.destination.vlanId
-                },
-                getError: { FlowPayload flowToError ->
-                    portError(flowToError.destination.portNumber, flowToError.destination.datapath, flowToError.id)
-                }
-            ],
-            [
-                conflict: "no vlan vs vlan on same port on dst",
-                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
-                    flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
-                    flowToConflict.destination.vlanId = 0
-                },
-                getError: { FlowPayload flowToError ->
-                    portError(flowToError.destination.portNumber, flowToError.destination.datapath, flowToError.id)
-                }
-            ],
-            [
-                conflict: "no vlan vs vlan on same port on src",
-                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
-                    flowToConflict.source.portNumber = dominantFlow.source.portNumber
-                    flowToConflict.source.vlanId = 0
-                },
-                getError: { FlowPayload flowToError ->
-                    portError(flowToError.source.portNumber, flowToError.source.datapath, flowToError.id)
-                }
-            ],
-            [
-                conflict: "vlan vs no vlan on same port on dst",
-                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
-                    flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
-                    dominantFlow.destination.vlanId = 0
-                },
-                getError: { FlowPayload flowToError ->
-                    portError(flowToError.destination.portNumber, flowToError.destination.datapath, flowToError.id)
-                }
-            ],
-            [
-                conflict: "vlan vs no vlan on same port on src",
-                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
-                    flowToConflict.source.portNumber = dominantFlow.source.portNumber
-                    dominantFlow.source.vlanId = 0
-                },
-                getError: { FlowPayload flowToError ->
-                    portError(flowToError.source.portNumber, flowToError.source.datapath, flowToError.id)
-                }
-            ],
-            [
-                conflict: "no vlans both flows on same port on src",
-                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
-                    flowToConflict.source.portNumber = dominantFlow.source.portNumber
-                    flowToConflict.source.vlanId = 0
-                    dominantFlow.source.vlanId = 0
-                },
-                getError: { FlowPayload flowToError ->
-                    portError(flowToError.source.portNumber, flowToError.source.datapath, flowToError.id)
-                }
-            ],
-            [
-                conflict: "no vlans both flows on same port on dst",
-                makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
-                    flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
-                    flowToConflict.destination.vlanId = 0
-                    dominantFlow.destination.vlanId = 0
-                },
-                getError: { FlowPayload flowToError ->
-                    portError(flowToError.destination.portNumber, flowToError.destination.datapath, flowToError.id)
-                }
-            ],
-            [
-                conflict: "the same flowId",
+        where:
+        data << getConflictingData() + [
+                conflict            : "the same flow ID",
                 makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
                     flowToConflict.id = dominantFlow.id
                 },
-                getError: { FlowPayload flowToError ->
+                getError            : { FlowPayload flowToError ->
                     "Could not create flow: Flow $flowToError.id already exists"
                 }
-            ]
         ]
+    }
+
+    @Unroll("Unable to update flow (#data.conflict)")
+    def "Unable to update flow when there are conflicting vlans"() {
+        given: "Two potential flows"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
+        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
+
+        // TODO(ylobankov): Delete this code once we add such a functionality to flow helper.
+        // It is a kind of dirty workaround to not get a conflict at the point of the second flow creation.
+        def random = new Random()
+        def srcSwitchAllowedPorts = topology.getAllowedPortsForSwitch(srcSwitch)
+        def dstSwitchAllowedPorts = topology.getAllowedPortsForSwitch(dstSwitch)
+        while (!(flow1.source.portNumber != flow2.source.portNumber &&
+                flow1.destination.portNumber != flow2.destination.portNumber)) {
+            flow1.source.portNumber = random.nextInt(srcSwitchAllowedPorts.size())
+            flow1.destination.portNumber = random.nextInt(dstSwitchAllowedPorts.size())
+            flow2.source.portNumber = random.nextInt(srcSwitchAllowedPorts.size())
+            flow2.destination.portNumber = random.nextInt(dstSwitchAllowedPorts.size())
+        }
+
+        def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        data.makeFlowsConflicting(flow1, conflictingFlow.tap { it.id = flow2.id })
+
+        when: "Create two flows"
+        flowHelper.addFlow(flow1)
+        flowHelper.addFlow(flow2)
+
+        and: "Try updating the second flow which should conflict with the first one"
+        northbound.updateFlow(flow2.id, conflictingFlow)
+
+        then: "Error is returned, stating a readable reason of conflict"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.CONFLICT
+        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow1, "update")
+
+        and: "Cleanup: delete flows"
+        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+
+        where:
+        data << getConflictingData()
     }
 
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
@@ -411,8 +374,9 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Shared
-    def portError = { int port, SwitchId switchId, String flowId ->
-        "Could not create flow: The port $port on the switch '$switchId' has already occupied by the flow '$flowId'."
+    def portError = { String operation, int port, SwitchId switchId, String flowId ->
+        "Could not $operation flow: The port $port on the switch '$switchId' has already occupied " +
+                "by the flow '$flowId'."
     }
 
     /**
@@ -421,13 +385,13 @@ class FlowCrudSpec extends BaseSpecification {
      */
     def getFlowsWithoutTransitSwitch() {
         def switchPairs = [topology.activeSwitches, topology.activeSwitches].combinations()
-            .findAll { src, dst -> src != dst } //non-single-switch
-            .unique { it.sort() } //no reversed versions of same flows
-            .findAll { Switch src, Switch dst ->
-                getPreferredPath(src, dst).size() == 2 //switches are neighbors
-            }
-            .sort(taffgensPrioritized)
-            .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
+                .findAll { src, dst -> src != dst } //non-single-switch
+                .unique { it.sort() } //no reversed versions of same flows
+                .findAll { Switch src, Switch dst ->
+            getPreferredPath(src, dst).size() == 2 //switches are neighbors
+        }
+        .sort(taffgensPrioritized)
+                .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
             r << [
@@ -455,13 +419,13 @@ class FlowCrudSpec extends BaseSpecification {
      */
     def getFlowsWithTransitSwitch() {
         def switchPairs = [topology.activeSwitches, topology.activeSwitches].combinations()
-            .findAll { src, dst -> src != dst } //non-single-switch
-            .unique { it.sort() } //no reversed versions of same flows
-            .findAll { Switch src, Switch dst ->
-                getPreferredPath(src, dst).size() > 2 //switches are not neighbors
-            }
-            .sort(taffgensPrioritized)
-            .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
+                .findAll { src, dst -> src != dst } //non-single-switch
+                .unique { it.sort() } //no reversed versions of same flows
+                .findAll { Switch src, Switch dst ->
+            getPreferredPath(src, dst).size() > 2 //switches are not neighbors
+        }
+        .sort(taffgensPrioritized)
+                .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
             r << [
@@ -559,5 +523,100 @@ class FlowCrudSpec extends BaseSpecification {
 
     Switch findSwitch(SwitchId swId) {
         topologyDefinition.activeSwitches.find { it.dpId == swId }
+    }
+
+    def getConflictingData() {
+        [
+                [
+                        conflict            : "the same vlans on the same port on src switch",
+                        makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                            flowToConflict.source.portNumber = dominantFlow.source.portNumber
+                            flowToConflict.source.vlanId = dominantFlow.source.vlanId
+                        },
+                        getError            : { FlowPayload flowToError, String operation = "create" ->
+                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
+                                    flowToError.id)
+                        }
+                ],
+                [
+                        conflict            : "the same vlans on the same port on dst switch",
+                        makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                            flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
+                            flowToConflict.destination.vlanId = dominantFlow.destination.vlanId
+                        },
+                        getError            : { FlowPayload flowToError, String operation = "create" ->
+                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
+                                    flowToError.id)
+                        }
+                ],
+                [
+                        conflict            : "no vlan vs vlan on the same port on src switch",
+                        makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                            flowToConflict.source.portNumber = dominantFlow.source.portNumber
+                            flowToConflict.source.vlanId = 0
+                        },
+                        getError            : { FlowPayload flowToError, String operation = "create" ->
+                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
+                                    flowToError.id)
+                        }
+                ],
+                [
+                        conflict            : "no vlan vs vlan on the same port on dst switch",
+                        makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                            flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
+                            flowToConflict.destination.vlanId = 0
+                        },
+                        getError            : { FlowPayload flowToError, String operation = "create" ->
+                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
+                                    flowToError.id)
+                        }
+                ],
+                [
+                        conflict            : "vlan vs no vlan on the same port on src switch",
+                        makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                            flowToConflict.source.portNumber = dominantFlow.source.portNumber
+                            dominantFlow.source.vlanId = 0
+                        },
+                        getError            : { FlowPayload flowToError, String operation = "create" ->
+                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
+                                    flowToError.id)
+                        }
+                ],
+                [
+                        conflict            : "vlan vs no vlan on the same port on dst switch",
+                        makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                            flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
+                            dominantFlow.destination.vlanId = 0
+                        },
+                        getError            : { FlowPayload flowToError, String operation = "create" ->
+                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
+                                    flowToError.id)
+                        }
+                ],
+                [
+                        conflict            : "no vlan, both flows are on the same port on src switch",
+                        makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                            flowToConflict.source.portNumber = dominantFlow.source.portNumber
+                            flowToConflict.source.vlanId = 0
+                            dominantFlow.source.vlanId = 0
+                        },
+                        getError            : { FlowPayload flowToError, String operation = "create" ->
+                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
+                                    flowToError.id)
+                        }
+                ],
+                [
+                        conflict            : "no vlan, both flows are on the same port on dst switch",
+                        makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                            flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
+                            flowToConflict.destination.vlanId = 0
+                            dominantFlow.destination.vlanId = 0
+                        },
+                        getError            : { FlowPayload flowToError, String operation = "create" ->
+                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
+                                    flowToError.id)
+                        }
+                ]
+        ]
     }
 }

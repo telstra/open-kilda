@@ -43,9 +43,9 @@ class FlowHelper {
      * Creates a FlowPayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
      * random port otherwise.
      */
-    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch) {
-        return new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
-                false, false, "autotest flow", null, null)
+    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true) {
+        return new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
+                getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null)
     }
 
     /**
