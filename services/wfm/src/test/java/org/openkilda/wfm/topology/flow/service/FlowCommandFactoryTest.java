@@ -35,6 +35,7 @@ import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -532,6 +533,43 @@ public class FlowCommandFactoryTest {
         assertEquals(1, (int) ingressRule.getCriteria().getInPort());
         assertEquals(11, (int) ingressRule.getCriteria().getOutPort());
         assertEquals(101, (int) ingressRule.getCriteria().getInVlan());
+    }
+
+    @Test
+    public void shouldCreateRemoveRulesWithoutMeter() {
+        Switch srcSwitch = Switch.builder().switchId(SWITCH_ID_1).build();
+        Switch dstSwitch = Switch.builder().switchId(SWITCH_ID_2).build();
+
+        Flow flow = Flow.builder()
+                .flowId("test-flow")
+                .srcSwitch(srcSwitch)
+                .srcPort(1)
+                .srcVlan(101)
+                .destSwitch(dstSwitch)
+                .destPort(2)
+                .destVlan(201)
+                .transitVlan(301)
+                .cookie(TEST_COOKIE)
+                .bandwidth(100)
+                .ignoreBandwidth(true)
+                .build();
+
+        FlowSegment segment1to2 = FlowSegment.builder()
+                .seqId(0)
+                .srcSwitch(srcSwitch)
+                .srcPort(11)
+                .destSwitch(dstSwitch)
+                .destPort(21)
+                .build();
+
+        FlowCommandFactory factory = new FlowCommandFactory();
+        RemoveFlow command = factory.createRemoveIngressRulesForFlow(flow, ImmutableList.of(segment1to2));
+
+        assertEquals(SWITCH_ID_1, command.getSwitchId());
+        assertEquals(1, (int) command.getCriteria().getInPort());
+        assertEquals(11, (int) command.getCriteria().getOutPort());
+        assertEquals(101, (int) command.getCriteria().getInVlan());
+        assertNull(command.getMeterId());
     }
 
     @Test

@@ -225,8 +225,9 @@ public class FlowCommandFactory {
         }
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(segmentCookie, flow.getSrcPort(),
                 flow.getSrcVlan(), 0, outputPortNo);
+        Long meterId = flow.isIgnoreBandwidth() ? null : (long) flow.getMeterId();
         return new RemoveFlow(transactionIdGenerator.generate(), flow.getFlowId(),
-                segmentCookie, flow.getSrcSwitch().getSwitchId(), (long) flow.getMeterId(), ingressCriteria);
+                segmentCookie, flow.getSrcSwitch().getSwitchId(), meterId, ingressCriteria);
     }
 
     private BaseInstallFlow makeOneSwitchRule(Flow flow, OutputVlanType outputVlanType) {
