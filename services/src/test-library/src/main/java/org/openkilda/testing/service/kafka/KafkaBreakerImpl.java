@@ -28,17 +28,15 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Allows to break connection between Floodlight and Kafka
+ * Allows to break connection between Floodlight and Kafka.
  */
 @Slf4j
 @Service
 public class KafkaBreakerImpl implements KafkaBreaker {
 
-    private static final int MAX_ATTEMPTS = 3;
-
     private KafkaProducer<String, String> producer;
 
-    public KafkaBreakerImpl(@Qualifier("kafkaProperties")Properties kafkaConfig) {
+    public KafkaBreakerImpl(@Qualifier("kafkaProducerProperties") Properties kafkaConfig) {
         producer = new KafkaProducer<>(kafkaConfig);
     }
 
@@ -65,20 +63,9 @@ public class KafkaBreakerImpl implements KafkaBreaker {
         ProducerRecord<String, String> record = new ProducerRecord<>(
                 topic, target.toString(), action.toString());
         try {
-            for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-                try {
-                    log.debug(
-                            "Send {} to {} ({} of {}})",
-                            record.value(), target.toString(), attempt + 1, MAX_ATTEMPTS);
-                    producer.send(record).get();
-                    break;
-                } catch (InterruptedException e) {
-                    log.warn("producer was interrupted (attempts {} of {})", attempt, MAX_ATTEMPTS);
-                }
-            }
-        } catch (ExecutionException e) {
-            throw new KafkaBreakException("Unable to publish control message", e);
+            producer.send(record).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new KafkaBreakException(e.getMessage(), e);
         }
-
     }
 }
