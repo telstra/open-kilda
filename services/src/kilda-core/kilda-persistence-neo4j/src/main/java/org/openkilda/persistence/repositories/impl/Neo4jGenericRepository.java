@@ -91,7 +91,7 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         }
     }
 
-    protected void lockSwitches(Switch... switches) {
+    public void lockSwitches(Switch... switches) {
         // Lock switches in ascending order of switchId.
         Arrays.stream(switches)
                 .sorted(Comparator.comparing(Switch::getSwitchId))

@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flow.service;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.commons.collections4.ListUtils.union;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
@@ -49,8 +50,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 public class FlowService extends BaseFlowService {
@@ -102,10 +105,14 @@ public class FlowService extends BaseFlowService {
         FlowPairWithSegments result = transactionManager.doInTransaction(() -> {
             FlowPair flowPair = flowResourcesManager.allocateFlow(buildFlowPair(flow, pathPair));
 
-            flowRepository.createOrUpdate(flowPair);
+            List<FlowSegment> forwardSegments = buildFlowSegments(flowPair.getForward());
+            List<FlowSegment> reverseSegments = buildFlowSegments(flowPair.getReverse());
+            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
 
-            List<FlowSegment> forwardSegments = createFlowSegments(flowPair.getForward());
-            List<FlowSegment> reverseSegments = createFlowSegments(flowPair.getReverse());
+            lockSwitches(flowSegments);
+
+            flowRepository.createOrUpdate(flowPair);
+            createFlowSegments(flowSegments);
 
             return new FlowPairWithSegments(flowPair, forwardSegments, reverseSegments);
         });
@@ -133,6 +140,12 @@ public class FlowService extends BaseFlowService {
         log.info("Saving (pushing) the flow: {}", flowPair);
 
         FlowPairWithSegments result = transactionManager.doInTransaction(() -> {
+            List<FlowSegment> forwardSegments = buildFlowSegments(forward);
+            List<FlowSegment> reverseSegments = buildFlowSegments(reverse);
+            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
+
+            lockSwitches(flowSegments);
+
             flowResourcesManager.registerUsedByFlow(flowPair);
 
             //TODO(siakovenko): flow needs to be validated (existence of switches, same end-points, etc.)
@@ -142,9 +155,7 @@ public class FlowService extends BaseFlowService {
             reverse.setDestSwitch(switchRepository.reload(reverse.getDestSwitch()));
 
             flowRepository.createOrUpdate(flowPair);
-
-            List<FlowSegment> forwardSegments = createFlowSegments(forward);
-            List<FlowSegment> reverseSegments = createFlowSegments(reverse);
+            createFlowSegments(flowSegments);
 
             return new FlowPairWithSegments(flowPair, forwardSegments, reverseSegments);
         });
@@ -170,12 +181,16 @@ public class FlowService extends BaseFlowService {
 
             FlowPair flowPair = foundFlowPair.get();
 
+            List<FlowSegment> forwardSegments = getFlowSegments(flowPair.getForward());
+            List<FlowSegment> reverseSegments = getFlowSegments(flowPair.getReverse());
+            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
+
+            lockSwitches(flowSegments);
+
             log.info("Deleting the flow: {}", flowPair);
 
             flowRepository.delete(flowPair);
-
-            List<FlowSegment> forwardSegments = deleteFlowSegments(flowPair.getForward());
-            List<FlowSegment> reverseSegments = deleteFlowSegments(flowPair.getReverse());
+            deleteFlowSegments(flowSegments);
 
             flowResourcesManager.deallocateFlow(flowPair);
 
@@ -217,19 +232,25 @@ public class FlowService extends BaseFlowService {
 
             FlowPair currentFlow = foundFlowPair.get();
 
+            List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
+            List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());
+            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
+
             log.info("Updating the flow with {} and path: {}", newFlow, pathPair);
 
             FlowPair newFlowWithResources = flowResourcesManager.allocateFlow(buildFlowPair(newFlow, pathPair));
 
-            flowRepository.delete(currentFlow);
+            List<FlowSegment> newForwardSegments = buildFlowSegments(newFlowWithResources.getForward());
+            List<FlowSegment> newReverseSegments = buildFlowSegments(newFlowWithResources.getReverse());
+            List<FlowSegment> newFlowSegments = union(newForwardSegments, newReverseSegments);
 
-            List<FlowSegment> forwardSegments = deleteFlowSegments(currentFlow.getForward());
-            List<FlowSegment> reverseSegments = deleteFlowSegments(currentFlow.getReverse());
+            lockSwitches(union(flowSegments, newFlowSegments));
+
+            flowRepository.delete(currentFlow);
+            deleteFlowSegments(flowSegments);
 
             flowRepository.createOrUpdate(newFlowWithResources);
-
-            List<FlowSegment> newForwardSegments = createFlowSegments(newFlowWithResources.getForward());
-            List<FlowSegment> newReverseSegments = createFlowSegments(newFlowWithResources.getReverse());
+            createFlowSegments(newFlowSegments);
 
             flowResourcesManager.deallocateFlow(currentFlow);
 
@@ -282,16 +303,22 @@ public class FlowService extends BaseFlowService {
             FlowPair newFlow = flowResourcesManager.allocateFlow(buildFlowPair(currentFlow.getForward(), pathPair));
             newFlow.setStatus(FlowStatus.IN_PROGRESS);
 
+            List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
+            List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());
+            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
+
+            List<FlowSegment> newForwardSegments = buildFlowSegments(newFlow.getForward());
+            List<FlowSegment> newReverseSegments = buildFlowSegments(newFlow.getReverse());
+            List<FlowSegment> newFlowSegments = union(newForwardSegments, newReverseSegments);
+
+            lockSwitches(union(flowSegments, newFlowSegments));
+
             // No need to re-read currentFlow as it's going to be removed.
             flowRepository.delete(currentFlow);
-
-            List<FlowSegment> forwardSegments = deleteFlowSegments(currentFlow.getForward());
-            List<FlowSegment> reverseSegments = deleteFlowSegments(currentFlow.getReverse());
+            deleteFlowSegments(flowSegments);
 
             flowRepository.createOrUpdate(newFlow);
-
-            List<FlowSegment> newForwardSegments = createFlowSegments(newFlow.getForward());
-            List<FlowSegment> newReverseSegments = createFlowSegments(newFlow.getReverse());
+            createFlowSegments(newFlowSegments);
 
             flowResourcesManager.deallocateFlow(currentFlow);
 
@@ -331,7 +358,7 @@ public class FlowService extends BaseFlowService {
         return FlowPair.builder().forward(forward).reverse(reverse).build();
     }
 
-    private List<FlowSegment> createFlowSegments(Flow flow) {
+    private List<FlowSegment> buildFlowSegments(Flow flow) {
         List<FlowSegment> segments = new ArrayList<>();
 
         List<FlowPath.Node> nodes = flow.getFlowPath().getNodes();
@@ -352,17 +379,21 @@ public class FlowService extends BaseFlowService {
                     .ignoreBandwidth(flow.isIgnoreBandwidth())
                     .build();
 
-            log.debug("Creating the flow segment: {}", segment);
-
-            flowSegmentRepository.createOrUpdate(segment);
-
-            updateIslAvailableBandwidth(src.getSwitchId(), src.getPortNo(),
-                    dst.getSwitchId(), dst.getPortNo());
-
             segments.add(segment);
         }
 
         return segments;
+    }
+
+    private void createFlowSegments(List<FlowSegment> flowSegments) {
+        flowSegments.forEach(flowSegment -> {
+            log.debug("Creating the flow segment: {}", flowSegment);
+
+            flowSegmentRepository.createOrUpdate(flowSegment);
+
+            updateIslAvailableBandwidth(flowSegment.getSrcSwitch().getSwitchId(), flowSegment.getSrcPort(),
+                    flowSegment.getDestSwitch().getSwitchId(), flowSegment.getDestPort());
+        });
     }
 
     private void updateIslAvailableBandwidth(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort) {
@@ -377,11 +408,12 @@ public class FlowService extends BaseFlowService {
                 });
     }
 
-    private List<FlowSegment> deleteFlowSegments(Flow flow) {
-        List<FlowSegment> segments =
-                Lists.newArrayList(flowSegmentRepository.findByFlowIdAndCookie(flow.getFlowId(), flow.getCookie()));
+    private List<FlowSegment> getFlowSegments(Flow flow) {
+        return Lists.newArrayList(flowSegmentRepository.findByFlowIdAndCookie(flow.getFlowId(), flow.getCookie()));
+    }
 
-        segments.forEach(segment -> {
+    private void deleteFlowSegments(List<FlowSegment> flowSegments) {
+        flowSegments.forEach(segment -> {
             log.debug("Deleting the flow segment: {}", segment);
 
             flowSegmentRepository.delete(segment);
@@ -389,8 +421,12 @@ public class FlowService extends BaseFlowService {
             updateIslAvailableBandwidth(segment.getSrcSwitch().getSwitchId(), segment.getSrcPort(),
                     segment.getDestSwitch().getSwitchId(), segment.getDestPort());
         });
+    }
 
-        return segments;
+    private void lockSwitches(List<FlowSegment> flowSegments) {
+        Set<Switch> switches = new HashSet<>();
+        flowSegments.forEach(flowSegment -> switches.add(flowSegment.getSrcSwitch()));
+        switchRepository.lockSwitches(switches.toArray(new Switch[0]));
     }
 
     @Value
