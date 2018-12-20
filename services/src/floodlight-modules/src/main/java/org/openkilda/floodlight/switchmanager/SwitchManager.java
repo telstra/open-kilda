@@ -135,7 +135,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int DEFAULT_RULE_PRIORITY = FlowModUtils.PRIORITY_HIGH;
-    public static final long CENTEC_SWITCH_BURST_SIZE = 1024L;
+    public static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
 
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
@@ -531,15 +531,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (meterId > 0L) {
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
-            long burstSize;
+            long burstSize = Math.max(config.getFlowMeterMinBurstSizeInKbits(),
+                    (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
 
             if (isCentecSwitch(sw)) {
-                // Huge burst size is not supported by Centec switches
-                burstSize = CENTEC_SWITCH_BURST_SIZE;
-            } else {
-                burstSize = Math.max(config.getFlowMeterMinBurstSizeInKbits(),
-                        (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
+                // Burst size > 32 000 Kbit/s is not supported by Centec switches
+                burstSize = Math.min(burstSize, MAX_CENTEC_SWITCH_BURST_SIZE);
             }
+
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
