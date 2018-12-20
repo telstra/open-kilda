@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION
 import static org.openkilda.floodlight.switchmanager.SwitchManager.MAX_CENTEC_SWITCH_BURST_SIZE;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 
+import org.openkilda.floodlight.config.TestConfig;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.test.standard.OutputCommands;
@@ -117,7 +118,7 @@ public class SwitchManagerTest {
     private IOFSwitch iofSwitch;
     private SwitchDescription switchDescription;
     private DatapathId dpid;
-    private SwitchManagerConfig config = new Config();
+    private SwitchManagerConfig expectedConfig = new TestConfig();
 
     @Before
     public void setUp() throws FloodlightModuleException {
@@ -133,7 +134,6 @@ public class SwitchManagerTest {
 
         switchManager = new SwitchManager();
         switchManager.init(context);
-        switchManager.setConfig(config);
     }
 
     @Test
@@ -308,7 +308,7 @@ public class SwitchManagerTest {
 
     @Test
     public void installBandwidthMeterForCentecSwitch() throws Exception {
-        runInstallMeterTest(bandwidth, (long) (bandwidth * config.getFlowMeterBurstCoefficient()), true);
+        runInstallMeterTest(bandwidth, (long) (bandwidth * expectedConfig.getFlowMeterBurstCoefficient()), true);
     }
 
     @Test
@@ -318,12 +318,12 @@ public class SwitchManagerTest {
 
     @Test
     public void installBandwidthMeter() throws Exception {
-        runInstallMeterTest(bandwidth, (long) (bandwidth * config.getFlowMeterBurstCoefficient()), false);
+        runInstallMeterTest(bandwidth, (long) (bandwidth * expectedConfig.getFlowMeterBurstCoefficient()), false);
     }
 
     @Test
     public void installSmallBandwidthMeter() throws Exception {
-        runInstallMeterTest(smallBandwidth, config.getFlowMeterMinBurstSizeInKbits(), false);
+        runInstallMeterTest(smallBandwidth, expectedConfig.getFlowMeterMinBurstSizeInKbits(), false);
     }
 
     private void runInstallMeterTest(long bandwidth, long burstSize, boolean isCentecSwitch) throws Exception {
@@ -780,7 +780,8 @@ public class SwitchManagerTest {
         assertThat(actual, everyItem(hasProperty("flags",
                 contains(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST))));
         for (OFMeterMod mod : actual) {
-            long expectedBurstSize = config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
+            long expectedBurstSize =
+                    expectedConfig.getSystemMeterBurstSizeInPackets() * expectedConfig.getDiscoPacketSize() / 1024L;
             assertThat(mod.getMeters(), everyItem(hasProperty("burstSize", is(expectedBurstSize))));
         }
     }
@@ -788,7 +789,7 @@ public class SwitchManagerTest {
     @Test
     public void shouldInstallMeterWithPktpsFlag() throws Exception {
         long expectedMeterId = VERIFICATION_UNICAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK;
-        long expectedRate = config.getUnicastRateLimit();
+        long expectedRate = expectedConfig.getUnicastRateLimit();
         // given
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
@@ -817,14 +818,14 @@ public class SwitchManagerTest {
                 contains(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST))));
         for (OFMeterMod mod : actual) {
             assertThat(mod.getMeters(),
-                    everyItem(hasProperty("burstSize", is(config.getSystemMeterBurstSizeInPackets()))));
+                    everyItem(hasProperty("burstSize", is(expectedConfig.getSystemMeterBurstSizeInPackets()))));
         }
     }
 
     @Test
     public void shouldReinstallMeterIfFlagIsIncorrect() throws Exception {
         long expectedMeterId = VERIFICATION_UNICAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK;
-        long expectedRate = config.getUnicastRateLimit();
+        long expectedRate = expectedConfig.getUnicastRateLimit();
         // given
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
@@ -859,8 +860,8 @@ public class SwitchManagerTest {
     @Test
     public void shouldRenstallMetersIfRateIsUpdated() throws Exception {
         long unicastMeter = VERIFICATION_UNICAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK;
-        long originRate = config.getBroadcastRateLimit();
-        long updatedRate = config.getBroadcastRateLimit() + 10;
+        long originRate = expectedConfig.getBroadcastRateLimit();
+        long updatedRate = expectedConfig.getBroadcastRateLimit() + 10;
 
         // given
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
@@ -894,7 +895,7 @@ public class SwitchManagerTest {
     public void shouldNotInstallMetersIfAlreadyExists() throws Exception {
         long unicastMeter = VERIFICATION_UNICAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK;
         long broadcastMeter = VERIFICATION_BROADCAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK;
-        long expectedRate = config.getBroadcastRateLimit();
+        long expectedRate = expectedConfig.getBroadcastRateLimit();
 
         // given
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
@@ -1011,42 +1012,5 @@ public class SwitchManagerTest {
         replay(statsReply, ofStatsFuture);
         expect(iofSwitch.writeStatsRequest(anyObject(OFMeterConfigStatsRequest.class)))
                 .andStubReturn(ofStatsFuture);
-    }
-
-    private class Config implements SwitchManagerConfig {
-        @Override
-        public String getConnectMode() {
-            return "AUTO";
-        }
-
-        @Override
-        public int getBroadcastRateLimit() {
-            return 10;
-        }
-
-        @Override
-        public int getUnicastRateLimit() {
-            return 20;
-        }
-
-        @Override
-        public int getDiscoPacketSize() {
-            return 250;
-        }
-
-        @Override
-        public double getFlowMeterBurstCoefficient() {
-            return 0.1;
-        }
-
-        @Override
-        public long getFlowMeterMinBurstSizeInKbits() {
-            return 1024;
-        }
-
-        @Override
-        public long getSystemMeterBurstSizeInPackets() {
-            return 4096;
-        }
     }
 }
