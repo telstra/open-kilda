@@ -19,12 +19,10 @@ import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMappe
 import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.AbstractBolt;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -63,13 +61,8 @@ public class ResponseSplitterBolt extends AbstractBolt {
         }
 
         // emit all found messages
-        for (Message message : messages) {
-            try {
-                getOutput().emit(input, new Values(requestId, Utils.MAPPER.writeValueAsString(message)));
-            } catch (JsonProcessingException e) {
-                log.error("Error during writing response as json", e);
-            }
-        }
+        messages.forEach(message ->
+                getOutput().emit(input, new Values(requestId, message)));
     }
 
     @Override
