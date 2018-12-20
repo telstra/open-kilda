@@ -5,19 +5,13 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
-import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.tools.IslUtils
 
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
@@ -25,23 +19,10 @@ import spock.lang.Narrative
 @CleanupSwitches
 class BandwidthSpec extends BaseSpecification {
 
-    @Autowired
-    TopologyDefinition topology
-    @Autowired
-    FlowHelper flowHelper
-    @Autowired
-    NorthboundService northboundService
-    @Autowired
-    PathHelper pathHelper
-    @Autowired
-    IslUtils islUtils
-    @Autowired
-    Database db
-
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {
         given: "Two active not neighboring switches"
         def switches = topology.getActiveSwitches()
-        def linksBeforeFlowCreate = northboundService.getAllLinks()
+        def linksBeforeFlowCreate = northbound.getAllLinks()
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
             linksBeforeFlowCreate.every { link ->
@@ -55,27 +36,27 @@ class BandwidthSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = maximumBandwidth
         flowHelper.addFlow(flow)
-        assert northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
+        assert northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
         then: "Available bandwidth on ISLs is changed in accordance with flow maximum bandwidth"
-        def linksAfterFlowCreate = northboundService.getAllLinks()
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def linksAfterFlowCreate = northbound.getAllLinks()
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
         checkBandwidth(flowPath, linksBeforeFlowCreate, linksAfterFlowCreate, -maximumBandwidth)
 
         when: "Update the flow with a valid bandwidth"
         def maximumBandwidthUpdated = 2000
 
         flow.maximumBandwidth = maximumBandwidthUpdated
-        northboundService.updateFlow(flow.id, flow)
+        northbound.updateFlow(flow.id, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidthUpdated
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidthUpdated
 
         and: "Available bandwidth on ISLs is changed in accordance with new flow maximum bandwidth"
         def linksBeforeFlowUpdate = linksAfterFlowCreate
-        def linksAfterFlowUpdate = northboundService.getAllLinks()
-        def flowPathAfterUpdate = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def linksAfterFlowUpdate = northbound.getAllLinks()
+        def flowPathAfterUpdate = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         flowPathAfterUpdate == flowPath
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowUpdate, linksAfterFlowUpdate,
@@ -85,7 +66,7 @@ class BandwidthSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
 
         then: "Available bandwidth on ISLs is changed to the initial value before flow creation"
-        def linksAfterFlowDelete = northboundService.getAllLinks()
+        def linksAfterFlowDelete = northbound.getAllLinks()
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowDelete)
     }
 
@@ -95,7 +76,7 @@ class BandwidthSpec extends BaseSpecification {
         List<List<PathNode>> possibleFlowPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
 
@@ -104,7 +85,7 @@ class BandwidthSpec extends BaseSpecification {
 
         // Get min available bandwidth on the preferable path.
         def involvedBandwidths = []
-        def allLinks = northboundService.getAllLinks()
+        def allLinks = northbound.getAllLinks()
         pathHelper.getInvolvedIsls(possibleFlowPaths.first()).each {
             involvedBandwidths.add(islUtils.getIslInfo(allLinks, it).get().availableBandwidth)
         }
@@ -114,7 +95,7 @@ class BandwidthSpec extends BaseSpecification {
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow1.maximumBandwidth = minAvailableBandwidth - 100
         flowHelper.addFlow(flow1)
-        def flow1Path = PathHelper.convert(northboundService.getFlowPath(flow1.id))
+        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
         then: "The flow is really built through the expected preferable path"
         flow1Path == possibleFlowPaths.first()
@@ -125,7 +106,7 @@ class BandwidthSpec extends BaseSpecification {
         flowHelper.addFlow(flow2)
 
         then: "The flow is built through longer path where available bandwidth is enough"
-        def flow2Path = PathHelper.convert(northboundService.getFlowPath(flow2.id))
+        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
         pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
 
         and: "Delete created flows"
@@ -139,7 +120,7 @@ class BandwidthSpec extends BaseSpecification {
                 .find { Switch src, Switch dst -> src != dst }
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
-        def possibleFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def possibleFlowPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def involvedBandwidths = []
 
         possibleFlowPaths.each { path ->
@@ -150,7 +131,7 @@ class BandwidthSpec extends BaseSpecification {
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = involvedBandwidths.max() + 1
-        northboundService.addFlow(flow)
+        northbound.addFlow(flow)
 
         then: "The flow is not created because flow path should not be found"
         def exc = thrown(HttpClientErrorException)
@@ -169,10 +150,10 @@ class BandwidthSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = maximumBandwidth
         flowHelper.addFlow(flow)
-        assert northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
+        assert northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
         and: "Update the flow with a bandwidth that exceeds available bandwidth on ISL"
-        def possibleFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def possibleFlowPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         List<Long> involvedBandwidths = []
 
         possibleFlowPaths.each { path ->
@@ -182,7 +163,7 @@ class BandwidthSpec extends BaseSpecification {
         }
 
         flow.maximumBandwidth += involvedBandwidths.max() + 1
-        northboundService.updateFlow(flow.id, flow)
+        northbound.updateFlow(flow.id, flow)
 
         then: "The flow is not updated because flow path should not be found"
         def e = thrown(HttpClientErrorException)
@@ -199,30 +180,30 @@ class BandwidthSpec extends BaseSpecification {
                 .find { Switch src, Switch dst -> src != dst }
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
-        def linksBeforeFlowCreate = northboundService.getAllLinks()
+        def linksBeforeFlowCreate = northbound.getAllLinks()
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         long maxBandwidth = northbound.getAllLinks()*.availableBandwidth.max()
         flow.maximumBandwidth = maxBandwidth + 1
         flow.ignoreBandwidth = true
         flowHelper.addFlow(flow)
-        assert northboundService.getFlow(flow.id).maximumBandwidth == flow.maximumBandwidth
+        assert northbound.getFlow(flow.id).maximumBandwidth == flow.maximumBandwidth
 
         then: "Available bandwidth on ISLs is not changed in accordance with flow maximum bandwidth"
-        def linksAfterFlowCreate = northboundService.getAllLinks()
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def linksAfterFlowCreate = northbound.getAllLinks()
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
         checkBandwidth(flowPath, linksBeforeFlowCreate, linksAfterFlowCreate)
 
         when: "Update the flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
         flow.maximumBandwidth = maxBandwidth + 2
-        northboundService.updateFlow(flow.id, flow)
+        northbound.updateFlow(flow.id, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.getFlow(flow.id).maximumBandwidth == flow.maximumBandwidth
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        northbound.getFlow(flow.id).maximumBandwidth == flow.maximumBandwidth
 
         and: "Available bandwidth on ISLs is not changed in accordance with new flow maximum bandwidth"
-        def linksAfterFlowUpdate = northboundService.getAllLinks()
-        def flowPathAfterUpdate = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def linksAfterFlowUpdate = northbound.getAllLinks()
+        def flowPathAfterUpdate = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         flowPathAfterUpdate == flowPath
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowUpdate)
@@ -238,7 +219,7 @@ class BandwidthSpec extends BaseSpecification {
 
         // We need to handle the case when there are parallel links between chosen switches. So we make all parallel
         // links except the first link not preferable to avoid flow reroute when updating the flow.
-        List<List<PathNode>> allFlowPaths = db.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.sort { it.size() }
+        List<List<PathNode>> allFlowPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.sort { it.size() }
         List<List<PathNode>> parallelPaths = allFlowPaths.findAll { it.size() == 2 }
         if (parallelPaths.size() > 1) {
             parallelPaths[1..-1].each { pathHelper.makePathMorePreferable(parallelPaths.first(), it) }
@@ -250,10 +231,10 @@ class BandwidthSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = maximumBandwidth
         flowHelper.addFlow(flow)
-        assert northboundService.getFlow(flow.id).maximumBandwidth == maximumBandwidth
+        assert northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
         then: "Only one link is involved in flow path"
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
         involvedIsls.size() == 1
         involvedIsls.first() == pathHelper.getInvolvedIsls(parallelPaths.first()).first()
@@ -261,22 +242,22 @@ class BandwidthSpec extends BaseSpecification {
         when: "Update flow bandwidth to maximum link speed"
         def linkSpeed = islUtils.getIslInfo(involvedIsls.first()).get().speed
         flow.maximumBandwidth = linkSpeed
-        northboundService.updateFlow(flow.id, flow)
+        northbound.updateFlow(flow.id, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundService.getFlowStatus(flow.id).status == FlowState.UP }
-        northboundService.getFlow(flow.id).maximumBandwidth == linkSpeed
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        northbound.getFlow(flow.id).maximumBandwidth == linkSpeed
 
         and: "The same path is used by updated flow"
-        PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
+        PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {
-        northboundService.deleteLinkProps(northboundService.getAllLinkProps())
-        db.resetCosts()
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        database.resetCosts()
     }
 
     private def checkBandwidth(List<PathNode> flowPath, List<IslInfoData> linksBefore, List<IslInfoData> linksAfter,

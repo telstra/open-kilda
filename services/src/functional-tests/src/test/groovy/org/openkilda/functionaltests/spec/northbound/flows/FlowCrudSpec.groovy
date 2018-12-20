@@ -5,21 +5,16 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
-import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.SwitchId
-import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-import org.openkilda.testing.tools.IslUtils
 
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
@@ -34,21 +29,23 @@ import spock.lang.Unroll
 @CleanupSwitches
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
 class FlowCrudSpec extends BaseSpecification {
-    @Autowired
-    Database db
-    @Autowired
-    FlowHelper flowHelper
-    @Autowired
-    PathHelper pathHelper
-    @Autowired
-    IslUtils islUtils
-    @Autowired
-    NorthboundService northboundService
+
     @Autowired
     TraffExamService traffExam
 
     @Shared
     FlowTrafficExamBuilder examBuilder
+
+    /**
+     * Switch pairs with more traffgen-available switches will go first. Then the less tg-available switches there is
+     * in the pair the lower score that pair will get.
+     * During the subsequent 'unique' call the higher scored pairs will have priority over lower scored ones in case
+     * if their uniqueness criteria will be equal.
+     */
+    @Shared
+    def taffgensPrioritized = { List<Switch> switches ->
+        switches.count { sw -> !topology.activeTraffGens.find { it.switchConnected == sw } }
+    }
 
     def setupOnce() {
         examBuilder = new FlowTrafficExamBuilder(topology, traffExam)
@@ -59,7 +56,7 @@ class FlowCrudSpec extends BaseSpecification {
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
         flowHelper.addFlow(flow)
-        def path = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def path = PathHelper.convert(northbound.getFlowPath(flow.id))
         def switches = pathHelper.getInvolvedSwitches(path)
         //for single-flow cases need to add switch manually here, since PathHelper.convert will return an empty path
         if (flow.source.datapath == flow.destination.datapath) {
@@ -67,12 +64,10 @@ class FlowCrudSpec extends BaseSpecification {
         }
 
         expect: "No rule discrepancies on every switch of the flow"
-        switches.each {
-            verifySwitchRules(it.dpId)
-        }
+        switches.each { verifySwitchRules(it.dpId) }
 
         and: "No discrepancies when doing flow validation"
-        northboundService.validateFlow(flow.id).each { direction ->
+        northbound.validateFlow(flow.id).each { direction ->
             def discrepancies = profile == "virtual" ?
                     direction.discrepancies.findAll { it.field != "meterId" } : //unable to validate meters for virtual
                     direction.discrepancies
@@ -96,17 +91,13 @@ class FlowCrudSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
 
         then: "The flow is not present in NB"
-        !northboundService.getAllFlows().find { it.id == flow.id }
+        !northbound.getAllFlows().find { it.id == flow.id }
 
         and: "ISL bandwidth is restored"
         Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
 
         and: "No rule discrepancies on every switch of the flow"
-        switches.each { sw ->
-            Wrappers.wait(WAIT_OFFSET) {
-                verifySwitchRules(sw.dpId)
-            }
-        }
+        switches.each { sw -> Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
 
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
@@ -131,10 +122,10 @@ class FlowCrudSpec extends BaseSpecification {
         flowHelper.addFlow(flow2)
 
         then: "Both flows are successfully created"
-        northboundService.getAllFlows()*.id.containsAll([flow1.id, flow2.id])
+        northbound.getAllFlows()*.id.containsAll([flow1.id, flow2.id])
 
         and: "cleanup: delete flows"
-        [flow1, flow2].each { northboundService.deleteFlow(it.id) }
+        [flow1, flow2].each { northbound.deleteFlow(it.id) }
 
         where:
         data << [
@@ -217,7 +208,7 @@ class FlowCrudSpec extends BaseSpecification {
         verifySwitchRules(flow.source.datapath)
 
         and: "No discrepancies when doing flow validation"
-        northboundService.validateFlow(flow.id).each { direction ->
+        northbound.validateFlow(flow.id).each { direction ->
             def discrepancies = profile == "virtual" ?
                     direction.discrepancies.findAll { it.field != "meterId" } : //unable to validate meters for virtual
                     direction.discrepancies
@@ -228,15 +219,13 @@ class FlowCrudSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
 
         then: "The flow is not present in NB"
-        !northboundService.getAllFlows().find { it.id == flow.id }
+        !northbound.getAllFlows().find { it.id == flow.id }
 
         and: "ISL bandwidth is restored"
         Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
 
         and: "No rule discrepancies on the switch after delete"
-        Wrappers.wait(WAIT_OFFSET) {
-            verifySwitchRules(flow.source.datapath)
-        }
+        Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(flow.source.datapath) }
 
         where:
         flow << getSingleSwitchSinglePortFlows()
@@ -340,7 +329,7 @@ class FlowCrudSpec extends BaseSpecification {
         List<List<PathNode>> possibleFlowPaths = []
         int pathNodeCount = 2
         def (Switch srcSwitch, Switch dstSwitch) = topology.getIslsForActiveSwitches().find {
-            possibleFlowPaths = db.getPaths(it.srcSwitch.dpId, it.dstSwitch.dpId)*.path.sort { it.size() }
+            possibleFlowPaths = database.getPaths(it.srcSwitch.dpId, it.dstSwitch.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1 && possibleFlowPaths.max { it.size() }.size() > pathNodeCount
         }.collect {
             [it.srcSwitch, it.dstSwitch]
@@ -349,7 +338,7 @@ class FlowCrudSpec extends BaseSpecification {
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
         possibleFlowPaths.findAll { it.size() == pathNodeCount }.each {
-            pathHelper.getInvolvedIsls(it).each { db.updateLinkCost(it, Integer.MAX_VALUE) }
+            pathHelper.getInvolvedIsls(it).each { database.updateLinkCost(it, Integer.MAX_VALUE) }
         }
 
         when: "Create a flow"
@@ -357,7 +346,7 @@ class FlowCrudSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         then: "The flow is built through one of the long paths"
-        def flowPath = northboundService.getFlowPath(flow.id)
+        def flowPath = northbound.getFlowPath(flow.id)
         !(PathHelper.convert(flowPath) in possibleFlowPaths.findAll { it.size() == pathNodeCount })
 
         and: "The flow has symmetric forward and reverse paths even though there is a more preferable reverse path"
@@ -367,7 +356,7 @@ class FlowCrudSpec extends BaseSpecification {
 
         and: "Delete the flow and reset costs"
         flowHelper.deleteFlow(flow.id)
-        db.resetCosts()
+        database.resetCosts()
     }
 
     @Shared
@@ -484,25 +473,14 @@ class FlowCrudSpec extends BaseSpecification {
                 .collect { flowHelper.singleSwitchSinglePortFlow(it) }
     }
 
-    /**
-     * Switch pairs with more traffgen-available switches will go first. Then the less tg-available switches there is
-     * in the pair the lower score that pair will get.
-     * During the subsequent 'unique' call the higher scored pairs will have priority over lower scored ones in case
-     * if their uniqueness criteria will be equal.
-     */
-    @Shared
-    def taffgensPrioritized = { List<Switch> switches ->
-        switches.count { sw -> !topology.activeTraffGens.find { it.switchConnected == sw } }
-    }
-
     @Memoized
     def getNbSwitches() {
-        northboundService.getActiveSwitches()
+        northbound.getActiveSwitches()
     }
 
     @Memoized
     def getPreferredPath(Switch src, Switch dst) {
-        def possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path
+        def possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path
         return possibleFlowPaths.min {
             /*
               Taking the actual cost of every ISL for all the permutations takes ages. Since we assume that at the
