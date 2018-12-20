@@ -78,11 +78,11 @@ export class CommonService {
   }
   getAutoreloadValues(){
     return [
-      {value:10,text:'10s'},
-      {value:15,text:'15s'},
-      {value:30,text:'30s'},
-      {value:45,text:'45s'},
-      {value:60,text:'60s'},
+      {value:10,text:'10'},
+      {value:15,text:'15'},
+      {value:30,text:'30'},
+      {value:45,text:'45'},
+      {value:60,text:'60'},
     ]
   }
   convertBytesToMbps(value){
