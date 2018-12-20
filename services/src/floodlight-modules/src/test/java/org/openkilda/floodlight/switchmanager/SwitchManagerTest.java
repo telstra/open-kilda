@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static org.easymock.EasyMock.anyLong;
@@ -62,6 +63,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
+import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -117,10 +120,13 @@ public class SwitchManagerTest {
     private IOFSwitch iofSwitch;
     private SwitchDescription switchDescription;
     private DatapathId dpid;
-    private SwitchManagerConfig config = new Config();
+    private SwitchManagerConfig config;
 
     @Before
     public void setUp() throws FloodlightModuleException {
+        JdkProxyStaticConfigurationFactory factory = new JdkProxyStaticConfigurationFactory();
+        config = factory.createConfiguration(SwitchManagerConfig.class, new MapConfigurationSource(emptyMap()));
+
         ofSwitchService = createMock(IOFSwitchService.class);
         restApiService = createMock(IRestApiService.class);
         iofSwitch = createMock(IOFSwitch.class);
@@ -133,7 +139,6 @@ public class SwitchManagerTest {
 
         switchManager = new SwitchManager();
         switchManager.init(context);
-        switchManager.setConfig(config);
     }
 
     @Test
@@ -802,7 +807,8 @@ public class SwitchManagerTest {
         assertThat(actual, everyItem(hasProperty("flags",
                 contains(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST))));
         for (OFMeterMod mod : actual) {
-            long expectedBurstSize = config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
+            long expectedBurstSize =
+                    config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
             assertThat(mod.getMeters(), everyItem(hasProperty("burstSize", is(expectedBurstSize))));
         }
     }
@@ -1038,42 +1044,5 @@ public class SwitchManagerTest {
         replay(statsReply, ofStatsFuture);
         expect(iofSwitch.writeStatsRequest(anyObject(OFMeterConfigStatsRequest.class)))
                 .andStubReturn(ofStatsFuture);
-    }
-
-    private class Config implements SwitchManagerConfig {
-        @Override
-        public String getConnectMode() {
-            return "AUTO";
-        }
-
-        @Override
-        public int getBroadcastRateLimit() {
-            return 10;
-        }
-
-        @Override
-        public int getUnicastRateLimit() {
-            return 20;
-        }
-
-        @Override
-        public int getDiscoPacketSize() {
-            return 250;
-        }
-
-        @Override
-        public double getFlowMeterBurstCoefficient() {
-            return 0.1;
-        }
-
-        @Override
-        public long getFlowMeterMinBurstSizeInKbits() {
-            return 1024;
-        }
-
-        @Override
-        public long getSystemMeterBurstSizeInPackets() {
-            return 4096;
-        }
     }
 }

@@ -1602,9 +1602,4 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .findFirst()
                 .orElse(null);
     }
-
-    @VisibleForTesting
-    void setConfig(SwitchManagerConfig config) {
-        this.config = config;
-    }
 }
