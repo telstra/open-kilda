@@ -4,8 +4,10 @@ title Create/Delete Virtual Lab
 
 group Create virtual environment
     User -> API: Create virtual env
-    API -> Docker: Up new instance with topology
-    Docker -> Lab: Push topology
+    API -> Docker: Up new instance with topology id
+    Docker -> Lab: Create Lab container
+    Lab -> API: Get topology definition by id
+    API --> Lab: topology definition
     note right: topology format from atdd-staging
 
     loop create all OF switches
@@ -24,9 +26,13 @@ group Create virtual environment
 
     Lab -> Lab : Run lock-keeper
 
-    Lab -> Docker: Done
-    Docker --> API: Done
-    API --> User: Done
+    alt Topology created
+        Lab -> API: Activate topology by id
+        API --> User: Topology with id created
+    else Error
+        Lab -> API: Activate topology by id with passing error
+        API --> User: Return creation error
+    end
 end
 
 group Delete virtual environment

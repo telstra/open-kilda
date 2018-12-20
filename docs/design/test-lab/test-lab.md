@@ -42,7 +42,7 @@ RESPONSE: 200 OK
 ```
 #### Get lab definition
 ```
-GET <lab-api-host>/api/<lab_id>
+GET <lab-api-host>/api/<lab_id>/definition
 RESPONSE: topology format from functional-tests
 ```
 #### Get defined labs

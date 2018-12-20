@@ -20,7 +20,7 @@ import logging
 
 logger = logging.getLogger()
 
-A_SW_DEF = {'name': 'aswitch', 'dp_id': '00:00:00:00:00:00:00:00', 'max_port': 55, 'status': 'active'}
+A_SW_DEF = {'name': 'aswitch', 'dp_id': '00:00:00:00:00:00:00:00', 'status': 'active'}
 A_SW_NAME = A_SW_DEF['name']
 
 
@@ -30,7 +30,12 @@ def pname(sw, port):
 
 def resolve_host(uri):
     parts = uri.split(":", 3)
-    ip = socket.gethostbyname(parts[1])
+    assert len(parts) == 3, "Controller uri '%s' is incorrect" % uri
+
+    try:
+        ip = socket.gethostbyname(parts[1])
+    except socket.gaierror as e:
+        raise Exception("Couldn't resolve host '%s', seems like Floodlight is down" % parts[1]) from e
     return parts[0] + ":" + ip + ":" + parts[2]
 
 
@@ -60,15 +65,23 @@ class Switch:
             'set bridge {} protocols={}'.format(name, of_ver)
         ]
 
-        # define ports
-        for pnum in range(1, sw_def['max_port'] + 1):
-            cmd.append('add-port {} {}'.format(name, pname(name, str(pnum))))
-
         switch.vscmd.extend(cmd)
         return switch
 
+    @classmethod
+    def create_with_ports(cls, sw_def):
+        sw = Switch.create(sw_def)
+        sw.define_ports(range(1, sw_def['max_port'] + 1))
+        return sw
+
     def destroy(self):
         self.vscmd.extend((['del-br {}'.format(self.name)]))
+
+    def define_ports(self, ports):
+        cmd = []
+        for pnum in ports:
+            cmd.append('add-port {} {}'.format(self.name, pname(self.name, str(pnum))))
+        self.vscmd.extend(cmd)
 
     def setup_port(self, p_name, p_num, bandwidth=None):
         cmd = [
@@ -95,9 +108,6 @@ class Switch:
 
 
 class ASwitch(Switch):
-    def setup(self, a_mappings):
-        self.add_route_flows(a_mappings)
-
     def add_route_flows(self, mappings):
         if mappings:
             ofctl(['add-flow {sw} -O {of_ver} in_port={in_port},actions=output={out_port}'
@@ -179,6 +189,7 @@ class Topology:
         links = []
         traffgens = []
         a_mappings = []
+        a_ports = set()
 
         for isl_def in topo_def['isls']:
             src = isl_def['src_switch']
@@ -189,6 +200,11 @@ class Topology:
             a_def = isl_def.get('aswitch', None)
 
             if a_def:
+                if a_def.get('in_port', None):
+                    a_ports.add(a_def['in_port'])
+                if a_def.get('out_port', None):
+                    a_ports.add(a_def['out_port'])
+
                 links.append(Link.create(src, src_port, A_SW_NAME, a_def['in_port'], bandwidth))
                 if dst and dst_port:
                     links.append(Link.create(A_SW_NAME, a_def['out_port'], dst, dst_port, bandwidth))
@@ -205,8 +221,9 @@ class Topology:
             links.append(tg.make_link())
 
         switches[A_SW_NAME] = ASwitch.create(A_SW_DEF)
+        switches[A_SW_NAME].define_ports(a_ports)
         for sw_def in topo_def['switches']:
-            sw = Switch.create(sw_def)
+            sw = Switch.create_with_ports(sw_def)
             switches[sw.name] = sw
 
         for link in links:
@@ -214,7 +231,7 @@ class Topology:
 
         cls.batch_switch_cmd(switches)
 
-        switches[A_SW_NAME].setup(a_mappings)
+        switches[A_SW_NAME].add_route_flows(a_mappings)
         controller = resolve_host(topo_def['controller'])
         return cls(switches, links, traffgens, controller)
 
