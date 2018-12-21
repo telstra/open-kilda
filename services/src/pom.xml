@@ -18,7 +18,6 @@
         <module>test-library</module>
         <module>floodlight-modules</module>
         <module>northbound</module>
-        <module>atdd</module>
         <module>functional-tests</module>
         <module>atdd-staging</module>
         <module>kilda-pce</module>
