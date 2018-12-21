@@ -43,6 +43,7 @@ export class PortDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   currentPortState: string;
   requestedPortState: string;
   dateMessage:string;
+  getautoReloadValues = this.commonService.getAutoreloadValues();
   clipBoardItems = {
     sourceSwitch:"",
   }
