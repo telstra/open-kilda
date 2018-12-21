@@ -69,6 +69,13 @@ public class LabServiceImpl implements LabService, DisposableBean {
         return labInstance;
     }
 
+    @Override
+    public List<Long> flushLabs() {
+        return restTemplate.exchange("/api/flush", HttpMethod.POST,
+                new HttpEntity(buildJsonHeaders()), new ParameterizedTypeReference<List<Long>>() {
+                }).getBody();
+    }
+
     private LabInstance getSingleExistingLab(List<Long> labsId) {
         if (labsId.size() > 1) {
             throw new IllegalArgumentException("There are several alive lab topologies");

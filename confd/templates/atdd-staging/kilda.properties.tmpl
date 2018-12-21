@@ -27,4 +27,7 @@ reroute.delay={{ getv "/kilda_reroute_throttling_delay_min" }}
 reroute.hardtimeout={{ getv "/kilda_reroute_throttling_delay_max" }}
 discovery.interval={{ getv "/kilda_discovery_interval" }}
 discovery.timeout={{ getv "/kilda_discovery_timeout" }}
+antiflap.min={{ getv "/kilda_port_up_down_throttling_delay_seconds_min" }}
+antiflap.warmup={{ getv "/kilda_port_up_down_throttling_delay_seconds_warm_up" }}
+antiflap.cooldown={{ getv "/kilda_port_up_down_throttling_delay_seconds_cool_down" }}
 

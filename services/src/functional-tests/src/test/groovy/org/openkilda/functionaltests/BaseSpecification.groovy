@@ -26,7 +26,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
     @Autowired
     FlowHelper flowHelper
     @Autowired
-    TopologyDefinition topologyDefinition
+    TopologyDefinition topology
     @Autowired
     NorthboundService northbound
     @Autowired
@@ -65,12 +65,12 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         def links = northbound.getAllLinks()
         verifyAll {
             Wrappers.wait(WAIT_OFFSET) {
-                assert northbound.activeSwitches.size() == topologyDefinition.activeSwitches.size()
+                assert northbound.activeSwitches.size() == topology.activeSwitches.size()
             }
             links.findAll { it.state == IslChangeType.FAILED }.empty
             links.findAll {
                 it.state == IslChangeType.DISCOVERED
-            }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
+            }.size() == topology.islsForActiveSwitches.size() * 2
             northbound.allFlows.empty
             northbound.allLinkProps.empty
         }
@@ -78,14 +78,14 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
         verifyAll {
             links.findAll { it.availableBandwidth != it.speed }.empty
-            topologyDefinition.activeSwitches.findAll {
+            topology.activeSwitches.findAll {
                 def rules = northbound.validateSwitchRules(it.dpId)
                 !rules.excessRules.empty || !rules.missingRules.empty
             }.empty
 
             def nonVirtualSwitches = northbound.getActiveSwitches()
                     .findAll { !it.description.contains("Nicira, Inc") }
-                    .collect { sw -> topologyDefinition.getSwitches().find { it.dpId == sw.switchId } }
+                    .collect { sw -> topology.getSwitches().find { it.dpId == sw.switchId } }
 
             nonVirtualSwitches.findAll {
                 it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {

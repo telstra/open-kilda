@@ -17,7 +17,11 @@ package org.openkilda.testing.service.labservice;
 
 import org.openkilda.testing.service.labservice.model.LabInstance;
 
+import java.util.List;
+
 public interface LabService {
 
     LabInstance getLab();
+
+    List<Long> flushLabs();
 }

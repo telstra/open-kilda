@@ -41,7 +41,7 @@ class CheckLoggingSpec extends BaseSpecification {
         }
 
         and: "Rules on a switch are validated"
-        def switchId = topologyDefinition.activeSwitches.first().dpId
+        def switchId = topology.activeSwitches.first().dpId
         northbound.validateSwitchRules(switchId)
 
         then: "Northbound, Storm and Topology Engine should log these actions within 1 minute"
