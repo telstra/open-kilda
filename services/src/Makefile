@@ -12,6 +12,10 @@ build: projectfloodlight build-gui
 	# FIXME(surabujin): I believe there must not be "clean" phase.
 	mvn -B clean install
 
+build-no-test: projectfloodlight build-gui
+	$(MAKE) -C floodlight-modules pre-docker SHARE=../$(SHARE)
+	mvn -B install -DskipTests
+
 build-pce:
 	mvn install -pl pce -am -DskipTests
 
@@ -26,6 +30,9 @@ build-messaging:
 
 build-gui:
 	$(MAKE) -C openkilda-gui
+
+unit: projectfloodlight
+	mvn -B test
 
 clean:
 	mvn clean
