@@ -4,16 +4,12 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.links.LinkPropsDto
-import org.openkilda.testing.service.northbound.NorthboundService
 
-import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Ignore
 import spock.lang.Shared
 import spock.lang.Unroll
 
 class LinkPropertiesSpec extends BaseSpecification {
-    @Autowired
-    NorthboundService northbound
 
     @Shared
     def propsDataForSearch = [

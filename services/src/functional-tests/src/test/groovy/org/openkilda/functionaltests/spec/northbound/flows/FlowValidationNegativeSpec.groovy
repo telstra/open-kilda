@@ -1,18 +1,13 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
-import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.helpers.FlowHelper
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.flows.FlowValidationDto
-import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.database.Database
-import org.springframework.beans.factory.annotation.Autowired
+
+import groovy.util.logging.Slf4j
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -26,15 +21,6 @@ import spock.lang.Unroll
                  - Single switch, two switch and three+ switch flow spans.
             """)
 class FlowValidationNegativeSpec extends BaseSpecification {
-
-    @Autowired
-    FlowHelper flowHelper
-
-    @Autowired
-    PathHelper pathHelper
-
-    @Autowired
-    Database database
 
     @Unroll
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
@@ -147,19 +133,19 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     /**
      * Finds pair of switches with no direct links between them.
      * NOTE: distance between switches is NOT guaranteed
-     * @return List<Switch>
+     * @return List < Switch >
      */
     def getNonNeighbouringSwitches() {
         def islInfoData = northbound.getAllLinks()
         def switches = topology.getActiveSwitches()
-        def differentSwitches = [switches, switches].combinations().findAll {src, dst -> src.dpId != dst.dpId}
+        def differentSwitches = [switches, switches].combinations().findAll { src, dst -> src.dpId != dst.dpId }
 
         return differentSwitches.find { src, dst -> findDirectLinks(src, dst, islInfoData) }
     }
 
     /**
      * Finds pair of swithes with a direct link between them.
-     * @return List<Switch>
+     * @return List < Switch >
      */
     def getNeighbouringSwitches() {
         def switches = topology.getActiveSwitches()
@@ -169,7 +155,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
 
     /**
      * Finds a single switch
-     * @return List<Switch>   (convenient for randomFlow() method)
+     * @return List < Switch >    (convenient for randomFlow() method)
      */
     def getSingleSwitch() {
         def switches = topology.getActiveSwitches()

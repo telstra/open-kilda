@@ -6,13 +6,18 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
+import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightService
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.otsdb.OtsdbQueryService
+import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -20,17 +25,45 @@ import org.springframework.test.context.ContextConfiguration
 
 @ContextConfiguration(locations = ["classpath:/spring-context.xml"])
 class BaseSpecification extends SpringSpecification implements SetupOnce {
-    @Value('${spring.profiles.active}')
-    String profile
+
+    @Autowired
+    TopologyDefinition topology
+
+    @Autowired
+    NorthboundService northbound
+
+    @Autowired
+    FloodlightService floodlight
+
+    @Autowired
+    LockKeeperService lockKeeper
+
+    @Autowired
+    Database database
+
+    @Autowired
+    OtsdbQueryService otsdb
+
+    @Autowired
+    IslUtils islUtils
 
     @Autowired
     FlowHelper flowHelper
+
     @Autowired
-    TopologyDefinition topology
-    @Autowired
-    NorthboundService northbound
-    @Autowired
-    FloodlightService floodlight
+    PathHelper pathHelper
+
+    @Value('${spring.profiles.active}')
+    String profile
+
+    @Value('${reroute.delay}')
+    int rerouteDelay
+
+    @Value('${discovery.interval}')
+    int discoveryInterval
+
+    @Value('${discovery.timeout}')
+    int discoveryTimeout
 
     /**
      * Use this instead of setupSpec in order to have access to Spring Context and do actions BeforeClass.
@@ -38,22 +71,12 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
      * @see {@link org.openkilda.functionaltests.extension.fixture.SetupOnceExtension}
      */
     def setupOnce() {
+
     }
 
     def setup() {
         //setup with empty body in order to trigger a SETUP invocation, which is intercepted in several extensions
         //this can have implementation if required
-    }
-
-    def requireProfiles(String[] profiles) {
-        assumeTrue("This test required one of these profiles: ${profiles.join(',')}; " +
-                "but current active profile is '${this.profile}'", this.profile in profiles)
-    }
-
-    void verifySwitchRules(SwitchId switchId) {
-        def rules = northbound.validateSwitchRules(switchId)
-        assert rules.excessRules.empty
-        assert rules.missingRules.empty
     }
 
     @HealthCheck
@@ -93,5 +116,16 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
                 }.isEmpty()
             }.empty
         }
+    }
+
+    def requireProfiles(String[] profiles) {
+        assumeTrue("This test requires one of these profiles: '${profiles.join("', '")}'; " +
+                "but current active profile is '${this.profile}'", this.profile in profiles)
+    }
+
+    void verifySwitchRules(SwitchId switchId) {
+        def rules = northbound.validateSwitchRules(switchId)
+        assert rules.excessRules.empty
+        assert rules.missingRules.empty
     }
 }

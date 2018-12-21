@@ -8,10 +8,8 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.tools.IslUtils
 
 import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Issue
@@ -31,19 +29,17 @@ change status from UP to DOWN only after 'antiflap.min' in case of a single-time
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
 class PortAntiflapSpec extends BaseSpecification {
+
     @Value('${antiflap.min}')
     int antiflapMin
+
     @Value('${antiflap.warmup}')
     int antiflapWarmup
+
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
-    @Value('${discovery.interval}')
-    int discoveryInterval
 
-    @Autowired
-    IslUtils islUtils
-
-    @Rerun(times=10) //rerun is required to check the #1790 issue
+    @Rerun(times = 10) //rerun is required to check the #1790 issue
     @Ignore("Due to https://github.com/telstra/open-kilda/issues/1790")
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {

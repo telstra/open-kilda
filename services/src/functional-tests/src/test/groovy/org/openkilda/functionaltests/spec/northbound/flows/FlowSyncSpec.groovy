@@ -6,37 +6,18 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.Constants.DefaultRule
-import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.tools.IslUtils
 
 import groovy.time.TimeCategory
-import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Shared
 
 class FlowSyncSpec extends BaseSpecification {
-
-    @Autowired
-    TopologyDefinition topology
-    @Autowired
-    FlowHelper flowHelper
-    @Autowired
-    NorthboundService northboundService
-    @Autowired
-    PathHelper pathHelper
-    @Autowired
-    IslUtils islUtils
-    @Autowired
-    Database db
 
     @Shared
     int flowRulesCount = 2
@@ -44,7 +25,7 @@ class FlowSyncSpec extends BaseSpecification {
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) without rerouting"() {
         given: "An intermediate-switch flow with one deleted rule on each switch"
         def switches = topology.getActiveSwitches()
-        def allLinks = northboundService.getAllLinks()
+        def allLinks = northbound.getAllLinks()
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
             allLinks.every { link ->
@@ -55,11 +36,11 @@ class FlowSyncSpec extends BaseSpecification {
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
         def ruleToDelete = getFlowRules(involvedSwitches.first().dpId).first().cookie
-        involvedSwitches.each { northboundService.deleteSwitchRules(it.dpId, ruleToDelete) }
+        involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, ruleToDelete) }
         involvedSwitches.each { sw ->
             Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw.dpId).size() == flowRulesCount - 1 }
         }
@@ -70,7 +51,7 @@ class FlowSyncSpec extends BaseSpecification {
         }
 
         def syncTime = new Date()
-        def rerouteResponse = northboundService.synchronizeFlow(flow.id)
+        def rerouteResponse = northbound.synchronizeFlow(flow.id)
 
         then: "The flow is not rerouted"
         int seqId = 0
@@ -79,7 +60,7 @@ class FlowSyncSpec extends BaseSpecification {
         rerouteResponse.path.path == flowPath
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
 
-        PathHelper.convert(northboundService.getFlowPath(flow.id)) == flowPath
+        PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Missing flow rules are installed (existing ones are reinstalled) on all switches"
@@ -102,10 +83,10 @@ class FlowSyncSpec extends BaseSpecification {
         given: "An intermediate-switch flow with two possible paths at least and one deleted rule on each switch"
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> possibleFlowPaths = []
-        def allLinks = northboundService.getAllLinks()
+        def allLinks = northbound.getAllLinks()
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = db.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
             allLinks.every { link ->
                 def switchIds = [link.source.switchId, link.destination.switchId]
                 !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
@@ -115,11 +96,11 @@ class FlowSyncSpec extends BaseSpecification {
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
-        def flowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
         def ruleToDelete = getFlowRules(involvedSwitches.first().dpId).first().cookie
-        involvedSwitches.each { northboundService.deleteSwitchRules(it.dpId, ruleToDelete) }
+        involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, ruleToDelete) }
         involvedSwitches.each { sw ->
             Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw.dpId).size() == flowRulesCount - 1 }
         }
@@ -133,10 +114,10 @@ class FlowSyncSpec extends BaseSpecification {
         }
 
         def syncTime = new Date()
-        def rerouteResponse = northboundService.synchronizeFlow(flow.id)
+        def rerouteResponse = northbound.synchronizeFlow(flow.id)
 
         then: "The flow is rerouted"
-        def newFlowPath = PathHelper.convert(northboundService.getFlowPath(flow.id))
+        def newFlowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
         int seqId = 0
 
         rerouteResponse.rerouted
@@ -171,12 +152,12 @@ class FlowSyncSpec extends BaseSpecification {
 
         and: "Delete the flow and link props, reset link costs"
         flowHelper.deleteFlow(flow.id)
-        northboundService.deleteLinkProps(northboundService.getAllLinkProps())
-        db.resetCosts()
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        database.resetCosts()
     }
 
     def getFlowRules(SwitchId switchId) {
         def defaultCookies = DefaultRule.values()*.cookie
-        northboundService.getSwitchRules(switchId).flowEntries.findAll { !(it.cookie in defaultCookies) }.sort()
+        northbound.getSwitchRules(switchId).flowEntries.findAll { !(it.cookie in defaultCookies) }.sort()
     }
 }
