@@ -543,9 +543,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
-            throw new InvalidMeterIdException(dpid,
-                    format("Could not install meter '%d' onto switch '%s'. Meter id must be positive.",
-                            meterId, dpid));
+            throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
         }
     }
 
@@ -567,9 +565,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             // to ensure that we have completed meter deletion, because we might have remove/create meter in a row
             sendBarrierRequest(sw);
         } else {
-            throw new InvalidMeterIdException(dpid,
-                    format("Could not delete meter '%d' from switch '%s'. Meter id must be positive.",
-                            meterId, dpid));
+            throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
         }
     }
 
