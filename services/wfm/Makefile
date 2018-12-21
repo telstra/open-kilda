@@ -5,3 +5,6 @@ all-in-one-tested:
 
 all-in-one:
 	mvn assembly:assembly -DskipTests
+
+build-no-test:
+	mvn -B install -DskipTests
