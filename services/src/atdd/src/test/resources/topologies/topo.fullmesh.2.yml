@@ -1,7 +1,0 @@
-version: "1"
-name: "Test Topology - Full Mesh 2"
-description: "A full mesh of 2 switches"
-builder:
-  # This will do x
-  fullmesh:
-    size: 2
