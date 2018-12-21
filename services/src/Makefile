@@ -15,9 +15,6 @@ build: projectfloodlight build-gui
 build-pce:
 	mvn install -pl pce -am -DskipTests
 
-build-atdd:
-	mvn install -pl atdd -am -DskipTests
-
 build-northbound:
 	mvn install -pl northbound -am -DskipTests
 
