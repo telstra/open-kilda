@@ -39,8 +39,7 @@ class PortAntiflapSpec extends BaseSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
-    @Rerun(times = 10) //rerun is required to check the #1790 issue
-    @Ignore("Due to https://github.com/telstra/open-kilda/issues/1790")
+    @Rerun(times = 10)
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {
         given: "Switch, port and ISL related to that port"

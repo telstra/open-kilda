@@ -163,6 +163,45 @@ public class PortEventThrottlingServiceTest {
         checkPortInfos(getPortDown(1), getPortDown(2));
     }
 
+    @Test
+    public void portFlapAndDownAtEndOfMinDelay() {
+        Instant downEvent = Instant.now();
+        Instant upEvent = downEvent.plusMillis(200);
+        Instant secondDown = downEvent.plusMillis(800);
+        Instant tick = upEvent.plusSeconds(1);
+        when(clock.instant()).thenReturn(downEvent, upEvent, secondDown, tick);
+        assertFalse(service.processEvent(getPortDown(1), ""));
+        assertFalse(service.processEvent(getPortUp(1), ""));
+        assertFalse(service.processEvent(getPortDown(1), ""));
+        assertTrue(service.getPortInfos().isEmpty());
+    }
+
+    @Test
+    public void portTwiceDownAtEndOfMinDelay() {
+        Instant downEvent = Instant.now();
+        Instant secondDown = downEvent.plusMillis(800);
+        Instant tick = downEvent.plusMillis(1200);
+        when(clock.instant()).thenReturn(downEvent, secondDown, tick);
+        assertFalse(service.processEvent(getPortDown(1), ""));
+        assertFalse(service.processEvent(getPortDown(1), ""));
+        checkPortInfos(getPortDown(1));
+    }
+
+    @Test
+    public void portDownForTooLongAfterFlap() {
+        Instant downEvent = Instant.now();
+        Instant upEvent = downEvent.plusMillis(200);
+        Instant secondDown = downEvent.plusMillis(800);
+        Instant tick = upEvent.plusSeconds(1);
+        Instant secondTick = tick.plusSeconds(1);
+        when(clock.instant()).thenReturn(downEvent, upEvent, secondDown, tick, secondTick);
+        assertFalse(service.processEvent(getPortDown(1), ""));
+        assertFalse(service.processEvent(getPortUp(1), ""));
+        assertFalse(service.processEvent(getPortDown(1), ""));
+        assertTrue(service.getPortInfos().isEmpty());
+        checkPortInfos(getPortDown(1));
+    }
+
     private PortInfoData getPortUp(int port) {
         return new PortInfoData(new SwitchId("00:01"), port, PortChangeType.UP);
     }
