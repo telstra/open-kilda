@@ -1,7 +1,7 @@
 package org.openkilda;
 
 import org.openkilda.PathService.Path;
-import org.openkilda.model.CheckRule;
+import org.openkilda.model.ValidateRule;
 import org.openkilda.model.FlowCreate;
 import org.openkilda.model.FlowCreateError;
 import org.openkilda.model.InstallRule;
@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class FlowCrudService {
+public class FlowCrudService implements IFlowCrudService {
 
     private Map<String, Integer> rulesToSetUp = new HashMap<>();
     private Map<String, String> keyToFlowId = new HashMap<>();
@@ -24,12 +24,10 @@ public class FlowCrudService {
         this.carrier = carrier;
     }
 
-
     private void saveStateToDb() {
         // Save state of bolt to db for recover purpose
         log.info("backup bolt state");
     }
-
 
     private void clear(String flowid) {
         PathService.deallocatePath(flowid);
@@ -37,6 +35,7 @@ public class FlowCrudService {
         HistoryService.pushStatus(flowid);
     }
 
+    @Override
     public void handleFlowCreate(String key, FlowCreate flow) {
         carrier.registerCallback(key);
         String flowid = flow.getFlowid();
@@ -59,7 +58,7 @@ public class FlowCrudService {
             log.info("pass messages to worker");
             for (int i = 0; i < hops; ++i) {
                 carrier.installRule(String.format("%s-%d", key, i),
-                        InstallRule.builder().flowid(flowid).ruleId(i).build());
+                        InstallRule.builder().flowid(flowid).ruleid(i).build());
             }
             HistoryService.pushStatus(flowid);
         } else if (error == FlowCreateError.IN_WORKER || error == FlowCreateError.IN_FL) {
@@ -72,6 +71,7 @@ public class FlowCrudService {
         }
     }
 
+    @Override
     public void handleAsyncResponseFromWorker(String key, String message) {
         if (rulesToSetUp.containsKey(key) || rulesToCheck.containsKey(key)) {
 
@@ -99,7 +99,7 @@ public class FlowCrudService {
                         log.info("validate");
                         for (int i = 0; i < hops; ++i) {
                             carrier.checkRule(String.format("%s-%d", key, i),
-                                    CheckRule.builder().flowid(flowid).ruleId(i).build());
+                                    ValidateRule.builder().flowid(flowid).ruleid(i).build());
 
                         }
                         rulesToSetUp.remove(key);
@@ -127,6 +127,7 @@ public class FlowCrudService {
         saveStateToDb();
     }
 
+    @Override
     public void handleTaskTimeout(String key) {
         if (rulesToSetUp.containsKey(key)) {
             log.info("timeout callback received. going to start cleanup procedure");
