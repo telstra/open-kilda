@@ -16,7 +16,7 @@ import java.util.Map;
 @Slf4j
 public class FlowCrudBolt extends HubBolt implements IFlowCrudCarrier {
 
-    private FlowCrudService service;
+    private IFlowCrudService service;
 
     public FlowCrudBolt(Config config) {
         super(config);
@@ -25,7 +25,7 @@ public class FlowCrudBolt extends HubBolt implements IFlowCrudCarrier {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        service = new FlowCrudService(this);
+        service = new FlowCrudServiceFsm(this);
     }
 
     @Override

@@ -1,4 +1,3 @@
-
 import logging
 import json
 from kafka import KafkaConsumer
@@ -30,11 +29,13 @@ def kafka_recive_loop():
         if "IN_FL" == value['error']:
             logger.error("error in fl do nothing")
         else:
+            response = {"install": "installed",
+                        "validate": "validated"}
             producer.send('fl-to-worker', key=message.key,
-                          value='processed {}'.format(value['ruleid']))
+                          value='{} {}'.format(response.get(value.get('command'), ""),
+                                               value['ruleid']))
 
 
 if __name__ == "__main__":
     logger.info('Start kafka loop...')
     kafka_recive_loop()
-
