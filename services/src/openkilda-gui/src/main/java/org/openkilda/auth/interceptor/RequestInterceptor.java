@@ -20,6 +20,7 @@ import org.openkilda.auth.model.Permissions;
 import org.openkilda.auth.model.RequestContext;
 import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
+import org.openkilda.service.ApplicationSettingService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,9 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private ApplicationSettingService sessionTimeoutService;
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler)
@@ -81,7 +85,10 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         try {
             HttpSession session = request.getSession();
             UserInfo userInfo = null;
-
+            if (IConstants.SessionTimeout.TIME_IN_MINUTE == null) {
+                IConstants.SessionTimeout.TIME_IN_MINUTE = sessionTimeoutService.getSessionTimeout();
+            }
+            session.setMaxInactiveInterval(IConstants.SessionTimeout.TIME_IN_MINUTE * 60);
             userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
             if (userInfo != null) {
                 validateUser(userInfo);
