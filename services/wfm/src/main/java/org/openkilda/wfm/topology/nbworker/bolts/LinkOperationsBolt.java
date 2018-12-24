@@ -53,8 +53,11 @@ import java.util.stream.Collectors;
 public class LinkOperationsBolt extends PersistenceOperationsBolt {
     private transient LinkOperationsService linkOperationsService;
 
-    public LinkOperationsBolt(PersistenceManager persistenceManager) {
+    private int islCostWhenUnderMaintenance;
+
+    public LinkOperationsBolt(PersistenceManager persistenceManager, int islCostWhenUnderMaintenance) {
         super(persistenceManager);
+        this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
     }
 
     /**
@@ -63,7 +66,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        this.linkOperationsService = new LinkOperationsService(repositoryFactory, transactionManager);
+        this.linkOperationsService =
+                new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
     }
 
     @Override
