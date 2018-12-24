@@ -16,52 +16,48 @@
 package org.openkilda.wfm.topology.stats.metrics;
 
 import static org.openkilda.model.Constants.DEFAULT_RULES_COOKIE_MASK;
+import static org.openkilda.model.Constants.MAX_DEFAULT_RULE_METER_ID;
+import static org.openkilda.model.Constants.MIN_DEFAULT_RULE_METER_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.METER_CACHE_FIELD;
 
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.JsonEncodeException;
-import org.openkilda.wfm.topology.stats.FlowByMeterCacheEntry;
+import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
 
 import javafx.util.Pair;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
 
+@Slf4j
 public class MeterStatsMetricGenBolt extends MetricGenBolt {
-    private static final Logger logger = LoggerFactory.getLogger(MeterStatsMetricGenBolt.class);
-
     @Override
     public void execute(Tuple input) {
-        InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
-
-        if (!Destination.WFM_STATS.equals(message.getDestination())) {
-            collector.ack(input);
-            return;
-        }
-
-        logger.debug("Received meter statistics: {}.", message.getData());
-
-        Map<Pair<SwitchId, Long>, FlowByMeterCacheEntry> flowCache =
-                (Map<Pair<SwitchId, Long>, FlowByMeterCacheEntry>) input.getValueByField(METER_CACHE_FIELD);
-
-        MeterStatsData data = (MeterStatsData) message.getData();
-        long timestamp = message.getTimestamp();
-
         try {
+            InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
+
+            log.debug("Received meter statistics: {}.", message.getData());
+
+            @SuppressWarnings("unchecked")
+            Map<Pair<SwitchId, Long>, CacheFlowEntry> flowCache =
+                    (Map<Pair<SwitchId, Long>, CacheFlowEntry>) input.getValueByField(METER_CACHE_FIELD);
+
+            MeterStatsData data = (MeterStatsData) message.getData();
+            long timestamp = message.getTimestamp();
+
+
             SwitchId switchId = data.getSwitchId();
             for (MeterStatsEntry entry : data.getStats()) {
-                @Nullable FlowByMeterCacheEntry flowEntry = flowCache.get(new Pair<>(switchId, entry.getMeterId()));
+                @Nullable CacheFlowEntry flowEntry = flowCache.get(new Pair<>(switchId, entry.getMeterId()));
                 emit(entry, timestamp, switchId, flowEntry);
             }
         } finally {
@@ -70,7 +66,7 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
     }
 
     private void emit(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId,
-                      @Nullable FlowByMeterCacheEntry cacheEntry) {
+                      @Nullable CacheFlowEntry cacheEntry) {
         try {
             if (isDefaultRule(meterStats.getMeterId())) {
                 emitDefaultRuleMeterStats(meterStats, timestamp, switchId);
@@ -78,14 +74,17 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
                 emitFlowMeterStats(meterStats, timestamp, switchId, cacheEntry);
             }
         } catch (JsonEncodeException e) {
-            logger.error("Error during serialization of datapoint", e);
+            log.error("Error during serialization of datapoint", e);
+        } catch (FlowCookieException e) {
+            log.warn("Unknown flow direction for flow '{}' on switch '{}'. Message: {}",
+                    cacheEntry == null ? "unknown" : cacheEntry.getFlowId(), switchId, e.getMessage());
         }
     }
 
     private void emitDefaultRuleMeterStats(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId)
             throws JsonEncodeException {
         Map<String, String> tags = createCommonTags(switchId, meterStats.getMeterId());
-        tags.put("cookie", String.format("%X", meterStats.getMeterId() | DEFAULT_RULES_COOKIE_MASK));
+        tags.put("cookieHex", String.format("%X", meterStats.getMeterId() | DEFAULT_RULES_COOKIE_MASK));
 
         collector.emit(tuple("pen.switch.flow.system.meter.packets", timestamp, meterStats.getPacketsInCount(), tags));
         collector.emit(tuple("pen.switch.flow.system.meter.bytes", timestamp, meterStats.getByteInCount(), tags));
@@ -93,22 +92,16 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
     }
 
     private void emitFlowMeterStats(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId,
-                                    @Nullable FlowByMeterCacheEntry cacheEntry) throws JsonEncodeException {
+                                    @Nullable CacheFlowEntry cacheEntry)
+            throws JsonEncodeException, FlowCookieException {
+        if (cacheEntry == null) {
+            log.warn("Missed cache for switch '{}' meterId '{}'", switchId, meterStats.getMeterId());
+            return;
+        }
+
         Map<String, String> tags = createCommonTags(switchId, meterStats.getMeterId());
 
-        if (cacheEntry == null) {
-            logger.warn("Missed cache for switch '{}' meterId '{}'", switchId, meterStats.getMeterId());
-            return;
-        }
-
-        String direction;
-        try {
-            direction = FlowDirectionHelper.findDirection(cacheEntry.getCookie()).name().toLowerCase();
-        } catch (FlowCookieException e) {
-            logger.warn("Unknown flow direction for flow '{}' with cookie '{}' on switch '{}'. Message: {}",
-                    cacheEntry.getFlowId(), cacheEntry.getCookie(), switchId, e.getMessage());
-            return;
-        }
+        String direction = FlowDirectionHelper.findDirection(cacheEntry.getCookie()).name().toLowerCase();
 
         tags.put("direction", direction);
         tags.put("flowid", cacheEntry.getFlowId());
@@ -127,6 +120,6 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
     }
 
     private boolean isDefaultRule(long meterId) {
-        return 0 < meterId && meterId < 10;
+        return MIN_DEFAULT_RULE_METER_ID <= meterId && meterId <= MAX_DEFAULT_RULE_METER_ID;
     }
 }
