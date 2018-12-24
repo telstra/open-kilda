@@ -28,16 +28,15 @@ import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -109,11 +108,11 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         iofSwitchService.addOFSwitchListener(eq(service));
         moduleContext.addService(IOFSwitchService.class, iofSwitchService);
 
-        KafkaTopicsConfig topics = createMock(KafkaTopicsConfig.class);
+        KafkaChannel topics = createMock(KafkaChannel.class);
         expect(topics.getTopoDiscoTopic()).andReturn(KAFKA_ISL_DISCOVERY_TOPIC);
-
+        expect(topics.getRegion()).andReturn("1");
         KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
-        expect(kafkaUtility.getTopics()).andReturn(topics);
+        expect(kafkaUtility.getKafkaChannel()).andReturn(topics);
         moduleContext.addService(KafkaUtilityService.class, kafkaUtility);
 
         replay(kafkaUtility, topics, iofSwitchService);
@@ -340,23 +339,21 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         verify(producerService);
 
         ArrayList<Message> expectedMessages = new ArrayList<>();
-        expectedMessages.add(new InfoMessage(new NetworkDumpBeginMarker(), 0, correlationId));
-        expectedMessages.add(new InfoMessage(
+        expectedMessages.add(new ChunkedInfoMessage(
                 new NetworkDumpSwitchData(new Switch(
                         new SwitchId(swAid.getLong()), "127.0.2.1",
                         ImmutableSet.of(Switch.Feature.METERS),
                         ImmutableList.of(
                                 new SwitchPort(1, SwitchPort.State.UP),
-                                new SwitchPort(2, SwitchPort.State.UP)))), 0, correlationId));
-        expectedMessages.add(new InfoMessage(
+                                new SwitchPort(2, SwitchPort.State.UP)))), 0, correlationId, 0, 2, "1"));
+        expectedMessages.add(new ChunkedInfoMessage(
                 new NetworkDumpSwitchData(new Switch(
                         new SwitchId(swBid.getLong()), "127.0.2.2",
                         ImmutableSet.of(Switch.Feature.METERS, Switch.Feature.BFD),
                         ImmutableList.of(
                                 new SwitchPort(3, SwitchPort.State.UP),
                                 new SwitchPort(4, SwitchPort.State.UP),
-                                new SwitchPort(5, SwitchPort.State.DOWN)))), 0, correlationId));
-        expectedMessages.add(new InfoMessage(new NetworkDumpEndMarker(), 0, correlationId));
+                                new SwitchPort(5, SwitchPort.State.DOWN)))), 0, correlationId, 1, 2, "1"));
 
         assertEquals(expectedMessages, producedMessages);
     }

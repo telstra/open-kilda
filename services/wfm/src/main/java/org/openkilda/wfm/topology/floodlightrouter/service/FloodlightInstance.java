@@ -13,23 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.service.kafka;
+package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.floodlight.service.IService;
-import org.openkilda.messaging.Message;
+import lombok.Data;
 
-public interface IKafkaProducerService extends IService {
-    void enableGuaranteedOrder(String topic);
+@Data
+public class FloodlightInstance {
+    private String region;
+    private long aliveTimeout;
+    private long lastAliveResponse;
+    private int missedAliveResponses;
+    private boolean alive;
 
-    void disableGuaranteedOrder(String topic);
+    public FloodlightInstance(String region) {
+        this.region = region;
+    }
 
-    void disableGuaranteedOrder(String topic, long transitionPeriod);
 
-    void sendMessageAndTrack(String topic, Message message);
-
-    void sendMessageAndTrack(String topic, String key, Message message);
-
-    SendStatus sendMessage(String topic, Message message);
-
-    int getFailedSendMessageCounter();
 }
