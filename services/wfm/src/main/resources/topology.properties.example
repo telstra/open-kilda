@@ -27,6 +27,7 @@ reroute.throttling.delay.min = 10
 reroute.throttling.delay.max = 600
 
 isl.cost.when.port.down = 10000
+isl.cost.when.under.maintenance = 10000
 
 port.up.down.throttling.delay.seconds.min = 1
 port.up.down.throttling.delay.seconds.warm.up = 5
