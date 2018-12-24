@@ -178,6 +178,7 @@
             <div class="col-xs-8 col-md-8">
               <input formControlName="auto_reload" value="1" type="checkbox">
               <span [hidden]="!f.auto_reload.value">
+                <!-- <input formControlName="auto_reload_time" type="text" name="auto_reload_time" (blur)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;"> -->
                 <select formControlName="auto_reload_time" name="auto_reload_time" (change)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;">
                    <option value="">Please select a value</option>
                    <option *ngFor="let option of getautoReloadValues" value="{{option.value}}">{{option.text}}</option>

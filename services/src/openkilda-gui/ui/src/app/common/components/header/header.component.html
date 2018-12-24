@@ -8,7 +8,8 @@
 					<button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>{{username}} <i class="fa fa-angle-down" aria-hidden="true"></i></button>
 					<div ngbDropdownMenu aria-labelledby="dropdownBasic1">
 						<button (click)="openChangePassword()" class="dropdown-item"><i class="fa fa-lock"></i> Change Password</button>
-						<button routerLink="/storesetting" *ngIf="commonService.hasPermission('store_setting')" class="dropdown-item"><i class="fa fa-cog"></i> Settings</button>
+						<button routerLink="/application-setting" *ngIf="commonService.hasPermission('session_timeout_setting')" class="dropdown-item"><i class="fa fa-clock-o"></i> Application Settings</button>
+						<button routerLink="/storesetting" *ngIf="commonService.hasPermission('store_setting')" class="dropdown-item"><i class="fa fa-cog"></i> Store Settings</button>
 						<button (click)="logOut()" class="dropdown-item"><i class="fa fa-sign-out"></i> Logout</button>
 					</div>
 				</div>

@@ -77,6 +77,7 @@ import { FlowContractsComponent } from './modules/flows/flow-contracts/flow-cont
 import { ClickOutsideModule } from 'ng-click-outside';
 import { ResetPasswordComponent } from './common/components/reset-password/reset-password.component';
 import { AppAuthProvider } from './common/interceptors/app.auth.interceptor';
+import { SessionComponent } from './modules/settings/session/session.component';
 
 @NgModule({
   declarations: [
@@ -138,7 +139,8 @@ import { AppAuthProvider } from './common/interceptors/app.auth.interceptor';
     FlowDatatablesComponent,
     SwitchDatatableComponent,
     FlowContractsComponent,
-    ResetPasswordComponent
+    ResetPasswordComponent,
+    SessionComponent
   ],
   imports: [
     HttpClientModule,

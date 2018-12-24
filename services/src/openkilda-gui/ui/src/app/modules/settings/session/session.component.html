@@ -1,0 +1,30 @@
+<div id="storeSetting">
+        <div class="row">
+            <div class="col-md-12">
+                <h6 class="card-title card-custom-title">SESSION SETTINGS</h6>
+                <div _ngcontent-c14="" class="card">
+                    <div _ngcontent-c14="" class="card-body">
+                        <div class="col-sm-6">
+                        <form [formGroup]="sessionForm" class="form-horizotal">
+                            <fieldset>
+                                <div class="form-group">
+                                    <label for="session_timeout">Session Timeout(Minutes)<span class="mandatory-text text-danger">*</span></label>
+                                    <input min="-1" class="form-control" type="number" formControlName="session_time" placeholder="Session timeout e.g.: 5" required/>
+                                </div>
+                            </fieldset>
+                            <p class="custom-alert alert-warning"><strong>Note: </strong> zero or negative time indicates that the session should never timeout</p>
+                        </form>
+                        <div>
+                            <div class="pull-right">
+                            <button *ngIf="isEdit" type="button" (click)="setInfinite()" class="btn kilda_btn">Set infinite</button> &nbsp;
+                            <button *ngIf="isEdit" type="button" (click)="save()" class="btn kilda_btn">Save</button> &nbsp;
+                            <button *ngIf="isEdit" type="button" class="btn kilda_btn" (click)="cancelSession()">Cancel</button> &nbsp;
+                            <button *ngIf="!isEdit" type="button" class="btn kilda_btn" (click)="editSession()">Edit</button> &nbsp;
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
