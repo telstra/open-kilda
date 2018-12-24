@@ -16,6 +16,8 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
+import org.openkilda.pce.exception.RecoverableException;
+import org.openkilda.pce.exception.UnroutableFlowException;
 
 /**
  * Represents computation operations on flow path.

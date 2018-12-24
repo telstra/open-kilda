@@ -13,26 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce;
+package org.openkilda.pce.finder;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Default;
-import com.sabre.oss.conf4j.annotation.Key;
+public class BestCostSymmetricPathFinderTest extends PathFinderTest {
 
-import java.io.Serializable;
-
-@Configuration
-@Key("pce")
-public interface PathComputerConfig extends Serializable {
-    @Key("max.allowed.depth")
-    @Default("35")
-    int getMaxAllowedDepth();
-
-    @Key("default.isl.cost")
-    @Default("700")
-    int getDefaultIslCost();
-
-    @Key("strategy")
-    @Default("COST")
-    String getStrategy();
+    @Override
+    PathFinder getPathFinder() {
+        return new BestCostSymmetricPathFinder(DEFAULT_COST);
+    }
 }

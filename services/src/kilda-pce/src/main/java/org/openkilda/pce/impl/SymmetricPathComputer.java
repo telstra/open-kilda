@@ -15,11 +15,22 @@
 
 package org.openkilda.pce.impl;
 
-/**
- * Indicates that a switch can't be found by PathFinder.
- */
-public class SwitchNotFoundException extends Exception {
-    public SwitchNotFoundException(String message) {
-        super(message);
+import org.openkilda.model.Flow;
+import org.openkilda.model.Isl;
+import org.openkilda.pce.finder.PathFinder;
+import org.openkilda.persistence.repositories.IslRepository;
+
+import java.util.Collection;
+
+public class SymmetricPathComputer extends InMemoryPathComputer {
+
+    public SymmetricPathComputer(IslRepository islRepository, PathFinder pathFinder) {
+        super(islRepository, pathFinder);
+    }
+
+    @Override
+    protected Collection<Isl> getAvailableIsls(Flow flow) {
+        return flow.isIgnoreBandwidth()
+                ? islRepository.findAllActive() : islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth());
     }
 }

@@ -13,17 +13,32 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce;
+package org.openkilda.pce.exception;
 
 /**
- * Indicates an exception that may be overcome using the retry approach.
+ * Indicates that a path can't be found for a flow.
  */
-public class RecoverableException extends Exception {
-    public RecoverableException(String message) {
+public class UnroutableFlowException extends Exception {
+    private final String flowId;
+
+    public UnroutableFlowException(String message) {
         super(message);
+        this.flowId = null;
     }
 
-    public RecoverableException(String message, Throwable cause) {
+    public UnroutableFlowException(String message, String flowId) {
+        super(message);
+
+        this.flowId = flowId;
+    }
+
+    public UnroutableFlowException(String message, Throwable cause, String flowId) {
         super(message, cause);
+
+        this.flowId = flowId;
+    }
+
+    public String getFlowId() {
+        return flowId;
     }
 }

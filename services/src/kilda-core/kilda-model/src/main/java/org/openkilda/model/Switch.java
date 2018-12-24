@@ -93,4 +93,20 @@ public class Switch implements Serializable {
         this.incomingLinks = incomingLinks;
         this.outgoingLinks = outgoingLinks;
     }
+
+    /**
+     * Finds corresponding inverted ISL for outgoing ISL.
+     * @param outgoing ISL from this switch.
+     * @return the same ISL in opposite direction.
+     */
+    public Isl matchIncomingLink(Isl outgoing) {
+        return this.getIncomingLinks().stream()
+                .filter(isl -> isl.getSrcSwitch().getSwitchId().equals(outgoing.getDestSwitch().getSwitchId())
+                        && isl.getSrcPort() == outgoing.getDestPort()
+                        && isl.getDestSwitch().getSwitchId().equals(this.getSwitchId())
+                        && isl.getDestPort() == outgoing.getSrcPort())
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalStateException(String.format("Failed to find reverse ISL for %s", outgoing)));
+    }
 }

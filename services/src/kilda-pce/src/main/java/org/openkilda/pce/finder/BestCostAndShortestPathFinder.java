@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.impl;
+package org.openkilda.pce.finder;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
@@ -22,7 +22,9 @@ import static java.util.stream.Collectors.toSet;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.exception.SwitchNotFoundException;
+import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.impl.AvailableNetwork;
 
 import com.google.common.collect.Lists;
 import lombok.Value;
