@@ -18,7 +18,7 @@ package org.openkilda.floodlight.statistics;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
-import org.openkilda.floodlight.converter.OfMeterStatsConverter;
+import org.openkilda.floodlight.converter.OfMeterStatsMapper;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
@@ -242,7 +242,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         logger.trace("Getting meter stats for switch={}", iofSwitch.getId());
 
         Futures.addCallback(iofSwitch.writeStatsRequest(meterStatsRequest),
-                new RequestCallback<>(data -> OfMeterStatsConverter.toMeterStatsData(data, switchId),
+                new RequestCallback<>(data -> OfMeterStatsMapper.INSTANCE.toMeterStatsData(data, switchId),
                         "meter", CorrelationContext.getId()));
     }
 

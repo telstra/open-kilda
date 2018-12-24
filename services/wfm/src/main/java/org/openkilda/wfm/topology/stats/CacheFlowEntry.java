@@ -25,24 +25,25 @@ import java.io.Serializable;
 @Value
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public class FlowByCookieCacheEntry implements Serializable {
+public class CacheFlowEntry implements Serializable {
 
     @NonNull
     private String flowId;
 
     private String ingressSwitch;
     private String egressSwitch;
+    private Long cookie;
 
-    public FlowByCookieCacheEntry(String flowId) {
-        this(flowId, null, null);
+    public CacheFlowEntry(String flowId, Long cookie) {
+        this(flowId, null, null, cookie);
     }
 
     /**
      * Make "clone" of existing object, replace ingressSwitch or egressSwitch with new value. Switch that must be
      * replaced determined by point argument value.
      */
-    public FlowByCookieCacheEntry replace(String sw, MeasurePoint point) {
-        FlowByCookieCacheEntryBuilder replacement = toBuilder();
+    public CacheFlowEntry replaceSwitch(String sw, MeasurePoint point) {
+        CacheFlowEntryBuilder replacement = toBuilder();
         switch (point) {
             case INGRESS:
                 replacement.ingressSwitch(sw);
@@ -54,5 +55,9 @@ public class FlowByCookieCacheEntry implements Serializable {
                 throw new IllegalArgumentException(String.format("Unsupported measurement point value %s", point));
         }
         return replacement.build();
+    }
+
+    public CacheFlowEntry replaceCookie(Long cookie) {
+        return toBuilder().cookie(cookie).build();
     }
 }

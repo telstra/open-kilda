@@ -21,6 +21,7 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.List;
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"switch_id", "stats"})
+@EqualsAndHashCode(callSuper = false)
 public class MeterStatsData extends InfoData {
 
     private static final long serialVersionUID = 1L;

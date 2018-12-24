@@ -30,7 +30,7 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.Collections;
 
-public class OfMeterStatsConverterTest {
+public class OfMeterStatsMapperTest {
     public static final int bandPacketCount = 1;
     public static final int bandByteCount = 2;
     public static final int meterByteCount = 3;
@@ -54,7 +54,7 @@ public class OfMeterStatsConverterTest {
                 .setEntries(Collections.singletonList(meterStats))
                 .build();
 
-        MeterStatsData data = OfMeterStatsConverter.toMeterStatsData(Collections.singletonList(reply), switchId);
+        MeterStatsData data = OfMeterStatsMapper.INSTANCE.toMeterStatsData(Collections.singletonList(reply), switchId);
 
         assertEquals(switchId, data.getSwitchId());
         assertEquals(1, data.getStats().size());
