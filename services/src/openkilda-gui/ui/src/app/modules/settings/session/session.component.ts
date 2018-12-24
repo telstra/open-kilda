@@ -38,7 +38,8 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
       this.initialVal  = response;
       this.loaderService.hide();
     },error=>{
-      this.toastrService.error("Api response error",'Error');
+      var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Api response error';
+      this.toastrService.error(errorMsg,'Error');
       this.loaderService.hide();
     });
   }
@@ -51,15 +52,18 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
 
   }
 
-  setInfinite(){
-    this.sessionForm.controls['session_time'].setValue(-1);
-    this.save();
+  get i() {
+    return this.sessionForm.controls;
   }
 
   save(){
 
-    this.loaderService.show("Saving Session Setting");
+    
     let session_time = this.sessionForm.controls['session_time'].value;
+    if(session_time < 5){
+      return false;
+    }
+    this.loaderService.show("Saving Session Setting");
     this.commonService.saveSessionTimeoutSetting(session_time).subscribe((response)=>{
       this.toastrService.success("Session Setting saved",'Success');
       this.loaderService.hide();
@@ -67,7 +71,8 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
       this.isEdit = false;
       this.sessionForm.disable();
     },error=>{
-      this.toastrService.error("Unable to save",'Error');
+      var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Unable to save';
+      this.toastrService.error(errorMsg,'Error');
       this.loaderService.hide();
     });
   }
