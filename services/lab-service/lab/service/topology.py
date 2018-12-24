@@ -35,7 +35,7 @@ def resolve_host(uri):
     try:
         ip = socket.gethostbyname(parts[1])
     except socket.gaierror as e:
-        raise Exception("Couldn't resolve host '%s', seems like Floodlight is down" % parts[1]) from e
+        raise Exception("Couldn't resolve host '%s', seems like Floodlight is down" % parts[1]) from e # noqa
     return parts[0] + ":" + ip + ":" + parts[2]
 
 
