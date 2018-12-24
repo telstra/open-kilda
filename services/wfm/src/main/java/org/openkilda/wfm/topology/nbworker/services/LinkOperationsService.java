@@ -38,10 +38,14 @@ public class LinkOperationsService {
 
     private IslRepository islRepository;
     private TransactionManager transactionManager;
+    private int islCostWhenUnderMaintenance;
 
-    public LinkOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
+    public LinkOperationsService(RepositoryFactory repositoryFactory,
+                                 TransactionManager transactionManager,
+                                 int islCostWhenUnderMaintenance) {
         this.islRepository = repositoryFactory.createIslRepository();
         this.transactionManager = transactionManager;
+        this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
     }
 
     /**
@@ -68,8 +72,20 @@ public class LinkOperationsService {
             Isl isl = foundIsl.get();
             Isl reverceIsl = foundReverceIsl.get();
 
+            if (isl.isUnderMaintenance() == underMaintenance) {
+                return Optional.of(Arrays.asList(isl, reverceIsl));
+            }
+
             isl.setUnderMaintenance(underMaintenance);
             reverceIsl.setUnderMaintenance(underMaintenance);
+
+            if (underMaintenance) {
+                isl.setCost(isl.getCost() + islCostWhenUnderMaintenance);
+                reverceIsl.setCost(reverceIsl.getCost() + islCostWhenUnderMaintenance);
+            } else {
+                isl.setCost(isl.getCost() - islCostWhenUnderMaintenance);
+                reverceIsl.setCost(reverceIsl.getCost() - islCostWhenUnderMaintenance);
+            }
 
             islRepository.createOrUpdate(isl);
             islRepository.createOrUpdate(reverceIsl);
