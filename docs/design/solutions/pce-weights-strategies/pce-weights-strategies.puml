@@ -1,0 +1,38 @@
+@startuml
+title PCE weight calculation strategies
+
+participant "PCE Client" as Client
+participant AvailableNetworkFactory
+participant AvailableNetwork
+participant PathComputerFactory
+participant PathComputer
+database Neo4J
+
+activate Client
+
+Client -> AvailableNetworkFactory: getAvailableNetwork
+activate AvailableNetworkFactory
+AvailableNetworkFactory -> Neo4J: get active links
+Neo4J --> AvailableNetworkFactory
+create AvailableNetwork
+AvailableNetworkFactory -> AvailableNetwork: create from retrieved links
+AvailableNetwork --> AvailableNetworkFactory
+AvailableNetworkFactory --> Client: AvailableNetwork
+deactivate AvailableNetworkFactory
+
+Client -> PathComputerFactory: getPathComputer with weight strategy
+activate PathComputerFactory
+create PathComputer
+PathComputerFactory -> PathComputer: create with weight strategy
+PathComputer --> PathComputerFactory
+PathComputerFactory --> Client
+deactivate PathComputerFactory
+
+activate PathComputer
+Client -> PathComputer: getPath with AvailableNetwork
+PathComputer -> PathComputer: pathFinder.findPathInNetwork
+PathComputer --> Client: computed pathPair
+deactivate PathComputer
+
+deactivate Client
+@enduml
