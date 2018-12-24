@@ -27,7 +27,7 @@ import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.wfm.error.JsonEncodeException;
-import org.openkilda.wfm.topology.stats.FlowByCookieCacheEntry;
+import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
@@ -62,8 +62,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         StatsComponentType componentId = StatsComponentType.valueOf(input.getSourceComponent());
         InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
 
-        Map<Long, FlowByCookieCacheEntry> dataCache =
-                (Map<Long, FlowByCookieCacheEntry>) input.getValueByField(COOKIE_CACHE_FIELD);
+        Map<Long, CacheFlowEntry> dataCache =
+                (Map<Long, CacheFlowEntry>) input.getValueByField(COOKIE_CACHE_FIELD);
 
         LOGGER.debug("dataCache in FlowMetricGenBolt {}", dataCache);
 
@@ -82,7 +82,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         try {
             for (FlowStatsReply reply : data.getStats()) {
                 for (FlowStatsEntry entry : reply.getEntries()) {
-                    @Nullable FlowByCookieCacheEntry flowEntry = dataCache.get(entry.getCookie());
+                    @Nullable CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
                     emit(entry, timestamp, switchId, flowEntry);
                 }
             }
@@ -97,7 +97,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
     }
 
     private void emit(FlowStatsEntry entry, long timestamp, @Nonnull SwitchId switchId,
-                      @Nullable FlowByCookieCacheEntry flowEntry) throws Exception {
+                      @Nullable CacheFlowEntry flowEntry) throws Exception {
         String flowId = "unknown";
         if (flowEntry != null) {
             flowId = flowEntry.getFlowId();
