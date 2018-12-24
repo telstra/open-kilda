@@ -91,10 +91,10 @@ export class CommonService {
   }
 
   getSessionTimeoutSetting(){
-    return this.httpClient.get<any>(`${environment.apiEndPoint}/sessiontimeout`);
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/settings/sessiontimeout`);
   }
 
   saveSessionTimeoutSetting(timeout){
-    return this.httpClient.patch<any>(`${environment.apiEndPoint}/sessiontimeout`,timeout);
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/sessiontimeout`,timeout);
   }
 }
