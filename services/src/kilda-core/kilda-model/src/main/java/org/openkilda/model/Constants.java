@@ -17,6 +17,8 @@ package org.openkilda.model;
 
 public final class Constants {
     public static final long DEFAULT_RULES_COOKIE_MASK = 0x8000000000000000L;
+    public static final long MIN_DEFAULT_RULE_METER_ID = 1;
+    public static final long MAX_DEFAULT_RULE_METER_ID = 10;
 
     private Constants() {
         throw new UnsupportedOperationException();

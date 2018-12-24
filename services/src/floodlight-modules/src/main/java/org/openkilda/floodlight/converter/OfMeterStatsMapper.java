@@ -21,19 +21,19 @@ import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.SwitchId;
 
+import lombok.extern.slf4j.Slf4j;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFMeterStats;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsReply;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public final class OfMeterStatsConverter {
-    private static final Logger logger = LoggerFactory.getLogger(OfMeterStatsConverter.class);
+@Mapper
+@Slf4j
+public abstract class OfMeterStatsMapper {
 
-    private OfMeterStatsConverter() {
-        throw new UnsupportedOperationException();
-    }
+    public static final OfMeterStatsMapper INSTANCE = Mappers.getMapper(OfMeterStatsMapper.class);
 
     /**
      * Convert list of {@link OFMeterStatsReply} to {@link MeterStatsData}.
@@ -41,19 +41,18 @@ public final class OfMeterStatsConverter {
      * @param switchId id of the switch from which these replies were gotten.
      * @return result of transformation {@link MeterStatsData}.
      */
-    public static MeterStatsData toMeterStatsData(List<OFMeterStatsReply> data, SwitchId switchId) {
+    public MeterStatsData toMeterStatsData(List<OFMeterStatsReply> data, SwitchId switchId) {
         List<MeterStatsEntry> stats = data.stream()
                 .flatMap(reply -> reply.getEntries().stream()
-                        .map(entry -> toMeterStatsEntry(entry, switchId)))
+                        .map(this::toMeterStatsEntry))
                 .collect(toList());
         return new MeterStatsData(switchId, stats);
     }
 
-    private static MeterStatsEntry toMeterStatsEntry(OFMeterStats entry, SwitchId switchId) {
+    public MeterStatsEntry toMeterStatsEntry(OFMeterStats entry) {
         if (entry.getBandStats().size() > 1) {
-            logger.warn("Meter '{}' on switch '{}' has more than one meter band. "
-                      + "Only first band will be handled. Several bands are not supported.",
-                    entry.getMeterId(), switchId);
+            log.warn("Meter '{}' has more than one meter band. Only first band will be handled. "
+                   + "Several bands are not supported.", entry.getMeterId());
         }
 
         long byteBandCount = 0;

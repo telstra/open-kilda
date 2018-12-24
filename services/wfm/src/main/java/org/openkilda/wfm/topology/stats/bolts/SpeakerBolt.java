@@ -72,7 +72,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 logger.debug("Meter stats message: {}", new Values(request));
                 outputCollector.emit(CACHE_STREAM, tuple, new Values(message));
             } else if (data instanceof FlowStatsData) {
-                logger.debug("Flow stats message: {}", new Values(request));
+                logger.debug("Flow stats message: {}", request);
                 outputCollector.emit(CACHE_STREAM, tuple, new Values(message));
             }
         } catch (IOException exception) {

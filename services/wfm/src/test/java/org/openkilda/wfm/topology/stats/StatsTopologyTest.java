@@ -87,7 +87,6 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     private final SwitchId switchId = new SwitchId(1L);
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private final long cookie = 0x4000000000000001L;
-    private final String flowId = "f253423454343";
 
     private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
 
@@ -259,6 +258,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     public void flowStatsTest() throws Exception {
         //mock kafka spout
         MockedSources sources = new MockedSources();
+        String flowId = "f253423454343";
 
         createFlow(switchId, flowId);
 
