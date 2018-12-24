@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.converter.IofSwitchConverter;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
@@ -25,10 +26,9 @@ import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
@@ -48,6 +48,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -64,6 +65,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     private FeatureDetectorService featureDetector;
 
     private String discoveryTopic;
+    private String region;
 
     /**
      * Send dump contain all connected at this moment switches.
@@ -150,8 +152,9 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         producerService = context.getServiceImpl(IKafkaProducerService.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
         featureDetector = context.getServiceImpl(FeatureDetectorService.class);
-
-        discoveryTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
+        KafkaChannel kafkaChannel = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
+        discoveryTopic = kafkaChannel.getTopoDiscoTopic();
+        region = kafkaChannel.getRegion();
 
         context.getServiceImpl(IOFSwitchService.class).addOFSwitchListener(this);
     }
@@ -159,19 +162,16 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     private void dumpAllSwitchesAction(String correlationId) {
         producerService.enableGuaranteedOrder(discoveryTopic);
         try {
-            producerService.sendMessageAndTrack(
-                    discoveryTopic,
-                    new InfoMessage(new NetworkDumpBeginMarker(), System.currentTimeMillis(), correlationId));
-
-            for (IOFSwitch sw : switchManager.getAllSwitchMap().values()) {
+            Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap().values();
+            int switchCounter = 0;
+            for (IOFSwitch sw : iofSwitches) {
                 NetworkDumpSwitchData swData = new NetworkDumpSwitchData(buildSwitch(sw));
                 producerService.sendMessageAndTrack(discoveryTopic,
-                                                    new InfoMessage(swData, System.currentTimeMillis(), correlationId));
+                                                    new ChunkedInfoMessage(swData, System.currentTimeMillis(),
+                                                            correlationId, switchCounter, iofSwitches.size(), region));
+                switchCounter++;
             }
 
-            producerService.sendMessageAndTrack(
-                    discoveryTopic,
-                    new InfoMessage(new NetworkDumpEndMarker(), System.currentTimeMillis(), correlationId));
         } finally {
             producerService.disableGuaranteedOrder(discoveryTopic);
         }
@@ -222,7 +222,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
-    private static org.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {
+    private org.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {
         switch (type) {
             case ADD:
                 return org.openkilda.messaging.info.event.PortChangeType.ADD;
@@ -244,7 +244,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param eventType type of event
      * @return Message
      */
-    private static Message buildSwitchMessage(IOFSwitch sw, Switch switchRecord, SwitchChangeType eventType) {
+    private Message buildSwitchMessage(IOFSwitch sw, Switch switchRecord, SwitchChangeType eventType) {
         return buildMessage(IofSwitchConverter.buildSwitchInfoData(sw, switchRecord, eventType));
     }
 
@@ -255,7 +255,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param eventType type of event
      * @return Message
      */
-    private static Message buildSwitchMessage(DatapathId dpId, SwitchChangeType eventType) {
+    private Message buildSwitchMessage(DatapathId dpId, SwitchChangeType eventType) {
         return buildMessage(new SwitchInfoData(new SwitchId(dpId.getLong()), eventType));
     }
 
@@ -267,7 +267,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param type type of port event
      * @return Message
      */
-    private static Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
+    private Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
         InfoData data = new PortInfoData(new SwitchId(switchId.getLong()), port.getPortNumber(),
                 null, toJsonType(type));
         return buildMessage(data);
@@ -279,8 +279,8 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param data data to use in the message body
      * @return Message
      */
-    private static Message buildMessage(final InfoData data) {
-        return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null);
+    private Message buildMessage(final InfoData data) {
+        return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
     }
 
     private Switch buildSwitch(IOFSwitch sw) {
