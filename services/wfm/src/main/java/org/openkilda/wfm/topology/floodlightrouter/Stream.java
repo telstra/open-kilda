@@ -13,23 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.service.kafka;
+package org.openkilda.wfm.topology.floodlightrouter;
 
-import org.openkilda.floodlight.service.IService;
-import org.openkilda.messaging.Message;
+public final class Stream {
 
-public interface IKafkaProducerService extends IService {
-    void enableGuaranteedOrder(String topic);
+    public static final String TOPO_DISCO = "TOPO_DISCO";
+    public static final String SPEAKER = "SPEAKER";
+    public static final String SPEAKER_FLOW = "SPEAKER_FLOW";
+    public static final String KILDA_FLOW = "KILDA_FLOW";
+    public static final String SPEAKER_PING = "SPEAKER_PING";
+    public static final String KILDA_PING = "KILDA_PINGs";
+    public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
+    public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
 
-    void disableGuaranteedOrder(String topic);
-
-    void disableGuaranteedOrder(String topic, long transitionPeriod);
-
-    void sendMessageAndTrack(String topic, Message message);
-
-    void sendMessageAndTrack(String topic, String key, Message message);
-
-    SendStatus sendMessage(String topic, Message message);
-
-    int getFailedSendMessageCounter();
+    private Stream() {}
 }

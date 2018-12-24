@@ -94,7 +94,7 @@ abstract class BfdCommand extends Command {
     protected void sendResponse() {
         CommandContext context = getContext();
         InfoMessage response = context.makeInfoMessage(assembleResponse());
-        kafkaProducer.sendMessageAndTrack(kafkaUtility.getTopics().getTopoDiscoTopic(), response);
+        kafkaProducer.sendMessageAndTrack(kafkaUtility.getKafkaChannel().getTopoDiscoTopic(), response);
     }
 
     protected void handleError(Throwable error) {

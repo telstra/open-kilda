@@ -66,7 +66,6 @@ org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = {
 org.openkilda.floodlight.KafkaChannel.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
 org.openkilda.floodlight.KafkaChannel.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
 #org.openkilda.floodlight.KafkaChannel.heart-beat-interval=1
-org.openkilda.floodlight.KafkaChannel.floodlight-region=
 {{ if eq (getv "/kilda_environment_role") "devel" "test" }}
 org.openkilda.floodlight.KafkaChannel.testing-mode=YES
 {{ end }}
@@ -85,3 +84,4 @@ org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-burst-coefficien
 org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-min-burst-size-in-kbits=1024
 org.openkilda.floodlight.switchmanager.SwitchManager.system-meter-burst-size-in-packets=4096
 org.openkilda.floodlight.switchmanager.SwitchManager.ovs-meters-enabled=false
+org.openkilda.floodlight.KafkaChannel.floodlight-region=

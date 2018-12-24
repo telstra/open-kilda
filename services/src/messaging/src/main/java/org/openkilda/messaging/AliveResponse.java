@@ -29,9 +29,14 @@ public class AliveResponse extends InfoData {
     @JsonProperty(value = "region", required = true)
     private String region;
 
+    @JsonProperty(value = "failed_messages", required = true)
+    private int failedMessages;
+
     @JsonCreator
     public AliveResponse(
-            @JsonProperty("region") String region) {
+            @JsonProperty("region") String region,
+            @JsonProperty(value = "failed_messages") int failedMessages) {
         this.region = region;
+        this.failedMessages = failedMessages;
     }
 }
