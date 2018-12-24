@@ -1,0 +1,42 @@
+@startuml
+title PCE strategies
+
+participant "PCE Client" as Client
+participant PathComputerFactory
+participant PathComputer
+participant AvailableNetworkFactory
+participant AvailableNetwork
+database Neo4J
+
+activate Client
+
+Client -> PathComputerFactory: getPathComputer
+note right of Client: weight strategy is optional
+
+activate PathComputerFactory
+create PathComputer
+PathComputerFactory -> PathComputer: create with weight strategy
+PathComputer --> PathComputerFactory
+PathComputerFactory --> Client
+deactivate PathComputerFactory
+
+activate PathComputer
+Client -> PathComputer: getPath
+note right of Client: AvailableNetwork strategy is optional
+
+PathComputer -> AvailableNetworkFactory: getAvailableNetwork with build strategy
+activate AvailableNetworkFactory
+AvailableNetworkFactory -> Neo4J: get active links
+Neo4J --> AvailableNetworkFactory
+create AvailableNetwork
+AvailableNetworkFactory -> AvailableNetwork: create from retrieved links
+AvailableNetwork --> AvailableNetworkFactory
+AvailableNetworkFactory --> PathComputer: AvailableNetwork
+deactivate AvailableNetworkFactory
+
+PathComputer -> PathComputer: pathFinder.findPathInNetwork
+PathComputer --> Client: computed pathPair
+deactivate PathComputer
+
+deactivate Client
+@enduml
