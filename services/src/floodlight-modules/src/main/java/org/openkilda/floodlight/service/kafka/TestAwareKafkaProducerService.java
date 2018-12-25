@@ -51,10 +51,10 @@ public class TestAwareKafkaProducerService extends KafkaProducerService {
         private final RecordMetadata metadata;
 
         public FakeProducerFuture(ProducerRecord<String, String> record) {
+            TopicPartition partition = new TopicPartition(record.topic(), 0);
+            int keySize = record.key() != null ? record.key().length() : 0;
             this.metadata = new RecordMetadata(
-                    new TopicPartition(record.topic(), 0), 0, 1, -1, 0,
-                    record.key() != null ? record.key().length() : 0,
-                    record.value().length());
+                    partition, 0, 1, -1, 0, keySize, record.value().length());
         }
 
         @Override
