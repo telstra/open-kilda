@@ -43,11 +43,6 @@ public interface ISwitchManager extends IFloodlightService {
     long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
     long DROP_VERIFICATION_LOOP_RULE_COOKIE = 0x8000000000000004L;
 
-    /** Mask is being used to get meter id for corresponding system rule.
-     * E.g. for 0x8000000000000002L & PACKET_IN_RULES_METERS_MASK we will get meter id 2.
-     */
-    long PACKET_IN_RULES_METERS_MASK = 0x00000000000000FL;
-
     void activate(DatapathId dpid) throws SwitchOperationException;
 
     void deactivate(DatapathId dpid);
