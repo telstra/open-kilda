@@ -21,6 +21,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
+import static org.openkilda.model.Cookie.isDefaultRule;
+import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
@@ -130,7 +132,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Cookie IDs when creating a flow.
      */
     public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
-    private static final long DEFAULT_RULES_MASK = 0x8000000000000000L;
 
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
@@ -658,8 +659,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE);
 
         try {
-            deleteMeter(dpid, VERIFICATION_BROADCAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK);
-            deleteMeter(dpid, VERIFICATION_UNICAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK);
+            deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue());
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Skip meters deletion from switch {} due to lack of meters support", dpid);
         }
@@ -692,7 +693,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
 
         long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
-        long meterId = cookie & PACKET_IN_RULES_METERS_MASK;
+        long meterId = createMeterIdForDefaultRule(cookie).getValue();
         long meterRate = isBroadcast ? config.getBroadcastRateLimit() : config.getUnicastRateLimit();
         OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
 
@@ -1594,10 +1595,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                             portNumber, sw.getId()));
         }
         return portDesc.getHwAddr();
-    }
-
-    private boolean isDefaultRule(long cookie) {
-        return (cookie & DEFAULT_RULES_MASK) != 0L;
     }
 
     private OFMeterConfig getMeter(DatapathId dpid, long meter) throws SwitchOperationException {

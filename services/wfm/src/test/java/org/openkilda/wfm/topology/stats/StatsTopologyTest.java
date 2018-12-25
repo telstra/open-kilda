@@ -200,7 +200,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         runMeterStatsTest(defaultRuleMeterId, switchId, datapoint -> {
             assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
-            assertThat(datapoint.getTags().get("cookie"), is("8000000000000002"));
+            assertThat(datapoint.getTags().get("cookieHex"), is("0x8000000000000002"));
             assertThat(datapoint.getTime(), is(timestamp));
             assertThat(datapoint.getMetric(), startsWith("pen.switch.flow.system.meter"));
         });

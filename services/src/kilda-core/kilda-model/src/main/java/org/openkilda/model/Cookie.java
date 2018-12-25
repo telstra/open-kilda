@@ -42,4 +42,8 @@ public class Cookie {
     public static String toString(long cookie) {
         return String.format("0x%016X", cookie);
     }
+
+    public static Cookie createCookieForDefaultRule(long meterId) {
+        return new Cookie(meterId | DEFAULT_RULES_MASK);
+    }
 }
