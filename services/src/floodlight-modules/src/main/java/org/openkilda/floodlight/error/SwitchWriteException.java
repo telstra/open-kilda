@@ -22,9 +22,13 @@ public class SwitchWriteException extends SwitchOperationException {
     private final transient OFMessage ofMessage;
 
     public SwitchWriteException(DatapathId dpId, OFMessage message) {
+        this(dpId, message, null);
+    }
+
+    public SwitchWriteException(DatapathId dpId, OFMessage message, Throwable cause) {
         super(dpId, String.format(
                 "Unable't to write message %s.%s:%s into %s",
-                message.getType(), message.getVersion(), message.getXid(), dpId));
+                message.getType(), message.getVersion(), message.getXid(), dpId), cause);
         this.ofMessage = message;
     }
 

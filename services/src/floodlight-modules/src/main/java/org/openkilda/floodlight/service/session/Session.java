@@ -38,6 +38,18 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+/**
+ * Trace status of OpenFlow message sent to the switch.
+ *
+ * <p>Create a CompletableFuture object for each sent OpenFlow message. When "closed" send BarrierRequest and collect
+ * all responses received from switch till response for BarrierRequest used to close session. At this point we have
+ * receive all possible responses on previous commands. So if there was a response on some of command from this
+ * session(in most cases it is error response) it will be catched byt session and returned to the caller via
+ * CompletableFuture. If there is no response - all pending CompletableFuture objects will be closed to indicate
+ * successful write operation.
+ *
+ * <p>In other words you will not get successful confirmation for sent messaged until you close the session.
+ */
 public class Session implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(Session.class);
 
@@ -62,7 +74,16 @@ public class Session implements AutoCloseable {
         ensureOpen();
 
         CompletableFuture<Optional<OFMessage>> future = prepareRequest(message);
-        actualWrite(future, message);
+        try {
+            actualWrite(message);
+        } catch (SwitchWriteException e) {
+            future.completeExceptionally(e);
+            throw e;
+        } catch (Exception e) {
+            SwitchWriteException writeError = new SwitchWriteException(sw.getId(), message, e);
+            future.completeExceptionally(writeError);
+            throw e;
+        }
 
         return future;
     }
@@ -87,8 +108,9 @@ public class Session implements AutoCloseable {
         OFBarrierRequest barrier = sw.getOFFactory().barrierRequest();
         closingBarrier = prepareRequest(barrier);
         try {
-            actualWrite(closingBarrier, barrier);
+            actualWrite(barrier);
         } catch (SwitchWriteException e) {
+            closingBarrier.completeExceptionally(e);
             SessionCloseException closeError = new SessionCloseException(sw.getId());
             incompleteRequestsStream()
                     .forEach(entry -> entry.completeExceptionally(closeError));
@@ -108,6 +130,12 @@ public class Session implements AutoCloseable {
                 .forEach(entry -> entry.completeExceptionally(e));
     }
 
+    /**
+     * Handle switch response.
+     *
+     * <p>Lookup sent request by message Xid and mark it as completed(errored) if found. Return "true" if the
+     * session is completed and can be wiped, return "false" if the session need more responses.
+     */
     boolean handleResponse(OFMessage message) {
         CompletableFuture<Optional<OFMessage>> future;
         future = requestsByXid.get(message.getXid());
@@ -150,15 +178,12 @@ public class Session implements AutoCloseable {
         return future;
     }
 
-    private void actualWrite(CompletableFuture<Optional<OFMessage>> future, OFMessage message)
+    private void actualWrite(OFMessage message)
             throws SwitchWriteException {
         log.debug("push OF message to {}: {}", sw.getId(), message);
         if (!sw.write(message)) {
             error = true;
-
-            SwitchWriteException e = new SwitchWriteException(sw.getId(), message);
-            future.completeExceptionally(e);
-            throw e;
+            throw new SwitchWriteException(sw.getId(), message);
         }
     }
 

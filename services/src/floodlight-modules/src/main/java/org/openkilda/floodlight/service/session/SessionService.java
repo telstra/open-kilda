@@ -100,6 +100,7 @@ public class SessionService implements IService, IInputTranslator {
 
         if (previous != null) {
             log.error("Switch {} already registered (connect/disconnect race condition?)", dpId);
+            previous.disconnect(); // To clean all possibly pending sessions.
         }
     }
 

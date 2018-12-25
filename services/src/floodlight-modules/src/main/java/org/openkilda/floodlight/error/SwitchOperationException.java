@@ -25,7 +25,11 @@ public class SwitchOperationException extends AbstractException {
     }
 
     public SwitchOperationException(DatapathId dpId, String message) {
-        super(message);
+        this(dpId, message, null);
+    }
+
+    public SwitchOperationException(DatapathId dpId, String message, Throwable cause) {
+        super(message, cause);
         this.dpId = dpId;
     }
 
