@@ -49,10 +49,15 @@ public abstract class OfMeterStatsMapper {
         return new MeterStatsData(switchId, stats);
     }
 
+    /**
+     * Convert {@link OFMeterStats} to {@link MeterStatsEntry}.
+     * @param entry meter stats entry to be converted.
+     * @return result of transformation {@link MeterStatsEntry}.
+     */
     public MeterStatsEntry toMeterStatsEntry(OFMeterStats entry) {
         if (entry.getBandStats().size() > 1) {
             log.warn("Meter '{}' has more than one meter band. Only first band will be handled. "
-                   + "Several bands are not supported.", entry.getMeterId());
+                    + "Several bands are not supported.", entry.getMeterId());
         }
 
         long byteBandCount = 0;
