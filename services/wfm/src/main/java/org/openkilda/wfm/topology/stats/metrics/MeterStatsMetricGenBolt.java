@@ -15,9 +15,8 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
-import static org.openkilda.model.Constants.DEFAULT_RULES_COOKIE_MASK;
-import static org.openkilda.model.Constants.MAX_DEFAULT_RULE_METER_ID;
-import static org.openkilda.model.Constants.MIN_DEFAULT_RULE_METER_ID;
+import static org.openkilda.model.Utils.createCookieForDefaultRule;
+import static org.openkilda.model.Utils.isMeterIdOfDefaultRule;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.METER_CACHE_FIELD;
 
@@ -68,7 +67,7 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
     private void emit(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId,
                       @Nullable CacheFlowEntry cacheEntry) {
         try {
-            if (isDefaultRule(meterStats.getMeterId())) {
+            if (isMeterIdOfDefaultRule(meterStats.getMeterId())) {
                 emitDefaultRuleMeterStats(meterStats, timestamp, switchId);
             } else {
                 emitFlowMeterStats(meterStats, timestamp, switchId, cacheEntry);
@@ -77,14 +76,14 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
             log.error("Error during serialization of datapoint", e);
         } catch (FlowCookieException e) {
             log.warn("Unknown flow direction for flow '{}' on switch '{}'. Message: {}",
-                    cacheEntry == null ? "unknown" : cacheEntry.getFlowId(), switchId, e.getMessage());
+                    cacheEntry.getFlowId(), switchId, e.getMessage());
         }
     }
 
     private void emitDefaultRuleMeterStats(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId)
             throws JsonEncodeException {
         Map<String, String> tags = createCommonTags(switchId, meterStats.getMeterId());
-        tags.put("cookieHex", String.format("%X", meterStats.getMeterId() | DEFAULT_RULES_COOKIE_MASK));
+        tags.put("cookieHex", String.format("0x%016X", createCookieForDefaultRule(meterStats.getMeterId())));
 
         collector.emit(tuple("pen.switch.flow.system.meter.packets", timestamp, meterStats.getPacketsInCount(), tags));
         collector.emit(tuple("pen.switch.flow.system.meter.bytes", timestamp, meterStats.getByteInCount(), tags));
@@ -117,9 +116,5 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
         tags.put("switchid", switchId.toOtsdFormat());
         tags.put("meterid", String.valueOf(meterId));
         return tags;
-    }
-
-    private boolean isDefaultRule(long meterId) {
-        return MIN_DEFAULT_RULE_METER_ID <= meterId && meterId <= MAX_DEFAULT_RULE_METER_ID;
     }
 }

@@ -34,7 +34,7 @@ public class MeterStatsEntry implements Serializable {
     private long packetsInCount;
 
     @JsonCreator
-    public MeterStatsEntry(@JsonProperty("meter_d") long meterId,
+    public MeterStatsEntry(@JsonProperty("meter_id") long meterId,
                            @JsonProperty("byte_in_count") long byteInCount,
                            @JsonProperty("packets_in_count") long packetsInCount) {
         this.byteInCount = byteInCount;

@@ -16,6 +16,10 @@
 package org.openkilda.model;
 
 public final class Constants {
+    /** Mask is being used to get meter id for corresponding system rule.
+     * E.g. for 0x8000000000000002L & METER_ID_DEFAULT_RULE_MASK we will get meter id 2.
+     */
+    public static final long METER_ID_DEFAULT_RULE_MASK = 0x000000000000000FL;
     public static final long DEFAULT_RULES_COOKIE_MASK = 0x8000000000000000L;
     public static final long MIN_DEFAULT_RULE_METER_ID = 1;
     public static final long MAX_DEFAULT_RULE_METER_ID = 10;
