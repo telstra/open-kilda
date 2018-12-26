@@ -42,8 +42,12 @@ import java.util.Optional;
  * Neo4J OGM implementation of {@link IslRepository}.
  */
 public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements IslRepository {
-    private static final String SRC_PORT_PROPERTY_NAME = "src_port";
-    private static final String DST_PORT_PROPERTY_NAME = "dst_port";
+    private static final String SRC_PORT_PROPERTY = "src_port";
+    private static final String DST_PORT_PROPERTY = "dst_port";
+
+    private static final String REQUESTED_BANDWIDTH_PROPERTY = "requested_bandwidth";
+    private static final String SWITCH_STATUS_PROPERTY = "switch_status";
+    private static final String ISL_STATUS_PROPERTY = "isl_status";
 
     private final SwitchStatusConverter switchStatusConverter = new SwitchStatusConverter();
     private final IslStatusConverter islStatusConverter = new IslStatusConverter();
@@ -57,7 +61,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS,
                 srcSwitchId.toString());
         srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment("srcSwitch", Switch.class));
-        Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);
+        Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY, ComparisonOperator.EQUALS, srcPort);
 
         return getSession().loadAll(getEntityType(), srcSwitchFilter.and(srcPortFilter), DEPTH_LOAD_ENTITY);
     }
@@ -67,7 +71,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS,
                 dstSwitchId.toString());
         dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment("destSwitch", Switch.class));
-        Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
+        Filter dstPortFilter = new Filter(DST_PORT_PROPERTY, ComparisonOperator.EQUALS, dstPort);
 
         return getSession().loadAll(getEntityType(), dstSwitchFilter.and(dstPortFilter), DEPTH_LOAD_ENTITY);
     }
@@ -77,11 +81,11 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS,
                 srcSwitchId.toString());
         srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment("srcSwitch", Switch.class));
-        Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);
+        Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY, ComparisonOperator.EQUALS, srcPort);
         Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS,
                 dstSwitchId.toString());
         dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment("destSwitch", Switch.class));
-        Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
+        Filter dstPortFilter = new Filter(DST_PORT_PROPERTY, ComparisonOperator.EQUALS, dstPort);
 
         Collection<Isl> isls = getSession().loadAll(getEntityType(),
                 srcSwitchFilter.and(srcPortFilter).and(dstSwitchFilter).and(dstPortFilter), DEPTH_LOAD_ENTITY);
@@ -96,9 +100,9 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     public Collection<Isl> findActiveAndOccupiedByFlowWithAvailableBandwidth(String flowId, long requiredBandwidth) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "flow_id", flowId,
-                "requested_bandwidth", requiredBandwidth,
-                "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
-                "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+                REQUESTED_BANDWIDTH_PROPERTY, requiredBandwidth,
+                SWITCH_STATUS_PROPERTY, switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                ISL_STATUS_PROPERTY, islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
         String query = "MATCH (src:switch)-[fs:flow_segment{flowid: $flow_id}]->(dst:switch) "
                 + "MATCH (src)-[link:isl]->(dst) "
@@ -119,14 +123,31 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     @Override
     public Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "requested_bandwidth", requiredBandwidth,
-                "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
-                "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+                REQUESTED_BANDWIDTH_PROPERTY, requiredBandwidth,
+                SWITCH_STATUS_PROPERTY, switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                ISL_STATUS_PROPERTY, islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
         String query = "MATCH (src:switch)-[link:isl]->(dst:switch) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + " AND link.available_bandwidth >= $requested_bandwidth "
                 + "RETURN src, link, dst";
+
+        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+    }
+
+    @Override
+    public Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                REQUESTED_BANDWIDTH_PROPERTY, requiredBandwidth,
+                SWITCH_STATUS_PROPERTY, switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                ISL_STATUS_PROPERTY, islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+
+        String query = "MATCH (source:switch)-[link:isl]->(dest:switch) "
+                + "MATCH (dest)-[reverse:isl{src_port: link.dst_port, dst_port: link.src_port}]->(source) "
+                + "WHERE source.state = $switch_status AND dest.state = $switch_status AND link.status = $isl_status "
+                + " AND link.available_bandwidth >= $requested_bandwidth "
+                + " AND reverse.available_bandwidth >= $requested_bandwidth "
+                + "RETURN source, link, dest";
 
         return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
     }

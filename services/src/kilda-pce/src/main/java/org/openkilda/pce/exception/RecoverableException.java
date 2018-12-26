@@ -13,13 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.impl;
+package org.openkilda.pce.exception;
 
 /**
- * Indicates that a switch can't be found by PathFinder.
+ * Indicates an exception that may be overcome using the retry approach.
  */
-public class SwitchNotFoundException extends Exception {
-    public SwitchNotFoundException(String message) {
+public class RecoverableException extends Exception {
+    public RecoverableException(String message) {
         super(message);
+    }
+
+    public RecoverableException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

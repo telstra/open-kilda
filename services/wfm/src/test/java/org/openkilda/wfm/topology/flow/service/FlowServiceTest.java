@@ -33,8 +33,8 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.PathPair;
-import org.openkilda.pce.RecoverableException;
-import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.exception.RecoverableException;
+import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
@@ -139,7 +139,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
         PathComputer pathComputer = mock(PathComputer.class);
         PathComputerFactory pathComputerFactory = mock(PathComputerFactory.class);
         FlowValidator flowValidator = new FlowValidator(persistenceManager.getRepositoryFactory());
-        when(pathComputerFactory.getPathComputer(any())).thenReturn(pathComputer);
+        when(pathComputerFactory.getPathComputer()).thenReturn(pathComputer);
 
         FlowService flowService = new FlowService(persistenceManager,
                 pathComputerFactory, new FlowResourcesManager(new ResourceCache()), flowValidator);

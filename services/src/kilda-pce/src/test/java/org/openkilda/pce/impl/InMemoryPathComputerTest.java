@@ -30,8 +30,9 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
-import org.openkilda.pce.RecoverableException;
-import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.exception.RecoverableException;
+import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.finder.BestCostAndShortestPathFinder;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -54,7 +55,9 @@ import org.neo4j.ogm.testutil.TestServer;
 
 import java.util.List;
 
-public class InMemoryPathComputerTest extends BasePathComputerTest {
+public class InMemoryPathComputerTest {
+    private static final int ALLOWED_DEPTH = 35;
+    private static final int DEFAULT_COST = 700;
 
     static TestServer testServer;
     static TransactionManager txManager;
