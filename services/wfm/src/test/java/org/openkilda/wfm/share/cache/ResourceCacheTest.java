@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.messaging.error.MeterPoolIsFullException;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -156,7 +157,7 @@ public class ResourceCacheTest {
         }
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = MeterPoolIsFullException.class)
     public void meterIdPoolFullTest() {
         resourceCache.allocateMeterId(SWITCH_ID);
         int i = ResourceCache.MIN_METER_ID;
