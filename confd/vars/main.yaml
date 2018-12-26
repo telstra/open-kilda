@@ -86,8 +86,8 @@ kilda_opentsdb_workers: 1
 
 kilda_production_fileserver: "http://127.0.0.1"
 
-kilda_reroute_throttling_delay_min: 10
-kilda_reroute_throttling_delay_max: 30
+kilda_reroute_throttling_delay_min: 3
+kilda_reroute_throttling_delay_max: 15
 
 kilda_isl_cost_when_port_down: 10000
 

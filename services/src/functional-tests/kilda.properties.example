@@ -25,8 +25,8 @@ spring.profiles.active=virtual
 # for now in case of hardware profile it must be set to True if topology already exists
 mode.topology.single=true
 
-reroute.delay=10
-reroute.hardtimeout=30
+reroute.delay=3
+reroute.hardtimeout=15
 discovery.interval=3
 discovery.timeout = 15
 antiflap.min=1
