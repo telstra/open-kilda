@@ -45,6 +45,10 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     private static final String SRC_PORT_PROPERTY_NAME = "src_port";
     private static final String DST_PORT_PROPERTY_NAME = "dst_port";
 
+    private static final String REQUESTED_BW_PROPERTY_NAME = "requested_bandwidth";
+    private static final String SWITCH_STATUS_PROPERTY_NAME = "switch_status";
+    private static final String ISL_STATUS_PROPERTY_NAME = "isl_status";
+
     private final SwitchStatusConverter switchStatusConverter = new SwitchStatusConverter();
     private final IslStatusConverter islStatusConverter = new IslStatusConverter();
 
@@ -96,9 +100,9 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     public Collection<Isl> findActiveAndOccupiedByFlowWithAvailableBandwidth(String flowId, long requiredBandwidth) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "flow_id", flowId,
-                "requested_bandwidth", requiredBandwidth,
-                "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
-                "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+                REQUESTED_BW_PROPERTY_NAME, requiredBandwidth,
+                SWITCH_STATUS_PROPERTY_NAME, switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                ISL_STATUS_PROPERTY_NAME, islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
         String query = "MATCH (src:switch)-[fs:flow_segment{flowid: $flow_id}]->(dst:switch) "
                 + "MATCH (src)-[link:isl]->(dst) "
@@ -119,14 +123,31 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     @Override
     public Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "requested_bandwidth", requiredBandwidth,
-                "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
-                "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+                REQUESTED_BW_PROPERTY_NAME, requiredBandwidth,
+                SWITCH_STATUS_PROPERTY_NAME, switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                ISL_STATUS_PROPERTY_NAME, islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
         String query = "MATCH (src:switch)-[link:isl]->(dst:switch) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + " AND link.available_bandwidth >= $requested_bandwidth "
                 + "RETURN src, link, dst";
+
+        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+    }
+
+    @Override
+    public Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                REQUESTED_BW_PROPERTY_NAME, requiredBandwidth,
+                SWITCH_STATUS_PROPERTY_NAME, switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                ISL_STATUS_PROPERTY_NAME, islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+
+        String query = "MATCH (source:switch)-[link:isl]->(dest:switch) "
+                + "MATCH (dest)-[reverse:isl{src_port: link.dst_port, dst_port: link.src_port}]->(source) "
+                + "WHERE source.state = $switch_status AND dest.state = $switch_status AND link.status = $isl_status "
+                + " AND link.available_bandwidth >= $requested_bandwidth "
+                + " AND reverse.available_bandwidth >= $requested_bandwidth "
+                + "RETURN source, link, dest";
 
         return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
     }

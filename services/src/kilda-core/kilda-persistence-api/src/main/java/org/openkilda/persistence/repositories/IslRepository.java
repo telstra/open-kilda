@@ -51,4 +51,11 @@ public interface IslRepository extends Repository<Isl> {
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
      */
     Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth);
+
+    /**
+     * Finds all active ISLs, ignores ISLs if they have not enough bandwidth in any direction.
+     * @param requiredBandwidth required available bandwidth amount.
+     * @return list of ISLs.
+     */
+    Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth);
 }
