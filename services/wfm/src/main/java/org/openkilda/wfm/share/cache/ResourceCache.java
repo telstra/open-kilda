@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.share.cache;
 
+import org.openkilda.messaging.payload.MeterPool;
 import org.openkilda.messaging.payload.ResourcePool;
 import org.openkilda.model.SwitchId;
 
@@ -76,7 +77,7 @@ public class ResourceCache {
     /**
      * Meter pool by switch.
      */
-    private final Map<SwitchId, ResourcePool> meterPool = new ConcurrentHashMap<>();
+    private final Map<SwitchId, MeterPool> meterPool = new ConcurrentHashMap<>();
 
     /**
      * Cookie pool.
@@ -172,7 +173,7 @@ public class ResourceCache {
      * @return allocated meter id value
      */
     public synchronized Integer allocateMeterId(SwitchId switchId) {
-        return meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID)).allocate();
+        return meterPool.computeIfAbsent(switchId, k -> new MeterPool(MIN_METER_ID, MAX_METER_ID)).allocate();
     }
 
     /**
@@ -184,7 +185,7 @@ public class ResourceCache {
      */
     public synchronized Integer allocateMeterId(SwitchId switchId, Integer meterId) {
         if (meterId != null && meterId != 0) {
-            meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID))
+            meterPool.computeIfAbsent(switchId, k -> new MeterPool(MIN_METER_ID, MAX_METER_ID))
                     .allocate(meterId);
             return meterId;
         }
@@ -199,7 +200,7 @@ public class ResourceCache {
      * @return deallocated meter id value or null if value was not allocated earlier
      */
     public synchronized Integer deallocateMeterId(SwitchId switchId, Integer meterId) {
-        ResourcePool switchMeterPool = meterPool.get(switchId);
+        MeterPool switchMeterPool = meterPool.get(switchId);
         return switchMeterPool != null ? switchMeterPool.deallocate(meterId) : null;
     }
 
@@ -210,7 +211,7 @@ public class ResourceCache {
      * @return deallocated meter id values
      */
     public synchronized Set<Integer> deallocateMeterId(SwitchId switchId) {
-        ResourcePool switchMeterPool = meterPool.remove(switchId);
+        MeterPool switchMeterPool = meterPool.remove(switchId);
         return switchMeterPool != null ? switchMeterPool.dumpPool() : null;
     }
 
