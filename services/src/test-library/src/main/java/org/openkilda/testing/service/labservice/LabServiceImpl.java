@@ -70,18 +70,11 @@ public class LabServiceImpl implements LabService, DisposableBean {
     }
 
     @Override
-    public List<Long> flushLabs() {
+    public synchronized List<Long> flushLabs() {
+        log.info("Flushing all labs");
         return restTemplate.exchange("/api/flush", HttpMethod.POST,
                 new HttpEntity(buildJsonHeaders()), new ParameterizedTypeReference<List<Long>>() {
                 }).getBody();
-    }
-
-    private LabInstance getSingleExistingLab(List<Long> labsId) {
-        if (labsId.size() > 1) {
-            throw new IllegalArgumentException("There are several alive lab topologies");
-        }
-        // should check that topology definition not changed
-        return new LabInstance(labsId.get(0));
     }
 
     @Override
@@ -90,6 +83,14 @@ public class LabServiceImpl implements LabService, DisposableBean {
             deleteLab(labInstance);
             labInstance = null;
         }
+    }
+
+    private LabInstance getSingleExistingLab(List<Long> labsId) {
+        if (labsId.size() > 1) {
+            throw new IllegalArgumentException("There are several alive lab topologies");
+        }
+        // should check that topology definition not changed
+        return new LabInstance(labsId.get(0));
     }
 
     private LabInstance createLab() {

@@ -56,6 +56,7 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
         }
         northbound.toggleFeature(features)
 
+        labService.flushLabs()
         labService.getLab()
 
         //wait until topology is discovered
