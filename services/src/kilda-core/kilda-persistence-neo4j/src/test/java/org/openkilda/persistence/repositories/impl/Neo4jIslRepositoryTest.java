@@ -339,4 +339,54 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         assertEquals(switchB.getSwitchId(), foundIsl.getDestSwitch().getSwitchId());
     }
+
+    @Test
+    public void shouldReturnSymmetricIslsWithRequiredBandwidth() {
+        long availableBandwidth = 100L;
+
+        Isl forwardIsl = new Isl();
+        forwardIsl.setSrcSwitch(switchA);
+        forwardIsl.setSrcPort(1);
+        forwardIsl.setDestSwitch(switchB);
+        forwardIsl.setDestPort(2);
+        forwardIsl.setStatus(IslStatus.ACTIVE);
+        forwardIsl.setAvailableBandwidth(availableBandwidth);
+        islRepository.createOrUpdate(forwardIsl);
+
+        Isl reverseIsl = new Isl();
+        reverseIsl.setDestSwitch(switchA);
+        reverseIsl.setDestPort(1);
+        reverseIsl.setSrcSwitch(switchB);
+        reverseIsl.setSrcPort(2);
+        reverseIsl.setStatus(IslStatus.ACTIVE);
+        reverseIsl.setAvailableBandwidth(availableBandwidth);
+        islRepository.createOrUpdate(reverseIsl);
+
+        assertEquals(2, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth).size());
+    }
+
+    @Test
+    public void shouldNotReturnIslIfOneDirectionDoesntHaveEnoughBandwidth() {
+        long availableBandwidth = 100L;
+
+        Isl forwardIsl = new Isl();
+        forwardIsl.setSrcSwitch(switchA);
+        forwardIsl.setSrcPort(1);
+        forwardIsl.setDestSwitch(switchB);
+        forwardIsl.setDestPort(2);
+        forwardIsl.setStatus(IslStatus.ACTIVE);
+        forwardIsl.setAvailableBandwidth(availableBandwidth);
+        islRepository.createOrUpdate(forwardIsl);
+
+        Isl reverseIsl = new Isl();
+        reverseIsl.setDestSwitch(switchA);
+        reverseIsl.setDestPort(1);
+        reverseIsl.setSrcSwitch(switchB);
+        reverseIsl.setSrcPort(2);
+        reverseIsl.setStatus(IslStatus.ACTIVE);
+        reverseIsl.setAvailableBandwidth(availableBandwidth - 1);
+        islRepository.createOrUpdate(reverseIsl);
+
+        assertEquals(0, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth).size());
+    }
 }

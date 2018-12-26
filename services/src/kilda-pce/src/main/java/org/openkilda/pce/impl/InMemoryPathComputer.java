@@ -22,8 +22,10 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
-import org.openkilda.pce.RecoverableException;
-import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.exception.RecoverableException;
+import org.openkilda.pce.exception.SwitchNotFoundException;
+import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.finder.PathFinder;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 
@@ -42,7 +44,7 @@ import java.util.List;
  */
 @Slf4j
 public class InMemoryPathComputer implements PathComputer {
-    private final IslRepository islRepository;
+    protected final IslRepository islRepository;
     private final PathFinder pathFinder;
 
     public InMemoryPathComputer(IslRepository islRepository, PathFinder pathFinder) {
@@ -80,12 +82,16 @@ public class InMemoryPathComputer implements PathComputer {
         return convertToPathPair(biPath);
     }
 
+    protected Collection<Isl> getAvailableIsls(Flow flow) {
+        return flow.isIgnoreBandwidth()
+                ? islRepository.findAllActive() : islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth());
+    }
+
     private AvailableNetwork buildNetwork(Flow flow, boolean reuseAllocatedFlowBandwidth) throws RecoverableException {
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.
-            Collection<Isl> links = flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
-                    islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth());
+            Collection<Isl> links = getAvailableIsls(flow);
             links.forEach(network::addLink);
 
             if (reuseAllocatedFlowBandwidth && !flow.isIgnoreBandwidth()) {
@@ -97,7 +103,7 @@ public class InMemoryPathComputer implements PathComputer {
         } catch (PersistenceException e) {
             throw new RecoverableException("An error from neo4j", e);
         }
-        network.removeSelfLoops().reduceByCost();
+        network.reduceByCost();
 
         return network;
     }

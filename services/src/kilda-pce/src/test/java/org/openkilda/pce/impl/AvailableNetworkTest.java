@@ -27,23 +27,9 @@ import org.junit.Test;
 
 import java.util.List;
 
-public class AvailableNetworkTest extends BasePathComputerTest {
+public class AvailableNetworkTest {
     private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:5a:04:87");
     private static final SwitchId DST_SWITCH = new SwitchId("00:00:b0:d2:f5:00:5a:b8");
-
-    @Test
-    public void shouldRemoveSelfLoops() {
-        AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SRC_SWITCH, SRC_SWITCH,
-                7, 60, 10, 3);
-
-        network.removeSelfLoops();
-        assertThat(network.switches.values(), Matchers.hasSize(1));
-
-        Switch loopSwitch = network.switches.values().iterator().next();
-        assertThat(loopSwitch.getIncomingLinks(), Matchers.empty());
-        assertThat(loopSwitch.getOutgoingLinks(), Matchers.empty());
-    }
 
     @Test
     public void shouldNotAllowDuplicates() {
@@ -103,5 +89,21 @@ public class AvailableNetworkTest extends BasePathComputerTest {
         assertThat(incomingLinks, Matchers.hasSize(1));
         Isl incomingIsl = incomingLinks.get(0);
         assertEquals(srcSwitch, incomingIsl.getSrcSwitch());
+    }
+
+    private void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
+                        int cost, int latency) {
+        Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
+        Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
+
+        Isl isl = Isl.builder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .srcPort(srcPort)
+                .destPort(dstPort)
+                .cost(cost)
+                .latency(latency)
+                .build();
+        network.addLink(isl);
     }
 }
