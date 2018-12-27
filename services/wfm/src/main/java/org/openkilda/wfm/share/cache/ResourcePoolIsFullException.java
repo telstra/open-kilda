@@ -13,21 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.error;
+package org.openkilda.wfm.share.cache;
 
-public class MeterPoolIsFullException extends RuntimeException {
+public class ResourcePoolIsFullException extends RuntimeException {
     /**
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
 
     /**
-     * Constructs an <code>MeterPoolIsFullException</code> with the
+     * Constructs an <code>ResourcePoolIsFullException</code> with the
      * specified detail message.
      *
      * @param   s   the detail message.
      */
-    public MeterPoolIsFullException(String s) {
+    public ResourcePoolIsFullException(String s) {
         super(s);
     }
 }

@@ -13,11 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload;
+package org.openkilda.wfm.share.cache;
 
 import static org.junit.Assert.assertEquals;
-
-import org.openkilda.messaging.error.MeterPoolIsFullException;
 
 import org.junit.Test;
 
