@@ -13,27 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload;
+package org.openkilda.wfm.share.cache;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableSet;
 
+import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Class represents resource allocator/deallocator.
- *
- * TODO: (crimi - 2019.04.17) - why is this class in this package?
- *
- * (crimi - 2019.04.17) - Changing the underlying mechanism here to leverage "max" as the starting
- * point for where to look next.  If the counter is at max, then start at zero.
  */
 public class ResourcePool {
     /**
      * Resource values pool.
      */
-    private final Set<Integer> resources = ConcurrentHashMap.newKeySet();
+    private final Set<Integer> resources = new HashSet<>();
     private Integer nextId;
     private Integer lower;
     private Integer upper;
@@ -44,7 +39,7 @@ public class ResourcePool {
      * @param minValue minimum resource id value
      * @param maxValue maximum resource id value
      */
-    public ResourcePool(final Integer minValue, final Integer maxValue) {
+    public ResourcePool(int minValue, int maxValue) {
         this.nextId = minValue;
         this.lower = minValue;
         this.upper = maxValue;
@@ -62,21 +57,19 @@ public class ResourcePool {
             // speaking this could be inefficient .. but we use "nextId" as a start, and that should
             // have the greatest chance of being available.
             for (int i = 0; i < range; i++) {
-                if (nextId > upper)
+                if (nextId > upper) {
                     nextId = lower;
+                }
                 int next;
 
-                // ensure only one thread executes the post-incremen
-                synchronized (nextId) {
-                    next = nextId++;
-                }
+                next = nextId++;
 
                 if (resources.add(next)) {
                     return next;
                 }
             }
         }
-        throw new ArrayIndexOutOfBoundsException("Could not allocate resource: pool is full");
+        throw new ResourcePoolIsFullException("Could not allocate resource: pool is full");
     }
 
     /**
@@ -85,12 +78,13 @@ public class ResourcePool {
      * @param id resource id
      * @return allocated resource id
      */
-    public Integer allocate(Integer id) {
+    public Integer allocate(int id) {
         // This is added to ensure that if we are adding one or many IDs, we set nextId to the
         // largest of the set. This only affects the next call to allocate() without id, and all
         // it'll do is cause the search to start at this point.
-        if (id > nextId)
-            nextId = id+1;
+        if (id > nextId) {
+            nextId = id + 1;
+        }
         return resources.add(id) ? id : null;
     }
 
@@ -100,7 +94,7 @@ public class ResourcePool {
      * @param resourceId resource id
      * @return true if specified resource id was previously allocated
      */
-    public Integer deallocate(final Integer resourceId) {
+    public Integer deallocate(int resourceId) {
         return resources.remove(resourceId) ? resourceId : null;
     }
 

@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.share.cache;
 
-import org.openkilda.messaging.payload.MeterPool;
-import org.openkilda.messaging.payload.ResourcePool;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.annotations.VisibleForTesting;
