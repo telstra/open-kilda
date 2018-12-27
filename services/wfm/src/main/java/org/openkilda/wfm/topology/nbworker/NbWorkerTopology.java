@@ -68,7 +68,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         final Integer parallelism = topologyConfig.getParallelism();
 
-        KafkaSpout kafkaSpout = createKafkaSpout(topologyConfig.getKafkaTopoNbTopic(), NB_SPOUT_ID);
+        KafkaSpout kafkaSpout = buildKafkaSpout(topologyConfig.getKafkaTopoNbTopic(), NB_SPOUT_ID);
         tb.setSpout(NB_SPOUT_ID, kafkaSpout, parallelism);
 
         RouterBolt router = new RouterBolt();
@@ -100,7 +100,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString());
 
-        KafkaBolt kafkaNbBolt = createKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
+        KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
                 .shuffleGrouping(SPLITTER_BOLT_NAME)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME);

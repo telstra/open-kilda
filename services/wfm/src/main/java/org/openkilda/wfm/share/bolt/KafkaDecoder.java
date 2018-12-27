@@ -31,6 +31,13 @@ import org.apache.storm.tuple.Values;
 
 import java.io.IOException;
 
+/**
+ * Bolt which transforms received json into message object and command context with correlation id.
+ *
+ * @deprecated this decoder is redundant because deserialization may be performed by
+ * {@link org.openkilda.wfm.kafka.MessageDeserializer}.
+ */
+@Deprecated
 public abstract class KafkaDecoder extends AbstractBolt {
     public static final String FIELD_ID_INPUT = "input";
 
