@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.error;
+package org.openkilda.wfm.share.cache;
 
 public class MeterPoolIsFullException extends RuntimeException {
     private static final long serialVersionUID = 1L;

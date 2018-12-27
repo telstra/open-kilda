@@ -13,20 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload;
+package org.openkilda.wfm.share.cache;
 
 import static com.google.common.collect.Sets.union;
-
-import org.openkilda.messaging.error.MeterPoolIsFullException;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Class represents meter resource allocator/deallocator.
@@ -35,8 +32,8 @@ public class MeterPool {
     /**
      * Meter values pool.
      */
-    private Queue<Integer> meterIds = new ConcurrentLinkedQueue<>();
-    private Set<Integer> outOfRangeMeterIds = ConcurrentHashMap.newKeySet();
+    private Queue<Integer> meterIds = new LinkedList<>();
+    private Set<Integer> outOfRangeMeterIds = new HashSet<>();
     private int minValue;
     private int maxValue;
 
