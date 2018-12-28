@@ -15,13 +15,16 @@
 
 package org.openkilda.wfm.topology.stats;
 
+import static org.openkilda.messaging.Utils.TIMESTAMP;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.FLOW_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.SYSTEM_RULE_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
+import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.fieldsMessageFlowStats;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
@@ -33,13 +36,17 @@ import org.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
+import org.openkilda.wfm.topology.stats.metrics.SystemRuleMetricGenBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
 
 
 public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
+    public static final String FLOW_STATS_FIELD = "flow_stats";
+    public static final Fields flowStatsFields = new Fields(FLOW_STATS_FIELD, TIMESTAMP);
 
     public StatsTopology(LaunchEnvironment env) {
         super(env, StatsTopologyConfig.class);
@@ -90,26 +97,27 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
         builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(persistenceManager), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
-                .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), fieldMessage);
+                .fieldsGrouping(statsOfsBolt, StatsStreamType.FLOW_STATS.toString(), flowStatsFields);
 
         builder.setBolt(PORT_STATS_METRIC_GEN.name(), new PortMetricGenBolt(), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.PORT_STATS.toString(), fieldMessage);
-        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(), new MeterConfigMetricGenBolt(),
-                parallelism)
-                .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(),
-                        fieldMessage);
+        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(), new MeterConfigMetricGenBolt(), parallelism)
+                .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(), fieldMessage);
+        builder.setBolt(SYSTEM_RULE_STATS_METRIC_GEN.name(), new SystemRuleMetricGenBolt(), parallelism)
+                .fieldsGrouping(statsOfsBolt, StatsStreamType.SYSTEM_RULE_STATS.toString(), flowStatsFields);
 
         logger.debug("starting flow_stats_metric_gen");
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
                 new FlowMetricGenBolt(),
                 parallelism)
-                .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), fieldMessage);
+                .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), fieldsMessageFlowStats);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
-                .shuffleGrouping(FLOW_STATS_METRIC_GEN.name());
+                .shuffleGrouping(FLOW_STATS_METRIC_GEN.name())
+                .shuffleGrouping(SYSTEM_RULE_STATS_METRIC_GEN.name());
 
         return builder.createTopology();
     }

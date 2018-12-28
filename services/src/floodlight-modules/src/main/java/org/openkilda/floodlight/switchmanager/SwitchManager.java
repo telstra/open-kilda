@@ -21,6 +21,10 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
+import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
@@ -1470,7 +1474,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                                             + "Good Packet Count: {}. Bad Packet Count: {} ",
                                     safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
                             safeData.dropRuleStage = RULE_NO_GOOD;
-                            deleteRulesWithCookie(safeData.dpid, ISwitchManager.DROP_RULE_COOKIE);
+                            deleteRulesWithCookie(safeData.dpid, DROP_RULE_COOKIE);
                         }
                     }
 
@@ -1492,7 +1496,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                                             + "Good Packet Count: {}. Bad Packet Count: {} ",
                                     safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
                             safeData.broadcastRuleStage = RULE_NO_GOOD;
-                            deleteRulesWithCookie(safeData.dpid, ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+                            deleteRulesWithCookie(safeData.dpid, VERIFICATION_BROADCAST_RULE_COOKIE);
                         }
                     }
                 } else if (safeData.unicastRuleStage < RULE_TESTED) {
@@ -1514,7 +1518,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                                             + "Good Packet Count: {}. Bad Packet Count: {} ",
                                     safeData.dpid, ruleEffect.get(0), ruleEffect.get(1));
                             safeData.unicastRuleStage = RULE_NO_GOOD;
-                            deleteRulesWithCookie(safeData.dpid, ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+                            deleteRulesWithCookie(safeData.dpid, VERIFICATION_UNICAST_RULE_COOKIE);
                         }
                     }
 

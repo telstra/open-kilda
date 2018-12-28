@@ -15,23 +15,18 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
+import static org.openkilda.messaging.Utils.TIMESTAMP;
+import static org.openkilda.wfm.topology.stats.StatsTopology.FLOW_STATS_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.CACHE_FIELD;
 
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
-import org.openkilda.wfm.topology.stats.StatsComponentType;
-import org.openkilda.wfm.topology.stats.StatsStreamType;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -59,32 +54,17 @@ public class FlowMetricGenBolt extends MetricGenBolt {
 
     @Override
     public void execute(Tuple input) {
-        StatsComponentType componentId = StatsComponentType.valueOf(input.getSourceComponent());
-        InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
-
-        Map<Long, CacheFlowEntry> dataCache =
-                (Map<Long, CacheFlowEntry>) input.getValueByField(CACHE_FIELD);
-
+        Map<Long, CacheFlowEntry> dataCache = (Map<Long, CacheFlowEntry>) input.getValueByField(CACHE_FIELD);
         LOGGER.debug("dataCache in FlowMetricGenBolt {}", dataCache);
 
-        if (!Destination.WFM_STATS.equals(message.getDestination())) {
-            collector.ack(input);
-            return;
-        }
-
-        LOGGER.debug("Flow stats message: {}={}, component={}, stream={}",
-                CORRELATION_ID, message.getCorrelationId(), componentId,
-                StatsStreamType.valueOf(input.getSourceStreamId()));
-        FlowStatsData data = (FlowStatsData) message.getData();
-        long timestamp = message.getTimestamp();
+        FlowStatsData data = (FlowStatsData) input.getValueByField(FLOW_STATS_FIELD);
+        long timestamp = input.getLongByField(TIMESTAMP);
         SwitchId switchId = data.getSwitchId();
 
         try {
-            for (FlowStatsReply reply : data.getStats()) {
-                for (FlowStatsEntry entry : reply.getEntries()) {
-                    @Nullable CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
-                    emit(entry, timestamp, switchId, flowEntry);
-                }
+            for (FlowStatsEntry entry : data.getStats()) {
+                @Nullable CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
+                emit(entry, timestamp, switchId, flowEntry);
             }
             collector.ack(input);
         } catch (PersistenceException e) {
