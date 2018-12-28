@@ -47,6 +47,7 @@ import static org.openkilda.floodlight.switchmanager.ISwitchManager.OVS_MANUFACT
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.PACKET_IN_RULES_METERS_MASK;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.MAX_CENTEC_SWITCH_BURST_SIZE;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 
 import org.openkilda.floodlight.error.InvalidMeterIdException;
@@ -108,6 +109,8 @@ public class SwitchManagerTest {
     private static final long smallBandwidth = 100L;
     private static final String cookieHex = "7B";
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
+    public static final String CENTEC_SWITCH_DESCRIPTION = "Centec";
+    public static final int hugeBandwidth = 400000;
     private SwitchManager switchManager;
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
@@ -304,21 +307,32 @@ public class SwitchManagerTest {
     }
 
     @Test
+    public void installBandwidthMeterForCentecSwitch() throws Exception {
+        runInstallMeterTest(bandwidth, (long) (bandwidth * config.getFlowMeterBurstCoefficient()), true);
+    }
+
+    @Test
+    public void installHugeBandwidthMeterForCentecSwitch() throws Exception {
+        runInstallMeterTest(hugeBandwidth, MAX_CENTEC_SWITCH_BURST_SIZE, true);
+    }
+
+    @Test
     public void installBandwidthMeter() throws Exception {
-        runInstallMeterTest(bandwidth, bandwidth / 10);
+        runInstallMeterTest(bandwidth, (long) (bandwidth * config.getFlowMeterBurstCoefficient()), false);
     }
 
     @Test
     public void installSmallBandwidthMeter() throws Exception {
-        runInstallMeterTest(smallBandwidth, config.getFlowMeterMinBurstSizeInKbits());
+        runInstallMeterTest(smallBandwidth, config.getFlowMeterMinBurstSizeInKbits(), false);
     }
 
-    private void runInstallMeterTest(long bandwidth, long burstSize) throws Exception {
+    private void runInstallMeterTest(long bandwidth, long burstSize, boolean isCentecSwitch) throws Exception {
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getId()).andReturn(dpid);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(switchDescription.getManufacturerDescription()).andStubReturn("");
+        expect(switchDescription.getManufacturerDescription())
+                .andStubReturn(isCentecSwitch ? CENTEC_SWITCH_DESCRIPTION : "");
 
         expect(iofSwitch.write(scheme.installMeter(bandwidth, burstSize, meterId))).andReturn(true);
         expect(iofSwitch.writeRequest(anyObject(OFBarrierRequest.class)))
