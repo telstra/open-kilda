@@ -13,11 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.impl;
+package org.openkilda.pce.finder;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
-import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.impl.AvailableNetwork;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -34,5 +35,5 @@ public interface PathFinder {
      */
     Pair<List<Isl>, List<Isl>> findPathInNetwork(AvailableNetwork network,
                                                  SwitchId startSwitchId, SwitchId endSwitchId)
-            throws SwitchNotFoundException, UnroutableFlowException;
+            throws UnroutableFlowException;
 }

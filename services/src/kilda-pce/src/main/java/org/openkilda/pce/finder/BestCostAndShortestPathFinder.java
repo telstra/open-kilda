@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce.impl;
+package org.openkilda.pce.finder;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
@@ -22,7 +22,8 @@ import static java.util.stream.Collectors.toSet;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.impl.AvailableNetwork;
 
 import com.google.common.collect.Lists;
 import lombok.Value;
@@ -75,17 +76,12 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     @Override
     public Pair<List<Isl>, List<Isl>> findPathInNetwork(AvailableNetwork network,
                                                         SwitchId startSwitchId, SwitchId endSwitchId)
-            throws SwitchNotFoundException, UnroutableFlowException {
+            throws UnroutableFlowException {
         Switch start = network.getSwitch(startSwitchId);
-        if (start == null) {
-            throw new SwitchNotFoundException(
-                    format("SOURCE node doesn't exist. It isn't in the AVAILABLE network: %s", startSwitchId));
-        }
-
         Switch end = network.getSwitch(endSwitchId);
-        if (end == null) {
-            throw new SwitchNotFoundException(
-                    format("DESTINATION node doesn't exist. It isn't in the AVAILABLE network: %s", endSwitchId));
+        if (start == null || end == null) {
+            throw new UnroutableFlowException(format("Switch %s doesn't have links with enough bandwidth",
+                    start == null ? startSwitchId : endSwitchId));
         }
 
         List<Isl> forwardPath = getPath(start, end);

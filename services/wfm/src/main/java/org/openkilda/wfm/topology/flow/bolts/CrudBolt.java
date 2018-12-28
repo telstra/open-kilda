@@ -58,7 +58,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
-import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.ctrl.CtrlAction;

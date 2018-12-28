@@ -15,8 +15,9 @@
 
 package org.openkilda.pce;
 
-import org.openkilda.pce.impl.BestCostAndShortestPathFinder;
+import org.openkilda.pce.finder.BestCostAndShortestPathFinder;
 import org.openkilda.pce.impl.InMemoryPathComputer;
+import org.openkilda.pce.impl.SymmetricPathComputer;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 /**
@@ -24,14 +25,6 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
  * ({@link PathComputerConfig}) and requested strategy ({@link Strategy}).
  */
 public class PathComputerFactory {
-
-    /**
-     * Strategy is used for getting a PathComputer instance  - ie what filters to apply. In reality, to provide
-     * flexibility, this should most likely be one or more strings.
-     */
-    public enum Strategy {
-        HOPS, COST, LATENCY, EXTERNAL
-    }
 
     private PathComputerConfig config;
     private RepositoryFactory repositoryFactory;
@@ -48,11 +41,49 @@ public class PathComputerFactory {
      * @return {@link PathComputer} instances
      */
     public PathComputer getPathComputer(Strategy strategy) {
-        if (strategy.equals(Strategy.COST)) {
+        if (strategy == Strategy.COST) {
             return new InMemoryPathComputer(repositoryFactory.createIslRepository(),
                     new BestCostAndShortestPathFinder(config.getMaxAllowedDepth(), config.getDefaultIslCost()));
+        } else if (strategy == Strategy.SYMMETRIC_COST) {
+            return new SymmetricPathComputer(repositoryFactory.createIslRepository(),
+                    new BestCostAndShortestPathFinder(config.getDefaultIslCost(), config.getDefaultIslCost()));
         } else {
             throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
+        }
+    }
+
+    /**
+     * Gets a specific {@link PathComputer} with default (configurable) strategy.
+     *
+     * @return {@link PathComputer} instances
+     */
+    public PathComputer getPathComputer() {
+        return getPathComputer(Strategy.from(config.getStrategy()));
+    }
+
+    /**
+     * Strategy is used for getting a PathComputer instance  - ie what filters to apply. In reality, to provide
+     * flexibility, this should most likely be one or more strings.
+     */
+    public enum Strategy {
+        HOPS,
+
+        /**
+         * Strategy based on cost of links.
+         */
+        COST,
+
+        /**
+         * Based on cost with always equal forward and reverse paths.
+         */
+        SYMMETRIC_COST, LATENCY, EXTERNAL;
+
+        private static Strategy from(String strategy) {
+            try {
+                return valueOf(strategy.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(String.format("Strategy %s is not supported", strategy));
+            }
         }
     }
 }
