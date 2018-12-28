@@ -31,4 +31,8 @@ public interface PathComputerConfig extends Serializable {
     @Key("default.isl.cost")
     @Default("700")
     int getDefaultIslCost();
+
+    @Key("strategy")
+    @Default("COST")
+    String getStrategy();
 }

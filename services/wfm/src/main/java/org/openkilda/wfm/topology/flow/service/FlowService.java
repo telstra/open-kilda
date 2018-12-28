@@ -27,10 +27,9 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerFactory;
-import org.openkilda.pce.PathComputerFactory.Strategy;
 import org.openkilda.pce.PathPair;
-import org.openkilda.pce.RecoverableException;
-import org.openkilda.pce.UnroutableFlowException;
+import org.openkilda.pce.exception.RecoverableException;
+import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -95,7 +94,7 @@ public class FlowService extends BaseFlowService {
         }
 
         // TODO: the strategy is defined either per flow or system-wide.
-        PathComputer pathComputer = pathComputerFactory.getPathComputer(Strategy.COST);
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair pathPair = pathComputer.getPath(flow);
 
         flow.setStatus(FlowStatus.IN_PROGRESS);
@@ -219,7 +218,7 @@ public class FlowService extends BaseFlowService {
         flowValidator.validate(newFlow);
 
         // TODO: the strategy is defined either per flow or system-wide.
-        PathComputer pathComputer = pathComputerFactory.getPathComputer(Strategy.COST);
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair pathPair = pathComputer.getPath(newFlow, true);
 
         newFlow.setStatus(FlowStatus.IN_PROGRESS);
@@ -283,7 +282,7 @@ public class FlowService extends BaseFlowService {
         log.warn("Origin flow {} path: {}", flowId, currentFlow.getForward().getFlowPath());
 
         // TODO: the strategy is defined either per flow or system-wide.
-        PathComputer pathComputer = pathComputerFactory.getPathComputer(Strategy.COST);
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair pathPair = pathComputer.getPath(currentFlow.getForward(), true);
 
         log.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {}",

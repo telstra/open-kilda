@@ -79,3 +79,5 @@ discovery.keep.removed.isl = 60
 
 local = no
 local.execution.time = 300
+
+pce.strategy = SYMMETRIC_COST

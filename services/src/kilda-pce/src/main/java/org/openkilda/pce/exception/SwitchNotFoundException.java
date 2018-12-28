@@ -13,32 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce;
+package org.openkilda.pce.exception;
 
 /**
- * Indicates that a path can't be found for a flow.
+ * Indicates that a switch can't be found by PathFinder.
  */
-public class UnroutableFlowException extends Exception {
-    private final String flowId;
-
-    public UnroutableFlowException(String message) {
+public class SwitchNotFoundException extends Exception {
+    public SwitchNotFoundException(String message) {
         super(message);
-        this.flowId = null;
-    }
-
-    public UnroutableFlowException(String message, String flowId) {
-        super(message);
-
-        this.flowId = flowId;
-    }
-
-    public UnroutableFlowException(String message, Throwable cause, String flowId) {
-        super(message, cause);
-
-        this.flowId = flowId;
-    }
-
-    public String getFlowId() {
-        return flowId;
     }
 }
