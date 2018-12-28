@@ -5,16 +5,10 @@
 
 <suppressions>
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="JavadocMethod" />
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="31" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/floodlight/Constants.java" lines="20" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="83" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="106" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="136" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="159" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="184" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="215" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="228" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryMock.java" lines="20" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryVer12Mock.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryVer12Mock.java" lines="7" checks="AbbreviationAsWordInName"/>
@@ -26,27 +20,6 @@
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathTest.java" lines="145" checks="CommentsIndentation"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationFlowTest.java" lines="64" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationFlowTest.java" lines="125" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="22" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="23" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="24" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="25" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="26" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="34" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="48" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="48" checks="MultipleVariableDeclarations"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="49" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="49" checks="MultipleVariableDeclarations"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="50" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="50" checks="MultipleVariableDeclarations"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/pathverification/PathVerificationPacketOutTest.java" lines="60" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="1" checks="RegexpHeader"/>
@@ -57,120 +30,4 @@
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="9" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="10" checks="CustomImportOrder"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="12" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="32" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="36" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="37" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="38" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="39" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="40" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="41" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="42" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="43" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="44" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="45" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="46" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="47" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="48" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="49" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="50" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="76" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="81" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="86" checks="ModifierOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="87" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="96" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="105" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="136" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="143" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="143" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="144" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="158" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="164" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="175" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="175" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="176" checks="NeedBraces"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="177" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="197" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="206" checks="NeedBraces"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="210" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="230" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="286" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="292" checks="NeedBraces"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="304" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="329" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="331" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="332" checks="NonEmptyAtclauseDescription"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="360" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="399" checks="ParameterName"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="418" checks="CommentsIndentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="419" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="419" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="420" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="421" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="421" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="422" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="422" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="424" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="425" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="425" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="426" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="427" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="427" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="428" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="428" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="27" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="28" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="29" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="30" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="31" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="32" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="33" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="34" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="35" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="36" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="37" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="38" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="39" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="40" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="41" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="42" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="43" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="44" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="45" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="46" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="48" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="49" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="50" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="51" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="53" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="62" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="62" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="103" checks="ParameterName"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="110" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="111" checks="FileTabCharacter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="117" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="182" checks="NeedBraces"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="182" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="182" checks="WhitespaceAround"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="184" checks="NeedBraces"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="227" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/MockSwitchManager.java" lines="228" checks="Indentation"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="32" checks="EmptyLineSeparator"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="36" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="37" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="38" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="38" checks="RedundantImport"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="39" checks="RedundantImport"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="40" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="41" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="42" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="43" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="56" checks="CustomImportOrder"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="61" checks="SummaryJavadoc"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="90" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="92" checks="WhitespaceAfter"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="102" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="109" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="109" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="118" checks="AbbreviationAsWordInName"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="118" checks="JavadocMethod"/>
 </suppressions>

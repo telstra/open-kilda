@@ -190,8 +190,8 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         replay(sw1Port1);
         replay(sw2Port1);
 
-        sw1 = buildMockIOFSwitch(1L, sw1Port1, factory, swDescription, srcIpTarget);
-        sw2 = buildMockIOFSwitch(2L, sw2Port1, factory, swDescription, dstIpTarget);
+        sw1 = buildMockIoFSwitch(1L, sw1Port1, factory, swDescription, srcIpTarget);
+        sw2 = buildMockIoFSwitch(2L, sw2Port1, factory, swDescription, dstIpTarget);
         replay(sw1);
         replay(sw2);
     }
