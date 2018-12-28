@@ -17,7 +17,7 @@ package org.openkilda.floodlight.switchmanager;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Test;
 

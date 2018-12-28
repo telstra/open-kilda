@@ -1,5 +1,7 @@
 package org.openkilda.messaging.command.discovery;
 
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -11,14 +13,14 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class DiscoveryFilterEntity implements Serializable {
     @JsonProperty("switch")
-    public final String switchId;
+    public final SwitchId switchId;
 
     @JsonProperty("port")
     public final int portId;
 
     @JsonCreator
     public DiscoveryFilterEntity(
-            @JsonProperty("switch") String switchId,
+            @JsonProperty("switch") SwitchId switchId,
             @JsonProperty("port") int portId) {
         this.switchId = switchId;
         this.portId = portId;

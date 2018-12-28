@@ -3,6 +3,7 @@
 kilda_environment_naming_prefix: ""
 kilda_environment_role: "devel"
 kilda_test_profile: "virtual"
+kilda_test_topology_single: True
 
 kilda_neo4j_host: "neo4j.pendev"
 kilda_neo4j_bolt_port: "7687"
@@ -29,7 +30,11 @@ kilda_floodlight_endpoint: "http://127.0.0.1"
 kilda_floodlight_rest_port: "8081"
 kilda_floodlight_username: "kilda"
 kilda_floodlight_password: "kilda"
+kilda_floodlight_controller_uri: "tcp:kilda:6653"
 kilda_floodlight_command_processor_deferred_requests_limit: 8
+kilda_floodlight_flow_meter_burst_coefficient: 1.05
+kilda_floodlight_consumer_executors: 20
+kilda_floodlight_consumer_disco_executors: 20
 
 kilda_aswitch_port: "5001"
 kilda_aswitch_endpoint: "http://127.0.0.1"
@@ -40,6 +45,8 @@ kilda_topology_engine_rest_endpoint: "http://127.0.0.1"
 kilda_topology_engine_rest_port: "80"
 kilda_northbound_endpoint: "http://northbound.pendev"
 kilda_northbound_rest_port: "8080"
+kilda_lab_api_endpoint: "http://127.0.0.1"
+kilda_lab_api_port: "8288"
 
 kilda_northbound_username: "kilda"
 kilda_northbound_password: "kilda"
@@ -48,13 +55,13 @@ kilda_topology_engine_rest_username: "kilda"
 kilda_topology_engine_rest_password: "kilda"
 
 kilda_kafka_topic_flow: "kilda.flow"
-kilda_kafka_topic_topo_cache: "kilda.topo.cache"
 kilda_kafka_topic_speaker: "kilda.speaker"
 kilda_kafka_topic_speaker_disco: "kilda.speaker.disco"
 kilda_kafka_topic_speaker_flow: "kilda.speaker.flow"
 kilda_kafka_topic_speaker_flow_ping: "kilda.speaker.flow.ping"
 kilda_kafka_topic_topo_eng: "kilda.topo.eng"
 kilda_kafka_topic_northbound: "kilda.northbound"
+kilda_kafka_topic_topo_reroute: "kilda.topo.reroute"
 
 kilda_kafka_te_consumer_group: "kilda-tpe"
 
@@ -82,10 +89,17 @@ kilda_production_fileserver: "http://127.0.0.1"
 kilda_reroute_throttling_delay_min: 10
 kilda_reroute_throttling_delay_max: 30
 
+kilda_isl_cost_when_port_down: 10000
+
+kilda_port_up_down_throttling_delay_seconds_min: 1
+kilda_port_up_down_throttling_delay_seconds_warm_up: 5
+kilda_port_up_down_throttling_delay_seconds_cool_down: 5
+
 kilda_logging_json_file: False
 kilda_logging_logstash: True
 kilda_logging_logfile_path: "/var/log/"
 kilda_logging_logstash_host: "logstash.pendev"
+kilda_logging_elasticsearch_proto: "http"
 kilda_logging_elasticsearch_hosts: "elasticsearch.pendev:9200"
 kilda_logging_fl_loglevel: "INFO"
 kilda_logging_fl_logaccess: True

@@ -19,8 +19,8 @@ ENV PACKAGE hbase-1.2.4
 
 WORKDIR /tmp/
 
-RUN    wget https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz \
-    && wget https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz.md5 \
+RUN    wget -q https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz \
+    && wget -q https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz.md5 \
     && sed 's/\ //g' ${PACKAGE}-bin.tar.gz.md5 > $PACKAGE.tmp.md5 \
     && awk -F ":" '{print $2 " " $1}' $PACKAGE.tmp.md5 > ${PACKAGE}-bin.tar.gz.md5 \
     && md5sum -c ${PACKAGE}-bin.tar.gz.md5 \

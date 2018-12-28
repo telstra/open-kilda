@@ -26,11 +26,11 @@ import static org.openkilda.flow.FlowUtils.isTrafficTestsEnabled;
 import org.openkilda.LinksUtils;
 import org.openkilda.flow.FlowUtils;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 import org.openkilda.topo.TopologyHelp;
 
 import cucumber.api.java.en.Given;
@@ -199,7 +199,7 @@ public class FlowFfrTest {
         return  (String) controller.get("host");
     }
 
-    private boolean trafficIsOk(boolean expectedResult) throws Throwable {
+    private boolean trafficIsOk(boolean expectedResult) {
         if (isTrafficTestsEnabled()) {
             System.out.println("=====> Send traffic");
 
@@ -226,7 +226,7 @@ public class FlowFfrTest {
         }
     }
 
-    private boolean disconnectSwitch(String switchName) throws Exception {
+    private boolean disconnectSwitch(String switchName) {
         System.out.println("\n==> Disconnect Switch");
 
         long current = System.currentTimeMillis();
@@ -244,7 +244,7 @@ public class FlowFfrTest {
         return result.getStatus() == 200;
     }
 
-    private boolean connectSwitch(String switchName, String controller) throws Exception {
+    private boolean connectSwitch(String switchName, String controller) {
         System.out.println("\n==> Connect Switch");
 
         long current = System.currentTimeMillis();
@@ -263,7 +263,7 @@ public class FlowFfrTest {
         return result.getStatus() == 200;
     }
 
-    private boolean islDiscovered(String switchName, String portNo) throws Throwable {
+    private boolean islDiscovered(String switchName, String portNo) {
         System.out.println("\n==> Set ISL Discovered");
 
         long current = System.currentTimeMillis();
@@ -282,7 +282,7 @@ public class FlowFfrTest {
         return result.getStatus() == 200;
     }
 
-    private boolean portDown(String switchName, String portNo) throws Throwable {
+    private boolean portDown(String switchName, String portNo) {
         System.out.println("\n==> Set Port Down");
 
         long current = System.currentTimeMillis();
@@ -301,7 +301,7 @@ public class FlowFfrTest {
         return result.getStatus() == 200;
     }
 
-    private boolean portUp(String switchName, String portNo) throws Throwable {
+    private boolean portUp(String switchName, String portNo) {
         System.out.println("\n==> Set Port Up");
 
         long current = System.currentTimeMillis();

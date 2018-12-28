@@ -20,17 +20,21 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 
@@ -45,8 +49,9 @@ import java.util.stream.IntStream;
  * <p/>
  * Topology definition objects are immutable and can't be changed after creation.
  */
-@Value
-@NonFinal
+@Getter
+@RequiredArgsConstructor
+@JsonNaming(SnakeCaseStrategy.class)
 public class TopologyDefinition {
 
     @NonNull
@@ -57,6 +62,8 @@ public class TopologyDefinition {
     private List<TraffGen> traffGens;
     @NonNull
     private TraffGenConfig traffGenConfig;
+    @SuppressWarnings("squid:S1450")
+    private String controller;
 
     /**
      * Creates TopologyDefinition instance.
@@ -82,6 +89,10 @@ public class TopologyDefinition {
                 unmodifiableList(isls),
                 unmodifiableList(traffGens),
                 traffGenConfig);
+    }
+
+    public void setController(String controller) {
+        this.controller = controller;
     }
 
     /**
@@ -138,6 +149,7 @@ public class TopologyDefinition {
 
     @Value
     @NonFinal
+    @JsonNaming(SnakeCaseStrategy.class)
     @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
     public static class Switch {
 
@@ -189,6 +201,7 @@ public class TopologyDefinition {
 
     @Value
     @NonFinal
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class OutPort {
 
         private int port;
@@ -231,6 +244,7 @@ public class TopologyDefinition {
 
     @Value
     @NonFinal
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class Isl {
 
         @NonNull
@@ -261,6 +275,7 @@ public class TopologyDefinition {
 
     @Value
     @NonFinal
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class ASwitch {
 
         @NonNull
@@ -277,6 +292,7 @@ public class TopologyDefinition {
 
     @Value
     @NonFinal
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class TraffGen {
 
         @NonNull
@@ -319,6 +335,7 @@ public class TopologyDefinition {
 
     @Value
     @NonFinal
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class TraffGenConfig {
 
         @NonNull

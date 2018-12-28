@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Data;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -34,6 +35,7 @@ import java.util.Objects;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Data
 public class MessageError implements Serializable {
     /**
      * The Constant serialVersionUID.

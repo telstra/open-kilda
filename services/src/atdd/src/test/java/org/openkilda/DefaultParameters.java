@@ -17,9 +17,6 @@ package org.openkilda;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
 
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.AuthNeo4j;
-
 public final class DefaultParameters {
     private static final String host = firstNonNull(System.getProperty("kilda.host"), "localhost");
     private static final String mininetPort = firstNonNull(System.getProperty("kilda.mininet.port"), "38080");
@@ -34,7 +31,6 @@ public final class DefaultParameters {
     public static final String topologyEndpoint = String.format("http://%s:%s", host, topologyPort);
     public static final String northboundEndpoint = String.format("http://%s:%s", host, northboundPort);
     public static final String opentsdbEndpoint = String.format("http://%s:%s", host, opentsdbPort);
-    public static final Auth neoAuth = new AuthNeo4j(host, "neo4j", "temppass");
     public static final String FLOODLIGHT_ENDPOINT = String.format("http://%s:%s", host, FLOODLIGHT_PORT);
 
     static {

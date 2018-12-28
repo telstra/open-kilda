@@ -1,0 +1,55 @@
+@startuml
+
+title Reroute topology
+
+control kilda.topo.reroute
+participant "RT-RerouteBolt"
+participant "RT-RerouteService"
+participant "RT-FlowTrottlingBolt"
+control kilda.flow
+participant "FT-SplitterBolt"
+participant "FT-CrudBolt"
+participant DAO
+
+kilda.topo.reroute -> "RT-RerouteBolt" : CommandMessage\n-RerouteAffectedFlows (contains PathNode)\n-RerouteInactiveFlows
+"RT-RerouteBolt" -> "RT-RerouteService" : handleEvents
+
+activate "RT-RerouteService"
+alt RerouteAffectedFlows
+    "RT-RerouteService" -> DAO : get flows selected by path node
+activate DAO
+    DAO -> "RT-RerouteService" : flows
+deactivate DAO
+
+    loop flow in affectedFlows
+        "RT-RerouteService" -> "RT-FlowTrottlingBolt" : commandToReroute
+    end
+    "RT-FlowTrottlingBolt" -> kilda.flow : CommandMessage\nFlowRerouteRequest
+
+else RerouteInactiveFlows
+
+    "RT-RerouteService" -> DAO : get flows selected by FlowState.DOWN
+activate DAO
+    DAO -> "RT-RerouteService" : flows
+deactivate DAO
+
+    loop flow in inactiveFlows
+        "RT-RerouteService" -> "RT-FlowTrottlingBolt" : commandToReroute
+deactivate "RT-RerouteService"
+end
+"RT-FlowTrottlingBolt" -> kilda.flow : CommandMessage\nFlowRerouteRequest
+
+end
+
+kilda.flow -> "FT-SplitterBolt" : CommandMessage\nFlowRerouteRequest
+"FT-SplitterBolt" -> "FT-CrudBolt" : CommandMessage\nFlowRerouteRequest
+activate "FT-CrudBolt"
+"FT-CrudBolt" -> DAO: getFlow(flowId)
+activate DAO
+DAO -> "FT-CrudBolt" : flow
+deactivate DAO
+"FT-CrudBolt" -> "FT-CrudBolt" : Compute new path
+"FT-CrudBolt" -> DAO : updateFlow
+deactivate "FT-CrudBolt"
+
+@enduml

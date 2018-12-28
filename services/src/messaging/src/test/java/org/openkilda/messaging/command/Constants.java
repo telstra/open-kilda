@@ -15,8 +15,8 @@
 
 package org.openkilda.messaging.command;
 
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchId;
 
 public final class Constants {
     public static final String flowName = "test_flow";

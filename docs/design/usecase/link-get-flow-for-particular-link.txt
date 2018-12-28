@@ -1,0 +1,46 @@
+@startuml
+title Get all flows for a particular link/ISL
+
+participant Client
+
+participant Northbound
+
+control kilda.northbound
+control kilda.topo.nb
+
+participant NbWorkerTopology
+
+participant Neo4j
+
+Client -> Northbound : GET /links/flows\nRequest params:\nsrc_switch, src_port, dst_switch, dst_port
+
+activate Northbound
+Northbound -> kilda.topo.nb : CommandMessage\nGetFlowsForLinkRequest
+kilda.topo.nb -> NbWorkerTopology : CommandMessage\nGetFlowsForLinkRequest
+activate NbWorkerTopology
+
+NbWorkerTopology -> Neo4j : Query to get link\ninformation
+activate Neo4j
+Neo4j -> NbWorkerTopology : Isl
+deactivate Neo4j
+
+alt
+
+NbWorkerTopology -> Neo4j : Query to get flows for\na particular link
+activate Neo4j
+Neo4j -> NbWorkerTopology : Flows
+deactivate Neo4j
+NbWorkerTopology -> kilda.northbound : InfoData\nFlowResponse
+kilda.northbound -> Northbound : InfoData\nFlowResponse
+Northbound -> Client : List of FlowPayload
+
+else link does not exist
+
+NbWorkerTopology -> kilda.northbound : ErrorMessage
+deactivate NbWorkerTopology
+kilda.northbound -> Northbound : ErrorMessage
+Northbound -> Client : HTTP 404: Isl not found
+deactivate Northbound
+end
+
+@enduml

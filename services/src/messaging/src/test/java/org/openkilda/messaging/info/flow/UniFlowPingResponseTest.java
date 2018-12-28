@@ -21,7 +21,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Assert;
 import org.junit.Test;

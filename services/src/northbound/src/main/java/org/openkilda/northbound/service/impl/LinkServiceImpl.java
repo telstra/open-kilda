@@ -18,18 +18,25 @@ package org.openkilda.northbound.service.impl;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectChunkedResponses;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
+import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.model.LinkProps;
+import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
+import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
-import org.openkilda.messaging.te.request.LinkPropsDrop;
-import org.openkilda.messaging.te.request.LinkPropsPut;
-import org.openkilda.messaging.te.response.LinkPropsResponse;
+import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
+import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
@@ -63,10 +70,10 @@ public class LinkServiceImpl implements LinkService {
     private LinkMapper linkMapper;
 
     @Autowired
-    private LinkPropsMapper linkPropsMapper;
+    private FlowMapper flowMapper;
 
-    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
-    private String topologyEngineTopic;
+    @Autowired
+    private LinkPropsMapper linkPropsMapper;
 
     /**
      * The kafka topic for the nb topology.
@@ -114,7 +121,7 @@ public class LinkServiceImpl implements LinkService {
         List<CompletableFuture<?>> pendingRequest = new ArrayList<>(linkPropsList.size());
 
         for (LinkPropsDto requestItem : linkPropsList) {
-            LinkProps linkProps;
+            org.openkilda.messaging.model.LinkPropsDto linkProps;
             try {
                 linkProps = linkPropsMapper.toLinkProps(requestItem);
             } catch (IllegalArgumentException e) {
@@ -125,7 +132,7 @@ public class LinkServiceImpl implements LinkService {
             String requestId = idFactory.produceChained(RequestCorrelationId.getId());
             CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
 
-            pendingRequest.add(messagingChannel.sendAndGet(topologyEngineTopic, message));
+            pendingRequest.add(messagingChannel.sendAndGet(nbworkerTopic, message));
         }
 
         return collectResponses(pendingRequest, LinkPropsResponse.class)
@@ -141,7 +148,7 @@ public class LinkServiceImpl implements LinkService {
             String requestId = idFactory.produceChained(RequestCorrelationId.getId());
             CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
 
-            pendingRequest.add(messagingChannel.sendAndGetChunked(topologyEngineTopic, message));
+            pendingRequest.add(messagingChannel.sendAndGetChunked(nbworkerTopic, message));
         }
 
         return collectChunkedResponses(pendingRequest, LinkPropsResponse.class)
@@ -159,5 +166,29 @@ public class LinkServiceImpl implements LinkService {
         }
 
         return new BatchResults(errors.size(), successCount, errors);
+    }
+
+    @Override
+    public CompletableFuture<List<FlowPayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
+                                                                SwitchId dstSwitch, Integer dstPort) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get all flows for a particular link request processing");
+        GetFlowsForIslRequest data = null;
+        try {
+            data = new GetFlowsForIslRequest(new NetworkEndpoint(srcSwitch, srcPort),
+                    new NetworkEndpoint(dstSwitch, dstPort), correlationId);
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create \"get flows for link\" request");
+        }
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(FlowResponse.class::cast)
+                        .map(FlowResponse::getPayload)
+                        .map(flowMapper::toFlowOutput)
+                        .collect(Collectors.toList()));
     }
 }

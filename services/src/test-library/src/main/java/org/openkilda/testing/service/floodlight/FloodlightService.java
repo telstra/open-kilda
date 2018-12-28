@@ -15,7 +15,7 @@
 
 package org.openkilda.testing.service.floodlight;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.testing.model.controller.CoreFlowEntry;
 import org.openkilda.testing.model.controller.DpIdEntriesList;
 import org.openkilda.testing.model.controller.StaticFlowEntry;

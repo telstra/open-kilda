@@ -24,18 +24,18 @@ import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
-import org.openkilda.messaging.command.switches.PortStatus;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
-import org.openkilda.messaging.command.switches.SwitchRulesValidateRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
@@ -45,9 +45,10 @@ import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
+import org.openkilda.model.PortStatus;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
@@ -73,7 +74,7 @@ import java.util.stream.Collectors;
 @Service
 public class SwitchServiceImpl implements SwitchService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(SwitchServiceImpl.class);
 
     @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
     private String topoEngTopic;
@@ -99,7 +100,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<List<SwitchDto>> getSwitches() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Get switch request received");
+        logger.debug("Get switch request received");
         CommandMessage request = new CommandMessage(new GetSwitchesRequest(), System.currentTimeMillis(),
                 correlationId);
 
@@ -132,7 +133,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Delete switch rules request received: deleteAction={}", deleteAction);
+        logger.info("Delete switch rules request received: switch={}, deleteAction={}", switchId, deleteAction);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, null);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -146,7 +147,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Delete switch rules request received: criteria={}", criteria);
+        logger.info("Delete switch rules request received: switch={}, criteria={}", switchId, criteria);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, null, criteria);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -163,7 +164,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<List<Long>> installRules(SwitchId switchId, InstallRulesAction installAction) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Install switch rules request received");
+        logger.info("Install switch rules request received: switch={}, action={}", switchId, installAction);
 
         SwitchRulesInstallRequest data = new SwitchRulesInstallRequest(switchId, installAction);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -180,7 +181,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<ConnectModeRequest.Mode> connectMode(ConnectModeRequest.Mode mode) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Set/Get switch connect mode request received: mode = {}", mode);
+        logger.debug("Set/Get switch connect mode request received: mode = {}", mode);
 
         ConnectModeRequest data = new ConnectModeRequest(mode);
         CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
@@ -196,10 +197,10 @@ public class SwitchServiceImpl implements SwitchService {
         final String correlationId = RequestCorrelationId.getId();
 
         CommandWithReplyToMessage validateCommandMessage = new CommandWithReplyToMessage(
-                new SwitchRulesValidateRequest(switchId),
-                System.currentTimeMillis(), correlationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+                new DumpRulesRequest(switchId),
+                System.currentTimeMillis(), correlationId, Destination.CONTROLLER, nbworkerTopic);
 
-        return messagingChannel.sendAndGet(topoEngTopic, validateCommandMessage)
+        return messagingChannel.sendAndGet(floodlightTopic, validateCommandMessage)
                 .thenApply(SyncRulesResponse.class::cast)
                 .thenApply(switchMapper::toRulesValidationResult);
     }
@@ -207,6 +208,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId) {
         CompletableFuture<RulesValidationResult> validationStage = validateRules(switchId);
+        logger.info("Sync rules request for switch {}", switchId);
 
         return validationStage
                 .thenCompose(validationResult -> syncRules(switchId, validationResult.getMissingRules())
@@ -226,6 +228,16 @@ public class SwitchServiceImpl implements SwitchService {
                 System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
 
         return messagingChannel.sendAndGet(topoEngTopic, syncCommandMessage);
+    }
+
+    @Override
+    public CompletableFuture<SwitchMeterEntries> getMeters(SwitchId switchId) {
+        String requestId = RequestCorrelationId.getId();
+        CommandWithReplyToMessage dumpCommand = new CommandWithReplyToMessage(
+                new DumpMetersRequest(switchId),
+                System.currentTimeMillis(), requestId, Destination.CONTROLLER, northboundTopic);
+        return messagingChannel.sendAndGet(floodlightTopic, dumpCommand)
+                .thenApply(SwitchMeterEntries.class::cast);
     }
 
     @Override

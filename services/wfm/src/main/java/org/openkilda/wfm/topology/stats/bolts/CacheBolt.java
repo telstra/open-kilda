@@ -24,10 +24,10 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.FlowStatsReply;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.NeoDriver;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
@@ -64,7 +64,7 @@ public class CacheBolt extends BaseRichBolt {
     /**
      * Path computation instance.
      */
-    private final Auth pathComputerAuth;
+    private final PersistenceManager persistenceManager;
 
     private TopologyContext context;
     private OutputCollector outputCollector;
@@ -74,23 +74,17 @@ public class CacheBolt extends BaseRichBolt {
      */
     private Map<Long, CacheFlowEntry> cookieToFlow = new HashMap<>();
 
-    /**
-     * Instance constructor.
-     *
-     * @param pathComputerAuth {@link Auth} instance
-     */
-    public CacheBolt(Auth pathComputerAuth) {
-        this.pathComputerAuth = pathComputerAuth;
+    public CacheBolt(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
     }
 
-    private void initFlowCache() {
+    private void initFlowCache(FlowRepository flowRepository) {
         try {
-            PathComputer pathComputer = new NeoDriver(pathComputerAuth.getDriver());
-            pathComputer.getAllFlows().forEach(
+            flowRepository.findAll().forEach(
                     flow -> cookieToFlow.put(flow.getCookie(), new CacheFlowEntry(
                             flow.getFlowId(),
-                            flow.getSourceSwitch().toOtsdFormat(),
-                            flow.getDestinationSwitch().toOtsdFormat()))
+                            flow.getSrcSwitch().getSwitchId().toOtsdFormat(),
+                            flow.getDestSwitch().getSwitchId().toOtsdFormat()))
             );
             logger.debug("initFlowCache: {}", cookieToFlow);
             logger.info("Stats Cache: Initialized");
@@ -106,7 +100,10 @@ public class CacheBolt extends BaseRichBolt {
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.context = topologyContext;
         this.outputCollector = outputCollector;
-        initFlowCache();
+
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+
+        initFlowCache(repositoryFactory.createFlowRepository());
     }
 
     /**

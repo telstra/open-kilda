@@ -57,7 +57,7 @@ public class Contract {
     private String currencyCode;
 
     @JsonProperty("renewal-option")
-    private Boolean renewalOption;
+    private String renewalOption;
 
     @JsonProperty("start-time")
     private Long contractStartTime;

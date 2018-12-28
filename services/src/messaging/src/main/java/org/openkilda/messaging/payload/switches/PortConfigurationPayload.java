@@ -15,7 +15,7 @@
 
 package org.openkilda.messaging.payload.switches;
 
-import org.openkilda.messaging.command.switches.PortStatus;
+import org.openkilda.model.PortStatus;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;

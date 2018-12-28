@@ -1,0 +1,759 @@
+{
+  "active_switches": [
+    "ofsw1", 
+    "ofsw2", 
+    "ofsw3", 
+    "ofsw7", 
+    "ofsw8", 
+    "ofsw9"
+  ], 
+  "active_traff_gens": [
+    {
+      "active": true, 
+      "control_endpoint": "http://127.0.0.1:4041",
+      "iface_name": "eth0", 
+      "name": "tg1", 
+      "status": "Active", 
+      "switch_connected": "ofsw3", 
+      "switch_port": 10
+    }, 
+    {
+      "active": true, 
+      "control_endpoint": "http://127.0.0.1:4042",
+      "iface_name": "eth0", 
+      "name": "tg2", 
+      "status": "Active", 
+      "switch_connected": "ofsw8", 
+      "switch_port": 10
+    }, 
+    {
+      "active": true, 
+      "control_endpoint": "http://127.0.0.1:4044",
+      "iface_name": "eth0", 
+      "name": "tg4", 
+      "status": "Active", 
+      "switch_connected": "ofsw7", 
+      "switch_port": 10
+    }, 
+    {
+      "active": true, 
+      "control_endpoint": "http://127.0.0.1:4045",
+      "iface_name": "eth0", 
+      "name": "tg5", 
+      "status": "Active", 
+      "switch_connected": "ofsw2", 
+      "switch_port": 10
+    }
+  ], 
+  "controller": "tcp:127.0.0.1:6653",
+  "isls": [
+    {
+      "aswitch": null, 
+      "dst_port": 2, 
+      "dst_switch": "ofsw1", 
+      "max_bandwidth": 40000000, 
+      "src_port": 2, 
+      "src_switch": "ofsw3"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 49, 
+        "out_port": 50
+      }, 
+      "dst_port": 1, 
+      "dst_switch": "ofsw2", 
+      "max_bandwidth": 36000000, 
+      "src_port": 1, 
+      "src_switch": "ofsw1"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 3, 
+      "dst_switch": "ofsw2", 
+      "max_bandwidth": 36000000, 
+      "src_port": 1, 
+      "src_switch": "ofsw3"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 6, 
+      "dst_switch": "ofsw2", 
+      "max_bandwidth": 900000, 
+      "src_port": 19, 
+      "src_switch": "ofsw7"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 2, 
+        "out_port": 1
+      }, 
+      "dst_port": 7, 
+      "dst_switch": "ofsw3", 
+      "max_bandwidth": 9000000, 
+      "src_port": 50, 
+      "src_switch": "ofsw7"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 32, 
+      "dst_switch": "ofsw9", 
+      "max_bandwidth": 9000000, 
+      "src_port": 5, 
+      "src_switch": "ofsw3"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 7, 
+        "out_port": 8
+      }, 
+      "dst_port": 48, 
+      "dst_switch": "ofsw9", 
+      "max_bandwidth": 9000000, 
+      "src_port": 49, 
+      "src_switch": "ofsw7"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 47, 
+      "dst_switch": "ofsw8", 
+      "max_bandwidth": 9000000, 
+      "src_port": 51, 
+      "src_switch": "ofsw7"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 16, 
+      "dst_switch": "ofsw8", 
+      "max_bandwidth": 9000000, 
+      "src_port": 6, 
+      "src_switch": "ofsw3"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 51, 
+        "out_port": 52
+      }, 
+      "dst_port": 52, 
+      "dst_switch": "ofsw9", 
+      "max_bandwidth": 36000000, 
+      "src_port": 49, 
+      "src_switch": "ofsw8"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 17, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 27, 
+      "src_switch": "ofsw1"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 40, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 40, 
+      "src_switch": "ofsw8"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 47, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 47, 
+      "src_switch": "ofsw9"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 34, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 38, 
+      "src_switch": "ofsw9"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 33, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 37, 
+      "src_switch": "ofsw9"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 20, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 10, 
+      "src_switch": "ofsw9"
+    }
+  ], 
+  "isls_for_active_switches": [
+    {
+      "aswitch": null, 
+      "dst_port": 2, 
+      "dst_switch": "ofsw1", 
+      "max_bandwidth": 40000000, 
+      "src_port": 2, 
+      "src_switch": "ofsw3"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 49, 
+        "out_port": 50
+      }, 
+      "dst_port": 1, 
+      "dst_switch": "ofsw2", 
+      "max_bandwidth": 36000000, 
+      "src_port": 1, 
+      "src_switch": "ofsw1"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 3, 
+      "dst_switch": "ofsw2", 
+      "max_bandwidth": 36000000, 
+      "src_port": 1, 
+      "src_switch": "ofsw3"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 6, 
+      "dst_switch": "ofsw2", 
+      "max_bandwidth": 900000, 
+      "src_port": 19, 
+      "src_switch": "ofsw7"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 2, 
+        "out_port": 1
+      }, 
+      "dst_port": 7, 
+      "dst_switch": "ofsw3", 
+      "max_bandwidth": 9000000, 
+      "src_port": 50, 
+      "src_switch": "ofsw7"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 32, 
+      "dst_switch": "ofsw9", 
+      "max_bandwidth": 9000000, 
+      "src_port": 5, 
+      "src_switch": "ofsw3"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 7, 
+        "out_port": 8
+      }, 
+      "dst_port": 48, 
+      "dst_switch": "ofsw9", 
+      "max_bandwidth": 9000000, 
+      "src_port": 49, 
+      "src_switch": "ofsw7"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 47, 
+      "dst_switch": "ofsw8", 
+      "max_bandwidth": 9000000, 
+      "src_port": 51, 
+      "src_switch": "ofsw7"
+    }, 
+    {
+      "aswitch": null, 
+      "dst_port": 16, 
+      "dst_switch": "ofsw8", 
+      "max_bandwidth": 9000000, 
+      "src_port": 6, 
+      "src_switch": "ofsw3"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 51, 
+        "out_port": 52
+      }, 
+      "dst_port": 52, 
+      "dst_switch": "ofsw9", 
+      "max_bandwidth": 36000000, 
+      "src_port": 49, 
+      "src_switch": "ofsw8"
+    }
+  ], 
+  "not_connected_isls": [
+    {
+      "aswitch": {
+        "in_port": 17, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 27, 
+      "src_switch": "ofsw1"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 40, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 40, 
+      "src_switch": "ofsw8"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 47, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 47, 
+      "src_switch": "ofsw9"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 34, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 38, 
+      "src_switch": "ofsw9"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 33, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 37, 
+      "src_switch": "ofsw9"
+    }, 
+    {
+      "aswitch": {
+        "in_port": 20, 
+        "out_port": null
+      }, 
+      "dst_port": 0, 
+      "dst_switch": null, 
+      "max_bandwidth": 36000000, 
+      "src_port": 10, 
+      "src_switch": "ofsw9"
+    }
+  ], 
+  "skipped_switch_ids": [], 
+  "switches": [
+    {
+      "active": true, 
+      "all_ports": [
+        1, 
+        2, 
+        3, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8, 
+        9, 
+        10, 
+        11, 
+        12, 
+        13, 
+        14, 
+        15, 
+        16, 
+        17, 
+        18, 
+        19, 
+        20, 
+        21, 
+        22, 
+        23, 
+        24, 
+        25, 
+        26, 
+        27, 
+        28, 
+        29, 
+        30
+      ], 
+      "dp_id": "00:00:00:22:3d:6b:00:04", 
+      "max_port": 30, 
+      "name": "ofsw1", 
+      "of_version": "OF_13", 
+      "out_ports": [
+        {
+          "port": 12, 
+          "vlan_range": {
+            "empty": false
+          }
+        }
+      ], 
+      "status": "Active"
+    }, 
+    {
+      "active": true, 
+      "all_ports": [
+        1, 
+        2, 
+        3, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8, 
+        9, 
+        10, 
+        11, 
+        12, 
+        13, 
+        14, 
+        15, 
+        16, 
+        17, 
+        18, 
+        19, 
+        20
+      ], 
+      "dp_id": "00:00:00:22:3d:6c:00:b8", 
+      "max_port": 20, 
+      "name": "ofsw2", 
+      "of_version": "OF_13", 
+      "out_ports": [
+        {
+          "port": 10, 
+          "vlan_range": {
+            "empty": false
+          }
+        }
+      ], 
+      "status": "Active"
+    }, 
+    {
+      "active": true, 
+      "all_ports": [
+        1, 
+        2, 
+        3, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8, 
+        9, 
+        10, 
+        11, 
+        12, 
+        13, 
+        14, 
+        15, 
+        16, 
+        17, 
+        18, 
+        19, 
+        20
+      ], 
+      "dp_id": "00:00:00:22:3d:5a:04:87", 
+      "max_port": 20, 
+      "name": "ofsw3", 
+      "of_version": "OF_13", 
+      "out_ports": [
+        {
+          "port": 10, 
+          "vlan_range": {
+            "empty": false
+          }
+        }
+      ], 
+      "status": "Active"
+    }, 
+    {
+      "active": true, 
+      "all_ports": [
+        1, 
+        2, 
+        3, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8, 
+        9, 
+        10, 
+        11, 
+        12, 
+        13, 
+        14, 
+        15, 
+        16, 
+        17, 
+        18, 
+        19, 
+        20, 
+        21, 
+        22, 
+        23, 
+        24, 
+        25, 
+        26, 
+        27, 
+        28, 
+        29, 
+        30, 
+        31, 
+        32, 
+        33, 
+        34, 
+        35, 
+        36, 
+        37, 
+        38, 
+        39, 
+        40, 
+        41, 
+        42, 
+        43, 
+        44, 
+        45, 
+        46, 
+        47, 
+        48, 
+        49, 
+        50, 
+        51, 
+        52
+      ], 
+      "dp_id": "00:00:b0:d2:f5:00:5a:b8", 
+      "max_port": 52, 
+      "name": "ofsw7", 
+      "of_version": "OF_13", 
+      "out_ports": [
+        {
+          "port": 10, 
+          "vlan_range": {
+            "empty": false
+          }
+        }
+      ], 
+      "status": "Active"
+    }, 
+    {
+      "active": true, 
+      "all_ports": [
+        1, 
+        2, 
+        3, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8, 
+        9, 
+        10, 
+        11, 
+        12, 
+        13, 
+        14, 
+        15, 
+        16, 
+        17, 
+        18, 
+        19, 
+        20, 
+        21, 
+        22, 
+        23, 
+        24, 
+        25, 
+        26, 
+        27, 
+        28, 
+        29, 
+        30, 
+        31, 
+        32, 
+        33, 
+        34, 
+        35, 
+        36, 
+        37, 
+        38, 
+        39, 
+        40, 
+        41, 
+        42, 
+        43, 
+        44, 
+        45, 
+        46, 
+        47, 
+        48, 
+        49, 
+        50, 
+        51, 
+        52
+      ], 
+      "dp_id": "00:00:70:72:cf:d2:47:a6", 
+      "max_port": 52, 
+      "name": "ofsw8", 
+      "of_version": "OF_12", 
+      "out_ports": [
+        {
+          "port": 10, 
+          "vlan_range": {
+            "empty": false
+          }
+        }
+      ], 
+      "status": "Active"
+    }, 
+    {
+      "active": true, 
+      "all_ports": [
+        1, 
+        2, 
+        3, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8, 
+        9, 
+        10, 
+        11, 
+        12, 
+        13, 
+        14, 
+        15, 
+        16, 
+        17, 
+        18, 
+        19, 
+        20, 
+        21, 
+        22, 
+        23, 
+        24, 
+        25, 
+        26, 
+        27, 
+        28, 
+        29, 
+        30, 
+        31, 
+        32, 
+        33, 
+        34, 
+        35, 
+        36, 
+        37, 
+        38, 
+        39, 
+        40, 
+        41, 
+        42, 
+        43, 
+        44, 
+        45, 
+        46, 
+        47, 
+        48, 
+        49, 
+        50, 
+        51, 
+        52
+      ], 
+      "dp_id": "00:00:70:72:cf:d2:48:6c", 
+      "max_port": 52, 
+      "name": "ofsw9", 
+      "of_version": "OF_12", 
+      "out_ports": [
+        {
+          "port": 10, 
+          "vlan_range": {
+            "empty": false
+          }
+        }
+      ], 
+      "status": "Active"
+    }
+  ], 
+  "traff_gen_config": {
+    "address_pool_base": "172.16.80.0", 
+    "address_pool_prefix_len": 20
+  }, 
+  "traff_gens": [
+    {
+      "active": true, 
+      "control_endpoint": "http://127.0.0.1:4041",
+      "iface_name": "eth0", 
+      "name": "tg1", 
+      "status": "Active", 
+      "switch_connected": "ofsw3", 
+      "switch_port": 10
+    }, 
+    {
+      "active": true, 
+      "control_endpoint": "http://127.0.0.1:4042",
+      "iface_name": "eth0", 
+      "name": "tg2", 
+      "status": "Active", 
+      "switch_connected": "ofsw8", 
+      "switch_port": 10
+    }, 
+    {
+      "active": false, 
+      "control_endpoint": "http://127.0.0.1:4043",
+      "iface_name": "eth0", 
+      "name": "tg3", 
+      "status": "Inactive", 
+      "switch_connected": "ofsw1", 
+      "switch_port": 12
+    }, 
+    {
+      "active": true, 
+      "control_endpoint": "http://127.0.0.1:4044",
+      "iface_name": "eth0", 
+      "name": "tg4", 
+      "status": "Active", 
+      "switch_connected": "ofsw7", 
+      "switch_port": 10
+    }, 
+    {
+      "active": true, 
+      "control_endpoint": "http://127.0.0.1:4045",
+      "iface_name": "eth0", 
+      "name": "tg5", 
+      "status": "Active", 
+      "switch_connected": "ofsw2", 
+      "switch_port": 10
+    }
+  ]
+}

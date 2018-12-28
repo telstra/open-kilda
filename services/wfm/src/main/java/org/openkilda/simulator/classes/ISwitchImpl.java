@@ -15,9 +15,9 @@
 
 package org.openkilda.simulator.classes;
 
-import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.simulator.interfaces.IFlow;
 import org.openkilda.simulator.interfaces.ISwitch;
 
@@ -33,7 +33,7 @@ public class ISwitchImpl implements ISwitch {
     private List<IPortImpl> ports = new ArrayList<>();
     private Map<Long, IFlow> flows = new HashMap<>();
     private int controlPlaneLatency = 0;
-    private SwitchState state = SwitchState.DEACTIVATED;
+    private SwitchChangeType state = SwitchChangeType.DEACTIVATED;
     private int maxPorts = 0;
 
     public ISwitchImpl() throws SimulatorException {
@@ -56,7 +56,7 @@ public class ISwitchImpl implements ISwitch {
     }
 
     @Override
-    public void modState(SwitchState state) throws SimulatorException {
+    public void modState(SwitchChangeType state) throws SimulatorException {
         this.state = state;
 
         switch (state) {
@@ -78,17 +78,17 @@ public class ISwitchImpl implements ISwitch {
 
     @Override
     public void activate() {
-        state = SwitchState.ACTIVATED;
+        state = SwitchChangeType.ACTIVATED;
     }
 
     @Override
     public void deactivate() {
-        state = SwitchState.DEACTIVATED;
+        state = SwitchChangeType.DEACTIVATED;
     }
 
     @Override
     public boolean isActive() {
-        return state == SwitchState.ACTIVATED ? true : false;
+        return state == SwitchChangeType.ACTIVATED;
     }
 
     @Override
@@ -185,7 +185,7 @@ public class ISwitchImpl implements ISwitch {
     }
 
     @Override
-    public void delFlow(long cookie) throws SimulatorException {
+    public void delFlow(long cookie) {
         flows.remove(cookie);
     }
 

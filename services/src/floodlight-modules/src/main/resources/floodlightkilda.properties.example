@@ -74,3 +74,6 @@ org.openkilda.floodlight.pathverification.PathVerificationService.hmac256-secret
 org.openkilda.floodlight.statistics.StatisticsService.interval=60
 org.openkilda.floodlight.switchmanager.SwitchManager.environment-naming-prefix=
 org.openkilda.floodlight.switchmanager.SwitchManager.connect-mode=AUTO
+org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-burst-coefficient=1.05
+org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-min-burst-size-in-kbits=1024
+org.openkilda.floodlight.switchmanager.SwitchManager.system-meter-burst-size-in-packets=4096

@@ -19,16 +19,11 @@ import static org.openkilda.DefaultParameters.mininetEndpoint;
 import static org.openkilda.DefaultParameters.topologyEndpoint;
 import static org.openkilda.flow.FlowUtils.getTimeDuration;
 
-import org.openkilda.messaging.error.MessageError;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-
 import org.glassfish.jersey.client.ClientConfig;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -122,33 +117,6 @@ public final class TopologyHelp {
         System.out.println(String.format("===> Clear Topology-Engine Topology Time: %,.3f", getTimeDuration(current)));
         String result = response.readEntity(String.class);
         System.out.println(String.format("====> Topology-Engine Topology = %s", result));
-        return result;
-    }
-
-    /**
-     * Get TE representation of flow.
-     */
-    public static FlowPair<Flow, Flow> getFlow(String flowId) {
-        System.out.println("\n==> Topology-Engine Get Flow");
-
-        Client client = ClientBuilder.newClient(new ClientConfig());
-        Response response = client
-                .target(topologyEndpoint)
-                .path("/api/v1/topology/flows/")
-                .path(flowId)
-                .request(MediaType.APPLICATION_JSON)
-                .get();
-
-        int status = response.getStatus();
-        if (status != 200) {
-            System.out.println(String.format("====> Error: Topology-Engine Get Flow = %s",
-                    response.readEntity(MessageError.class)));
-            return null;
-        }
-
-        FlowPair<Flow, Flow> result = response.readEntity(new GenericType<FlowPair<Flow, Flow>>() {
-        });
-        System.out.println(String.format("====> Topology-Engine Get Flow = %s", result));
         return result;
     }
 

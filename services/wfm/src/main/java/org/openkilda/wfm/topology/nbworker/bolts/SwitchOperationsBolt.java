@@ -17,66 +17,40 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
-import org.openkilda.pce.provider.Auth;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.mappers.SwitchMapper;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.neo4j.driver.v1.Record;
-import org.neo4j.driver.v1.Session;
-import org.neo4j.driver.v1.StatementResult;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class SwitchOperationsBolt extends NeoOperationsBolt {
-    public SwitchOperationsBolt(Auth neoAuth) {
-        super(neoAuth);
+public class SwitchOperationsBolt extends PersistenceOperationsBolt {
+    public SwitchOperationsBolt(PersistenceManager persistenceManager) {
+        super(persistenceManager);
     }
 
     @Override
-    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, Session session) {
+    @SuppressWarnings("unchecked")
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetSwitchesRequest) {
-            result = getSwitches(session);
+            result = getSwitches();
         } else {
             unhandledInput(tuple);
         }
 
-        return result;
+        return (List<InfoData>) result;
     }
 
-    private List<SwitchInfoData> getSwitches(Session session) {
-        StatementResult result = session.run("MATCH (sw:switch) "
-                + "RETURN "
-                + "sw.name as name, "
-                + "sw.address as address, "
-                + "sw.hostname as hostname, "
-                + "sw.description as description, "
-                + "sw.controller as controller, "
-                + "sw.state as state");
-        List<SwitchInfoData> results = new ArrayList<>();
-        for (Record record : result.list()) {
-            SwitchInfoData sw = new SwitchInfoData();
-            sw.setSwitchId(new SwitchId(record.get("name").asString()));
-            sw.setAddress(record.get("address").asString());
-            sw.setController(record.get("controller").asString());
-            sw.setDescription(record.get("description").asString());
-            sw.setHostname(record.get("hostname").asString());
-
-            String status = record.get("state").asString();
-            SwitchState st = "active".equals(status) ? SwitchState.ACTIVATED : SwitchState.DEACTIVATED;
-            sw.setState(st);
-
-            results.add(sw);
-        }
-        log.debug("Found switches: {}", results.size());
-
-        return results;
+    private List<SwitchInfoData> getSwitches() {
+        return repositoryFactory.createSwitchRepository().findAll().stream()
+                .map(SwitchMapper.INSTANCE::map)
+                .collect(Collectors.toList());
     }
 
     @Override

@@ -15,6 +15,8 @@
 
 package org.openkilda.testing.service.elastic;
 
+import java.util.Map;
+
 class ElasticQuery {
     String appId;
     String tags;
@@ -23,9 +25,10 @@ class ElasticQuery {
     long resultCount;
     String defaultField;
     String index;
+    Map<String, String> additionalFields;
 
-    ElasticQuery(String appId, String tags, String level, long timeRange,
-                        long resultCount, String defaultField, String index) {
+    ElasticQuery(String appId, String tags, String level, long timeRange, long resultCount, String defaultField,
+                 String index, Map<String, String> additionalFields) {
         this.appId = appId;
         this.tags = tags;
         this.level = level;
@@ -33,5 +36,6 @@ class ElasticQuery {
         this.resultCount = resultCount;
         this.defaultField = defaultField;
         this.index = index;
+        this.additionalFields = additionalFields;
     }
 }

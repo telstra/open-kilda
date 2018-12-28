@@ -55,7 +55,7 @@ import javax.servlet.http.HttpSession;
 public class RequestInterceptor extends HandlerInterceptorAdapter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RequestInterceptor.class);
-    private static final String CORRELATION_ID = "correlationid";
+    private static final String CORRELATION_ID = "correlation_id";
 
     @Autowired
     private ServerContext serverContext;
@@ -110,7 +110,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     
     private void validateUser(final UserInfo userInfo) throws AccessDeniedException {
         UserEntity userEntity = userRepository.findByUserId(userInfo.getUserId());
-        if (!userEntity.getActiveFlag()) {
+        if (userEntity == null || !userEntity.getActiveFlag()) {
             throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
         }
     }

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
@@ -33,13 +33,10 @@ import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class PortMetricGenBolt extends MetricGenBolt {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortMetricGenBolt.class);
-
-    private Map<SwitchId, SwitchId> switchNameCache = new HashMap<>();
 
     @Override
     public void execute(Tuple input) {
@@ -57,15 +54,9 @@ public class PortMetricGenBolt extends MetricGenBolt {
         long timestamp = message.getTimestamp();
 
         try {
-            SwitchId switchId = switchNameCache.get(data.getSwitchId());
-            if (switchId == null) {
-                switchId = data.getSwitchId();
-                switchNameCache.put(data.getSwitchId(), switchId);
-            }
-
             for (PortStatsReply reply : data.getStats()) {
                 for (PortStatsEntry entry : reply.getEntries()) {
-                    emit(entry, timestamp, switchId);
+                    emit(entry, timestamp, data.getSwitchId());
                 }
             }
         } finally {

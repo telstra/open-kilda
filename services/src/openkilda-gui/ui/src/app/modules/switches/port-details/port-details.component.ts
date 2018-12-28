@@ -1,4 +1,4 @@
-import { Component, OnInit, EventEmitter, Output, AfterViewInit } from '@angular/core';
+import { Component, OnInit, EventEmitter, Output, AfterViewInit, OnDestroy } from '@angular/core';
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { FormBuilder, FormGroup, Validators, NgForm } from '@angular/forms';
 import * as _moment from 'moment';
@@ -23,7 +23,7 @@ declare var moment: any;
   templateUrl: './port-details.component.html',
   styleUrls: ['./port-details.component.css']
 })
-export class PortDetailsComponent implements OnInit, AfterViewInit {
+export class PortDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   portDataObject: any;
   retrievedSwitchObject: any;
   responseGraph = [];
@@ -43,6 +43,7 @@ export class PortDetailsComponent implements OnInit, AfterViewInit {
   currentPortState: string;
   requestedPortState: string;
   dateMessage:string;
+  getautoReloadValues = this.commonService.getAutoreloadValues();
   clipBoardItems = {
     sourceSwitch:"",
   }
@@ -205,10 +206,15 @@ export class PortDetailsComponent implements OnInit, AfterViewInit {
   callPortGraphAPI(){
     let formdata = this.filterForm.value;
     let direction = formdata.direction;
+    let autoReloadTime = Number(
+      this.filterForm.controls["auto_reload_time"].value
+    );
     let downsampling = formdata.download_sample;
     let metric = formdata.metric;
     let timezone = formdata.timezone;
-
+    if (this.filterForm.controls["auto_reload"]) {
+      formdata.toDate = new Date(new Date(formdata.toDate).getTime() + (autoReloadTime * 1000));
+    }
 
     let convertedStartDate = moment(new Date(formdata.fromDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
     let convertedEndDate = moment(new Date(formdata.toDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
@@ -378,6 +384,11 @@ export class PortDetailsComponent implements OnInit, AfterViewInit {
 
   copyToClip(event, copyItem) {
     this.clipboardService.copyFromContent(this.clipBoardItems[copyItem]);
+  }
+  ngOnDestroy(){
+    if (this.autoReloadTimerId) {
+      clearInterval(this.autoReloadTimerId);
+    }
   }
 }
 

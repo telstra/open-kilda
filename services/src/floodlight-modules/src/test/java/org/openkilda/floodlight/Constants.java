@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight;
 
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
 
 public final class Constants {
     public static final String flowName = "test_flow";
@@ -27,6 +27,5 @@ public final class Constants {
     public static final int inputVlanId = 300;
     public static final long bandwidth = 10000;
     public static final long meterId = 1;
-    public static final long burstSize = 1024;
     public static final OutputVlanType outputVlanType = OutputVlanType.REPLACE;
 }

@@ -182,11 +182,11 @@
     <suppress files="src/main/java/org/openkilda/messaging/model/rule/RuleConstants.java" lines="20" checks="HideUtilityClassConstructor"/>
     <suppress files="src/main/java/org/openkilda/messaging/model/rule/Rule.java" lines="25" checks="UnusedImports"/>
     <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="1" checks="RegexpHeader"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="17" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="18" checks="ModifierOrder"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="36" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="52" checks="JavadocParagraph"/>
+    <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="21" checks="SummaryJavadoc"/>
+    <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="22" checks="ModifierOrder"/>
+    <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="40" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="56" checks="JavadocParagraph"/>
+    <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="60" checks="JavadocParagraph"/>
     <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="81" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="104" checks="WhitespaceAround"/>
     <suppress files="src/main/java/org/openkilda/messaging/model/DiscoveryNode.java" lines="108" checks="WhitespaceAround"/>

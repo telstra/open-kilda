@@ -17,7 +17,7 @@ package org.openkilda.floodlight.statistics;
 
 import static java.util.stream.Collectors.toList;
 
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
@@ -32,7 +32,7 @@ import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.FutureCallback;
@@ -41,7 +41,6 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -100,18 +99,18 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     }
 
     @Override
-    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+    public void init(FloodlightModuleContext context) {
         switchService = context.getServiceImpl(IOFSwitchService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
         producerService = context.getServiceImpl(IKafkaProducerService.class);
 
-        ConfigurationProvider provider = ConfigurationProvider.of(context, this);
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(context, this);
         StatisticsServiceConfig serviceConfig = provider.getConfiguration(StatisticsServiceConfig.class);
         interval = serviceConfig.getInterval();
     }
 
     @Override
-    public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
+    public void startUp(FloodlightModuleContext context) {
         statisticsTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getStatsTopic();
 
         if (interval > 0) {
@@ -153,7 +152,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                                                 rxFrameErr = etherProps.getRxFrameErr().getValue();
                                                 rxOverErr = etherProps.getRxOverErr().getValue();
                                                 rxCrcErr = etherProps.getRxCrcErr().getValue();
-                                                collisions = etherProps.getCollisions().getLength();
+                                                collisions = etherProps.getCollisions().getValue();
                                             }
                                         }
 

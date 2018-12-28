@@ -27,14 +27,15 @@ import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.Status;
 import org.openkilda.service.FlowService;
 import org.openkilda.utility.StringUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,7 +50,6 @@ import org.usermanagement.model.UserInfo;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 /**
  * The Class FlowController.
  *
@@ -243,4 +243,27 @@ public class FlowController extends BaseController {
         LOGGER.info("[resyncFlow] - start. Flow id: " + flowId);
         return flowService.resyncFlow(flowId);
     }
+
+    /**
+     * Returns statuses exists in the system.
+     *
+     * @return statuses exists in the system.
+     */
+    @RequestMapping(value = "/status", method = { RequestMethod.GET })
+    public List<String> getAllStatus() {
+        LOGGER.info("[getAllStatus] - start. ");
+        return flowService.getAllStatus();
+    }
+
+    /**
+     * Get statuses exists in the system with cron.
+     *
+     */
+    @Scheduled(fixedDelayString = "${status.cron.time}")
+    public void getAllStatusWithCron() {
+        LOGGER.info("[getAllStatusWithCron] - start. ");
+        Status statuses = Status.INSTANCE;
+        statuses.setStatuses(flowService.getAllStatus());
+    }
+
 }

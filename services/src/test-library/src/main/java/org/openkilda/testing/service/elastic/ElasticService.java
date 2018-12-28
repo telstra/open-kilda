@@ -15,8 +15,8 @@
 
 package org.openkilda.testing.service.elastic;
 
-import java.util.Map;
+import org.openkilda.testing.service.elastic.model.ElasticResponseDto;
 
 public interface ElasticService {
-    Map getLogs(ElasticQuery query);
+    ElasticResponseDto getLogs(ElasticQuery query);
 }

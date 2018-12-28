@@ -75,7 +75,6 @@ def read_and_format_with_env_name(name):
 
 KAFKA_BOOTSTRAP_SERVERS = _get_bootstrap_servers()
 KAFKA_FLOW_TOPIC = read_and_format_with_env_name('flow.topic')
-KAFKA_CACHE_TOPIC = read_and_format_with_env_name('cache.topic')
 KAFKA_SPEAKER_TOPIC = read_and_format_with_env_name('speaker.topic')
 KAFKA_SPEAKER_FLOW_TOPIC = read_and_format_with_env_name('speaker.flow.topic')
 KAFKA_TOPO_ENG_TOPIC = read_and_format_with_env_name('topo.eng.topic')

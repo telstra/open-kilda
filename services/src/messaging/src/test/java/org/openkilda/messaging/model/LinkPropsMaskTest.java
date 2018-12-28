@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.model;
 
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Assert;
 import org.junit.Test;

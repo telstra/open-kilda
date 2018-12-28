@@ -32,6 +32,8 @@ import org.openkilda.model.FlowDiscrepancy;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowState;
+import org.openkilda.model.Status;
+import org.openkilda.store.model.LinkStoreConfigDto;
 import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
@@ -39,6 +41,7 @@ import org.openkilda.utility.StringUtil;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
@@ -99,19 +102,15 @@ public class FlowService {
         if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
             try {
                 List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
-                if (CollectionUtil.isEmpty(statuses)) {
-                    inventoryFlows = flowStoreService.getAllFlows();
-                } else {
-                    String status = "";
-                    for (String statusObj : statuses) {
-                        if (StringUtil.isNullOrEmpty(status)) {
-                            status += statusObj;
-                        } else {
-                            status += "," + statusObj;
-                        }
+                String status = "";
+                for (String statusObj : statuses) {
+                    if (StringUtil.isNullOrEmpty(status)) {
+                        status += statusObj;
+                    } else {
+                        status += "," + statusObj;
                     }
-                    inventoryFlows = flowStoreService.getFlowsWithParams(status);
                 }
+                inventoryFlows = flowStoreService.getFlowsWithParams(status);
                 processInventoryFlow(flows, inventoryFlows);
             } catch (Exception ex) {
                 LOGGER.error("[getAllFlows] Exception while retrieving flows from store. Exception: "
@@ -124,7 +123,8 @@ public class FlowService {
     /**
      * Gets the flow count.
      *
-     * @param flows the flows
+     * @param flows
+     *            the flows
      * @return the flow count
      */
     public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
@@ -163,7 +163,8 @@ public class FlowService {
     /**
      * Gets the path link.
      *
-     * @param flowId the flow id
+     * @param flowId
+     *            the flow id
      * @return the path link
      */
     public FlowPayload getFlowPath(final String flowId) throws IntegrationException {
@@ -182,7 +183,8 @@ public class FlowService {
     /**
      * Re route Flow by flow id.
      *
-     * @param flowId the flow id
+     * @param flowId
+     *            the flow id
      * @return flow path
      */
     public FlowPath rerouteFlow(String flowId) {
@@ -192,7 +194,8 @@ public class FlowService {
     /**
      * Validate Flow.
      *
-     * @param flowId the flow id
+     * @param flowId
+     *            the flow id
      * @return the string
      */
     public String validateFlow(String flowId) {
@@ -202,7 +205,8 @@ public class FlowService {
     /**
      * Flow by flow id.
      *
-     * @param flowId the flow id
+     * @param flowId
+     *            the flow id
      * @return the flow by id
      */
     public FlowInfo getFlowById(String flowId) {
@@ -231,7 +235,7 @@ public class FlowService {
 
                         FlowBandwidth flowBandwidth = new FlowBandwidth();
                         flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
-                        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth() * 1000);
+                        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
                         discrepancy.setBandwidthValue(flowBandwidth);
                     }
                     if (("UP".equalsIgnoreCase(flowInfo.getStatus())
@@ -278,7 +282,8 @@ public class FlowService {
     /**
      * Gets the flow status by id.
      *
-     * @param flowId the flow id
+     * @param flowId
+     *            the flow id
      * @return the flow status by id
      */
     public FlowStatus getFlowStatusById(String flowId) {
@@ -288,7 +293,8 @@ public class FlowService {
     /**
      * Creates the flow.
      *
-     * @param flow the flow
+     * @param flow
+     *            the flow
      * @return the flow
      */
     public Flow createFlow(Flow flow) {
@@ -300,8 +306,10 @@ public class FlowService {
     /**
      * Update flow.
      *
-     * @param flowId the flow id
-     * @param flow the flow
+     * @param flowId
+     *            the flow id
+     * @param flow
+     *            the flow
      * @return the flow
      */
     public Flow updateFlow(String flowId, Flow flow) {
@@ -313,8 +321,10 @@ public class FlowService {
     /**
      * Delete flow.
      *
-     * @param flowId the flow id
-     * @param userInfo the user info
+     * @param flowId
+     *            the flow id
+     * @param userInfo
+     *            the user info
      * @return the flow
      */
     public Flow deleteFlow(String flowId, UserInfo userInfo) {
@@ -330,7 +340,8 @@ public class FlowService {
     /**
      * Re sync flow.
      * 
-     * @param flowId the flow id
+     * @param flowId
+     *            the flow id
      * 
      * @return
      */
@@ -342,8 +353,10 @@ public class FlowService {
     /**
      * Process inventory flow.
      *
-     * @param flows the flows
-     * @param inventoryFlows the inventory flows
+     * @param flows
+     *            the flows
+     * @param inventoryFlows
+     *            the inventory flows
      */
     private void processInventoryFlow(final List<FlowInfo> flows, final List<InventoryFlow> inventoryFlows) {
         List<FlowInfo> discrepancyFlow = new ArrayList<FlowInfo>();
@@ -358,11 +371,12 @@ public class FlowService {
             if (index >= 0) {
                 FlowDiscrepancy discrepancy = new FlowDiscrepancy();
                 discrepancy.setControllerDiscrepancy(false);
-                if ((flows.get(index).getMaximumBandwidth() / 1000) != inventoryFlow.getMaximumBandwidth()) {
+                if (flows.get(index).getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
+                    discrepancy.setInventoryDiscrepancy(true);
                     discrepancy.setBandwidth(true);
                     FlowBandwidth flowBandwidth = new FlowBandwidth();
                     flowBandwidth.setControllerBandwidth(flows.get(index).getMaximumBandwidth());
-                    flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth() * 1000);
+                    flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
                     discrepancy.setBandwidthValue(flowBandwidth);
 
                 }
@@ -370,6 +384,7 @@ public class FlowService {
                         && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                         || ("DOWN".equalsIgnoreCase(flows.get(index).getStatus())
                                 && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                    discrepancy.setInventoryDiscrepancy(true);
                     discrepancy.setStatus(true);
 
                     FlowState flowState = new FlowState();
@@ -417,5 +432,24 @@ public class FlowService {
             }
         }
         flows.addAll(discrepancyFlow);
+    }
+
+    /**
+     * Gets the all status list.
+     *
+     * @return the all status list
+     */
+    public List<String> getAllStatus() {
+        LinkStoreConfigDto linkStoreConfigDto = storeService.getLinkStoreConfig();
+        boolean isLinkStoreConfig = linkStoreConfigDto.getUrls().isEmpty();
+        Status status = Status.INSTANCE;
+        if (!isLinkStoreConfig) {
+            if (status.getStatuses() == null) {
+                status.setStatuses(flowStoreService.getAllStatus());
+            }
+        } else {
+            LOGGER.info("Link store is not configured. ");
+        }
+        return status.getStatuses();
     }
 }

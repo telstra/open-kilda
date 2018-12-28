@@ -1,0 +1,5 @@
+[template]
+src = "lab-service/log.json.tmpl"
+dest = "services/lab-service/lab/log.json"
+keys = [ "/" ]
+mode = "0644"

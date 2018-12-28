@@ -155,10 +155,10 @@ Feature: Basic Flow CRUD
 
   This scenario setups flows across the entire set of switches, then updates them and checks that flows were updated in database
 
-    Given a clean controller
+    Given a clean flow topology
+    And a clean controller
     And a nonrandom linear topology of 7 switches
     And topology contains 12 links
-    And a clean flow topology
     When flow <flow_id> creation request with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is successful
     And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be created
     And flow <flow_id> in UP state
@@ -168,6 +168,8 @@ Feature: Basic Flow CRUD
     And rules with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> are updated with <new_bandwidth>
     #And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is forwarded
     And traffic through <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> is pingable
+    And flow <flow_id> with <source_switch> <source_port> <source_vlan> and <destination_switch> <destination_port> <destination_vlan> and <bandwidth> could be deleted
+
 
     Examples:
       | flow_id  |      source_switch      | source_port | source_vlan |   destination_switch    | destination_port | destination_vlan | bandwidth  | new_bandwidth |

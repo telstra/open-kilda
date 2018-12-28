@@ -78,10 +78,6 @@ public class Topology implements ITopology {
         if (!links.entrySet().containsAll(other.getLinks().entrySet())) {
             return false;
         }
-        if (!other.getLinks().entrySet().containsAll(links.entrySet())) {
-            return false;
-        }
-
-        return true;
+        return other.getLinks().entrySet().containsAll(links.entrySet());
     }
 }

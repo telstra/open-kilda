@@ -24,12 +24,30 @@
               </select>
           </div>
       </form>
-      
-       
+   </div>
+   <div class="col-md-12">
+      <div class="row">
+        <div class="col-md-1">
+            <label class="text-label text-right">Cookie:</label>
+        </div>
+        <div class="col-md-11 margin-zero">
+        <div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookieforwardId" *ngIf="type=='forward'">
+            <label *ngFor="let cookie of cookieData"  class="btn kilda_btn "><span class="copy_to_clipBoard" (click)="copyToClipCookie(cookie)" [contextMenu]="cookieMenu" [contextMenuSubject]="cookie">{{cookie}}</span> </label>
+        </div>
+      <div class="btn-group btn-group-toggle" data-toggle="buttons" id="cookiereverseId" *ngIf="type=='reverse'">
+          <label *ngFor="let cookie of cookieData" class="btn kilda_btn "><span class="copy_to_clipBoard" (click)="copyToClipCookie(cookie)" [contextMenu]="cookieMenu" [contextMenuSubject]="cookie">{{cookie}}</span> </label>
+     </div>
+  </div>
+      </div>
     </div>
-   
     <div class="chart-container flow-path-graph-container" style="width:95% !important">
         <app-dygraph (zoomChange)="zoom($event)" ></app-dygraph>
     </div>
   </div>
 </div>
+
+<context-menu #cookieMenu>
+    <ng-template contextMenuItem (execute)="copyToClipCookie($event.item);">
+      Copy to Clipboard
+    </ng-template>
+  </context-menu>

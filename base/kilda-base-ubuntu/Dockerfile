@@ -24,14 +24,15 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV JAVA_VER 8
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 ENV JAVA_MEM_CONFIG "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+ENV DEBIAN_FRONTEND noninteractive
 
 COPY app /app
 
 RUN chmod 777 /app/* \
     && echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections \
     && echo debconf shared/accepted-oracle-license-v1-1 seen true | debconf-set-selections \
-    && apt -o Acquire::CompressionTypes::Order=bz2 update \
-    && apt install -y --no-install-recommends \
+    && apt-get -q -o Acquire::CompressionTypes::Order=bz2 update \
+    && apt-get install -yq --no-install-recommends \
         libffi-dev \
         libssl-dev \
         software-properties-common \
@@ -46,8 +47,8 @@ RUN chmod 777 /app/* \
     && pip install --upgrade pip \
     && python -m pip install setuptools \
     && add-apt-repository ppa:webupd8team/java \
-    && apt update \
-    && apt install -y --no-install-recommends \
+    && apt-get update -q \
+    && apt-get install -yq --no-install-recommends \
         oracle-java8-installer \
         oracle-java8-set-default \
     && update-java-alternatives -s java-8-oracle \

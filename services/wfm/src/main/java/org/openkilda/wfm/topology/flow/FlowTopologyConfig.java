@@ -17,18 +17,23 @@ package org.openkilda.wfm.topology.flow;
 
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Converter;
+import com.sabre.oss.conf4j.annotation.Default;
+import com.sabre.oss.conf4j.annotation.Key;
+import com.sabre.oss.conf4j.converter.DurationConverter;
+
+import java.time.Duration;
 
 @Configuration
 public interface FlowTopologyConfig extends AbstractTopologyConfig {
+    @Key("command.transaction.expiration-time")
+    @Default("PT1H")
+    @Converter(DurationConverter.class)
+    Duration getCommandTransactionExpirationTime();
 
     default String getKafkaFlowTopic() {
         return getKafkaTopics().getFlowTopic();
-    }
-
-    default String getKafkaTopoCacheTopic() {
-        return getKafkaTopics().getTopoCacheTopic();
     }
 
     default String getKafkaSpeakerFlowTopic() {
@@ -37,10 +42,5 @@ public interface FlowTopologyConfig extends AbstractTopologyConfig {
 
     default String getKafkaNorthboundTopic() {
         return getKafkaTopics().getNorthboundTopic();
-    }
-
-    @VisibleForTesting
-    default String getKafkaTopoEngTopic() {
-        return getKafkaTopics().getTopoEngTopic();
     }
 }

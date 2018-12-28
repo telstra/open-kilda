@@ -16,7 +16,6 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.info.flow.FlowOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -37,9 +36,6 @@ public class FlowRerouteRequest extends CommandData {
     @JsonProperty("flowid")
     protected String flowId;
 
-    @JsonProperty("operation")
-    private FlowOperation operation;
-
     /**
      * Update flow even if path will not be changed.
      */
@@ -50,16 +46,10 @@ public class FlowRerouteRequest extends CommandData {
         this(flowId, false);
     }
 
-    public FlowRerouteRequest(String flowId, boolean force) {
-        this(flowId, FlowOperation.UPDATE, force);
-    }
-
     @JsonCreator
     public FlowRerouteRequest(@NonNull @JsonProperty("flowid") String flowId,
-                              @NonNull @JsonProperty("operation") FlowOperation operation,
                               @JsonProperty("force") boolean force) {
         this.flowId = flowId;
-        this.operation = operation;
         this.force = force;
     }
 }

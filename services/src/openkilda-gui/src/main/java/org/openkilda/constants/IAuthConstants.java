@@ -24,7 +24,7 @@ public abstract class IAuthConstants {
 
     public interface Header {
         String AUTHORIZATION = "Authorization";
-        String CORRELATION_ID = "correlationid";
+        String CORRELATION_ID = "correlation_id";
         String BASIC_AUTH = "BasicAuth";
     }
 

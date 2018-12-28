@@ -15,7 +15,7 @@
 
 package org.openkilda.messaging.model.rule;
 
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;

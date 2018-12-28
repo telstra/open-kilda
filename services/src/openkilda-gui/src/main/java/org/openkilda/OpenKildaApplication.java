@@ -29,6 +29,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.concurrent.TimeUnit;
 
@@ -44,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 @EnableJpaRepositories({ "org.usermanagement", "org.openkilda" })
 @EntityScan({ "org.usermanagement", "org.openkilda" })
 @EnableAutoConfiguration
+@EnableScheduling
 public class OpenKildaApplication extends SpringBootServletInitializer {
 
     /*

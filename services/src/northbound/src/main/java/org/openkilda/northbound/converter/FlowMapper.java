@@ -19,8 +19,8 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -34,7 +34,6 @@ import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,45 +49,46 @@ public interface FlowMapper {
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
     @Mapping(target = "status", source = "state")
-    FlowPayload toFlowOutput(Flow f);
+    FlowPayload toFlowOutput(FlowDto f);
 
     PingOutput toPingOutput(FlowPingResponse response);
 
-    @Mappings({
-            @Mapping(source = "flowId", target = "id"),
-            @Mapping(source = "path", target = "path"),
-            @Mapping(source = "rerouted", target = "rerouted")
-    })
+    @Mapping(source = "flowId", target = "id")
+    @Mapping(source = "path", target = "path")
+    @Mapping(source = "rerouted", target = "rerouted")
     FlowReroutePayload toReroutePayload(String flowId, PathInfoData path, boolean rerouted);
 
-    @Mappings({
-            @Mapping(source = "flowId", target = "id"),
-            @Mapping(source = "state", target = "status")
-    })
-    FlowIdStatusPayload toFlowIdStatusPayload(BidirectionalFlow flow);
+    @Mapping(source = "flowId", target = "id")
+    @Mapping(source = "state", target = "status")
+    FlowIdStatusPayload toFlowIdStatusPayload(BidirectionalFlowDto flow);
 
-    @Mappings({
-            @Mapping(source = "flowId", target = "id"),
-            @Mapping(source = "forward", target = "forwardPath"),
-            @Mapping(source = "reverse", target = "reversePath")
-    })
-    FlowPathPayload toFlowPathPayload(BidirectionalFlow flow);
+    @Mapping(source = "flowId", target = "id")
+    @Mapping(source = "forward", target = "forwardPath")
+    @Mapping(source = "reverse", target = "reversePath")
+    FlowPathPayload toFlowPathPayload(BidirectionalFlowDto flow);
 
     @Mapping(target = "latency", source = "meters.networkLatency")
     UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
 
+    /**
+     * Convert {@link FlowState} to {@link String}.
+     */
     default String encodeFlowState(FlowState state) {
+        if (state == null) {
+            return null;
+        }
+
         return state.getState();
     }
 
     /**
-     * Makes flow path as list of {@link PathNodePayload} representation by a {@link Flow} instance.
+     * Makes flow path as list of {@link PathNodePayload} representation by a {@link FlowDto} instance.
      * Includes input and output nodes.
      *
-     * @param flow the {@link Flow} instance.
+     * @param flow the {@link FlowDto} instance.
      * @return flow path as list of {@link PathNodePayload} representation.
      */
-    default List<PathNodePayload> toPathNodePayloadList(Flow flow) {
+    default List<PathNodePayload> toPathNodePayloadList(FlowDto flow) {
         List<PathNode> path = new ArrayList<>(flow.getFlowPath().getPath());
         // add input and output nodes
         path.add(0, new PathNode(flow.getSourceSwitch(), flow.getSourcePort(), 0));

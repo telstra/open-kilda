@@ -34,7 +34,7 @@ public enum Url {
             new RequestParams[] { RequestParams.USER_NAME, RequestParams.PASSWORD }), 
             OAUTH_REFRESH_TOKEN("oauth-refresh-token", new RequestParams[] { RequestParams.ACCESS_TOKEN }), 
             GET_LINK("get-link", new RequestParams[] { RequestParams.LINK_ID }),
-            GET_ALL_LINK("get-all-link", new RequestParams[] {}),
+            GET_STATUS_LIST("get-status-list", new RequestParams[] {}),
             GET_LINKS_WITH_PARAMS("get-link-with-param", 
                     new RequestParams[] { RequestParams.STATUS }),
             GET_CONTRACT("get-contract", new RequestParams[] { RequestParams.LINK_ID }),

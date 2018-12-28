@@ -25,6 +25,7 @@
         <log4j-slf4j.version>2.10.0</log4j-slf4j.version>
         <shazamcrest.version>0.9</shazamcrest.version>
     </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -83,6 +84,7 @@
     </dependencies>
 
     <build>
+        <testSourceDirectory>src/test/groovy</testSourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.codehaus.gmavenplus</groupId>

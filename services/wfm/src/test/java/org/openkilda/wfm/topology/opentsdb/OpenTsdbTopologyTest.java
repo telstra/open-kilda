@@ -44,7 +44,8 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        StableAbstractStormTest.setupOnce();
+        StableAbstractStormTest.startCompleteTopology();
+
         mockServer = startClientAndServer(4242);
         mockServer.when(HttpRequest
                 .request()
@@ -59,7 +60,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     }
 
     @Test
-    public void shouldSuccessfulSendDatapoint() throws Exception {
+    public void shouldSuccessfulSendDatapoint() {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
 
         MockedSources sources = new MockedSources();

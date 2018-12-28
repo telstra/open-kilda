@@ -30,8 +30,10 @@ import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 
+import java.util.UUID;
+
 public class InstallIngressFlowTest {
-    private InstallIngressFlow flow = new InstallIngressFlow(0L, flowName, 0L, switchId, inputPort,
+    private InstallIngressFlow flow = new InstallIngressFlow(UUID.randomUUID(), flowName, 0L, switchId, inputPort,
             outputPort, inputVlanId, transitVlanId, outputVlanType, bandwidth, meterId);
 
     @Test

@@ -16,7 +16,7 @@
 package org.openkilda.wfm.ctrl;
 
 import org.openkilda.messaging.ctrl.AbstractDumpState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.IKildaBolt;
 
 import com.google.common.annotations.VisibleForTesting;

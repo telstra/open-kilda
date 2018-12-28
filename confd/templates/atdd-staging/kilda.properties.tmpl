@@ -9,21 +9,25 @@ topology-engine-rest.password={{ getv "/kilda_topology_engine_rest_password" }}
 floodlight.endpoint={{ getv "/kilda_floodlight_endpoint" }}:{{ getv "/kilda_floodlight_rest_port" }}
 floodlight.username={{ getv "/kilda_floodlight_username" }}
 floodlight.password={{ getv "/kilda_floodlight_password" }}
+floodlight.controller.uri={{ getv "/kilda_floodlight_controller_uri" }}
 
 lockkeeper.endpoint={{ getv "/kilda_aswitch_endpoint" }}:{{ getv "/kilda_aswitch_port" }}
 neo.uri=bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
-mininet.endpoint={{ getv "/kilda_mininet_endpoint" }}:{{ getv "/kilda_mininet_rest_port" }}
-mininet-flowtool.endpoint={{ getv "/kilda_mininet_endpoint" }}:17191
-
+lab-api.endpoint={{ getv "/kilda_lab_api_endpoint" }}:{{ getv "/kilda_lab_api_port" }}
 otsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
-elasticsearch.endpoint = https://{{ getv "/kilda_logging_elasticsearch_hosts" }}
+
+elasticsearch.endpoint = {{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
 elasticsearch.username = {{ getv "/kilda_logging_elasticsearch_user" }}
 elasticsearch.password = {{ getv "/kilda_logging_elasticsearch_pass" }}
 
 spring.profiles.active={{ getv "/kilda_test_profile" }}
+mode.topology.single={{ getv "/kilda_test_topology_single" }}
 
 reroute.delay={{ getv "/kilda_reroute_throttling_delay_min" }}
 reroute.hardtimeout={{ getv "/kilda_reroute_throttling_delay_max" }}
 discovery.interval={{ getv "/kilda_discovery_interval" }}
 discovery.timeout={{ getv "/kilda_discovery_timeout" }}
+antiflap.min={{ getv "/kilda_port_up_down_throttling_delay_seconds_min" }}
+antiflap.warmup={{ getv "/kilda_port_up_down_throttling_delay_seconds_warm_up" }}
+antiflap.cooldown={{ getv "/kilda_port_up_down_throttling_delay_seconds_cool_down" }}
 

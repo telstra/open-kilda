@@ -17,7 +17,7 @@ package org.openkilda.floodlight.pathverification;
 
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
@@ -34,7 +34,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -83,7 +83,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -147,7 +146,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     @VisibleForTesting
     void initConfiguration(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(moduleContext, this);
         PathVerificationServiceConfig config = provider.getConfiguration(PathVerificationServiceConfig.class);
 
         islBandwidthQuotient = config.getIslBandwidthQuotient();
@@ -184,7 +183,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     public Command makeCommand(CommandContext context, OfInput input) {
         return new Command(context) {
             @Override
-            public Command call() throws Exception {
+            public Command call() {
                 handlePacketIn(input);
                 return null;
             }
@@ -415,6 +414,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             long timestamp = 0;
             int pathOrdinal = 10;
             IOFSwitch remoteSwitch = null;
+            DatapathId remoteSwitchId = null;
             boolean signed = false;
             for (LLDPTLV lldptlv : verificationPacket.getOptionalTlvList()) {
                 if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
@@ -423,7 +423,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x0) {
                     ByteBuffer dpidBb = ByteBuffer.wrap(lldptlv.getValue());
-                    remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBb.getLong(4)));
+                    remoteSwitchId = DatapathId.of(dpidBb.getLong(4));
+                    remoteSwitch = switchService.getSwitch(remoteSwitchId);
                 } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
@@ -467,6 +468,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             // TODO:  fix the above
 
             if (remoteSwitch == null) {
+                logger.warn("detected unknown remote switch {}", remoteSwitchId);
                 return;
             }
 
@@ -483,12 +485,11 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
             // this verification packet was sent from remote switch/port to received switch/port
             // so the link direction is from remote switch/port to received switch/port
-            List<PathNode> nodes = Arrays.asList(
-                    new PathNode(new SwitchId(remoteSwitch.getId().getLong()), remotePort.getPortNumber(), 0,
-                            latency),
-                    new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1));
+            PathNode source = new PathNode(new SwitchId(remoteSwitch.getId().getLong()), remotePort.getPortNumber(), 0,
+                            latency);
+            PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
             long speed = getSwitchPortSpeed(input.getDpId(), inPort);
-            IslInfoData path = new IslInfoData(latency, nodes, speed, IslChangeType.DISCOVERED,
+            IslInfoData path = new IslInfoData(latency, source, destination, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed));
 
             Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);

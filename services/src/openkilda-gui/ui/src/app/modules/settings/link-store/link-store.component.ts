@@ -30,10 +30,11 @@ export class LinkStoreComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.loaderService.show('Loading Link Store Details..');
     this.linkStoreForm = this.formbuilder.group({
        "urls":this.formbuilder.group({
-              "get-all-link":this.formbuilder.group({
-                "name": "get-all-link",
+              "get-status-list":this.formbuilder.group({
+                "name": "get-status-list",
                 "method-type": "GET",
                 "url": ["",Validators.compose([
                           Validators.required,
@@ -84,7 +85,6 @@ export class LinkStoreComponent implements OnInit {
       })      
     });
     
-
     this.storesettingservice.getLinkStoreUrl().subscribe((response)=>{
       if(response && response.length){
 				for(var i=0; i < response.length; i++) { 
@@ -218,23 +218,37 @@ export class LinkStoreComponent implements OnInit {
                       })
 							     break;
 					 }
-				}
+        }
+        this.loadStoreDetail();
 			}
     },(error)=>{
-
+      this.loadStoreDetail();
     })
+    
+  }
+  loadStoreDetail(){
+    var self = this;
     this.storesettingservice.getLinkStoreDetails().subscribe((jsonResponse)=>{
       if(jsonResponse && jsonResponse['urls'] && typeof(jsonResponse['urls']['get-link']) !='undefined' &&  typeof(jsonResponse['urls']['get-link']['url'])!='undefined'){
 				this.linkStoreObj = jsonResponse;
 				this.linkStoreForm.setValue(jsonResponse);
         this.linkStoreForm.disable();
         this.isEdit = true;
-			}
+        setTimeout(function(){
+          self.loaderService.hide();
+        },300);
+        
+			}else{
+        setTimeout(function(){
+          self.loaderService.hide();
+        },300);
+      }
     },(error)=>{
-
+      setTimeout(function(){
+        self.loaderService.hide();
+      },300);
     })
   }
-
   get i() {
     return this.linkStoreForm.controls;
   }
@@ -289,7 +303,7 @@ export class LinkStoreComponent implements OnInit {
         this.loaderService.show('Deleting link store details...');
         this.storesettingservice.deleteLinkStore('/store/link-store-config/delete').subscribe((res:any)=>{
           this.loaderService.hide();
-          this.toastr.success("Link store setting deleted successfully",'Success');
+          this.toastr.success("Link Store Setting Deleted Successfully",'Success');
           setTimeout(function(){
             location.reload();
           },500);
@@ -309,11 +323,11 @@ export class LinkStoreComponent implements OnInit {
       }
       this.submitted = false;
     var obj = this.linkStoreForm.value;
-    this.loaderService.show('saving identity server details');
+    this.loaderService.show('Saving Identity Server Details');
     this.storesettingservice.submitLinkData('/store/link-store-config/save',obj).subscribe((response:any)=>{
             this.linkStoreForm.setValue(response || {});
             this.loaderService.hide();
-						this.toastr.success("Link store details saved successfully", 'Success');
+						this.toastr.success("Link Store Details Saved Successfully", 'Success');
             this.linkStoreForm.disable();
             this.isEditable = false;
             this.isEdit = true;
