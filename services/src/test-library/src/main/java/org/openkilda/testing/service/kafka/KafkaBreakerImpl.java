@@ -1,24 +1,42 @@
-package org.openkilda.atdd.floodlight;
+/* Copyright 2018 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+package org.openkilda.testing.service.kafka;
 
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;
 import org.openkilda.messaging.ctrl.KafkaBreakerAction;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
-public class KafkaBreaker {
-    private static final Logger logger = LoggerFactory.getLogger(KafkaBreaker.class);
-
-    private int MAX_ATTEMPTS = 3;
+/**
+ * Allows to break connection between Floodlight and Kafka.
+ */
+@Slf4j
+@Service
+public class KafkaBreakerImpl implements KafkaBreaker {
 
     private KafkaProducer<String, String> producer;
 
-    public KafkaBreaker(Properties kafkaConfig) {
+    public KafkaBreakerImpl(@Qualifier("kafkaProducerProperties") Properties kafkaConfig) {
         producer = new KafkaProducer<>(kafkaConfig);
     }
 
@@ -45,17 +63,9 @@ public class KafkaBreaker {
         ProducerRecord<String, String> record = new ProducerRecord<>(
                 topic, target.toString(), action.toString());
         try {
-            for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) try {
-                logger.debug(
-                        "Send {} to {} ({} of {}})",
-                        record.value(), target.toString(), attempt + 1, MAX_ATTEMPTS);
-                producer.send(record).get();
-                break;
-            } catch (InterruptedException e) {
-                logger.warn("producer was interrupted (attempts {} of {})", attempt, MAX_ATTEMPTS);
-            }
-        } catch (ExecutionException e) {
-            throw new KafkaBreakException("Unable to publish control message", e);
+            producer.send(record).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new KafkaBreakException(e.getMessage(), e);
         }
     }
 }

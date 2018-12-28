@@ -13,12 +13,17 @@ floodlight.controller.uri=tcp:kilda:6653
 
 lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
+neo.user=user
+neo.password=password
 lab-api.endpoint=http://localhost:8288
 otsdb.endpoint=http://localhost:4242
 
 elasticsearch.endpoint = http://localhost:9200
 elasticsearch.username = username
 elasticsearch.password = password
+
+kafka.bootstrap.server = kafka.pendev:9092
+kafka.topic.topo.disco=kilda.topo.disco
 
 spring.profiles.active=virtual
 # not delete topology after test runs
