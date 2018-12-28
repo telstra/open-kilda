@@ -44,7 +44,9 @@ class PortAntiflapSpec extends BaseSpecification {
     int antiflapMin
     @Value('${antiflap.warmup}')
     int antiflapWarmup
-    @Value('${kafka.topic.topo.disco}')
+    @Value('${antiflap.cooldown}')
+    int antiflapCooldown
+    @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
     String topoDiscoTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")

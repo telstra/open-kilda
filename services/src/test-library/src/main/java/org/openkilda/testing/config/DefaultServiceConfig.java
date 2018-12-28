@@ -82,16 +82,6 @@ public class DefaultServiceConfig {
         return buildLoggingRestTemplate(baseEndpoint + "/api/" + labService.getLab().getLabId() + "/lock-keeper");
     }
 
-    @Bean(name = "mininetRestTemplate")
-    public RestTemplate mininetRestTemplate(@Value("${mininet.endpoint}") String endpoint) {
-        return buildLoggingRestTemplate(endpoint);
-    }
-
-    @Bean(name = "mininetFlowToolRestTemplate")
-    public RestTemplate mininetFlowToolRestTemplate(@Value("${mininet-flowtool.endpoint}") String endpoint) {
-        return buildLoggingRestTemplate(endpoint);
-    }
-
     @Bean(name = "otsdbRestTemplate")
     public RestTemplate otsdbRestTemplate(@Value("${otsdb.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
