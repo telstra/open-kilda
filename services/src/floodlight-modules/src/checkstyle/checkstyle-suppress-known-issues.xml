@@ -8,13 +8,13 @@
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="31" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/floodlight/Constants.java" lines="20" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="83" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="106" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="136" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="159" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="184" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="215" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="228" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="84" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="107" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="137" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="160" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="185" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="216" checks="JavadocMethod"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/test/standard/OutputCommands.java" lines="229" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryMock.java" lines="20" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryVer12Mock.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryVer12Mock.java" lines="7" checks="AbbreviationAsWordInName"/>

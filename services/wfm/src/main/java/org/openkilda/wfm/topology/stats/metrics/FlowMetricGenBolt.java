@@ -19,11 +19,10 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.CACHE_FIELD;
 
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.wfm.error.JsonEncodeException;
@@ -67,11 +66,6 @@ public class FlowMetricGenBolt extends MetricGenBolt {
 
         LOGGER.debug("dataCache in FlowMetricGenBolt {}", dataCache);
 
-        if (!Destination.WFM_STATS.equals(message.getDestination())) {
-            collector.ack(input);
-            return;
-        }
-
         LOGGER.debug("Flow stats message: {}={}, component={}, stream={}",
                 CORRELATION_ID, message.getCorrelationId(), componentId,
                 StatsStreamType.valueOf(input.getSourceStreamId()));
@@ -80,11 +74,14 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         SwitchId switchId = data.getSwitchId();
 
         try {
-            for (FlowStatsReply reply : data.getStats()) {
-                for (FlowStatsEntry entry : reply.getEntries()) {
-                    @Nullable CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
-                    emit(entry, timestamp, switchId, flowEntry);
+            for (FlowStatsEntry entry : data.getStats()) {
+                if (Cookie.isDefaultRule(entry.getCookie())) {
+                    LOGGER.warn("System rules must be processed by SystemRuleMetricGenBolt. Cookie: '{}'.",
+                            entry.getCookie());
                 }
+
+                @Nullable CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
+                emit(entry, timestamp, switchId, flowEntry);
             }
             collector.ack(input);
         } catch (PersistenceException e) {
