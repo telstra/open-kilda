@@ -197,7 +197,7 @@ timeout"() {
         producer.close()
 
         and: "ISL remains failed even after the port cools down"
-        Wrappers.timedLoop(antiflapCooldown + discoveryInterval + (long)WAIT_OFFSET / 2) {
+        Wrappers.timedLoop(antiflapCooldown + discoveryInterval + WAIT_OFFSET / 2) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
             TimeUnit.SECONDS.sleep(1)
         }

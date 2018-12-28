@@ -42,12 +42,11 @@ class Wrappers {
      * Loop may take a bit longer than 'timeout' by maximum of closure execution time, since check is performed
      * before the closure call.
      *
-     * @param timeout For how long to execute the given closure in a loop
-     * @param unit In which unit the 'timeout' value is specified
+     * @param timeout For how long to execute the given closure in a loop, seconds.
      * @param closure code to repeat in a loop
      */
-    static void timedLoop(long timeout, TimeUnit unit = TimeUnit.SECONDS, Closure closure) {
-        long endTime = System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(timeout, unit)
+    static void timedLoop(double timeout, Closure closure) {
+        long endTime = System.currentTimeMillis() + (long)(timeout * 1000)
         while (System.currentTimeMillis() < endTime) {
             closure.call()
         }
