@@ -44,7 +44,7 @@ import java.util.stream.Stream;
  * <p>Create a CompletableFuture object for each sent OpenFlow message. When "closed" send BarrierRequest and collect
  * all responses received from switch till response for BarrierRequest used to close session. At this point we have
  * receive all possible responses on previous commands. So if there was a response on some of command from this
- * session(in most cases it is error response) it will be catched byt session and returned to the caller via
+ * session(in most cases it is error response) it will be caught by session and returned to the caller via
  * CompletableFuture. If there is no response - all pending CompletableFuture objects will be closed to indicate
  * successful write operation.
  *
