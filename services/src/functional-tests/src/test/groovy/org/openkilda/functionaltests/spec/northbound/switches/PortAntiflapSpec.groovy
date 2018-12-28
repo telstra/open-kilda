@@ -128,7 +128,7 @@ timeout"() {
     @Ignore("Due to https://github.com/telstra/open-kilda/issues/1827")
     //there is a possible race condition that we exercise, so this needs couple reruns
     @Rerun(times = 5)
-    def "System properly registers events order when port flaps incredibly fast"() {
+    def "System properly registers events order when port flaps incredibly fast (end with Up)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
         def producer = new KafkaProducer<>(producerProps)
@@ -149,12 +149,66 @@ timeout"() {
         Wrappers.wait(WAIT_OFFSET / 2.0) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
+        producer.close()
 
         and: "After the port cools down the ISL is discovered again"
         TimeUnit.SECONDS.sleep(antiflapCooldown - 1)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET * 2) { //longer wait to let Storm deal with the queue
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
+
+        cleanup:
+        producer?.close()
+    }
+
+    /**
+     * In this test no actual port action is taken. We simulate port flapping by producing messages with OF events
+     * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
+     * may sometimes occur on hardware switches(overheat?)
+     */
+    @Issue("https://github.com/telstra/open-kilda/issues/1827")
+    @Ignore("Due to https://github.com/telstra/open-kilda/issues/1827")
+    //there is a possible race condition that we exercise, so this needs couple reruns
+    @Rerun(times = 5)
+    def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
+
+        when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"
+        def producer = new KafkaProducer<>(producerProps)
+        def isl = topology.islsForActiveSwitches[0]
+        def messagesGenerated = 0
+        producer.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
+                isl.srcPort, null, PortChangeType.DOWN)).toJson()))
+
+        Wrappers.timedLoop(antiflapWarmup + 1) {
+            producer.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
+                    isl.srcPort, null, PortChangeType.UP)).toJson()))
+            producer.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
+                    isl.srcPort, null, PortChangeType.DOWN)).toJson()))
+            //note that we end with 'DOWN' event
+            messagesGenerated += 2
+            sleep(1) //do not overload storm, it can die
+        }
+        log.debug("Generated $messagesGenerated port up/down messages in ${antiflapWarmup + 1} seconds")
+
+        then: "Related ISL is FAILED"
+        Wrappers.wait(WAIT_OFFSET / 2.0) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
+        producer.close()
+
+        and: "ISL remains failed even after the port cools down"
+        Wrappers.timedLoop(antiflapCooldown + discoveryInterval + (long)WAIT_OFFSET / 2) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            TimeUnit.SECONDS.sleep(1)
+        }
+
+        and: "cleanup: restore broken ISL"
+        new KafkaProducer<>(producerProps).send(new ProducerRecord(topoDiscoTopic, buildMessage(
+                new PortInfoData(isl.srcSwitch.dpId, isl.srcPort, null, PortChangeType.UP)).toJson())).get()
+        Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED }
+
+        cleanup:
+        producer?.close()
     }
 
     private static Message buildMessage(final InfoData data) {
