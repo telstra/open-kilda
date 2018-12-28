@@ -22,6 +22,10 @@ import lombok.Value;
  */
 @Value
 public class Cookie {
+    public static final long DROP_RULE_COOKIE = 0x8000000000000001L;
+    public static final long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
+    public static final long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
+    public static final long DROP_VERIFICATION_LOOP_RULE_COOKIE = 0x8000000000000004L;
     public static final long DEFAULT_RULES_MASK = 0x8000000000000000L;
 
     private final long value;

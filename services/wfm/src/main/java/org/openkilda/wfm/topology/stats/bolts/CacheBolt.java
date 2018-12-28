@@ -23,7 +23,6 @@ import static org.openkilda.wfm.topology.stats.StatsStreamType.FLOW_STATS;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -144,12 +143,10 @@ public class CacheBolt extends BaseRichBolt {
                 FlowStatsData data = (FlowStatsData) message.getData();
 
                 Map<Long, CacheFlowEntry> dataCache = new HashMap<>();
-                for (FlowStatsReply reply : data.getStats()) {
-                    for (FlowStatsEntry entry : reply.getEntries()) {
-                        if (cookieToFlow.containsKey(entry.getCookie())) {
-                            CacheFlowEntry cacheFlowEntry = cookieToFlow.get(entry.getCookie());
-                            dataCache.put(entry.getCookie(), cacheFlowEntry);
-                        }
+                for (FlowStatsEntry entry : data.getStats()) {
+                    if (cookieToFlow.containsKey(entry.getCookie())) {
+                        CacheFlowEntry cacheFlowEntry = cookieToFlow.get(entry.getCookie());
+                        dataCache.put(entry.getCookie(), cacheFlowEntry);
                     }
                 }
                 logger.debug("execute:dataCache: {}", dataCache);

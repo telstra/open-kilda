@@ -27,13 +27,13 @@ import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
-import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 
 import com.auth0.jwt.JWT;
@@ -92,7 +92,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private static final Logger logIsl = LoggerFactory.getLogger(
             String.format("%s.ISL", PathVerificationService.class.getName()));
 
-    public static final U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+    public static final U64 OF_CATCH_RULE_COOKIE = U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE);
 
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;

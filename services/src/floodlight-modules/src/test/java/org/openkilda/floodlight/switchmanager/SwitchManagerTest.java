@@ -41,13 +41,13 @@ import static org.openkilda.floodlight.Constants.meterId;
 import static org.openkilda.floodlight.Constants.outputPort;
 import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
-import static org.openkilda.floodlight.switchmanager.ISwitchManager.DROP_RULE_COOKIE;
-import static org.openkilda.floodlight.switchmanager.ISwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.OVS_MANUFACTURER;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.PACKET_IN_RULES_METERS_MASK;
-import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE;
-import static org.openkilda.floodlight.switchmanager.ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
+import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.SwitchOperationException;

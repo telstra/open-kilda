@@ -15,6 +15,8 @@
 
 package org.openkilda.testing;
 
+import org.openkilda.model.Cookie;
+
 public final class Constants {
     public static final Integer DEFAULT_COST = 700;
     public static final Integer WAIT_OFFSET = 10;
@@ -42,6 +44,10 @@ public final class Constants {
 
         public long getCookie() {
             return cookie;
+        }
+
+        public String toHexString() {
+            return Cookie.toString(cookie);
         }
     }
 }
