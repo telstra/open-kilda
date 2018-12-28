@@ -17,7 +17,6 @@ package org.openkilda.wfm.share.bolt;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.error.ErrorData;
@@ -27,10 +26,8 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
-import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.error.PipelineException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -48,9 +45,7 @@ public abstract class KafkaEncoder extends AbstractBolt {
         MessageData payload = pullPayload(input);
         try {
             Message message = wrap(pullContext(input), payload);
-            String json = encode(message);
-
-            getOutput().emit(input, new Values(null, json));
+            getOutput().emit(input, new Values(null, message));
         } catch (IllegalArgumentException e) {
             log.error(e.getMessage());
             unhandledInput(input);
@@ -86,16 +81,6 @@ public abstract class KafkaEncoder extends AbstractBolt {
 
     private ErrorMessage wrapError(CommandContext commandContext, ErrorData payload) {
         return new ErrorMessage(payload, System.currentTimeMillis(), commandContext.getCorrelationId());
-    }
-
-    private String encode(Message message) throws JsonEncodeException {
-        String value;
-        try {
-            value = Utils.MAPPER.writeValueAsString(message);
-        } catch (JsonProcessingException e) {
-            throw new JsonEncodeException(message, e);
-        }
-        return value;
     }
 
     @Override

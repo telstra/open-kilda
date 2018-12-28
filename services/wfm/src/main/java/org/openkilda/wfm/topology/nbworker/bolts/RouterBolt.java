@@ -15,8 +15,9 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.error.ErrorData;
@@ -29,6 +30,7 @@ import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -36,20 +38,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.io.IOException;
-
 public class RouterBolt extends AbstractBolt {
-    @Override
-    protected void handleInput(Tuple input) {
-        String request = input.getString(0);
 
-        Message message;
-        try {
-            message = Utils.MAPPER.readValue(request, Message.class);
-        } catch (IOException e) {
-            log.error("Error during parsing request for NBWorker topology", e);
-            return;
-        }
+    @Override
+    protected void handleInput(Tuple input) throws PipelineException {
+        Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
 
         if (message instanceof CommandMessage) {
             log.debug("Received command message {}", message);
