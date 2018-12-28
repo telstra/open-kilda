@@ -216,7 +216,7 @@ public class FlowCommandFactory {
         return new InstallIngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
                 segmentCookie, flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
                 outputPortNo, flow.getSrcVlan(), flow.getTransitVlan(), outputVlanType,
-                flow.getBandwidth(), (long) flow.getMeterId());
+                flow.getBandwidth(), flow.getMeterLongValue());
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, Integer outputPortNo, long segmentCookie) {
@@ -225,16 +225,15 @@ public class FlowCommandFactory {
         }
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(segmentCookie, flow.getSrcPort(),
                 flow.getSrcVlan(), 0, outputPortNo);
-        Long meterId = flow.isIgnoreBandwidth() ? null : (long) flow.getMeterId();
         return new RemoveFlow(transactionIdGenerator.generate(), flow.getFlowId(),
-                segmentCookie, flow.getSrcSwitch().getSwitchId(), meterId, ingressCriteria);
+                segmentCookie, flow.getSrcSwitch().getSwitchId(), flow.getMeterLongValue(), ingressCriteria);
     }
 
     private BaseInstallFlow makeOneSwitchRule(Flow flow, OutputVlanType outputVlanType) {
         return new InstallOneSwitchFlow(transactionIdGenerator.generate(),
                 flow.getFlowId(), flow.getCookie(), flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
                 flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan(),
-                outputVlanType, flow.getBandwidth(), (long) flow.getMeterId());
+                outputVlanType, flow.getBandwidth(), flow.getMeterLongValue());
     }
 
     private OutputVlanType getOutputVlanType(Flow flow) {
