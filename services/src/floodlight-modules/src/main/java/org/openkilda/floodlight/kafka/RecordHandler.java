@@ -18,6 +18,10 @@ package org.openkilda.floodlight.kafka;
 import static java.util.Arrays.asList;
 import static org.openkilda.floodlight.kafka.ErrorMessageBuilder.anError;
 import static org.openkilda.messaging.Utils.MAPPER;
+import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.ping.PingRequestCommand;
@@ -474,21 +478,21 @@ class RecordHandler implements Runnable {
         try {
             if (installAction == InstallRulesAction.INSTALL_DROP) {
                 switchManager.installDropFlow(dpid);
-                installedRules.add(ISwitchManager.DROP_RULE_COOKIE);
+                installedRules.add(DROP_RULE_COOKIE);
             } else if (installAction == InstallRulesAction.INSTALL_BROADCAST) {
                 switchManager.installVerificationRule(dpid, true);
-                installedRules.add(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+                installedRules.add(VERIFICATION_BROADCAST_RULE_COOKIE);
             } else if (installAction == InstallRulesAction.INSTALL_UNICAST) {
                 // TODO: this isn't always added (ie if OF1.2). Is there a better response?
                 switchManager.installVerificationRule(dpid, false);
-                installedRules.add(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE);
+                installedRules.add(VERIFICATION_UNICAST_RULE_COOKIE);
             } else {
                 switchManager.installDefaultRules(dpid);
                 installedRules.addAll(asList(
-                        ISwitchManager.DROP_RULE_COOKIE,
-                        ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE,
-                        ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE,
-                        ISwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE
+                        DROP_RULE_COOKIE,
+                        VERIFICATION_BROADCAST_RULE_COOKIE,
+                        VERIFICATION_UNICAST_RULE_COOKIE,
+                        DROP_VERIFICATION_LOOP_RULE_COOKIE
                 ));
             }
 
@@ -527,19 +531,19 @@ class RecordHandler implements Runnable {
                 switch (deleteAction) {
                     case REMOVE_DROP:
                         criteria = DeleteRulesCriteria.builder()
-                                .cookie(ISwitchManager.DROP_RULE_COOKIE).build();
+                                .cookie(DROP_RULE_COOKIE).build();
                         break;
                     case REMOVE_BROADCAST:
                         criteria = DeleteRulesCriteria.builder()
-                                .cookie(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE).build();
+                                .cookie(VERIFICATION_BROADCAST_RULE_COOKIE).build();
                         break;
                     case REMOVE_UNICAST:
                         criteria = DeleteRulesCriteria.builder()
-                                .cookie(ISwitchManager.VERIFICATION_UNICAST_RULE_COOKIE).build();
+                                .cookie(VERIFICATION_UNICAST_RULE_COOKIE).build();
                         break;
                     case REMOVE_VERIFICATION_LOOP:
                         criteria = DeleteRulesCriteria.builder()
-                                .cookie(ISwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE).build();
+                                .cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE).build();
                         break;
                     default:
                         logger.warn("Received unexpected delete switch rule action: {}", deleteAction);
