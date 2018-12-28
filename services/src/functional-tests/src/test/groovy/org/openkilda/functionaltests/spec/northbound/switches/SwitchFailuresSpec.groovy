@@ -11,7 +11,6 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 
 import spock.lang.Ignore
 import spock.lang.Narrative
@@ -42,10 +41,9 @@ class SwitchFailuresSpec extends BaseSpecification {
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
-        lockKeeper.removeFlows([isl, islUtils.reverseIsl(isl)]
-                .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
+        lockKeeper.portsDown([isl.aswitch.inPort, isl.aswitch.outPort])
 
-        and: "Switches go back UP"
+        and: "Switches go back up"
         lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
         lockKeeper.reviveSwitch(isl.dstSwitch.dpId)
 
@@ -54,23 +52,21 @@ class SwitchFailuresSpec extends BaseSpecification {
         islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
 
         and: "ISL fails after discovery timeout"
-        //TODO(rtretiak): adding big error of 7 seconds. This is an abnormal behavior, currently investigating
-        Wrappers.wait(untilIslShouldFail() / 1000 + 7) {
+        //TODO(rtretiak): Using big timeout here. This is an abnormal behavior, currently investigating.
+        Wrappers.wait(untilIslShouldFail() / 1000 + WAIT_OFFSET * 1.5) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
         //depends whether there are alt paths available
         and: "The flow goes down OR changes path to avoid failed ISL after reroute timeout"
-        TimeUnit.SECONDS.sleep(rerouteDelay - 1)
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.id)))
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(islUtils.reverseIsl(isl))
             assert pathChanged || northbound.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
-        and: "Cleanup, restore connection, remove the flow"
-        lockKeeper.addFlows([isl, islUtils.reverseIsl(isl)]
-                .collect { new ASwitchFlow(it.aswitch.inPort, it.aswitch.outPort) })
+        and: "Cleanup: restore connection, remove the flow"
+        lockKeeper.portsUp([isl.aswitch.inPort, isl.aswitch.outPort])
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
