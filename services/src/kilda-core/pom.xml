@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>kilda-parent</artifactId>
+        <groupId>org.openkilda</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>kilda-core</artifactId>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>kilda-model</module>
+        <module>kilda-persistence-api</module>
+        <module>kilda-persistence-neo4j</module>
+    </modules>
+
+    <properties>
+        <project.checkstyle.root>${basedir}/../../checkstyle</project.checkstyle.root>
+    </properties>
+</project>

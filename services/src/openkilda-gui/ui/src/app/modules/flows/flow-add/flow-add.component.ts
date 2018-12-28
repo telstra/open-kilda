@@ -194,6 +194,7 @@ export class FlowAddComponent implements OnInit {
         this.flowService.createFlow(flowData).subscribe(
           response => {
             this.toaster.success("Flow created successfully", "Success!");
+            localStorage.removeItem('flows');
             this.router.navigate(["/flows/details/" + response.flowid]);
             this.loaderService.hide();
           },

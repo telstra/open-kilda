@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.event;
 
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.StreamNameCollisionException;
@@ -24,8 +26,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.storm.tuple.Fields;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,14 +50,15 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
      * (7) ◊ Add simple pass through for verification (w/ speaker) & validation (w/ TPE)
      */
 
-    private static Logger logger = LoggerFactory.getLogger(OfEventWfmTopology.class);
-
     @VisibleForTesting
     public static final String DISCO_SPOUT_ID = "disco-spout";
+    private static final String PORT_EVENT_ROUTER_BOLT_ID = "port-event-router";
     private static final String DISCO_BOLT_ID = OfeLinkBolt.class.getSimpleName();
-    private static final String TOPO_ENG_BOLT_ID = "topo.eng-bolt";
     private static final String SPEAKER_BOLT_ID = "speaker-bolt";
     private static final String SPEAKER_DISCO_BOLT_ID = "speaker.disco-bolt";
+    private static final String NETWORK_TOPOLOGY_BOLT_ID = "topology-bolt";
+    private static final String PORT_EVENT_THROTTLING_BOLT_ID = "port-event-throttling-bolt";
+    private static final String REROUTE_BOLT_ID = "reroute-bolt";
 
     public OfEventWfmTopology(LaunchEnvironment env) {
         super(env, OFEventWfmTopologyConfig.class);
@@ -73,32 +75,55 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
         logger.info("Building OfEventWfmTopology - {}", topologyName);
 
         String kafkaTopoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
-        String kafkaTopoEngTopic = topologyConfig.getKafkaTopoEngTopic();
 
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
+
+        PortEventRouterBolt portEventRouterBolt = new PortEventRouterBolt();
+        builder.setBolt(PORT_EVENT_ROUTER_BOLT_ID, portEventRouterBolt, topologyConfig.getParallelism())
+                .shuffleGrouping(DISCO_SPOUT_ID);
+
+        PortEventThrottlingBolt portEventThrottlingBolt = new PortEventThrottlingBolt(
+                topologyConfig.getPortUpDownThrottlingDelaySecondsMin(),
+                topologyConfig.getPortUpDownThrottlingDelaySecondsWarmUp(),
+                topologyConfig.getPortUpDownThrottlingDelaySecondsCoolDown()
+        );
+        builder.setBolt(PORT_EVENT_THROTTLING_BOLT_ID, portEventThrottlingBolt, topologyConfig.getParallelism())
+                .fieldsGrouping(PORT_EVENT_ROUTER_BOLT_ID, PortEventRouterBolt.PORT_EVENT_STREAM,
+                        new Fields(PortEventThrottlingBolt.GROUPING_FIELD_NAME));
 
         // TODO: resolve the comments below; are there any state issues?
         // NB: with shuffleGrouping, we can't maintain state .. would need to parse first
         //      just to pull out switchID.
         // (crimi) - not sure I agree here .. state can be maintained, albeit distributed.
         //
-        builder.setBolt(TOPO_ENG_BOLT_ID, createKafkaBolt(kafkaTopoEngTopic),
-                topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.TOPO_ENG_STREAM);
         builder.setBolt(SPEAKER_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerTopic()),
                 topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.SPEAKER_STREAM);
         builder.setBolt(SPEAKER_DISCO_BOLT_ID, createKafkaBolt(topologyConfig.getKafkaSpeakerDiscoTopic()),
                 topologyConfig.getParallelism()).shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.SPEAKER_DISCO_STREAM);
 
+        PersistenceManager persistenceManager =  PersistenceProvider.getInstance()
+                .createPersistenceManager(configurationProvider);
+
+        NetworkTopologyBolt networkTopologyBolt = new NetworkTopologyBolt(persistenceManager,
+                topologyConfig.getIslCostWhenPortDown());
+        builder.setBolt(NETWORK_TOPOLOGY_BOLT_ID, networkTopologyBolt, topologyConfig.getParallelism())
+                .shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.NETWORK_TOPOLOGY_CHANGE_STREAM);
+
+        builder.setBolt(REROUTE_BOLT_ID,
+                createKafkaBolt(topologyConfig.getKafkaTopoRerouteTopic()), topologyConfig.getParallelism())
+                .shuffleGrouping(NETWORK_TOPOLOGY_BOLT_ID, NetworkTopologyBolt.REROUTE_STREAM);
+
         OfeLinkBolt ofeLinkBolt = new OfeLinkBolt(topologyConfig);
         BoltDeclarer bd = builder.setBolt(DISCO_BOLT_ID, ofeLinkBolt, topologyConfig.getParallelism())
-                .shuffleGrouping(DISCO_SPOUT_ID);
-
+                .shuffleGrouping(PORT_EVENT_ROUTER_BOLT_ID, PortEventRouterBolt.DEFAULT_STREAM)
+                .shuffleGrouping(PORT_EVENT_THROTTLING_BOLT_ID);
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         // TODO: verify this ctrlTarget after refactoring.
         ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, ofeLinkBolt, bd));
         createCtrlBranch(builder, ctrlTargets);
+
         return builder.createTopology();
     }
 

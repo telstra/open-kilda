@@ -22,7 +22,7 @@ import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;

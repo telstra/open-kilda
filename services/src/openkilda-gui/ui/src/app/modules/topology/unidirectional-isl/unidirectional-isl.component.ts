@@ -38,6 +38,7 @@ export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDest
       autoWidth: false,
       colResize: false,
       lengthMenu: false,
+      dom: 'tpl',
       language: {
         searchPlaceholder: "Search"
         },

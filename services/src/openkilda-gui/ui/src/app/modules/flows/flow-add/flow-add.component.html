@@ -53,10 +53,7 @@
               <div class='col-sm-6'>
                 <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select source switch" formControlName="source_switch" (change)="getPorts('source_switch')" [items]="sourceSwitches"
                   bindLabel="label" bindValue="value"></ng-select>
-                <!--  <select2 formControlName="source_switch" (update)="getPorts('source_switch',$event)" (search)="switchsearch('source_switch',$event)"
-                  [customSearchEnabled]="true" [data]="sourceSwitches" placeholder="Please select a switch" id="selec2-10">
-                </select2>-->
-                <div *ngIf="submitted && f.source_switch.errors" class="invalid-feedback">
+                  <div *ngIf="submitted && f.source_switch.errors" class="invalid-feedback">
                   <div *ngIf="f.source_switch.errors.required">Please select source switch</div>
                 </div>
               </div>
@@ -66,10 +63,6 @@
               <label class='col-sm-3 col-form-label required'>Port:</label>
               <div class='col-sm-6'> 
                 <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select source port" (change)="getVLAN('source_port')" formControlName="source_port" [items]="sourcePorts" bindLabel="label" bindValue="value"></ng-select>
-
-                <!-- <select2 formControlName="source_port" (search)="portsearch('source_port',$event)" [customSearchEnabled]="true" [data]="sourcePorts"
-                  placeholder="Please select a port">
-                </select2> -->
                 <div *ngIf="submitted && f.source_port.errors" class="invalid-feedback">
                   <div *ngIf="f.source_port.errors.required">Please select source port</div>
                 </div>
@@ -79,9 +72,7 @@
               <label class='col-sm-3 col-form-label'>Vlan:</label>
               <div class='col-sm-6'>
                 <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select source VLAN" formControlName="source_vlan" [items]="vlanPorts" bindLabel="label" bindValue="value"></ng-select>
-
-                <!-- <select2 formControlName="source_vlan" [data]="vlanPorts" placeholder="Please select a VLAN"></select2> -->
-                <div *ngIf="submitted && f.source_vlan.errors" class="invalid-feedback">
+                 <div *ngIf="submitted && f.source_vlan.errors" class="invalid-feedback">
                   <div *ngIf="f.source_vlan.errors.required">Please select source VLAN</div>
                 </div>
               </div>
@@ -98,11 +89,7 @@
               <div class='col-sm-6'>
                 <ng-select dropdownPosition="top" placeholder="Select destination switch" formControlName="target_switch" (change)="getPorts('target_switch')" [items]="targetSwitches"
                   bindLabel="label" bindValue="value"></ng-select>
-
-                <!-- <select2 formControlName="target_switch" (search)="switchsearch('target_switch',$event)" [customSearchEnabled]="true" (update)="getPorts('target_switch',$event)"
-                  [data]="targetSwitches" placeholder="Please select a switch">
-                </select2> -->
-                <div *ngIf="submitted && f.target_switch.errors" class="invalid-feedback">
+                  <div *ngIf="submitted && f.target_switch.errors" class="invalid-feedback">
                   <div *ngIf="f.target_switch.errors.required">Please select destination switch</div>
                 </div>
               </div>
@@ -112,10 +99,6 @@
               <label class='col-sm-3 col-form-label required'>Port:</label>
               <div class='col-sm-6'>
                 <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select destination port" (change)="getVLAN('target_port')" formControlName="target_port" [items]="targetPorts" bindLabel="label" bindValue="value"></ng-select>
-
-                <!-- <select2 formControlName="target_port" (search)="portsearch('target_port',$event)" [customSearchEnabled]="true" [data]="targetPorts"
-                  id="target_port" placeholder="Please select a port">
-                </select2> -->
                 <div *ngIf="submitted && f.target_port.errors" class="invalid-feedback">
                   <div *ngIf="f.target_port.errors.required">Please select destination port</div>
                 </div>
@@ -125,9 +108,6 @@
               <label class='col-sm-3 col-form-label'>Vlan:</label>
               <div class='col-sm-6'>
                 <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select destination VLAN" formControlName="target_vlan" [items]="vlanPorts" bindLabel="label" bindValue="value"></ng-select>
-
-                <!-- <select2 formControlName="target_vlan" [data]="vlanPorts" placeholder="Please select a VLAN">
-                </select2> -->
                 <div *ngIf="submitted && f.target_vlan.errors" class="invalid-feedback">
                   <div *ngIf="f.target_vlan.errors.required">Please select destination VLAN</div>
                 </div>

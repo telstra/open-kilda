@@ -88,7 +88,7 @@ export class FlowEditComponent implements OnInit {
 
   /**Get flow detail via api call */
   getFlowDetail(flowId) {
-    this.loaderService.show("Fetching Flow Detail");
+    this.loaderService.show("Loading Flow Detail");
     this.flowService.getFlowDetailById(flowId).subscribe(
       flow => {
         this.flowDetailData = flow;
@@ -121,7 +121,7 @@ export class FlowEditComponent implements OnInit {
   /** Get switches list via api call */
   getSwitchList() {
     let ref = this;
-    this.loaderService.show("Fetching Flow Detail");
+    this.loaderService.show("Loading Flow Detail");
     this.switchService.getSwitchList().subscribe(
       response => {
         response.forEach(function(s) {
@@ -148,7 +148,10 @@ export class FlowEditComponent implements OnInit {
         this.flowEditForm.controls[switchType].value,
         "legacy"
       );
-      this.loaderService.show("Fetching ports");
+      if(!flag){
+        this.loaderService.show("Loading Ports");
+      }
+      
       this.switchService.getSwitchPortsStats(switchId).subscribe(
         ports => {
           let sortedPorts = ports.sort(function(a, b) {
@@ -245,7 +248,8 @@ export class FlowEditComponent implements OnInit {
         this.loaderService.show("Updating flow");
         this.flowService.updateFlow(this.flowDetail.flowid, flowData).subscribe(
           response => {
-            this.toaster.success("Flow updated successfully", "Success!");
+            this.toaster.success("Flow updated successfully on controller", "Success!");
+            localStorage.removeItem('flows');
             this.router.navigate(["/flows/details/" + response.flowid]);
             this.loaderService.hide();
           },
@@ -265,7 +269,7 @@ export class FlowEditComponent implements OnInit {
   deleteFlow() {
 
     let is2FaEnabled  = localStorage.getItem('is2FaEnabled')
-
+    var self = this;
     const modalReff = this.modalService.open(ModalconfirmationComponent);
     modalReff.componentInstance.title = "Delete Flow";
     modalReff.componentInstance.content = 'Are you sure you want to perform delete action ?';
@@ -286,6 +290,7 @@ export class FlowEditComponent implements OnInit {
                     modalRef.close();
                     this.toaster.success("Flow deleted successfully", "Success!");
                     this.loaderService.hide();
+                    localStorage.removeItem('flows');
                     this.router.navigate(["/flows"]);
                   },
                   error => {

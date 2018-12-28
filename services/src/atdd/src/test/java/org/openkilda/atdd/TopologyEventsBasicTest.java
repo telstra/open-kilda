@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.LinksUtils;
 import org.openkilda.SwitchesUtils;
-import org.openkilda.messaging.info.event.SwitchState;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkStatus;
 import org.openkilda.northbound.dto.links.PathDto;
@@ -69,7 +69,7 @@ public class TopologyEventsBasicTest {
                 getSwitchesWithoutMultipleLinks(switchIds).isEmpty());
     }
 
-    private List<String> getSwitchesWithoutMultipleLinks(List<String> switches) throws Exception {
+    private List<String> getSwitchesWithoutMultipleLinks(List<String> switches) {
         List<LinkDto> links = LinksUtils.dumpLinks();
 
         return switches.stream()
@@ -78,7 +78,7 @@ public class TopologyEventsBasicTest {
     }
 
     @When("^a link is dropped in the middle$")
-    public void linkIsDroppedInTheMiddle() throws Exception {
+    public void linkIsDroppedInTheMiddle() {
         List<LinkDto> links = LinksUtils.dumpLinks();
         manipulatedLink = getMiddleLink(links);
 
@@ -87,7 +87,7 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^the link will have no health checks$")
-    public void the_link_will_have_no_health_checks() throws Exception {
+    public void the_link_will_have_no_health_checks() {
         List<LinkDto> links = LinksUtils.dumpLinks();
         List<LinkDto> cutLinks = links.stream()
                 .filter(isl -> isl.getState() != LinkStatus.DISCOVERED)
@@ -98,7 +98,7 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^the link disappears from the topology engine in (\\d+) seconds\\.$")
-    public void theLinkDisappearsFromTheTopologyEngine(int timeout) throws Exception {
+    public void theLinkDisappearsFromTheTopologyEngine(int timeout) {
         List<LinkDto> cutLinks = Failsafe.with(new RetryPolicy()
                 .withDelay(2, TimeUnit.SECONDS)
                 .withMaxDuration(timeout, TimeUnit.SECONDS)
@@ -125,13 +125,13 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^the link will have health checks$")
-    public void the_link_will_have_health_checks() throws Exception {
+    public void the_link_will_have_health_checks() {
         // Write code here that turns the phrase above into concrete actions
         throw new PendingException();
     }
 
     @Then("^the link appears in the topology engine\\.$")
-    public void theLinkAppearsInTheTopologyEngine() throws Exception {
+    public void theLinkAppearsInTheTopologyEngine() {
         List<LinkDto> links = LinksUtils.dumpLinks();
         assertThat("Amount of links should be 18 (initial 16 and 2 newly created)", links.size(), is(18));
     }
@@ -148,11 +148,11 @@ public class TopologyEventsBasicTest {
         SwitchDto deactivatedSwitch = updatedSwitches.stream()
                 .filter(sw -> sw.getSwitchId().equals(middleSwitch.getSwitchId()))
                 .findFirst().orElseThrow(() -> new IllegalStateException("Switch should exist"));
-        assertThat(deactivatedSwitch.getState(), is(SwitchState.DEACTIVATED));
+        assertThat(deactivatedSwitch.getState(), is(SwitchChangeType.DEACTIVATED));
     }
 
     @Then("^all links through the dropped switch will have no health checks$")
-    public void allLinksThroughTheDroppedSwitchWillHaveNoHealthChecks() throws Exception {
+    public void allLinksThroughTheDroppedSwitchWillHaveNoHealthChecks() {
         // Write code here that turns the phrase above into concrete actions
         throw new PendingException();
     }
@@ -173,12 +173,12 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^the switch disappears from the topology engine\\.$")
-    public void theSwitchDisappearsFromTheTopologyEngine() throws Exception {
+    public void theSwitchDisappearsFromTheTopologyEngine() {
         List<SwitchDto> switches = SwitchesUtils.dumpSwitches();
         SwitchDto middleSwitch = getMiddleSwitch(switches);
 
         //right now switch doesn't disappear in neo4j - we just update status
-        assertThat(middleSwitch.getState(), is(SwitchState.DEACTIVATED));
+        assertThat(middleSwitch.getState(), is(SwitchChangeType.DEACTIVATED));
     }
 
     @When("^a switch is added at the edge$")
@@ -211,16 +211,16 @@ public class TopologyEventsBasicTest {
     }
 
     @Then("^all links through the added switch will have health checks$")
-    public void allLinksThroughTheAddedSwitchWillHaveHealthChecks() throws Exception {
+    public void allLinksThroughTheAddedSwitchWillHaveHealthChecks() {
         // Write code here that turns the phrase above into concrete actions
         throw new PendingException();
     }
 
     @Then("^now amount of switches is (\\d+)\\.$")
-    public void theSwitchAppearsInTheTopologyEngine(int switches) throws Exception {
+    public void theSwitchAppearsInTheTopologyEngine(int switches) {
         List<SwitchDto> switchList = SwitchesUtils.dumpSwitches();
         List<SwitchDto> activeSwitches = switchList.stream()
-                .filter(sw -> SwitchState.ACTIVATED.getType().equals(sw.getState()))
+                .filter(sw -> SwitchChangeType.ACTIVATED.getType().equals(sw.getState()))
                 .collect(Collectors.toList());
 
         assertThat("Switch should disappear from neo4j", activeSwitches.size(), is(switches));

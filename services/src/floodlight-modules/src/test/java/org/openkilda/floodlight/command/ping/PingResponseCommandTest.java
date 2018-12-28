@@ -25,12 +25,14 @@ import org.openkilda.floodlight.model.PingData;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
+import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -106,6 +108,9 @@ public class PingResponseCommandTest extends PingCommandTest {
     public void success() throws Exception {
         final PingService realPingService = new PingService();
         moduleContext.addService(PingService.class, realPingService);
+
+        final ISwitchManager realSwitchManager = new SwitchManager();
+        moduleContext.addService(ISwitchManager.class, realSwitchManager);
 
         InputService inputService = createMock(InputService.class);
         moduleContext.addService(InputService.class, inputService);

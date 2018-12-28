@@ -30,13 +30,11 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortInfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -57,11 +55,11 @@ public class IslStatsBoltTest {
     private static final PathNode NODE2 = new PathNode(SWITCH2_ID, SWITCH2_PORT, PATH2_SEQID, PATH2_LATENCY);
 
     private static final int LATENCY = 1000;
-    private static final List<PathNode> PATH = java.util.Arrays.asList(NODE1, NODE2);
     private static final long SPEED = 400L;
     private static final IslChangeType STATE = IslChangeType.DISCOVERED;
     private static final long AVAILABLE_BANDWIDTH = 500L;
-    private static final IslInfoData ISL_INFO_DATA = new IslInfoData(LATENCY, PATH, SPEED, STATE, AVAILABLE_BANDWIDTH);
+    private static final IslInfoData ISL_INFO_DATA = new IslInfoData(LATENCY,
+            NODE1, NODE2, SPEED, STATE, AVAILABLE_BANDWIDTH);
     private static final long TIMESTAMP = 1507433872L;
 
     private IslStatsBolt statsBolt = new IslStatsBolt();
@@ -69,8 +67,6 @@ public class IslStatsBoltTest {
     private static final String CORRELATION_ID = "system";
     private static final Destination DESTINATION = null;
     private static final InfoMessage MESSAGE = new InfoMessage(ISL_INFO_DATA, TIMESTAMP, CORRELATION_ID, DESTINATION);
-
-    private static Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();

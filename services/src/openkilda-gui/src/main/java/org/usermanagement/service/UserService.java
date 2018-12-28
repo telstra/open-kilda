@@ -147,17 +147,21 @@ public class UserService implements UserDetailsService {
 
         activityLogger.log(ActivityType.CREATE_USER, userRequest.getUsername());
 
-        if (userEntity.getUserId() != null) {
-            Map<String, Object> map = new HashMap<String, Object>();
-            map.put("name", userEntity.getName());
-            map.put("username", userEntity.getUsername());
-            map.put("password", password);
-            mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountUsername(),
-                    TemplateService.Template.ACCOUNT_USERNAME, map);
-            mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountPassword(),
-                    TemplateService.Template.ACCOUNT_PASSWORD, map);
-            LOGGER.info("Username and password email sent successfully to user(username: " + userEntity.getUsername()
-                    + ").");
+        try {
+            if (userEntity.getUserId() != null) {
+                Map<String, Object> map = new HashMap<String, Object>();
+                map.put("name", userEntity.getName());
+                map.put("username", userEntity.getUsername());
+                map.put("password", password);
+                mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountUsername(),
+                        TemplateService.Template.ACCOUNT_USERNAME, map);
+                mailService.send(userEntity.getEmail(), mailUtils.getSubjectAccountPassword(),
+                        TemplateService.Template.ACCOUNT_PASSWORD, map);
+                LOGGER.info("Username and password email sent successfully to user(username: "
+                        + userEntity.getUsername() + ").");
+            }
+        } catch (Exception ex) {
+            LOGGER.error("User registration email failed for username:'" + userEntity.getUsername());
         }
         return UserConversionUtil.toUserInfo(userEntity);
     }

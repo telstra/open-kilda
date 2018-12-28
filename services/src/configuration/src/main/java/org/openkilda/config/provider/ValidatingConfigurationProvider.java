@@ -28,15 +28,14 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 
 /**
- * This class creates a configuration instance, fills it with values from the source
- * and validates against the constraints using validation-api.
- * <p/>
+ * This class creates a configuration instance, fills it with values from the source and validates against the
+ * constraints using validation-api.
  *
  * @see ConfigurationSource
  * @see ConfigurationFactory
  * @see Validator
  */
-public class ValidatingConfigurationProvider {
+public class ValidatingConfigurationProvider implements ConfigurationProvider {
     protected final ConfigurationSource source;
     protected final ConfigurationFactory factory;
     private final Validator validator;
@@ -54,6 +53,7 @@ public class ValidatingConfigurationProvider {
      * @param configurationType configuration class.
      * @return configuration instance
      */
+    @Override
     public <T> T getConfiguration(Class<T> configurationType) {
         requireNonNull(configurationType, "configurationType cannot be null");
 

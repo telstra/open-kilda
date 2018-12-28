@@ -16,7 +16,7 @@
 package org.openkilda.floodlight.kafka;
 
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
@@ -28,7 +28,6 @@ import org.openkilda.floodlight.switchmanager.SwitchTrackingService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
@@ -77,10 +76,10 @@ public class KafkaMessageCollector implements IFloodlightModule {
     }
 
     @Override
-    public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
+    public void startUp(FloodlightModuleContext moduleContext) {
         logger.info("Starting {}", this.getClass().getCanonicalName());
 
-        ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(moduleContext, this);
         KafkaMessageCollectorConfig consumerConfig = provider.getConfiguration(KafkaMessageCollectorConfig.class);
 
         ExecutorService generalExecutor = buildExecutorWithNoQueue(consumerConfig.getGeneralExecutorCount());

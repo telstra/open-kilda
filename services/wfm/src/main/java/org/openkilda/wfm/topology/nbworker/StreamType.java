@@ -18,5 +18,7 @@ package org.openkilda.wfm.topology.nbworker;
 public enum StreamType {
     SWITCH,
     ISL,
-    FLOW
+    FLOW,
+    VALIDATION,
+    ERROR
 }

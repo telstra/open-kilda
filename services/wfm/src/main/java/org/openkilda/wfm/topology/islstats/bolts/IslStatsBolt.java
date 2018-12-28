@@ -21,7 +21,6 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.task.OutputCollector;
@@ -55,12 +54,11 @@ public class IslStatsBolt extends BaseRichBolt {
     }
 
     public List<Object> buildTsdbTuple(IslInfoData data, long timestamp) throws IOException {
-        List<PathNode> path = data.getPath();
         Map<String, String> tags = new HashMap<>();
-        tags.put("src_switch", path.get(0).getSwitchId().toOtsdFormat());
-        tags.put("src_port", String.valueOf(path.get(0).getPortNo()));
-        tags.put("dst_switch", path.get(1).getSwitchId().toOtsdFormat());
-        tags.put("dst_port", String.valueOf(path.get(1).getPortNo()));
+        tags.put("src_switch", data.getSource().getSwitchId().toOtsdFormat());
+        tags.put("src_port", String.valueOf(data.getSource().getPortNo()));
+        tags.put("dst_switch", data.getDestination().getSwitchId().toOtsdFormat());
+        tags.put("dst_port", String.valueOf(data.getDestination().getPortNo()));
 
         return tsdbTuple("pen.isl.latency", timestamp, data.getLatency(), tags);
     }

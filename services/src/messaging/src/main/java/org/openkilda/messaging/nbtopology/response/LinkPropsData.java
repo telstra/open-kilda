@@ -16,7 +16,7 @@
 package org.openkilda.messaging.nbtopology.response;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.LinkProps;
+import org.openkilda.messaging.model.LinkPropsDto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
@@ -25,9 +25,9 @@ import lombok.Value;
 public class LinkPropsData extends InfoData {
 
     @JsonProperty
-    private LinkProps linkProps;
+    private LinkPropsDto linkProps;
 
-    public LinkPropsData(@JsonProperty("props") LinkProps linkProps) {
+    public LinkPropsData(@JsonProperty("props") LinkPropsDto linkProps) {
         this.linkProps = linkProps;
     }
 }

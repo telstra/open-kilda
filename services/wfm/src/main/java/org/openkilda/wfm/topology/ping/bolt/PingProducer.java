@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDirection;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
@@ -46,7 +46,7 @@ public class PingProducer extends Abstract {
     }
 
     private PingContext produce(PingContext pingContext, GroupId group, FlowDirection direction) {
-        Flow flow = getFlowThread(pingContext.getFlow(), direction);
+        FlowDto flow = getFlowThread(pingContext.getFlow(), direction);
         Ping ping = new Ping(flow);
 
         return pingContext.toBuilder()
@@ -62,8 +62,8 @@ public class PingProducer extends Abstract {
         getOutput().emit(input, output);
     }
 
-    private Flow getFlowThread(BidirectionalFlow flow, FlowDirection direction) {
-        Flow result;
+    private FlowDto getFlowThread(BidirectionalFlowDto flow, FlowDirection direction) {
+        FlowDto result;
 
         if (FlowDirection.FORWARD == direction) {
             result = flow.getForward();

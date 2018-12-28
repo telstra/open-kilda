@@ -19,8 +19,8 @@ ENV PACKAGE zookeeper-3.4.9
 
 WORKDIR /tmp/
 
-RUN    wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz \
-    && wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz.md5 \
+RUN    wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz \
+    && wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz.md5 \
     && md5sum -c $PACKAGE.tar.gz.md5 \
     && tar -xzf $PACKAGE.tar.gz --directory /opt/ \
     && ln -s /opt/$PACKAGE /opt/zookeeper \

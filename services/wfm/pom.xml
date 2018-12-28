@@ -26,48 +26,63 @@
         <jersey.version>2.25.1</jersey.version>
         <kafka.version>0.10.2.1</kafka.version>
         <provided.scope>provided</provided.scope>
-        <neo4j.version>3.3.3</neo4j.version>
-        <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
         <lombok.version>1.16.20</lombok.version>
         <aspectj.version>1.8.13</aspectj.version>
         <commons.collection.version>4.1</commons.collection.version>
+        <commons-lang3.version>3.7</commons-lang3.version>
+        <commons-lang.version>2.6</commons-lang.version>
         <hibernate-validator.version>6.0.10.Final</hibernate-validator.version>
         <glassfish-el.version>3.0.1-b09</glassfish-el.version>
+        <mapstruct.version>1.2.0.Final</mapstruct.version>
+        <jetty.version>9.2.22.v20170606</jetty.version>
+        <neo4j.version>3.3.3</neo4j.version>
+        <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
+        <java-uuid-generator.version>3.1.5</java-uuid-generator.version>
+        <failsafe.version>1.0.5</failsafe.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <puppycrawl-tools-checkstyle.version>8.10</puppycrawl-tools-checkstyle.version>
+
+        <argLine>-Xmx1028m -XX:MaxPermSize=256m</argLine>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>javax.servlet</groupId>
+                <artifactId>javax.servlet-api</artifactId>
+                <version>3.1.0</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>org.neo4j.driver</groupId>
-            <artifactId>neo4j-java-driver</artifactId>
-            <version>${neo4j.java.driver.version}</version>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-model</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-persistence-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-persistence-neo4j</artifactId>
+            <version>${project.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-pce</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
             <artifactId>messaging</artifactId>
             <version>${openkilda-messaging.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openkilda</groupId>
-            <artifactId>pce</artifactId>
-            <version>${openkilda-pce.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.jersey.core</groupId>
-                    <artifactId>jersey-client</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>javax.ws.rs</groupId>
-                    <artifactId>javax.ws.rs-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
@@ -137,7 +152,13 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.7</version>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+        <!-- commons-lang is required by Apache Storm -->
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>${commons-lang.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -158,6 +179,11 @@
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-client</artifactId>
+            <version>${jersey.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.core</groupId>
+            <artifactId>jersey-common</artifactId>
             <version>${jersey.version}</version>
         </dependency>
         <dependency>
@@ -240,11 +266,6 @@
             <version>15.0</version>
         </dependency>
         <dependency>
-            <groupId>org.jacoco</groupId>
-            <artifactId>jacoco-maven-plugin</artifactId>
-            <version>0.7.9</version>
-        </dependency>
-        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>2.8.47</version>
@@ -310,6 +331,46 @@
             <groupId>org.glassfish</groupId>
             <artifactId>javax.el</artifactId>
             <version>${glassfish-el.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-jdk8</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.neo4j.driver</groupId>
+            <artifactId>neo4j-java-driver</artifactId>
+            <version>${neo4j.java.driver.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j</artifactId>
+            <version>${neo4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-bolt</artifactId>
+            <version>${neo4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.uuid</groupId>
+            <artifactId>java-uuid-generator</artifactId>
+            <version>${java-uuid-generator.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.jodah</groupId>
+            <artifactId>failsafe</artifactId>
+            <version>${failsafe.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -496,8 +557,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.20</version>
+                <version>2.22.1</version>
                 <configuration>
+                    <useSystemClassLoader>false</useSystemClassLoader>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <reportsDirectory>${project.build.directory}/junit</reportsDirectory>
                     <runOrder>alphabetical</runOrder>
@@ -582,13 +644,13 @@
         <profile>
             <id>local</id>
             <properties>
-                    <provided.scope>compile</provided.scope>
+                <provided.scope>compile</provided.scope>
             </properties>
         </profile>
         <profile>
             <id>remote</id>
             <properties>
-                    <provided.scope>provided</provided.scope>
+                <provided.scope>provided</provided.scope>
             </properties>
         </profile>
     </profiles>

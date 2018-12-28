@@ -26,9 +26,9 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -87,7 +87,7 @@ public class KafkaMessagingChannelTest {
     public void shouldReturnCompletedResponse() throws TimeoutException, InterruptedException, ExecutionException {
         String requestId = UUID.randomUUID().toString();
         long time = System.currentTimeMillis();
-        SwitchInfoData data = new SwitchInfoData(new SwitchId("00:00:00:00:00:01"), SwitchState.ACTIVATED, null,
+        SwitchInfoData data = new SwitchInfoData(new SwitchId("00:00:00:00:00:01"), SwitchChangeType.ACTIVATED, null,
                 "hostname", "description", "controller");
         InfoMessage expected = new InfoMessage(data, time, requestId);
         RESPONSES.add(expected);
@@ -246,7 +246,7 @@ public class KafkaMessagingChannelTest {
      */
     private void prepareChunkedResponses(String requestId, long timestamp, int size) {
         for (int i = 0; i < size; i++) {
-            InfoData data = new SwitchInfoData(new SwitchId(i), SwitchState.ACTIVATED, null, null, null, null);
+            InfoData data = new SwitchInfoData(new SwitchId(i), SwitchChangeType.ACTIVATED, null, null, null, null);
             ChunkedInfoMessage response = new ChunkedInfoMessage(data, timestamp, requestId, requestId + i, size);
             CHUNKED_RESPONSES.add(response);
         }

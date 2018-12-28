@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight;
 
-import org.openkilda.floodlight.config.provider.ConfigurationProvider;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.session.SessionService;
@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -68,13 +67,13 @@ public class KildaCore implements IFloodlightModule {
     }
 
     @Override
-    public void init(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        ConfigurationProvider provider = ConfigurationProvider.of(moduleContext, this);
+    public void init(FloodlightModuleContext moduleContext) {
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(moduleContext, this);
         config = provider.getConfiguration(KildaCoreConfig.class);
     }
 
     @Override
-    public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
+    public void startUp(FloodlightModuleContext moduleContext) {
         commandContextFactory.init(moduleContext);
 
         moduleContext.getServiceImpl(CommandProcessorService.class).setup(moduleContext);

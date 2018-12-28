@@ -16,7 +16,7 @@
 package org.openkilda.messaging.info.stats;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -33,7 +33,7 @@ public class SwitchPortStatusData extends InfoData {
     private SwitchId switchId;
 
     @JsonProperty("ports")
-    private Set<PortStatus> ports;
+    private Set<PortStatusData> ports;
 
     @JsonProperty("requester")
     private String requester;
@@ -42,7 +42,7 @@ public class SwitchPortStatusData extends InfoData {
     @JsonCreator
     public SwitchPortStatusData(
             @JsonProperty("switch_id") SwitchId switchId,
-            @JsonProperty("ports") Set<PortStatus> ports,
+            @JsonProperty("ports") Set<PortStatusData> ports,
             @JsonProperty("requester") String requester) {
         this.switchId = switchId;
         this.ports = ports;

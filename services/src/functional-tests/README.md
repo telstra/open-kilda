@@ -9,6 +9,7 @@ This module holds functional tests designed to be run against staging OR virtual
 	- [Artifacts](#artifacts)
 - [How to create a test](#how-to-create-a-test)
 	- [Best Practices](#best-practices)
+- [Other](#other)
 
 # A word about the testing approach
 ### Single topology for the whole test suite
@@ -45,7 +46,10 @@ make build-latest
 make up-test-mode
 ```
 - Create the `kilda.properties` file in the `functional-tests` directory.
-- Copy all properties from `kilda.properties.example` to the `kilda.properties` file.
+- Copy all properties from `kilda.properties.example` to the `kilda.properties` file. Please note that this is just an
+example file and some values may diverge from the actual ones. All properties should represent the actual properties
+your Kilda is deployed with. The casual `make up-test-mode` will use properties from `open-kilda/confd/vars/main.yaml`
+during deployment.
 - Change endpoint properties (url, user and password) if needed. It should point
 to your localhost environment. `spring.profiles.active` should be set to `virtual`.
 - Check your `topology.yaml`. This is a file which will be used to spawn a virtual
@@ -56,9 +60,15 @@ In order to use it for test runs copy this file to the root of the functional-te
 - Now you can run tests by executing the following command in the terminal:  
 `mvn clean test -Pfunctional`.  
 If you want to run a single test, you can use the following command:  
-`mvn clean test -Pfunctional -Dtest="<path_to_test_file>#<test_name>"`. 
+`mvn clean test -Pfunctional -Dtest="<path_to_test_file>#<test_name>"`.
 For example:  
 `mvn clean test -Pfunctional -Dtest="spec.northbound.flows.FlowsSpec#Able to create a single-switch flow"`
+Or just run tests from your IDE as regular JUnit tests.
+
+There is property flag `mode.topology.single` in `kilda.properties` file, that defines topology management strategy.
+While it's `true` - topology doesn't deletes after tests end, and you may play with it. But some manual teardown may be required before the next test run.
+Otherwise, topology will be removed after tests run.
+
 
 ### Hardware (Staging)
 - Check your `kilda.properties`. It should point to your staging environment.  
@@ -95,7 +105,7 @@ For example:
 of what actions are being took.  
   - Good:
     - "Unable to delete meter with invalid id";
-    - "Flow in 'Down' status is rerouted when discovering a new ISL". 
+    - "Flow in 'Down' status is rerouted when discovering a new ISL".
   - Bad:
     - "Delete meter with invalid id";
     - "Discover new ISL while flow is down".
@@ -114,3 +124,8 @@ test case at the end.
   - switches knockout/revive operations should have proper waits to ensure that their actual status has changed.
   Same for ISLs.
 - keep in mind that the same test will be also run against a staging env (not only local Kilda) with hardware switches, longer delays and different Kilda environment properties.
+
+# Other
+### How to create a markdown report with test-cases from specifications
+Pass `-Dcom.athaydes.spockframework.report.IReportCreator=org.openkilda.functionaltests.helpers.TestCaseReportCreator`
+and find the report under `spock-reports/summary.md` after the test run.

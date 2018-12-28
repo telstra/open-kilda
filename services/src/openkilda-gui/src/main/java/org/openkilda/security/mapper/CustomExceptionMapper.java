@@ -18,6 +18,7 @@ package org.openkilda.security.mapper;
 import static java.util.stream.Collectors.joining;
 
 import org.openkilda.constants.HttpError;
+import org.openkilda.exception.NoDataFoundException;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
@@ -126,7 +127,7 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = { InvalidResponseException.class })
+    @ExceptionHandler(value = { InvalidResponseException.class, NoDataFoundException.class })
     protected ResponseEntity<Object> invalidResponseExceptionHandler(final InvalidResponseException ex,
             final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);

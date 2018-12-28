@@ -20,16 +20,22 @@ import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+
+import java.util.UUID;
 
 /**
  * Represents general flow info.
  */
+@ToString
+@EqualsAndHashCode
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         TRANSACTION_ID,
@@ -41,7 +47,7 @@ public class BaseFlow extends CommandData {
      * Transaction id.
      */
     @JsonProperty(TRANSACTION_ID)
-    protected Long transactionId;
+    protected UUID transactionId;
 
     /**
      * The flow id.
@@ -71,7 +77,7 @@ public class BaseFlow extends CommandData {
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
-    public BaseFlow(@JsonProperty(TRANSACTION_ID) final Long transactionId,
+    public BaseFlow(@JsonProperty(TRANSACTION_ID) final UUID transactionId,
                     @JsonProperty(FLOW_ID) final String id,
                     @JsonProperty("cookie") final Long cookie,
                     @JsonProperty("switch_id") final SwitchId switchId) {
@@ -86,7 +92,7 @@ public class BaseFlow extends CommandData {
      *
      * @return transaction id of the request
      */
-    public Long getTransactionId() {
+    public UUID getTransactionId() {
         return transactionId;
     }
 
@@ -95,7 +101,7 @@ public class BaseFlow extends CommandData {
      *
      * @param transactionId transaction id of the request
      */
-    public void setTransactionId(final Long transactionId) {
+    public void setTransactionId(final UUID transactionId) {
         this.transactionId = transactionId;
     }
 

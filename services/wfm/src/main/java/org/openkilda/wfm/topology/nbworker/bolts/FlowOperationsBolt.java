@@ -16,29 +16,72 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.pce.provider.Auth;
+import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
+import org.openkilda.model.FlowPair;
+import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.share.mappers.FlowMapper;
+import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.neo4j.driver.v1.Session;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-public class FlowOperationsBolt extends NeoOperationsBolt {
-    public FlowOperationsBolt(Auth neoAuth) {
-        super(neoAuth);
+public class FlowOperationsBolt extends PersistenceOperationsBolt {
+    private transient FlowOperationsService flowOperationsService;
+
+    public FlowOperationsBolt(PersistenceManager persistenceManager) {
+        super(persistenceManager);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+        super.prepare(stormConf, context, collector);
+        this.flowOperationsService = new FlowOperationsService(repositoryFactory);
     }
 
     @Override
-    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, Session session) {
-        log.warn("Received unsupported Flow Operation");
-        return null;
+    @SuppressWarnings("unchecked")
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) throws IslNotFoundException {
+        List<? extends InfoData> result = null;
+        if (request instanceof GetFlowsForIslRequest) {
+            result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);
+        } else {
+            unhandledInput(tuple);
+        }
+
+        return (List<InfoData>) result;
+    }
+
+    private List<FlowResponse> processGetFlowsForLinkRequest(GetFlowsForIslRequest request)
+            throws IslNotFoundException {
+        SwitchId srcSwitch = request.getSource().getDatapath();
+        Integer srcPort = request.getSource().getPortNumber();
+        SwitchId dstSwitch = request.getDestination().getDatapath();
+        Integer dstPort = request.getDestination().getPortNumber();
+
+        return flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+                .map(FlowPair::getForward)
+                .map(FlowMapper.INSTANCE::map)
+                .map(FlowResponse::new)
+                .collect(Collectors.toList());
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
     }
 }

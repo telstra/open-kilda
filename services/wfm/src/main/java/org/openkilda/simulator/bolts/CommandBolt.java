@@ -26,7 +26,7 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.Commands;
 import org.openkilda.wfm.OfeMessageUtils;
@@ -96,7 +96,7 @@ public class CommandBolt extends BaseRichBolt {
                 sw = ((RemoveFlow) data).getSwitchId();
             } else {
                 logger.error("UNKNOWN data type: {}", data.toString());
-                throw new Exception("Unknown command {}".format(data.getClass().getSimpleName()));
+                throw new Exception(String.format("Unknown command %s", data.getClass().getSimpleName()));
             }
             List<Integer> taskIDs = collector.emit(SimulatorTopology.COMMAND_BOLT_STREAM, tuple,
                     new Values(sw, switchCommand.name(), command.getData()));
@@ -116,7 +116,7 @@ public class CommandBolt extends BaseRichBolt {
                     break;
             }
         } catch (Exception e) {
-            logger.error("Could not parse tuple: {}".format(tuple.toString()), e);
+            logger.error("Could not parse tuple: {}", tuple.toString(), e);
         } finally {
             collector.ack(tuple);
         }

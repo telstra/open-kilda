@@ -29,9 +29,9 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchState;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.event.OFEventWfmTopologyConfig;
@@ -59,7 +59,6 @@ import org.mockito.Mock;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -83,7 +82,7 @@ public class OfEventWfmTest extends AbstractStormTest {
      */
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.setupOnce();
+        AbstractStormTest.startZooKafkaAndStorm();
 
         ////////
         Properties overlay = new Properties();
@@ -105,7 +104,8 @@ public class OfEventWfmTest extends AbstractStormTest {
         cluster.killTopology("utils-1");
         cluster.killTopology(manager.getTopologyName());
         Utils.sleep(4 * 1000);
-        AbstractStormTest.teardownOnce();
+
+        AbstractStormTest.stopZooKafkaAndStorm();
     }
 
 
@@ -207,7 +207,7 @@ public class OfEventWfmTest extends AbstractStormTest {
         linkBolt.initState(state);
 
         ArrayList<DiscoveryFilterEntity> skipNodes = new ArrayList<>(1);
-        skipNodes.add(new DiscoveryFilterEntity("ff:01", 1));
+        skipNodes.add(new DiscoveryFilterEntity(new SwitchId("ff:01"), 1));
         CommandMessage islFilterSetup = new CommandMessage(
                 new DiscoveryFilterPopulateData(skipNodes), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         String json = MAPPER.writeValueAsString(islFilterSetup);
@@ -215,15 +215,15 @@ public class OfEventWfmTest extends AbstractStormTest {
         linkBolt.execute(tuple);
 
         InfoMessage switch1Up =
-                new InfoMessage(new SwitchInfoData(new SwitchId("ff:01"), SwitchState.ACTIVATED, null, null,
-                null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+                new InfoMessage(new SwitchInfoData(new SwitchId("ff:01"), SwitchChangeType.ACTIVATED, null, null,
+                        null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(switch1Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage switch2Up =
-                new InfoMessage(new SwitchInfoData(new SwitchId("ff:02"), SwitchState.ACTIVATED, null, null,
-                null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+                new InfoMessage(new SwitchInfoData(new SwitchId("ff:02"), SwitchChangeType.ACTIVATED, null, null,
+                        null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(switch2Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
@@ -243,10 +243,10 @@ public class OfEventWfmTest extends AbstractStormTest {
         Tuple tickTuple = new TupleImpl(topologyContext, Collections.emptyList(), 2, Constants.SYSTEM_TICK_STREAM_ID);
         linkBolt.execute(tickTuple);
 
-        List<PathNode> nodes = Arrays.asList(
+        InfoData data = new IslInfoData(10L,
                 new PathNode(new SwitchId("ff:01"), 1, 0, 10L),
-                new PathNode(new SwitchId("ff:02"), 2, 1, 10L));
-        InfoData data = new IslInfoData(10L, nodes, 10000L, IslChangeType.DISCOVERED, 9000L);
+                new PathNode(new SwitchId("ff:02"), 2, 1, 10L),
+                10000L, IslChangeType.DISCOVERED, 9000L);
         String islDiscovered = MAPPER.writeValueAsString(data);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(islDiscovered), 3, topoInputTopic);
         linkBolt.execute(tuple);

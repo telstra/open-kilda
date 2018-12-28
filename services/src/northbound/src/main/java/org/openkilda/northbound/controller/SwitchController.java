@@ -25,11 +25,12 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria.DeleteRulesC
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
@@ -239,6 +240,18 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RulesSyncResult> syncRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.syncRules(switchId);
+    }
+
+    /**
+     * Gets meters from the switch.
+     * @param switchId switch dpid.
+     * @return list of meters exists on the switch
+     */
+    @ApiOperation(value = "Dump all meter from the switch", response = SwitchMeterEntries.class)
+    @GetMapping(path = "/{switch_id}/meters")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchMeterEntries> getMeters(@PathVariable(name = "switch_id") SwitchId switchId) {
+        return switchService.getMeters(switchId);
     }
 
     /**

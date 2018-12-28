@@ -15,6 +15,9 @@
 
 package org.openkilda.testing.service.elastic;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * ElasticQuery builder class. Helps to build the ElasticSearch queries while specifying minimal number of parameters.
  * Be sure to specify at least application ID or tags field to get a viable query.
@@ -25,8 +28,9 @@ public class ElasticQueryBuilder {
     private String level = "INFO OR WARN OR ERROR";
     private long timeRange = 60;
     private long resultCount = 100;
-    private String defaultField = "source";
+    private String defaultField = "_source";
     private String index = "_all";
+    private Map<String, String> additionalFields;
 
     /**
      * Sets Application ID field the in ElasticSearch query. It is possible to match multiple application IDs by passing
@@ -112,11 +116,26 @@ public class ElasticQueryBuilder {
     }
 
     /**
+     * Inserts arbitrary filters into ElasticSearch query.
+     * @param name - field name
+     * @param value - field value
+     * @return this.
+     */
+    public ElasticQueryBuilder setField(String name, String value) {
+        if (this.additionalFields == null) {
+            this.additionalFields = new HashMap<>();
+        }
+        this.additionalFields.put(name, value);
+
+        return this;
+    }
+
+    /**
      * Builder method. Make sure to call it in the end of the query building process.
      *
      * @return ElasticQuery
      */
     public ElasticQuery build() {
-        return new ElasticQuery(appId, tags, level, timeRange, resultCount, defaultField, index);
+        return new ElasticQuery(appId, tags, level, timeRange, resultCount, defaultField, index, additionalFields);
     }
 }

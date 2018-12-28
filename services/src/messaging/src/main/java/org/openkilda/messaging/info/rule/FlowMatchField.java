@@ -28,6 +28,8 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class FlowMatchField implements Serializable {
 
+    @JsonProperty("eth_src")
+    private String ethSrc;
     @JsonProperty("eth_dst")
     private String ethDst;
     @JsonProperty("eth_type")
@@ -45,10 +47,11 @@ public class FlowMatchField implements Serializable {
 
     @JsonCreator
     public FlowMatchField(
-            @JsonProperty("eth_dst") String ethDst, @JsonProperty("eth_type") String ethType,
-            @JsonProperty("ip_proto") String ipProto, @JsonProperty("udp_src") String udpSrc,
-            @JsonProperty("udp_dst") String udpDst, @JsonProperty("in_port") String inPort,
-            @JsonProperty("vlan_vid") String vlanVid) {
+            @JsonProperty("eth_src") String ethSrc, @JsonProperty("eth_dst") String ethDst,
+            @JsonProperty("eth_type") String ethType, @JsonProperty("ip_proto") String ipProto,
+            @JsonProperty("udp_src") String udpSrc, @JsonProperty("udp_dst") String udpDst,
+            @JsonProperty("in_port") String inPort, @JsonProperty("vlan_vid") String vlanVid) {
+        this.ethSrc = ethSrc;
         this.ethDst = ethDst;
         this.ethType = ethType;
         this.ipProto = ipProto;

@@ -15,7 +15,8 @@
 
 package org.openkilda.northbound.service;
 
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
@@ -23,7 +24,7 @@ import org.openkilda.northbound.dto.links.LinkPropsDto;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public interface LinkService extends BasicService {
+public interface LinkService {
 
     /**
      * Returns all links at the controller.
@@ -58,4 +59,16 @@ public interface LinkService extends BasicService {
      * @return the number of successes (rows affected), failures, and any failure messages
      */
     CompletableFuture<BatchResults> delLinkProps(List<LinkPropsDto> linkPropsList);
+
+    /**
+     * Get all flows for a particular link.
+     *
+     * @param srcSwitch source switch dpid.
+     * @param srcPort source port number.
+     * @param dstSwitch destination switch dpid.
+     * @param dstPort destination port number.
+     * @return all flows for a particular link.
+     */
+    CompletableFuture<List<FlowPayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
+                                                         SwitchId dstSwitch, Integer dstPort);
 }

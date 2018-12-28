@@ -211,6 +211,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
         labelsUTC: true,
         colors: ["#1C227C","#A1CD24"] ,
         legend: "onmouseover",
+        legendFormatter:this.dygraphService.legendFormatter,
          zoomCallback: this.zoomCallbackHandler
       });
     } else {
@@ -222,6 +223,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
         labelsUTC: false,
         colors: ["#1C227C","#A1CD24"],
         legend: "onmouseover",
+        legendFormatter:this.dygraphService.legendFormatter,
         zoomCallback: this.zoomCallbackHandler
       });
     }
@@ -238,7 +240,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
 
   /** Start : Flow Graphs */
 
-
+   
   
 
   plotFlowPathGraph(data, startDate, endDate, type, timezone,loadfromCookie) {
@@ -272,6 +274,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
           labelsUTC: true,
           series: series,
           legend: "onmouseover",
+          legendFormatter:this.dygraphService.legendFormatter,
           zoomCallback: this.zoomCallbackHandler
         });
       } else if (type == "reverse") {
@@ -280,6 +283,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
           series: series,
           labelsUTC: true,
           legend: "onmouseover",
+          legendFormatter:this.dygraphService.legendFormatter,
           zoomCallback: this.zoomCallbackHandler
         });
       }
@@ -290,6 +294,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
           series: series,
           labelsUTC: false,
           legend: "onmouseover",
+          legendFormatter:this.dygraphService.legendFormatter,
           zoomCallback: this.zoomCallbackHandler
         });
       } else if (type == "reverse") {
@@ -298,6 +303,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
           series: series,
           labelsUTC: false,
           legend: "onmouseover",
+          legendFormatter:this.dygraphService.legendFormatter,
           zoomCallback: this.zoomCallbackHandler
         });
       }
@@ -322,6 +328,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
         animatedZooms: true,
         labelsUTC: true,
         colors: ["#1C227C", "#A1CD24"],
+        legendFormatter:this.dygraphService.legendFormatter,
         zoomCallback: this.zoomCallbackHandler
       });
 
@@ -331,6 +338,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
         animatedZooms: true,
         labelsUTC: false,
         colors: ["#1C227C", "#A1CD24"],
+        legendFormatter:this.dygraphService.legendFormatter,
         zoomCallback: this.zoomCallbackHandler
       });
     }

@@ -9,7 +9,7 @@
 					<div ngbDropdownMenu aria-labelledby="dropdownBasic1">
 						<button (click)="openChangePassword()" class="dropdown-item"><i class="fa fa-lock"></i> Change Password</button>
 						<button routerLink="/storesetting" *ngIf="commonService.hasPermission('store_setting')" class="dropdown-item"><i class="fa fa-cog"></i> Settings</button>
-						<button routerLink="/logout" class="dropdown-item"><i class="fa fa-sign-out"></i> Logout</button>
+						<button (click)="logOut()" class="dropdown-item"><i class="fa fa-sign-out"></i> Logout</button>
 					</div>
 				</div>
       </div>

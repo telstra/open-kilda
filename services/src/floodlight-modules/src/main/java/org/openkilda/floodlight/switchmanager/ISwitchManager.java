@@ -19,7 +19,7 @@ import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -27,6 +27,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.List;
@@ -41,6 +42,11 @@ public interface ISwitchManager extends IFloodlightService {
     long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
     long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
     long DROP_VERIFICATION_LOOP_RULE_COOKIE = 0x8000000000000004L;
+
+    /** Mask is being used to get meter id for corresponding system rule.
+     * E.g. for 0x8000000000000002L & PACKET_IN_RULES_METERS_MASK we will get meter id 2.
+     */
+    long PACKET_IN_RULES_METERS_MASK = 0x00000000000000FL;
 
     void activate(DatapathId dpid) throws SwitchOperationException;
 
@@ -184,28 +190,22 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid      datapath ID of the switch
      * @param bandwidth the bandwidth limit value
-     * @param burstSize the size of the burst
      * @param meterId   the meter ID
-     * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
-    long installMeter(final DatapathId dpid, final long bandwidth, final long burstSize,
-                                              final long meterId) throws SwitchOperationException;
+    void installMeter(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
 
     /**
      * Deletes the meter from the switch OF_13.
      *
      * @param dpid    datapath ID of the switch
      * @param meterId meter identifier
-     * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
-    long deleteMeter(final DatapathId dpid, final long meterId) throws SwitchOperationException;
+    void deleteMeter(final DatapathId dpid, final long meterId) throws SwitchOperationException;
 
 
     Map<DatapathId, IOFSwitch> getAllSwitchMap();
-
-    IOFSwitch lookupSwitch(DatapathId dpid) throws SwitchNotFoundException;
 
     List<OFPortDesc> getEnabledPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
 
@@ -284,4 +284,21 @@ public interface ISwitchManager extends IFloodlightService {
                 || p.equals(OFPort.NORMAL)
                 || p.equals(OFPort.TABLE));
     }
+
+    /**
+     * Create a MAC address based on the DPID.
+     *
+     * @param dpId switch object
+     * @return {@link MacAddress}
+     */
+    MacAddress dpIdToMac(final DatapathId dpId);
+
+    /**
+     * Wrap IOFSwitchService.getSwitch call to check protect from null return value.
+     *
+     * @param  dpId switch identifier
+     * @return open flow switch descriptor
+     * @throws SwitchNotFoundException switch operation exception
+     */
+    IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchNotFoundException;
 }

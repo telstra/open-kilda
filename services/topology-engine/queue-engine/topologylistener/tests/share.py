@@ -99,6 +99,15 @@ def isl_info_payload(isl, **fields):
     return payload
 
 
+def switch_rules_sync(switch, rules=None):
+    if not rules:
+        rules = []
+    return {
+        'clazz': messageclasses.MT_SYNC_REQUEST,
+        'switch_id': switch,
+        'rules': rules}
+
+
 def command(payload, **fields):
     message = {
         'timestamp': 0,
@@ -189,6 +198,12 @@ def drop_db_flow_segments(tx, flow_id):
     tx.run(q, {'flow_id': flow_id})
 
 
+def dpid_to_test_dpid(raw):
+    dpid = dpid_as_long(raw)
+    dpid &= ~dpid_protected_bits
+    return long_as_dpid(dpid | dpid_test_marker)
+
+
 def is_test_dpid(dpid):
     dpid = dpid_as_long(dpid)
     return dpid & dpid_protected_bits == dpid_test_marker
@@ -245,6 +260,7 @@ class Environment(object):
 
 class AbstractTest(unittest.TestCase):
     path = functools.partial(os.path.join, os.path.dirname(__file__))
+    correlation_id_counter = itertools.count()
 
     def setUp(self):
         self.log_separator()
@@ -269,12 +285,71 @@ class AbstractTest(unittest.TestCase):
         if not can_fail:
             self.assertTrue(result)
 
+    def take_kafka_response(self, topic,
+                            offset=0, expect_class=message_utils.MT_INFO):
+        kafka_backlog = env.kafka_producer_stub.backlog
+
+        self.assertTrue(offset < len(kafka_backlog))
+
+        kafka_record = kafka_backlog[offset]
+        self.assertEqual(topic, kafka_record.topic)
+
+        message = json.loads(kafka_record.payload)
+        self.assertEqual(expect_class, message['clazz'])
+
+        return message['payload']
+
     def open_neo4j_session(self):
         return env.neo4j_connect.begin()
+
+    def allow_all_features(self):
+        features = {
+            x: True
+            for x in messageclasses.features_status_transport_to_app_map}
+        features_request = feature_toggle_request(**features)
+        self.assertTrue(feed_message(command(features_request)))
+
+    def make_correlation_id(self):
+        return '{}-{}'.format(self.id(), next(self.correlation_id_counter))
+
+    def load_flow_request(self, name):
+        request = self.load_data(name)
+        flow_info_data = request['payload']
+        self.fix_direction_markers(flow_info_data)
+        self.put_test_flow_marker(flow_info_data)
+        return request
 
     def load_data(self, name):
         with open(self.path('data', name), 'rt') as stream:
             return json.load(stream)
+
+    @staticmethod
+    def put_test_flow_marker(flow_info_data):
+        flow_threads = flow_info_data['payload']
+        for thread in flow_threads.values():
+            thread['cookie'] |= cookie_test_data_flag
+
+            for switch_key in ('src_switch', 'dst_switch'):
+                thread[switch_key] = dpid_to_test_dpid(thread[switch_key])
+            for path_segment in thread['flowpath']['path']:
+                path_segment['switch_id'] = dpid_to_test_dpid(
+                    path_segment['switch_id'])
+
+    @classmethod
+    def fix_direction_markers(cls, flow_info_data):
+        flow_threads = flow_info_data['payload']
+        direction_to_flag = {
+            'forward': flow_utils.cookie_flag_forward,
+            'reverse': flow_utils.cookie_flag_reverse}
+        for direction in flow_threads:
+            cookie = cls.clear_flow_cookie_flags(
+                flow_threads[direction]['cookie'])
+            cookie |= direction_to_flag[direction]
+            flow_threads[direction]['cookie'] = cookie
+
+    @staticmethod
+    def clear_flow_cookie_flags(cookie):
+        return cookie & ~flow_utils.cookie_flags_mask
 
 
 class KafkaProducerStub(object):

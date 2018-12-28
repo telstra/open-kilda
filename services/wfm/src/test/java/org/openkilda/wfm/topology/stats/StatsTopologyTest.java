@@ -36,11 +36,19 @@ import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.OutputVlanType;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.spi.PersistenceProvider;
+import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.Neo4jFixture;
 import org.openkilda.wfm.StableAbstractStormTest;
+import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
 
@@ -55,14 +63,9 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Label;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.Transaction;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,6 +73,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 public class StatsTopologyTest extends StableAbstractStormTest {
@@ -77,29 +81,35 @@ public class StatsTopologyTest extends StableAbstractStormTest {
     private static final long timestamp = System.currentTimeMillis();
 
     private final SwitchId switchId = new SwitchId(1L);
+    private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private final long cookie = 0x4000000000000001L;
     private final String flowId = "f253423454343";
 
-    private static Neo4jFixture fakeNeo4jDb;
+    private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
 
     private static LaunchEnvironment launchEnvironment;
+    private static PersistenceManager persistenceManager;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        StableAbstractStormTest.setupOnce();
-        fakeNeo4jDb = new Neo4jFixture(fsData.getRoot().toPath(), NEO4J_LISTEN_ADDRESS);
-        fakeNeo4jDb.start();
+        StableAbstractStormTest.startCompleteTopology();
+
+        embeddedNeo4jDb = new EmbeddedNeo4jDatabase(fsData.getRoot());
+
         launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
-        configOverlay.setProperty("neo4j.hosts", fakeNeo4jDb.getListenAddress());
+        configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
 
         launchEnvironment.setupOverlay(configOverlay);
+
+        MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
+        persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
     }
 
-
     @AfterClass
-    public static void teardownOnce() throws Exception {
-        fakeNeo4jDb.stop();
+    public static void teardownOnce() {
+        embeddedNeo4jDb.stop();
     }
 
     @Ignore
@@ -186,29 +196,31 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         //mock kafka spout
         MockedSources sources = new MockedSources();
 
-        GraphDatabaseService graphDatabaseService = fakeNeo4jDb.getGraphDatabaseService();
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
-        try (Transaction tx = graphDatabaseService.beginTx()) {
-            Node node1 = graphDatabaseService.createNode(Label.label("switch"));
-            node1.setProperty("name", switchId.toString());
-            Relationship rel1 = node1.createRelationshipTo(node1, RelationshipType.withName("flow"));
-            rel1.setProperty("flowid", flowId);
-            rel1.setProperty("cookie", cookie);
-            rel1.setProperty("meter_id", 2);
-            rel1.setProperty("transit_vlan", 1);
-            rel1.setProperty("src_switch", switchId.toString());
-            rel1.setProperty("dst_switch", switchId.toString());
-            rel1.setProperty("src_port", 1);
-            rel1.setProperty("dst_port", 2);
-            rel1.setProperty("src_vlan", 5);
-            rel1.setProperty("dst_vlan", 5);
-            rel1.setProperty("path", "\"{\"path\": [], \"latency_ns\": 0, \"timestamp\": 1522528031909}\"");
-            rel1.setProperty("bandwidth", 200);
-            rel1.setProperty("ignore_bandwidth", true);
-            rel1.setProperty("description", "description");
-            rel1.setProperty("last_updated", "last_updated");
-            tx.success();
-        }
+        Switch sw = new Switch();
+        sw.setSwitchId(switchId);
+        repositoryFactory.createSwitchRepository().createOrUpdate(sw);
+
+        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
+        Flow flow = new Flow();
+        flow.setFlowId(flowId);
+        flow.setCookie(cookie);
+        flow.setMeterId(2);
+        flow.setTransitVlan(1);
+        flow.setSrcSwitch(sw);
+        flow.setSrcPort(1);
+        flow.setSrcVlan(5);
+        flow.setDestSwitch(sw);
+        flow.setDestPort(2);
+        flow.setDestVlan(5);
+        flow.setBandwidth(200);
+        flow.setIgnoreBandwidth(true);
+        flow.setDescription("description");
+        flow.setTimeModify(Instant.EPOCH);
+        flow.setFlowPath(new FlowPath(0, Collections.emptyList(), null));
+
+        flowRepository.createOrUpdate(flow);
 
         List<FlowStatsEntry> entries = Collections.singletonList(
                 new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
@@ -254,7 +266,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         final String flowId = "sync-test-add-ssf";
         final InstallOneSwitchFlow payload =
                 new InstallOneSwitchFlow(
-                        0L, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127,
+                        TRANSACTION_ID, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127,
                         OutputVlanType.PUSH, 1000L, 0L);
         final CommandMessage message = new CommandMessage(payload, timestamp, flowId, Destination.WFM_STATS);
         final String json = MAPPER.writeValueAsString(message);
@@ -308,8 +320,7 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         private KafkaBolt kafkaBolt;
 
-        TestingTargetTopology(LaunchEnvironment launchEnvironment, KafkaBolt kafkaBolt)
-                throws Exception {
+        TestingTargetTopology(LaunchEnvironment launchEnvironment, KafkaBolt kafkaBolt) {
             super(launchEnvironment);
             this.kafkaBolt = kafkaBolt;
         }

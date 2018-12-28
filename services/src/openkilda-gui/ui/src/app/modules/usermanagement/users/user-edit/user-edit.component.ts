@@ -41,6 +41,7 @@ export class UserEditComponent implements OnInit {
     
     this.roles = [];
     this.selectedRoles = [];
+    this.loaderService.show("Loading Details");
     this.roleService.getRoles().subscribe((role: Array<object>) => {
       role.map((role:any) => {
         this.roles.push({ id: role.role_id, name: role.name })
@@ -64,11 +65,15 @@ export class UserEditComponent implements OnInit {
                     roles: this.selectedRoles,
                     is2FaEnabled: user.is2FaEnabled
             },{emitEvent: false});
+            setTimeout(()=>{
+              this.loaderService.hide();
+            },2000)
+           
           });
         }
       });
     },error => {
-      console.log("error", error);
+      
     });  
   
   }

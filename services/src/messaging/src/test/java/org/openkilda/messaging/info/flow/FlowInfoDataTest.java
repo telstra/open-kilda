@@ -19,10 +19,10 @@ import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.FlowPair;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
@@ -46,7 +46,7 @@ public class FlowInfoDataTest implements StringSerializer {
             pathNode.setSeqId(i++);
         }
 
-        Flow forwardFlowThread = Flow.builder()
+        FlowDto forwardFlowThread = FlowDto.builder()
                 .flowId("unit-test-flow0")
                 .bandwidth(1000)
                 .ignoreBandwidth(false)
@@ -57,10 +57,10 @@ public class FlowInfoDataTest implements StringSerializer {
                 .destinationSwitch(dpIdBeta).destinationPort(20).destinationVlan(200)
                 .meterId(1)
                 .transitVlan(1024)
-                .state(FlowState.ALLOCATED)
+                .state(FlowState.IN_PROGRESS)
                 .flowPath(new PathInfoData(20, forwardPath))
                 .build();
-        Flow reverseFlowThread = forwardFlowThread.toBuilder()
+        FlowDto reverseFlowThread = forwardFlowThread.toBuilder()
                 .sourceSwitch(forwardFlowThread.getDestinationSwitch())
                 .sourcePort(forwardFlowThread.getDestinationPort())
                 .sourcePort(forwardFlowThread.getDestinationVlan())
@@ -72,8 +72,8 @@ public class FlowInfoDataTest implements StringSerializer {
 
         FlowInfoData origin = new FlowInfoData(
                 forwardFlowThread.getFlowId(),
-                new FlowPair<>(forwardFlowThread, reverseFlowThread),
-                FlowOperation.CREATE, "unit-test-correlation-id");
+                new FlowPairDto<>(forwardFlowThread, reverseFlowThread),
+                FlowOperation.PUSH, "unit-test-correlation-id");
 
         InfoMessage wrapper = new InfoMessage(origin, System.currentTimeMillis(), origin.getCorrelationId());
         serialize(wrapper);

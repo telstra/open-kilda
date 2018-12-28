@@ -15,35 +15,17 @@ public class CacheBoltState extends AbstractDumpState {
     @JsonProperty("network")
     private NetworkDump network;
 
-    @JsonProperty("flow")
-    private FlowDump flow;
-
     @JsonCreator
     public CacheBoltState(
-            @JsonProperty("network") NetworkDump network,
-            @JsonProperty("flow") FlowDump flow) {
+            @JsonProperty("network") NetworkDump network) {
         this.network = network;
-        this.flow = flow;
     }
 
-    // TODO: During merge, found duplicate methods .. refactor into one set .. getNetwork / getNetworkDump .. getFlow / getFlowDump
     public NetworkDump getNetwork() {
         return network;
     }
 
-    public FlowDump getFlow() {
-        return flow;
-    }
-
     public void accept(DumpStateVisitor visitor) {
         visitor.visit(this);
-    }
-
-    public NetworkDump getNetworkDump() {
-        return network;
-    }
-
-    public FlowDump getFlowDump() {
-        return flow;
     }
 }

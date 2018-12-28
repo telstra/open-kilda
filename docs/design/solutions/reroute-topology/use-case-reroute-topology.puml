@@ -1,0 +1,54 @@
+@startuml
+
+left to right direction
+
+:Floodlight: as FL <<system>>
+
+rectangle "Event topology" {
+    rectangle "Switch operations" {
+        (Create or update\nswitch) as CUS
+        (Deactivate switch) as DS
+    }
+
+    rectangle "Isl operations" {
+        (Create or update\nISL) as CUI
+        (ISL down) as IDF
+    }
+
+    rectangle "Port operations" {
+        (Port down) as PD
+        (Increase cost) as IC
+        PD -left-> IC
+    }
+
+    (Send reroute command) as SRC
+
+    CUI ..> SRC
+    IDF ..> SRC
+    IC ..> SRC
+
+    note top of SRC : This case performs\nif operations with DAO\nwas successful
+}
+
+FL --> CUS
+FL --> DS
+FL --> CUI
+FL --> IDF
+FL --> PD
+
+rectangle "Reroute topology" {
+    (Reroute affected\nflows) as RAF
+    (Reroute inactive\nflows) as RIF
+}
+
+SRC --> RAF
+SRC --> RIF
+
+rectangle "Flow topology" {
+    (Compute new path) as CP
+}
+
+RAF --> CP
+RIF --> CP
+
+@enduml

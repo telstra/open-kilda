@@ -17,94 +17,173 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
+import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
+import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.wfm.topology.nbworker.converters.LinksConverter;
+import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
+import org.openkilda.model.Isl;
+import org.openkilda.model.LinkProps;
+import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.LinkPropsRepository;
+import org.openkilda.wfm.share.mappers.IslMapper;
+import org.openkilda.wfm.share.mappers.LinkPropsMapper;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.neo4j.driver.v1.Session;
-import org.neo4j.driver.v1.StatementResult;
-import org.neo4j.driver.v1.Value;
 
-import java.util.HashMap;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class LinkOperationsBolt extends NeoOperationsBolt {
-    public LinkOperationsBolt(Auth neoAuth) {
-        super(neoAuth);
+public class LinkOperationsBolt extends PersistenceOperationsBolt {
+    public LinkOperationsBolt(PersistenceManager persistenceManager) {
+        super(persistenceManager);
     }
 
     @Override
-    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request, Session session) {
+    @SuppressWarnings("unchecked")
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
-            result = getAllLinks(session);
+            result = getAllLinks();
         } else if (request instanceof LinkPropsGet) {
-            result = getLinkProps((LinkPropsGet) request, session);
+            result = getLinkProps((LinkPropsGet) request);
+        } else if (request instanceof LinkPropsPut) {
+            result = Collections.singletonList(putLinkProps((LinkPropsPut) request));
+        } else if (request instanceof LinkPropsDrop) {
+            result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
         } else {
             unhandledInput(tuple);
         }
 
-        return result;
+        return (List<InfoData>) result;
     }
 
-    private List<IslInfoData> getAllLinks(Session session) {
-        log.debug("Processing get all links request");
-        String q =
-                "MATCH (:switch)-[isl:isl]->(:switch) "
-                        + "RETURN isl";
-
-        StatementResult queryResults = session.run(q);
-        List<IslInfoData> results = queryResults.list()
-                .stream()
-                .map(record -> record.get("isl"))
-                .map(Value::asRelationship)
-                .map(LinksConverter::toIslInfoData)
+    private List<IslInfoData> getAllLinks() {
+        IslRepository islRepository = repositoryFactory.createIslRepository();
+        return islRepository.findAll().stream()
+                .map(IslMapper.INSTANCE::map)
                 .collect(Collectors.toList());
-        log.debug("Found {} links in the database", results.size());
-        return results;
     }
 
-    private List<LinkPropsData> getLinkProps(LinkPropsGet request, Session session) {
-        log.debug("Processing get link props request");
-        String q = "MATCH (props:link_props) "
-                + "WHERE ({src_switch} IS NULL OR props.src_switch={src_switch}) "
-                + "AND ({src_port} IS NULL OR props.src_port={src_port}) "
-                + "AND ({dst_switch} IS NULL OR props.dst_switch={dst_switch}) "
-                + "AND ({dst_port} IS NULL OR props.dst_port={dst_port}) "
-                + "RETURN props";
+    private List<LinkPropsData> getLinkProps(LinkPropsGet request) {
+        LinkPropsRepository linkPropsRepository = repositoryFactory.createLinkPropsRepository();
 
-        Map<String, Object> parameters = new HashMap<>();
-        String srcSwitch = Optional.ofNullable(request.getSource().getDatapath())
-                .map(SwitchId::toString)
-                .orElse(null);
-        parameters.put("src_switch", srcSwitch);
-        parameters.put("src_port", request.getSource().getPortNumber());
-        String dstSwitch = Optional.ofNullable(request.getDestination().getDatapath())
-                .map(SwitchId::toString)
-                .orElse(null);
-        parameters.put("dst_switch", dstSwitch);
-        parameters.put("dst_port", request.getDestination().getPortNumber());
+        Integer srcPort = request.getSource().getPortNumber();
+        SwitchId srcSwitch = request.getSource().getDatapath();
+        Integer dstPort = request.getDestination().getPortNumber();
+        SwitchId dstSwitch = request.getDestination().getDatapath();
 
-        StatementResult queryResults = session.run(q, parameters);
-        List<LinkPropsData> results = queryResults.list()
-                .stream()
-                .map(record -> record.get("props"))
-                .map(Value::asNode)
-                .map(LinksConverter::toLinkPropsData)
+        Collection<LinkProps> linkProps = linkPropsRepository.findByEndpoints(srcSwitch, srcPort, dstSwitch, dstPort);
+        return linkProps.stream()
+                .map(LinkPropsMapper.INSTANCE::map)
+                .map(LinkPropsData::new)
                 .collect(Collectors.toList());
+    }
 
-        log.debug("Found {} link props in the database", results.size());
-        return results;
+    private LinkPropsResponse putLinkProps(LinkPropsPut request) {
+        LinkPropsRepository linkPropsRepository = repositoryFactory.createLinkPropsRepository();
+        IslRepository islRepository = repositoryFactory.createIslRepository();
+
+        try {
+            LinkProps linkPropsToSet = LinkPropsMapper.INSTANCE.map(request.getLinkProps());
+
+            LinkProps result = transactionManager.doInTransaction(() -> {
+                Collection<LinkProps> existingLinkProps = linkPropsRepository.findByEndpoints(
+                        linkPropsToSet.getSrcSwitchId(), linkPropsToSet.getSrcPort(),
+                        linkPropsToSet.getDstSwitchId(), linkPropsToSet.getDstPort());
+
+                LinkProps linkProps;
+                if (!existingLinkProps.isEmpty()) {
+                    linkProps = existingLinkProps.iterator().next();
+                    if (linkPropsToSet.getCost() != null) {
+                        linkProps.setCost(linkPropsToSet.getCost());
+                    }
+                    if (linkPropsToSet.getMaxBandwidth() != null) {
+                        linkProps.setMaxBandwidth(linkPropsToSet.getMaxBandwidth());
+                    }
+                    linkProps.setTimeModify(Instant.now());
+                } else {
+                    linkProps = linkPropsToSet;
+                    Instant timestamp = Instant.now();
+                    linkProps.setTimeCreate(timestamp);
+                    linkProps.setTimeModify(timestamp);
+                }
+                linkPropsRepository.createOrUpdate(linkProps);
+
+                Optional<Isl> existingIsl = islRepository.findByEndpoints(
+                        linkPropsToSet.getSrcSwitchId(), linkPropsToSet.getSrcPort(),
+                        linkPropsToSet.getDstSwitchId(), linkPropsToSet.getDstPort());
+                existingIsl.ifPresent(link -> {
+                    if (linkPropsToSet.getCost() != null) {
+                        link.setCost(linkPropsToSet.getCost());
+                    }
+                    if (linkPropsToSet.getMaxBandwidth() != null) {
+                        link.setMaxBandwidth(linkPropsToSet.getMaxBandwidth());
+                    }
+                    link.setTimeModify(Instant.now());
+
+                    islRepository.createOrUpdate(link);
+                });
+
+                return linkProps;
+            });
+
+            return new LinkPropsResponse(request, LinkPropsMapper.INSTANCE.map(result), null);
+        } catch (Exception e) {
+            log.error("Unhandled exception in put linkprops operation.", e);
+
+            return new LinkPropsResponse(request, null, e.getMessage());
+        }
+    }
+
+    private LinkPropsResponse dropLinkProps(LinkPropsDrop request) {
+        LinkPropsRepository linkPropsRepository = repositoryFactory.createLinkPropsRepository();
+        IslRepository islRepository = repositoryFactory.createIslRepository();
+
+        try {
+            int srcPort = request.getPropsMask().getSource().getPortNumber();
+            SwitchId srcSwitch = request.getPropsMask().getSource().getDatapath();
+            int dstPort = request.getPropsMask().getDest().getPortNumber();
+            SwitchId dstSwitch = request.getPropsMask().getDest().getDatapath();
+
+            LinkProps result = transactionManager.doInTransaction(() -> {
+                Collection<LinkProps> existingLinkProps = linkPropsRepository.findByEndpoints(
+                        srcSwitch, srcPort, dstSwitch, dstPort);
+
+                LinkProps linkProps = null;
+                if (!existingLinkProps.isEmpty()) {
+                    linkProps = existingLinkProps.iterator().next();
+                    linkPropsRepository.delete(linkProps);
+                }
+
+                Optional<Isl> existingIsl = islRepository.findByEndpoints(
+                        srcSwitch, srcPort, dstSwitch, dstPort);
+                existingIsl.ifPresent(link -> {
+                    link.setCost(0);
+                    link.setMaxBandwidth(link.getDefaultMaxBandwidth());
+
+                    islRepository.createOrUpdate(link);
+                });
+
+                return linkProps;
+            });
+
+            return new LinkPropsResponse(request, LinkPropsMapper.INSTANCE.map(result), null);
+        } catch (Exception e) {
+            log.error("Unhandled exception in drop linkprops operation.", e);
+
+            return new LinkPropsResponse(request, null, e.getMessage());
+        }
     }
 
     @Override

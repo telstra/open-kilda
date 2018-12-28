@@ -16,16 +16,22 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.PathDto;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface LinkMapper {
 
+    @Mapping(target = "path",
+            expression = "java(java.util.Arrays.asList(map(data.getSource()), map(data.getDestination())))")
     LinkDto toLinkDto(IslInfoData data);
 
+    PathDto map(PathNode data);
 
     default String toSwithId(SwitchId switchId) {
         return switchId.toString();

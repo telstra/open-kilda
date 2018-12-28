@@ -1,49 +1,33 @@
 package org.openkilda.functionaltests.spec.isl
 
 import static org.junit.Assume.assumeNotNull
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
-import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.tools.IslUtils
 
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 class IslMovementSpec extends BaseSpecification {
-    @Autowired
-    TopologyDefinition topology
-    @Autowired
-    IslUtils islUtils
-    @Autowired
-    NorthboundService northbound
-    @Autowired
-    LockKeeperService lockKeeperService
-    @Value('${discovery.interval}')
-    int discoveryInterval
 
     def "ISL status changes to MOVED when replugging"() {
         given: "A connected a-switch link"
-        def isl = topology.islsForActiveSwitches.find {
-            it.getAswitch()?.inPort && it.getAswitch()?.outPort
-        }
-        assert isl
+        def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
+        assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
 
         and: "A non-connected a-switch link"
         def notConnectedIsl = topology.notConnectedIsls.find {
             it.srcSwitch != isl.srcSwitch && it.srcSwitch != isl.dstSwitch
         }
+        assumeTrue("Wasn't able to find enough of required a-switch links", notConnectedIsl.asBoolean())
 
         when: "Replug one end of connected link to the not connected one"
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
@@ -66,10 +50,8 @@ class IslMovementSpec extends BaseSpecification {
 
     def "New ISL is not getting discovered when replugging into a self-loop (same port)"() {
         given: "A connected a-switch link"
-        def isl = topology.islsForActiveSwitches.find {
-            it.getAswitch()?.inPort && it.getAswitch()?.outPort
-        }
-        assert isl
+        def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
+        assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
 
         when: "Replug one end of link into 'itself'"
         def loopedIsl = islUtils.replug(isl, false, isl, true)
@@ -115,7 +97,7 @@ class IslMovementSpec extends BaseSpecification {
 
 
         and: "Unplug the link how it was before"
-        lockKeeperService.removeFlows([
+        lockKeeper.removeFlows([
                 new ASwitchFlow(expectedIsl.aswitch.getInPort(), expectedIsl.aswitch.getOutPort()),
                 new ASwitchFlow(expectedIsl.aswitch.getOutPort(), expectedIsl.aswitch.getInPort())])
     }

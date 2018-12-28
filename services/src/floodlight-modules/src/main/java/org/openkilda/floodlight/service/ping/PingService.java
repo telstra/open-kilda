@@ -15,7 +15,6 @@
 
 package org.openkilda.floodlight.service.ping;
 
-import org.openkilda.floodlight.SwitchUtils;
 import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.IService;
@@ -24,7 +23,6 @@ import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.messaging.model.Ping;
 
-import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.packet.Data;
@@ -47,7 +45,7 @@ public class PingService implements IService {
     private static final byte NET_L3_TTL = 96;
 
     private DataSignature signature = null;
-    private SwitchUtils switchUtils = null;
+    private ISwitchManager switchManager;
 
     /**
      * Initialize internal data structures. Called by module that own this service. Called after all dependencies have
@@ -63,7 +61,7 @@ public class PingService implements IService {
             throw new FloodlightModuleException(String.format("Unable to initialize %s", getClass().getName()), e);
         }
 
-        switchUtils = new SwitchUtils(moduleContext.getServiceImpl(IOFSwitchService.class));
+        switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
         InputService inputService = moduleContext.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, new PingInputTranslator());
@@ -104,7 +102,7 @@ public class PingService implements IService {
      * Verify all particular qualities used during verification package creation time. Return packet payload.
      */
     public byte[] unwrapData(DatapathId dpId, Ethernet packet) {
-        MacAddress targetL2Address = switchUtils.dpIdToMac(dpId);
+        MacAddress targetL2Address = switchManager.dpIdToMac(dpId);
         if (!packet.getDestinationMACAddress().equals(targetL2Address)) {
             return null;
         }

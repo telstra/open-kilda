@@ -14,18 +14,18 @@
 #
 
 FROM kilda/base-ubuntu
-RUN apt-get update \
-    && apt-get install -y \
+RUN apt-get update -q \
+    && apt-get install -yq \
         python-pip \
         supervisor \
         vim \
     && pip install --upgrade pip \
+    && pip install pytz \
     && pip install \
         'kafka-python==1.4.0' \
-        'py2neo>=4.0.0' \
+        'py2neo>=4.0.0,<4.1.2' \
         'gevent<=1.3.1' \
         python-logstash \
-        pytz \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ADD entrypoint.sh /entrypoint.sh

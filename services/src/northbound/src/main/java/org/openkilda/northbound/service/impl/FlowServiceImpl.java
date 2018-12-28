@@ -18,6 +18,7 @@ package org.openkilda.northbound.service.impl;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
+import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
@@ -28,10 +29,7 @@ import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
-import org.openkilda.messaging.command.flow.SynchronizeCacheAction;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
@@ -43,15 +41,16 @@ import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.model.BidirectionalFlow;
-import org.openkilda.messaging.model.Flow;
-import org.openkilda.messaging.model.SwitchId;
-import org.openkilda.messaging.payload.flow.FlowCacheSyncResults;
+import org.openkilda.messaging.model.BidirectionalFlowDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
@@ -63,12 +62,11 @@ import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
-import org.openkilda.pce.provider.Auth;
-import org.openkilda.pce.provider.AuthNeo4j;
-import org.openkilda.pce.provider.NeoDriver;
-import org.openkilda.pce.provider.PathComputer;
+import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.spi.PersistenceProvider;
 
-import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +76,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.file.InvalidPathException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -96,15 +95,14 @@ public class FlowServiceImpl implements FlowService {
     /**
      * The logger.
      */
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(FlowServiceImpl.class);
 
     /**
      * when getting the switch rules, we'll ignore cookie filter.
      */
     private static final Long IGNORE_COOKIE_FILTER = 0L;
 
-    private PathComputer pathComputer;
-    private Auth pathComputerAuth;
+    private FlowRepository flowRepository;
 
     /**
      * The kafka topic for the flow topology.
@@ -113,24 +111,18 @@ public class FlowServiceImpl implements FlowService {
     private String topic;
 
     /**
-     * The kafka topic for the topology engine.
-     */
-    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
-    private String topoEngTopic;
-
-    /**
      * The kafka topic for `ping` topology.
      */
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
 
-    @Value("${neo4j.hosts}")
-    private String neoHost;
+    @Value("${neo4j.uri}")
+    private String neoUri;
 
     @Value("${neo4j.user}")
     private String neoUser;
 
-    @Value("${neo4j.pswd}")
+    @Value("${neo4j.password}")
     private String neoPswd;
 
     @Autowired
@@ -150,8 +142,40 @@ public class FlowServiceImpl implements FlowService {
 
     @PostConstruct
     void init() {
-        pathComputerAuth = new AuthNeo4j(neoHost, neoUser, neoPswd);
-        pathComputer = new NeoDriver(pathComputerAuth.getDriver());
+        PersistenceManager persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(
+                new ConfigurationProvider() {
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public <T> T getConfiguration(Class<T> configurationType) {
+                        if (configurationType.equals(Neo4jConfig.class)) {
+                            return (T) new Neo4jConfig() {
+                                @Override
+                                public String getUri() {
+                                    return neoUri;
+                                }
+
+                                @Override
+                                public String getLogin() {
+                                    return neoUser;
+                                }
+
+                                @Override
+                                public String getPassword() {
+                                    return neoPswd;
+                                }
+
+                                @Override
+                                public int getConnectionPoolSize() {
+                                    return 50;
+                                }
+                            };
+                        } else {
+                            throw new UnsupportedOperationException("Unsupported configurationType "
+                                    + configurationType);
+                        }
+                    }
+                });
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
     }
 
     /**
@@ -160,9 +184,9 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowPayload> createFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Create flow: {}", input);
+        logger.info("Create flow: {}", input);
 
-        FlowCreateRequest payload = new FlowCreateRequest(new Flow(input));
+        FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input));
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -177,10 +201,10 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowPayload> getFlow(final String id) {
-        logger.debug("Get flow: {}={}", FLOW_ID, id);
+        logger.debug("Get flow request for flow {}", id);
 
         return getBidirectionalFlow(id, RequestCorrelationId.getId())
-                .thenApply(BidirectionalFlow::getForward)
+                .thenApply(BidirectionalFlowDto::getForward)
                 .thenApply(flowMapper::toFlowOutput);
     }
 
@@ -190,9 +214,9 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowPayload> updateFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Update flow: {}={}", FLOW_ID, input.getId());
+        logger.info("Update flow request for flow {}", input.getId());
 
-        FlowUpdateRequest payload = new FlowUpdateRequest(new Flow(input));
+        FlowUpdateRequest payload = new FlowUpdateRequest(new FlowDto(input));
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -208,7 +232,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<List<FlowPayload>> getAllFlows() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Get flows request processing");
+        logger.debug("Get flows request processing");
         FlowsDumpRequest data = new FlowsDumpRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -216,7 +240,7 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(result -> result.stream()
                         .map(FlowReadResponse.class::cast)
                         .map(FlowReadResponse::getPayload)
-                        .map(BidirectionalFlow::getForward)
+                        .map(BidirectionalFlowDto::getForward)
                         .map(flowMapper::toFlowOutput)
                         .collect(Collectors.toList()));
     }
@@ -227,7 +251,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<List<FlowPayload>> deleteAllFlows() {
         CompletableFuture<List<FlowPayload>> result = new CompletableFuture<>();
-        LOGGER.debug("DELETE ALL FLOWS");
+        logger.warn("Delete all flows request");
         // TODO: Need a getFlowIDs .. since that is all we need
         CompletableFuture<List<FlowPayload>> getFlowsStage = this.getAllFlows();
 
@@ -250,7 +274,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowPayload> deleteFlow(final String id) {
-        logger.debug("Delete flow: {}={}", FLOW_ID, id);
+        logger.info("Delete flow request for flow: {}", id);
         final String correlationId = RequestCorrelationId.getId();
 
         return sendDeleteFlow(id, correlationId);
@@ -267,10 +291,11 @@ public class FlowServiceImpl implements FlowService {
 
     /**
      * Non-blocking primitive .. just create and send delete request.
+     *
      * @return the request
      */
     private CommandMessage buildDeleteFlowCommand(final String id, final String correlationId) {
-        Flow flow = new Flow();
+        FlowDto flow = new FlowDto();
         flow.setFlowId(id);
         FlowDeleteRequest data = new FlowDeleteRequest(flow);
         return new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -281,7 +306,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowIdStatusPayload> statusFlow(final String id) {
-        logger.debug("Flow status: {}={}", FLOW_ID, id);
+        logger.debug("Flow status request for flow: {}", id);
         return getBidirectionalFlow(id, RequestCorrelationId.getId())
                 .thenApply(flowMapper::toFlowIdStatusPayload);
     }
@@ -291,7 +316,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowPathPayload> pathFlow(final String id) {
-        LOGGER.debug("Flow path: {}={}", FLOW_ID, id);
+        logger.debug("Flow path request for flow {}", id);
         return getBidirectionalFlow(id, RequestCorrelationId.getId())
                 .thenApply(flowMapper::toFlowPathPayload);
     }
@@ -319,10 +344,11 @@ public class FlowServiceImpl implements FlowService {
     }
 
     /**
-     * Reads {@link BidirectionalFlow} flow representation from the Storm.
+     * Reads {@link BidirectionalFlowDto} flow representation from the Storm.
+     *
      * @return the bidirectional flow.
      */
-    private CompletableFuture<BidirectionalFlow> getBidirectionalFlow(String flowId, String correlationId) {
+    private CompletableFuture<BidirectionalFlowDto> getBidirectionalFlow(String flowId, String correlationId) {
         FlowReadRequest data = new FlowReadRequest(flowId);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -336,13 +362,12 @@ public class FlowServiceImpl implements FlowService {
      */
     private CompletableFuture<BatchResults> flowPushUnpush(List<FlowInfoData> externalFlows, FlowOperation op) {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Flow {}: id: {}",
-                op, externalFlows.stream().map(FlowInfoData::getFlowId).collect(Collectors.joining()));
-        LOGGER.debug("Size of list: {}", externalFlows.size());
+        String collect = externalFlows.stream().map(FlowInfoData::getFlowId).collect(Collectors.joining());
+        logger.debug("Flow {}: id: {}", op, collect);
+        logger.debug("Size of list: {}", externalFlows.size());
         // First, send them all, then wait for all the responses.
         // Send the command to both Flow Topology and to TE
         List<CompletableFuture<?>> flowRequests = new ArrayList<>();    // used for error reporting, if needed
-        List<CompletableFuture<?>> teRequests = new ArrayList<>();      // used for error reporting, if needed
         for (int i = 0; i < externalFlows.size(); i++) {
             FlowInfoData data = externalFlows.get(i);
             data.setOperation(op);  // <-- this is what determines PUSH / UNPUSH
@@ -350,43 +375,34 @@ public class FlowServiceImpl implements FlowService {
             InfoMessage flowRequest =
                     new InfoMessage(data, System.currentTimeMillis(), flowCorrelation, Destination.WFM);
             flowRequests.add(messagingChannel.sendAndGet(topic, flowRequest));
-
-            String teCorrelation = correlationId + "-TE-" + i;
-            InfoMessage teRequest =
-                    new InfoMessage(data, System.currentTimeMillis(), teCorrelation, Destination.TOPOLOGY_ENGINE);
-            teRequests.add(messagingChannel.sendAndGet(topoEngTopic, teRequest));
         }
 
-        FlowState expectedState = (op == FlowOperation.PUSH || op == FlowOperation.PUSH_PROPAGATE)
-                ? FlowState.UP
-                : FlowState.DOWN;
+        FlowState expectedState;
+        switch (op) {
+            case PUSH:
+                expectedState = FlowState.UP;
+                break;
+            case PUSH_PROPAGATE:
+                expectedState = FlowState.IN_PROGRESS;
+                break;
+            default:
+                expectedState = FlowState.DOWN;
+        }
 
         CompletableFuture<List<String>> flowFailures = collectResponses(flowRequests, FlowStatusResponse.class)
                 .thenApply(flows ->
                         flows.stream()
-                            .map(FlowStatusResponse::getPayload)
-                            .filter(payload -> payload.getStatus() != expectedState)
-                            .map(payload -> "FAILURE (FlowTopo): Flow " + payload.getId()
-                                    + " NOT in " + expectedState
-                                    + " state: state = " + payload.getStatus())
-                            .collect(Collectors.toList()));
+                                .map(FlowStatusResponse::getPayload)
+                                .filter(payload -> payload.getStatus() != expectedState)
+                                .map(payload -> "FAILURE (FlowTopo): Flow " + payload.getId()
+                                        + " NOT in " + expectedState
+                                        + " state: state = " + payload.getStatus())
+                                .collect(Collectors.toList()));
 
-        CompletableFuture<List<String>> teFailures = collectResponses(teRequests, FlowStatusResponse.class)
-                .thenApply(flows ->
-                     flows.stream()
-                            .map(FlowStatusResponse::getPayload)
-                            .filter(payload -> payload.getStatus() != expectedState)
-                            .map(payload -> "FAILURE (TE): Flow " + payload.getId()
-                                    + " NOT in " + expectedState
-                                    + " state: state = " + payload.getStatus())
-                            .collect(Collectors.toList()));
-
-        return flowFailures.thenCombine(teFailures, (flowErrors, teErrors) -> {
-            BatchResults batchResults = new BatchResults(flowErrors.size() + teErrors.size(),
-                    externalFlows.size() - flowErrors.size() + externalFlows.size() - teErrors.size(),
-                    ListUtils.sum(flowErrors, teErrors));
-
-            LOGGER.debug("Returned: {}", batchResults);
+        return flowFailures.thenApply(failures -> {
+            BatchResults batchResults = new BatchResults(failures.size(),
+                    externalFlows.size() - failures.size(), failures);
+            logger.debug("Returned: {}", batchResults);
             return batchResults;
         });
     }
@@ -396,11 +412,13 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowReroutePayload> rerouteFlow(String flowId) {
+        logger.info("Reroute flow request for flow {}", flowId);
         return reroute(flowId, false);
     }
 
     @Override
     public CompletableFuture<FlowReroutePayload> syncFlow(String flowId) {
+        logger.info("Forced reroute request for flow {}", flowId);
         return reroute(flowId, true);
     }
 
@@ -433,17 +451,17 @@ public class FlowServiceImpl implements FlowService {
              * Start with Ingress
              */
             SimpleSwitchRule rule = new SimpleSwitchRule();
-            rule.switchId = flow.getSourceSwitch();
+            rule.switchId = flow.getSrcSwitch().getSwitchId();
             rule.cookie = flow.getCookie();
-            rule.inPort = flow.getSourcePort();
-            rule.inVlan = flow.getSourceVlan();
+            rule.inPort = flow.getSrcPort();
+            rule.inVlan = flow.getSrcVlan();
             rule.meterId = flow.getMeterId();
-            List<PathNode> path = flow.getFlowPath().getPath();
+            List<FlowPath.Node> path = flow.getFlowPath().getNodes();
             // TODO: ensure path is sorted by sequence
-            if (path.size() == 0) {
+            if (path.isEmpty()) {
                 // single switch rule.
-                rule.outPort = flow.getDestinationPort();
-                rule.outVlan = flow.getDestinationVlan();
+                rule.outPort = flow.getDestPort();
+                rule.outVlan = flow.getDestVlan();
             } else {
                 // flows with two switches or more will have at least 2 in getPath()
                 rule.outPort = path.get(0).getPortNo();
@@ -462,8 +480,7 @@ public class FlowServiceImpl implements FlowService {
             if (path.size() > 2) {
                 for (int i = 1; i < path.size() - 1; i = i + 2) {
                     // eg .. size 4, means 1 transit .. start at 1,2 .. don't process 3
-                    final PathNode inNode = path.get(i);
-                    final PathNode outNode = path.get(i + 1);
+                    FlowPath.Node inNode = path.get(i);
 
                     rule = new SimpleSwitchRule();
                     rule.switchId = inNode.getSwitchId();
@@ -475,6 +492,8 @@ public class FlowServiceImpl implements FlowService {
                     rule.inVlan = flow.getTransitVlan();
                     //TODO: out vlan is not set for transit flows. Is it correct behavior?
                     //rule.outVlan = flow.getTransitVlan();
+
+                    FlowPath.Node outNode = path.get(i + 1);
                     rule.outPort = outNode.getPortNo();
                     result.add(rule);
                 }
@@ -483,11 +502,11 @@ public class FlowServiceImpl implements FlowService {
             /*
              * Now Egress .. only if we have a path. Otherwise it is one switch.
              */
-            if (path.size() > 0) {
+            if (!path.isEmpty()) {
                 rule = new SimpleSwitchRule();
-                rule.switchId = flow.getDestinationSwitch();
-                rule.outPort = flow.getDestinationPort();
-                rule.outVlan = flow.getDestinationVlan();
+                rule.switchId = flow.getDestSwitch().getSwitchId();
+                rule.outPort = flow.getDestPort();
+                rule.outVlan = flow.getDestVlan();
                 rule.inVlan = flow.getTransitVlan();
                 rule.inPort = path.get(path.size() - 1).getPortNo();
                 rule.cookie = Optional.ofNullable(path.get(path.size() - 1).getCookie())
@@ -541,6 +560,7 @@ public class FlowServiceImpl implements FlowService {
 
         /**
          * Finds discrepancy between list of expected and actual rules.
+         *
          * @param pktCounts If we find the rule, add its pktCounts. Otherwise, add -1.
          * @param byteCounts If we find the rule, add its pktCounts. Otherwise, add -1.
          */
@@ -548,7 +568,59 @@ public class FlowServiceImpl implements FlowService {
                 SimpleSwitchRule expected, List<SimpleSwitchRule> possibleActual,
                 List<Long> pktCounts, List<Long> byteCounts) {
             List<PathDiscrepancyDto> result = new ArrayList<>();
+            SimpleSwitchRule matched = findMatched(expected, possibleActual);
 
+            /*
+             * If we haven't matched anything .. then file discrepancy for each field used in match.
+             */
+            if (matched == null) {
+                result.add(new PathDiscrepancyDto(String.valueOf(expected), "all", String.valueOf(expected), ""));
+                pktCounts.add(-1L);
+                byteCounts.add(-1L);
+            } else {
+                doMatchCompare(expected, result, matched);
+                pktCounts.add(matched.pktCount);
+                byteCounts.add(matched.byteCount);
+            }
+
+            return result;
+        }
+
+        private static void doMatchCompare(SimpleSwitchRule expected, List<PathDiscrepancyDto> result,
+                                           SimpleSwitchRule matched) {
+            if (matched.cookie != expected.cookie) {
+                result.add(new PathDiscrepancyDto(expected.toString(), "cookie",
+                        String.valueOf(expected.cookie), String.valueOf(matched.cookie)));
+            }
+            if (matched.inPort != expected.inPort) {
+                result.add(new PathDiscrepancyDto(expected.toString(), "inPort",
+                        String.valueOf(expected.inPort), String.valueOf(matched.inPort)));
+            }
+            if (matched.inVlan != expected.inVlan) {
+                result.add(new PathDiscrepancyDto(expected.toString(), "inVlan",
+                        String.valueOf(expected.inVlan), String.valueOf(matched.inVlan)));
+            }
+            // FIXME: let's validate in_port output correctly in case of one-switch-port flow.
+            // currently for such flow we get 0 after convertion, but the rule has "output: in_port" value.
+            if (matched.outPort != expected.outPort
+                    && (expected.inPort != expected.outPort || matched.outPort != 0)) {
+                result.add(new PathDiscrepancyDto(expected.toString(), "outPort",
+                        String.valueOf(expected.outPort), String.valueOf(matched.outPort)));
+            }
+            if (matched.outVlan != expected.outVlan) {
+                result.add(new PathDiscrepancyDto(expected.toString(), "outVlan",
+                        String.valueOf(expected.outVlan), String.valueOf(matched.outVlan)));
+            }
+
+            //TODO: dumping of meters on OF_12 switches (and earlier) is not implemented yet, so skip them.
+            if ((matched.version == null || matched.version.compareTo("OF_12") > 0)
+                    && matched.meterId != expected.meterId) {
+                result.add(new PathDiscrepancyDto(expected.toString(), "meterId",
+                        String.valueOf(expected.meterId), String.valueOf(matched.meterId)));
+            }
+        }
+
+        private static SimpleSwitchRule findMatched(SimpleSwitchRule expected, List<SimpleSwitchRule> possibleActual) {
             /*
              * Start with trying to match on the cookie.
              */
@@ -574,50 +646,7 @@ public class FlowServiceImpl implements FlowService {
                         .findFirst()
                         .orElse(null);
             }
-
-            /*
-             * If we haven't matched anything .. then file discrepancy for each field used in match.
-             */
-            if (matched == null) {
-                result.add(new PathDiscrepancyDto(String.valueOf(expected), "all", String.valueOf(expected), ""));
-                pktCounts.add(-1L);
-                byteCounts.add(-1L);
-            } else {
-                if (matched.cookie != expected.cookie) {
-                    result.add(new PathDiscrepancyDto(expected.toString(), "cookie",
-                            String.valueOf(expected.cookie), String.valueOf(matched.cookie)));
-                }
-                if (matched.inPort != expected.inPort) {
-                    result.add(new PathDiscrepancyDto(expected.toString(), "inPort",
-                            String.valueOf(expected.inPort), String.valueOf(matched.inPort)));
-                }
-                if (matched.inVlan != expected.inVlan) {
-                    result.add(new PathDiscrepancyDto(expected.toString(), "inVlan",
-                            String.valueOf(expected.inVlan), String.valueOf(matched.inVlan)));
-                }
-                // FIXME: let's validate in_port output correctly in case of one-switch-port flow.
-                // currently for such flow we get 0 after convertion, but the rule has "output: in_port" value.
-                if (matched.outPort != expected.outPort
-                        && (expected.inPort != expected.outPort || matched.outPort != 0)) {
-                    result.add(new PathDiscrepancyDto(expected.toString(), "outPort",
-                            String.valueOf(expected.outPort), String.valueOf(matched.outPort)));
-                }
-                if (matched.outVlan != expected.outVlan) {
-                    result.add(new PathDiscrepancyDto(expected.toString(), "outVlan",
-                            String.valueOf(expected.outVlan), String.valueOf(matched.outVlan)));
-                }
-
-                //TODO: dumping of meters on OF_12 switches (and earlier) is not implemented yet, so skip them.
-                if ((matched.version == null || matched.version.compareTo("OF_12") > 0)
-                        && matched.meterId != expected.meterId) {
-                    result.add(new PathDiscrepancyDto(expected.toString(), "meterId",
-                            String.valueOf(expected.meterId), String.valueOf(matched.meterId)));
-                }
-                pktCounts.add(matched.pktCount);
-                byteCounts.add(matched.byteCount);
-            }
-
-            return result;
+            return matched;
         }
     }
 
@@ -633,9 +662,9 @@ public class FlowServiceImpl implements FlowService {
          * 3) Do the comparison
          */
 
-        List<Flow> flows = pathComputer.getFlow(flowId);
+        Collection<Flow> flows = flowRepository.findById(flowId);
         logger.debug("VALIDATE FLOW: Found Flows: count = {}", flows.size());
-        if (flows.size() == 0) {
+        if (flows.isEmpty()) {
             return null;
         }
 
@@ -647,9 +676,9 @@ public class FlowServiceImpl implements FlowService {
         for (Flow flow : flows) {
             if (flow.getFlowPath() != null) {
                 simpleFlowRules.add(SimpleSwitchRule.convertFlow(flow));
-                switches.add(flow.getSourceSwitch());
-                switches.add(flow.getDestinationSwitch());
-                for (PathNode node : flow.getFlowPath().getPath()) {
+                switches.add(flow.getSrcSwitch().getSwitchId());
+                switches.add(flow.getDestSwitch().getSwitchId());
+                for (FlowPath.Node node : flow.getFlowPath().getNodes()) {
                     switches.add(node.getSwitchId());
                 }
             } else {
@@ -718,13 +747,12 @@ public class FlowServiceImpl implements FlowService {
             FlowValidationDto result = new FlowValidationDto();
             result.setFlowId(flowId);
             result.setDiscrepancies(discrepancies);
-            result.setAsExpected(discrepancies.size() == 0);
+            result.setAsExpected(discrepancies.isEmpty());
             result.setPktCounts(pktCounts);
             result.setByteCounts(byteCounts);
             result.setFlowRulesTotal(oneDirection.size());
             result.setSwitchRulesTotal(totalSwitchRules);
             results.add(result);
-
         }
         return results;
     }
@@ -743,15 +771,13 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<FlowCacheSyncResults> syncFlowCache(SynchronizeCacheAction syncCacheAction) {
+    public void invalidateFlowResourcesCache() {
         final String correlationId = RequestCorrelationId.getId();
-        LOGGER.debug("Flow cache sync. Action: {}", syncCacheAction);
-        FlowCacheSyncRequest data = new FlowCacheSyncRequest(syncCacheAction);
+        logger.debug("Invalidating Flow Resources Cache.");
+        FlowCacheSyncRequest data = new FlowCacheSyncRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, request)
-                .thenApply(FlowCacheSyncResponse.class::cast)
-                .thenApply(FlowCacheSyncResponse::getPayload);
+        messagingChannel.sendAndGet(topic, request);
     }
 
     private CompletableFuture<FlowReroutePayload> reroute(String flowId, boolean forced) {

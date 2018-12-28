@@ -15,17 +15,19 @@
 
 package org.openkilda.wfm;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.Config;
 import org.apache.storm.testing.CompleteTopologyParam;
 import org.apache.storm.testing.MkClusterParam;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 
 //todo: should be removed when all tests will be free from kafka usages
+@Slf4j
 public class StableAbstractStormTest extends AbstractStormTest {
-    @BeforeClass
-    public static void setupOnce() throws Exception {
-        System.out.println("------> Creating Sheep \uD83D\uDC11\n");
+    protected static MkClusterParam clusterParam;
+    protected static CompleteTopologyParam completeTopologyParam;
+
+    protected static void startCompleteTopology() throws Exception {
+        log.info("Starting CompleteTopology ...");
 
         clusterParam = new MkClusterParam();
         clusterParam.setSupervisors(1);
@@ -40,10 +42,4 @@ public class StableAbstractStormTest extends AbstractStormTest {
         completeTopologyParam = new CompleteTopologyParam();
         completeTopologyParam.setStormConf(conf);
     }
-
-
-    @AfterClass
-    public static void teardownOnce() throws Exception {
-    }
-
 }

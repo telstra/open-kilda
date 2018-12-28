@@ -21,7 +21,7 @@ import org.openkilda.config.EnvironmentConfig;
 import org.openkilda.config.naming.KafkaNamingForConfigurationValueProcessor;
 import org.openkilda.config.naming.KafkaNamingStrategy;
 import org.openkilda.wfm.config.naming.TopologyNamingStrategy;
-import org.openkilda.wfm.config.provider.ConfigurationProvider;
+import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -52,11 +52,11 @@ public class LaunchEnvironment {
      *
      * @param prefixes is an ordered list of property prefixes to be used for configuration entries lookup.
      */
-    public ConfigurationProvider getConfigurationProvider(String... prefixes) {
+    public MultiPrefixConfigurationProvider getConfigurationProvider(String... prefixes) {
         String[] prefixesWithOverlay = ArrayUtils.addAll(ArrayUtils.toArray(CLI_OVERLAY), prefixes);
 
         // Apply Kafka naming to Kafka topics and groups in the configuration.
-        return new ConfigurationProvider(getProperties(), prefixesWithOverlay,
+        return new MultiPrefixConfigurationProvider(getProperties(), prefixesWithOverlay,
                 singletonList(new KafkaNamingForConfigurationValueProcessor(getKafkaNamingStrategy())));
     }
 
@@ -69,7 +69,7 @@ public class LaunchEnvironment {
     }
 
     private String getEnvironmentPrefix() {
-        ConfigurationProvider configurationProvider = new ConfigurationProvider(getProperties(),
+        MultiPrefixConfigurationProvider configurationProvider = new MultiPrefixConfigurationProvider(getProperties(),
                 ArrayUtils.toArray(CLI_OVERLAY));
 
         EnvironmentConfig environmentConfig = configurationProvider.getConfiguration(EnvironmentConfig.class);

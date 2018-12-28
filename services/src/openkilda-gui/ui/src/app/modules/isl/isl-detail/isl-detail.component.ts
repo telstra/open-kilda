@@ -1,4 +1,4 @@
-import { Component, OnInit, EventEmitter, Output, AfterViewInit } from '@angular/core';
+import { Component, OnInit, EventEmitter, Output, AfterViewInit, OnDestroy } from '@angular/core';
 import { HttpClient } from "@angular/common/http";
 import { IslDetailModel } from '../../../common/data-models/isl-detail-model';
 import { Observable } from "rxjs";
@@ -26,7 +26,7 @@ import { CommonService } from '../../../common/services/common.service';
     styleUrls: ['./isl-detail.component.css']
   })
 
-  export class IslDetailComponent implements OnInit, AfterViewInit {
+  export class IslDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     
     detailUrl: string = '';
     src_switch:string = '';
@@ -54,6 +54,7 @@ import { CommonService } from '../../../common/services/common.service';
       };
     graphObj: any;
     message:{};
+    getautoReloadValues = this.commonService.getAutoreloadValues();
 
     filterForm: FormGroup;
     graphMetrics = [];
@@ -190,6 +191,7 @@ import { CommonService } from '../../../common/services/common.service';
       }
     }
 
+   
 
     showMenu(e){
     e.preventDefault();
@@ -332,9 +334,15 @@ get f() {
     
     let formdata = this.filterForm.value;
     let downsampling = formdata.download_sample;
+    let autoReloadTime = Number(
+      this.filterForm.controls["auto_reload_time"].value
+    );
     let metric = formdata.metric;
     let timezone = formdata.timezone;
     let graph = formdata.graph;
+    if (this.filterForm.controls["auto_reload"]) {
+      formdata.toDate = new Date(new Date(formdata.toDate).getTime() + (autoReloadTime * 1000));
+    }
     
     let convertedStartDate = moment(new Date(formdata.fromDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
     let convertedEndDate = moment(new Date(formdata.toDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
@@ -580,6 +588,11 @@ get f() {
       return "-";
     } else {
       return (value / 1000)+" Mbps";
+    }
+  }
+  ngOnDestroy(){
+    if (this.autoReloadTimerId) {
+      clearInterval(this.autoReloadTimerId);
     }
   }
 

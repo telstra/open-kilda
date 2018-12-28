@@ -17,6 +17,7 @@ package org.openkilda.store.service.converter;
 
 import org.openkilda.store.common.dao.entity.UrlEntity;
 import org.openkilda.store.model.UrlDto;
+import org.openkilda.utility.StringUtil;
 
 /**
  * The Class UrlConverter.
@@ -52,7 +53,7 @@ public final class UrlConverter {
     public static UrlDto toUrlDto(final UrlEntity urlEntity) {
         UrlDto urlDto = new UrlDto();
         urlDto.setName(urlEntity.getName());
-        urlDto.setUrl(urlEntity.getUrl().trim());
+        urlDto.setUrl(StringUtil.isNullOrEmpty(urlEntity.getUrl()) ? urlEntity.getUrl() : urlEntity.getUrl().trim());
         urlDto.setMethodType(urlEntity.getMethodType());
         urlDto.setHeader(urlEntity.getHeader());
         urlDto.setBody(urlEntity.getBody());

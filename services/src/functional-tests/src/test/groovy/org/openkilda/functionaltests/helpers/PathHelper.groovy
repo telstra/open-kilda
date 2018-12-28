@@ -37,7 +37,9 @@ class PathHelper {
      */
     void makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
-        def islToAvoid = getInvolvedIsls(lessPreferablePath).find { !morePreferableIsls.contains(it) }
+        def islToAvoid = getInvolvedIsls(lessPreferablePath).find {
+            !morePreferableIsls.contains(it) && !morePreferableIsls.contains(islUtils.reverseIsl(it))
+        }
         log.debug "ISL to avoid: $islToAvoid"
         if (!islToAvoid) {
             throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
@@ -86,8 +88,8 @@ class PathHelper {
     /**
      * Converts FlowPathPayload path representation to a List<PathNode> representation
      */
-    static List<PathNode> convert(FlowPathPayload pathPayload) {
-        def path = pathPayload.forwardPath
+    static List<PathNode> convert(FlowPathPayload pathPayload, pathToConvert = "forwardPath") {
+        def path = pathPayload."$pathToConvert"
         if (path.empty) {
             throw new IllegalArgumentException("Path cannot be empty. " +
                     "This should be impossible for valid FlowPathPayload")
@@ -107,7 +109,14 @@ class PathHelper {
      * Get list of Switches involved in given path.
      */
     List<Switch> getInvolvedSwitches(List<PathNode> path) {
-        return getInvolvedIsls(path).collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique()
+        return (List<Switch>) getInvolvedIsls(path).collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique()
+    }
+
+    /**
+     * Get list of Switches involved in an existing/UP flow
+     */
+    List<Switch> getInvolvedSwitches(String flowId) {
+        return topology.switches.findAll { it.dpId in northbound.getFlowPath(flowId).forwardPath*.switchId }
     }
 
     /**

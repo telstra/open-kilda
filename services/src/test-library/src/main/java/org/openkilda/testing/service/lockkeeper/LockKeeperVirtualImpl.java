@@ -15,118 +15,56 @@
 
 package org.openkilda.testing.service.lockkeeper;
 
-import static org.openkilda.testing.Constants.ASWITCH_NAME;
-import static org.openkilda.testing.Constants.VIRTUAL_CONTROLLER_ADDRESS;
-
-import org.openkilda.messaging.model.SwitchId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition;
-import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
-import org.openkilda.testing.service.mininet.Mininet;
+import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
 
-import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.DockerClient;
-import com.spotify.docker.client.exceptions.DockerCertificateException;
-import com.spotify.docker.client.exceptions.DockerException;
-import com.spotify.docker.client.messages.Container;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 /**
- * Simulates the same functionality as {@link LockKeeperServiceImpl} but for virtual Mininet network.
+ * Provide functionality of {@link LockKeeperService} for virtual network.
  */
+@Slf4j
 @Service
 @Profile("virtual")
-@Slf4j
-public class LockKeeperVirtualImpl implements LockKeeperService {
-    private static final String FL_CONTAINER_NAME = "/floodlight";
+public class LockKeeperVirtualImpl extends LockKeeperServiceImpl implements LockKeeperService {
 
-    @Autowired
-    private Mininet mininet;
+    @Value("${floodlight.controller.uri}")
+    private String controllerHost;
+
     @Autowired
     private TopologyDefinition topology;
 
-    private DockerClient dockerClient;
-    private Container floodlight;
-
-    public LockKeeperVirtualImpl() throws DockerCertificateException, DockerException, InterruptedException {
-        dockerClient = DefaultDockerClient.fromEnv().build();
-        floodlight = dockerClient.listContainers().stream().filter(c -> c.names().contains(FL_CONTAINER_NAME))
-                .findFirst().orElseThrow(() -> new IllegalStateException("Can't find floodlight container"));
-    }
-
-    @Override
-    public void addFlows(List<ASwitchFlow> flows) {
-        flows.forEach(flow -> mininet.addFlow(ASWITCH_NAME, flow.getInPort(), flow.getOutPort()));
-        log.debug("Added flows: {}", flows.stream()
-                .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
-                .collect(Collectors.toList()));
-    }
-
-    @Override
-    public void removeFlows(List<ASwitchFlow> flows) {
-        flows.forEach(flow -> mininet.removeFlow(ASWITCH_NAME, flow.getInPort()));
-        log.debug("Removed flows: {}", flows.stream()
-                .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
-                .collect(Collectors.toList()));
-    }
-
-    @Override
-    public List<ASwitchFlow> getAllFlows() {
-        throw new UnsupportedOperationException("getAllFlows operation for a-switch is not available on virtual env");
-    }
-
-    @Override
-    public void portsUp(List<Integer> ports) {
-        ports.forEach(port -> mininet.portUp(ASWITCH_NAME, port));
-    }
-
-    @Override
-    public void portsDown(List<Integer> ports) {
-        ports.forEach(port -> mininet.portDown(ASWITCH_NAME, port));
+    private TopologyDefinition.Switch getSwitchBySwitchId(SwitchId switchId) {
+        return topology.getSwitches().stream()
+                .filter(sw -> Objects.equals(switchId, sw.getDpId()))
+                .findAny()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("Switch with dpid %s is not found", switchId.toString())));
     }
 
     @Override
     public void knockoutSwitch(SwitchId switchId) {
-        mininet.knockoutSwitch(topology.getSwitches().stream()
-                .filter(sw -> sw.getDpId().equals(switchId)).findFirst().get().getName());
+        String swName = getSwitchBySwitchId(switchId).getName();
+        restTemplate.exchange("/knockoutswitch", HttpMethod.POST,
+                new HttpEntity<>(new SwitchModify(swName, null), buildJsonHeaders()), String.class);
+        log.debug("Knocking out switch: {}", swName);
     }
 
     @Override
     public void reviveSwitch(SwitchId switchId) {
-        String switchName = topology.getSwitches().stream()
-                .filter(sw -> sw.getDpId().equals(switchId)).findFirst().get().getName();
-        mininet.revive(switchName, VIRTUAL_CONTROLLER_ADDRESS);
-    }
-
-    @Override
-    public void stopFloodlight() {
-        try {
-            dockerClient.stopContainer(floodlight.id(), 5);
-        } catch (DockerException | InterruptedException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @Override
-    public void startFloodlight() {
-        try {
-            dockerClient.startContainer(floodlight.id());
-        } catch (DockerException | InterruptedException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @Override
-    public void restartFloodlight() {
-        try {
-            dockerClient.restartContainer(floodlight.id(), 5);
-        } catch (DockerException | InterruptedException e) {
-            throw new IllegalStateException(e);
-        }
+        String swName = getSwitchBySwitchId(switchId).getName();
+        restTemplate.exchange("/reviveswitch", HttpMethod.POST,
+                new HttpEntity<>(new SwitchModify(swName, controllerHost),
+                        buildJsonHeaders()), String.class);
+        log.debug("Revive switch: {}", swName);
     }
 }

@@ -69,11 +69,17 @@ org.openkilda.floodlight.KafkaChannel.bootstrap-servers={{ getv "/kilda_kafka_ho
 {{ if eq (getv "/kilda_environment_role") "devel" "test" }}
 org.openkilda.floodlight.KafkaChannel.testing-mode=YES
 {{ end }}
-#org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors=10
-#org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors=10
+org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors={{ getv "/kilda_floodlight_consumer_executors" }}
+org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors={{ getv "/kilda_floodlight_consumer_disco_executors" }}
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-auto-commit-interval=1000
 org.openkilda.floodlight.pathverification.PathVerificationService.isl_bandwidth_quotient=1.0
 org.openkilda.floodlight.pathverification.PathVerificationService.hmac256-secret=secret
 org.openkilda.floodlight.statistics.StatisticsService.interval=60
 org.openkilda.floodlight.switchmanager.SwitchManager.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
 org.openkilda.floodlight.switchmanager.SwitchManager.connect-mode=AUTO
+org.openkilda.floodlight.switchmanager.SwitchManager.broadcast-rate-limit=200
+org.openkilda.floodlight.switchmanager.SwitchManager.unicast-rate-limit=200
+org.openkilda.floodlight.switchmanager.SwitchManager.disco-packet-size=250
+org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-burst-coefficient={{ getv "/kilda_floodlight_flow_meter_burst_coefficient" }}
+org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-min-burst-size-in-kbits=1024
+org.openkilda.floodlight.switchmanager.SwitchManager.system-meter-burst-size-in-packets=4096

@@ -26,8 +26,10 @@ import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 
+import java.util.UUID;
+
 public class InstallTransitFlowTest {
-    private InstallTransitFlow flow = new InstallTransitFlow(0L,
+    private InstallTransitFlow flow = new InstallTransitFlow(UUID.randomUUID(),
             flowName, 0L, switchId, inputPort, outputPort, transitVlanId);
 
     @Test

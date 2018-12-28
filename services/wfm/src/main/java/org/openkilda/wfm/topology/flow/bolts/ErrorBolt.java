@@ -46,7 +46,7 @@ public class ErrorBolt extends BaseRichBolt {
     /**
      * Output collector.
      */
-    private OutputCollector outputCollector;
+    private transient OutputCollector outputCollector;
 
     /**
      * {@inheritDoc}

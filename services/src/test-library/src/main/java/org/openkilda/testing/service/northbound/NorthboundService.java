@@ -20,15 +20,16 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.model.SwitchId;
 import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
@@ -70,6 +71,8 @@ public interface NorthboundService {
 
     FlowReroutePayload rerouteFlow(String flowId);
 
+    FlowReroutePayload synchronizeFlow(String flowId);
+
     //switches
 
     SwitchFlowEntries getSwitchRules(SwitchId switchId);
@@ -78,13 +81,21 @@ public interface NorthboundService {
 
     List<Long> deleteSwitchRules(SwitchId switchId, DeleteRulesAction deleteAction);
 
+    List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, Integer outPort);
+
+    List<Long> deleteSwitchRules(SwitchId switchId, long cookie);
+
+    List<Long> deleteSwitchRules(SwitchId switchId, int priority);
+
     RulesSyncResult synchronizeSwitchRules(SwitchId switchId);
 
     RulesValidationResult validateSwitchRules(SwitchId switchId);
 
     List<SwitchInfoData> getAllSwitches();
 
-    DeleteMeterResult deleteMeter(SwitchId switchId, Integer meterId);
+    DeleteMeterResult deleteMeter(SwitchId switchId, Long meterId);
+
+    SwitchMeterEntries getAllMeters(SwitchId switchId);
 
     PortDto configurePort(SwitchId switchId, Integer portNo, Object config);
 
@@ -107,6 +118,8 @@ public interface NorthboundService {
     BatchResults updateLinkProps(List<LinkPropsDto> keys);
 
     BatchResults deleteLinkProps(List<LinkPropsDto> keys);
+
+    List<FlowPayload> getLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
     //feature toggles
 

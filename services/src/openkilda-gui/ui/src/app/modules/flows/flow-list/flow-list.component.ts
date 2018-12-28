@@ -9,7 +9,6 @@ import { NgxSpinnerService } from 'ngx-spinner';
 import { LoaderService } from '../../../common/services/loader.service';
 import { local } from 'd3';
 import { CommonService } from '../../../common/services/common.service';
-import { FormBuilder, FormGroup } from '@angular/forms';
 declare var jQuery: any;
 
 @Component({
@@ -26,12 +25,12 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
 
   hide = true;
   storedData = [];
+  statusParams = [];
   loadCount = 0;
 
   loadingData = true;
-
-  filterForm : FormGroup;
   storeLinkSetting : boolean = false;
+  statusList : any = [];
 
 
   constructor(private router:Router, 
@@ -39,20 +38,28 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     private toastr: ToastrService,
     private loaderService : LoaderService,
     private renderer: Renderer2,
-    private commonService: CommonService,
-    private formBuilder: FormBuilder
+    private commonService: CommonService
   ) { 
     this.storedData  = JSON.parse(localStorage.getItem("flows")) || [];
     this.dataSet = this.storedData;
 
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
-    this.filterForm = this.formBuilder.group({ status: "active"});
+    this.statusList = JSON.parse(localStorage.getItem("linkStoreStatusList"));
    }
 
   ngOnInit(){
-    
-    this.getFlowList();
+    if(this.storeLinkSetting){
+      var cachedStatus = localStorage.getItem("activeFlowStatusFilter") || null;
+      if(cachedStatus){
+      	this.statusParams = [cachedStatus];
+      }
+      if(this.statusParams.length <=0){
+        this.statusParams = ['Active'];
+      	localStorage.setItem("activeFlowStatusFilter",this.statusParams.join(","));
+      }
+    }
+    this.getFlowList(this.statusParams);
   }
 
   ngAfterViewInit(){
@@ -63,21 +70,11 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     
   }
 
-  getFlowList(){
+  getFlowList(statusParam){
     this.loadingData = true;
     this.loaderService.show("Loading Flows");
-    if(this.storedData.length <=0 ){  
-      let filtersValues = this.filterForm.value;
-      let statusParam = [];
-      for(let status in filtersValues){
-        if(filtersValues[status]){
-          statusParam.push(filtersValues[status]);
-        }
-      }
-
-     
+    if(this.storedData && this.storedData.length <=0 ){  
       let filtersOptions = statusParam.length > 0 ? { status:statusParam.join(","),_:new Date().getTime()} : {_:new Date().getTime()};
-      
       this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
         this.dataSet = data || [];
         if(this.dataSet.length == 0){
@@ -97,12 +94,13 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     }
   }
 
-  refreshFlowList(){
+  refreshFlowList(statusParam){
     this.srcSwitch = null;
     this.dstSwitch = null;
+    this.statusParams = statusParam;
     localStorage.removeItem('flows');
     this.storedData = [];
-    this.getFlowList();
+    this.getFlowList(statusParam);
   }
 
   
@@ -133,17 +131,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
      },1000);
   }
   ngOnChanges(change:SimpleChanges){
-      /*if(change.srcSwitch.currentValue){
-        this.expandedSrcSwitchName =  true;
-      }else{
-        this.expandedSrcSwitchName =  false;
-      }
-     if(change.dstSwitch.currentValue){
-        this.expandedTargetSwitchName = true;
-      }else{
-        this.expandedTargetSwitchName = false;
-      } 
-     this.triggerSearch();*/
+     
   }
 
 }

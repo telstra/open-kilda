@@ -8,6 +8,7 @@ import { LoaderService } from "../../../common/services/loader.service";
 import { Title } from '@angular/platform-browser';
 import { CommonService } from "../../../common/services/common.service";
 import { Location } from "@angular/common";
+import { StoreSettingtService } from "src/app/common/services/store-setting.service";
 declare var jQuery: any;
  
 @Component({
@@ -67,16 +68,35 @@ export class FlowDetailComponent implements OnInit {
     private commonService: CommonService,
     private _location:Location,
     private _render:Renderer2,
+    private storeLinkService:StoreSettingtService,
     ) {
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
+    
   }
   ngOnInit() {
     this.titleService.setTitle("OPEN KILDA - View Flow")
     //let flowId: string = this.route.snapshot.paramMap.get("id");
     this.route.params.subscribe(params => {
       this.loadStatsGraph = false;
-      this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+      if(!localStorage.getItem("haslinkStoreSetting")){
+        let query = {_:new Date().getTime()};
+        this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
+          if(settings && settings['urls'] && typeof(settings['urls']['get-link']) !='undefined' &&  typeof(settings['urls']['get-link']['url'])!='undefined'){
+            localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
+            localStorage.setItem('haslinkStoreSetting',"1");
+            this.storeLinkSetting = true;
+            this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+          }else{
+            this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+          }
+        },(err)=>{
+          this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+        });
+      }else{
+        this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+      }
+      
       this.sourceCheckedValue = false;
       this.targetCheckedValue = false;
    });
@@ -86,7 +106,7 @@ export class FlowDetailComponent implements OnInit {
   openTab(tab) {
     this.openedTab = tab;
     if(tab == 'contracts'){
-      this.loaderService.show('Loading contracts..');
+      this.loaderService.show('Loading Contracts..');
       this.flowService.getcontract(this.flowDetail.flowid).subscribe(data=>{
         this.contracts  = data || [];
         this.isLoadedcontract = true;
@@ -107,7 +127,7 @@ export class FlowDetailComponent implements OnInit {
     this.loadStatsGraph = true;
     this.clearResyncedFlow();
     this.clearValidatedFlow();
-    this.loaderService.show("Fetching Flow Detail");
+    this.loaderService.show("Loading Flow Detail");
     this.bandWidthDescrepancy  = false;
     this.statusDescrepancy = false;
     this.flowService.getFlowDetailById(flowId).subscribe(

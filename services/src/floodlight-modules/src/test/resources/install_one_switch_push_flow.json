@@ -12,7 +12,7 @@
 		"input_vlan_id": 0,
 		"output_vlan_id": 100,
 		"output_vlan_type": "PUSH",
-		"bandwidth": 10000,
+		"bandwidth": 100000,
 		"meter_id": 1
 	}
 }
