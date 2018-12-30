@@ -93,21 +93,6 @@ public class InstallOneSwitchFlowTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullInputMeterId() {
-        flow.setMeterId(null);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void setNegativeInputMeterId() {
-        flow.setInputVlanId(-1);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void setNullMeterId() {
-        flow.setMeterId(null);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
     public void setNegativeMeterId() {
         flow.setMeterId(-1L);
     }

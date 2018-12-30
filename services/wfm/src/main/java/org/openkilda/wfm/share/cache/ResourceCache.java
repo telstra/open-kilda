@@ -183,14 +183,12 @@ public class ResourceCache {
      * @return allocated meter id value
      */
     public synchronized Integer allocateMeterId(SwitchId switchId, Integer meterId) {
-        if (meterId == 0) {
-            return meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID))
-                    .allocate();
-        } else {
+        if (meterId != null && meterId != 0) {
             meterPool.computeIfAbsent(switchId, k -> new ResourcePool(MIN_METER_ID, MAX_METER_ID))
                     .allocate(meterId);
             return meterId;
         }
+        return null;
     }
 
     /**

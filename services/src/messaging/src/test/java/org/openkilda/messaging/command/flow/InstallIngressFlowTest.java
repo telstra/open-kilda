@@ -81,11 +81,6 @@ public class InstallIngressFlowTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullMeterId() throws Exception {
-        flow.setMeterId(null);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
     public void setNegativeMeterId() throws Exception {
         flow.setMeterId(-1L);
     }
