@@ -17,15 +17,8 @@ package org.openkilda.floodlight.error;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class OfLostConnectionException extends OfWriteException {
-    private final DatapathId dpId;
-
-    public OfLostConnectionException(DatapathId dpId) {
-        super(String.format("Incomplete OpenFlow I/O - lost connects to switch %s", dpId));
-        this.dpId = dpId;
-    }
-
-    public DatapathId getDpId() {
-        return dpId;
+public class SessionConnectionLostException extends SwitchOperationException {
+    public SessionConnectionLostException(DatapathId dpId) {
+        super(dpId, String.format("Switch %s have been disconnected", dpId));
     }
 }

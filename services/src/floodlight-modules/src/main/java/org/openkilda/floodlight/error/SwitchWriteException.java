@@ -15,25 +15,24 @@
 
 package org.openkilda.floodlight.error;
 
+import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class SwitchOperationException extends AbstractException {
-    private final transient DatapathId dpId;
+public class SwitchWriteException extends SwitchOperationException {
+    private final transient OFMessage ofMessage;
 
-    public SwitchOperationException(DatapathId dpId) {
-        this(dpId, "Switch manipulation has failed");
-    }
-
-    public SwitchOperationException(DatapathId dpId, String message) {
+    public SwitchWriteException(DatapathId dpId, OFMessage message) {
         this(dpId, message, null);
     }
 
-    public SwitchOperationException(DatapathId dpId, String message, Throwable cause) {
-        super(message, cause);
-        this.dpId = dpId;
+    public SwitchWriteException(DatapathId dpId, OFMessage message, Throwable cause) {
+        super(dpId, String.format(
+                "Unable't to write message %s.%s:%s into %s",
+                message.getType(), message.getVersion(), message.getXid(), dpId), cause);
+        this.ofMessage = message;
     }
 
-    public DatapathId getDpId() {
-        return dpId;
+    public OFMessage getOfMessage() {
+        return ofMessage;
     }
 }
