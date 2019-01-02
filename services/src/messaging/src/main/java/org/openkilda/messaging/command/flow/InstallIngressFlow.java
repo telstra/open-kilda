@@ -205,10 +205,8 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @param meterId id for the flow
      */
     public void setMeterId(final Long meterId) {
-        if (meterId == null) {
-            throw new IllegalArgumentException("need to set meter_id");
-        } else if (meterId < 0L) {
-            throw new IllegalArgumentException("need to set non negative meter_id");
+        if (meterId != null && meterId < 0L) {
+            throw new IllegalArgumentException("Meter id value should be positive");
         }
         this.meterId = meterId;
     }
