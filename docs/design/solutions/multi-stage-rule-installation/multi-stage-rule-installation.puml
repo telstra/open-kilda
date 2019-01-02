@@ -1,0 +1,60 @@
+@startuml
+
+title Multi-stage installation of switch rules on flow reroute
+
+control kilda.flow
+participant CrudBolt
+participant TransactionBolt
+control kilda.speaker.flow
+
+== Process FlowRerouteRequest ==
+
+kilda.flow -> CrudBolt: (via SplitterBolt)\nFlowRerouteRequest
+activate CrudBolt
+CrudBolt -> CrudBolt: Compute the flow path, allocate resources and store flow entities
+
+CrudBolt -> TransactionBolt: Build a batch with 4 groups of commands:\n 1. InstallTransitFlow + InstallEgressFlow\n 2. InstallIngressFlow\n 3. RemoveFlow for the old ingress rule\n 4. RemoveFlow for the rest old rules
+deactivate CrudBolt
+activate TransactionBolt
+
+TransactionBolt -> TransactionBolt: Register the batch with configured expiration time
+
+loop for each command in the 1st group
+    TransactionBolt -> kilda.speaker.flow: Forward the command to Speaker
+    TransactionBolt -> TransactionBolt: Register as a transaction for the 1st group
+end
+deactivate TransactionBolt
+
+== Rule installation acknowledgment ==
+
+loop for each installed / removed switch rule
+    kilda.flow -> TransactionBolt: (via SpeakerBolt)\nCommandMessage
+    activate TransactionBolt
+    TransactionBolt -> TransactionBolt: Mark corresponding transaction as completed
+	opt Are all transactions of the current group completed?
+        TransactionBolt -> TransactionBolt: Mark the group as completed
+
+        loop for each command in the next group
+            TransactionBolt -> kilda.speaker.flow: Forward the command to Speaker
+            TransactionBolt -> TransactionBolt: Register as a transaction for the next stage
+        end
+	end
+	opt Are all groups of a batch completed?
+        TransactionBolt -> StatusBolt: Update the flow status to FlowStatus.UP
+        StatusBolt -> StatusBolt: Set the flow status
+	end
+    deactivate TransactionBolt
+end
+
+== Handling expired batches ==
+
+TransactionBolt -> TransactionBolt: Periodic tick tuple
+activate TransactionBolt
+loop for each expired batch
+    TransactionBolt -> TransactionBolt: Remove all pending groups
+    TransactionBolt -> StatusBolt: Update the flow status to FlowStatus.DOWN
+    StatusBolt -> StatusBolt: Set the flow status
+end
+deactivate TransactionBolt
+
+@enduml
