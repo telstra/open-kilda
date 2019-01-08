@@ -112,13 +112,18 @@ public class PortEventThrottlingService {
             portState.initialCorrelationId = correlationId;
             portState.firstEventTime = now;
             portState.lastEventTime = now;
+            portState.lastChangeToDownTime = now;
             portState.portIsUp = false;
             portState.coolingState = false;
             log.info("First Port DOWN state received for {}-{} change port to WarmingUp state",
                     data.getSwitchId(), data.getPortNo());
         } else {
+            LocalDateTime now = getNow();
+            if (portState.portIsUp && data.getState() == PortChangeType.DOWN) {
+                portState.lastChangeToDownTime = now;
+            }
             portState.portIsUp = data.getState() == PortChangeType.UP;
-            portState.lastEventTime = getNow();
+            portState.lastEventTime = now;
             log.info("Collecting state for port {}-{}. Original correlationId: {}.",
                     data.getSwitchId(), data.getPortNo(), portState.initialCorrelationId);
         }
@@ -215,6 +220,7 @@ public class PortEventThrottlingService {
         String initialCorrelationId;
         LocalDateTime firstEventTime;
         LocalDateTime lastEventTime;
+        LocalDateTime lastChangeToDownTime;
         boolean portIsUp;
         boolean coolingState;
 
@@ -223,7 +229,7 @@ public class PortEventThrottlingService {
         }
 
         boolean isMinDelayOver(LocalDateTime now) {
-            return lastEventTime.plusSeconds(minDelay).isBefore(now);
+            return lastChangeToDownTime.plusSeconds(minDelay).isBefore(now);
         }
 
         boolean isWarmUpEnded(LocalDateTime now) {
