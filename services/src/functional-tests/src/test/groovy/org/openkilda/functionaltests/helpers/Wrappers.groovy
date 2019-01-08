@@ -4,6 +4,8 @@ import groovy.transform.InheritConstructors
 import groovy.util.logging.Slf4j
 import org.junit.runners.model.MultipleFailureException
 
+import java.util.concurrent.TimeUnit
+
 @Slf4j
 class Wrappers {
 
@@ -32,6 +34,22 @@ class Wrappers {
             }
         }
         throw new MultipleFailureException(ex)
+    }
+
+    /**
+     * Executes given closure in a loop for certain amount of time.
+     * If time is less or equal to 0, the closure won't be executed even once.
+     * Loop may take a bit longer than 'timeout' by maximum of closure execution time, since check is performed
+     * before the closure call.
+     *
+     * @param timeout For how long to execute the given closure in a loop, seconds.
+     * @param closure code to repeat in a loop
+     */
+    static void timedLoop(double timeout, Closure closure) {
+        long endTime = System.currentTimeMillis() + (long)(timeout * 1000)
+        while (System.currentTimeMillis() < endTime) {
+            closure.call()
+        }
     }
 
     /**
