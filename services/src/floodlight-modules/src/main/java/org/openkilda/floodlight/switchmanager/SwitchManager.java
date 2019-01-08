@@ -68,6 +68,7 @@ import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
@@ -84,7 +85,6 @@ import org.projectfloodlight.openflow.protocol.OFPortMod;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -134,7 +134,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
-    public static final int DEFAULT_RULE_PRIORITY = FlowModUtils.PRIORITY_HIGH;
+    public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
 
 
@@ -331,7 +331,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
 
-
         // build meter instruction
         OFInstructionMeter meter = buildMeterInstruction(meterId, sw, ofFactory, actionList);
 
@@ -348,10 +347,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
         // build FLOW_MOD command with meter
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .setMatch(match);
 
-        return pushFlow(sw, "--InstallIngressFlow--", flowMod);
+        // centec switches don't support RESET_COUNTS flag
+        if (!isCentecSwitch(sw)) {
+            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
+        }
+        return pushFlow(sw, "--InstallIngressFlow--", builder.build());
     }
 
     /**
@@ -367,9 +371,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
 
-        // build match by input port and transit vlan id
-        Match match = matchFlow(ofFactory, inputPort, transitVlanId);
-
         // output action based on encap scheme
         actionList.addAll(outputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
 
@@ -380,8 +381,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
 
         // build FLOW_MOD command, no meter
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+                .setMatch(matchFlow(ofFactory, inputPort, transitVlanId))
+                .setInstructions(ImmutableList.of(actions))
+                .build();
 
         return pushFlow(sw, "--InstallEgressFlow--", flowMod);
     }
@@ -408,8 +411,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
 
         // build FLOW_MOD command, no meter
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+                .setInstructions(ImmutableList.of(actions))
+                .setMatch(match)
+                .build();
 
         return pushFlow(sw, flowId, flowMod);
     }
@@ -449,12 +454,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
         // build FLOW_MOD command with meter
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, actions,
-                cookie & FLOW_COOKIE_MASK, DEFAULT_RULE_PRIORITY);
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .setMatch(match);
 
-        pushFlow(sw, flowId, flowMod);
+        // centec switches don't support RESET_COUNTS flag
+        if (!isCentecSwitch(sw)) {
+            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
+        }
 
-        return flowMod.getXid();
+        return pushFlow(sw, flowId, builder.build());
     }
 
     /**
@@ -695,12 +704,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long meterId = cookie & PACKET_IN_RULES_METERS_MASK;
         long meterRate = isBroadcast ? config.getBroadcastRateLimit() : config.getUnicastRateLimit();
         OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
-
-        OFInstructionApplyActions instructionApplyActions = ofFactory.instructions()
+        OFInstructionApplyActions actions = ofFactory.instructions()
                 .applyActions(actionList).createBuilder().build();
+
         Match match = matchVerification(sw, isBroadcast);
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, meter, instructionApplyActions,
-                cookie, VERIFICATION_RULE_PRIORITY);
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_PRIORITY)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .setMatch(match)
+                .build();
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
         flowname += "--VerificationFlow--" + dpid.toString();
         pushFlow(sw, flowname, flowMod);
@@ -723,7 +734,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
 
         Match match = simpleDstMatch(ofFactory, dstMac, dstMask);
-        OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null, cookie, priority);
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, priority)
+                .setMatch(match)
+                .build();
         String flowName = "--CustomDropRule--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
     }
@@ -742,7 +755,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             logger.debug("Skip installation of drop flow for switch {}", dpid);
         } else {
             logger.debug("Installing drop flow for switch {}", dpid);
-            OFFlowMod flowMod = buildFlowMod(ofFactory, null, null, null, DROP_RULE_COOKIE, 1);
+            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, DROP_RULE_COOKIE, 1)
+                    .build();
             String flowName = "--DropRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
@@ -760,8 +774,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             builder.setExact(MatchField.ETH_SRC, dpIdToMac(sw.getId()));
             Match match = builder.build();
 
-            OFFlowMod flowMod = buildFlowMod(ofFactory, match, null, null,
-                    DROP_VERIFICATION_LOOP_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_PRIORITY);
+            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory,
+                    DROP_VERIFICATION_LOOP_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_PRIORITY)
+                    .setMatch(match)
+                    .build();
             String flowName = "--DropLoopRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
@@ -1082,42 +1098,22 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Create an OFFlowMod that can be passed to StaticEntryPusher.
+     * Create an OFFlowMod builder and set required fields.
      *
      * @param ofFactory OF factory for the switch
-     * @param match    match for the flow
-     * @param meter    meter for the flow
-     * @param actions  actions for the flow
      * @param cookie   cookie for the flow
      * @param priority priority to set on the flow
      * @return {@link OFFlowMod}
      */
-    private OFFlowMod buildFlowMod(final OFFactory ofFactory, final Match match, final OFInstructionMeter meter,
-                                   final OFInstructionApplyActions actions, final long cookie, final int priority) {
+    private OFFlowMod.Builder prepareFlowModBuilder(final OFFactory ofFactory, final long cookie, final int priority) {
         OFFlowMod.Builder fmb = ofFactory.buildFlowAdd();
         fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
         fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
         fmb.setBufferId(OFBufferId.NO_BUFFER);
         fmb.setCookie(U64.of(cookie));
         fmb.setPriority(priority);
-        List<OFInstruction> instructions = new ArrayList<>(2);
 
-        // If no meter then no bandwidth limit
-        if (meter != null) {
-            instructions.add(meter);
-        }
-
-        // If no instruction then Drops packet
-        if (actions != null) {
-            instructions.add(actions);
-        }
-
-        // If no then match everything
-        if (match != null) {
-            fmb.setMatch(match);
-        }
-
-        return fmb.setInstructions(instructions).build();
+        return fmb;
     }
 
     /**

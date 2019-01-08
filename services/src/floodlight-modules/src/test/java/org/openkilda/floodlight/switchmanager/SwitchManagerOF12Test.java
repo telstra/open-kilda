@@ -6,7 +6,7 @@ import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 
 import org.openkilda.floodlight.OFFactoryVer12Mock;
 import org.openkilda.floodlight.error.SwitchOperationException;
@@ -65,7 +65,7 @@ public class SwitchManagerOF12Test {
         OFFactory referenceOfFactory = new OFFactoryVer12Mock();
         OFFlowMod expected = referenceOfFactory.buildFlowAdd()
                 .setCookie(U64.of(commonFlowCookie).applyMask(U64.of(SwitchManager.FLOW_COOKIE_MASK)))
-                .setPriority(DEFAULT_RULE_PRIORITY)
+                .setPriority(FLOW_PRIORITY)
                 .setMatch(referenceOfFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setMasked(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlanId), OFVlanVidMatch.ofRawVid(

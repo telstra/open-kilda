@@ -16,12 +16,14 @@
 package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 
+import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFBufferId;
@@ -44,7 +46,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(DEFAULT_RULE_PRIORITY)
+                .setPriority(FLOW_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(inputVlan))
@@ -66,6 +68,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
 
@@ -79,7 +82,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(DEFAULT_RULE_PRIORITY)
+                .setPriority(FLOW_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .build())
@@ -100,6 +103,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                                         .build()))
                                 .createBuilder()
                                 .build()))
+                .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
                 .setXid(0L)
                 .build();
 
@@ -112,7 +116,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(DEFAULT_RULE_PRIORITY)
+                .setPriority(FLOW_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlan))
@@ -145,7 +149,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(DEFAULT_RULE_PRIORITY)
+                .setPriority(FLOW_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlan))
@@ -171,7 +175,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(DEFAULT_RULE_PRIORITY)
+                .setPriority(FLOW_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlan))
@@ -196,7 +200,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(DEFAULT_RULE_PRIORITY)
+                .setPriority(FLOW_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(inputVlan))
