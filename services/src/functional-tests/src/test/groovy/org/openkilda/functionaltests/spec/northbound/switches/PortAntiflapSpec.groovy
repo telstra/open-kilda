@@ -12,6 +12,7 @@ import org.openkilda.messaging.info.InfoMessage
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PortChangeType
 import org.openkilda.messaging.info.event.PortInfoData
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.util.logging.Slf4j
@@ -52,7 +53,7 @@ class PortAntiflapSpec extends BaseSpecification {
     Properties producerProps
 
     //rerun is required to check the #1790 issue
-    @Rerun(times = 10)
+    @Rerun(times = 2)
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {
         given: "Switch, port and ISL related to that port"
@@ -124,9 +125,8 @@ timeout"() {
      * may sometimes occur on hardware switches(overheat?)
      */
     @Issue("https://github.com/telstra/open-kilda/issues/1827")
-    @Ignore("Due to https://github.com/telstra/open-kilda/issues/1827")
     //there is a possible race condition that we exercise, so this needs couple reruns
-    @Rerun(times = 5)
+    @Rerun(times = 2)
     def "System properly registers events order when port flaps incredibly fast (end with Up)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
@@ -134,10 +134,8 @@ timeout"() {
         def isl = topology.islsForActiveSwitches[0]
         def messagesGenerated = 0
         Wrappers.timedLoop(antiflapWarmup + 1) {
-            producer.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
-                    isl.srcPort, null, PortChangeType.DOWN)).toJson()))
-            producer.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
-                    isl.srcPort, null, PortChangeType.UP)).toJson()))
+            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
+            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.UP)
             //note that we end with 'UP' event
             messagesGenerated += 2
             sleep(1) //do not overload storm, it can die
@@ -166,23 +164,19 @@ timeout"() {
      * may sometimes occur on hardware switches(overheat?)
      */
     @Issue("https://github.com/telstra/open-kilda/issues/1827")
-    @Ignore("Due to https://github.com/telstra/open-kilda/issues/1827")
     //there is a possible race condition that we exercise, so this needs couple reruns
-    @Rerun(times = 5)
+    @Rerun(times = 2)
     def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"
         def producer = new KafkaProducer<>(producerProps)
         def isl = topology.islsForActiveSwitches[0]
         def messagesGenerated = 0
-        producer.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
-                isl.srcPort, null, PortChangeType.DOWN)).toJson()))
+        kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
 
         Wrappers.timedLoop(antiflapWarmup + 1) {
-            producer.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
-                    isl.srcPort, null, PortChangeType.UP)).toJson()))
-            producer.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
-                    isl.srcPort, null, PortChangeType.DOWN)).toJson()))
+            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.UP)
+            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
             //note that we end with 'DOWN' event
             messagesGenerated += 2
             sleep(1) //do not overload storm, it can die
@@ -208,6 +202,11 @@ timeout"() {
 
         cleanup:
         producer?.close()
+    }
+    
+    def kafkaChangePort(KafkaProducer producer, SwitchId sw, Integer port, PortChangeType status) {
+        producer.send(new ProducerRecord(topoDiscoTopic, sw.toString(), 
+                buildMessage(new PortInfoData(sw, port, null, status)).toJson()))
     }
 
     private static Message buildMessage(final InfoData data) {
