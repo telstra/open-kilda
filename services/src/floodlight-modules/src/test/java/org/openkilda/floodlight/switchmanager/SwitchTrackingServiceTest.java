@@ -242,7 +242,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
     private Capture<Message> prepareSwitchEventCommon() {
         Capture<Message> producedMessage = newCapture(CaptureType.ALL);
-        producerService.sendMessageAndTrack(eq(KAFKA_ISL_DISCOVERY_TOPIC), capture(producedMessage));
+        producerService.sendMessageAndTrack(eq(KAFKA_ISL_DISCOVERY_TOPIC), eq(dpId.toString()),
+                capture(producedMessage));
         expectLastCall().anyTimes();
 
         return producedMessage;
