@@ -29,25 +29,10 @@
 *    License for the specific language governing permissions and limitations
 *    under the License.
 **/
+
 package org.openkilda.floodlight;
 
 import static org.junit.Assert.fail;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
@@ -68,23 +53,37 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
-
+import net.floodlightcontroller.packet.Ethernet;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
-
-import net.floodlightcontroller.packet.Ethernet;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 /**
- *
+ * The MockFloodlightProvider.
+ * 
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class MockFloodlightProvider implements IFloodlightModule, IFloodlightProviderService {
-    private final static Logger log = LoggerFactory.getLogger(MockFloodlightProvider.class);
-    protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> listeners;
+    private static final Logger log = LoggerFactory.getLogger(MockFloodlightProvider.class);
+    protected ConcurrentMap<OFType, ListenerDispatcher<OFType, IOFMessageListener>> listeners;
     protected ListenerDispatcher<HAListenerTypeMarker, IHAListener> haListeners;
     private HARole role;
     private final boolean useAsyncUpdates;
@@ -92,17 +91,14 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     private volatile Future<?> mostRecentUpdateFuture;
     // paag
     private ConcurrentLinkedQueue<IControllerCompletionListener> completionListeners;
-
-    /**
-     *
-     */
+    
     public MockFloodlightProvider(boolean useAsyncUpdates) {
         listeners = new ConcurrentHashMap<OFType, ListenerDispatcher<OFType,
                                    IOFMessageListener>>();
         haListeners =
                 new ListenerDispatcher<HAListenerTypeMarker, IHAListener>();
         completionListeners = 
-        		new ConcurrentLinkedQueue<IControllerCompletionListener>();
+                new ConcurrentLinkedQueue<IControllerCompletionListener>();
         role = null;
         this.useAsyncUpdates = useAsyncUpdates;
     }
@@ -133,15 +129,11 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         }
     }
 
-    /**
-     * @return the listeners
-     */
     @Override
     public Map<OFType, List<IOFMessageListener>> getListeners() {
         Map<OFType, List<IOFMessageListener>> lers =
                 new HashMap<OFType, List<IOFMessageListener>>();
-        for(Entry<OFType, ListenerDispatcher<OFType, IOFMessageListener>> e :
-            listeners.entrySet()) {
+        for (Entry<OFType, ListenerDispatcher<OFType, IOFMessageListener>> e :listeners.entrySet()) {
             lers.put(e.getKey(), e.getValue().getOrderedListeners());
         }
         return Collections.unmodifiableMap(lers);
@@ -161,7 +153,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
             Command result = Command.CONTINUE;
             Iterator<IOFMessageListener> it = theListeners.iterator();
             if (OFType.PACKET_IN.equals(msg.getType())) {
-                OFPacketIn pi = (OFPacketIn)msg;
+                OFPacketIn pi = (OFPacketIn) msg;
                 Ethernet eth = new Ethernet();
                 eth.deserialize(pi.getData(), 0, pi.getData().length);
                 IFloodlightProviderService.bcStore.put(bc,
@@ -172,9 +164,10 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
                 result = it.next().receive(sw, msg, bc);
             }
         }
-		// paag
-        for (IControllerCompletionListener listener:completionListeners)
-        	listener.onMessageConsumed(sw, msg, bc);
+        // paag
+        for (IControllerCompletionListener listener:completionListeners) {
+            listener.onMessageConsumed(sw, msg, bc);
+        }
     }
 
     @Override
@@ -203,8 +196,9 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     @Override
     public void run() {
         logListeners();
-        if (useAsyncUpdates)
+        if (useAsyncUpdates) {
             executorService = Executors.newSingleThreadExecutor();
+        }
     }
 
     public void shutdown() {
@@ -217,8 +211,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        Collection<Class<? extends IFloodlightService>> services =
-                new ArrayList<Class<? extends IFloodlightService>>(1);
+        Collection<Class<? extends IFloodlightService>> services = new ArrayList<>(1);
         services.add(IFloodlightProviderService.class);
         return services;
     }
@@ -226,10 +219,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
-        Map<Class<? extends IFloodlightService>,
-            IFloodlightService> m =
-                new HashMap<Class<? extends IFloodlightService>,
-                        IFloodlightService>();
+        Map<Class<? extends IFloodlightService>, IFloodlightService> m = new HashMap<>();
         m.put(IFloodlightProviderService.class, this);
         return m;
     }
@@ -289,8 +279,9 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         long start = System.nanoTime();
         for (;;) {
             Future<?> future = mostRecentUpdateFuture;
-            if ((future == null) || future.isDone())
+            if ((future == null) || future.isDone()) {
                 break;
+            }
             Thread.sleep(100);
             long now = System.nanoTime();
             if (now > start + timeoutNanos) {
@@ -301,7 +292,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public void addHAListener(IHAListener listener) {
-        haListeners.addListener(null,listener);
+        haListeners.addListener(null, listener);
     }
 
     @Override
@@ -327,9 +318,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
 
     /**
-     * Dispatches a new role change notification
-     * @param oldRole
-     * @param newRole
+     * Dispatches a new role change notification.
      */
     public void transitionToActive() {
         IUpdate update = new IUpdate() {
@@ -357,7 +346,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         for (Map.Entry<OFType,
                        ListenerDispatcher<OFType,
                                           IOFMessageListener>> entry
-             : listeners.entrySet()) {
+                : listeners.entrySet()) {
 
             OFType type = entry.getKey();
             ListenerDispatcher<OFType, IOFMessageListener> ldd =
@@ -396,7 +385,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
 
     @Override
     public void handleMessage(IOFSwitch sw, OFMessage m,
-                              FloodlightContext bContext) {
+                              FloodlightContext context) {
         // do nothing
     }
 
@@ -416,14 +405,14 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
 
     // paag
-	@Override
-	public void addCompletionListener(IControllerCompletionListener listener) {
-		completionListeners.add(listener);
-	}
+    @Override
+    public void addCompletionListener(IControllerCompletionListener listener) {
+        completionListeners.add(listener);
+    }
 
-	// paag
-	@Override
-	public void removeCompletionListener(IControllerCompletionListener listener) {
-		completionListeners.remove(listener);
-	}
+    // paag
+    @Override
+    public void removeCompletionListener(IControllerCompletionListener listener) {
+        completionListeners.remove(listener);
+    }
 }

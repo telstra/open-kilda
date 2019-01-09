@@ -29,18 +29,18 @@
 *    License for the specific language governing permissions and limitations
 *    under the License.
 **/
+
 package org.openkilda.floodlight;
 
 import static org.easymock.EasyMock.expect;
 
-import net.floodlightcontroller.core.SwitchDescription;
-import org.easymock.EasyMock;
-import org.openkilda.floodlight.MockFloodlightProvider;
-import org.openkilda.floodlight.MockSwitchManager;
-import org.junit.Before;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.packet.Ethernet;
+import org.easymock.EasyMock;
+import org.junit.Before;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -53,14 +53,13 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
-import net.floodlightcontroller.packet.Ethernet;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.net.InetSocketAddress;
 
 /**
  * This class gets a input on the application context which is used to
- * retrieve Spring beans from during tests
+ * retrieve Spring beans from during tests.
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
@@ -89,7 +88,7 @@ public class FloodlightTestCase {
 
     public static FloodlightContext parseAndAnnotate(FloodlightContext bc, OFMessage m) {
         if (OFType.PACKET_IN.equals(m.getType())) {
-            OFPacketIn pi = (OFPacketIn)m;
+            OFPacketIn pi = (OFPacketIn) m;
             Ethernet eth = new Ethernet();
             eth.deserialize(pi.getData(), 0, pi.getData().length);
             IFloodlightProviderService.bcStore.put(bc,
@@ -106,7 +105,7 @@ public class FloodlightTestCase {
         swFeatures = factory.buildFeaturesReply().setNBuffers(1000).build();
     }
 
-    public static OFPortDesc createOFPortDesc(IOFSwitch sw, String name, int number) {
+    public static OFPortDesc createOfPortDesc(IOFSwitch sw, String name, int number) {
         OFPortDesc portDesc = sw.getOFFactory().buildPortDesc()
                 .setHwAddr(MacAddress.NONE)
                 .setPortNo(OFPort.of(number))
@@ -115,8 +114,8 @@ public class FloodlightTestCase {
         return portDesc;
     }
 
-    public IOFSwitch buildMockIOFSwitch(Long id, OFPortDesc portDesc, OFFactory factory,
-            OFDescStatsReply swDesc, InetSocketAddress inetAddr) {
+    public IOFSwitch buildMockIoFSwitch(Long id, OFPortDesc portDesc, OFFactory factory,
+                                        OFDescStatsReply swDesc, InetSocketAddress inetAddr) {
         IOFSwitch sw = EasyMock.createMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(DatapathId.of(id)).anyTimes();
         expect(sw.getPort(OFPort.of(1))).andReturn(portDesc).anyTimes();
