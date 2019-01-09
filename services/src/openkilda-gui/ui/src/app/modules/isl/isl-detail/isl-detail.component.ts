@@ -9,6 +9,7 @@ import { IslListService } from '../../../common/services/isl-list.service';
 import { DygraphService } from '../../../common/services/dygraph.service';
 import { ToastrService } from 'ngx-toastr';
 import { IslDataService } from '../../../common/services/isl-data.service';
+import { IslDetailService } from '../../../common/services/isl-detail.service';
 import { FormBuilder, FormGroup, Validators, NgForm } from '@angular/forms';
 import { NgxSpinnerService } from "ngx-spinner";
 import { ClipboardService } from "ngx-clipboard";
@@ -27,7 +28,7 @@ import { CommonService } from '../../../common/services/common.service';
   })
 
   export class IslDetailComponent implements OnInit, AfterViewInit,OnDestroy {
-    
+    openedTab = "graph";
     detailUrl: string = '';
     src_switch:string = '';
     src_port:string = '';
@@ -36,6 +37,8 @@ import { CommonService } from '../../../common/services/common.service';
     speed:string = '';
     latency:string = '';
     state:string = '';
+    loadingData = true;
+    dataSet:any;
     available_bandwidth:string = '';
     detailDataObservable : any;
     src_switch_name: string;
@@ -91,7 +94,8 @@ import { CommonService } from '../../../common/services/common.service';
       private islFormBuiler: FormBuilder,
       private titleService: Title,
       private modalService: NgbModal,
-      private commonService: CommonService
+      private commonService: CommonService,
+      private islDetailService : IslDetailService,
     ) {
       
       this.loaderService.show("Loading ISL detail");
@@ -168,6 +172,30 @@ import { CommonService } from '../../../common/services/common.service';
     
 
     }
+    refreshIslFlows(){
+        this.getIslFlowList();
+    }
+      getIslFlowList(){
+        this.loadingData = true;
+        let query = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port};
+        this.loaderService.show("Loading ISL Flows");
+          this.islDetailService.getISLFlowsList(query).subscribe((data : Array<object>) =>{
+            this.dataSet = data || [];
+            if(this.dataSet.length == 0){
+              this.toastr.info("No ISL Flows Available",'Information');
+            }else{
+              localStorage.setItem('flows',JSON.stringify(data));
+            }
+            this.loadingData = false;     
+          },error=>{
+            this.toastr.info("No ISL Flows Available",'Information');
+            this.loaderService.hide();
+            this.loadingData = false;  
+            this.dataSet = [];  
+          });
+       
+      }
+
      maskSwitchId(switchType, e){
        if(switchType === 'source'){
          if(e.target.checked){
@@ -191,7 +219,14 @@ import { CommonService } from '../../../common/services/common.service';
       }
     }
 
-   
+    openTab(tab) {
+      this.openedTab = tab;
+      if(tab == 'graph'){
+        this.loadGraphData();
+      }else if(tab == 'flow'){
+        this.getIslFlowList();
+      }
+    }
 
     showMenu(e){
     e.preventDefault();
