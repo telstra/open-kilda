@@ -44,8 +44,6 @@ class PortAntiflapSpec extends BaseSpecification {
     int antiflapMin
     @Value('${antiflap.warmup}')
     int antiflapWarmup
-    @Value('${antiflap.cooldown}')
-    int antiflapCooldown
     @Value('${kafka.topic.topo.disco}')
     String topoDiscoTopic
     @Autowired
@@ -54,16 +52,15 @@ class PortAntiflapSpec extends BaseSpecification {
 
     //rerun is required to check the #1790 issue
     @Rerun(times = 2)
+    @Ignore("https://github.com/telstra/open-kilda/issues/1870")
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {
         given: "Switch, port and ISL related to that port"
-        def sw = topology.activeSwitches.first()
-        Isl isl = topology.islsForActiveSwitches.find { it.srcSwitch == sw || it.dstSwitch == sw }
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assert isl
-        int islPort = isl.with { it.srcSwitch == sw ? it.srcPort : it.dstPort }
 
         when: "ISL port begins to blink"
-        def blinker = new PortBlinker(northbound, sw, islPort)
+        def blinker = new PortBlinker(northbound, isl.srcSwitch, isl.srcPort)
         def untilWarmupEnds = { blinker.timeStarted.time + antiflapWarmup * 1000 - new Date().time }
         def untilCooldownEnds = { blinker.timeStopped.time + antiflapCooldown * 1000 - new Date().time }
         blinker.start()
