@@ -12,6 +12,7 @@ import { UsermanagementComponent } from './modules/usermanagement/usermanagement
 import { UseractivityComponent } from './modules/useractivity/useractivity.component';
 import { SettingsComponent } from './modules/settings/settings.component';
 import { LogoutComponent } from './common/components/logout/logout.component';
+import { SessionComponent } from './modules/settings/session/session.component';
 
 const routes: Routes = [{
 		path: '',
@@ -138,6 +139,13 @@ const routes: Routes = [{
 		component: SettingsComponent,
 		data:{
 			breadcrumb: "Store Setting"
+		}
+	},
+	{
+		path: 'application-setting',
+		component: SessionComponent,
+		data:{
+			breadcrumb: "Application Settings"
 		}
 	},
 	{

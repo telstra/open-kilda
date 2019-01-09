@@ -1890,3 +1890,6 @@ button:focus{
   border: 1px solid #ccc;
 
 }
+.custom-alert{
+  padding: 2px 10px;
+}

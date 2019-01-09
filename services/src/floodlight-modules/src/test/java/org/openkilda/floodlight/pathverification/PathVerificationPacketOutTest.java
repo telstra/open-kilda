@@ -66,8 +66,8 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         expect(sw2Port1.getHwAddr()).andReturn(MacAddress.of(sw2HwAddrTarget)).anyTimes();
         replay(sw2Port1);
 
-        sw1 = buildMockIOFSwitch(sw1HwAddrTarget, sw1Port1, factory, swDescription, srcIpTarget);
-        sw2 = buildMockIOFSwitch(sw2HwAddrTarget, sw2Port1, factory, swDescription, dstIpTarget);
+        sw1 = buildMockIoFSwitch(sw1HwAddrTarget, sw1Port1, factory, swDescription, srcIpTarget);
+        sw2 = buildMockIoFSwitch(sw2HwAddrTarget, sw2Port1, factory, swDescription, dstIpTarget);
         replay(sw1);
         replay(sw2);
     }
