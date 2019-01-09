@@ -15,6 +15,7 @@
 
 package org.openkilda.pce.impl;
 
+import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
@@ -28,7 +29,11 @@ import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
+import org.openkilda.pce.PathComputerConfig;
+import org.openkilda.pce.PathComputerFactory;
+import org.openkilda.pce.PathComputerFactory.WeightStrategy;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -43,6 +48,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.persistence.spi.PersistenceProvider;
 
+import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
+import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -56,14 +63,18 @@ import org.neo4j.ogm.testutil.TestServer;
 import java.util.List;
 
 public class InMemoryPathComputerTest {
-    private static final int ALLOWED_DEPTH = 35;
-    private static final int DEFAULT_COST = 700;
 
     static TestServer testServer;
     static TransactionManager txManager;
     static SwitchRepository switchRepository;
     static IslRepository islRepository;
     static FlowSegmentRepository flowSegmentRepository;
+
+    private static JdkProxyStaticConfigurationFactory configFactory = new JdkProxyStaticConfigurationFactory();
+    static PathComputerConfig config;
+
+    static AvailableNetworkFactory availableNetworkFactory;
+    static PathComputerFactory pathComputerFactory;
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
@@ -112,6 +123,11 @@ public class InMemoryPathComputerTest {
         switchRepository = repositoryFactory.createSwitchRepository();
         islRepository = repositoryFactory.createIslRepository();
         flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+
+        config = configFactory.createConfiguration(PathComputerConfig.class, new MapConfigurationSource(emptyMap()));
+
+        availableNetworkFactory = new AvailableNetworkFactory(config, repositoryFactory);
+        pathComputerFactory = new PathComputerFactory(config, availableNetworkFactory);
     }
 
     @AfterClass
@@ -140,8 +156,7 @@ public class InMemoryPathComputerTest {
         f.setDestSwitch(destSwitch);
         f.setBandwidth(100);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
         assertNotNull(path);
         assertThat(path.getForward().getNodes(), Matchers.hasSize(4));
@@ -164,8 +179,7 @@ public class InMemoryPathComputerTest {
         f.setDestSwitch(destSwitch);
         f.setBandwidth(100);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
 
         assertNotNull(path);
@@ -190,8 +204,7 @@ public class InMemoryPathComputerTest {
         f.setDestSwitch(destSwitch);
         f.setBandwidth(100);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
         assertNotNull(path);
         assertThat(path.getForward().getNodes(), Matchers.hasSize(4));
@@ -214,8 +227,7 @@ public class InMemoryPathComputerTest {
         f.setDestSwitch(destSwitch);
         f.setBandwidth(100);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
         assertNotNull(path);
         assertThat(path.getForward().getNodes(), Matchers.hasSize(4));
@@ -241,8 +253,7 @@ public class InMemoryPathComputerTest {
 
         thrown.expect(UnroutableFlowException.class);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         pathComputer.getPath(f);
     }
 
@@ -261,8 +272,7 @@ public class InMemoryPathComputerTest {
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f1);
         assertNotNull(path);
         assertThat(path.getForward().getNodes(), Matchers.hasSize(2));
@@ -302,8 +312,7 @@ public class InMemoryPathComputerTest {
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f1);
         assertNotNull(path);
         assertThat(path.getForward().getNodes(), Matchers.hasSize(2));
@@ -361,8 +370,9 @@ public class InMemoryPathComputerTest {
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(200, DEFAULT_COST));
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestCostAndShortestPathFinder(200,
+                        pathComputerFactory.getWeightFunctionByStrategy(WeightStrategy.COST)));
         PathPair path = pathComputer.getPath(f1, false);
         assertNotNull(path);
         assertThat(path.getForward().getNodes(), Matchers.hasSize(278));
@@ -399,8 +409,7 @@ public class InMemoryPathComputerTest {
         flow.setIgnoreBandwidth(false);
         flow.setBandwidth(10);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair result = pathComputer.getPath(flow);
         assertNotNull(result);
         // ensure start/end switches match
@@ -432,8 +441,7 @@ public class InMemoryPathComputerTest {
         flow.setSrcSwitch(srcSwitch);      // getPath will find an isl port
         flow.setDestSwitch(destSwitch);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair result = pathComputer.getPath(flow, true);
 
         assertThat(result.getForward().getNodes(), Matchers.hasSize(4));
@@ -468,8 +476,7 @@ public class InMemoryPathComputerTest {
 
         thrown.expect(UnroutableFlowException.class);
 
-        PathComputer pathComputer = new InMemoryPathComputer(islRepository,
-                new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST));
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
         pathComputer.getPath(flow, true);
     }
 
