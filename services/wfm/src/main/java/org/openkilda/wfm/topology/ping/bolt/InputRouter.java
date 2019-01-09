@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -82,7 +84,7 @@ public class InputRouter extends Abstract {
     }
 
     private Message pullInput(Tuple input) throws PipelineException {
-        return pullValue(input, InputDecoder.FIELD_ID_INPUT, Message.class);
+        return pullValue(input, FIELD_ID_PAYLOAD, Message.class);
     }
 
     @Override

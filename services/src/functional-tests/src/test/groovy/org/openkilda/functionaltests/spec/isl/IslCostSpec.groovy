@@ -6,26 +6,9 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
-import org.openkilda.testing.tools.IslUtils
-
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 
 class IslCostSpec extends BaseSpecification {
-    @Autowired
-    TopologyDefinition topology
-    @Autowired
-    IslUtils islUtils
-    @Autowired
-    LockKeeperService lockKeeper
-
-    @Value('${discovery.interval}')
-    int discoveryInterval
-    @Value('${discovery.timeout}')
-    int discoveryTimeout
 
     def "ISL cost is NOT increased due to connection loss between switches (not port down)"() {
         given: "ISL going through a-switch"

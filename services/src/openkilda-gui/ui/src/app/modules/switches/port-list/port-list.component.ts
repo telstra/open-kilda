@@ -8,6 +8,7 @@ import { Subject } from 'rxjs';
 import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Title } from '@angular/platform-browser';
+import { CommonService } from 'src/app/common/services/common.service';
 
 @Component({
   selector: 'app-port-list',
@@ -30,7 +31,8 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy {
     private maskPipe: SwitchidmaskPipe,
     private router:Router,
     private loaderService: LoaderService,
-    private titleService: Title
+    private titleService: Title,
+    private commonService:CommonService,
   ) {}
 
   ngOnInit() {
@@ -109,7 +111,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy {
               this.switchPortDataSet[i].stats['tx-bytes'] = '-';
           }
           else{
-              this.switchPortDataSet[i].stats['tx-bytes'] =  this.switchPortDataSet[i].stats['tx-bytes']*1024;
+              this.switchPortDataSet[i].stats['tx-bytes'] =  this.commonService.convertBytesToMbps(this.switchPortDataSet[i].stats['tx-bytes']);;
           }
 
 
@@ -117,7 +119,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy {
               this.switchPortDataSet[i].stats['rx-bytes'] = '-';
           }
           else{
-              this.switchPortDataSet[i].stats['rx-bytes'] =  this.switchPortDataSet[i].stats['rx-bytes']*1024;
+              this.switchPortDataSet[i].stats['rx-bytes'] =  this.commonService.convertBytesToMbps(this.switchPortDataSet[i].stats['rx-bytes']);
           }
 
           if(this.switchPortDataSet[i].stats['tx-packets'] === '' || this.switchPortDataSet[i].stats['tx-packets'] === undefined){

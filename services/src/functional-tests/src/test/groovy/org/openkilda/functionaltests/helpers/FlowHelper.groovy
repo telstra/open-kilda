@@ -43,9 +43,9 @@ class FlowHelper {
      * Creates a FlowPayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
      * random port otherwise.
      */
-    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch) {
-        return new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch), getFlowEndpoint(dstSwitch), 500,
-                false, false, "autotest flow", null, null)
+    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true) {
+        return new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
+                getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null)
     }
 
     /**
@@ -114,6 +114,26 @@ class FlowHelper {
     }
 
     /**
+     * Updates flow with checking flow status and rules on source and destination switches.
+     * It is supposed if rules are installed on source and destination switches, the flow is completely updated.
+     */
+    FlowPayload updateFlow(String flowId, FlowPayload flow) {
+        def flowEntryBeforeUpdate = db.getFlow(flowId)
+
+        log.debug("Updating flow '${flow.id}'")
+        def response = northbound.updateFlow(flowId, flow)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        def flowEntryAfterUpdate = db.getFlow(flowId)
+
+        // TODO(ylobankov): Delete check for rules installation once we add a new test to verify this functionality.
+        checkRulesOnSwitches(flowEntryAfterUpdate, RULES_INSTALLATION_TIME, true)
+        checkRulesOnSwitches(flowEntryBeforeUpdate, RULES_DELETION_TIME, false)
+
+        return response
+    }
+
+    /**
      * Returns flow endpoint with randomly chosen vlan.
      *
      * @param useTraffgenPorts whether to try finding a traffgen port
@@ -146,7 +166,7 @@ class FlowHelper {
      */
     private String generateFlowName() {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
-                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "")
+                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
     }
 
     /**

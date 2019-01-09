@@ -15,15 +15,22 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -31,20 +38,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.io.IOException;
-
 public class RouterBolt extends AbstractBolt {
-    @Override
-    protected void handleInput(Tuple input) {
-        String request = input.getString(0);
 
-        Message message;
-        try {
-            message = Utils.MAPPER.readValue(request, Message.class);
-        } catch (IOException e) {
-            log.error("Error during parsing request for NBWorker topology", e);
-            return;
-        }
+    @Override
+    protected void handleInput(Tuple input) throws PipelineException {
+        Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
 
         if (message instanceof CommandMessage) {
             log.debug("Received command message {}", message);
@@ -55,6 +53,16 @@ public class RouterBolt extends AbstractBolt {
                 BaseRequest baseRequest = (BaseRequest) data;
                 processRequest(input, baseRequest, message.getCorrelationId());
             }
+        } else if (message instanceof InfoMessage) {
+            log.debug("Received info message {}", message);
+            InfoMessage info = (InfoMessage) message;
+            InfoData data = info.getData();
+            processRequest(input, data, message.getCorrelationId());
+        } else if (message instanceof ErrorMessage) {
+            log.debug("Received error message {}", message);
+            ErrorMessage error = (ErrorMessage) message;
+            ErrorData data = error.getData();
+            processRequest(input, data, message.getCorrelationId());
         } else {
             unhandledInput(input);
         }
@@ -72,10 +80,29 @@ public class RouterBolt extends AbstractBolt {
         }
     }
 
+    private void processRequest(Tuple input, InfoData data, String correlationId) {
+        if (data instanceof SwitchFlowEntries) {
+            getOutput().emit(StreamType.VALIDATION.toString(), input, new Values(data, correlationId));
+        } else {
+            unhandledInput(input);
+        }
+    }
+
+    private void processRequest(Tuple input, ErrorData data, String correlationId) {
+        getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(StreamType.SWITCH.toString(), new Fields("request", "correlationId"));
-        declarer.declareStream(StreamType.ISL.toString(), new Fields("request", "correlationId"));
-        declarer.declareStream(StreamType.FLOW.toString(), new Fields("request", "correlationId"));
+        Fields fields = new Fields(PersistenceOperationsBolt.FIELD_ID_REQUEST,
+                PersistenceOperationsBolt.FIELD_ID_CORELLATION_ID);
+        declarer.declareStream(StreamType.SWITCH.toString(), fields);
+        declarer.declareStream(StreamType.ISL.toString(), fields);
+        declarer.declareStream(StreamType.FLOW.toString(), fields);
+        declarer.declareStream(StreamType.VALIDATION.toString(),
+                new Fields(SwitchValidationsBolt.FIELD_ID_REQUEST,
+                        SwitchValidationsBolt.FIELD_ID_CORELLATION_ID));
+        declarer.declareStream(StreamType.ERROR.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

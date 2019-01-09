@@ -37,10 +37,10 @@ floodlight_install_deps += $(SHARE)/build-artifact/floodlight.jar
 endif
 
 install-floodlight: $(floodlight_install_deps)
-	mvn -B -f $(FLOODLIGHT_DIR)/pom.xml jar:jar install:install
+	mvn -B -f $(FLOODLIGHT_DIR)/pom.xml jar:jar install:install -DskipTests
 
 install-openflowj: $(OPENFLOWJ_JAR)
-	mvn -B -f $(OPENFLOWJ_DIR)/pom.xml jar:jar install:install
+	mvn -B -f $(OPENFLOWJ_DIR)/pom.xml jar:jar install:install -DskipTests
 
 clean: clean-loxigen clean-floodlight
 
@@ -52,7 +52,7 @@ $(OPENFLOWJ_DIR)/pom.xml: $(LOXIGEN_SOURCES)
 	touch $@
 
 $(OPENFLOWJ_JAR): $(OPENFLOWJ_DIR)/pom.xml
-	mvn -B -f $(OPENFLOWJ_DIR)/pom.xml clean package
+	mvn -B -f $(OPENFLOWJ_DIR)/pom.xml clean package -DskipTests
 
 openflow.lua: $(LOXIGEN_SOURCES)
 	$(MAKE) -C $(LOXIGEN_DIR) wireshark

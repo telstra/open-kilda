@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flow.service;
 
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Flow;
@@ -57,12 +58,12 @@ public class FlowResourcesManagerTest {
         Flow forward = newFlow.getForward();
         assertEquals(1 | Flow.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
         assertEquals(2, forward.getTransitVlan());
-        assertEquals(11, forward.getMeterId());
+        assertEquals(Integer.valueOf(11), forward.getMeterId());
 
         Flow reverse = newFlow.getReverse();
         assertEquals(1 | Flow.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
         assertEquals(3, reverse.getTransitVlan());
-        assertEquals(12, reverse.getMeterId());
+        assertEquals(Integer.valueOf(12), reverse.getMeterId());
     }
 
     @Test
@@ -77,12 +78,12 @@ public class FlowResourcesManagerTest {
         Flow forward = lastFlow.getForward();
         assertEquals(2 | Flow.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
         assertEquals(4, forward.getTransitVlan());
-        assertEquals(13, forward.getMeterId());
+        assertEquals(Integer.valueOf(13), forward.getMeterId());
 
         Flow reverse = lastFlow.getReverse();
         assertEquals(2 | Flow.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
         assertEquals(5, reverse.getTransitVlan());
-        assertEquals(14, reverse.getMeterId());
+        assertEquals(Integer.valueOf(14), reverse.getMeterId());
     }
 
     @Test
@@ -93,12 +94,12 @@ public class FlowResourcesManagerTest {
         Flow forward = newFlow.getForward();
         assertEquals(1 | Flow.FORWARD_FLOW_COOKIE_MASK, forward.getCookie());
         assertEquals(2, forward.getTransitVlan());
-        assertEquals(0, forward.getMeterId());
+        assertNull(forward.getMeterId());
 
         Flow reverse = newFlow.getReverse();
         assertEquals(1 | Flow.REVERSE_FLOW_COOKIE_MASK, reverse.getCookie());
         assertEquals(3, reverse.getTransitVlan());
-        assertEquals(0, reverse.getMeterId());
+        assertNull(reverse.getMeterId());
     }
 
     @Test

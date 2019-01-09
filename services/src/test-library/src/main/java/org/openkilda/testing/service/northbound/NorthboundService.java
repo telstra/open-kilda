@@ -34,7 +34,9 @@ import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
+import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
@@ -121,6 +123,8 @@ public interface NorthboundService {
 
     List<FlowPayload> getLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
+    DeleteLinkResult deleteLink(LinkParametersDto linkParameters);
+
     //feature toggles
 
     FeatureTogglePayload getFeatureToggles();
@@ -133,6 +137,19 @@ public interface NorthboundService {
     default List<IslInfoData> getActiveLinks() {
         return getAllLinks().stream()
                 .filter(sw -> sw.getState() == IslChangeType.DISCOVERED)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get links by source/destination switches and ports.
+     */
+    default List<IslInfoData> getLinksByParameters(
+            SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
+        return getAllLinks().stream()
+                .filter(link -> link.getSource().getSwitchId().equals(srcSwitch)
+                             && link.getSource().getPortNo() == srcPort
+                             && link.getDestination().getSwitchId().equals(dstSwitch)
+                             && link.getDestination().getPortNo() == dstPort)
                 .collect(Collectors.toList());
     }
 

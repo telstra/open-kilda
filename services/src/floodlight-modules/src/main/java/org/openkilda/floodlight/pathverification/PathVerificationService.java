@@ -414,6 +414,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             long timestamp = 0;
             int pathOrdinal = 10;
             IOFSwitch remoteSwitch = null;
+            DatapathId remoteSwitchId = null;
             boolean signed = false;
             for (LLDPTLV lldptlv : verificationPacket.getOptionalTlvList()) {
                 if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
@@ -422,7 +423,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x0) {
                     ByteBuffer dpidBb = ByteBuffer.wrap(lldptlv.getValue());
-                    remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBb.getLong(4)));
+                    remoteSwitchId = DatapathId.of(dpidBb.getLong(4));
+                    remoteSwitch = switchService.getSwitch(remoteSwitchId);
                 } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
@@ -466,6 +468,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             // TODO:  fix the above
 
             if (remoteSwitch == null) {
+                logger.warn("detected unknown remote switch {}", remoteSwitchId);
                 return;
             }
 

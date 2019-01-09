@@ -36,6 +36,7 @@ import org.neo4j.ogm.typeconversion.InstantStringConverter;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Represents information about a flow. This includes the source and destination, flow status,
@@ -142,7 +143,7 @@ public class Flow implements Serializable {
     private int transitVlan;
 
     @Property(name = "meter_id")
-    private int meterId;
+    private Integer meterId;
 
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
@@ -166,7 +167,7 @@ public class Flow implements Serializable {
     Flow(String flowId, long cookie, //NOSONAR
             Switch srcSwitch, Switch destSwitch, int srcPort, int srcVlan, int destPort, int destVlan,
             FlowPath flowPath, long bandwidth, String description, int transitVlan,
-            int meterId, boolean ignoreBandwidth, boolean periodicPings,
+            Integer meterId, boolean ignoreBandwidth, boolean periodicPings,
             FlowStatus status, Instant timeModify) {
         this.flowId = flowId;
         this.cookie = cookie;
@@ -255,6 +256,16 @@ public class Flow implements Serializable {
 
     public boolean isActive() {
         return status == FlowStatus.UP;
+    }
+
+    /**
+     * Converts meter id to long value.
+     * @return null if flow is unmetered otherwise returns converted meter id.
+     */
+    public Long getMeterLongValue() {
+        return Optional.ofNullable(meterId)
+                .map(Long::valueOf)
+                .orElse(null);
     }
 
     private boolean cookieMarkedAsFroward() {

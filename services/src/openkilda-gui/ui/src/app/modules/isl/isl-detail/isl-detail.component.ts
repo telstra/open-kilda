@@ -54,6 +54,7 @@ import { CommonService } from '../../../common/services/common.service';
       };
     graphObj: any;
     message:{};
+    getautoReloadValues = this.commonService.getAutoreloadValues();
 
     filterForm: FormGroup;
     graphMetrics = [];
@@ -190,6 +191,7 @@ import { CommonService } from '../../../common/services/common.service';
       }
     }
 
+   
 
     showMenu(e){
     e.preventDefault();

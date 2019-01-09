@@ -1,0 +1,25 @@
+<div id="storeSetting">
+        <div class="row">
+            <div class="col-md-12">
+                <h6 class="card-title card-custom-title">SESSION SETTINGS</h6>
+                <div _ngcontent-c14="" class="card">
+                    <div _ngcontent-c14="" class="card-body">
+                        <div class="col-sm-9">
+                        <form [formGroup]="sessionForm" class="form-horizontal">
+                              <div class="form-group row">
+                                    <label for="session_timeout" class="col-sm-3 mt-2">Session Timeout (Minutes) <span class="mandatory-text text-danger">*</span></label>
+                                     <input min="5" class="form-control col-sm-3 ml-3" type="number" formControlName="session_time" placeholder="Session timeout e.g.: 5" required/>
+                                     <div class="col-sm-3 ml-3">
+                                             <button *ngIf="isEdit" type="button" (click)="save()" class="btn kilda_btn">Save</button> &nbsp;
+                                            <button *ngIf="isEdit" type="button" class="btn kilda_btn" (click)="cancelSession()">Cancel</button> &nbsp;
+                                            <button *ngIf="!isEdit" type="button" class="btn kilda_btn" (click)="editSession()">Edit</button> &nbsp;
+                                    </div>
+                                    <div class="invalid-feedback col-sm-8" *ngIf="i['session_time'] && i['session_time'].value < 5"><span style="margin-left:235px;">The value for session timeout should not be less than 5 minutes</span> </div>
+                                </div>
+                         </form>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+ </div>

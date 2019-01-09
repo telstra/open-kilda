@@ -13,6 +13,8 @@ floodlight.controller.uri=tcp:kilda:6653
 
 lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
+neo.user=user
+neo.password=password
 lab-api.endpoint=http://localhost:8288
 otsdb.endpoint=http://localhost:4242
 
@@ -20,12 +22,18 @@ elasticsearch.endpoint = http://localhost:9200
 elasticsearch.username = username
 elasticsearch.password = password
 
+kafka.bootstrap.server = kafka.pendev:9092
+kafka.topic.topo.disco=kilda.topo.disco
+
 spring.profiles.active=virtual
 # not delete topology after test runs
 # for now in case of hardware profile it must be set to True if topology already exists
 mode.topology.single=true
 
-reroute.delay=10
-reroute.hardtimeout=30
+reroute.delay=3
+reroute.hardtimeout=15
 discovery.interval=3
 discovery.timeout = 15
+antiflap.min=1
+antiflap.warmup=5
+antiflap.cooldown=5

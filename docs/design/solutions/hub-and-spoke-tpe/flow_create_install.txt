@@ -1,0 +1,59 @@
+@startuml
+title FLOW create
+
+participant Client
+participant NorthBound as NB
+control kilda.northbound
+control kilda.flow
+participant "FLOW SplitterBolt" as SplitterBolt
+participant "FLOW CrudBolt" as CrudBolt
+participant "FLOW ErrorBolt" as ErrorBolt
+participant "FLOW NorthboundReplyBolt" as NorthboundReplyBolt
+participant FlowService
+participant DAO
+participant "FLOW TransactionBolt" as TransactionBolt
+participant "FLOW SpeakerBolt" as SpeakerBolt
+
+Client -> NB: /flows PUT
+NB -> kilda.flow: CommandMessage\nFlowCreateRequest
+kilda.flow -> SplitterBolt: CommandMessage\nFlowCreateRequest
+SplitterBolt -> CrudBolt: CommandMessage\nFlowCreateRequest
+note right of CrudBolt: validate the flow (using FlowValidator)
+note right of CrudBolt: new path (using PathComputer.getPath)
+note right of CrudBolt: build flow pair (state=ALLOCATED)
+note right of CrudBolt: save flow (FlowCache.createFlow)
+note right of CrudBolt: allocate cookie for flow
+note right of CrudBolt: allocate transit vlan (forward)
+note right of CrudBolt: allocate transit vlan (reverse)
+note right of CrudBolt: allocate meters
+note right of CrudBolt: new FlowInfoData
+loop in forward, reveres
+  opt
+    CrudBolt -> FlowService: create flow
+    FlowService -> DAO: create flow
+    FlowService -> DAO: create flow segments
+    FlowService -> DAO: update bandwidth on isls
+    note right of DAO: status is In_progress
+    alt error
+	CrudBolt -> ErrorBolt: ErrorMessage
+	ErrorBolt -> NorthboundReplyBolt: ErrorMessage
+  end
+end
+
+CrudBolt -> NorthboundReplyBolt:  FlowInfoData
+
+
+loop in forward, reveres
+  loop in segments
+    CrudBolt -> TransactionBolt: InstallCommand
+    TransactionBolt -> SPEAKER: InstallCommand
+    SPEAKER -> SpeakerBolt: InstallCommand
+    SpeakerBolt -> TransactionBolt: InstallCommand
+    alt all rules are set
+       TransactionBolt -> FlowService: set flow state to up
+       FlowService -> DAO: status = UP
+    end
+  end
+end
+
+@enduml

@@ -15,12 +15,18 @@
 
 package org.openkilda.floodlight.service.kafka;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;
 import org.openkilda.messaging.ctrl.KafkaBreakTrigger;
 
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 // TODO(surabujin): avoid usage, replace with more correct network interrupting method
 public class TestAwareKafkaProducerService extends KafkaProducerService {
@@ -29,25 +35,51 @@ public class TestAwareKafkaProducerService extends KafkaProducerService {
     private final KafkaBreakTrigger breakTrigger = new KafkaBreakTrigger(KafkaBreakTarget.FLOODLIGHT_PRODUCER);
 
     @Override
-    public void sendMessageAndTrack(String topic, Message message) {
+    protected SendStatus produce(ProducerRecord<String, String> record, Callback callback) {
         if (!breakTrigger.isCommunicationEnabled()) {
-            logger.info("Suppress record : {} <= {}", topic, message);
-            return;
+            logger.info("Suppress record : {} <= {}", record.topic(), record.value());
+            return new SendStatus(new FakeProducerFuture(record));
         }
-        super.sendMessageAndTrack(topic, message);
-    }
-
-    @Override
-    public SendStatus sendMessage(String topic, Message message) {
-        if (!breakTrigger.isCommunicationEnabled()) {
-            throw new IllegalArgumentException(String.format(
-                    "Can't emulate behaviour of %s.sendMessage in network outage state",
-                    getClass().getCanonicalName()));
-        }
-        return super.sendMessage(topic, message);
+        return super.produce(record, callback);
     }
 
     public KafkaBreakTrigger getBreakTrigger() {
         return breakTrigger;
+    }
+
+    private static class FakeProducerFuture implements Future<RecordMetadata> {
+        private final RecordMetadata metadata;
+
+        public FakeProducerFuture(ProducerRecord<String, String> record) {
+            TopicPartition partition = new TopicPartition(record.topic(), 0);
+            int keySize = record.key() != null ? record.key().length() : 0;
+            this.metadata = new RecordMetadata(
+                    partition, 0, 1, -1, 0, keySize, record.value().length());
+        }
+
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            return false;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public boolean isDone() {
+            return true;
+        }
+
+        @Override
+        public RecordMetadata get() {
+            return metadata;
+        }
+
+        @Override
+        public RecordMetadata get(long timeout, TimeUnit unit) {
+            return get();
+        }
     }
 }

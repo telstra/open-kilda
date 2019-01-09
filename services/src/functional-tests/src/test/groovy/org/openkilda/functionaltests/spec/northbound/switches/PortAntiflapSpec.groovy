@@ -1,0 +1,215 @@
+package org.openkilda.functionaltests.spec.northbound.switches
+
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
+import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.rerun.Rerun
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.thread.PortBlinker
+import org.openkilda.messaging.Message
+import org.openkilda.messaging.info.InfoData
+import org.openkilda.messaging.info.InfoMessage
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.PortChangeType
+import org.openkilda.messaging.info.event.PortInfoData
+import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+
+import groovy.util.logging.Slf4j
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
+import spock.lang.Issue
+import spock.lang.Narrative
+
+import java.util.concurrent.TimeUnit
+
+@Slf4j
+@Narrative("""
+Anti-flap feature is aimed to address the problem of blinking ports. Sometimes it happens that certain port on a switch
+begins to blink for a very short period of time. If it is a short-time behavior, then we don't want to init a
+port down event and reroute the flow. Otherwise we wait for 'antiflapWarmup' time and assign that blinking port a DOWN 
+status. Then, when it comes back up it should remain in a stable 'up' state for at least 'antiflapCooldown' seconds to
+actually become UP for the rest of the system.
+Initially, port is considered 'flapping' if it changes status quicker than once in 'antiflap.min' seconds (port will
+change status from UP to DOWN only after 'antiflap.min' in case of a single-time change of status)
+""")
+@Issue("https://github.com/telstra/open-kilda/issues/1729")
+class PortAntiflapSpec extends BaseSpecification {
+
+    @Value('${antiflap.min}')
+    int antiflapMin
+    @Value('${antiflap.warmup}')
+    int antiflapWarmup
+    @Value('${antiflap.cooldown}')
+    int antiflapCooldown
+    @Value('${kafka.topic.topo.disco}')
+    String topoDiscoTopic
+    @Autowired
+    @Qualifier("kafkaProducerProperties")
+    Properties producerProps
+
+    //rerun is required to check the #1790 issue
+    @Rerun(times = 2)
+    def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
+timeout"() {
+        given: "Switch, port and ISL related to that port"
+        def sw = topology.activeSwitches.first()
+        Isl isl = topology.islsForActiveSwitches.find { it.srcSwitch == sw || it.dstSwitch == sw }
+        assert isl
+        int islPort = isl.with { it.srcSwitch == sw ? it.srcPort : it.dstPort }
+
+        when: "ISL port begins to blink"
+        def blinker = new PortBlinker(northbound, sw, islPort)
+        def untilWarmupEnds = { blinker.timeStarted.time + antiflapWarmup * 1000 - new Date().time }
+        def untilCooldownEnds = { blinker.timeStopped.time + antiflapCooldown * 1000 - new Date().time }
+        blinker.start()
+
+        then: "Right before warmup timeout runs out the related ISL remains up"
+        sleep(untilWarmupEnds() - 1000)
+        islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+
+        and: "After warmup timeout the related ISL goes down"
+        Wrappers.wait(untilWarmupEnds() / 1000.0 + WAIT_OFFSET / 2) {
+            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
+
+        and: "ISL remains down even after cooldown timeout"
+        TimeUnit.SECONDS.sleep(antiflapCooldown + 1)
+        islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+
+        when: "Port stops flapping, ending in UP state"
+        blinker.stop(true)
+
+        then: "Right before cooldown timeout runs out the ISL remains down"
+        sleep(untilCooldownEnds() - 1000)
+        islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+
+        and: "After cooldown timeout the ISL goes up"
+        Wrappers.wait(untilCooldownEnds() / 1000.0 + WAIT_OFFSET / 2 + discoveryInterval) {
+            islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        }
+
+        cleanup:
+        blinker?.isRunning() && blinker.stop(true)
+    }
+
+    def "Port goes down in 'antiflap.min' seconds if no flapping occurs"() {
+        given: "Switch, port and ISL related to that port"
+        def sw = topology.activeSwitches.first()
+        Isl isl = topology.islsForActiveSwitches.find { it.srcSwitch == sw || it.dstSwitch == sw }
+        int islPort = isl.with { it.srcSwitch == sw ? it.srcPort : it.dstPort }
+        assert islPort
+
+        when: "Port goes down"
+        northbound.portDown(sw.dpId, islPort)
+
+        then: "Related ISL goes down in about 'antiflapMin' seconds"
+        Wrappers.wait(antiflapMin + 2) {
+            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
+
+        and: "cleanup: Bring port up"
+        northbound.portUp(sw.dpId, islPort)
+        Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
+            islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        }
+    }
+
+    /**
+     * In this test no actual port action is taken. We simulate port flapping by producing messages with OF events
+     * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
+     * may sometimes occur on hardware switches(overheat?)
+     */
+    @Issue("https://github.com/telstra/open-kilda/issues/1827")
+    //there is a possible race condition that we exercise, so this needs couple reruns
+    @Rerun(times = 2)
+    def "System properly registers events order when port flaps incredibly fast (end with Up)"() {
+
+        when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
+        def producer = new KafkaProducer<>(producerProps)
+        def isl = topology.islsForActiveSwitches[0]
+        def messagesGenerated = 0
+        Wrappers.timedLoop(antiflapWarmup + 1) {
+            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
+            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.UP)
+            //note that we end with 'UP' event
+            messagesGenerated += 2
+            sleep(1) //do not overload storm, it can die
+        }
+        log.debug("Generated $messagesGenerated port up/down messages in ${antiflapWarmup + 1} seconds")
+
+        then: "Related ISL is FAILED"
+        Wrappers.wait(WAIT_OFFSET / 2.0) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
+        producer.close()
+
+        and: "After the port cools down the ISL is discovered again"
+        TimeUnit.SECONDS.sleep(antiflapCooldown - 1)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        }
+
+        cleanup:
+        producer?.close()
+    }
+
+    /**
+     * In this test no actual port action is taken. We simulate port flapping by producing messages with OF events
+     * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
+     * may sometimes occur on hardware switches(overheat?)
+     */
+    @Issue("https://github.com/telstra/open-kilda/issues/1827")
+    //there is a possible race condition that we exercise, so this needs couple reruns
+    @Rerun(times = 2)
+    def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
+
+        when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"
+        def producer = new KafkaProducer<>(producerProps)
+        def isl = topology.islsForActiveSwitches[0]
+        def messagesGenerated = 0
+        kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
+
+        Wrappers.timedLoop(antiflapWarmup + 1) {
+            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.UP)
+            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
+            //note that we end with 'DOWN' event
+            messagesGenerated += 2
+            sleep(1) //do not overload storm, it can die
+        }
+        log.debug("Generated $messagesGenerated port up/down messages in ${antiflapWarmup + 1} seconds")
+
+        then: "Related ISL is FAILED"
+        Wrappers.wait(WAIT_OFFSET / 2.0) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
+        producer.close()
+
+        and: "ISL remains failed even after the port cools down"
+        Wrappers.timedLoop(antiflapCooldown + discoveryInterval + WAIT_OFFSET / 2) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            TimeUnit.SECONDS.sleep(1)
+        }
+
+        and: "cleanup: restore broken ISL"
+        new KafkaProducer<>(producerProps).send(new ProducerRecord(topoDiscoTopic, buildMessage(
+                new PortInfoData(isl.srcSwitch.dpId, isl.srcPort, null, PortChangeType.UP)).toJson())).get()
+        Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED }
+
+        cleanup:
+        producer?.close()
+    }
+    
+    def kafkaChangePort(KafkaProducer producer, SwitchId sw, Integer port, PortChangeType status) {
+        producer.send(new ProducerRecord(topoDiscoTopic, sw.toString(), 
+                buildMessage(new PortInfoData(sw, port, null, status)).toJson()))
+    }
+
+    private static Message buildMessage(final InfoData data) {
+        return new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
+    }
+}

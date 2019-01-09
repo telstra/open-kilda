@@ -61,14 +61,13 @@ compile:
 	$(MAKE) -C services/mininet
 	$(MAKE) -C services/lab-service/lab test
 
-.PHONY: unit unit-java-common unit-java-storm unit-py-te
-unit: update-props unit-java-common unit-java-storm unit-py-te
-unit-java-common: build-base
-	$(MAKE) -C services/src
+.PHONY: unit unit-java-common unit-java-storm
+unit: update-props unit-java-common unit-java-storm
+unit-java-common:
+	$(MAKE) build-no-test -C services/src
+	$(MAKE) unit -C services/src
 unit-java-storm: avoid-port-conflicts
 	mvn -B -f services/wfm/pom.xml test
-unit-py-te:
-	$(MAKE) -C services/topology-engine ARTIFACTS=../../artifact/topology-engine --keep-going test test-artifacts
 
 .PHONY: avoid-port-conflicts
 avoid-port-conflicts:

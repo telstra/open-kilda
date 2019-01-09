@@ -132,6 +132,23 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
+    public Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "required_bandwidth", requiredBandwidth,
+                "active_switch", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                "active_isl", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+
+        String query = "MATCH (source:switch)-[link:isl]->(dest:switch) "
+                + "MATCH (dest)-[reverse:isl{src_port: link.dst_port, dst_port: link.src_port}]->(source) "
+                + "WHERE source.state = $active_switch AND dest.state = $active_switch AND link.status = $active_isl "
+                + " AND link.available_bandwidth >= $required_bandwidth "
+                + " AND reverse.available_bandwidth >= $required_bandwidth "
+                + "RETURN source, link, dest";
+
+        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+    }
+
+    @Override
     public void createOrUpdate(Isl link) {
         transactionManager.doInTransaction(() -> {
             lockSwitches(requireManagedEntity(link.getSrcSwitch()), requireManagedEntity(link.getDestSwitch()));

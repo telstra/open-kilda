@@ -16,7 +16,9 @@
 package org.openkilda.wfm.topology.event.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
@@ -74,12 +76,7 @@ public class IslServiceTest extends Neo4jBasedTest {
         assertEquals(IslStatus.ACTIVE, foundIsl.getActualStatus());
         assertEquals(cost, foundIsl.getCost());
 
-        Isl reverseIsl = isl.toBuilder()
-                .srcSwitch(isl.getDestSwitch())
-                .srcPort(isl.getDestPort())
-                .destSwitch(isl.getSrcSwitch())
-                .destPort(isl.getSrcPort())
-                .build();
+        Isl reverseIsl = createReverseIsl(isl);
         islService.createOrUpdateIsl(reverseIsl);
 
         foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
@@ -98,12 +95,7 @@ public class IslServiceTest extends Neo4jBasedTest {
         Isl isl = createIsl();
         islService.createOrUpdateIsl(isl);
 
-        Isl reverseIsl = isl.toBuilder()
-                .srcSwitch(isl.getDestSwitch())
-                .srcPort(isl.getDestPort())
-                .destSwitch(isl.getSrcSwitch())
-                .destPort(isl.getSrcPort())
-                .build();
+        Isl reverseIsl = createReverseIsl(isl);
         islService.createOrUpdateIsl(reverseIsl);
 
         Isl foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
@@ -111,7 +103,8 @@ public class IslServiceTest extends Neo4jBasedTest {
         assertNotNull(foundIsl);
         assertEquals(IslStatus.ACTIVE, foundIsl.getStatus());
 
-        islService.islDiscoveryFailed(isl);
+        boolean updated = islService.islDiscoveryFailed(isl);
+        assertTrue(updated);
 
         foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
                 TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT).get();
@@ -123,25 +116,37 @@ public class IslServiceTest extends Neo4jBasedTest {
         Isl isl = createIsl();
         islService.createOrUpdateIsl(isl);
 
-        Isl reverseIsl = isl.toBuilder()
-                .srcSwitch(isl.getDestSwitch())
-                .srcPort(isl.getDestPort())
-                .destSwitch(isl.getSrcSwitch())
-                .destPort(isl.getSrcPort())
-                .build();
-        islService.createOrUpdateIsl(reverseIsl);
-
         Isl foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
                 TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT).get();
-        assertNotNull(foundIsl);
-        assertEquals(IslStatus.ACTIVE, foundIsl.getStatus());
+        foundIsl.setActualStatus(IslStatus.INACTIVE);
+        foundIsl.setStatus(IslStatus.INACTIVE);
+        islRepository.createOrUpdate(foundIsl);
+
+        Isl reverseIsl = createReverseIsl(isl);
+        islService.createOrUpdateIsl(reverseIsl);
 
         isl.setStatus(IslStatus.MOVED);
-        islService.islDiscoveryFailed(isl);
+        boolean updated = islService.islDiscoveryFailed(isl);
+        assertTrue(updated);
 
         foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
                 TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT).get();
         assertEquals(IslStatus.MOVED, foundIsl.getStatus());
+    }
+
+    @Test
+    public void shouldNotFailIslDiscoverOnNotActiveIsl() {
+        Isl isl = createIsl();
+        isl.setStatus(IslStatus.INACTIVE);
+        islService.createOrUpdateIsl(isl);
+
+        Isl foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
+                TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT).get();
+        assertNotNull(foundIsl);
+        assertEquals(IslStatus.INACTIVE, foundIsl.getStatus());
+
+        boolean updated = islService.islDiscoveryFailed(isl);
+        assertFalse(updated);
     }
 
     private Isl createIsl() {
@@ -152,6 +157,15 @@ public class IslServiceTest extends Neo4jBasedTest {
         isl.setDestPort(TEST_SWITCH_B_PORT);
 
         return isl;
+    }
+
+    private Isl createReverseIsl(Isl isl) {
+        return isl.toBuilder()
+                .srcSwitch(isl.getDestSwitch())
+                .srcPort(isl.getDestPort())
+                .destSwitch(isl.getSrcSwitch())
+                .destPort(isl.getSrcPort())
+                .build();
     }
 
     private Switch createSwitchIfNotExist(SwitchId switchId) {

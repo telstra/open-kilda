@@ -15,15 +15,7 @@
 
 package org.openkilda.floodlight;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -44,13 +36,19 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
-
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-import com.google.common.collect.ImmutableList;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MockSwitchManager implements IFloodlightModule, IOFSwitchManager, IOFSwitchService {
 
@@ -59,7 +57,7 @@ public class MockSwitchManager implements IFloodlightModule, IOFSwitchManager, I
     private final SwitchManagerCounters counters;
     //private final CopyOnWriteArrayList<IOFSwitchListener> switchListeners;
 
-    public MockSwitchManager(){
+    public MockSwitchManager() {
         switchHandlers = new ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler>();
         switches = new ConcurrentHashMap<DatapathId, IOFSwitch>();
         counters = new SwitchManagerCounters(new DebugCounterServiceImpl());
@@ -100,20 +98,21 @@ public class MockSwitchManager implements IFloodlightModule, IOFSwitchManager, I
 
     @Override
     public void handleMessage(IOFSwitchBackend sw, OFMessage m,
-                              FloodlightContext bContext) {
+                              FloodlightContext context) {
         // do nothing
 
     }
     
     @Override
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m) {
-    	// do nothing
-    	
+        // do nothing
+        
     }
 
     public void setSwitchHandshakeHandlers(Map<DatapathId, OFSwitchHandshakeHandler> handlers) {
         this.switchHandlers = handlers;
     }
+
     @Override
     public ImmutableList<OFSwitchHandshakeHandler>
             getSwitchHandshakeHandlers() {
@@ -179,10 +178,11 @@ public class MockSwitchManager implements IFloodlightModule, IOFSwitchManager, I
     @Override
     public IOFSwitch getActiveSwitch(DatapathId dpid) {
         IOFSwitch sw = this.switches.get(dpid);
-        if(sw != null && sw.getStatus().isVisible())
+        if (sw != null && sw.getStatus().isVisible()) {
             return sw;
-        else
+        } else {
             return null;
+        }
     }
 
     @Override
@@ -223,10 +223,7 @@ public class MockSwitchManager implements IFloodlightModule, IOFSwitchManager, I
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService>
             getServiceImpls() {
-        Map<Class<? extends IFloodlightService>,
-        IFloodlightService> m =
-            new HashMap<Class<? extends IFloodlightService>,
-                    IFloodlightService>();
+        Map<Class<? extends IFloodlightService>, IFloodlightService> m = new HashMap<>();
         m.put(IOFSwitchService.class, this);
         return m;
     }

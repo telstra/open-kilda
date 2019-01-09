@@ -51,7 +51,7 @@ public class AvailableNetwork {
     /**
      * Creates switches (if they are not created yet) and ISL between them.
      */
-    void addLink(Isl isl) {
+    public void addLink(Isl isl) {
         Switch srcSwitch = getOrInitSwitch(isl.getSrcSwitch());
         Switch dstSwitch = getOrInitSwitch(isl.getDestSwitch());
 
@@ -105,18 +105,5 @@ public class AvailableNetwork {
                 sw.setIncomingLinks(reducedIncomingLinks);
             }
         }
-    }
-
-    /**
-     * Eliminates any self loops (ie src and dst switch is the same).
-     *
-     * @return this
-     */
-    AvailableNetwork removeSelfLoops() {
-        for (Switch sw : switches.values()) {
-            sw.getOutgoingLinks().removeIf(link -> link.getSrcSwitch().equals(link.getDestSwitch()));
-            sw.getIncomingLinks().removeIf(link -> link.getSrcSwitch().equals(link.getDestSwitch()));
-        }
-        return this;
     }
 }

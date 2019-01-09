@@ -76,4 +76,25 @@ export class CommonService {
   getLogout():Observable<any>{
     return this.httpClient.get<any>(`${environment.appEndPoint}/logout`);
   }
+  getAutoreloadValues(){
+    return [
+      {value:10,text:'10'},
+      {value:15,text:'15'},
+      {value:30,text:'30'},
+      {value:45,text:'45'},
+      {value:60,text:'60'},
+    ]
+  }
+  convertBytesToMbps(value){
+    let valInMbps = (value/1000)/1000; // conversion
+    return (valInMbps < 1)?Math.ceil(valInMbps * 1000) / 1000:Math.ceil(valInMbps * 100) / 100
+  }
+
+  getSessionTimeoutSetting(){
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/settings/sessiontimeout`);
+  }
+
+  saveSessionTimeoutSetting(timeout){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/sessiontimeout`,timeout);
+  }
 }

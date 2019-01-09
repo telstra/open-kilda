@@ -72,6 +72,7 @@ public class Switch implements Serializable {
      * TODO(siakovenko): incomingLinks and outgoingLinks are marked as transient as Neo4j OGM handles load strategy
      * "depth" improperly: when a relation entity is being loaded, OGM fetches ALL relations of start and end nodes
      * of the requested relation. Even with the "depth" = 1.
+     * See {@link org.neo4j.ogm.session.request.strategy.impl.SchemaRelationshipLoadClauseBuilder}
      */
     @Transient
     private List<Isl> incomingLinks;

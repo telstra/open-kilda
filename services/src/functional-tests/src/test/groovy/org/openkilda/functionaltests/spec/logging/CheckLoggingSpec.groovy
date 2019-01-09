@@ -16,14 +16,13 @@ import spock.lang.Narrative
 class CheckLoggingSpec extends BaseSpecification {
 
     @Autowired
-    ElasticService elasticService
+    ElasticService elastic
 
     String discoveryMessage = "push discovery package via"
 
     def "Check Floodlight logging"() {
         when: "Retrieve floodlight logs for last 5 minutes"
-        def result = elasticService.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT).
-                setTimeRange(300).build())
+        def result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT).setTimeRange(300).build())
 
         assert result?.hits?.total > 0: "No logs could be found for Floodlight"
 
@@ -38,19 +37,20 @@ class CheckLoggingSpec extends BaseSpecification {
         try {
             northbound.getFlow(flowId)
         } catch (HttpClientErrorException e) {
+
         }
 
         and: "Rules on a switch are validated"
-        def switchId = topologyDefinition.activeSwitches.first().dpId
+        def switchId = topology.activeSwitches.first().dpId
         northbound.validateSwitchRules(switchId)
 
         then: "Northbound, Storm and Topology Engine should log these actions within 1 minute"
         Wrappers.wait(timeout, 10) {
-            def nbLogs = elasticService.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
+            def nbLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
                     setTimeRange(timeout * 2).setLevel("ERROR").build())
-            def stormLogs = elasticService.getLogs(new ElasticQueryBuilder().setTags(KildaTags.STORM_WORKER).
+            def stormLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.STORM_WORKER).
                     setTimeRange(timeout * 2).setLevel("ERROR").build())
-            def tpLogs = elasticService.getLogs(new ElasticQueryBuilder().setTags(KildaTags.TOPOLOGY_ENGINE).
+            def tpLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.TOPOLOGY_ENGINE).
                     setTimeRange(timeout * 2).setLevel("INFO").build())
 
             assert nbLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowId) }:

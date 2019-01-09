@@ -12,6 +12,7 @@ switches:
       dp_id: 00:00:00:00:00:00:00:02
       of_version: OF_13
       status: active
+      max_port: 30
       out_ports:
         - port: 10
           vlan_range: 101..150
@@ -20,6 +21,7 @@ switches:
       dp_id: 00:00:00:00:00:00:00:03
       of_version: OF_13
       status: active
+      max_port: 30
       out_ports:
         - port: 10
           vlan_range: 101..150
@@ -50,6 +52,7 @@ switches:
       out_ports:
         - port: 10
           vlan_range: 101..150
+
 isls:
     - src_switch: ofsw3
       src_port: 2

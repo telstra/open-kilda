@@ -19,14 +19,13 @@ import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
-public class DefaultWorker extends AbstractWorker {
-    public DefaultWorker(Producer<String, String> kafkaProducer, String topic) {
-        super(kafkaProducer, topic);
+class DefaultWorker extends AbstractWorker {
+    DefaultWorker(Producer<String, String> kafkaProducer) {
+        super(kafkaProducer);
     }
 
     @Override
-    protected SendStatus send(String payload, Callback callback) {
-        ProducerRecord<String, String> record = new ProducerRecord<>(getTopic(), payload);
-        return new SendStatus(getKafkaProducer().send(record, callback));
+    SendStatus send(ProducerRecord<String, String> record, Callback callback) {
+        return new SendStatus(kafkaProducer.send(record, callback));
     }
 }

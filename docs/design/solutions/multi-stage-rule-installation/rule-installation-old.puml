@@ -1,0 +1,43 @@
+@startuml
+
+title Installation of switch rules on flow reroute
+
+control kilda.flow
+participant CrudBolt
+participant TransactionBolt
+control kilda.speaker.flow
+
+kilda.flow -> CrudBolt: (via SplitterBolt)\nFlowRerouteRequest
+activate CrudBolt
+CrudBolt -> CrudBolt: Compute the path and store flow entities
+
+loop for each switch rule in old (forward, reverse) flow
+    CrudBolt -> TransactionBolt: CommandMessage (RemoveFlow)
+    TransactionBolt -> kilda.speaker.flow: Forward to Speaker
+end
+
+loop for new (forward, reverse) flow
+    CrudBolt -> TransactionBolt: CommandMessage (InstallEgressFlow)
+    TransactionBolt -> TransactionBolt: Register as a transaction for the flow
+    TransactionBolt -> kilda.speaker.flow: Forward to Speaker
+    loop for each flow segment
+        CrudBolt -> TransactionBolt: CommandMessage (InstallTransitFlow)
+        TransactionBolt -> TransactionBolt: Register as a transaction for the flow
+        TransactionBolt -> kilda.speaker.flow: Forward to Speaker
+    end
+    CrudBolt -> TransactionBolt: CommandMessage (InstallIngressFlow)
+    TransactionBolt -> TransactionBolt: Register as a transaction for the flow
+    TransactionBolt -> kilda.speaker.flow: Forward to Speaker
+end
+deactivate CrudBolt
+
+loop for each installed switch rule
+    kilda.flow -> TransactionBolt: (via SpeakerBolt)\nCommandMessage
+    TransactionBolt -> TransactionBolt: Mark corresponding transaction as completed
+	opt Are all transactions of a flow completed?
+        TransactionBolt -> StatusBolt: Update the flow status to FlowStatus.UP
+        StatusBolt -> StatusBolt: Set the flow status
+	end
+end
+
+@enduml

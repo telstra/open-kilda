@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class IslService {
@@ -207,30 +208,35 @@ public class IslService {
      * @param sender sender.
      */
     public void islDiscoveryFailed(Isl isl, Sender sender) {
-        islDiscoveryFailed(isl);
-
-        String reason = String.format("ISL discovery failed. Endpoint: %s_%d. ISL status: %s",
-                isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(), isl.getStatus());
-        sender.sendRerouteAffectedFlowsMessage(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(), reason);
+        if (islDiscoveryFailed(isl)) {
+            String reason = String.format("ISL discovery failed. Endpoint: %s_%d. ISL status: %s",
+                    isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(), isl.getStatus());
+            sender.sendRerouteAffectedFlowsMessage(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(), reason);
+        }
     }
 
     /**
      * Isl discovery failed.
      *
      * @param isl isl.
+     * @return ISL update happens flag
      */
-    public void islDiscoveryFailed(Isl isl) {
+    public boolean islDiscoveryFailed(Isl isl) {
         log.debug("ISL by source endpoint {}_{} discovery failed",
                 isl.getSrcSwitch().getSwitchId(), isl.getSrcPort());
-        transactionManager.doInTransaction(() -> processDiscoveryFailedIsl(isl));
+        return transactionManager.doInTransaction(() -> processDiscoveryFailedIsl(isl));
     }
 
-    private void processDiscoveryFailedIsl(Isl isl) {
-        Collection<Isl> isls = islRepository.findBySrcEndpoint(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort());
+    private boolean processDiscoveryFailedIsl(Isl isl) {
+        IslStatus islStatus = IslStatus.MOVED == isl.getStatus() ? IslStatus.MOVED : IslStatus.INACTIVE;
+        Collection<Isl> isls = islRepository.findBySrcEndpoint(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort())
+                .stream()
+                .filter(link -> IslStatus.ACTIVE == link.getStatus()
+                              || IslStatus.MOVED == islStatus)
+                .collect(Collectors.toList());
 
         for (Isl link : isls) {
             log.info("Deactivate ISL {}", link);
-            IslStatus islStatus = IslStatus.MOVED.equals(isl.getStatus()) ? IslStatus.MOVED : IslStatus.INACTIVE;
             link.setActualStatus(islStatus);
 
             Optional<Isl> foundReverseLink = islRepository.findByEndpoints(link.getDestSwitch().getSwitchId(),
@@ -245,5 +251,6 @@ public class IslService {
 
             islRepository.createOrUpdate(link);
         }
+        return !isls.isEmpty();
     }
 }

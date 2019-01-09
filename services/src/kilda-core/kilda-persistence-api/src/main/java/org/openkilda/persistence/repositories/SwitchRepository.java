@@ -26,4 +26,6 @@ public interface SwitchRepository extends Repository<Switch> {
     Optional<Switch> findById(SwitchId switchId);
 
     Switch reload(Switch entity);
+
+    void lockSwitches(Switch... switches);
 }

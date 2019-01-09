@@ -118,7 +118,7 @@ public class FlowDto implements Serializable {
      * Flow source meter id.
      */
     @JsonProperty("meter_id")
-    private int meterId;
+    private Integer meterId;
 
     /**
      * Flow transit vlan id.
@@ -177,7 +177,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("dst_port") final int destinationPort,
                    @JsonProperty("src_vlan") final int sourceVlan,
                    @JsonProperty("dst_vlan") final int destinationVlan,
-                   @JsonProperty("meter_id") final int meterId,
+                   @JsonProperty("meter_id") final Integer meterId,
                    @JsonProperty("transit_vlan") final int transitVlan,
                    @JsonProperty(Utils.FLOW_PATH) final PathInfoData flowPath,
                    @JsonProperty("state") FlowState state) {
@@ -256,7 +256,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                0, 0, null, null);
+                null, 0, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -273,7 +273,7 @@ public class FlowDto implements Serializable {
                 input.getDestination().getPortNumber(),
                 input.getSource().getVlanId(),
                 input.getDestination().getVlanId(),
-                0, 0, null, null);
+                null, 0, null, null);
     }
 
     /**

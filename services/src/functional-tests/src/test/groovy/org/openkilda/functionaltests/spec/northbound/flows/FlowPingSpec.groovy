@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.northbound.flows
 
-import spock.lang.Ignore
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -9,8 +7,6 @@ import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
-import org.openkilda.functionaltests.helpers.FlowHelper
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -18,17 +14,9 @@ import org.openkilda.messaging.info.event.SwitchInfoData
 import org.openkilda.northbound.dto.flows.PingInput
 import org.openkilda.northbound.dto.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput
-import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
-import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.tools.IslUtils
 
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -39,23 +27,6 @@ be delivered at the other end. 'Pings' the flow in both directions(forward and r
 """)
 @CleanupSwitches
 class FlowPingSpec extends BaseSpecification {
-    @Autowired
-    TopologyDefinition topology
-    @Autowired
-    FlowHelper flowHelper
-    @Autowired
-    IslUtils islUtils
-    @Autowired
-    PathHelper pathHelper
-    @Autowired
-    NorthboundService northboundService
-    @Autowired
-    Database db
-    @Autowired
-    LockKeeperService lockKeeper
-
-    @Value('${discovery.interval}')
-    int discoveryInterval
 
     @Unroll("Able to ping a flow with vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
@@ -64,7 +35,7 @@ class FlowPingSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Ping the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput())
+        def response = northbound.pingFlow(flow.id, new PingInput())
 
         then: "Ping is successfull"
         response.forward.pingSuccess
@@ -91,7 +62,7 @@ class FlowPingSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Ping the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput())
+        def response = northbound.pingFlow(flow.id, new PingInput())
 
         then: "Ping is successful"
         response.forward.pingSuccess
@@ -109,8 +80,6 @@ class FlowPingSpec extends BaseSpecification {
         [srcSwitch, dstSwitch] << ofSwitchCombinations
     }
 
-    @Ignore
-    @Issue("https://github.com/telstra/open-kilda/issues/1416")
     @Unroll("Flow ping can detect a broken #description")
     def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
@@ -120,7 +89,7 @@ class FlowPingSpec extends BaseSpecification {
         //select src and dst switches that have an a-switch path
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allPaths = db.getPaths(src.dpId, dst.dpId)*.path
+            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
             aswitchPath = allPaths.find { pathHelper.getInvolvedIsls(it).find { it.aswitch } }
             aswitchPath
         } ?: assumeTrue("Wasn't able to find suitable switch pair", false)
@@ -130,7 +99,7 @@ class FlowPingSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
         expectedPingResult.flowId = flow.id
-        assert aswitchPath == pathHelper.convert(northboundService.getFlowPath(flow.id))
+        assert aswitchPath == pathHelper.convert(northbound.getFlowPath(flow.id))
 
         when: "Break the flow by removing rules from a-switch"
         def islToBreak = pathHelper.getInvolvedIsls(aswitchPath).find { it.aswitch }
@@ -140,7 +109,7 @@ class FlowPingSpec extends BaseSpecification {
         lockKeeper.removeFlows(rulesToRemove)
 
         and: "Ping the flow"
-        def response = northboundService.pingFlow(flow.id, data.pingInput)
+        def response = northbound.pingFlow(flow.id, data.pingInput)
 
         then: "Ping response properly shows that certain direction is unpingable"
         expect response, sameBeanAs(expectedPingResult)
@@ -149,8 +118,8 @@ class FlowPingSpec extends BaseSpecification {
         and: "Restore rules, costs and remove the flow"
         lockKeeper.addFlows(rulesToRemove)
         flowHelper.deleteFlow(flow.id)
-        northboundService.deleteLinkProps(northboundService.getAllLinkProps())
-        db.resetCosts()
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        database.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
@@ -172,26 +141,24 @@ class FlowPingSpec extends BaseSpecification {
                         breakReverse: true,
                         pingInput   : new PingInput()
                 ],
-                //TODO(rtretiak): below are ignored due to #1416
-//                [
-//                        breakForward: true,
-//                        breakReverse: false,
-//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
-//                ],
-//                [
-//                        breakForward: false,
-//                        breakReverse: true,
-//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
-//                ],
-//                [
-//                        breakForward: true,
-//                        breakReverse: true,
-//                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
-//                ]
+                [
+                        breakForward: true,
+                        breakReverse: false,
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                ],
+                [
+                        breakForward: false,
+                        breakReverse: true,
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                ],
+                [
+                        breakForward: true,
+                        breakReverse: true,
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                ]
         ]
         description = "${data.breakForward ? "forward" : ""}${data.breakForward && data.breakReverse ? " and " : ""}" +
-                "${data.breakReverse ? "reverse" : ""} path with ${data.pingInput.timeoutMillis}ms" +
-                " timeout"
+                "${data.breakReverse ? "reverse" : ""} path with ${data.pingInput.timeoutMillis}ms timeout"
 
         expectedPingResult = new PingOutputBuilder()
                 .forward(new UniFlowPingOutput(
@@ -210,7 +177,7 @@ class FlowPingSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Ping the flow"
-        def response = northboundService.pingFlow(flow.id, new PingInput())
+        def response = northbound.pingFlow(flow.id, new PingInput())
 
         then: "The flow is pingable"
         response.forward.pingSuccess
@@ -228,7 +195,7 @@ class FlowPingSpec extends BaseSpecification {
     def "Verify error if try to ping with wrong flowId"() {
         when: "Send ping request with non-existing flowId"
         def wrongFlowId = "nonexistent"
-        def response = northboundService.pingFlow(wrongFlowId, new PingInput())
+        def response = northbound.pingFlow(wrongFlowId, new PingInput())
 
         then: "Receive error response"
         with(response) {
@@ -244,7 +211,7 @@ class FlowPingSpec extends BaseSpecification {
      * combinations with Centec switches and OF_12 switches
      */
     def getOfSwitchCombinations() {
-        def nbSwitches = northboundService.getActiveSwitches()
+        def nbSwitches = northbound.getActiveSwitches()
         return [nbSwitches, nbSwitches].combinations()
             .findAll { src, dst ->
                 //exclude single-switch flows
@@ -262,16 +229,12 @@ class FlowPingSpec extends BaseSpecification {
     }
 
     def nonCentecSwitches() {
-        northboundService.getActiveSwitches()
+        northbound.getActiveSwitches()
                 .findAll { !it.description.contains("Centec") }
                 .collect { toSwitch(it) }
     }
 
     Switch toSwitch(SwitchInfoData nbSwitch) {
         topology.activeSwitches.find { it.dpId == nbSwitch.switchId }
-    }
-
-    def getDiscoveryInterval() {
-        discoveryInterval
     }
 }

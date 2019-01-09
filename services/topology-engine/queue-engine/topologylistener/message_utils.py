@@ -223,37 +223,6 @@ def make_features_status_response():
     return message
 
 
-def send_dump_rules_request(switch_id, correlation_id):
-    message = Message()
-    message.clazz = 'org.openkilda.messaging.command.switches.DumpRulesRequest'
-    message.switch_id = switch_id
-    reply_to = {"reply_to": config.KAFKA_TOPO_ENG_TOPIC }
-    send_to_topic(message, correlation_id, MT_COMMAND_REPLY,
-                  topic=config.KAFKA_SPEAKER_TOPIC,
-                  extra=reply_to)
-
-
-def send_validation_rules_response(missing_rules, excess_rules, proper_rules,
-    correlation_id):
-    message = Message()
-    message.clazz = 'org.openkilda.messaging.info.switches.SyncRulesResponse'
-    message.missing_rules = list(missing_rules)
-    message.excess_rules = list(excess_rules)
-    message.proper_rules = list(proper_rules)
-    send_to_topic(message, correlation_id, MT_INFO,
-                  destination="NORTHBOUND",
-                  topic=config.KAFKA_NORTHBOUND_TOPIC)
-
-
-def send_error_validation_rules_response(correlation_id, error_type, error_message, error_description):
-    send_error_message(correlation_id,
-                       error_type,
-                       error_message,
-                       error_description,
-                       destination="NORTHBOUND",
-                       topic=config.KAFKA_NORTHBOUND_TOPIC)
-
-
 def send_sync_rules_response(installed_rules, correlation_id):
     message = Message()
     message.clazz = 'org.openkilda.messaging.info.switches.SyncRulesResponse'

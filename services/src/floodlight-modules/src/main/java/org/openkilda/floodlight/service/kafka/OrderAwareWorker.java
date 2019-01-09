@@ -16,7 +16,6 @@
 package org.openkilda.floodlight.service.kafka;
 
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
@@ -24,15 +23,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Future;
 
-public class OrderAwareWorker extends AbstractWorker {
+class OrderAwareWorker extends AbstractWorker {
     private static final Logger log = LoggerFactory.getLogger(OrderAwareWorker.class);
 
     private int deep = 1;
     private long expireAt = 0;
     private Integer partition;
 
-    public OrderAwareWorker(AbstractWorker worker) {
-        super(worker.getKafkaProducer(), worker.getTopic());
+    OrderAwareWorker(AbstractWorker worker) {
+        super(worker);
 
         if (worker instanceof OrderAwareWorker) {
             OrderAwareWorker other = (OrderAwareWorker) worker;
@@ -41,20 +40,14 @@ public class OrderAwareWorker extends AbstractWorker {
         }
     }
 
-    public OrderAwareWorker(Producer<String, String> kafkaProducer, String topic) {
-        super(kafkaProducer, topic);
-    }
-
     @Override
-    protected synchronized SendStatus send(String payload, Callback callback) {
-        ProducerRecord<String, String> record;
-        if (partition == null) {
-            record = new ProducerRecord<>(getTopic(), payload);
-        } else {
-            record = new ProducerRecord<>(getTopic(), partition, null, payload);
+    protected synchronized SendStatus send(ProducerRecord<String, String> record, Callback callback) {
+        ProducerRecord<String, String> actualRecord = record;
+        if (partition != null) {
+            actualRecord = new ProducerRecord<>(record.topic(), partition, record.key(), record.value());
         }
 
-        Future<RecordMetadata> promise = getKafkaProducer().send(record, callback);
+        Future<RecordMetadata> promise = kafkaProducer.send(actualRecord, callback);
         if (partition == null) {
             try {
                 partition = promise.get().partition();
@@ -70,7 +63,7 @@ public class OrderAwareWorker extends AbstractWorker {
     @Override
     void deactivate(long transitionPeriod) {
         if (deep == 0) {
-            throw new IllegalStateException("Number of .diable() calls have overcome number of .enable() calls");
+            throw new IllegalStateException("Number of .disable() calls have overcome number of .enable() calls");
         }
 
         deep -= 1;
