@@ -1,0 +1,111 @@
+@startuml
+title Hub And Spoke Flow Create
+
+ actor User
+boundary "NB v2" as NB
+participant FlowManager << Hub >>
+participant DAO
+participant FlowValidator
+participant PathComputer
+participant ResourcePool
+participant CommandBuilder
+database DAO
+participant History
+participant SpeakerWorker
+participant RulesValidator
+
+User -> NB : Create request
+
+activate NB
+NB -> FlowManager : Create flow
+activate FlowManager
+FlowManager -> History : Flow Creation Started "FLOW X: Initialized"
+ ==Validation==
+FlowManager -> FlowValidator : Validate flow
+FlowValidator -> FlowValidator : Validate flow
+FlowManager <- FlowValidator : Flow validation result
+note right: Check whether flow with \nsuch id exists, ports/vlan \nconflicts, etc
+alt Is flow valid?
+    NB <- FlowManager : Flow creation error
+    User <- NB : Flow creation error
+end
+FlowManager -> History : Flow Creation Started "FLOW X: Validated"
+FlowManager -> FlowManager : Start Flow Creation Workflow
+
+ == Path calculation and resource allocation ==
+FlowManager -> PathComputer : Find path
+FlowManager <- PathComputer : Path for flow
+alt Path is not present?
+    NB <- FlowManager : Flow creation error
+    User <- NB : Flow creation error
+else Path is found
+    NB <- FlowManager : Flow creation\n is in progress
+    User <- NB : Flow creation response
+    deactivate NB
+end
+FlowManager -> History : Flow Creation is in progress "FLOW X: Path found"
+
+FlowManager -> ResourcePool : Allocate resources
+activate ResourcePool
+ResourcePool -> DAO : Get available resources
+ResourcePool <- DAO : Used cookies, vlans, meters
+ResourcePool -> ResourcePool : Allocate resources for flow
+ResourcePool -> DAO : Update used resources
+FlowManager <- ResourcePool : Allocated resources
+deactivate ResourcePool
+FlowManager -> History : Flow Creation is in progress "FLOW X: Resources allocated"
+
+FlowManager -> DAO : Save flow
+note right: Status of the flow is IN_PROGRESS
+FlowManager -> DAO : Save flow segments
+FlowManager -> DAO : Update ISLs available bandwidth
+
+ == Flow installation ==
+FlowManager -> CommandBuilder : Create Switch Rules
+CommandBuilder -> CommandBuilder : Build commands
+note right : Two groups of commands is created:\nEgress/transit (1st stage) and ingress (2nd stage)
+
+FlowManager <- CommandBuilder: Flow installation commands
+loop in (1st stage commands)
+    FlowManager -> SpeakerWorker : Install a rule
+end
+deactivate FlowManager
+
+loop for each installed rule from 1st stage
+    FlowManager <- SpeakerWorker : a rule has been installed
+    activate FlowManager
+    FlowManager -> FlowManager : mark corresponding rule as installed
+    FlowManager -> History : N of M rules are installed
+    opt Is the last command in 1st group?
+        FlowManager -> History : Validating non-ingress installed rules
+        FlowManager -> RulesValidator : Validate egress/transit rules from 1st stage
+    end
+end
+deactivate FlowManager
+
+FlowManager <- RulesValidator : Egress/transit rules are installed and valid
+activate FlowManager
+loop in (2nd stage commands)
+    FlowManager -> SpeakerWorker : Install an ingress rule
+end
+deactivate FlowManager
+
+loop for each installed rule from 2nd stage
+    FlowManager <- SpeakerWorker : a rule has been installed
+    activate FlowManager
+    FlowManager -> History : N of M rules are installed
+    FlowManager -> FlowManager : mark corresponding rule as installed
+    opt Is the last command in 2nd group?
+        FlowManager -> History : Final validation of installed rules
+        FlowManager -> RulesValidator : Validate ingress rules
+    end
+end
+deactivate FlowManager
+
+FlowManager <- RulesValidator : Ingress rules are installed and valid
+activate FlowManager
+FlowManager -> DAO : Update flow status to UP
+FlowManager -> History : FLOW X is UP
+deactivate FlowManager
+
+@enduml
