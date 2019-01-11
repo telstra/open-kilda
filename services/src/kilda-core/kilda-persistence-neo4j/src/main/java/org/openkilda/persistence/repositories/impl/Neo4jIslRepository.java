@@ -67,6 +67,18 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
+    public Collection<Isl> findBySrcSwitch(SwitchId switchId) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        return getSession().loadAll(getEntityType(), srcSwitchFilter, DEPTH_LOAD_ENTITY);
+    }
+
+    @Override
+    public Collection<Isl> findByDestSwitch(SwitchId switchId) {
+        Filter destSwitchFilter = createDstSwitchFilter(switchId);
+        return getSession().loadAll(getEntityType(), destSwitchFilter, DEPTH_LOAD_ENTITY);
+    }
+
+    @Override
     public Optional<Isl> findByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort) {
         Filter srcSwitchFilter = createSrcSwitchFilter(srcSwitchId);
         Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);

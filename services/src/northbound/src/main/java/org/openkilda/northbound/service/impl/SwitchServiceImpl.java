@@ -45,13 +45,16 @@ import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
+import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.DeleteSwitchResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
@@ -320,6 +323,20 @@ public class SwitchServiceImpl implements SwitchService {
                 .filter(entry -> cookie.equals(entry.getCookie()))
                 .collect(Collectors.toList());
         return new SwitchFlowEntries(entries.getSwitchId(), matchedFlows);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<DeleteSwitchResult> deleteSwitch(SwitchId switchId, boolean force) {
+        String correlationId = RequestCorrelationId.getId();
+        CommandWithReplyToMessage deleteCommand = new CommandWithReplyToMessage(
+                new DeleteSwitchRequest(switchId, force),
+                System.currentTimeMillis(), correlationId, Destination.WFM, northboundTopic);
+        return messagingChannel.sendAndGet(nbworkerTopic, deleteCommand)
+                .thenApply(DeleteSwitchResponse.class::cast)
+                .thenApply(response -> new DeleteSwitchResult(response.isDeleted()));
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

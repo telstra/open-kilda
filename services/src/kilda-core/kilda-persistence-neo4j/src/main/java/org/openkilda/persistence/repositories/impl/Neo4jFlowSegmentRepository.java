@@ -53,6 +53,12 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
     }
 
     @Override
+    public Collection<FlowSegment> findBySrcSwitchId(SwitchId switchId) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        return getSession().loadAll(getEntityType(), srcSwitchFilter, DEPTH_LOAD_ENTITY);
+    }
+
+    @Override
     public void createOrUpdate(FlowSegment segment) {
         transactionManager.doInTransaction(() -> {
             lockSwitches(requireManagedEntity(segment.getSrcSwitch()), requireManagedEntity(segment.getDestSwitch()));
