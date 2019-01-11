@@ -26,6 +26,10 @@ public interface IslRepository extends Repository<Isl> {
 
     Collection<Isl> findByDestEndpoint(SwitchId dstSwitchId, int dstPort);
 
+    Collection<Isl> findBySrcSwitch(SwitchId switchId);
+
+    Collection<Isl> findByDestSwitch(SwitchId switchId);
+
     Optional<Isl> findByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 
     /**
