@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.DeleteSwitchResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
@@ -176,4 +177,14 @@ public interface SwitchService {
      */
     CompletableFuture<SwitchDto> updateSwitchUnderMaintenance(SwitchId switchId,
                                                               UnderMaintenanceDto underMaintenanceDto);
+
+    /**
+     * Delete switch.
+     *
+     * @param switchId id of switch to delete
+     * @param force True value means that all switch checks (switch is deactivated, there is no flow with this switch,
+     *              switch has no ISLs) will be ignored.
+     * @return result of the operation wrapped into {@link DeleteSwitchResult}. True means no errors is occurred.
+     */
+    CompletableFuture<DeleteSwitchResult> deleteSwitch(SwitchId switchId, boolean force);
 }

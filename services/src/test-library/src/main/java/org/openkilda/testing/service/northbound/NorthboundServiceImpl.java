@@ -46,6 +46,7 @@ import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.DeleteSwitchResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
@@ -443,6 +444,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     public SwitchMeterEntries getAllMeters(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/meters", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchMeterEntries.class, switchId).getBody();
+    }
+
+    @Override
+    public DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force) {
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+        String url = "/api/v1/switches/{switch_id}?force={force}";
+        return restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity(httpHeaders),
+                DeleteSwitchResult.class, switchId, force).getBody();
     }
 
     @Override
