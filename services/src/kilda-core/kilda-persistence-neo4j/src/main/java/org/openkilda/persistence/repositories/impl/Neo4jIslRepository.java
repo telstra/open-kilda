@@ -16,11 +16,9 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
-import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.SWITCH_NAME_PROPERTY_NAME;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceException;
@@ -54,9 +52,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
 
     @Override
     public Collection<Isl> findBySrcEndpoint(SwitchId srcSwitchId, int srcPort) {
-        Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS,
-                srcSwitchId.toString());
-        srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment("srcSwitch", Switch.class));
+        Filter srcSwitchFilter = createSrcSwitchFilter(srcSwitchId);
         Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);
 
         return getSession().loadAll(getEntityType(), srcSwitchFilter.and(srcPortFilter), DEPTH_LOAD_ENTITY);
@@ -64,9 +60,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
 
     @Override
     public Collection<Isl> findByDestEndpoint(SwitchId dstSwitchId, int dstPort) {
-        Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS,
-                dstSwitchId.toString());
-        dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment("destSwitch", Switch.class));
+        Filter dstSwitchFilter = createDstSwitchFilter(dstSwitchId);
         Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
 
         return getSession().loadAll(getEntityType(), dstSwitchFilter.and(dstPortFilter), DEPTH_LOAD_ENTITY);
@@ -74,13 +68,9 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
 
     @Override
     public Optional<Isl> findByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort) {
-        Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS,
-                srcSwitchId.toString());
-        srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment("srcSwitch", Switch.class));
+        Filter srcSwitchFilter = createSrcSwitchFilter(srcSwitchId);
         Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);
-        Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS,
-                dstSwitchId.toString());
-        dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment("destSwitch", Switch.class));
+        Filter dstSwitchFilter = createDstSwitchFilter(dstSwitchId);
         Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
 
         Collection<Isl> isls = getSession().loadAll(getEntityType(),
