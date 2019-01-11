@@ -40,6 +40,7 @@ import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.DeleteSwitchResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
@@ -103,6 +104,8 @@ public interface NorthboundService {
 
     SwitchMeterEntries getAllMeters(SwitchId switchId);
 
+    DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force);
+
     PortDto configurePort(SwitchId switchId, Integer portNo, Object config);
 
     PortDto portDown(SwitchId switchId, Integer portNo);
@@ -160,6 +163,17 @@ public interface NorthboundService {
                         && link.getSource().getPortNo() == srcPort
                         && link.getDestination().getSwitchId().equals(dstSwitch)
                         && link.getDestination().getPortNo() == dstPort)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * Get all links for switch.
+     */
+    default List<IslInfoData> getAllSwitchLinks(SwitchId switchId) {
+        return getAllLinks().stream()
+                .filter(link -> link.getSource().getSwitchId().equals(switchId)
+                             || link.getDestination().getSwitchId().equals(switchId))
                 .collect(Collectors.toList());
     }
 
