@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,21 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.northbound.dto.switches;
 
-import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 
-import java.util.Optional;
+@Value
+public class DeleteSwitchResult {
 
-public interface SwitchRepository extends Repository<Switch> {
-    boolean exists(SwitchId switchId);
+    @JsonProperty("deleted")
+    private boolean deleted;
 
-    Optional<Switch> findById(SwitchId switchId);
-
-    Switch reload(Switch entity);
-
-    void lockSwitches(Switch... switches);
-
-    void forceDelete(SwitchId switchId);
+    public DeleteSwitchResult(@JsonProperty("deleted") boolean deleted) {
+        this.deleted = deleted;
+    }
 }
