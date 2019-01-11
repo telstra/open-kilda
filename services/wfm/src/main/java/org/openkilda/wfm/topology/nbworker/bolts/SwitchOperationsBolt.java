@@ -20,18 +20,24 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.mappers.SwitchMapper;
+import org.openkilda.wfm.topology.nbworker.services.SwitchService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class SwitchOperationsBolt extends PersistenceOperationsBolt {
+    private transient SwitchService switchService;
+
     public SwitchOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
+    }
+
+    @Override
+    protected void init() {
+        switchService = new SwitchService(repositoryFactory);
     }
 
     @Override
@@ -48,9 +54,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<SwitchInfoData> getSwitches() {
-        return repositoryFactory.createSwitchRepository().findAll().stream()
-                .map(SwitchMapper.INSTANCE::map)
-                .collect(Collectors.toList());
+        return switchService.getAllSwitches();
     }
 
     @Override

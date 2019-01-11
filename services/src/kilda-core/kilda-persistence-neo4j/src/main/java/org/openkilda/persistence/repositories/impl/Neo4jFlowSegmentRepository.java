@@ -34,7 +34,6 @@ import java.util.Optional;
 public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegment> implements FlowSegmentRepository {
     private static final String FLOW_ID_PROPERTY_NAME = "flowid";
     private static final String COOKIE_PROPERTY_NAME = "cookie";
-    private static final String DEST_SWITCH_PROPERTY_NAME = "dst_switch";
 
     public Neo4jFlowSegmentRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -49,7 +48,7 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
 
     @Override
     public Collection<FlowSegment> findByDestSwitchId(SwitchId switchId) {
-        Filter destSwitchIdFilter = new Filter(DEST_SWITCH_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
+        Filter destSwitchIdFilter = createDstSwitchFilter(switchId);
         return getSession().loadAll(getEntityType(), destSwitchIdFilter, DEPTH_LOAD_ENTITY);
     }
 

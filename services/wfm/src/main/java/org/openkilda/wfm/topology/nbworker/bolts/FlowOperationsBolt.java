@@ -33,8 +33,6 @@ import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -42,7 +40,6 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public class FlowOperationsBolt extends PersistenceOperationsBolt {
@@ -56,8 +53,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
      * {@inheritDoc}
      */
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
+    public void init() {
         this.flowOperationsService = new FlowOperationsService(repositoryFactory);
     }
 
