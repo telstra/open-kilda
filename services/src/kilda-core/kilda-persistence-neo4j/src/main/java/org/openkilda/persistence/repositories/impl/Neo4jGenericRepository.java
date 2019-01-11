@@ -16,13 +16,17 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
+import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.SWITCH_NAME_PROPERTY_NAME;
 
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.Repository;
 
 import com.google.common.collect.ImmutableMap;
+import org.neo4j.ogm.cypher.ComparisonOperator;
+import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Arrays;
@@ -36,6 +40,8 @@ import java.util.Map;
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
     static final int DEPTH_LOAD_ENTITY = 1;
     static final int DEPTH_CREATE_UPDATE_ENTITY = 0;
+    private static final String SRC_SWITCH_FIELD = "srcSwitch";
+    private static final String DEST_SWITCH_FIELD = "destSwitch";
 
     private final Neo4jSessionFactory sessionFactory;
     protected final TransactionManager transactionManager;
@@ -96,5 +102,17 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         Arrays.stream(switches)
                 .sorted(Comparator.comparing(Switch::getSwitchId))
                 .forEach(this::lockSwitch);
+    }
+
+    Filter createSrcSwitchFilter(SwitchId switchId) {
+        Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment(SRC_SWITCH_FIELD, Switch.class));
+        return srcSwitchFilter;
+    }
+
+    Filter createDstSwitchFilter(SwitchId switchId) {
+        Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment(DEST_SWITCH_FIELD, Switch.class));
+        return dstSwitchFilter;
     }
 }

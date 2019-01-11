@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
@@ -37,8 +39,6 @@ import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.LinkPropsMapper;
 import org.openkilda.wfm.topology.nbworker.services.IslService;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -47,7 +47,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -59,15 +58,13 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
+    public void init() {
         this.islService = new IslService(repositoryFactory);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request)
-            throws IslNotFoundException, IllegalIslStateException {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
             result = getAllLinks();
@@ -201,10 +198,16 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         }
     }
 
-    private DeleteIslResponse deleteLink(DeleteLinkRequest request)
-            throws IllegalIslStateException, IslNotFoundException {
-        boolean deleted = islService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
-                                               request.getDstSwitch(), request.getDstPort());
+    private DeleteIslResponse deleteLink(DeleteLinkRequest request) {
+        boolean deleted;
+        try {
+            deleted = islService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
+                                           request.getDstSwitch(), request.getDstPort());
+        } catch (IslNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+        } catch (IllegalIslStateException e) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), "ISL is in illegal state.");
+        }
         return new DeleteIslResponse(deleted);
     }
 
