@@ -21,12 +21,15 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
+import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
+import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
@@ -73,6 +76,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
                     tuple, correlationId);
         } else if (request instanceof GetSwitchRequest) {
             result = getSwitch((GetSwitchRequest) request);
+        } else if (request instanceof DeleteSwitchRequest) {
+            result = Collections.singletonList(deleteSwitch((DeleteSwitchRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -116,6 +121,33 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         }
 
         return Collections.singletonList(SwitchMapper.INSTANCE.map(sw));
+    }
+
+    private DeleteSwitchResponse deleteSwitch(DeleteSwitchRequest request) {
+        SwitchId switchId = request.getSwitchId();
+        boolean force = request.isForce();
+        boolean deleted = transactionManager.doInTransaction(() -> {
+            try {
+                if (!force) {
+                    switchOperationsService.checkSwitchIsDeactivated(switchId);
+                    switchOperationsService.checkSwitchHasNoFlows(switchId);
+                    switchOperationsService.checkSwitchHasNoFlowSegments(switchId);
+                    switchOperationsService.checkSwitchHasNoIsls(switchId);
+                }
+                return switchOperationsService.deleteSwitch(switchId, force);
+            } catch (SwitchNotFoundException e) {
+                String message = String.format("Could not delete switch '%s': '%s'", switchId, e.getMessage());
+                log.error(message);
+                throw new MessageException(ErrorType.NOT_FOUND, message, "Switch is not found.");
+            } catch (IllegalSwitchStateException e) {
+                String message = String.format("Could not delete switch '%s': '%s'", switchId, e.getMessage());
+                log.error(message);
+                throw new MessageException(ErrorType.REQUEST_INVALID, message, "Switch is in illegal state");
+            }
+        });
+
+        log.info("{} deletion of switch '{}'", deleted ? "Successful" : "Unsuccessful", switchId);
+        return new DeleteSwitchResponse(deleted);
     }
 
     @Override
