@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
+import org.openkilda.messaging.command.flow.MeterModifyRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -190,6 +191,13 @@ public class SplitterBolt extends BaseRichBolt {
                 values = new Values(message, null);
                 outputCollector.emit(StreamType.CACHE_SYNC.toString(), tuple, values);
 
+            } else if (data instanceof MeterModifyRequest) {
+                String flowId = ((MeterModifyRequest) data).getFlowId();
+
+                logger.info("Update meter for flow {}", flowId);
+
+                values = new Values(message, flowId);
+                outputCollector.emit(StreamType.METER_MODE.toString(), tuple, values);
             } else {
                 logger.debug("Skip undefined CommandMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
             }
@@ -219,6 +227,7 @@ public class SplitterBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.REROUTE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
+        outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), FlowTopology.fieldsMessageFlowId);
     }
 
     /**
