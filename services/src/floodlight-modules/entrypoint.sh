@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2017 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +13,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-FROM kilda/base-ubuntu
+set -e
+extra_params=${@:2}
 
-ADD src/main/resources/floodlightkilda.properties /app
-ADD src/main/resources/logback.xml /app
-ADD run-deps/floodlight.jar /app/floodlight.jar
-ADD target/floodlight-modules.jar /app/floodlight-modules.jar
-ADD entrypoint.sh /entrypoint.sh
+if [ "$1" = 'floodlight' ]; then
+  exec java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap \
+    -Dlogback.configurationFile=/app/logback.xml ${extra_params} -cp /app/floodlight.jar:/app/floodlight-modules.jar \
+    net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
+fi
 
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["floodlight"]
+exec "$@"
