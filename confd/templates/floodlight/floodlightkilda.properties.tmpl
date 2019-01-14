@@ -66,6 +66,7 @@ org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = {
 org.openkilda.floodlight.KafkaChannel.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
 org.openkilda.floodlight.KafkaChannel.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
 #org.openkilda.floodlight.KafkaChannel.heart-beat-interval=1
+org.openkilda.floodlight.KafkaChannel.floodlight-region=
 {{ if eq (getv "/kilda_environment_role") "devel" "test" }}
 org.openkilda.floodlight.KafkaChannel.testing-mode=YES
 {{ end }}
