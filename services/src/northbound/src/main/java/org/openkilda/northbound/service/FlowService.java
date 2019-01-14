@@ -16,6 +16,7 @@
 package org.openkilda.northbound.service;
 
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -145,6 +146,13 @@ public interface FlowService {
     CompletableFuture<List<FlowValidationDto>> validateFlow(final String flowId);
 
     CompletableFuture<PingOutput> pingFlow(String flowId, PingInput payload);
+
+    /**
+     * Modify burst size on switch.
+     * @param flowId id of the flow
+     * @return the meter entry
+     */
+    CompletableFuture<FlowMeterEntries> modifyMeter(String flowId);
 
     /**
      * Invalidate FlowResourcesCache in the flow topology.
