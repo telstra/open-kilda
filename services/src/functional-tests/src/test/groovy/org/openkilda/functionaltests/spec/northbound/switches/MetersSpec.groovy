@@ -166,6 +166,7 @@ class MetersSpec extends BaseSpecification {
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
     }
 
+    @Unroll
     def "Flow burst should be set to #burstSize kbps on Centec switches in case of #flowRate kbps flow bandwidth"() {
         requireProfiles("hardware")
 
@@ -200,10 +201,9 @@ class MetersSpec extends BaseSpecification {
 
         where:
         flowRate | burstSize
-        100      | 1024
-        1024     | 1024
-        20480    | 1024
-        960000   | 1024
+        975      | 1024 //should have been 1023, but use the minimum 1024
+        1000     | 1050 //the 1.05 multiplier
+        30478    | 32000 //should have been 32001, but use the maximum 32000
     }
 
     @Ignore

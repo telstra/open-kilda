@@ -73,9 +73,12 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "ISL goes back up"
         northbound.portUp(isl.dstSwitch.dpId, isl.dstPort)
+        Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        }
 
         then: "The flow becomes 'Up'"
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
         }
 

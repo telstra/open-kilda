@@ -28,6 +28,8 @@ class LinkPropertiesSpec extends BaseSpecification {
         //clear any existing properties before tests start
         def allLinkProps = northbound.getAllLinkProps()
         northbound.deleteLinkProps(allLinkProps)
+        //make sure all costs are default
+        database.resetCosts()
     }
 
     def "Empty list is returned if there are no properties"() {

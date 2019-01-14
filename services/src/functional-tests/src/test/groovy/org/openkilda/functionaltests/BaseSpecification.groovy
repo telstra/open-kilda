@@ -64,6 +64,9 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
 
     @Value('${discovery.timeout}')
     int discoveryTimeout
+    
+    @Value('${antiflap.cooldown}')
+    int antiflapCooldown
 
     /**
      * Use this instead of setupSpec in order to have access to Spring Context and do actions BeforeClass.

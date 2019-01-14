@@ -176,7 +176,8 @@ class FlowPingSpec extends BaseSpecification {
 
     def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
-        def sw = nonCentecSwitches().first()
+        def sw = nonCentecSwitches().find{ it.ofVersion != "OF_12" }
+        assert sw
         def flow = flowHelper.singleSwitchFlow(sw)
         flowHelper.addFlow(flow)
 
