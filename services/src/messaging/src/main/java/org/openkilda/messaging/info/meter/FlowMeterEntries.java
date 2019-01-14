@@ -18,40 +18,25 @@ package org.openkilda.messaging.info.meter;
 import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
-import java.io.Serializable;
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
 @Builder
-public class MeterEntry extends InfoData implements Serializable {
+public class FlowMeterEntries extends InfoData {
 
-    @JsonProperty("meter_id")
-    private long meterId;
-    @JsonProperty("rate")
-    private long rate;
-    @JsonProperty("burst_size")
-    private long burstSize;
-    @JsonProperty("version")
-    private String version;
-    @JsonProperty("flags")
-    private String[] flags;
+    @JsonProperty(value = "src_meter")
+    private SwitchMeterEntries srcMeter;
+
+    @JsonProperty(value = "dst_meter")
+    private SwitchMeterEntries dstMeter;
 
     @JsonCreator
-    public MeterEntry(
-            @JsonProperty("meter_id") long meterId,
-            @JsonProperty("rate") long rate,
-            @JsonProperty("burst_size") long burstSize,
-            @JsonProperty("version") String version,
-            @JsonProperty("flags") String[] flags) {
-        this.meterId = meterId;
-        this.rate = rate;
-        this.burstSize = burstSize;
-        this.version = version;
-        this.flags = flags;
+    public FlowMeterEntries(
+            @JsonProperty(value = "src_meter") SwitchMeterEntries srcMeter,
+            @JsonProperty(value = "dst_meter") SwitchMeterEntries dstMeter) {
+        this.srcMeter = srcMeter;
+        this.dstMeter = dstMeter;
     }
 }

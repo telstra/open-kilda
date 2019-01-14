@@ -531,6 +531,37 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return result;
     }
 
+    @Override
+    public OFMeterConfig dumpMeterById(final DatapathId dpid, final long meterId) throws SwitchOperationException {
+        OFMeterConfig meterConfig = null;
+        IOFSwitch sw = lookupSwitch(dpid);
+        if (sw == null) {
+            throw new IllegalArgumentException(format("Switch %s was not found", dpid));
+        }
+
+        verifySwitchSupportsMeters(sw);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFMeterConfigStatsRequest meterRequest = ofFactory.buildMeterConfigStatsRequest()
+                .setMeterId(meterId)
+                .build();
+
+        try {
+            ListenableFuture<List<OFMeterConfigStatsReply>> future = sw.writeStatsRequest(meterRequest);
+            List<OFMeterConfigStatsReply> values = future.get(10, TimeUnit.SECONDS);
+            if (values != null) {
+                List<OFMeterConfig> result = values.stream()
+                        .map(OFMeterConfigStatsReply::getEntries)
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList());
+                meterConfig = result.size() >= 1 ? result.get(0) : null;
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            logger.error("Could not get meter config stats for {}.", dpid, e);
+        }
+
+        return meterConfig;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -553,6 +584,31 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         } else {
             throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void modifyMeter(DatapathId dpid, long meterId, long bandwidth)
+            throws SwitchOperationException {
+        if (meterId > 0L) {
+            IOFSwitch sw = lookupSwitch(dpid);
+            verifySwitchSupportsMeters(sw);
+
+            long burstSize = Math.max(config.getFlowMeterMinBurstSizeInKbits(),
+                    (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
+
+            if (isCentecSwitch(sw)) {
+                burstSize = Math.min(burstSize, MAX_CENTEC_SWITCH_BURST_SIZE);
+            }
+
+            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
+            buildAndModifyMeter(sw, flags, meterId, burstSize, bandwidth);
+        } else {
+            throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
+        }
+
     }
 
     @Override
@@ -836,6 +892,33 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // All cases when we're installing meters require that we wait until the command is processed and
         // the meter is installed.
         sendBarrierRequest(sw);
+    }
+
+    private void buildAndModifyMeter(IOFSwitch sw, Set<OFMeterFlags> flags, long meterId, long burstSize,
+                                     long bandwidth) throws OfInstallException {
+        logger.info("Updating meter {} on Switch {}", meterId, sw);
+
+        OFFactory ofFactory = sw.getOFFactory();
+
+        OFMeterBandDrop.Builder bandBuilder = ofFactory.meterBands()
+                .buildDrop()
+                .setRate(bandwidth)
+                .setBurstSize(burstSize);
+
+        OFMeterMod.Builder meterModBuilder = ofFactory.buildMeterMod()
+                .setMeterId(meterId)
+                .setCommand(OFMeterModCommand.MODIFY)
+                .setFlags(flags);
+
+        if (sw.getOFFactory().getVersion().compareTo(OF_13) > 0) {
+            meterModBuilder.setBands(singletonList(bandBuilder.build()));
+        } else {
+            meterModBuilder.setMeters(singletonList(bandBuilder.build()));
+        }
+
+        OFMeterMod meterMod = meterModBuilder.build();
+
+        pushFlow(sw, "--ModifyMeter--", meterMod);
     }
 
     private void buildAndDeleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId)
@@ -1186,8 +1269,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     /**
      * Pushes a single flow modification command to the switch with the given datapath ID.
      *
-     * @param sw      open flow switch descriptor
-     * @param flowId  flow name, for logging
+     * @param sw open flow switch descriptor
+     * @param flowId flow name, for logging
      * @param flowMod command to send
      * @return OF transaction Id (???)
      * @throws OfInstallException openflow install exception
