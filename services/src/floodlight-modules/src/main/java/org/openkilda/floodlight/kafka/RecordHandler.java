@@ -58,6 +58,7 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
@@ -77,6 +78,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -197,6 +199,8 @@ class RecordHandler implements Runnable {
             doDumpPortDescriptionRequest(message);
         } else if (data instanceof DumpMetersRequest) {
             doDumpMetersRequest(message);
+        } else if (data instanceof MeterModifyCommandRequest) {
+            doModifyMeterRequest(message);
         } else {
             logger.error("Unable to handle '{}' request - handler not found.", data);
         }
@@ -902,6 +906,76 @@ class RecordHandler implements Runnable {
             anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
                     .withDescription("Unable to dump meters")
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
+    }
+
+    private void doModifyMeterRequest(CommandMessage message) {
+        MeterModifyCommandRequest request = (MeterModifyCommandRequest) message.getData();
+
+        final IKafkaProducerService producerService = getKafkaProducer();
+        String replyToTopic = context.getKafkaNorthboundTopic();
+
+        SwitchId fwdSwitchId = request.getFwdSwitchId();
+        SwitchId rvsSwitchId = request.getRvsSwitchId();
+
+        DatapathId fwdDpId = DatapathId.of(fwdSwitchId.toLong());
+        DatapathId rvsDpId = DatapathId.of(rvsSwitchId.toLong());
+        long fwdMeterId = request.getFwdMeterId();
+        long rvsMeterId = request.getRvsMeterId();
+
+        ISwitchManager switchManager = context.getSwitchManager();
+
+        try {
+            switchManager.modifyMeter(fwdDpId, fwdMeterId, request.getBandwidth());
+            switchManager.modifyMeter(rvsDpId, rvsMeterId, request.getBandwidth());
+
+            MeterEntry fwdMeterEntry = OfMeterConverter.toMeterEntry(switchManager.dumpMeterById(fwdDpId, fwdMeterId));
+            MeterEntry rvsMeterEntry = OfMeterConverter.toMeterEntry(switchManager.dumpMeterById(rvsDpId, rvsMeterId));
+
+            SwitchMeterEntries srcMeter = SwitchMeterEntries.builder()
+                    .switchId(fwdSwitchId)
+                    .meterEntries(ImmutableList.of(fwdMeterEntry))
+                    .build();
+
+            SwitchMeterEntries dstMeter = SwitchMeterEntries.builder()
+                    .switchId(rvsSwitchId)
+                    .meterEntries(ImmutableList.of(rvsMeterEntry))
+                    .build();
+
+            FlowMeterEntries response = FlowMeterEntries.builder()
+                    .srcMeter(srcMeter)
+                    .dstMeter(dstMeter)
+                    .build();
+
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
+            producerService.sendMessageAndTrack(context.getKafkaNorthboundTopic(), infoMessage);
+        } catch (UnsupportedSwitchOperationException e) {
+            String messageString = String.format("Not supported: %s", new SwitchId(e.getDpId().getLong()));
+            logger.error(messageString, e);
+            anError(ErrorType.PARAMETERS_INVALID)
+                    .withMessage(e.getMessage())
+                    .withDescription(messageString)
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        } catch (SwitchNotFoundException e) {
+            logger.error("Update switch meters is unsuccessful. Switch {} not found",
+                    new SwitchId(e.getDpId().getLong()));
+            anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription(new SwitchId(e.getDpId().getLong()).toString())
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        } catch (SwitchOperationException e) {
+            String messageString = "Unable to update meter";
+            logger.error(messageString, e);
+            anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription(messageString)
                     .withCorrelationId(message.getCorrelationId())
                     .withTopic(replyToTopic)
                     .sendVia(producerService);
