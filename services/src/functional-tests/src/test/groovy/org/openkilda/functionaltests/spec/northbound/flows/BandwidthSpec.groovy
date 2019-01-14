@@ -4,7 +4,6 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslInfoData
@@ -16,7 +15,6 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
-@CleanupSwitches
 class BandwidthSpec extends BaseSpecification {
 
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {

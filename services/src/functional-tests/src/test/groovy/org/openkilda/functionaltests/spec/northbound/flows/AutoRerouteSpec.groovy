@@ -4,7 +4,6 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -20,7 +19,6 @@ import spock.lang.Unroll
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
-@CleanupSwitches
 class AutoRerouteSpec extends BaseSpecification {
 
     def "Flow is rerouted when one of the flow ISLs fails"() {
