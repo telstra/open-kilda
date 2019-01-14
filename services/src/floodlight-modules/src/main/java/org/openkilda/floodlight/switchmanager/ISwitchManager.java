@@ -185,6 +185,16 @@ public interface ISwitchManager extends IFloodlightService {
     List<OFMeterConfig> dumpMeters(final DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Returns a installed meter by id.
+     *
+     * @param dpid switch id
+     * @param meterId a meter id
+     * @return OF meter config stats entry
+     * @throws SwitchOperationException Switch not found
+     */
+    OFMeterConfig dumpMeterById(final DatapathId dpid, final long meterId) throws SwitchOperationException;
+
+    /**
      * Installs a meter on ingress switch OF_13.
      * TODO: describe params meaning in accordance with OF
      *
@@ -194,6 +204,16 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found
      */
     void installMeter(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
+
+    /**
+     * Updates a meter on ingress switch OF_13.
+     *
+     * @param dpid datapath ID of the switch
+     * @param meterId the meter ID
+     * @param bandwidth the bandwidth
+     * @throws SwitchOperationException Switch not found
+     */
+    void modifyMeter(DatapathId dpid, long meterId, long bandwidth) throws SwitchOperationException;
 
     /**
      * Deletes the meter from the switch OF_13.

@@ -17,6 +17,7 @@ package org.openkilda.northbound.controller;
 
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -304,5 +305,15 @@ public class FlowController {
     @ResponseStatus(HttpStatus.OK)
     public void invalidateFlowCache() {
         flowService.invalidateFlowResourcesCache();
+    }
+
+    /**
+     * Update burst parameter in meter.
+     */
+    @ApiOperation(value = "Update burst parameter in meter")
+    @PatchMapping(path = "/{flow_id}/meters")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowMeterEntries> updateMetersBurst(@PathVariable("flow_id") String flowId) {
+        return flowService.modifyMeter(flowId);
     }
 }

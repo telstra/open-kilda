@@ -29,6 +29,7 @@ import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
+import org.openkilda.messaging.command.flow.MeterModifyRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
@@ -37,6 +38,7 @@ import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
+import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
@@ -768,6 +770,20 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(pingTopic, message)
                 .thenApply(FlowPingResponse.class::cast)
                 .thenApply(flowMapper::toPingOutput);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<FlowMeterEntries> modifyMeter(String flowId) {
+        MeterModifyRequest request = new MeterModifyRequest(flowId);
+
+        final String correlationId = RequestCorrelationId.getId();
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId,
+                Destination.WFM);
+        return messagingChannel.sendAndGet(topic, message)
+                .thenApply(FlowMeterEntries.class::cast);
     }
 
     @Override
