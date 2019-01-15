@@ -216,14 +216,14 @@ public class OfEventWfmTest extends AbstractStormTest {
 
         InfoMessage switch1Up =
                 new InfoMessage(new SwitchInfoData(new SwitchId("ff:01"), SwitchChangeType.ACTIVATED, null, null,
-                        null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(switch1Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage switch2Up =
                 new InfoMessage(new SwitchInfoData(new SwitchId("ff:02"), SwitchChangeType.ACTIVATED, null, null,
-                        null, null), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(switch2Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);

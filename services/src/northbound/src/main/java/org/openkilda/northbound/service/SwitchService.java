@@ -30,6 +30,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -165,4 +166,14 @@ public interface SwitchService {
      * @return the port description.
      */
     CompletableFuture<PortDescription> getPortDescription(SwitchId switchId, int port);
+
+    /**
+     * Update "Under maintenance" flag for the switch.
+     *
+     * @param switchId the switch id.
+     * @param underMaintenanceDto under maintenance flag.
+     * @return updated switch.
+     */
+    CompletableFuture<SwitchDto> updateSwitchUnderMaintenance(SwitchId switchId,
+                                                              UnderMaintenanceDto underMaintenanceDto);
 }

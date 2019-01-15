@@ -88,7 +88,7 @@ public class TestMessageMock implements MessagingChannel {
             new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
     static final SwitchInfoData SWITCH_INFO_DATA =
-            new SwitchInfoData(SWITCH_ID, SwitchChangeType.ACTIVATED, "", "", "", "");
+            new SwitchInfoData(SWITCH_ID, SwitchChangeType.ACTIVATED, "", "", "", "", false);
 
     /**
      * Chooses response by request.

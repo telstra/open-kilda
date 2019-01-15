@@ -53,7 +53,7 @@ public final class IofSwitchConverter {
                         sw.getSwitchDescription().getManufacturerDescription(),
                         sw.getOFFactory().getVersion().toString(),
                         sw.getSwitchDescription().getSoftwareDescription()),
-                controller.getHostString());
+                controller.getHostString(), false);
     }
 
     private IofSwitchConverter() {
