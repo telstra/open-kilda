@@ -34,9 +34,14 @@ public class UpdateSwitchUnderMaintenanceRequest extends SwitchesBaseRequest {
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
 
+    @JsonProperty(value = "evacuate")
+    private boolean evacuate;
+
     public UpdateSwitchUnderMaintenanceRequest(@JsonProperty("switch_id") SwitchId switchId,
-                                               @JsonProperty("under_maintenance") boolean underMaintenance) {
+                                               @JsonProperty("under_maintenance") boolean underMaintenance,
+                                               @JsonProperty(value = "evacuate") boolean evacuate) {
         this.switchId = switchId;
         this.underMaintenance = underMaintenance;
+        this.evacuate = evacuate;
     }
 }

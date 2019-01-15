@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.event.service;
 
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -72,5 +73,15 @@ public class SwitchService {
 
         daoSwitch.setStatus(SwitchStatus.INACTIVE);
         switchRepository.createOrUpdate(daoSwitch);
+    }
+
+    /**
+     * Return switch "Under maintenance" flag.
+     * @param switchId switch id.
+     */
+    public boolean switchIsUnderMaintenance(SwitchId switchId) {
+        return switchRepository.findById(switchId)
+                .map(Switch::isUnderMaintenance)
+                .orElse(false);
     }
 }

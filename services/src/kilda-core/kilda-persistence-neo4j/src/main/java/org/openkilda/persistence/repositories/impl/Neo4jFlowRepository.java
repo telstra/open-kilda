@@ -29,6 +29,7 @@ import org.openkilda.persistence.converters.FlowStatusConverter;
 import org.openkilda.persistence.repositories.FlowRepository;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
@@ -204,6 +205,16 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 + "RETURN src, f, dst", parameters);
 
         return buildFlowPairs(flows);
+    }
+
+    @Override
+    public Set<String> findFlowIdsBySwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchId);
+
+        return Sets.newHashSet(getSession().query(String.class, "MATCH (:switch)-[fc:flow_segment]->(:switch) "
+                + "WHERE fc.src_switch=$switch_id "
+                + "RETURN fc.flowid ", parameters));
     }
 
     @Override
