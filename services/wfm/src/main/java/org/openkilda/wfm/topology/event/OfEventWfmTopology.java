@@ -107,7 +107,7 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
                 .createPersistenceManager(configurationProvider);
 
         NetworkTopologyBolt networkTopologyBolt = new NetworkTopologyBolt(persistenceManager,
-                topologyConfig.getIslCostWhenPortDown());
+                topologyConfig.getIslCostWhenPortDown(), topologyConfig.getIslCostWhenUnderMaintenance());
         builder.setBolt(NETWORK_TOPOLOGY_BOLT_ID, networkTopologyBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(DISCO_BOLT_ID, OfeLinkBolt.NETWORK_TOPOLOGY_CHANGE_STREAM);
 

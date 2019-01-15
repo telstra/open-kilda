@@ -42,7 +42,11 @@ public class IslService {
     private SwitchRepository switchRepository;
     private FlowSegmentRepository flowSegmentRepository;
 
-    public IslService(TransactionManager transactionManager, RepositoryFactory repositoryFactory) {
+    private int islCostWhenUnderMaintenance;
+
+    public IslService(TransactionManager transactionManager, RepositoryFactory repositoryFactory,
+                      int islCostWhenUnderMaintenance) {
+        this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
         this.transactionManager = transactionManager;
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
@@ -111,6 +115,12 @@ public class IslService {
                 isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
                 isl.getDestSwitch().getSwitchId(), isl.getDestPort());
         daoIsl.setAvailableBandwidth(daoIsl.getMaxBandwidth() - usedBandwidth);
+
+        if ((daoIsl.getSrcSwitch().isUnderMaintenance() || daoIsl.getDestSwitch().isUnderMaintenance())
+                && !daoIsl.isUnderMaintenance()) {
+            daoIsl.setUnderMaintenance(true);
+            daoIsl.setCost(daoIsl.getCost() + islCostWhenUnderMaintenance);
+        }
 
         islRepository.createOrUpdate(daoIsl);
 
