@@ -54,10 +54,13 @@ public class NetworkTopologyBolt extends AbstractBolt {
     private PersistenceManager persistenceManager;
 
     private int islCostWhenPortDown;
+    private int islCostWhenUnderMaintenance;
 
-    public NetworkTopologyBolt(PersistenceManager persistenceManager, int islCostWhenPortDown) {
+    public NetworkTopologyBolt(PersistenceManager persistenceManager, int islCostWhenPortDown,
+                               int islCostWhenUnderMaintenance) {
         this.persistenceManager = persistenceManager;
         this.islCostWhenPortDown = islCostWhenPortDown;
+        this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
     }
 
     /**
@@ -68,7 +71,7 @@ public class NetworkTopologyBolt extends AbstractBolt {
         TransactionManager transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.switchService = new SwitchService(transactionManager, repositoryFactory);
-        this.islService = new IslService(transactionManager, repositoryFactory);
+        this.islService = new IslService(transactionManager, repositoryFactory, islCostWhenUnderMaintenance);
         this.portService = new PortService(transactionManager, repositoryFactory, islCostWhenPortDown);
         super.prepare(stormConf, context, collector);
     }
@@ -100,18 +103,20 @@ public class NetworkTopologyBolt extends AbstractBolt {
     private void handleSwitchEvents(SwitchInfoData data) {
         log.debug("State update switch {} message {}", data.getSwitchId(), data.getState());
 
-        switch (data.getState()) {
+        if (!switchService.switchIsUnderMaintenance(data.getSwitchId())) {
+            switch (data.getState()) {
 
-            case ACTIVATED:
-                switchService.createOrUpdateSwitch(SwitchMapper.INSTANCE.map(data));
-                break;
+                case ACTIVATED:
+                    switchService.createOrUpdateSwitch(SwitchMapper.INSTANCE.map(data));
+                    break;
 
-            case DEACTIVATED:
-                switchService.deactivateSwitch(SwitchMapper.INSTANCE.map(data));
-                break;
+                case DEACTIVATED:
+                    switchService.deactivateSwitch(SwitchMapper.INSTANCE.map(data));
+                    break;
 
-            default:
-                log.warn("Unknown state update switch info message");
+                default:
+                    log.warn("Unknown state update switch info message");
+            }
         }
     }
 
@@ -138,15 +143,17 @@ public class NetworkTopologyBolt extends AbstractBolt {
         log.debug("State update port {}_{} message cached {}",
                 data.getSwitchId(), data.getPortNo(), data.getState());
 
-        switch (data.getState()) {
-            case DOWN:
-            case DELETE:
-                portService.processWhenPortIsDown(PortMapper.INSTANCE.map(data), sender);
-                break;
+        if (!switchService.switchIsUnderMaintenance(data.getSwitchId())) {
+            switch (data.getState()) {
+                case DOWN:
+                case DELETE:
+                    portService.processWhenPortIsDown(PortMapper.INSTANCE.map(data), sender);
+                    break;
 
-            default:
-                log.warn("Unknown state update port info message");
-                break;
+                default:
+                    log.warn("Unknown state update port info message");
+                    break;
+            }
         }
     }
 
