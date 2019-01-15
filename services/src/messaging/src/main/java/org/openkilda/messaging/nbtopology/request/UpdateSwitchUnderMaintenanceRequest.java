@@ -13,33 +13,30 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.switches;
+package org.openkilda.messaging.nbtopology.request;
+
+import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class SwitchDto {
+@SuppressWarnings("squid:MaximumInheritanceDepth")
+@ReadRequest
+@Getter
+@ToString
+public class UpdateSwitchUnderMaintenanceRequest extends SwitchesBaseRequest {
 
     @JsonProperty("switch_id")
-    private String switchId;
-
-    @JsonProperty("address")
-    private String address;
-
-    @JsonProperty("hostname")
-    private String hostname;
-
-    @JsonProperty("description")
-    private String description;
-
-    @JsonProperty("state")
-    private String state;
+    private SwitchId switchId;
 
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
+
+    public UpdateSwitchUnderMaintenanceRequest(@JsonProperty("switch_id") SwitchId switchId,
+                                               @JsonProperty("under_maintenance") boolean underMaintenance) {
+        this.switchId = switchId;
+        this.underMaintenance = underMaintenance;
+    }
 }
