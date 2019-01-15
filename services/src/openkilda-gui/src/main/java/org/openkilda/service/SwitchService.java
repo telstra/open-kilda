@@ -21,10 +21,13 @@ import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.PortConfiguration;
 import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.service.SwitchIntegrationService;
+import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.utility.StringUtil;
+
+import org.apache.log4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,6 +41,8 @@ import java.util.List;
  */
 @Service
 public class SwitchService {
+
+    private static final Logger LOGGER = Logger.getLogger(SwitchService.class);
 
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
@@ -136,5 +141,21 @@ public class SwitchService {
      */
     public ConfiguredPort configurePort(String switchId, String port, PortConfiguration configuration) {
         return switchIntegrationService.configurePort(switchId, port, configuration);
+    }
+    
+    /**
+     * Gets the isl Flows.
+     *
+     * @param srcSwitch the source switch
+     * @param srcPort the source port
+     * @param dstSwitch the destination switch
+     * @param dstPort the destination port
+     * @return the isl flows
+     */
+    public List<FlowInfo> getIslFlows(String srcSwitch, String srcPort, String dstSwitch,
+            String dstPort) {
+        
+        LOGGER.info("Inside SwitchService method getIslFlows");
+        return switchIntegrationService.getIslFlows(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 }
