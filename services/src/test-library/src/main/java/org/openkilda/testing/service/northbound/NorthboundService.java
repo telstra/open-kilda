@@ -125,6 +125,8 @@ public interface NorthboundService {
 
     List<FlowPayload> getLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
+    List<String> rerouteLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
+
     DeleteLinkResult deleteLink(LinkParametersDto linkParameters);
 
     List<LinkDto> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link);

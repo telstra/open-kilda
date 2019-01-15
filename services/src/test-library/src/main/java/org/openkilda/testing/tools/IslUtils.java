@@ -125,9 +125,9 @@ public class IslUtils {
     }
 
     /**
-     * Converts a given ISL to LinkParametersDto object.
+     * Converts a given Isl object to LinkParametersDto object.
      *
-     * @param isl ISL to convert
+     * @param isl Isl object to convert
      */
     public LinkParametersDto getLinkParameters(Isl isl) {
         return new LinkParametersDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
@@ -135,13 +135,25 @@ public class IslUtils {
     }
 
     /**
-     * Converts a given ISL to LinkUnderMaintenanceDto object.
+     * Converts a given Isl object to LinkUnderMaintenanceDto object.
      *
-     * @param isl ISL to convert
+     * @param isl Isl object to convert
      */
     public LinkUnderMaintenanceDto getLinkUnderMaintenance(Isl isl, boolean underMaintenance, boolean evacuate) {
         return new LinkUnderMaintenanceDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
                 isl.getDstSwitch().getDpId().toString(), isl.getDstPort(), underMaintenance, evacuate);
+    }
+
+    /**
+     * Converts a given IslInfoData object to LinkUnderMaintenanceDto object.
+     *
+     * @param isl IslInfoData object to convert
+     */
+    public LinkUnderMaintenanceDto getLinkUnderMaintenance(IslInfoData isl, boolean underMaintenance,
+                                                           boolean evacuate) {
+        return new LinkUnderMaintenanceDto(isl.getSource().getSwitchId().toString(), isl.getSource().getPortNo(),
+                isl.getDestination().getSwitchId().toString(), isl.getDestination().getPortNo(), underMaintenance,
+                evacuate);
     }
 
     /**
