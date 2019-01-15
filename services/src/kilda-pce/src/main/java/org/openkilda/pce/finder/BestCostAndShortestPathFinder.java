@@ -265,10 +265,15 @@ public class BestCostAndShortestPathFinder implements PathFinder {
             List<Edge> newParentPath = new ArrayList<>(this.parentPath);
             newParentPath.add(nextIsl);
 
+            long weight = parentCost + weightFunction.apply(nextIsl) + nextIsl.getSrcSwitch().getCost();
+            if (!this.parentPath.isEmpty()) {
+                weight += nextIsl.getDestSwitch().getCost();
+            }
+
             return new SearchNode(
                     nextIsl.getDestSwitch(),
                     allowedDepth - 1,
-                    parentCost + weightFunction.apply(nextIsl),
+                    weight,
                     newParentPath);
         }
     }

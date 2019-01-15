@@ -22,30 +22,32 @@ import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.ToString;
-import lombok.Value;
-import lombok.experimental.NonFinal;
 
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-@Value
+@Getter
+@AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "switchId")
 @ToString(exclude = {"incomingLinks", "outgoingLinks"})
 public class Node {
     @NonNull
-    private SwitchId switchId;
+    private final SwitchId switchId;
+
+    @Setter
     private int cost;
 
-    @NonFinal
     @NonNull
     private Set<Edge> incomingLinks;
-    @NonFinal
     @NonNull
     private Set<Edge> outgoingLinks;
 

@@ -32,6 +32,7 @@ import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class BestCostAndShortestPathFinderTest {
@@ -170,7 +171,7 @@ public class BestCostAndShortestPathFinderTest {
     }
 
     @Test
-    public void testForwardAndBackwardPathsEquality() throws  UnroutableFlowException {
+    public void testForwardAndBackwardPathsEquality() throws UnroutableFlowException {
         AvailableNetwork network = buildEqualCostsNetwork();
         BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
         Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
@@ -178,6 +179,17 @@ public class BestCostAndShortestPathFinderTest {
         List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(paths.getLeft());
         List<SwitchId> backwardSwitchPath = Lists.reverse(getSwitchIdsFlowPath(paths.getRight()));
         assertEquals(forwardSwitchPath, backwardSwitchPath);
+    }
+
+    @Test
+    public void shouldAddIntermediateSwitchWeightOnce() throws UnroutableFlowException {
+        AvailableNetwork network = buildTestNetwork();
+        network.getSwitch(SWITCH_ID_A).setCost(100);
+
+        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F);
+
+        assertEquals(Arrays.asList(SWITCH_ID_D, SWITCH_ID_A, SWITCH_ID_F), getSwitchIdsFlowPath(paths.getLeft()));
     }
 
     private AvailableNetwork buildEqualCostsNetwork() {
