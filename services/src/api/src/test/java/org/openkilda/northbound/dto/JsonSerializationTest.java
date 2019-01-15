@@ -31,6 +31,7 @@ import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
@@ -125,8 +126,14 @@ public class JsonSerializationTest {
 
     @Test
     public void switchDtoTest() throws IOException {
-        SwitchDto dto = new SwitchDto(SWITCH_ID, "address-test", "host", "desc", "state");
+        SwitchDto dto = new SwitchDto(SWITCH_ID, "address-test", "host", "desc", "state", false);
         assertEquals(dto, pass(dto, SwitchDto.class));
+    }
+
+    @Test
+    public void switchUnderMaintenanceDtoTest() throws IOException {
+        UnderMaintenanceDto dto = new UnderMaintenanceDto(false);
+        assertEquals(dto, pass(dto, UnderMaintenanceDto.class));
     }
 
     @Test

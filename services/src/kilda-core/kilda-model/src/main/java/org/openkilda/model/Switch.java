@@ -68,6 +68,8 @@ public class Switch implements Serializable {
 
     private String description;
 
+    private boolean underMaintenance;
+
     /**
      * TODO(siakovenko): incomingLinks and outgoingLinks are marked as transient as Neo4j OGM handles load strategy
      * "depth" improperly: when a relation entity is being loaded, OGM fetches ALL relations of start and end nodes
@@ -82,7 +84,7 @@ public class Switch implements Serializable {
 
     @Builder(toBuilder = true)
     Switch(SwitchId switchId, SwitchStatus status, String address, String hostname, //NOSONAR
-            String controller, String description,
+            String controller, String description, boolean underMaintenance,
             List<Isl> incomingLinks, List<Isl> outgoingLinks) {
         this.switchId = switchId;
         this.status = status;
@@ -90,6 +92,7 @@ public class Switch implements Serializable {
         this.hostname = hostname;
         this.controller = controller;
         this.description = description;
+        this.underMaintenance = underMaintenance;
         this.incomingLinks = incomingLinks;
         this.outgoingLinks = outgoingLinks;
     }

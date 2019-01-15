@@ -36,6 +36,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -53,6 +54,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -329,5 +331,21 @@ public class SwitchController {
             @PathVariable("switch-id") SwitchId switchId,
             @PathVariable("port") int port) {
         return switchService.getPortDescription(switchId, port);
+    }
+
+    /**
+     * Update "Under maintenance" flag for the switch.
+     *
+     * @param switchId the switch id.
+     * @param underMaintenanceDto under maintenance flag.
+     * @return updated switch.
+     */
+    @ApiOperation(value = "Update \"Under maintenance\" flag for the switch.", response = SwitchDto.class)
+    @PatchMapping(path = "/{switch-id}/under-maintenance",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchDto> updateLinkUnderMaintenance(@PathVariable("switch-id") SwitchId switchId,
+            @RequestBody UnderMaintenanceDto underMaintenanceDto) {
+        return switchService.updateSwitchUnderMaintenance(switchId, underMaintenanceDto);
     }
 }

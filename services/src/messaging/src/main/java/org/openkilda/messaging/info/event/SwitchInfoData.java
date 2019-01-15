@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -56,6 +56,9 @@ public class SwitchInfoData extends CacheTimeTag {
     @JsonProperty("controller")
     private String controller;
 
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
+
     /**
      * This field contain all data required for ISL/network discovery. Usage of other fields of this object should
      * be avoided. Whole SwitchInfoData should not be used in new code. Old code should be update to avoid usage of
@@ -65,12 +68,12 @@ public class SwitchInfoData extends CacheTimeTag {
     private Switch switchRecord;
 
     public SwitchInfoData(SwitchId switchId, SwitchChangeType state) {
-        this(switchId, state, null, null, null, null, null);
+        this(switchId, state, null, null, null, null, false);
     }
 
     public SwitchInfoData(SwitchId switchId, SwitchChangeType state, String address, String hostname,
-                          String description, String controller) {
-        this(switchId, state, address, hostname, description, controller, null);
+                          String description, String controller, boolean underMaintenance) {
+        this(switchId, state, address, hostname, description, controller, underMaintenance, null);
     }
 
     /**
@@ -92,6 +95,7 @@ public class SwitchInfoData extends CacheTimeTag {
                           @JsonProperty("hostname") String hostname,
                           @JsonProperty("description") String description,
                           @JsonProperty("controller") String controller,
+                          @JsonProperty("under_maintenance") boolean underMaintenance,
                           @JsonProperty("switch") Switch switchRecord) {
         this.switchId = switchId;
         this.state = state;
@@ -99,6 +103,7 @@ public class SwitchInfoData extends CacheTimeTag {
         this.hostname = hostname;
         this.description = description;
         this.controller = controller;
+        this.underMaintenance = underMaintenance;
         this.switchRecord = switchRecord;
     }
 }
