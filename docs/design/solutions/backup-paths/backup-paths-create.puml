@@ -1,0 +1,42 @@
+@startuml
+title Create flow with backup path
+
+participant Client
+participant FlowService
+participant PathComputerFactory
+participant PathComputer
+database Neo4J
+participant TransactionBolt
+
+Client -> FlowService: create flow with backup
+activate FlowService
+
+FlowService -> PathComputerFactory: create PathComputer
+create PathComputer
+PathComputerFactory -> PathComputer: create
+PathComputer --> FlowService
+
+== Main path creation ==
+FlowService -> PathComputer: getPath
+activate PathComputer
+PathComputer -> PathComputer: compute path as usual
+PathComputer --> FlowService: computed pathPair
+deactivate PathComputer
+
+FlowService -> Neo4J: save new flow
+FlowService -> Neo4J: create flow segments
+FlowService ->> TransactionBolt: send install rules commands
+
+== Backup path creation ==
+FlowService -> PathComputer: getPath, diversed with\njust created new flow
+activate PathComputer
+PathComputer -> PathComputer: compute diversed path
+PathComputer --> FlowService: computed pathPair
+deactivate PathComputer
+
+FlowService -> Neo4J: create backup path flow segments
+FlowService ->> TransactionBolt: send install rules commands
+
+FlowService --> Client: created flow
+deactivate FlowService
+@enduml
