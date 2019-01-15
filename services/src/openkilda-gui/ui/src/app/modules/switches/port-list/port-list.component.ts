@@ -76,8 +76,6 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showPortDetail(item){
      var portDataObject = item;
-     // var keyName = "port_"+this.maskPipe.transform(this.switch_id,'legacy')+"_"+item.port_number;
-     // console.log("setKeyName"+keyName);
     localStorage.setItem('portDataObject', JSON.stringify(portDataObject));
     this.currentActivatedRoute = 'port-details';
     this.router.navigate(['/switches/details/'+this.switch_id+'/port/'+item.port_number]);
@@ -98,7 +96,6 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.ngAfterViewInit();
         localStorage.setItem('switchPortDetail', JSON.stringify(data));
         this.switchPortDataSet = data;
-       
         for(let i = 0; i<this.switchPortDataSet.length; i++){
           if(this.switchPortDataSet[i].port_number === '' || this.switchPortDataSet[i].port_number === undefined){
               this.switchPortDataSet[i].port_number = '-';

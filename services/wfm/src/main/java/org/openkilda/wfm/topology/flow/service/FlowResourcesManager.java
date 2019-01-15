@@ -95,8 +95,6 @@ public class FlowResourcesManager {
 
         if (flow.getBandwidth() > 0L) {
             newFlow.meterId(resourceCache.allocateMeterId(flow.getSrcSwitch().getSwitchId()));
-        } else {
-            newFlow.meterId(0);
         }
 
         return newFlow.build();
@@ -113,11 +111,15 @@ public class FlowResourcesManager {
         Flow forward = flowPair.getForward();
         resourceCache.deallocateCookie((int) (ResourceCache.FLOW_COOKIE_VALUE_MASK & forward.getCookie()));
         resourceCache.deallocateVlanId(forward.getTransitVlan());
-        resourceCache.deallocateMeterId(forward.getSrcSwitch().getSwitchId(), forward.getMeterId());
+        if (forward.getMeterId() != null) {
+            resourceCache.deallocateMeterId(forward.getSrcSwitch().getSwitchId(), forward.getMeterId());
+        }
 
         Flow reverse = flowPair.getReverse();
         resourceCache.deallocateVlanId(reverse.getTransitVlan());
-        resourceCache.deallocateMeterId(reverse.getSrcSwitch().getSwitchId(), reverse.getMeterId());
+        if (reverse.getMeterId() != null) {
+            resourceCache.deallocateMeterId(reverse.getSrcSwitch().getSwitchId(), reverse.getMeterId());
+        }
     }
 
     public Set<Integer> getAllocatedVlans() {

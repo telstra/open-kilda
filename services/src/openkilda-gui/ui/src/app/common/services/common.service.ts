@@ -89,4 +89,12 @@ export class CommonService {
     let valInMbps = (value/1000)/1000; // conversion
     return (valInMbps < 1)?Math.ceil(valInMbps * 1000) / 1000:Math.ceil(valInMbps * 100) / 100
   }
+
+  getSessionTimeoutSetting(){
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/settings/sessiontimeout`);
+  }
+
+  saveSessionTimeoutSetting(timeout){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/sessiontimeout`,timeout);
+  }
 }

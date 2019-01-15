@@ -210,14 +210,14 @@ class LinkSpec extends BaseSpecification {
         then: "Check that link is actually deleted"
         res.deleted
         Wrappers.wait(WAIT_OFFSET) {
-            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).empty
+            assert northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).empty
         }
 
         and: "Cleanup: restore link"
         northbound.portUp(srcSwitch, srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort)
-                    .every { it.state == IslChangeType.DISCOVERED }
+            assert northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort)
+                    .findAll { it.state == IslChangeType.DISCOVERED }.size() == 1
         }
     }
 

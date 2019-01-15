@@ -1,0 +1,51 @@
+v6
+
+@startuml
+hide footbox
+
+participant NB
+participant "ACK Bolt" as ack
+
+box "Hub" #LightBlue
+    participant "Spout" as sp_hub
+    participant "Bolt" as bolt_hub
+end box
+
+participant "Kafka" as bus
+box "Worker" #LightGreen
+    participant "Spout" as sp_work
+    collections "Bolt" as bolt_work
+end box
+
+participant "Async Job" as async_job
+
+NB ->> bus : request
+sp_hub <<- bus
+sp_hub ->> bolt_hub : create H-tuple
+bolt_hub -> bolt_hub : prepare async jobs
+
+== Hub to Worker communications ==
+bolt_hub ->> bus : request for\nasync process
+sp_work <<- bus
+sp_work ->> bolt_work : create W-tuple
+== Async Operations ==
+bolt_work ->> bus
+async_job <<- bus
+async_job -> async_job
+async_job ->> bus
+== Handle responses ==
+sp_work <<- bus
+sp_work ->> bolt_work : create WR-tuple
+bolt_work ->> ack : ack on WR-tuple
+bolt_work ->> ack : ack on W-tuple
+bolt_work ->> bus : result of async op
+sp_hub <<- bus
+sp_hub ->> bolt_hub: create HR-tuple
+bolt_hub -> bolt_hub : collect requests and\nprocess them
+bolt_hub ->> ack : ack on HR-tuple
+bolt_hub ->> ack : ack on H-tuple
+bolt_hub ->> bus
+NB <<- bus
+
+
+@enduml

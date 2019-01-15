@@ -18,9 +18,12 @@ package org.openkilda.floodlight.service.kafka;
 import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.messaging.Message;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +38,7 @@ public class KafkaProducerService implements IKafkaProducerService {
     private HeartBeatService heartBeat;
     private Producer<String, String> producer;
     private final Map<String, AbstractWorker> workersMap = new HashMap<>();
+    private final ObjectMapper jsonObjectMapper = new ObjectMapper();
 
     @Override
     public void setup(FloodlightModuleContext moduleContext) {
@@ -71,7 +75,11 @@ public class KafkaProducerService implements IKafkaProducerService {
     }
 
     public void sendMessageAndTrack(String topic, Message message) {
-        getWorker(topic).sendMessage(message, new SendStatusCallback(this, topic, message));
+        produce(encode(topic, message), new SendStatusCallback(this, topic, message));
+    }
+
+    public void sendMessageAndTrack(String topic, String key, Message message) {
+        produce(encode(topic, key, message), new SendStatusCallback(this, topic, message));
     }
 
     /**
@@ -80,16 +88,41 @@ public class KafkaProducerService implements IKafkaProducerService {
      * <p>Caller can check operation result by himself using returned {@link SendStatusCallback} object.
      */
     public SendStatus sendMessage(String topic, Message message) {
-        SendStatus sendStatus = getWorker(topic).sendMessage(message, null);
+        SendStatus sendStatus = produce(encode(topic, message), null);
         postponeHeartBeat();
         return sendStatus;
     }
 
+    protected SendStatus produce(ProducerRecord<String, String> record, Callback callback) {
+        logger.debug("Send kafka message: {} <== {}", record.topic(), record.value());
+        return getWorker(record.topic())
+                .send(record, callback);
+    }
+
+    private ProducerRecord<String, String> encode(String topic, Message payload) {
+        return encode(topic, null, payload);
+    }
+
+    private ProducerRecord<String, String> encode(String topic, String key, Message payload) {
+        return new ProducerRecord<>(topic, key, encodeValue(payload));
+    }
+
+    private String encodeValue(Message message) {
+        String encoded;
+        try {
+            encoded = jsonObjectMapper.writeValueAsString(message);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException(String.format("Can not serialize message: %s", e.toString()), e);
+        }
+
+        return encoded;
+    }
+
     private synchronized AbstractWorker getWorker(String topic) {
         AbstractWorker worker = workersMap.computeIfAbsent(
-                topic, t -> new DefaultWorker(producer, t));
+                topic, t -> new DefaultWorker(producer));
         if (!worker.isActive()) {
-            worker = new DefaultWorker(producer, topic);
+            worker = new DefaultWorker(producer);
             workersMap.put(topic, worker);
         }
         return worker;
@@ -99,12 +132,6 @@ public class KafkaProducerService implements IKafkaProducerService {
         if (heartBeat != null) {
             heartBeat.reschedule();
         }
-    }
-
-    private void reportError(String topic, Message message, Exception e) {
-        logger.error(
-                "Fail to send message(correlationId=\"{}\") in kafka topic={}: {}",
-                message.getCorrelationId(), topic, e);
     }
 
     private static class SendStatusCallback implements Callback {
@@ -127,7 +154,10 @@ public class KafkaProducerService implements IKafkaProducerService {
                 service.postponeHeartBeat();
                 return;
             }
-            service.reportError(topic, message, exception);
+
+            logger.error(
+                    "Fail to send message(correlationId=\"{}\") in kafka topic={}: {}",
+                    message.getCorrelationId(), topic, exception);
         }
     }
 }

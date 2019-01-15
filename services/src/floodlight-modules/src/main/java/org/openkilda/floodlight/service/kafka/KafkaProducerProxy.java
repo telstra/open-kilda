@@ -55,6 +55,11 @@ public class KafkaProducerProxy implements IKafkaProducerService {
     }
 
     @Override
+    public void sendMessageAndTrack(String topic, String key, Message message) {
+        target.sendMessageAndTrack(topic, key, message);
+    }
+
+    @Override
     public SendStatus sendMessage(String topic, Message message) {
         return target.sendMessage(topic, message);
     }

@@ -43,9 +43,16 @@ class FlowHelper {
      * Creates a FlowPayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
      * random port otherwise.
      */
-    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true) {
-        return new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
-                getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null)
+    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
+            List<FlowPayload> existingFlows = []) {
+        Wrappers.retry(3, 0) {
+            def newFlow = new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
+                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null)
+            if (flowConflicts(newFlow, existingFlows)) {
+                throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
+            }
+            return newFlow
+        } as FlowPayload
     }
 
     /**
@@ -134,6 +141,27 @@ class FlowHelper {
     }
 
     /**
+     * Check whether given potential flow is conflicting with any of flows in the given list.
+     * Usually used to ensure that some new flow is by accident is not conflicting with any of existing flows.
+     * Verifies conflicts by flow id and by port-vlan conflict on source or destination switch.
+     *
+     * @param newFlow this flow will be validated against the passed list
+     * @param existingFlows the passed flow will be validated against this list
+     * @return true if passed flow conflicts with any of the flows in the list
+     */
+    static boolean flowConflicts(FlowPayload newFlow, List<FlowPayload> existingFlows) {
+        List<FlowEndpointPayload> existingEndpoints = existingFlows.inject([]) { r, flow ->
+            r << flow.source << flow.destination
+        }
+        [newFlow.source, newFlow.destination].any { newEp ->
+            existingEndpoints.find {
+                newEp.datapath == it.datapath && newEp.portNumber == it.portNumber &&
+                        (newEp.vlanId == it.vlanId || it.vlanId == 0 || newEp.vlanId == 0)
+            }
+        } || existingFlows*.id.contains(newFlow.id)
+    }
+
+    /**
      * Returns flow endpoint with randomly chosen vlan.
      *
      * @param useTraffgenPorts whether to try finding a traffgen port
@@ -150,7 +178,7 @@ class FlowHelper {
      * in 'allowedPorts'
      */
     private FlowEndpointPayload getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
-                                                boolean useTraffgenPorts = true) {
+            boolean useTraffgenPorts = true) {
         def port = allowedPorts[random.nextInt(allowedPorts.size())]
         if (useTraffgenPorts) {
             def connectedTraffgens = topology.activeTraffGens.findAll { it.switchConnected == sw }

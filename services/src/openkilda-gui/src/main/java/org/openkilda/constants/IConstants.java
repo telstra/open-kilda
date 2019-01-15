@@ -36,6 +36,24 @@ public abstract class IConstants {
 
     }
 
+    public static final class SessionTimeout {
+        private SessionTimeout() {
+
+        }
+        
+        public static Integer TIME_IN_MINUTE;
+        
+        public static Integer DEFAULT_TIME_IN_MINUTE = 45;
+    }
+    
+    public static final class ApplicationSetting {
+        private ApplicationSetting() {
+
+        }
+        
+        public static String SESSION_TIMEOUT = "session_timeout";
+    }
+    
     public final class Role {
         
         private Role() {
@@ -75,6 +93,9 @@ public abstract class IConstants {
         public static final String GET_FLOW_PATH = GET_FLOW + "/{flow_id}/path";
         public static final String RESYNC_FLOW = GET_FLOW + "/{flow_id}/sync";
         public static final String CONFIG_SWITCH_PORT = GET_SWITCHES + "/{switch_id}/port/{port_no}/config";
+        public static final String GET_ISL_FLOW = 
+                "/links/flows?src_switch={src_switch}&src_port={src_port}&dst_switch={dst_switch}&dst_port={dst_port}";
+        public static final String GET_SWITCH_METERS =  GET_SWITCHES + "/{switch_id}/meters";
     }
     
     public final class OpenTsDbUrl {
@@ -167,6 +188,8 @@ public abstract class IConstants {
         public static final String SW_PORT_CONFIG = "sw_port_config";
         
         public static final String STORE_SETTING = "store_setting";
+        
+        public static final String SESSION_TIMEOUT_SETTING = "session_timeout_setting";
         
     }
 

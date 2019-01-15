@@ -550,7 +550,7 @@ public class FlowCommandFactoryTest {
                 .destVlan(201)
                 .transitVlan(301)
                 .cookie(TEST_COOKIE)
-                .bandwidth(100)
+                .bandwidth(0)
                 .ignoreBandwidth(true)
                 .build();
 

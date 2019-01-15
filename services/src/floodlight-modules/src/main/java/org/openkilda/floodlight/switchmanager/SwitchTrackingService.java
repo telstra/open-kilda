@@ -219,13 +219,13 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
             message = buildSwitchMessage(dpId, event);
         }
 
-        producerService.sendMessageAndTrack(topoDiscoTopic, message);
+        producerService.sendMessageAndTrack(topoDiscoTopic, dpId.toString(), message);
     }
 
     private void portDiscoveryAction(DatapathId dpId, OFPort port, PortChangeType changeType) {
         logger.info("Send port discovery ({}-{} - {})", dpId, port, changeType);
         Message message = buildPortMessage(dpId, port, changeType);
-        producerService.sendMessageAndTrack(topoDiscoTopic, message);
+        producerService.sendMessageAndTrack(topoDiscoTopic, dpId.toString(), message);
     }
 
     private static org.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {

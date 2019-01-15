@@ -1,0 +1,37 @@
+@startuml
+title hub and spoke wfm mk7 error in hub
+hide footbox
+
+participant NB
+participant "Kafka" as bus
+
+box "Hub" #LightBlue
+    participant "Spout" as sp_hub
+    participant "Bolt" as bolt_hub
+end box
+
+participant "Coordinator\nBolt" as coordinator
+
+
+
+NB ->> bus : request
+sp_hub <<- bus
+sp_hub ->> bolt_hub
+bolt_hub ->> coordinator : register callback request
+bolt_hub -> bolt_hub : prepare async jobs
+
+bolt_hub ->x] : some error
+... hub operation timeout ...
+coordinator ->> bolt_hub : callback
+alt retry
+    loop
+        bolt_hub ->> bolt_hub: rerun all failed operations
+    end
+else cleanup if retry failed
+    bolt_hub -> bolt_hub : cleanup
+    bolt_hub ->> coordinator : cancel callback
+    bolt_hub ->> bus: error response
+    bus ->> NB: error response
+end
+
+@enduml

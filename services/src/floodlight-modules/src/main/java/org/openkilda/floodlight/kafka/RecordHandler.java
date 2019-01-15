@@ -31,7 +31,6 @@ import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.openkilda.floodlight.switchmanager.MeterPool;
 import org.openkilda.floodlight.switchmanager.SwitchTrackingService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
@@ -109,15 +108,12 @@ class RecordHandler implements Runnable {
 
     private final ConsumerContext context;
     private final ConsumerRecord<String, String> record;
-    private final MeterPool meterPool;
 
     private final CommandProcessorService commandProcessor;
 
-    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record,
-                         MeterPool meterPool) {
+    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record) {
         this.context = context;
         this.record = record;
-        this.meterPool = meterPool;
 
         this.commandProcessor = context.getModuleContext().getServiceImpl(CommandProcessorService.class);
     }
@@ -151,12 +147,12 @@ class RecordHandler implements Runnable {
     private void handleCommand(CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException, SwitchOperationException {
         CommandData data = message.getData();
-        CommandContext context = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
+        CommandContext commandContext = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
         if (data instanceof DiscoverIslCommandData) {
             doDiscoverIslCommand(message);
         } else if (data instanceof PingRequest) {
-            doPingRequest(context, (PingRequest) data);
+            doPingRequest(commandContext, (PingRequest) data);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
@@ -178,7 +174,7 @@ class RecordHandler implements Runnable {
         } else if (data instanceof ConnectModeRequest) {
             doConnectMode(message, replyToTopic, replyDestination);
         } else if (data instanceof DumpRulesRequest) {
-            doDumpRulesRequest(message, replyToTopic, replyDestination);
+            doDumpRulesRequest(message, replyToTopic);
         } else if (data instanceof BatchInstallRequest) {
             doBatchInstall(message);
         } else if (data instanceof PortsCommandData) {
@@ -186,15 +182,15 @@ class RecordHandler implements Runnable {
         } else if (data instanceof DeleteMeterRequest) {
             doDeleteMeter(message, replyToTopic, replyDestination);
         } else if (data instanceof PortConfigurationRequest) {
-            doConfigurePort(message, replyToTopic, replyDestination);
+            doConfigurePort(message, replyToTopic);
         } else if (data instanceof DumpSwitchPortsDescriptionRequest) {
-            doDumpSwitchPortsDescriptionRequest(message, replyToTopic, replyDestination);
+            doDumpSwitchPortsDescriptionRequest(message, replyToTopic);
         } else if (data instanceof DumpPortDescriptionRequest) {
-            doDumpPortDescriptionRequest(message, replyToTopic, replyDestination);
+            doDumpPortDescriptionRequest(message, replyToTopic);
         } else if (data instanceof DumpMetersRequest) {
-            doDumpMetersRequest(message, replyToTopic, replyDestination);
+            doDumpMetersRequest(message, replyToTopic);
         } else {
-            logger.error("unknown data type: {}", data.toString());
+            logger.error("unknown data type: {}", data);
         }
     }
 
@@ -258,8 +254,7 @@ class RecordHandler implements Runnable {
 
         long meterId = 0;
         if (command.getMeterId() != null && command.getMeterId() > 0) {
-            meterId = allocateMeterId(
-                    command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
+            meterId = command.getMeterId();
 
             installMeter(DatapathId.of(command.getSwitchId().toLong()), meterId, command.getBandwidth(),
                     command.getId());
@@ -382,9 +377,7 @@ class RecordHandler implements Runnable {
     private void installOneSwitchFlow(InstallOneSwitchFlow command) throws SwitchOperationException {
         long meterId = 0;
         if (command.getMeterId() != null && command.getMeterId() > 0) {
-            meterId = allocateMeterId(
-                    command.getMeterId(), command.getSwitchId(), command.getId(), command.getCookie());
-
+            meterId = command.getMeterId();
             installMeter(DatapathId.of(command.getSwitchId().toLong()), meterId, command.getBandwidth(),
                     command.getId());
         } else {
@@ -608,7 +601,7 @@ class RecordHandler implements Runnable {
 
     }
 
-    private void doDumpRulesRequest(final CommandMessage message, String replyToTopic, Destination replyDestination) {
+    private void doDumpRulesRequest(final CommandMessage message, String replyToTopic) {
         DumpRulesRequest request = (DumpRulesRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -736,8 +729,7 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doConfigurePort(final CommandMessage message, final String replyToTopic,
-                                 final Destination replyDestination) {
+    private void doConfigurePort(final CommandMessage message, final String replyToTopic) {
         PortConfigurationRequest request = (PortConfigurationRequest) message.getData();
 
         logger.info("Port configuration request. Switch '{}', Port '{}'", request.getSwitchId(),
@@ -768,7 +760,7 @@ class RecordHandler implements Runnable {
     }
 
     private void doDumpSwitchPortsDescriptionRequest(
-            CommandMessage message, String replyToTopic, Destination replyDestination) {
+            CommandMessage message, String replyToTopic) {
         DumpSwitchPortsDescriptionRequest request = (DumpSwitchPortsDescriptionRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -807,7 +799,7 @@ class RecordHandler implements Runnable {
     }
 
     private void doDumpPortDescriptionRequest(
-            CommandMessage message, String replyToTopic, Destination replyDestination) {
+            CommandMessage message, String replyToTopic) {
         DumpPortDescriptionRequest request = (DumpPortDescriptionRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -840,7 +832,7 @@ class RecordHandler implements Runnable {
     }
 
     private void doDumpMetersRequest(
-            CommandMessage message, String replyToTopic, Destination replyDestination) {
+            CommandMessage message, String replyToTopic) {
         DumpMetersRequest request = (DumpMetersRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
@@ -886,19 +878,6 @@ class RecordHandler implements Runnable {
                     .withTopic(replyToTopic)
                     .sendVia(producerService);
         }
-    }
-
-    private long allocateMeterId(Long meterId, SwitchId switchId, String flowId, Long cookie) {
-        long allocatedId;
-
-        if (meterId == null) {
-            logger.error("Meter_id should be passed within one switch flow command. Cookie is {}", cookie);
-            allocatedId = (long) meterPool.allocate(switchId, flowId);
-            logger.error("Allocated meter_id {} for cookie {}", allocatedId, cookie);
-        } else {
-            allocatedId = meterPool.allocate(switchId, flowId, Math.toIntExact(meterId));
-        }
-        return allocatedId;
     }
 
     private void installMeter(DatapathId dpid, long meterId, long bandwidth, String flowId) {
@@ -947,14 +926,13 @@ class RecordHandler implements Runnable {
 
     public static class Factory {
         private final ConsumerContext context;
-        private final MeterPool meterPool = new MeterPool();
 
         public Factory(ConsumerContext context) {
             this.context = context;
         }
 
         public RecordHandler produce(ConsumerRecord<String, String> record) {
-            return new RecordHandler(context, record, meterPool);
+            return new RecordHandler(context, record);
         }
     }
 }

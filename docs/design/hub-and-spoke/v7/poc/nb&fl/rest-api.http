@@ -1,0 +1,55 @@
+
+# Create flow happy path
+POST http://localhost:8088/flow
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "flowid": "test-01",
+  "length": 10
+}
+
+###
+
+# Create flow error in hub
+POST http://localhost:8088/flow
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "flowid": "test-01",
+  "length": 10,
+  "error": 0
+}
+
+###
+
+# Create flow error in worker
+POST http://localhost:8088/flow
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "flowid": "test-01",
+  "length": 10,
+  "error": 1
+}
+
+###
+
+# Create flow error in fl
+POST http://localhost:8088/flow
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "flowid": "test-01",
+  "length": 10,
+  "error": 2
+}
+
+###
