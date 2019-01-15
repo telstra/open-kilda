@@ -137,7 +137,7 @@ public class ResourceCacheTest {
         assertEquals(0, resourceCache.getAllMeterIds(SWITCH_ID).size());
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = ResourcePoolIsFullException.class)
     public void vlanPoolFullTest() {
         resourceCache.allocateVlanId();
         int i = ResourceCache.MIN_VLAN_ID;
@@ -156,7 +156,7 @@ public class ResourceCacheTest {
         }
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = MeterPoolIsFullException.class)
     public void meterIdPoolFullTest() {
         resourceCache.allocateMeterId(SWITCH_ID);
         int i = ResourceCache.MIN_METER_ID;

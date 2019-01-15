@@ -79,7 +79,6 @@ body {
   border-radius: 4px;
 }
 
-
 label {margin-bottom: 0; font-weight: 600;}
 .container-fluid {
   padding-right: 15px;
@@ -213,7 +212,6 @@ h1 {
   padding: 0 10px 15px 20px;
   margin: 0 0 20px;
 }
-
 
 .navigation-bar ul.col li {
   display: inline-block;
@@ -781,6 +779,7 @@ select2:focus,
 .col-form-label {
   font-size: 12px;
 }
+
 
 .divTableCell,
 .divTableHead {
@@ -1422,7 +1421,6 @@ table.dataTable thead .sorting_desc {
   background-image: url(assets/images/sort_desc_white.png);
 }
 
-
 table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTable thead .sorting_desc, table.dataTable thead .sorting_asc_disabled, table.dataTable thead .sorting_desc_disabled {
   background-position: right 8px;
 }
@@ -1455,6 +1453,7 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
 .alertify .ajs-modal .ajs-dialog .ajs-commands {margin: 0; top: 10px;}
 
 .alertify .ajs-modal .ajs-footer .ajs-buttons .ajs-button{ cursor: pointer; }
+
 
 .home-container {
   display: none;
@@ -1890,6 +1889,7 @@ button:focus{
   border: 1px solid #ccc;
 
 }
+
 .custom-alert{
   padding: 2px 10px;
 }
