@@ -111,8 +111,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString());
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString());
 
         KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
