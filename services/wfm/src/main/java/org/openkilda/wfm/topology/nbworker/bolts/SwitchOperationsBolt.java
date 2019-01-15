@@ -22,18 +22,22 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;
 
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     private transient SwitchOperationsService switchOperationsService;
@@ -46,8 +50,9 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
      * {@inheritDoc}
      */
     @Override
-    protected void init() {
-        switchOperationsService = new SwitchOperationsService(repositoryFactory);
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+        super.prepare(stormConf, context, collector);
+        this.switchOperationsService = new SwitchOperationsService(repositoryFactory, transactionManager);
     }
 
     @Override
@@ -56,6 +61,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         List<? extends InfoData> result = null;
         if (request instanceof GetSwitchesRequest) {
             result = getSwitches();
+        } else if (request instanceof UpdateSwitchUnderMaintenanceRequest) {
+            result = updateSwitchUnderMaintenanceFlag((UpdateSwitchUnderMaintenanceRequest) request);
         } else if (request instanceof GetSwitchRequest) {
             result = getSwitch((GetSwitchRequest) request);
         } else {
@@ -74,6 +81,18 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
 
         try {
             return Collections.singletonList(SwitchMapper.INSTANCE.map(switchOperationsService.getSwitch(switchId)));
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
+        }
+    }
+
+    private List<SwitchInfoData> updateSwitchUnderMaintenanceFlag(UpdateSwitchUnderMaintenanceRequest request) {
+        SwitchId switchId = request.getSwitchId();
+        boolean underMaintenance = request.isUnderMaintenance();
+
+        try {
+            return Collections.singletonList(SwitchMapper.INSTANCE
+                    .map(switchOperationsService.updateSwitchUnderMaintenanceFlag(switchId, underMaintenance)));
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
         }

@@ -15,31 +15,19 @@
 
 package org.openkilda.northbound.dto.switches;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class SwitchDto {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class UnderMaintenanceDto {
 
-    @JsonProperty("switch_id")
-    private String switchId;
-
-    @JsonProperty("address")
-    private String address;
-
-    @JsonProperty("hostname")
-    private String hostname;
-
-    @JsonProperty("description")
-    private String description;
-
-    @JsonProperty("state")
-    private String state;
-
-    @JsonProperty("under_maintenance")
+    @JsonProperty(value = "under_maintenance", required = true)
     private boolean underMaintenance;
+
+    public UnderMaintenanceDto(
+            @JsonProperty(value = "under_maintenance", required = true) boolean underMaintenance) {
+        this.underMaintenance = underMaintenance;
+    }
 }

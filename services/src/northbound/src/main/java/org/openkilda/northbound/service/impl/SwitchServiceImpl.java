@@ -47,6 +47,7 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
@@ -56,6 +57,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -313,6 +315,27 @@ public class SwitchServiceImpl implements SwitchService {
 
         return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
                 .thenApply(PortDescription.class::cast);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<SwitchDto> updateSwitchUnderMaintenance(SwitchId switchId,
+            UnderMaintenanceDto underMaintenanceDto) {
+
+        String correlationId = RequestCorrelationId.getId();
+        logger.debug("Update under maintenance flag for switch request processing");
+        UpdateSwitchUnderMaintenanceRequest data =
+                new UpdateSwitchUnderMaintenanceRequest(switchId, underMaintenanceDto.isUnderMaintenance());
+
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(messages -> messages.stream()
+                        .map(SwitchInfoData.class::cast)
+                        .map(switchMapper::toSwitchDto)
+                        .collect(Collectors.toList()).get(0));
     }
 
     private SwitchFlowEntries findByCookie(Long cookie, SwitchFlowEntries entries) {

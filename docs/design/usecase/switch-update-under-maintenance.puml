@@ -1,0 +1,43 @@
+@startuml
+title Set/clear "under_maintenance" flag for switch
+
+participant Client
+
+participant Northbound
+
+control kilda.northbound
+control kilda.topo.nb
+
+participant NbWorkerTopology
+
+participant Neo4j
+
+Client -> Northbound : PATCH /switches/{switch-id}/under-maintenance\nRequest body: UnderMaintenanceDto
+
+activate Northbound
+Northbound -> kilda.topo.nb : CommandMessage\nUpdateSwitchUnderMaintenanceRequest
+kilda.topo.nb -> NbWorkerTopology : CommandMessage\nUpdateSwitchUnderMaintenanceRequest
+activate NbWorkerTopology
+
+NbWorkerTopology -> Neo4j : Query to get switch\ninformation
+activate Neo4j
+Neo4j -> NbWorkerTopology : Switch
+deactivate Neo4j
+
+alt
+
+NbWorkerTopology -> Neo4j : Update switch
+NbWorkerTopology -> kilda.northbound : InfoData\nSwitchInfoData
+kilda.northbound -> Northbound : InfoData\nSwitchInfoData
+Northbound -> Client : SwitchDto
+
+else switch does not exist
+
+NbWorkerTopology -> kilda.northbound : ErrorMessage
+deactivate NbWorkerTopology
+kilda.northbound -> Northbound : ErrorMessage
+Northbound -> Client : HTTP 404: Switch not found
+deactivate Northbound
+end
+
+@enduml

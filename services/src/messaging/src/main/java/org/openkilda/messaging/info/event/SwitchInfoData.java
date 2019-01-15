@@ -85,13 +85,16 @@ public class SwitchInfoData extends CacheTimeTag {
     @JsonProperty("controller")
     private String controller;
 
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
+
     /**
      * Default constructor.
      */
     public SwitchInfoData() { }
 
     public SwitchInfoData(SwitchId switchId, SwitchChangeType state) {
-        this(switchId, state, null, null, null, null);
+        this(switchId, state, null, null, null, null, false);
     }
 
     /**
@@ -105,18 +108,20 @@ public class SwitchInfoData extends CacheTimeTag {
      * @param controller  switch controller
      */
     @JsonCreator
-    public SwitchInfoData(@JsonProperty("switch_id") final SwitchId switchId,
-                          @JsonProperty("state") final SwitchChangeType state,
-                          @JsonProperty("address") final String address,
-                          @JsonProperty("hostname") final String hostname,
-                          @JsonProperty("description") final String description,
-                          @JsonProperty("controller") final String controller) {
+    public SwitchInfoData(@JsonProperty("switch_id") SwitchId switchId,
+                          @JsonProperty("state") SwitchChangeType state,
+                          @JsonProperty("address") String address,
+                          @JsonProperty("hostname") String hostname,
+                          @JsonProperty("description") String description,
+                          @JsonProperty("controller") String controller,
+                          @JsonProperty("under_maintenance") boolean underMaintenance) {
         this.switchId = switchId;
         this.state = state;
         this.address = address;
         this.hostname = hostname;
         this.description = description;
         this.controller = controller;
+        this.underMaintenance = underMaintenance;
     }
 
     /**
@@ -228,6 +233,24 @@ public class SwitchInfoData extends CacheTimeTag {
     }
 
     /**
+     * Checks a switch that it is under maintenance.
+     *
+     * @return value of the flag "under maintenance".
+     */
+    public boolean isUnderMaintenance() {
+        return underMaintenance;
+    }
+
+    /**
+     * Mark/unmark the switch that it is under maintenance.
+     *
+     * @param underMaintenance "under maintenance" flag.
+     */
+    public void setUnderMaintenance(boolean underMaintenance) {
+        this.underMaintenance = underMaintenance;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -247,7 +270,7 @@ public class SwitchInfoData extends CacheTimeTag {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(switchId, state, address, hostname, description, controller);
+        return Objects.hash(switchId, state, address, hostname, description, controller, underMaintenance);
     }
 
     /**
@@ -268,6 +291,7 @@ public class SwitchInfoData extends CacheTimeTag {
                 && Objects.equals(getAddress(), that.getAddress())
                 && Objects.equals(getHostname(), that.getHostname())
                 && Objects.equals(getDescription(), that.getDescription())
-                && Objects.equals(getController(), that.getController());
+                && Objects.equals(getController(), that.getController())
+                && Objects.equals(isUnderMaintenance(), that.isUnderMaintenance());
     }
 }
