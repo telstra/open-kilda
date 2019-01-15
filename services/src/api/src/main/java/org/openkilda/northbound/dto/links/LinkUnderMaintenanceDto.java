@@ -38,15 +38,20 @@ public class LinkUnderMaintenanceDto {
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
 
+    @JsonProperty("evacuate")
+    private boolean evacuate;
+
     public LinkUnderMaintenanceDto(@JsonProperty(value = "src_switch", required = true) String srcSwitch,
                                    @JsonProperty(value = "src_port", required = true) Integer srcPort,
                                    @JsonProperty(value = "dst_switch", required = true) String dstSwitch,
                                    @JsonProperty(value = "dst_port", required = true) Integer dstPort,
-                                   @JsonProperty("under_maintenance") boolean underMaintenance) {
+                                   @JsonProperty("under_maintenance") boolean underMaintenance,
+                                   @JsonProperty("evacuate") boolean evacuate) {
         this.srcSwitch = srcSwitch;
         this.srcPort = srcPort;
         this.dstSwitch = dstSwitch;
         this.dstPort = dstPort;
         this.underMaintenance = underMaintenance;
+        this.evacuate = evacuate;
     }
 }

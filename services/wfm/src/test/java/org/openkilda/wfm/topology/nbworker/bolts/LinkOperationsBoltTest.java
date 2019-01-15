@@ -43,6 +43,7 @@ import java.util.Properties;
 public class LinkOperationsBoltTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
+    private static final int ISL_COST_WHEN_UNDER_MAINTENANCE = 10000;
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();
@@ -73,14 +74,15 @@ public class LinkOperationsBoltTest {
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_1).build());
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_2).build());
 
-        LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager);
+        LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager, ISL_COST_WHEN_UNDER_MAINTENANCE);
         bolt.prepare(null, null, null);
         LinkPropsPut linkPropsPutRequest = new LinkPropsPut(new LinkPropsDto(
                 new NetworkEndpoint(SWITCH_ID_1, 1),
                 new NetworkEndpoint(SWITCH_ID_2, 1),
                 Collections.emptyMap()));
 
-        LinkPropsResponse response = (LinkPropsResponse) bolt.processRequest(null, linkPropsPutRequest).get(0);
+        LinkPropsResponse response = (LinkPropsResponse) bolt.processRequest(null, linkPropsPutRequest,
+                "test_correlation_id").get(0);
         assertNotNull(response.getLinkProps());
     }
 }
