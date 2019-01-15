@@ -68,6 +68,7 @@ public class Switch implements Serializable {
 
     private String description;
 
+    @Property(name = "under_maintenance")
     private boolean underMaintenance;
 
     /**

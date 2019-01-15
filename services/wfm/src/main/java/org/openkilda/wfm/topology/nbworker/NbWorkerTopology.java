@@ -82,7 +82,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
 
-        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager);
+        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager,
+                topologyConfig.getIslCostWhenUnderMaintenance());
         tb.setBolt(SWITCHES_BOLT_NAME, switchesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.SWITCH.toString());
 
@@ -112,7 +113,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
-                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString());
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString());
 
         KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
