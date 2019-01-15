@@ -21,6 +21,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 
@@ -35,10 +36,15 @@ public class SwitchOperationsService {
 
     private SwitchRepository switchRepository;
     private TransactionManager transactionManager;
+    private LinkOperationsService linkOperationsService;
 
-    public SwitchOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
+    public SwitchOperationsService(RepositoryFactory repositoryFactory,
+                                   TransactionManager transactionManager,
+                                   int islCostWhenUnderMaintenance) {
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.transactionManager = transactionManager;
+        this.linkOperationsService
+                = new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
     }
 
     /**
@@ -86,6 +92,20 @@ public class SwitchOperationsService {
             sw.setUnderMaintenance(underMaintenance);
 
             switchRepository.createOrUpdate(sw);
+
+            linkOperationsService.getAllIsls(switchId, null, null, null)
+                    .forEach(isl -> {
+                        try {
+                            linkOperationsService.updateLinkUnderMaintenanceFlag(
+                                    isl.getSrcSwitch().getSwitchId(),
+                                    isl.getSrcPort(),
+                                    isl.getDestSwitch().getSwitchId(),
+                                    isl.getDestPort(),
+                                    underMaintenance);
+                        } catch (IslNotFoundException e) {
+                            //We get all ISLs on this switch, so all ISLs exist
+                        }
+                    });
 
             return Optional.of(sw);
         }).orElseThrow(() -> new SwitchNotFoundException(switchId));

@@ -132,7 +132,7 @@ public class JsonSerializationTest {
 
     @Test
     public void switchUnderMaintenanceDtoTest() throws IOException {
-        UnderMaintenanceDto dto = new UnderMaintenanceDto(false);
+        UnderMaintenanceDto dto = new UnderMaintenanceDto(false, false);
         assertEquals(dto, pass(dto, UnderMaintenanceDto.class));
     }
 

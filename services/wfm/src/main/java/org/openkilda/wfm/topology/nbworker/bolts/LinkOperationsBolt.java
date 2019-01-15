@@ -108,7 +108,9 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         Integer dstPort = request.getDestination().getPortNumber();
         SwitchId dstSwitch = request.getDestination().getDatapath();
 
-        return linkOperationsService.getAllIsls(srcSwitch, srcPort, dstSwitch, dstPort);
+        return linkOperationsService.getAllIsls(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+                .map(IslMapper.INSTANCE::map)
+                .collect(Collectors.toList());
     }
 
     private List<LinkPropsData> getLinkProps(LinkPropsGet request) {
