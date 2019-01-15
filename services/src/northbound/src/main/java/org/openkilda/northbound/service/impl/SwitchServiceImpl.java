@@ -33,6 +33,8 @@ import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -46,6 +48,7 @@ import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
@@ -55,6 +58,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.SwitchUnderMaintenanceDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -296,6 +300,34 @@ public class SwitchServiceImpl implements SwitchService {
 
         return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
                 .thenApply(PortDescription.class::cast);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<SwitchDto> updateSwitchUnderMaintenance(
+            SwitchUnderMaintenanceDto switchUnderMaintenanceDto) {
+
+        String correlationId = RequestCorrelationId.getId();
+        logger.debug("Update under maintenance switch request processing");
+        UpdateSwitchUnderMaintenanceRequest data = null;
+        try {
+            data = new UpdateSwitchUnderMaintenanceRequest(new SwitchId(switchUnderMaintenanceDto.getSw()),
+                                                           switchUnderMaintenanceDto.isUnderMaintenance());
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                  e.getMessage(), "Can not parse arguments when create 'update under maintenance for switch' request");
+        }
+
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(messages -> messages.stream()
+                        .map(SwitchInfoData.class::cast)
+                        .map(switchMapper::toSwitchDto)
+                        .collect(Collectors.toList()).get(0));
     }
 
     private SwitchFlowEntries findByCookie(Long cookie, SwitchFlowEntries entries) {

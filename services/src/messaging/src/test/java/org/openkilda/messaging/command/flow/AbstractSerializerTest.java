@@ -86,9 +86,9 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     private static final String requester = "requester-id";
     private static final SwitchInfoData sw1 = new SwitchInfoData(new SwitchId("ff:01"),
-            SwitchChangeType.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda");
+            SwitchChangeType.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda", false);
     private static final SwitchInfoData sw2 = new SwitchInfoData(new SwitchId("ff:02"),
-            SwitchChangeType.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda");
+            SwitchChangeType.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda", false);
     private static final List<PathNode> nodes = Arrays.asList(
             new PathNode(new SwitchId("ff:01"), 1, 0, 0L),
             new PathNode(new SwitchId("ff:02"), 2, 1, 0L));
@@ -454,7 +454,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventSwitchInfoTest() throws IOException, ClassNotFoundException {
-        SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller");
+        SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost",
+                "sw", "controller", false);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

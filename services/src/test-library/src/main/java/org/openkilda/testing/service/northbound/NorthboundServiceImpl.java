@@ -443,6 +443,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 dto.getAddress(),
                 dto.getHostname(),
                 dto.getDescription(),
-                KILDA_CONTROLLER);
+                KILDA_CONTROLLER,
+                dto.isUnderMaintenance());
     }
 }

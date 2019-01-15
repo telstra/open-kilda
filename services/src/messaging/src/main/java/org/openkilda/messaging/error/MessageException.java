@@ -54,6 +54,17 @@ public class MessageException extends CacheException {
     /**
      * Instance constructor.
      *
+     * @param errorType        error type
+     * @param errorMessage     error message
+     * @param errorDescription error description
+     */
+    public MessageException(ErrorType errorType, String errorMessage, String errorDescription) {
+        super(errorType, errorMessage, errorDescription);
+    }
+
+    /**
+     * Instance constructor.
+     *
      * @param message the {@link MessageError}
      */
     public MessageException(ErrorMessage message) {

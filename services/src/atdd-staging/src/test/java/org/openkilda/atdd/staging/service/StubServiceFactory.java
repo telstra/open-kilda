@@ -202,7 +202,7 @@ public class StubServiceFactory {
         when(serviceMock.getActiveSwitches())
                 .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
                         .map(sw -> new SwitchInfoData(sw.getDpId(),
-                                SwitchChangeType.ACTIVATED, "", "", "", ""))
+                                SwitchChangeType.ACTIVATED, "", "", "", "", false))
                         .collect(toList()));
 
         when(serviceMock.getActiveLinks())
