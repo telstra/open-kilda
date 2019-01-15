@@ -20,7 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.messaging.error.MeterPoolIsFullException;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -138,7 +137,7 @@ public class ResourceCacheTest {
         assertEquals(0, resourceCache.getAllMeterIds(SWITCH_ID).size());
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = ResourcePoolIsFullException.class)
     public void vlanPoolFullTest() {
         resourceCache.allocateVlanId();
         int i = ResourceCache.MIN_VLAN_ID;
