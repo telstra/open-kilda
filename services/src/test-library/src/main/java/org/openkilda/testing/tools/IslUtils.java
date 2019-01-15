@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
+import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.ASwitch;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
@@ -51,17 +52,17 @@ public class IslUtils {
     private NorthboundService northbound;
 
     @Autowired
-    private LockKeeperService lockKeeperService;
+    private LockKeeperService lockKeeper;
 
     @Autowired
-    private Database db;
+    private Database database;
 
     /**
-     * Waits until all passed isls have the specified status. Fails after defined timeout.
-     * Checks happen via Northbound API calls
+     * Waits until all passed ISLs have the specified status. Fails after defined timeout.
+     * Checks happen via Northbound API calls.
      *
-     * @param isls which isls should have the specified status
-     * @param expectedStatus which status to wait on specified isls
+     * @param isls which ISLs should have the specified status
+     * @param expectedStatus which status to wait for specified ISLs
      */
     public void waitForIslStatus(List<Isl> isls, IslChangeType expectedStatus, RetryPolicy retryPolicy) {
         List<IslInfoData> actualIsl = Failsafe.with(retryPolicy
@@ -81,9 +82,9 @@ public class IslUtils {
     }
 
     /**
-     * Gets actual Northbound represenation of the certain ISL.
+     * Gets actual Northbound representation of the certain ISL.
      *
-     * @param isl isl to search in 'getAllLinks' results
+     * @param isl ISL to search in 'getAllLinks' results
      */
     public Optional<IslInfoData> getIslInfo(Isl isl) {
         return getIslInfo(northbound.getAllLinks(), isl);
@@ -94,7 +95,7 @@ public class IslUtils {
      * IslInfoData is returned from NB.
      *
      * @param islsInfo list where to search certain ISL
-     * @param isl what isl to look for
+     * @param isl what ISL to look for
      */
     public Optional<IslInfoData> getIslInfo(List<IslInfoData> islsInfo, Isl isl) {
         return islsInfo.stream().filter(link -> {
@@ -109,7 +110,7 @@ public class IslUtils {
     /**
      * Returns 'reverse' version of the passed ISL.
      *
-     * @param isl isl to reverse
+     * @param isl ISL to reverse
      */
     public Isl reverseIsl(Isl isl) {
         if (isl.getDstSwitch() == null) {
@@ -123,9 +124,24 @@ public class IslUtils {
                 isl.getSrcPort(), isl.getMaxBandwidth(), reversedAsw);
     }
 
+    /**
+     * Converts a given ISL to LinkParametersDto object.
+     *
+     * @param isl ISL to convert
+     */
     public LinkParametersDto getLinkParameters(Isl isl) {
         return new LinkParametersDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
                 isl.getDstSwitch().getDpId().toString(), isl.getDstPort());
+    }
+
+    /**
+     * Converts a given ISL to LinkUnderMaintenanceDto object.
+     *
+     * @param isl ISL to convert
+     */
+    public LinkUnderMaintenanceDto getLinkUnderMaintenance(Isl isl, boolean underMaintenance, boolean evacuate) {
+        return new LinkUnderMaintenanceDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId().toString(), isl.getDstPort(), underMaintenance, evacuate);
     }
 
     /**
@@ -135,7 +151,7 @@ public class IslUtils {
      * @param replugSource replug source or destination end of the ISL
      * @param dstIsl The destination 'isl'. Usually a free link, which is connected to a-switch at one end
      * @param plugIntoSource Whether to connect to src or dst end of the dstIsl. Usually src end for not-connected ISLs
-     * @return New ISL which is expected to be discovered after the replug.
+     * @return New ISL which is expected to be discovered after the replug
      */
     public TopologyDefinition.Isl replug(TopologyDefinition.Isl srcIsl, boolean replugSource,
                                          TopologyDefinition.Isl dstIsl, boolean plugIntoSource) {
@@ -144,12 +160,12 @@ public class IslUtils {
         //unplug
         List<Integer> portsToUnplug = Collections.singletonList(
                 replugSource ? srcASwitch.getInPort() : srcASwitch.getOutPort());
-        lockKeeperService.portsDown(portsToUnplug);
+        lockKeeper.portsDown(portsToUnplug);
 
         //change flow on aSwitch
         //delete old flow
         if (srcASwitch.getInPort() != null && srcASwitch.getOutPort() != null) {
-            lockKeeperService.removeFlows(Arrays.asList(
+            lockKeeper.removeFlows(Arrays.asList(
                     new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
                     new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
         }
@@ -157,10 +173,10 @@ public class IslUtils {
         ASwitchFlow aswFlowForward = new ASwitchFlow(srcASwitch.getInPort(),
                 plugIntoSource ? dstASwitch.getInPort() : dstASwitch.getOutPort());
         ASwitchFlow aswFlowReverse = new ASwitchFlow(aswFlowForward.getOutPort(), aswFlowForward.getInPort());
-        lockKeeperService.addFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
+        lockKeeper.addFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
 
         //plug back
-        lockKeeperService.portsUp(portsToUnplug);
+        lockKeeper.portsUp(portsToUnplug);
 
         return TopologyDefinition.Isl.factory(
                 replugSource ? (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()) : srcIsl.getSrcSwitch(),
@@ -172,13 +188,13 @@ public class IslUtils {
     }
 
     /**
-     * Get cost of a certain ISL from DB.
+     * Get cost of a certain ISL from the database.
      *
      * @param isl ISL for which cost should be retrieved
      * @return ISL cost
      */
     public int getIslCost(Isl isl) {
-        return db.getIslCost(isl);
+        return database.getIslCost(isl);
     }
 
     private RetryPolicy retryPolicy() {
