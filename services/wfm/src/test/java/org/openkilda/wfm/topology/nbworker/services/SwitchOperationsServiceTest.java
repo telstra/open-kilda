@@ -35,13 +35,15 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
 
     private static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
 
+    private static int islCostWhenUnderMaintenance = 10000;
+
     @BeforeClass
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
 
         switchOperationsService = new SwitchOperationsService(persistenceManager.getRepositoryFactory(),
-                persistenceManager.getTransactionManager());
+                persistenceManager.getTransactionManager(), islCostWhenUnderMaintenance);
     }
 
     @Test

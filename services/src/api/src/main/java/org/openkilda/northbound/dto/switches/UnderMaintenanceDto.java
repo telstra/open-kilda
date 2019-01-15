@@ -26,8 +26,13 @@ public class UnderMaintenanceDto {
     @JsonProperty(value = "under_maintenance", required = true)
     private boolean underMaintenance;
 
+    @JsonProperty(value = "evacuate", required = true)
+    private boolean evacuate;
+
     public UnderMaintenanceDto(
-            @JsonProperty(value = "under_maintenance", required = true) boolean underMaintenance) {
+            @JsonProperty(value = "under_maintenance", required = true) boolean underMaintenance,
+            @JsonProperty(value = "evacuate", required = true) boolean evacuate) {
         this.underMaintenance = underMaintenance;
+        this.evacuate = evacuate;
     }
 }

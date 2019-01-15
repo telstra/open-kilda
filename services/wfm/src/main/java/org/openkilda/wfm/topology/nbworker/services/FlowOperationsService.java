@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -25,6 +26,9 @@ import org.openkilda.wfm.error.IslNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowOperationsService {
@@ -56,5 +60,28 @@ public class FlowOperationsService {
         }
 
         return flowRepository.findAllFlowPairsWithSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
+    }
+
+    /**
+     * Return flows for a switch.
+     *
+     * @param srcSwitchId switch id.
+     * @return all flows for a switch.
+     */
+    public Set<String> getFlowIdsForSwitch(SwitchId srcSwitchId) {
+
+        Set<String> flowIds = new HashSet<>();
+        islRepository.findByPartialEndpoints(srcSwitchId, null, null, null)
+                .forEach(isl -> flowIds.addAll(flowRepository.findAllFlowPairsWithSegment(
+                        isl.getSrcSwitch().getSwitchId(),
+                        isl.getSrcPort(),
+                        isl.getDestSwitch().getSwitchId(),
+                        isl.getDestPort())
+                            .stream()
+                            .map(FlowPair::getForward)
+                            .map(Flow::getFlowId)
+                            .collect(Collectors.toSet())));
+
+        return flowIds;
     }
 }
