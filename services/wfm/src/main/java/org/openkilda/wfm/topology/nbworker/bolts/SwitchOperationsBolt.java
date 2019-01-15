@@ -36,7 +36,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
         List<? extends InfoData> result = null;
         if (request instanceof GetSwitchesRequest) {
             result = getSwitches();

@@ -260,7 +260,7 @@ public class LinkServiceImpl implements LinkService {
             data = new UpdateLinkUnderMaintenanceRequest(
                     new NetworkEndpoint(new SwitchId(link.getSrcSwitch()), link.getSrcPort()),
                     new NetworkEndpoint(new SwitchId(link.getDstSwitch()), link.getDstPort()),
-                    link.isUnderMaintenance());
+                    link.isUnderMaintenance(), link.isEvacuate());
         } catch (IllegalArgumentException e) {
             logger.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
