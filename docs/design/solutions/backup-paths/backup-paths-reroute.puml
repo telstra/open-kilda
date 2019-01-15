@@ -1,0 +1,78 @@
+@startuml
+title Reroute flow with backup path
+
+control kilda.topo.reroute
+box "Reroute Topology" #LightGreen
+    participant RerouteBolt
+    participant FlowThrottlingBolt
+    participant RerouteService
+end box
+database FlowRepository
+control kilda.flow
+box "Flow Topology" #Yellow
+    participant FlowService
+    participant TransactionBolt
+end box
+
+kilda.topo.reroute ->> RerouteBolt: RerouteAffectedFlows
+activate RerouteBolt
+RerouteBolt -> RerouteService: processRerouteAffectedFlows
+activate RerouteService
+
+==Backuped flow rerouting==
+RerouteService -> FlowRepository: getActiveBackupedFlowsWithAffectedMainPath
+FlowRepository --> RerouteService: Set(FlowId, PathId)
+RerouteService -> FlowRepository: getActiveBackupedFlowsWithAffectedBackupPath
+FlowRepository --> RerouteService: Set(FlowId, PathId)
+
+loop foreach FlowId in (AffectedMainPathSet intersect AffectedBackupPathSet)
+    note right of RerouteService: reroute entire flow
+    RerouteService -> RerouteService: add (FlowId, None) to reroute list
+end
+
+loop foreach FlowId in (AffectedMainPathSet minus AffectedBackupPathSet)
+    note right of RerouteService: reroute affected main path
+    RerouteService -> RerouteService: add (FlowId, PathId) to reroute list
+    RerouteService -> kilda.flow: emit FlowSwapPath(FlowId, PathId)
+end
+
+alt Swapping Flow Path
+    kilda.flow ->> FlowService: FlowSwapPath
+    activate FlowService
+    FlowService -> FlowRepository: swap main path
+    FlowService ->> TransactionBolt: install new ingress\nand remove old ingress
+    deactivate FlowService
+end
+
+loop foreach FlowId in (AffectedBackupPathSet minus AffectedMainPathSet)
+    note right of RerouteService: reroute backup path
+    RerouteService -> RerouteService: add (FlowId, PathId) to reroute list
+end
+
+==Regular(without backup) flow rerouting==
+RerouteService -> FlowRepository: getActiveAffectedRegularFlows
+FlowRepository --> RerouteService: List(FlowId)
+loop foreach in retrieved list
+    RerouteService -> RerouteService: add (FlowId, None) to reroute list
+end
+
+==Emit reroute commands==
+RerouteService --> RerouteBolt: List(FlowId, Optional<PathId>)
+deactivate RerouteService
+
+loop foreach (FlowId, Optional<PathId>) pair
+    RerouteBolt ->> FlowThrottlingBolt: emit flow reroutes
+    deactivate RerouteBolt
+    activate FlowThrottlingBolt
+end
+FlowThrottlingBolt ->> kilda.flow: emit FlowRerouteRequests
+deactivate FlowThrottlingBolt
+
+==Path rerouting==
+kilda.flow ->> FlowService: FlowRerouteRequest
+activate FlowService
+FlowService -> FlowService: Performs specified flow path rerouting
+FlowService ->> TransactionBolt: install and remove rules
+deactivate FlowService
+
+@enduml
