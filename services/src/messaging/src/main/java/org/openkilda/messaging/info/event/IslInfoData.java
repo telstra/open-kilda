@@ -71,6 +71,9 @@ public class IslInfoData extends CacheTimeTag {
     @JsonProperty("latency_ns")
     protected long latency;
 
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
+
     private PathNode source;
     private PathNode destination;
 
@@ -88,19 +91,20 @@ public class IslInfoData extends CacheTimeTag {
                 that.getAvailableBandwidth(),
                 that.getState(),
                 that.getTimeCreateMillis(),
-                that.getTimeModifyMillis());
+                that.getTimeModifyMillis(),
+                that.isUnderMaintenance());
     }
 
     /**
      * Simple constructor for an ISL with only source/destination and state.
      */
-    public IslInfoData(PathNode source, PathNode destination, IslChangeType state) {
-        this(-1, source, destination, 0, 0, state, null, null);
+    public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
+        this(-1, source, destination, 0, 0, state, null, null, underMaintenance);
     }
 
     public IslInfoData(long latency, PathNode source, PathNode destination, long speed,
-                       IslChangeType state, long availableBandwidth) {
-        this(latency, source, destination, speed, availableBandwidth, state, null, null);
+                       IslChangeType state, long availableBandwidth, boolean underMaintenance) {
+        this(latency, source, destination, speed, availableBandwidth, state, null, null, underMaintenance);
     }
 
     @JsonCreator
@@ -111,7 +115,8 @@ public class IslInfoData extends CacheTimeTag {
                        @JsonProperty("available_bandwidth") long availableBandwidth,
                        @JsonProperty("state") IslChangeType state,
                        @JsonProperty("time_create") Long timeCreateMillis,
-                       @JsonProperty("time_modify") Long timeModifyMillis) {
+                       @JsonProperty("time_modify") Long timeModifyMillis,
+                       @JsonProperty("under_maintenance") boolean underMaintenance) {
         this.latency = latency;
         this.source = source;
         this.destination = destination;
@@ -121,6 +126,7 @@ public class IslInfoData extends CacheTimeTag {
         this.timeCreateMillis = timeCreateMillis;
         this.timeModifyMillis = timeModifyMillis;
         this.id = String.format("%s_%d", source.getSwitchId(), source.getPortNo());
+        this.underMaintenance = underMaintenance;
     }
 
     /**
@@ -155,7 +161,7 @@ public class IslInfoData extends CacheTimeTag {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, source, destination, speed, availableBandwidth, state);
+        return Objects.hash(latency, source, destination, speed, availableBandwidth, state, underMaintenance);
     }
 
     /**
@@ -176,6 +182,7 @@ public class IslInfoData extends CacheTimeTag {
                 && Objects.equals(getDestination(), that.getDestination())
                 && Objects.equals(getSpeed(), that.getSpeed())
                 && Objects.equals(getAvailableBandwidth(), that.getAvailableBandwidth())
-                && Objects.equals(getState(), that.getState());
+                && Objects.equals(getState(), that.getState())
+                && Objects.equals(isUnderMaintenance(), that.isUnderMaintenance());
     }
 }

@@ -42,6 +42,7 @@ import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
@@ -353,6 +354,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<LinkDto> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link) {
+        LinkDto[] updatedLink = restTemplate.exchange("api/v1/links/under-maintenance", HttpMethod.PATCH,
+                new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
+        return Arrays.asList(updatedLink);
+    }
+
+    @Override
     public FeatureTogglePayload getFeatureToggles() {
         return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglePayload.class).getBody();
@@ -433,7 +441,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                         pathDto.getSegLatency()))
                 .collect(Collectors.toList());
         return new IslInfoData(0, path.get(0), path.get(1), dto.getSpeed(),
-                IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth());
+                IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth(), dto.isUnderMaintenance());
     }
 
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
