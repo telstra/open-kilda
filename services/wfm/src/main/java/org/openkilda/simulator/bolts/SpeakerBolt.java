@@ -77,7 +77,8 @@ public class SpeakerBolt extends BaseRichBolt {
                 "192.168.0.1", // TODO: need to create these on the fly
                 "sw" + sw.getDpid().toString(),
                 "Simulated Switch",
-                "SimulatorTopology"
+                "SimulatorTopology",
+                false
         );
         InfoMessage message = new InfoMessage(
                 data,
