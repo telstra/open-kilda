@@ -72,7 +72,7 @@ class LinkMaintenanceSpec extends BaseSpecification {
         assert flow1Path == possibleFlowPaths.first()
         assert flow2Path == possibleFlowPaths.first()
 
-        and: "Delete link props to allow rerouting flows"
+        and: "Delete link props from all links of alternative paths to allow rerouting flows"
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         when: "Set maintenance mode without flows evacuation flag for the first link involved in flow paths"
@@ -97,6 +97,7 @@ class LinkMaintenanceSpec extends BaseSpecification {
         flow1PathUpdated != flow1Path
         flow2PathUpdated != flow2Path
 
+        and: "Link under maintenance is not involved in new flow paths"
         !(isl in pathHelper.getInvolvedIsls(flow1PathUpdated))
         !(isl in pathHelper.getInvolvedIsls(flow2PathUpdated))
 

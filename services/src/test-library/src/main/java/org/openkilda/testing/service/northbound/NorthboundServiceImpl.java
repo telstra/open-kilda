@@ -347,6 +347,27 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<String> rerouteLinkFlows(SwitchId srcSwitch, Integer srcPort,
+                                         SwitchId dstSwitch, Integer dstPort) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links/flows/reroute");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        String[] flowIds = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), String[].class).getBody();
+        return Arrays.asList(flowIds);
+    }
+
+    @Override
     public DeleteLinkResult deleteLink(LinkParametersDto linkParameters) {
         return restTemplate.exchange("/api/v1/links", HttpMethod.DELETE,
                 new HttpEntity<>(linkParameters, buildHeadersWithCorrelationId()),
