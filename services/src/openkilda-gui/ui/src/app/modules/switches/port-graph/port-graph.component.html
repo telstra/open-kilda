@@ -1,0 +1,87 @@
+<form [formGroup]="filterForm">
+  <!-- <h5 class='modal-title'>GRAPH</h5> -->
+    <div class="container-fluid graph_div topology-graph">
+        <div class="row">          
+          <div class="col-xs-8 col-md-8 " id="stats_div" style="border: 0px white; padding-top: 15px;
+              padding-bottom: 15px;
+              padding-left: 0;
+              padding-right: 0;">
+            
+              <app-dygraph  (zoomChange)='zoomHandler($event)'  style="width: 750px;"></app-dygraph>
+            
+          </div>
+          <div class="col-md-4 col-xs-4 filter">
+            <div class="stats-graph row" style="margin-top: 30px;">
+              <ul class="line-legend col-lg-12">
+                <li>Forward</li>
+                <li>Reverse</li>
+              </ul>
+            </div>
+            <div>
+              <div class="row form-group clearfix">
+                <!-- <fieldset class="form-group clearfix"> -->
+                <label class="col-xs-4 col-md-4 text-label">Timezone:</label>
+                <div class="col-xs-8 col-md-8">
+                  <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimezone()">
+                    <option value="UTC">UTC</option>
+                    <option value="LOCAL">My Timezone</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row form-group clearfix">
+                <label class="col-xs-4 col-md-4 text-label">From:</label>
+                <div class="col-xs-8 col-md-8">
+                  <input formControlName="fromDate" type="text" (change)="changeDate('fromDate',$event)" datetime-picker placeholder="From" class="form-control">
+                </div>
+              </div>
+              <div class="row form-group clearfix">
+                <label class="col-xs-4 col-md-4 text-label">To:</label>
+                <div class="col-xs-8 col-md-8">
+                  <input type="text" formControlName="toDate" (change)="changeDate('toDate',$event)" datetime-picker placeholder="From" class="form-control">
+                </div>
+              </div>
+              <div id="DownsampleID" class="row form-group clearfix">
+                <label class="col-xs-4 col-md-4 text-label">Downsample:</label>
+                <div class="col-xs-8 col-md-8">
+                  <select formControlName="download_sample" class="form-control" (change)="callPortGraphAPI()">
+                    <option value="30s">30s</option>
+                    <option value="1m">1m</option>
+                    <option value="5m">5m</option>
+                    <option value="10m">10m</option>
+                  </select>
+                  <span class="downsample-error-message pull-left"></span>
+                </div>
+              </div>
+              <div id="autoreloadId" class="row form-group clearfix">
+                <label class="col-xs-4 col-md-4 text-label">Autoreload(Sec):</label>
+                <div class="col-xs-8 col-md-8">
+                  <input formControlName="auto_reload" value="1" type="checkbox">
+                  <span [hidden]="!f.auto_reload.value">
+                    <!-- <input formControlName="auto_reload_time" type="text" name="auto_reload_time" (blur)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;"> -->
+                    <select formControlName="auto_reload_time" name="auto_reload_time" (change)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;">
+                        <option value="">Please select a value</option>
+                        <option *ngFor="let option of getautoReloadValues" value="{{option.value}}">{{option.text}}</option>
+                     </select>
+                    <div class="invalid-feedback" *ngIf="!f.auto_reload_time.valid && f.auto_reload_time.dirty">
+                      <div *ngIf="f.auto_reload_time.errors.pattern">Auto reload time should be number</div>
+                      <div *ngIf="f.auto_reload_time.errors.required">Auto reload time required</div>
+                    </div>
+                  </span>
+                </div>
+              </div>
+              <div class="row form-group clearfix" id="islMetric">
+                <label class="col-xs-4 col-md-4 text-label">Metric:</label>
+                <div class="col-xs-8 col-md-8">
+                  <select formControlName="metric" class="form-control" (change)="callPortGraphAPI()">
+                    <option *ngFor="let option of portMetrics" value="{{option.value}}">{{option.label}}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-xs-12 col-md-12 submit-btn">
+                <div id="errorMesg" class="error"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+</form>
