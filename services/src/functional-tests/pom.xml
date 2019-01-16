@@ -154,6 +154,12 @@
                         </configuration>
                         <executions>
                             <execution>
+                                <id>default-test</id>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>test</id>
                                 <phase>test</phase>
                                 <goals>
