@@ -48,13 +48,13 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
 
     void buildVirtualEnvironment() {
         //turn on all features
-        def features = northbound.getFeatureToggles()
-        features.metaClass.properties.each {
-            if (it.type == Boolean.class) {
-                features.metaClass.setAttribute(features, it.name, true)
-            }
-        }
-        northbound.toggleFeature(features)
+        //def features = northbound.getFeatureToggles()
+        //features.metaClass.properties.each {
+        //    if (it.type == Boolean.class) {
+        //        features.metaClass.setAttribute(features, it.name, true)
+        //    }
+        //}
+        //northbound.toggleFeature(features)
 
         labService.flushLabs()
         labService.getLab()
