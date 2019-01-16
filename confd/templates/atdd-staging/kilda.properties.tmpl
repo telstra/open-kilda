@@ -22,9 +22,9 @@ environment.naming.prefix = {{ getv "/kilda_environment_naming_prefix" }}
 kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
 kafka.topic.topo.disco=kilda.topo.disco
 
-elasticsearch.endpoint = {{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
-elasticsearch.username = {{ getv "/kilda_logging_elasticsearch_user" }}
-elasticsearch.password = {{ getv "/kilda_logging_elasticsearch_pass" }}
+elasticsearch.endpoint={{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
+elasticsearch.username={{ getv "/kilda_logging_elasticsearch_user" }}
+elasticsearch.password={{ getv "/kilda_logging_elasticsearch_pass" }}
 
 spring.profiles.active={{ getv "/kilda_test_profile" }}
 mode.topology.single={{ getv "/kilda_test_topology_single" }}
@@ -37,3 +37,4 @@ antiflap.min={{ getv "/kilda_port_up_down_throttling_delay_seconds_min" }}
 antiflap.warmup={{ getv "/kilda_port_up_down_throttling_delay_seconds_warm_up" }}
 antiflap.cooldown={{ getv "/kilda_port_up_down_throttling_delay_seconds_cool_down" }}
 
+isl.cost.when.under.maintenance={{ getv "/kilda_isl_cost_when_under_maintenance" }}

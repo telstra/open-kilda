@@ -5,7 +5,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
-import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -33,9 +32,7 @@ for each flowId).
 class ThrottlingRerouteSpec extends BaseSpecification {
 
     @Value('${reroute.hardtimeout}')
-    int rerouteHardTimeout    
-    @Value('${antiflap.min}')
-    int antiflapMin
+    int rerouteHardTimeout
 
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
@@ -112,7 +109,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         /*due to port anti-flap we cannot continuously quickly reroute one single flow until we reach hardTimeout,
         thus we need certain amount of flows to continuously provide reroute triggers for them in a loop.
         We can re-trigger a reroute on the same flow after antiflapCooldown + antiflapMin seconds*/
-        int minFlowsRequired = (int)Math.min(rerouteHardTimeout / antiflapMin, antiflapCooldown / antiflapMin + 1) + 1
+        int minFlowsRequired = (int) Math.min(rerouteHardTimeout / antiflapMin, antiflapCooldown / antiflapMin + 1) + 1
         assumeTrue("Topology is too small to run this test", switchPairs.size() >= minFlowsRequired)
         def flows = switchPairs.take(minFlowsRequired).collect { switchPair ->
             def flow = flowHelper.randomFlow(*switchPair)
@@ -216,7 +213,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def brokenIsl = (topology.islsForActiveSwitches +
                 topology.islsForActiveSwitches.collect { islUtils.reverseIsl(it) }).find {
             it.srcSwitch.dpId == sw && it.srcPort == port
-                }
+        }
         assert brokenIsl, "This should not be possible. Trying to switch port on ISL which is not present in config?"
         northbound.portDown(sw, port)
         Wrappers.wait(WAIT_OFFSET, 0) {

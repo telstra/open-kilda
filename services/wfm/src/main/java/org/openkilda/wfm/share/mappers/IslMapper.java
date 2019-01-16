@@ -59,7 +59,7 @@ public abstract class IslMapper {
         Long timeCreateMillis = Optional.ofNullable(isl.getTimeCreate()).map(Instant::toEpochMilli).orElse(null);
         Long timeModifyMillis = Optional.ofNullable(isl.getTimeModify()).map(Instant::toEpochMilli).orElse(null);
         return new IslInfoData(isl.getLatency(), src, dst, isl.getSpeed(), isl.getAvailableBandwidth(),
-                map(isl.getStatus()), timeCreateMillis, timeModifyMillis);
+                map(isl.getStatus()), timeCreateMillis, timeModifyMillis, isl.isUnderMaintenance());
     }
 
     /**
@@ -91,6 +91,7 @@ public abstract class IslMapper {
         isl.setSpeed(islInfoData.getSpeed());
         isl.setAvailableBandwidth(islInfoData.getAvailableBandwidth());
         isl.setStatus(map(islInfoData.getState()));
+        isl.setUnderMaintenance(islInfoData.isUnderMaintenance());
 
         return isl;
     }

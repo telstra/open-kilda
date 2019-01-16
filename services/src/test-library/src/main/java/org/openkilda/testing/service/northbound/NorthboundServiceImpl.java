@@ -42,6 +42,7 @@ import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
@@ -346,10 +347,38 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<String> rerouteLinkFlows(SwitchId srcSwitch, Integer srcPort,
+                                         SwitchId dstSwitch, Integer dstPort) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links/flows/reroute");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        String[] flowIds = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), String[].class).getBody();
+        return Arrays.asList(flowIds);
+    }
+
+    @Override
     public DeleteLinkResult deleteLink(LinkParametersDto linkParameters) {
         return restTemplate.exchange("/api/v1/links", HttpMethod.DELETE,
                 new HttpEntity<>(linkParameters, buildHeadersWithCorrelationId()),
                 DeleteLinkResult.class).getBody();
+    }
+
+    @Override
+    public List<LinkDto> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link) {
+        LinkDto[] updatedLink = restTemplate.exchange("api/v1/links/under-maintenance", HttpMethod.PATCH,
+                new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
+        return Arrays.asList(updatedLink);
     }
 
     @Override
@@ -433,7 +462,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                         pathDto.getSegLatency()))
                 .collect(Collectors.toList());
         return new IslInfoData(0, path.get(0), path.get(1), dto.getSpeed(),
-                IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth());
+                IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth(), dto.isUnderMaintenance());
     }
 
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {

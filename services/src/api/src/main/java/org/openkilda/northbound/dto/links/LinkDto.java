@@ -38,6 +38,9 @@ public class LinkDto {
     @JsonProperty("state")
     protected LinkStatus state;
 
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
+
     @JsonProperty("path")
     private List<PathDto> path;
 }

@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.persistence.PersistenceManager;
@@ -24,8 +24,6 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
-import org.openkilda.wfm.error.IllegalIslStateException;
-import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
 import org.apache.storm.task.OutputCollector;
@@ -64,19 +62,15 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         log.debug("Received operation request");
 
         try {
-            List<InfoData> result = processRequest(input, request);
+            List<InfoData> result = processRequest(input, request, correlationId);
             getOutput().emit(input, new Values(result, correlationId));
-        } catch (IslNotFoundException e) {
-            ErrorData data = new ErrorData(ErrorType.NOT_FOUND, e.getMessage(), "ISL does not exist.");
-            getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
-        } catch (IllegalIslStateException e) {
-            ErrorData data = new ErrorData(ErrorType.REQUEST_INVALID, e.getMessage(), "ISL is in illegal state.");
+        } catch (MessageException e) {
+            ErrorData data = new ErrorData(e.getErrorType(), e.getMessage(), e.getErrorDescription());
             getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
         }
     }
 
-    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request)
-            throws IslNotFoundException, IllegalIslStateException;
+    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId);
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
