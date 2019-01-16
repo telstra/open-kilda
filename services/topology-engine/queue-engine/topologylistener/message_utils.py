@@ -25,16 +25,8 @@ from topologylistener import model
 producer = KafkaProducer(bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS)
 logger = logging.getLogger(__name__)
 
-MT_ERROR = "org.openkilda.messaging.error.ErrorMessage"
 MT_COMMAND = "org.openkilda.messaging.command.CommandMessage"
-MT_COMMAND_REPLY = "org.openkilda.messaging.command.CommandWithReplyToMessage"
 MT_INFO = "org.openkilda.messaging.info.InfoMessage"
-MT_INFO_CHUNKED = 'org.openkilda.messaging.info.ChunkedInfoMessage'
-MT_INFO_FLOW_STATUS = "org.openkilda.messaging.info.flow.FlowStatusResponse"
-MT_ERROR_DATA = "org.openkilda.messaging.error.ErrorData"
-
-MI_LINK_PROPS_RESPONSE = (
-    'org.openkilda.messaging.te.response.LinkPropsResponse')
 
 
 class Abstract(model.JsonSerializable):
@@ -151,30 +143,6 @@ def build_intermediate_flows(switch, match, action, vlan, flow_id, cookie):
 
     return flow
 
-# TODO: A number of todos around why we have a special code parth for one switch flows
-def build_one_switch_flow(switch, src_port, src_vlan, dst_port, dst_vlan,
-                          bandwidth, flow_id, output_action, cookie,
-                          meter_id):
-    logger.debug('build_one_switch_flow: flow_id=%s, cookie=%s, switch=%s, input_port=%s, output_port=%s, input_vlan_id=%s, output_vlan_id=%s, output_vlan_type=%s, bandwidth=%s, meter_id=%s',
-        flow_id, cookie, switch, src_port, dst_port, src_vlan, dst_vlan,
-        output_action, bandwidth, meter_id)
-
-    flow = Flow()
-    flow.clazz = "org.openkilda.messaging.command.flow.InstallOneSwitchFlow"
-    flow.transaction_id = str(uuid.UUID(int=0))
-    flow.flowid = flow_id
-    flow.cookie = cookie
-    flow.switch_id = switch
-    flow.input_port = src_port
-    flow.output_port = dst_port
-    flow.input_vlan_id = src_vlan
-    flow.output_vlan_id = dst_vlan
-    flow.output_vlan_type = output_action
-    flow.bandwidth = bandwidth
-    flow.meter_id = meter_id
-
-    return flow
-
 
 def build_one_switch_flow_from_db(switch, stored_flow, output_action):
     flow = Flow()
@@ -192,35 +160,6 @@ def build_one_switch_flow_from_db(switch, stored_flow, output_action):
     flow.meter_id = stored_flow['meter_id']
 
     return flow
-
-
-def build_delete_flow(path_segment):
-    flow = Flow()
-    flow.clazz = "org.openkilda.messaging.command.flow.RemoveFlow"
-    flow.transaction_id = str(uuid.UUID(int=0))
-    flow.flowid = str(path_segment['flow_id'])
-    flow.cookie = path_segment['cookie']
-    flow.switch_id = str(path_segment['switch_id'])
-    flow.meter_id = path_segment['meter_id']
-
-    flow.criteria = {
-        'cookie': path_segment['cookie'],
-        'in_port': path_segment['in_port'],
-        'in_vlan': path_segment['in_vlan']}
-
-    # next check is needed to make sure that it is not one-switch-port flow, because in that case the rule has
-    # output='in_port', not specific port value.
-    if path_segment['in_port'] != path_segment['out_port']:
-        flow.criteria['out_port'] = path_segment['out_port']
-
-    return flow
-
-
-def make_features_status_response():
-    message = Message()
-    message.clazz = "org.openkilda.messaging.info.system.FeatureTogglesResponse"
-
-    return message
 
 
 def send_sync_rules_response(installed_rules, correlation_id):
@@ -266,103 +205,3 @@ def send_to_topic(payload, correlation_id,
     logger.debug('Send message: topic=%s, message=%s', topic, kafka_message)
     message_result = producer.send(topic, kafka_message)
     message_result.get(timeout=5)
-
-
-def send_info_message(payload, correlation_id):
-    send_to_topic(payload, correlation_id, MT_INFO)
-
-
-def send_cache_message(payload, correlation_id):
-    send_to_topic(payload, correlation_id, MT_INFO, "WFM_CACHE", config.KAFKA_CACHE_TOPIC)
-
-
-def send_error_message(correlation_id, error_type, error_message,
-                       error_description, destination="WFM",
-                       topic=config.KAFKA_FLOW_TOPIC):
-    # TODO: Who calls this .. need to pass in the right TOPIC
-    data = {"error-type": error_type,
-            "error-message": error_message,
-            "error-description": error_description,
-            "clazz": MT_ERROR_DATA}
-    send_to_topic(data, correlation_id, MT_ERROR, destination, topic)
-
-
-def send_install_commands(flow_rules, correlation_id):
-    """
-    flow_utils.get_rules() creates the flow rules starting with ingress, then transit, then egress. For the install,
-    we would like to send the commands in opposite direction - egress, then transit, then ingress.  Consequently,
-    the for logic should go in reverse
-    """
-    for flow_rule in reversed(flow_rules):
-        # TODO: (same as delete todo) Whereas this is part of the current workflow .. feels like we should have the workflow manager work
-        #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
-        #       Then send a message to a FLOW_EVENT topic that says "FLOW CREATED"
-
-        # TODO: sending commands directly to FL causes duplication of operations in FL, bacause WFM sends the commands too (for transaction tracking purpose)
-        # send_to_topic(flow_rule, correlation_id, MT_COMMAND,
-        #               destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
-
-        # FIXME(surabujin): WFM reroute this message into CONTROLLER
-        send_to_topic(flow_rule, correlation_id, MT_COMMAND,
-                      destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
-
-
-def send_delete_commands(nodes, correlation_id):
-    """
-    Build the message for each switch node in the path and send the message to both the speaker and the flow topic
-
-    :param nodes: array of dicts: switch_id; flow_id; cookie
-    :return:
-    """
-
-    logger.debug('Send Delete Commands: node count=%d', len(nodes))
-    for node in nodes:
-        data = build_delete_flow(node)
-        # TODO: Whereas this is part of the current workflow .. feels like we should have the workflow manager work
-        #       as a hub and spoke ... ie: send delete to FL, get confirmation. Then send delete to DB, get confirmation.
-        #       Then send a message to a FLOW_EVENT topic that says "FLOW DELETED"
-
-        # TODO: sending commands directly to FL causes duplication of operations in FL, bacause WFM sends the commands too (for transaction tracking purpose)
-        # send_to_topic(data, correlation_id, MT_COMMAND,
-        #               destination="CONTROLLER", topic=config.KAFKA_SPEAKER_TOPIC)
-
-        send_to_topic(data, correlation_id, MT_COMMAND,
-                      destination="WFM", topic=config.KAFKA_FLOW_TOPIC)
-
-
-def make_link_props_response(request, link_props, error=None):
-    return {
-        'request': request,
-        'link_props': link_props,
-        'error': error,
-        'clazz': MI_LINK_PROPS_RESPONSE}
-
-
-def send_link_props_response(payload, correlation_id, chunked=False):
-    if chunked:
-        send_link_props_chunked_response([payload], correlation_id)
-        return
-
-    send_to_topic(
-        payload, correlation_id, MT_INFO, destination='NORTHBOUND',
-        topic=config.KAFKA_NORTHBOUND_TOPIC)
-
-
-def send_link_props_chunked_response(batch, correlation_id):
-    if not batch:
-        send_to_topic(
-            None, correlation_id, MT_INFO_CHUNKED,
-            destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
-            extra={
-                'message_id': correlation_id,
-                'total_messages': 0
-            })
-    else:
-        for idx, payload in enumerate(batch):
-            send_to_topic(
-                payload, correlation_id, MT_INFO_CHUNKED,
-                destination='NORTHBOUND', topic=config.KAFKA_NORTHBOUND_TOPIC,
-                extra={
-                    'message_id': ' : '.join([str(idx), correlation_id]),
-                    'total_messages': len(batch)
-                })
