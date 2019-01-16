@@ -4,7 +4,6 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -21,7 +20,6 @@ import java.util.concurrent.TimeUnit
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
-@CleanupSwitches
 class SwitchFailuresSpec extends BaseSpecification {
 
     def setupOnce() {
