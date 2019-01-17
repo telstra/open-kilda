@@ -87,6 +87,9 @@
           <li *ngIf="commonService.hasPermission('sw_permission_rules')" [ngClass]="{'active': openedTab == 'rules'}">
             <a href="javascript:void(0)" (click)="toggleTab('rules')" data-toggle="tab" id="flow-list">RULES</a>
           </li>
+          <li  [ngClass]="{'active': openedTab == 'meters'}">
+            <a href="javascript:void(0)" (click)="toggleTab('meters')" data-toggle="tab" id="meters-list">METERS</a>
+          </li>
           <li *ngIf="hasStoreSetting && statusDescrepancy" [ngClass]="{'active': openedTab == 'descripancy'}">
             <a href="javascript:void(0)" (click)="toggleTab('descripancy')" data-toggle="tab" id="descripancy-list">DISCREPANCY</a>
           </li>
@@ -98,7 +101,10 @@
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'rules'}" id="2a">
             <app-rule-details *ngIf="openedTab == 'rules'"></app-rule-details>
           </div>
-          <div class="tab-pane" [ngClass]="{'active': openedTab == 'descripancy'}" id="a">
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'meters'}" >
+            <app-switch-meters *ngIf="openedTab == 'meters'"></app-switch-meters>
+          </div>
+            <div class="tab-pane" [ngClass]="{'active': openedTab == 'descripancy'}" id="a">
             <div class="table-responsive">
               <table class="row-border hover dataTable no-footer">
                   <thead class="thead-light"><tr class="tableHeading"><th>Discrepancy</th><th>Kilda Controller</th><th>Switch Store</th></tr></thead>

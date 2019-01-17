@@ -50,4 +50,9 @@ export class SwitchService {
     return this.httpClient.get(`${environment.apiEndPoint}/switch/${switchId}`);
   }
 
+    getSwitchMetersList(switchId) : Observable<any[]>{
+      let timestamp = new Date().getTime();
+      return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/meters/${switchId}?_=${timestamp}`);
+    }
+
 }

@@ -80,6 +80,8 @@ import { PortGraphComponent } from './modules/switches/port-graph/port-graph.com
 import { ClickOutsideModule } from 'ng-click-outside';
 import { ResetPasswordComponent } from './common/components/reset-password/reset-password.component';
 import { AppAuthProvider } from './common/interceptors/app.auth.interceptor';
+import { SwitchMetersComponent } from './modules/switches/switch-meters/switch-meters.component';
+import { SwitchMetersTableComponent } from './modules/switches/switch-meters-table/switch-meters-table.component';
 import { IslFlowDatatablesComponent } from './modules/isl/isl-flow-datatables/isl-flow-datatables.component';
 import { FlowReRouteModalComponent } from './common/components/flow-re-route-modal/flow-re-route-modal.component';
 import { SessionComponent } from './modules/settings/session/session.component';
@@ -145,6 +147,8 @@ import { SessionComponent } from './modules/settings/session/session.component';
     SwitchDatatableComponent,
     FlowContractsComponent,
     ResetPasswordComponent,
+    SwitchMetersComponent,
+    SwitchMetersTableComponent,
     IslFlowDatatablesComponent,
     FlowReRouteModalComponent,
     SessionComponent,
@@ -190,7 +194,7 @@ import { SessionComponent } from './modules/settings/session/session.component';
     FlowGraphComponent,
     FlowPathGraphComponent,
     FlowContractsComponent,
-    ResetPasswordComponent
+    ResetPasswordComponent,
   ]
 })
 export class AppModule { }
