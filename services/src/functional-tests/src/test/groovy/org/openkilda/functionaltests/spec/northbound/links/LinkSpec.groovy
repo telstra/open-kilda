@@ -21,7 +21,7 @@ import spock.lang.Unroll
 
 class LinkSpec extends BaseSpecification {
 
-    def "Get all flows (UP/DOWN) going through a particular existing link"() {
+    def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
         def switches = topology.getActiveSwitches()
         def allLinks = northbound.getAllLinks()
@@ -189,7 +189,7 @@ class LinkSpec extends BaseSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
-    def "Can delete inactive link"() {
+    def "Able to delete inactive link"() {
         given: "Parameters for inactive link"
         def link = northbound.getActiveLinks()[0]
         def srcSwitch = link.source.switchId

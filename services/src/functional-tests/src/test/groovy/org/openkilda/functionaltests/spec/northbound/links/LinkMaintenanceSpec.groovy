@@ -24,6 +24,8 @@ class LinkMaintenanceSpec extends BaseSpecification {
         def isl = topology.islsForActiveSwitches.first()
 
         when: "Set maintenance mode for the link"
+        // Explicitly set default cost for all links due to implementation of database.getIslCost(isl) method.
+        database.resetCosts()
         def response = northbound.updateLinkUnderMaintenance(islUtils.getLinkUnderMaintenance(isl, true, false))
 
         then: "Maintenance flag for forward and reverse ISLs is really set"

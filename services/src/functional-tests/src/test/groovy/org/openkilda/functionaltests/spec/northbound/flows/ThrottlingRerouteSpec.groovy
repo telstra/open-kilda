@@ -92,7 +92,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         }
     }
 
-    def "Reroute is performed after hard timeout eventhough new reroutes are still being issued"() {
+    def "Reroute is performed after hard timeout even though new reroutes are still being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found. Loop over ISLs(not switches), since it already ensures that src and dst of ISL are
