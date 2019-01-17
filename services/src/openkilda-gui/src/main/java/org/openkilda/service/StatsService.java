@@ -43,7 +43,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -243,7 +242,7 @@ public class StatsService {
             ObjectMapper mapper = new ObjectMapper();
             switchPortStats = mapper.readValue(result,
                     TypeFactory.defaultInstance().constructCollectionLikeType(List.class, SwitchPortStats.class));
-        } catch (IOException e) {
+        } catch (Exception e) {
             LOGGER.error("Inside getSwitchPortsStats Exception is: " + e.getMessage());
         }
         List<PortInfo> portStats = getSwitchPortStatsReport(switchPortStats, switchId);
