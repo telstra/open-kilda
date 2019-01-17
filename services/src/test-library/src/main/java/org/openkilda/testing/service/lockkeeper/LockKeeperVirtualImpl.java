@@ -35,7 +35,7 @@ import java.util.Objects;
 @Slf4j
 @Service
 @Profile("virtual")
-public class LockKeeperVirtualImpl extends LockKeeperServiceImpl implements LockKeeperService {
+public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
 
     @Value("${floodlight.controller.uri}")
     private String controllerHost;
@@ -54,7 +54,7 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl implements Lock
     @Override
     public void knockoutSwitch(SwitchId switchId) {
         String swName = getSwitchBySwitchId(switchId).getName();
-        restTemplate.exchange("/knockoutswitch", HttpMethod.POST,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/knockoutswitch", HttpMethod.POST,
                 new HttpEntity<>(new SwitchModify(swName, null), buildJsonHeaders()), String.class);
         log.debug("Knocking out switch: {}", swName);
     }
@@ -62,7 +62,7 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl implements Lock
     @Override
     public void reviveSwitch(SwitchId switchId) {
         String swName = getSwitchBySwitchId(switchId).getName();
-        restTemplate.exchange("/reviveswitch", HttpMethod.POST,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/reviveswitch", HttpMethod.POST,
                 new HttpEntity<>(new SwitchModify(swName, controllerHost),
                         buildJsonHeaders()), String.class);
         log.debug("Revive switch: {}", swName);

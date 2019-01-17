@@ -15,7 +15,6 @@
 
 package org.openkilda.testing.config;
 
-import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.tools.ExtendedErrorHandler;
 import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
@@ -76,10 +75,8 @@ public class DefaultServiceConfig {
     }
 
     @Bean(name = "lockKeeperRestTemplate")
-    public RestTemplate lockKeeperRestTemplate(
-            @Value("${lab-api.endpoint}") String baseEndpoint,
-            LabService labService) {
-        return buildLoggingRestTemplate(baseEndpoint + "/api/" + labService.getLab().getLabId() + "/lock-keeper");
+    public RestTemplate lockKeeperRestTemplate(@Value("${lab-api.endpoint}") String baseEndpoint) {
+        return buildLoggingRestTemplate(baseEndpoint + "/api/");
     }
 
     @Bean(name = "otsdbRestTemplate")

@@ -84,6 +84,7 @@ import org.apache.commons.collections4.ListValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -116,6 +117,7 @@ public class FlowCrudSteps implements En {
     private TopologyDefinition topologyDefinition;
 
     @Autowired
+    @Lazy
     private TraffExamService traffExam;
 
     @Autowired

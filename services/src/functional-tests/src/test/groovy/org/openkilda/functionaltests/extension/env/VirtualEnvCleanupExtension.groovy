@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.extension.virtualenv
+package org.openkilda.functionaltests.extension.env
 
 import org.openkilda.functionaltests.extension.spring.SpringContextExtension
 import org.openkilda.functionaltests.extension.spring.SpringContextListener

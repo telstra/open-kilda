@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.lockkeeper;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 
 import lombok.extern.slf4j.Slf4j;
@@ -45,12 +46,15 @@ import java.util.stream.Collectors;
 public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Autowired
+    LabService labService;
+
+    @Autowired
     @Qualifier("lockKeeperRestTemplate")
     protected RestTemplate restTemplate;
 
     @Override
     public void addFlows(List<ASwitchFlow> flows) {
-        restTemplate.exchange("/flows", HttpMethod.POST,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/flows", HttpMethod.POST,
                 new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Added flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
@@ -59,7 +63,7 @@ public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Override
     public void removeFlows(List<ASwitchFlow> flows) {
-        restTemplate.exchange("/flows", HttpMethod.DELETE,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/flows", HttpMethod.DELETE,
                 new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Removed flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
@@ -68,21 +72,21 @@ public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Override
     public List<ASwitchFlow> getAllFlows() {
-        ASwitchFlow[] flows = restTemplate.exchange("/flows", HttpMethod.GET,
-                new HttpEntity(buildJsonHeaders()), ASwitchFlow[].class).getBody();
+        ASwitchFlow[] flows = restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/flows",
+                HttpMethod.GET, new HttpEntity(buildJsonHeaders()), ASwitchFlow[].class).getBody();
         return Arrays.asList(flows);
     }
 
     @Override
     public void portsUp(List<Integer> ports) {
-        restTemplate.exchange("/ports", HttpMethod.POST,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/ports", HttpMethod.POST,
                 new HttpEntity<>(ports, buildJsonHeaders()), String.class);
         log.debug("Brought up ports: {}", ports);
     }
 
     @Override
     public void portsDown(List<Integer> ports) {
-        restTemplate.exchange("/ports", HttpMethod.DELETE,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/ports", HttpMethod.DELETE,
                 new HttpEntity<>(ports, buildJsonHeaders()), String.class);
         log.debug("Brought down ports: {}", ports);
     }
@@ -101,21 +105,21 @@ public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Override
     public void stopFloodlight() {
-        restTemplate.exchange("/floodlight/stop", HttpMethod.POST,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/floodlight/stop", HttpMethod.POST,
                 new HttpEntity(buildJsonHeaders()), String.class);
         log.debug("Stopping Floodlight");
     }
 
     @Override
     public void startFloodlight() {
-        restTemplate.exchange("/floodlight/start", HttpMethod.POST,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/floodlight/start", HttpMethod.POST,
                 new HttpEntity(buildJsonHeaders()), String.class);
         log.debug("Starting Floodlight");
     }
 
     @Override
     public void restartFloodlight() {
-        restTemplate.exchange("/floodlight/restart", HttpMethod.POST,
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/floodlight/restart", HttpMethod.POST,
                 new HttpEntity(buildJsonHeaders()), String.class);
         log.debug("Restarting Floodlight");
     }

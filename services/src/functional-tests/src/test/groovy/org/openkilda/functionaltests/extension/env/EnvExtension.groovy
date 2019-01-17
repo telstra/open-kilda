@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.extension.virtualenv
+package org.openkilda.functionaltests.extension.env
 
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
@@ -15,22 +15,26 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationContext
 
 /**
  * This extension is responsible for creating a virtual topology at the start of the test run.
  */
 @Slf4j
-class VirtualEnvExtension extends AbstractGlobalExtension implements SpringContextListener {
+class EnvExtension extends AbstractGlobalExtension implements SpringContextListener {
 
     @Autowired
-    TopologyDefinition topologyDefinition
+    TopologyDefinition topology
 
     @Autowired
     NorthboundService northbound
 
     @Autowired
     LabService labService
+
+    @Value('${spring.profiles.active}')
+    String profile;
 
     @Override
     void start() {
@@ -39,10 +43,16 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
 
     @Override
     void notifyContextInitialized(ApplicationContext applicationContext) {
-        if (applicationContext.environment.getActiveProfiles().contains("virtual")) {
-            applicationContext.autowireCapableBeanFactory.autowireBean(this)
+        applicationContext.autowireCapableBeanFactory.autowireBean(this)
+        if (profile == "virtual") {
             buildVirtualEnvironment()
-            log.info("Virtual topology successfully created")
+            log.info("Virtual topology is successfully created")
+        } else if (profile == "hardware") {
+            labService.createHwLab(topology)
+            log.info("Successfully redirected to a hardware topology")
+        } else {
+            throw new RuntimeException("Provided profile '$profile' is unknown. Select one of the following profiles:" +
+                    " hardware, virtual")
         }
     }
 
@@ -58,19 +68,19 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
         //northbound.toggleFeature(features)
 
         labService.flushLabs()
-        labService.getLab()
+        labService.createLab(topology)
 
         //wait until topology is discovered
         Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.DISCOVERED
-            }.size() == topologyDefinition.islsForActiveSwitches.size() * 2
+            }.size() == topology.islsForActiveSwitches.size() * 2
         }
         //wait until switches are activated
         Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
             assert northbound.getAllSwitches().findAll {
                 it.state == SwitchChangeType.ACTIVATED
-            }.size() == topologyDefinition.activeSwitches.size()
+            }.size() == topology.activeSwitches.size()
         }
     }
 }
