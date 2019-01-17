@@ -37,7 +37,6 @@
               "node_modules/@ng-select/ng-select/themes/default.theme.css",
               "src/assets/css/roboto.css",
               "node_modules/dt-colresize/css/dataTables.colResize.css"
-
             ],
             "scripts": [
               "node_modules/jquery/dist/jquery.js",
@@ -48,6 +47,12 @@
               "src/assets/js/jquery.datetimepicker.full.js",
               "node_modules/d3/build/d3.min.js",
               "node_modules/dt-colresize/js/dataTables.colResize.js",
+              "node_modules/jszip/dist/jszip.js",
+              "node_modules/datatables.net-buttons/js/dataTables.buttons.js",
+              "node_modules/datatables.net-buttons/js/buttons.colVis.js",
+              "node_modules/datatables.net-buttons/js/buttons.flash.js",
+              "node_modules/datatables.net-buttons/js/buttons.html5.js",
+              "node_modules/datatables.net-buttons/js/buttons.print.js"
             ]
           },
           "configurations": {

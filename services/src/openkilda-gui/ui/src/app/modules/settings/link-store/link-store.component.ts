@@ -30,7 +30,7 @@ export class LinkStoreComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.loaderService.show('Loading Link Store Details..');
+    this.loaderService.show('Loading Link Store Details');
     this.linkStoreForm = this.formbuilder.group({
        "urls":this.formbuilder.group({
               "get-status-list":this.formbuilder.group({
@@ -40,7 +40,7 @@ export class LinkStoreComponent implements OnInit {
                           Validators.required,
                           (control:FormControl)=>{
                             let url = control.value;
-                              if(!this.validateUrl(url)){
+                              if(!this.storesettingservice.validateUrl(url)){
                                 return {
                                   pattern:{
                                     url:url
@@ -85,6 +85,7 @@ export class LinkStoreComponent implements OnInit {
       })      
     });
     
+    this.loaderService.show('Loading Link Store Settings');
     this.storesettingservice.getLinkStoreUrl().subscribe((response)=>{
       if(response && response.length){
 				for(var i=0; i < response.length; i++) { 
@@ -97,7 +98,7 @@ export class LinkStoreComponent implements OnInit {
                           Validators.required,
                           (control:FormControl)=>{
                             let url = control.value;
-                              if(!this.validateUrl(url)){
+                              if(!this.storesettingservice.validateUrl(url)){
                                 return {
                                   pattern:{
                                     url:url
@@ -108,7 +109,7 @@ export class LinkStoreComponent implements OnInit {
                           },
                           (control:FormControl)=>{
                           let url = control.value;
-                          if(!this.validateUrlParams(url,this.getlinkParamList)){
+                          if(!this.storesettingservice.validateUrlParams(url,this.getlinkParamList)){
                             return {
                               paramError:{
                                 url:url
@@ -129,7 +130,7 @@ export class LinkStoreComponent implements OnInit {
                             Validators.required,
                             (control:FormControl)=>{
                               let url = control.value;
-                                if(!this.validateUrl(url)){
+                                if(!this.storesettingservice.validateUrl(url)){
                                   return {
                                     pattern:{
                                       url:url
@@ -140,7 +141,7 @@ export class LinkStoreComponent implements OnInit {
                             },
                           (control:FormControl)=>{
                             let url = control.value;
-                            if(!this.validateUrlParams(url,this.getlinkwithParamList)){
+                            if(!this.storesettingservice.validateUrlParams(url,this.getlinkwithParamList)){
                               return {
                                 paramError:{
                                   url:url
@@ -161,7 +162,7 @@ export class LinkStoreComponent implements OnInit {
                           Validators.required,
                           (control:FormControl)=>{
                             let url = control.value;
-                              if(!this.validateUrl(url)){
+                              if(!this.storesettingservice.validateUrl(url)){
                                 return {
                                   pattern:{
                                     url:url
@@ -172,7 +173,7 @@ export class LinkStoreComponent implements OnInit {
                           },
                           (control:FormControl)=>{
                           let url = control.value;
-                          if(!this.validateUrlParams(url,this.getcontractParamList)){
+                          if(!this.storesettingservice.validateUrlParams(url,this.getcontractParamList)){
                             return {
                               paramError:{
                                 url:url
@@ -193,7 +194,7 @@ export class LinkStoreComponent implements OnInit {
                             Validators.required,
                           (control:FormControl)=>{
                             let url = control.value;
-                              if(!this.validateUrl(url)){
+                              if(!this.storesettingservice.validateUrl(url)){
                                 return {
                                   pattern:{
                                     url:url
@@ -204,7 +205,7 @@ export class LinkStoreComponent implements OnInit {
                           },
                           (control:FormControl)=>{
                             let url = control.value;
-                            if(!this.validateUrlParams(url,this.deletecontractParamList)){
+                            if(!this.storesettingservice.validateUrlParams(url,this.deletecontractParamList)){
                               return {
                                 paramError:{
                                   url:url
@@ -223,9 +224,11 @@ export class LinkStoreComponent implements OnInit {
 			}
     },(error)=>{
       this.loadStoreDetail();
-    })
+    });
     
   }
+
+
   loadStoreDetail(){
     var self = this;
     this.storesettingservice.getLinkStoreDetails().subscribe((jsonResponse)=>{
@@ -249,35 +252,9 @@ export class LinkStoreComponent implements OnInit {
       },300);
     })
   }
+
   get i() {
     return this.linkStoreForm.controls;
-  }
-
-  validateUrlParams(url,params) {
-    let return_flag = true;
-    if(url=='' || url == null){
-      return true;
-    }
-		for(let i=0; i < params.length; i++){
-			if(url.includes(params[i])){
-				return_flag = true;
-			}else{
-				return_flag = false;
-				break;
-			}
-    }
-		return return_flag;
-  }
-  
-  validateUrl(url) { 
-    if(url=='' || url == null){
-      return true;
-    }
-		var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
-	    if(res == null)
-	        return false;
-	    else
-	        return true;
   }
   
   enableEditForm(){
@@ -292,7 +269,7 @@ export class LinkStoreComponent implements OnInit {
    this.linkStoreForm.disable();
   }
 
-  	deleteLinkStore(){
+  deleteLinkStore(){
 
     const modalReff = this.modalService.open(ModalconfirmationComponent);
     modalReff.componentInstance.title = "Confirmation";
@@ -300,10 +277,10 @@ export class LinkStoreComponent implements OnInit {
     
     modalReff.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show('Deleting link store details...');
+        this.loaderService.show('Deleting Link Store Settings');
         this.storesettingservice.deleteLinkStore('/store/link-store-config/delete').subscribe((res:any)=>{
           this.loaderService.hide();
-          this.toastr.success("Link Store Setting Deleted Successfully",'Success');
+          this.toastr.success("Link Store Settings Deleted Successfully",'Success');
           setTimeout(function(){
             location.reload();
           },500);
@@ -323,11 +300,11 @@ export class LinkStoreComponent implements OnInit {
       }
       this.submitted = false;
     var obj = this.linkStoreForm.value;
-    this.loaderService.show('Saving Identity Server Details');
+    this.loaderService.show('Saving Link Store Settings');
     this.storesettingservice.submitLinkData('/store/link-store-config/save',obj).subscribe((response:any)=>{
             this.linkStoreForm.setValue(response || {});
             this.loaderService.hide();
-						this.toastr.success("Link Store Details Saved Successfully", 'Success');
+						this.toastr.success("Link Store Settings Saved Successfully", 'Success');
             this.linkStoreForm.disable();
             this.isEditable = false;
             this.isEdit = true;

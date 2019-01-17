@@ -1,5 +1,5 @@
 <div class="tab-pane active" id="identityServerTab">
-  <form  novalidate (ngSubmit)="validateIdentityData()" [formGroup]="identityServerForm" method="POST">
+  <form  class="setting" novalidate (ngSubmit)="validateIdentityData()" [formGroup]="identityServerForm" method="POST">
     <div class="form-group row" [ngClass]="{'error':  (!i.username.valid && (i.username.dirty || i.username.touched)  && i.username.errors || submitted) && (i.username.errors && i.username.errors.required)}">
       <label for="username" class="col-sm-2 text-right col-form-label required">Username:</label>
       <div class="col-sm-6">

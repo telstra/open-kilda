@@ -4,6 +4,7 @@ import { DataTableDirective } from 'angular-datatables';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { Router } from '@angular/router';
 import { Switch } from 'src/app/common/data-models/switch';
+import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
 
 @Component({
   selector: 'app-switch-datatable',
@@ -18,18 +19,22 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = false;
+  hasStoreSetting =false;
 
   switch_id : boolean = false;
+  commonname : boolean = false;
   name : boolean = false;
   address : boolean = false;
   hostname : boolean = false;
+  poplocation : boolean = false;
   description : boolean = false;
   state : boolean = false;
 
   constructor(private loaderService : LoaderService,
-    private renderer: Renderer2, private router:Router) { 
-
-  }
+    private renderer: Renderer2, 
+    private router:Router,
+    private storeSwitchService: StoreSettingtService
+  ) { }
 
   ngOnInit() {
     this.wrapperHide = false;
@@ -43,10 +48,11 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "responsive": true,
       "aoColumns": [
-        { sWidth: '15%' },
-        { sWidth: '15%',"sType": "name","bSortable": true },
-        { sWidth: '15%' },
-        { sWidth: '15%' },
+        { sWidth: '10%' },
+        { sWidth: '10%',"sType": "name","bSortable": true },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
         { sWidth: '30%' },
         { sWidth: '10%' }],
       language: {
@@ -57,9 +63,12 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
           ref.loaderService.hide();
           ref.wrapperHide = true;
         },this.data.length/2);
-      }
+      },
+      columnDefs:[
+        { targets: [4], visible: false},
+      ]
     };
-
+  
   }
 
   ngAfterViewInit(): void {
@@ -74,6 +83,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
         });
       });
     });
+    this.checkSwitchSettings();
   }
 
   ngOnDestroy(): void {
@@ -144,6 +154,21 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
     if (e.key === "Enter") {
       return false;
+    }
+  }
+
+  checkSwitchSettings(){
+
+    this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
+    if(this.hasStoreSetting){
+      this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+        dtInstance.columns( [4] ).visible( true );
+      });
+    }else{
+      this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+        dtInstance.columns( [4] ).visible( false );
+      });
+      
     }
   }
 

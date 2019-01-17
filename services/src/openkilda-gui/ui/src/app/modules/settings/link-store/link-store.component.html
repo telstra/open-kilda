@@ -1,5 +1,5 @@
 <div class="tab-pane" id="linkStoreTab">
-  <form novalidate (ngSubmit)="submitLinkStore()" [formGroup]="linkStoreForm" method="POST">
+  <form novalidate class="setting" (ngSubmit)="submitLinkStore()" [formGroup]="linkStoreForm" method="POST">
     <div class="col-md-12" [formGroupName]="'urls'">
   <div class="form-group col-sm-12" [ngClass]="{'error': ((!i['urls']['controls']['get-status-list']['controls'].url.valid && (i['urls']['controls']['get-status-list']['controls'].url.dirty || i['urls']['controls']['get-status-list']['controls'].url.touched )   && i['urls']['controls']['get-status-list']['controls'].url.errors || submitted) && (i['urls']['controls']['get-status-list']['controls'].url.errors && i['urls']['controls']['get-status-list']['controls'].url.errors.required)) || ((!i['urls']['controls']['get-status-list']['controls'].url.valid && (i['urls']['controls']['get-status-list']['controls'].url.dirty || i['urls']['controls']['get-status-list']['controls'].url.touched )   && i['urls']['controls']['get-status-list']['controls'].url.errors || submitted) && (i['urls']['controls']['get-status-list']['controls'].url.errors && i['urls']['controls']['get-status-list']['controls'].url.errors.pattern))}" [formGroupName]="'get-status-list'">
     <div class="row">
