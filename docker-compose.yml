@@ -1,25 +1,6 @@
 version: '2.1'
 services:
 
-  mininet:
-    container_name: mininet
-    build:
-      context: services/mininet/
-    ports:
-      - "38080:38080"
-      - "17191:17191"
-    privileged: true
-    volumes:
-      - /lib/modules:/lib/modules
-    depends_on:
-      logstash:
-        condition: service_started
-    networks:
-      default:
-        aliases:
-         - mininet.pendev
-    mem_limit: 1073741824
-
   lab-api:
     container_name: lab-api
     image: kilda_lab-service
@@ -99,40 +80,6 @@ services:
       default:
         aliases:
          - topology-engine.pendev
-    mem_limit: 1073741824
-
-
-  topology-engine-rest:
-    container_name: topology-engine-rest
-    hostname: topology-engine-rest.pendev
-    build:
-      context: services/topology-engine-rest/
-      dockerfile: Dockerfile
-    image: "kilda/topology-engine-rest:${full_build_number:-latest}"
-    volumes:
-      - app_server_data:/var/data
-    ports:
-      - "80:80"
-    environment:
-      neo4jhost: 'neo4j'
-      neo4juser: 'neo4j'
-      neo4jpass: 'temppass'
-      neo4jbolt: 'http://neo4j:7474/db/data/cypher'
-      bootstrapserver: 'kafka.pendev:9092'
-      speaker_in_topic: 'speaker.in'
-      group: 'python-tpe-tl-consumer'
-      OK_TESTS: "${OK_TESTS:-none}"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      logstash:
-        condition: service_started
-    networks:
-      default:
-        aliases:
-         - topology-engine-rest.pendev
     mem_limit: 1073741824
 
 
