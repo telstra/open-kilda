@@ -19,6 +19,7 @@ import org.openkilda.entity.BaseEntity;
 import org.openkilda.store.common.dao.entity.UrlEntity;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.CascadeType;
@@ -36,6 +37,7 @@ import javax.persistence.Table;
 @Table(name = "kilda_link_store_urls")
 @Data
 @NoArgsConstructor
+@EqualsAndHashCode(callSuper = false)
 public class LinkStoreRequestUrlsEntity extends BaseEntity {
 
     @Id

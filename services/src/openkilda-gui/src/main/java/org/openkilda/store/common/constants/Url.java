@@ -39,7 +39,15 @@ public enum Url {
                     new RequestParams[] { RequestParams.STATUS }),
             GET_CONTRACT("get-contract", new RequestParams[] { RequestParams.LINK_ID }),
             DELETE_CONTRACT("delete-contract",
-                    new RequestParams[] { RequestParams.LINK_ID, RequestParams.CONTRACT_ID });
+                    new RequestParams[] { RequestParams.LINK_ID, RequestParams.CONTRACT_ID }),
+            GET_ALL_SWITCHES("get-all-switches", new RequestParams[] {}),
+            GET_SWITCH("get-switch", new RequestParams[] { RequestParams.SWITCH_ID }),
+            GET_SWITCH_PORTS("get-switch-ports",
+                    new RequestParams[] { RequestParams.SWITCH_ID }),
+            GET_SWITCH_PORT_FLOWS(
+                    "get-switch-port-flows",
+                    new RequestParams[] { RequestParams.SWITCH_ID, RequestParams.PORT_NUMBER});
+    
 
     private String name;
     

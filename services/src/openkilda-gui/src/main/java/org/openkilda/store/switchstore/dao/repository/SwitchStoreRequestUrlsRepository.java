@@ -13,21 +13,22 @@
  *   limitations under the License.
  */
 
-package org.usermanagement.dao.repository;
+package org.openkilda.store.switchstore.dao.repository;
+
+import org.openkilda.store.switchstore.dao.entity.SwitchStoreRequestUrlsEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
-import org.usermanagement.dao.entity.RoleEntity;
-
-import java.util.List;
-import java.util.Set;
+/**
+ * The Interface LinkStoreRequestUrlsRepository.
+ */
 
 @Repository
-public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
-    public RoleEntity findByRoleId(Long roleId);
+@Transactional(propagation = Propagation.MANDATORY)
+public interface SwitchStoreRequestUrlsRepository extends JpaRepository<SwitchStoreRequestUrlsEntity, Integer> {
 
-    Set<RoleEntity> findByPermissions_permissionId(Long permissionId);
-
-    public List<RoleEntity> findByNameIn(Set<String> roles);
+    public SwitchStoreRequestUrlsEntity findByUrlEntity_name(final String name);
 }

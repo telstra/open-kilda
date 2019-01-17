@@ -13,21 +13,35 @@
  *   limitations under the License.
  */
 
-package org.usermanagement.dao.repository;
+package org.openkilda.model;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import org.usermanagement.dao.entity.RoleEntity;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.List;
-import java.util.Set;
-
-@Repository
-public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
-    public RoleEntity findByRoleId(Long roleId);
-
-    Set<RoleEntity> findByPermissions_permissionId(Long permissionId);
-
-    public List<RoleEntity> findByNameIn(Set<String> roles);
+ 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class Meter {
+    
+    @JsonProperty("meter_id")
+    private Integer meterId;
+    
+    @JsonProperty("rate")
+    private String rate;
+    
+    @JsonProperty("burst_size")
+    private Integer burstSize;
+    
+    @JsonProperty("version")
+    private String version;
+    
+    @JsonProperty("flags")
+    private List<String> flags;
 }

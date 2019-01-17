@@ -17,7 +17,6 @@ package org.openkilda.controller;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.openkilda.model.SwitchInfo;
 import org.openkilda.test.MockitoExtension;
 
 import org.junit.Before;
@@ -31,13 +30,11 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @ExtendWith(MockitoExtension.class)
 @RunWith(MockitoJUnitRunner.class)
 public class FlowControllerTest {
     
+    @SuppressWarnings("unused")
     private MockMvc mockMvc;
 
     @InjectMocks
@@ -51,7 +48,6 @@ public class FlowControllerTest {
 
     @Test
     public void testGetAllSwitchesDetails() {
-        List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
             assertTrue(true);
         } catch (Exception exception) {

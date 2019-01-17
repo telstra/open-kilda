@@ -50,6 +50,7 @@ import org.usermanagement.model.UserInfo;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 /**
  * The Class FlowController.
  *
@@ -158,6 +159,7 @@ public class FlowController extends BaseController {
         FlowInfo flowInfo = flowService.getFlowById(flowId);
         if (flowInfo != null && StringUtil.isNullOrEmpty(flowInfo.getFlowid())) {
             throw new NoDataFoundException("No flow found");
+           
         }
         return flowInfo;
     }
@@ -250,7 +252,7 @@ public class FlowController extends BaseController {
      * @return statuses exists in the system.
      */
     @RequestMapping(value = "/status", method = { RequestMethod.GET })
-    public List<String> getAllStatus() {
+    public Set<String> getAllStatus() {
         LOGGER.info("[getAllStatus] - start. ");
         return flowService.getAllStatus();
     }

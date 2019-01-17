@@ -23,7 +23,8 @@ import org.openkilda.store.common.dao.entity.StoreTypeEntity;
 
 public enum StoreType {
 
-    LINK_STORE("LINK_STORE");
+    LINK_STORE("LINK_STORE"),
+    SWITCH_STORE("SWITCH_STORE");
     
     private String code;
 
