@@ -190,6 +190,17 @@ public class SwitchManagerTest {
     }
 
     @Test
+    public void installIngressFlowWithoutResetCountsFlag() throws Exception {
+        Capture<OFFlowMod> capture = prepareForInstallTest(true);
+
+        switchManager.installIngressFlow(dpid, cookieHex, cookie,
+                inputPort, outputPort, 0, transitVlanId, OutputVlanType.NONE, meterId);
+
+        final OFFlowMod actual = capture.getValue();
+        assertThat(actual.getFlags().isEmpty(), is(true));
+    }
+
+    @Test
     public void installEgressFlowNoneAction() throws Exception {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
@@ -294,6 +305,17 @@ public class SwitchManagerTest {
         assertEquals(
                 scheme.oneSwitchNoneFlowMod(inputPort, outputPort, meterId, cookie),
                 capture.getValue());
+    }
+
+    @Test
+    public void installOneSwitchFlowNoneActionWithoutResetCountsFlag() throws Exception {
+        Capture<OFFlowMod> capture = prepareForInstallTest(true);
+
+        switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
+                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId);
+
+        final OFFlowMod actual = capture.getValue();
+        assertThat(actual.getFlags().isEmpty(), is(true));
     }
 
     @Test
@@ -950,14 +972,19 @@ public class SwitchManagerTest {
         expect(iofSwitch.writeStatsRequest(anyObject(OFFlowStatsRequest.class))).andReturn(ofStatsFuture);
     }
 
+
     private Capture<OFFlowMod> prepareForInstallTest() {
+        return prepareForInstallTest(false);
+    }
+
+    private Capture<OFFlowMod> prepareForInstallTest(boolean isCentecSwitch) {
         Capture<OFFlowMod> capture = EasyMock.newCapture();
 
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.getId()).andStubReturn(dpid);
-        expect(switchDescription.getManufacturerDescription()).andStubReturn("");
+        expect(switchDescription.getManufacturerDescription()).andStubReturn(isCentecSwitch ? "Centec" : "");
         expect(iofSwitch.write(capture(capture))).andReturn(true);
         expectLastCall();
 

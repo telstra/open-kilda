@@ -1,0 +1,48 @@
+@startuml
+title hub and spoke wfm mk7 happy path
+hide footbox
+
+participant NB
+
+participant "Kafka" as bus
+participant "Async Job" as async_job
+
+box "Hub" #LightBlue
+    participant "Spout" as sp_hub
+    participant "Bolt" as bolt_hub
+end box
+
+participant "Coordinator\nBolt" as coordinator
+box "Worker" #LightGreen
+    participant "Spout" as sp_work
+    collections "Bolt" as bolt_work
+end box
+
+
+NB ->> bus : request
+sp_hub <<- bus
+sp_hub ->> bolt_hub
+bolt_hub ->> coordinator : register callback request
+bolt_hub -> bolt_hub : prepare async jobs
+
+== Hub to Worker communications ==
+bolt_hub ->> bolt_work : emit tuple for async process
+
+== Async Operations ==
+bolt_work ->> coordinator : register callback request
+bolt_work ->> bus
+async_job <<- bus
+async_job -> async_job
+async_job ->> bus
+
+== Handle responses ==
+sp_work <<- bus
+sp_work ->> bolt_work
+bolt_work ->> coordinator : cancel callback
+bolt_work ->> bolt_hub : result of async op
+bolt_hub -> bolt_hub : collect requests and\nprocess them
+bolt_hub ->> coordinator : cancel callback
+bolt_hub ->> bus
+NB <<- bus
+
+@enduml

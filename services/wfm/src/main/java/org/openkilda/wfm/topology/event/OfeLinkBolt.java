@@ -529,7 +529,7 @@ public class OfeLinkBolt
     //          - services/src/pce .. NetworkCache .. FlowCache ..
     private void sendDiscoveryFailed(SwitchId switchId, int portId, Tuple tuple, String correlationId) {
         PathNode node = new PathNode(switchId, portId, 0, 0L);
-        InfoData data = new IslInfoData(0L, node, null, 0L, IslChangeType.FAILED, 0L);
+        InfoData data = new IslInfoData(0L, node, null, 0L, IslChangeType.FAILED, 0L, false);
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
 
         passToNetworkTopologyBolt(tuple, message);
@@ -557,14 +557,14 @@ public class OfeLinkBolt
 
         PathNode srcNode = new PathNode(srcSwitch, srcPort, 0);
         PathNode dstNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 1);
-        IslInfoData infoData = new IslInfoData(srcNode, dstNode, IslChangeType.MOVED);
+        IslInfoData infoData = new IslInfoData(srcNode, dstNode, IslChangeType.MOVED, false);
         InfoMessage message = new InfoMessage(infoData, System.currentTimeMillis(), correlationId);
         passToNetworkTopologyBolt(tuple, message);
 
         // we should send reverse link as well to modify status in TE
         srcNode = new PathNode(dstEndpoint.getSwitchDpId(), dstEndpoint.getPortId(), 0);
         dstNode = new PathNode(srcSwitch, srcPort, 1);
-        IslInfoData reverseLink = new IslInfoData(srcNode, dstNode, IslChangeType.MOVED);
+        IslInfoData reverseLink = new IslInfoData(srcNode, dstNode, IslChangeType.MOVED, false);
         message = new InfoMessage(reverseLink, System.currentTimeMillis(), correlationId);
         passToNetworkTopologyBolt(tuple, message);
     }

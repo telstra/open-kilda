@@ -1,0 +1,80 @@
+@startuml
+title Hub And Spoke Flow Create "Happy Path" (simple)
+
+actor User
+boundary NB
+participant FlowManager << Hub >>
+database FlowDB
+participant RuleComputer << Spoke >>
+participant PathComputer << Spoke >>
+participant ResourcePull << Spoke >>
+database ResourceDB
+participant History
+database HistoryDB
+
+==Validation==
+User -> NB : create request
+
+activate NB
+NB -> NB: validate
+NB -> FlowManager
+activate FlowManager
+FlowManager -> FlowDB : flow_id check
+FlowManager <- FlowDB
+FlowManager -> FlowManager : Start Flow Creation Workflow
+FlowManager -> FlowDB : store flow status
+FlowDB -> History : Flow Creation Started "FLOW X: STARTED"
+NB <- FlowManager
+deactivate FlowManager
+User <- NB : started
+deactivate NB
+
+group save history after each step
+FlowManager -> History : write status
+activate FlowManager
+activate History
+History -> HistoryDB
+History <- HistoryDB
+FlowManager <- History
+deactivate History
+deactivate FlowManager
+end
+
+==STEP: Path Calculation==
+FlowManager -> PathComputer : path calculation
+activate FlowManager
+group must be DB transaction
+note over ResourceDB
+Add resource table for all flow resources - meter id, cookie id, transit vlan, switch:port:queue?
+end note
+PathComputer -> PathComputer : find path
+PathComputer -> ResourcePull : alloc resources
+ResourcePull -> ResourceDB
+note over ResourcePull, ResourceDB
+cookie, bandwidth on port,
+transition vlan, max flow on sw, etc
+end note
+ResourcePull <- ResourceDB
+PathComputer <- ResourcePull
+end
+FlowManager <- PathComputer : path
+FlowManager -> FlowDB : store flow path
+deactivate FlowManager
+
+==STEP: Flow Installation==
+FlowManager -> RuleComputer : Create Switch Rules
+activate FlowManager
+note over RuleComputer: can be library
+FlowManager <- RuleComputer
+loop
+FlowManager -> FL : install rule
+FlowManager -> History : flow status (segment X INSTALLED)
+end
+loop
+FlowManager -> FL : validate rule exists
+FlowManager -> History : flow status (segment X VALIDATED)
+end
+FlowManager -> FlowDB : FLOW UP
+FlowManager -> History : FLOW UP
+deactivate FlowManager
+@enduml

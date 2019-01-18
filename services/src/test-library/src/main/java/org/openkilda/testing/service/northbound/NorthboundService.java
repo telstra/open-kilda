@@ -34,8 +34,10 @@ import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
+import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
@@ -123,7 +125,11 @@ public interface NorthboundService {
 
     List<FlowPayload> getLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
+    List<String> rerouteLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
+
     DeleteLinkResult deleteLink(LinkParametersDto linkParameters);
+
+    List<LinkDto> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link);
 
     //feature toggles
 
@@ -147,9 +153,9 @@ public interface NorthboundService {
             SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
         return getAllLinks().stream()
                 .filter(link -> link.getSource().getSwitchId().equals(srcSwitch)
-                             && link.getSource().getPortNo() == srcPort
-                             && link.getDestination().getSwitchId().equals(dstSwitch)
-                             && link.getDestination().getPortNo() == dstPort)
+                        && link.getSource().getPortNo() == srcPort
+                        && link.getDestination().getSwitchId().equals(dstSwitch)
+                        && link.getDestination().getPortNo() == dstPort)
                 .collect(Collectors.toList());
     }
 

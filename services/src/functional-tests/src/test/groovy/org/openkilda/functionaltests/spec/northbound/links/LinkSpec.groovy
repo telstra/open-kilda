@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.northbound.links
 
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -123,12 +124,11 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId   | 4096             | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_port"
         getIsl().srcSwitch.dpId   | getIsl().srcPort | new SwitchId("987654321") | getIsl().dstPort | "dst_switch"
         getIsl().srcSwitch.dpId   | getIsl().srcPort | getIsl().dstSwitch.dpId   | 4096             | "dst_port"
-
     }
 
     @Unroll
-    def "Unable to get flows with invalid query parameters (#item is invalid) "() {
-        when: "Get flows with invalid #item"
+    def "Unable to get flows with specifying invalid query parameters (#item is invalid) "() {
+        when: "Get flows with specifying invalid #item"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
         then: "An error is received (400 code)"
@@ -141,7 +141,6 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
-
     }
 
     @Unroll
@@ -172,14 +171,14 @@ class LinkSpec extends BaseSpecification {
         then: "Got 404 NotFound"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.contains("ISL does not exist")
+        exc.responseBodyAsString.contains("ISL was not found")
     }
 
     def "Cannot delete active link"() {
         given: "Parameters for active link"
         def link = northbound.getActiveLinks()[0]
         def parameters = new LinkParametersDto(link.source.switchId.toString(), link.source.portNo,
-                                               link.destination.switchId.toString(), link.destination.portNo)
+                link.destination.switchId.toString(), link.destination.portNo)
 
         when: "Try to delete active link"
         northbound.deleteLink(parameters)
@@ -197,28 +196,141 @@ class LinkSpec extends BaseSpecification {
         def srcPort = link.source.portNo
         def dstSwitch = link.destination.switchId
         def dstPort = link.destination.portNo
+
         northbound.portDown(srcSwitch, srcPort)
-        assert Wrappers.wait(WAIT_OFFSET) {
-            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort)
-                    .every { it.state == IslChangeType.FAILED }
+        Wrappers.wait(WAIT_OFFSET) {
+            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).each {
+                assert it.state == IslChangeType.FAILED
+            }
         }
-        def parameters = new LinkParametersDto(srcSwitch.toString(), srcPort, dstSwitch.toString(), dstPort)
 
         when: "Try to delete inactive link"
+        def parameters = new LinkParametersDto(srcSwitch.toString(), srcPort, dstSwitch.toString(), dstPort)
         def res = northbound.deleteLink(parameters)
 
         then: "Check that link is actually deleted"
         res.deleted
         Wrappers.wait(WAIT_OFFSET) {
-            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).empty
+            assert northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).empty
         }
 
         and: "Cleanup: restore link"
         northbound.portUp(srcSwitch, srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort)
-                    .every { it.state == IslChangeType.DISCOVERED }
+            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).each {
+                assert it.state == IslChangeType.DISCOVERED
+            }
         }
+    }
+
+    def "Reroute all flows going through a particular link"() {
+        given: "Two active not neighboring switches with two possible paths at least"
+        def switches = topology.getActiveSwitches()
+        def allLinks = northbound.getAllLinks()
+        List<List<PathNode>> possibleFlowPaths = []
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            allLinks.every { link ->
+                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
+            } && possibleFlowPaths.size() > 1
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Make the first path more preferable than others by setting corresponding link props"
+        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(possibleFlowPaths.first(), it) }
+
+        and: "Create a couple of flows going through these switches"
+        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow1)
+        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
+
+        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow2)
+        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
+
+        assert flow1Path == possibleFlowPaths.first()
+        assert flow2Path == possibleFlowPaths.first()
+
+        and: "Delete link props from all links of alternative paths to allow rerouting flows"
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+
+        and: "Make the current flows path not preferable"
+        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(it, possibleFlowPaths.first()) }
+
+        when: "Submit request for rerouting flows to avoid the first link involved in flow paths"
+        def isl = pathHelper.getInvolvedIsls(flow1Path).first()
+        def response = northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
+
+        then: "Flows are rerouted"
+        response.containsAll([flow1, flow2]*.id)
+
+        def flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
+        def flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
+
+        flow1PathUpdated != flow1Path
+        flow2PathUpdated != flow2Path
+
+        and: "Requested link is not involved in new flow paths"
+        !(isl in pathHelper.getInvolvedIsls(flow1PathUpdated))
+        !(isl in pathHelper.getInvolvedIsls(flow2PathUpdated))
+
+        and: "Delete flows and delete link props"
+        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+    }
+
+    @Unroll
+    def "Unable to reroute flows with specifying NOT existing link (#item doesn't exist) "() {
+        when: "Reroute flows with specifying NOT existing link"
+        northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
+
+        then: "An error is received (404 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort."
+
+        where:
+        srcSwId                   | srcSwPort        | dstSwId                   | dstSwPort        | item
+        new SwitchId("123456789") | getIsl().srcPort | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_switch"
+        getIsl().srcSwitch.dpId   | 4096             | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId   | getIsl().srcPort | new SwitchId("987654321") | getIsl().dstPort | "dst_switch"
+        getIsl().srcSwitch.dpId   | getIsl().srcPort | getIsl().dstSwitch.dpId   | 4096             | "dst_port"
+    }
+
+    @Unroll
+    def "Unable to reroute flows with specifying invalid query parameters (#item is invalid) "() {
+        when: "Reroute flows with specifying invalid #item"
+        northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
+
+        then: "An error is received (400 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+
+        where:
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+    }
+
+    @Unroll
+    def "Unable to reroute flows without full specifying a particular link (#item is missing)"() {
+        when: "Reroute flows without specifying #item"
+        northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
+
+        then: "An error is received (400 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains("parameter '$item' is not present")
+
+        where:
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
+        null                    | null             | null                    | null      | "src_switch"
+        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
     @Memoized

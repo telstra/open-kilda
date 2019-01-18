@@ -17,6 +17,8 @@ import org.openkilda.northbound.dto.flows.UniFlowPingOutput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 
+import spock.lang.Ignore
+import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -80,6 +82,8 @@ class FlowPingSpec extends BaseSpecification {
         [srcSwitch, dstSwitch] << ofSwitchCombinations
     }
 
+    @Ignore
+    @Issue("https://github.com/telstra/open-kilda/issues/1865")
     @Unroll("Flow ping can detect a broken #description")
     def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
@@ -172,7 +176,8 @@ class FlowPingSpec extends BaseSpecification {
 
     def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
-        def sw = nonCentecSwitches().first()
+        def sw = nonCentecSwitches().find{ it.ofVersion != "OF_12" }
+        assert sw
         def flow = flowHelper.singleSwitchFlow(sw)
         flowHelper.addFlow(flow)
 

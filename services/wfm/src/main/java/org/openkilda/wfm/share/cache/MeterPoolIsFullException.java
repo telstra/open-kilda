@@ -13,25 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.mininet;
+package org.openkilda.wfm.share.cache;
 
-import java.util.Map;
+public class MeterPoolIsFullException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
 
-public interface Mininet {
-
-    Map createTopology(Object topology);
-
-    void deleteTopology();
-
-    void knockoutSwitch(String switchName);
-
-    void revive(String switchName, String controller);
-
-    void addFlow(String switchName, Integer inPort, Integer outPort);
-
-    void removeFlow(String switchName, Integer inPort);
-
-    void portUp(String switchName, Integer port);
-
-    void portDown(String switchName, Integer port);
+    public MeterPoolIsFullException(String message) {
+        super(message);
+    }
 }

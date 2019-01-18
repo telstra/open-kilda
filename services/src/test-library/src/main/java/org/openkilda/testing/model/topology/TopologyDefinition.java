@@ -147,6 +147,25 @@ public class TopologyDefinition {
         return allPorts;
     }
 
+    /**
+     * Get list of switch ports that have ISLs.
+     */
+    public List<Integer> getBusyPortsForSwitch(Switch sw) {
+        List<Integer> busyPorts = new ArrayList<>(sw.getAllPorts());
+        busyPorts.removeAll(getAllowedPortsForSwitch(sw));
+        return busyPorts;
+    }
+
+    /**
+     * Get list of ISLs that are related to certain switch.
+     * Returns only one-way ISLs. The caller will have to mirror them in order to get full list of actual ISLs
+     */
+    public List<Isl> getRelatedIsls(Switch sw) {
+        return getIslsForActiveSwitches().stream().filter(isl ->
+                isl.getSrcSwitch().getDpId().equals(sw.getDpId()) || isl.getDstSwitch().getDpId().equals(sw.getDpId()))
+                .collect(Collectors.toList());
+    }
+
     @Value
     @NonFinal
     @JsonNaming(SnakeCaseStrategy.class)

@@ -77,6 +77,8 @@ import { FlowContractsComponent } from './modules/flows/flow-contracts/flow-cont
 import { ClickOutsideModule } from 'ng-click-outside';
 import { ResetPasswordComponent } from './common/components/reset-password/reset-password.component';
 import { AppAuthProvider } from './common/interceptors/app.auth.interceptor';
+import { IslFlowDatatablesComponent } from './modules/isl/isl-flow-datatables/isl-flow-datatables.component';
+import { FlowReRouteModalComponent } from './common/components/flow-re-route-modal/flow-re-route-modal.component';
 import { SessionComponent } from './modules/settings/session/session.component';
 
 @NgModule({
@@ -140,6 +142,8 @@ import { SessionComponent } from './modules/settings/session/session.component';
     SwitchDatatableComponent,
     FlowContractsComponent,
     ResetPasswordComponent,
+    IslFlowDatatablesComponent,
+    FlowReRouteModalComponent,
     SessionComponent
   ],
   imports: [
@@ -153,7 +157,7 @@ import { SessionComponent } from './modules/settings/session/session.component';
     ReactiveFormsModule,
     Select2Module,
     ClipboardModule,
-    NgbModule,
+    NgbModule,    
     NgxTypeaheadModule,
     BrowserAnimationsModule, // required animations module
     ToastrModule.forRoot({
@@ -173,6 +177,7 @@ import { SessionComponent } from './modules/settings/session/session.component';
     OtpComponent,
     ModalComponent,
     ModalconfirmationComponent,
+    FlowReRouteModalComponent,
     ChangepasswordComponent,
     AffectedIslComponent,
     FlowGraphComponent,

@@ -18,11 +18,12 @@ neo.password=password
 lab-api.endpoint=http://localhost:8288
 otsdb.endpoint=http://localhost:4242
 
-elasticsearch.endpoint = http://localhost:9200
-elasticsearch.username = username
-elasticsearch.password = password
+elasticsearch.endpoint=http://localhost:9200
+elasticsearch.username=username
+elasticsearch.password=password
 
-kafka.bootstrap.server = kafka.pendev:9092
+environment.naming.prefix=
+kafka.bootstrap.server=kafka.pendev:9092
 kafka.topic.topo.disco=kilda.topo.disco
 
 spring.profiles.active=virtual
@@ -33,7 +34,9 @@ mode.topology.single=true
 reroute.delay=3
 reroute.hardtimeout=15
 discovery.interval=3
-discovery.timeout = 15
+discovery.timeout=15
 antiflap.min=1
 antiflap.warmup=5
 antiflap.cooldown=5
+
+isl.cost.when.under.maintenance=10000
