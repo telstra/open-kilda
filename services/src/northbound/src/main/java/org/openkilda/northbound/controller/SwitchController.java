@@ -100,6 +100,20 @@ public class SwitchController {
     }
 
     /**
+     * Get switch.
+     *
+     * @param switchId the switch
+     * @return switch.
+     */
+    @ApiOperation(value = "Get switch", response = SwitchDto.class)
+    @GetMapping(value = "/{switch-id}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchDto> getSwitch(
+            @PathVariable("switch-id") SwitchId switchId) {
+        return switchService.getSwitch(switchId);
+    }
+
+    /**
      * Get switch rules.
      *
      * @param switchId the switch

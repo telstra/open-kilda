@@ -404,6 +404,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public SwitchInfoData getSwitch(SwitchId switchId) {
+        return convertToSwitchInfoData(restTemplate.exchange("/api/v1/switches/{switch_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto.class, switchId).getBody());
+    }
+
+    @Override
     public DeleteMeterResult deleteMeter(SwitchId switchId, Long meterId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/meter/{meter_id}", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), DeleteMeterResult.class, switchId, meterId).getBody();
