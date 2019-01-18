@@ -1,0 +1,201 @@
+@startuml
+title Hub And Spoke - Flow Reroute
+
+actor User
+boundary "NB v2" as NB
+participant FlowManager << Hub >>
+participant DAO
+participant PathComputer
+participant ResourcePool
+participant CommandBuilder
+database DAO
+participant History
+participant SpeakerWorker
+participant RulesValidator
+participant RuleManager
+
+User -> NB : Request to reroute
+
+activate NB
+NB -> FlowManager : Reroute the flow
+deactivate NB
+activate FlowManager
+FlowManager -> History : Flow rerouting started "FLOW X: Initialized"
+ ==Validation==
+FlowManager -> DAO : Get the flow from DB
+FlowManager <- DAO : Requested flow
+alt Flow exists
+    FlowManager -> History : Flow rerouting started "FLOW X: Validated"
+    FlowManager -> FlowManager : Start "Flow Reroute" workflow
+else No flow found
+    FlowManager -> History : Flow rerouting failed "FLOW X: Not found"
+    NB <- FlowManager : Requested flow doesn't exist
+    activate NB
+    User <- NB : Flow rerouting error
+    deactivate NB
+end
+
+== Path calculation and resource allocation ==
+FlowManager -> PathComputer : Find a path for the flow
+FlowManager <- PathComputer : Found path
+alt No path found
+    FlowManager -> History : Flow rerouting failed "FLOW X: No path found"
+    NB <- FlowManager : Flow rerouting error
+    activate NB
+    User <- NB : Flow rerouting error
+    deactivate NB
+else New path is found
+    FlowManager -> History : Flow rerouting is in progress "FLOW X: New path found"
+    NB <- FlowManager : Flow rerouting\n is in progress
+    activate NB
+    User <- NB : Flow rerouting response
+    deactivate NB
+else Found path is the same as the current, and forced reroute is NOT requested
+    FlowManager -> History : Flow rerouting completed "FLOW X: Reroute is not required"
+
+    NB <- FlowManager : Flow rerouting\n is completed (rerouted=false)
+    activate NB
+    User <- NB : Flow rerouting response
+    deactivate NB
+else Found path is the same as the current, and forced reroute is requested
+    FlowManager -> History : Flow rerouting is in progress "FLOW X: Forced reroute for the same path"
+end
+
+FlowManager -> ResourcePool : Allocate resources for the found path
+activate ResourcePool
+    loop until the resources has been found and committed
+        ResourcePool -> DAO : Get used resources
+        ResourcePool <- DAO : Used cookies, vlans, meters
+        ResourcePool -> ResourcePool : Allocate resources
+        ResourcePool -> DAO : Mark allocated resources as used
+    end
+FlowManager <- ResourcePool : Allocated resources
+deactivate ResourcePool
+
+alt Resources are allocated
+    FlowManager -> History : Flow rerouting is in progress "FLOW X: Resources allocated"
+else No resources available
+    FlowManager -> History : Flow rerouting failed "FLOW X: No resources available"
+    NB <- FlowManager : Flow rerouting error
+    activate NB
+    User <- NB : Flow rerouting error
+    deactivate NB
+end
+
+== Persist path changes ==
+FlowManager -> DAO : Save the found path with IN_PROGRESS status
+FlowManager -> DAO : Update ISLs available bandwidth
+
+FlowManager -> History : Flow rerouting is in progress "FLOW X: Persisted in DB"
+
+ == Flow path installation ==
+FlowManager -> CommandBuilder : Create switch rules
+CommandBuilder -> CommandBuilder : Build commands
+note right : 3 groups of commands:\nInstall egress/transit (1st group) and ingress rules (2nd group) for the rerouted flow\nRemove ingress and egress/transit rules (3 group) of the old flow
+FlowManager <- CommandBuilder: Rule installation/deletion commands
+
+loop for each command of the 1st group
+    FlowManager -> SpeakerWorker : Install a rule
+end
+deactivate FlowManager
+
+loop for each installed rule from the 1st group
+    FlowManager <- SpeakerWorker : a rule has been installed
+    activate FlowManager
+    FlowManager -> FlowManager : mark corresponding rule as installed
+    FlowManager -> History : N of M rules are installed
+    opt Is the last command in the 1st group?
+        FlowManager -> History : Validating installed egress/transit rules
+        FlowManager -> RulesValidator : Validate egress/transit rules from the 1st group
+        RulesValidator -> SpeakerWorker : Dump egress/transit rules
+    end
+end
+deactivate FlowManager
+
+RulesValidator <- SpeakerWorker : Egress/transit rules
+FlowManager <- RulesValidator : Egress/transit rules are installed and valid
+activate FlowManager
+loop for each command of the 2nd group
+    FlowManager -> SpeakerWorker : Install an ingress rule
+end
+deactivate FlowManager
+
+loop for each installed rule from the 2nd group
+    FlowManager <- SpeakerWorker : a rule has been installed
+    activate FlowManager
+    FlowManager -> FlowManager : mark corresponding rule as installed
+    FlowManager -> History : N of M rules are installed
+    opt Is the last command in the 2nd group?
+        FlowManager -> History : Validating installed ingress rules
+        FlowManager -> RulesValidator : Validate ingress rules from 2nd group
+        RulesValidator -> SpeakerWorker : Dump ingress rules
+    end
+end
+deactivate FlowManager
+
+RulesValidator <- SpeakerWorker : Ingress rules
+FlowManager <- RulesValidator : Ingress rules are installed and valid
+activate FlowManager
+
+FlowManager -> DAO : Update the flow to reference the found (and installed) path as active
+FlowManager -> DAO : Change the found path status to INSTALLED
+FlowManager -> DAO : Change the flow status to UP
+FlowManager -> DAO : Change the status of the old path to IN_PROGRESS
+
+FlowManager -> History : FLOW X is UP
+
+loop for each command of the 3rd group
+    FlowManager -> SpeakerWorker : Remove a rule
+end
+deactivate FlowManager
+
+loop for each removed rule from the 3rd group
+    alt Rule deleted successfully
+        FlowManager <- SpeakerWorker : a rule has been removed
+        activate FlowManager
+        FlowManager -> History : N of M rules are removed
+        FlowManager -> FlowManager : mark corresponding rule as removed
+    else Rule is not deleted (timeout, error occurred)
+        FlowManager -> RuleManager : Store rule that should be deleted
+        note right : RuleManager is not in the scope of Flow Remove, \nbut it remembers not deleted rules (because of switch's \nunavailability) and once switch comes back online \nthese rules should be deleted
+        FlowManager -> History : Failed to delete rule N
+    end
+    opt Is the last command in the 3rd group?
+        FlowManager -> History : Validating removed rules
+        FlowManager -> RulesValidator : Validate removed rules from the 3nd group
+        RulesValidator -> SpeakerWorker : Dump rules
+    end
+end
+deactivate FlowManager
+
+RulesValidator <- SpeakerWorker : Rules from affected switches
+loop for each validation result
+    FlowManager <- RulesValidator : Validation result
+    activate FlowManager
+    alt Rule is absent on a switch
+        FlowManager -> ResourcePool : Release used meter
+        activate ResourcePool
+        ResourcePool -> DAO : Removed used meter
+        deactivate ResourcePool
+    else Failed to delete a rule
+        FlowManager -> RuleManager : Store a rule that should be deleted
+        FlowManager -> History : Failed to delete rule N
+    end
+end
+
+alt All rules from the 3nd group are absent on switches
+    FlowManager -> ResourcePool : Deallocate resources of the old path
+    activate ResourcePool
+    ResourcePool -> DAO : Release used cookies, vlans
+    deactivate ResourcePool
+
+    FlowManager -> DAO : Remove the old path
+
+    FlowManager -> History : "FLOW X: Resources deallocated"
+else Any of the rules failed to be deleted
+    FlowManager -> History : "FLOW X: Rules failed to be deleted. Resources need deallocation."
+end
+
+deactivate FlowManager
+
+@endumlclean up
