@@ -387,33 +387,53 @@ class SwitchRulesSpec extends BaseSpecification {
         ]
     }
 
-    def "Able to synchronize rules on a switch (install missing rules)"() {
-        given: "A switch with missing rules"
+    def "Able to synchronize rules on switches (install missing rules)"() {
+        given: "Two active not neighboring switches"
+        def switches = topology.getActiveSwitches()
+        def allLinks = northbound.getAllLinks()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Create a transit-switch flow going through these switches"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
 
-        def defaultPlusFlowRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
-        northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
-        Wrappers.wait(RULES_DELETION_TIME) {
-            assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
+        and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
+            [switchId, northbound.getSwitchRules(switchId).flowEntries]
         }
-        assert northbound.validateSwitchRules(srcSwitch.dpId).missingRules.size() == flowRulesCount
 
-        when: "Synchronize rules on the switch"
-        def synchronizedRules = northbound.synchronizeSwitchRules(srcSwitch.dpId)
+        involvedSwitches.each { switchId ->
+            northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+            Wrappers.wait(RULES_DELETION_TIME) {
+                assert northbound.validateSwitchRules(switchId).missingRules.size() == flowRulesCount
+            }
+        }
 
-        then: "The corresponding rules are installed on the switch"
-        synchronizedRules.installedRules.size() == flowRulesCount
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, defaultPlusFlowRules)
+        when: "Synchronize rules on switches"
+        def synchronizedRulesMap = involvedSwitches.collectEntries { switchId ->
+            [switchId, northbound.synchronizeSwitchRules(switchId)]
+        }
+
+        then: "The corresponding rules are installed on switches"
+        involvedSwitches.each { switchId ->
+            assert synchronizedRulesMap[switchId].installedRules.size() == flowRulesCount
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                compareRules(northbound.getSwitchRules(switchId).flowEntries, defaultPlusFlowRulesMap[switchId])
+            }
         }
 
         and: "No missing rules were found after rules validation"
-        with(northbound.validateSwitchRules(srcSwitch.dpId)) {
-            verifyAll {
-                properRules.size() == flowRulesCount
-                missingRules.empty
-                excessRules.empty
+        involvedSwitches.each { switchId ->
+            with(northbound.validateSwitchRules(switchId)) {
+                verifyAll {
+                    properRules.size() == flowRulesCount
+                    missingRules.empty
+                    excessRules.empty
+                }
             }
         }
 
