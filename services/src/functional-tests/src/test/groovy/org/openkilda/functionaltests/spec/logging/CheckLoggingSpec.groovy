@@ -23,7 +23,7 @@ class CheckLoggingSpec extends BaseSpecification {
     def "Check Floodlight logging"() {
         when: "Retrieve floodlight logs for last 5 minutes"
         def result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT)
-                                                              .setLevel("INFO").setTimeRange(300).build())
+                .setLevel("INFO").setTimeRange(300).build())
 
         assert result?.hits?.total > 0: "No logs could be found for Floodlight"
 

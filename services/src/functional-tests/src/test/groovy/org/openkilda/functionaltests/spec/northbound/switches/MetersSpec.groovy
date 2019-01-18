@@ -59,7 +59,7 @@ class MetersSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Unable to delete a meter with invalid ID = #meterId on a #switchType switch"() {
+    def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
         when: "Try to delete meter with invalid ID"
         northbound.deleteMeter(sw.getDpId(), -1)
 
@@ -123,7 +123,7 @@ class MetersSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Meters are created/deleted when creating/deleting a flow (ignore_bandwidth = #ignoreBandwidth)"() {
+    def "Meters are created/deleted when creating/deleting a flow (ignore_bandwidth=#ignoreBandwidth)"() {
         given: "A switch with OpenFlow 1.3 support"
         def sw = topology.getActiveSwitches().find { it.ofVersion == "OF_13" }
 
@@ -159,7 +159,7 @@ class MetersSpec extends BaseSpecification {
         ignoreBandwidth << [false, true]
     }
 
-    def "Meters are not created when creating a flow with maximum_bandwidth = 0"() {
+    def "Meters are not created when creating a flow with maximum_bandwidth=0"() {
         given: "A switch with OpenFlow 1.3 support"
         def sw = topology.getActiveSwitches().find { it.ofVersion == "OF_13" }
 
