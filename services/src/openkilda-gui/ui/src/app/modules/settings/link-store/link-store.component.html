@@ -5,7 +5,7 @@
     <div class="row">
         <label for="getalllinkurl" class="col-sm-2 text-right col-form-label required">Get Status List URL:</label>
         <div class="col-sm-6">
-          <input  type="text"formControlName="url" class="form-control"  placeholder="Get Status List" /> 
+          <input  type="text" formControlName="url" class="form-control"  placeholder="Get Status List" /> 
           <div class="invalid-feedback">
               <div  *ngIf="(!i['urls']['controls']['get-status-list']['controls'].url.valid && (i['urls']['controls']['get-status-list']['controls'].url.dirty || i['urls']['controls']['get-status-list']['controls'].url.touched )   && i['urls']['controls']['get-status-list']['controls'].url.errors || submitted) && (i['urls']['controls']['get-status-list']['controls'].url.errors && i['urls']['controls']['get-status-list']['controls'].url.errors.required)" 
               >Get status list Url is required.</div>

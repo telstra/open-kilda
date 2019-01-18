@@ -141,8 +141,29 @@ export class SwitchStoreComponent implements OnInit {
           typeof jsonResponse["urls"]["get-all-switches"] != "undefined" &&
           typeof jsonResponse["urls"]["get-all-switches"]["url"] != "undefined"
         ) {
-          this.switchStoreObj = jsonResponse;
-          this.switchStoreForm.setValue(jsonResponse);
+          let newResponse = {
+              "get-all-switches":{
+                name:"get-all-switches",
+                url:""
+              },
+              "get-switch":{
+                name:"get-switch",
+                url:""
+              },
+              "get-switch-ports":{
+                name:"get-switch-ports",
+                url:"",
+              },
+              "get-switch-port-flows":{
+                name:"get-switch-port-flows",
+                url:""
+              }
+          };
+
+          let response ={urls: {...newResponse,...jsonResponse.urls}};
+          
+          this.switchStoreObj = response;
+          this.switchStoreForm.setValue(response);
           this.switchStoreForm.disable();      
           this.isEdit = true;
         }
@@ -309,5 +330,6 @@ export class SwitchStoreComponent implements OnInit {
       }
     });
   }
+
 
 }

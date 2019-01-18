@@ -24,7 +24,7 @@ declare var moment: any;
   templateUrl: './port-details.component.html',
   styleUrls: ['./port-details.component.css']
 })
-export class PortDetailsComponent implements OnInit{
+export class PortDetailsComponent implements OnInit, OnDestroy{
   portDataObject: any;
   retrievedSwitchObject: any;
   port_src_switch: any;
@@ -211,6 +211,20 @@ export class PortDetailsComponent implements OnInit{
 
   toggleTab(tab){
     this.openedTab = tab;
+  }
+
+  assignDate(timestamp){
+    if(timestamp){
+      return  moment(timestamp*1000).format("LLL");
+    }else{
+      return '-';
+    }
+
+   
+  }
+
+  ngOnDestroy(){
+    localStorage.setItem('portLoaderEnabled',"1");
   }
 }
 

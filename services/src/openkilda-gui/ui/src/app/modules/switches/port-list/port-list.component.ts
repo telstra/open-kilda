@@ -53,6 +53,12 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
       autoWidth: false,
       colResize: false,
       dom: 'tpl',
+      initComplete:function( settings, json ){
+        if(localStorage.getItem('portLoaderEnabled')){
+            setTimeout(()=>{ref.loaderService.hide()},2000);
+            localStorage.removeItem('portLoaderEnabled');
+        }
+      },
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "aoColumns": [
         { sWidth: '5%' },
@@ -108,6 +114,9 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
   }
 
   portListData(){
+      if(localStorage.getItem('portLoaderEnabled')){
+          this.loaderService.show("Loading Ports");
+      }
       this.switchService.getSwitchPortsStats(this.maskPipe.transform(this.switch_id,'legacy')).subscribe((data : Array<object>) =>{
         this.rerender();
         this.ngAfterViewInit();

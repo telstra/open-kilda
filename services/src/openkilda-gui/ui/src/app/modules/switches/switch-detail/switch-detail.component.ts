@@ -41,6 +41,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
       inventory:"-"
     }
   }
+  
   isLoaderActive = true;
 
   statusDescrepancy = false;
@@ -66,6 +67,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
     this.route.params.subscribe(params => {
       this.switchId = params['id'];
+      localStorage.removeItem('portLoaderEnabled');
       this.getSwitchDetail(params['id']);
     });
 
@@ -84,7 +86,6 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
         else{
           this.currentRoute = 'switch-details';
         }
-   
       });     
   }
 
