@@ -1,0 +1,63 @@
+digraph {
+compound=true;
+subgraph cluster_StateMachine {
+label="org.openkilda.FlowRerouteFsm";
+
+Initialized [label="Initialized"];
+FlowValidated [label="FlowValidated"];
+ResourcesAllocated [label="ResourcesAllocated"];
+ResourcesAllocationReverted [label="ResourcesAllocationReverted"];
+PersistedInDB [label="PersistedInDB"];
+InstallingNewRules [label="InstallingNewRules"];
+AllNewRulesInstalled [label="AllNewRulesInstalled"];
+ValidatingRules [label="ValidatingRules"];
+RemovingOldRules [label="RemovingOldRules"];
+AllOldRulesRemoved [label="AllOldRulesRemoved"];
+ValidatingRemovedOldRules [label="ValidatingRemovedOldRules"];
+AllOldRulesRemoveValidated [label="AllOldRulesRemoveValidated"];
+ResourcesDeallocated [label="ResourcesDeallocated"];
+Finished [label="Finished"];
+FinishedWithError [label="FinishedWithError"];
+RollingbackRuleInstallation [label="RollingbackRuleInstallation"];
+AllNewRulesRemoved [label="AllNewRulesRemoved"];
+ValidatingRemovedNewRules [label="ValidatingRemovedNewRules"];
+AllNewRulesRemoveValidated [label="AllNewRulesRemoveValidated"];
+
+
+Initialized -> FlowValidated [ label="Next"];
+Initialized -> FinishedWithError [ label="NoFlowFound"];
+FlowValidated -> ResourcesAllocated [ label="Next"];
+FlowValidated -> FinishedWithError [ label="ErrorOnResourseAllocation"];
+ResourcesAllocated -> PersistedInDB [ label="Next"];
+ResourcesAllocated -> ResourcesAllocationReverted [ label="TimeoutRised"];
+PersistedInDB -> InstallingNewRules [ label="Next"];
+InstallingNewRules -> InstallingNewRules [ label="RuleInstalled"];
+InstallingNewRules -> RollingbackRuleInstallation [ label="TimeoutRised"];
+InstallingNewRules -> RollingbackRuleInstallation [ label="WorkerError"];
+InstallingNewRules -> AllNewRulesInstalled [ label="Next"];
+AllNewRulesInstalled -> ValidatingRules [ label="Next"];
+ValidatingRules -> ValidatingRules [ label="RuleValidated"];
+ValidatingRules -> RemovingOldRules [ label="Next"];
+ValidatingRules -> RollingbackRuleInstallation [ label="TimeoutRised"];
+ValidatingRules -> RollingbackRuleInstallation [ label="MissingRuleFound"];
+RemovingOldRules -> RemovingOldRules [ label="RuleRemoved"];
+RemovingOldRules -> AllOldRulesRemoved [ label="Next"];
+RemovingOldRules -> AllOldRulesRemoved [ label="TimeoutRised"];
+AllOldRulesRemoved -> ValidatingRemovedOldRules [ label="Next"];
+ValidatingRemovedOldRules -> ValidatingRemovedOldRules [ label="RuleRemoveValidated"];
+ValidatingRemovedOldRules -> AllOldRulesRemoveValidated [ label="Next"];
+ValidatingRemovedOldRules -> AllOldRulesRemoveValidated [ label="TimeoutRised"];
+AllOldRulesRemoveValidated -> ResourcesDeallocated [ label="Next"];
+ResourcesDeallocated -> Finished [ label="Next"];
+
+RollingbackRuleInstallation -> RollingbackRuleInstallation [ label="RuleRemoved"];
+RollingbackRuleInstallation -> AllNewRulesRemoved [ label="Next"];
+RollingbackRuleInstallation -> AllNewRulesRemoved [ label="TimeoutRised"];
+AllNewRulesRemoved -> ValidatingRemovedNewRules [ label="Next"];
+ValidatingRemovedNewRules -> ValidatingRemovedNewRules [ label="RuleRemoveValidated"];
+ValidatingRemovedNewRules -> AllNewRulesRemoveValidated [ label="Next"];
+ValidatingRemovedNewRules -> AllNewRulesRemoveValidated [ label="TimeoutRised"];
+AllNewRulesRemoveValidated -> ResourcesAllocationReverted [ label="Next"];
+
+ResourcesAllocationReverted -> FinishedWithError [ label="Next"];
+}}
