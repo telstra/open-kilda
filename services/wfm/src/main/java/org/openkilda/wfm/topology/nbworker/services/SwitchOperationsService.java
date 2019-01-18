@@ -15,13 +15,18 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.mappers.SwitchMapper;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchOperationsService {
@@ -39,5 +44,16 @@ public class SwitchOperationsService {
      */
     public Switch getSwitch(SwitchId switchId) throws SwitchNotFoundException {
         return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
+    }
+
+    /**
+     * Return all switches.
+     *
+     * @return all switches.
+     */
+    public List<SwitchInfoData> getAllSwitches() {
+        return switchRepository.findAll().stream()
+                .map(SwitchMapper.INSTANCE::map)
+                .collect(Collectors.toList());
     }
 }

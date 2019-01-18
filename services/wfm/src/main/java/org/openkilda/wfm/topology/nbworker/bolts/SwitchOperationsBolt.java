@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,16 +28,12 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     private transient SwitchOperationsService switchOperationsService;
@@ -50,9 +46,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
      * {@inheritDoc}
      */
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
-        this.switchOperationsService = new SwitchOperationsService(repositoryFactory);
+    protected void init() {
+        switchOperationsService = new SwitchOperationsService(repositoryFactory);
     }
 
     @Override
@@ -71,9 +66,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<SwitchInfoData> getSwitches() {
-        return repositoryFactory.createSwitchRepository().findAll().stream()
-                .map(SwitchMapper.INSTANCE::map)
-                .collect(Collectors.toList());
+        return switchOperationsService.getAllSwitches();
     }
 
     private List<SwitchInfoData> getSwitch(GetSwitchRequest request) {

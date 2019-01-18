@@ -46,7 +46,6 @@ import java.util.stream.Collectors;
 public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements FlowRepository {
     private static final String FLOW_ID_PROPERTY_NAME = "flowid";
     private static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
-    private static final String SRC_SWITCH_PROPERTY_NAME = "src_switch";
 
     private final FlowStatusConverter flowStatusConverter = new FlowStatusConverter();
 
@@ -158,7 +157,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
     @Override
     public Collection<Flow> findBySrcSwitchId(SwitchId switchId) {
-        Filter srcSwitchFilter = new Filter(SRC_SWITCH_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
         return getSession().loadAll(getEntityType(), srcSwitchFilter, DEPTH_LOAD_ENTITY);
     }
 
@@ -166,7 +165,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     public void createOrUpdate(Flow flow) {
         transactionManager.doInTransaction(() -> {
             lockSwitches(requireManagedEntity(flow.getSrcSwitch()), requireManagedEntity(flow.getDestSwitch()));
-
             super.createOrUpdate(flow);
         });
     }
