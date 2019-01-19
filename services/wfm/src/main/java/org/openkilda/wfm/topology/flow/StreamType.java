@@ -75,6 +75,11 @@ public enum StreamType {
     RESPONSE,
 
     /**
+     * History stream.
+     */
+    HISTORY,
+
+    /**
      * Error messages.
      */
     ERROR;

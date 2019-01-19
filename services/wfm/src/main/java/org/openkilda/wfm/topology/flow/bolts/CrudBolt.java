@@ -37,6 +37,8 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.history.FlowData;
+import org.openkilda.messaging.history.HistoryMessage;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -164,6 +166,7 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
+        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
@@ -392,6 +395,7 @@ public class CrudBolt
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
+            sendHistory("Create flow", createdFlow, message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -412,6 +416,20 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());
         }
+    }
+
+    private void sendHistory(String action, FlowPair flowPair, String correlationId, Tuple tuple) {
+        String details = String.format("Forward cookie: %d, reverse cookie: %d",
+                flowPair.forward.getCookie(), flowPair.reverse.getCookie());
+        FlowData flowData = FlowData.builder()
+                .flowId(flowPair.forward.getFlowId())
+                .actor("internal")
+                .action(action)
+                .details(details)
+                .build();
+        HistoryMessage message =
+                new HistoryMessage(System.currentTimeMillis(), correlationId, flowData);
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(message));
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) {

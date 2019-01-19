@@ -43,4 +43,8 @@ public interface FlowTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaNorthboundTopic() {
         return getKafkaTopics().getNorthboundTopic();
     }
+
+    default String getKafkaHistoryTopic() {
+        return getKafkaTopics().getHistoryTopic();
+    }
 }
