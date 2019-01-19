@@ -16,6 +16,7 @@
 package org.openkilda.northbound.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
@@ -36,6 +37,7 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.service.HistoryService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -43,8 +45,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
@@ -60,7 +65,7 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(SpringRunner.class)
 @WebAppConfiguration
-@ContextConfiguration(classes = TestConfig.class)
+//@ContextConfiguration(classes = TestConfig.class)
 @TestPropertySource("classpath:northbound.properties")
 public class FlowControllerTest extends NorthboundBaseTest {
     private static final String USERNAME = "kilda";
@@ -257,5 +262,15 @@ public class FlowControllerTest extends NorthboundBaseTest {
 
     private static String testCorrelationId() {
         return UUID.randomUUID().toString();
+    }
+
+    @TestConfiguration
+    @Import(TestConfig.class)
+    @PropertySource({"classpath:northbound.properties"})
+    static class Config {
+        @Bean
+        public HistoryService historyService() {
+            return mock(HistoryService.class);
+        }
     }
 }

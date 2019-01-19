@@ -90,6 +90,11 @@
             <artifactId>configuration</artifactId>
             <version>${openkilda-configuration.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-history</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.projectfloodlight</groupId>

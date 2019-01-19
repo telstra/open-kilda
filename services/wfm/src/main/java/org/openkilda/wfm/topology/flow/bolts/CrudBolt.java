@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.bolts;
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.history.HistoryService;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -59,6 +60,8 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.history.FlowDump;
+import org.openkilda.model.history.FlowHistory;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -102,6 +105,7 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -142,6 +146,7 @@ public class CrudBolt
 
     private transient TopologyContext context;
     private transient OutputCollector outputCollector;
+    private transient HistoryService historyService;
 
     public CrudBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig) {
         this.persistenceManager = persistenceManager;
@@ -162,6 +167,7 @@ public class CrudBolt
         flowResourcesManager = new FlowResourcesManager(resourceCache);
         flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager, flowValidator);
         featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
+        historyService = new HistoryService(persistenceManager);
 
         initFlowResourcesManager();
     }
@@ -427,6 +433,8 @@ public class CrudBolt
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
+            saveHistory("Created the flow", "", message.getCorrelationId());
+            saveHistory(createdFlow, message.getCorrelationId());
 
             Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -447,6 +455,38 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());
         }
+    }
+
+    private void saveHistory(String action, String details, String correlationId) {
+        historyService.store(FlowHistory.builder()
+                .action(action)
+                .details(details)
+                .taskId(correlationId)
+                .timestamp(Instant.now())
+                .build());
+    }
+
+    private void saveHistory(FlowPair flowPair, String correlationId) {
+        historyService.store(FlowDump.builder()
+                .taskId(correlationId)
+                .flowId(flowPair.forward.getFlowId())
+                .bandwidth(flowPair.forward.getBandwidth())
+                .ignoreBandwidth(flowPair.forward.isIgnoreBandwidth())
+                .forwardCookie(flowPair.forward.getCookie())
+                .reverseCookie(flowPair.reverse.getCookie())
+                .sourceSwitch(flowPair.forward.getSrcSwitch().getSwitchId())
+                .destinationSwitch(flowPair.forward.getDestSwitch().getSwitchId())
+                .sourcePort(flowPair.forward.getSrcPort())
+                .destinationPort(flowPair.forward.getDestPort())
+                .sourceVlan(flowPair.forward.getSrcVlan())
+                .destinationVlan(flowPair.forward.getDestVlan())
+                .forwardMeterId(flowPair.forward.getMeterId())
+                .reverseMeterId(flowPair.reverse.getMeterId())
+                .forwardPath(flowPair.forward.getFlowPath())
+                .reversePath(flowPair.reverse.getFlowPath())
+                .forwardStatus(flowPair.forward.getStatus())
+                .reverseStatus(flowPair.reverse.getStatus())
+                .build(), "stateAfter");
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) {
@@ -501,6 +541,8 @@ public class CrudBolt
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);
+            saveHistory("Updated the flow", "", message.getCorrelationId());
+            saveHistory(updatedFlow, message.getCorrelationId());
 
             Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
