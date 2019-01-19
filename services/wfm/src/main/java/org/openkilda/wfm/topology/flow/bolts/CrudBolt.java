@@ -59,6 +59,9 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.history.FlowDump;
+import org.openkilda.model.history.FlowEvent;
+import org.openkilda.model.history.FlowHistory;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -68,6 +71,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
+import org.openkilda.wfm.share.bolt.HistoryBolt;
 import org.openkilda.wfm.share.cache.ResourceCache;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
@@ -102,6 +106,7 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -177,6 +182,7 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
+        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), HistoryBolt.FIELDS_HISTORY);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
@@ -422,11 +428,14 @@ public class CrudBolt
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.CREATE_FLOW);
 
             Flow flow = FlowMapper.INSTANCE.map(((FlowCreateRequest) message.getData()).getPayload());
+            saveHistory("Flow creating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
             FlowPair createdFlow = flowService.createFlow(flow,
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
+            saveHistory("Created the flow", "", message.getCorrelationId(), tuple);
+            saveHistory(createdFlow, "stateAfter", message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
@@ -447,6 +456,57 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());
         }
+    }
+
+    private void saveHistory(String action, String flowId, String details, String correlationId, Tuple tuple) {
+        FlowEvent flowEvent = FlowEvent.builder()
+                .action(action)
+                .actor("NB")
+                .flowId(flowId)
+                .details(details)
+                .taskId(correlationId)
+                .timestamp(Instant.now())
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowEvent));
+    }
+
+    private void saveHistory(String action, String details, String correlationId, Tuple tuple) {
+        FlowHistory flowHistory = FlowHistory.builder()
+                .action(action)
+                .details(details)
+                .taskId(correlationId)
+                .timestamp(Instant.now())
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowHistory));
+    }
+
+    private void saveHistory(Optional<FlowPair> optionalFlowPair, String type, String correlationId, Tuple tuple) {
+        optionalFlowPair.ifPresent(flowPair -> saveHistory(flowPair, type, correlationId, tuple));
+    }
+
+    private void saveHistory(FlowPair flowPair, String type, String correlationId, Tuple tuple) {
+        FlowDump flowDump = FlowDump.builder()
+                .taskId(correlationId)
+                .flowId(flowPair.forward.getFlowId())
+                .type(type)
+                .bandwidth(flowPair.forward.getBandwidth())
+                .ignoreBandwidth(flowPair.forward.isIgnoreBandwidth())
+                .forwardCookie(flowPair.forward.getCookie())
+                .reverseCookie(flowPair.reverse.getCookie())
+                .sourceSwitch(flowPair.forward.getSrcSwitch().getSwitchId())
+                .destinationSwitch(flowPair.forward.getDestSwitch().getSwitchId())
+                .sourcePort(flowPair.forward.getSrcPort())
+                .destinationPort(flowPair.forward.getDestPort())
+                .sourceVlan(flowPair.forward.getSrcVlan())
+                .destinationVlan(flowPair.forward.getDestVlan())
+                .forwardMeterId(flowPair.forward.getMeterId())
+                .reverseMeterId(flowPair.reverse.getMeterId())
+                .forwardPath(flowPair.forward.getFlowPath())
+                .reversePath(flowPair.reverse.getFlowPath())
+                .forwardStatus(flowPair.forward.getStatus())
+                .reverseStatus(flowPair.reverse.getStatus())
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowDump));
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) {
@@ -496,11 +556,15 @@ public class CrudBolt
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
 
             Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
+            saveHistory("Flow updating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
+            saveHistory(flowService.getFlowPair(flow.getFlowId()), "stateBefore", message.getCorrelationId(), tuple);
 
             FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);
+            saveHistory("Updated the flow", "", message.getCorrelationId(), tuple);
+            saveHistory(updatedFlow, "stateAfter", message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
