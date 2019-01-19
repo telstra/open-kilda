@@ -169,6 +169,10 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         builder.setBolt(ComponentType.NORTHBOUND_KAFKA_BOLT.toString(), northboundKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), StreamType.RESPONSE.toString());
 
+        KafkaBolt historyKafkaBolt = buildKafkaBolt(topologyConfig.getKafkaHistoryTopic());
+        builder.setBolt(ComponentType.HISTORY_BOLT.toString(), historyKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.HISTORY.toString());
+
         createCtrlBranch(builder, ctrlTargets);
 
         return builder.createTopology();

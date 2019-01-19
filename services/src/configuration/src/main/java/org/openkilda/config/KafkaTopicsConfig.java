@@ -43,6 +43,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.flow.status")
     String getFlowStatusTopic();
 
+    @Key("history")
+    @Default("kilda.history")
+    String getHistoryTopic();
+
     @Key("northbound")
     @FallbackKey("kafka.northbound.topic")
     @Default("kilda.northbound")

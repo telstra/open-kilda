@@ -97,5 +97,10 @@ public enum ComponentType {
     /**
      * Error bolt. Processes errors.
      */
-    ERROR_BOLT
+    ERROR_BOLT,
+
+    /**
+     * History bolt. It's kafka bolt for sending history logs.
+     */
+    HISTORY_BOLT
 }

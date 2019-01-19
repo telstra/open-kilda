@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.persistence.repositories.impl;
 
+import org.openkilda.model.history.FlowEvent;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 
-/**
- * Factory to create {@link Repository} instances.
- */
-public interface RepositoryFactory {
-    FlowRepository createFlowRepository();
+public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> implements FlowEventRepository {
 
-    FlowSegmentRepository createFlowSegmentRepository();
+    Neo4jFlowEventRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
+        super(sessionFactory, transactionManager);
+    }
 
-    IslRepository createIslRepository();
-
-    SwitchRepository createSwitchRepository();
-
-    LinkPropsRepository createLinkPropsRepository();
-
-    FlowEventRepository createFlowEventRepository();
-
-    FlowHistoryRepository createFlowHistoryRepository();
+    @Override
+    Class<FlowEvent> getEntityType() {
+        return FlowEvent.class;
+    }
 }

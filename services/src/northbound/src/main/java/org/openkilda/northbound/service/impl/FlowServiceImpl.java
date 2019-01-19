@@ -59,6 +59,7 @@ import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FlowService;
+import org.openkilda.northbound.service.HistoryService;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -140,6 +141,9 @@ public class FlowServiceImpl implements FlowService {
     @Autowired
     private CorrelationIdFactory idFactory;
 
+    @Autowired
+    private HistoryService historyService;
+
     @PostConstruct
     void init() {
         PersistenceManager persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(
@@ -185,6 +189,7 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowPayload> createFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Create flow: {}", input);
+        historyService.logAction("Create flow", input, "User create the flow.");
 
         FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input));
         CommandMessage request = new CommandMessage(
@@ -215,6 +220,7 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowPayload> updateFlow(final FlowPayload input) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Update flow request for flow {}", input.getId());
+        historyService.logAction("Update flow", input, "User update the flow.");
 
         FlowUpdateRequest payload = new FlowUpdateRequest(new FlowDto(input));
         CommandMessage request = new CommandMessage(
