@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
@@ -76,6 +77,8 @@ public interface NorthboundService {
     FlowReroutePayload rerouteFlow(String flowId);
 
     FlowReroutePayload synchronizeFlow(String flowId);
+
+    FlowMeterEntries resetMeters(String flowId);
 
     //switches
 
