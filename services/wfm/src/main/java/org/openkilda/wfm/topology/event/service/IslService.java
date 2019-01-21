@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.event.service;
 
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
@@ -41,6 +43,7 @@ public class IslService {
     private LinkPropsRepository linkPropsRepository;
     private SwitchRepository switchRepository;
     private FlowSegmentRepository flowSegmentRepository;
+    private FeatureTogglesRepository featureTogglesRepository;
 
     private int islCostWhenUnderMaintenance;
 
@@ -52,6 +55,7 @@ public class IslService {
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     /**
@@ -63,10 +67,16 @@ public class IslService {
     public void createOrUpdateIsl(Isl isl, Sender sender) {
         createOrUpdateIsl(isl);
 
-        String reason = String.format("Create or update ISL: %s_%d-%s_%d. ISL status: %s",
-                isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
-                isl.getDestSwitch().getSwitchId(), isl.getDestPort(), isl.getStatus());
-        sender.sendRerouteInactiveFlowsMessage(reason);
+        Optional<FeatureToggles> featureToggles = featureTogglesRepository.find();
+        if (featureToggles.isPresent()
+                && featureToggles.get().getFlowsRerouteOnIslDiscoveryEnabled() != null
+                && featureToggles.get().getFlowsRerouteOnIslDiscoveryEnabled()) {
+
+            String reason = String.format("Create or update ISL: %s_%d-%s_%d. ISL status: %s",
+                    isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
+                    isl.getDestSwitch().getSwitchId(), isl.getDestPort(), isl.getStatus());
+            sender.sendRerouteInactiveFlowsMessage(reason);
+        }
     }
 
     /**

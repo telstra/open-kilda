@@ -28,7 +28,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -391,16 +391,16 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public FeatureTogglePayload getFeatureToggles() {
+    public FeatureTogglesDto getFeatureToggles() {
         return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglePayload.class).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglesDto.class).getBody();
     }
 
     @Override
-    public FeatureTogglePayload toggleFeature(FeatureTogglePayload request) {
-        HttpEntity<FeatureTogglePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v1/features", HttpMethod.POST, httpEntity,
-                FeatureTogglePayload.class).getBody();
+    public FeatureTogglesDto toggleFeature(FeatureTogglesDto request) {
+        HttpEntity<FeatureTogglesDto> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/features", HttpMethod.PATCH, httpEntity,
+                FeatureTogglesDto.class).getBody();
     }
 
     @Override

@@ -75,6 +75,8 @@ import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
+import org.openkilda.wfm.topology.flow.service.FeatureToggle;
+import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
 import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
 import org.openkilda.wfm.topology.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.service.FlowCommandSender;
@@ -125,6 +127,8 @@ public class CrudBolt
 
     private transient FlowService flowService;
 
+    private transient FeatureTogglesService featureTogglesService;
+
     private transient FlowCommandFactory commandFactory;
 
     private transient PathComputerFactory pathComputerFactory;
@@ -154,6 +158,7 @@ public class CrudBolt
 
         flowResourcesManager = new FlowResourcesManager(resourceCache);
         flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager, flowValidator);
+        featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
 
         initFlowResourcesManager();
     }
@@ -311,6 +316,8 @@ public class CrudBolt
         final String errorType = "Can not push flow";
 
         try {
+            featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.PUSH_FLOW);
+
             logger.info("PUSH flow: {} :: {}", flowId, message);
             FlowInfoData fid = (FlowInfoData) message.getData();
             FlowPair flow = FlowMapper.INSTANCE.map(fid.getPayload());
@@ -348,6 +355,8 @@ public class CrudBolt
         final String errorType = "Can not unpush flow";
 
         try {
+            featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UNPUSH_FLOW);
+
             logger.info("UNPUSH flow: {} :: {}", flowId, message);
 
             FlowInfoData fid = (FlowInfoData) message.getData();
@@ -381,6 +390,8 @@ public class CrudBolt
         final String errorType = "Can not delete flow";
 
         try {
+            featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.DELETE_FLOW);
+
             FlowPair deletedFlow = flowService.deleteFlow(flowId,
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.DELETE));
 
@@ -402,6 +413,8 @@ public class CrudBolt
         final String errorType = "Could not create flow";
 
         try {
+            featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.CREATE_FLOW);
+
             Flow flow = FlowMapper.INSTANCE.map(((FlowCreateRequest) message.getData()).getPayload());
 
             FlowPair createdFlow = flowService.createFlow(flow,
@@ -474,6 +487,8 @@ public class CrudBolt
         final String errorType = "Could not update flow";
 
         try {
+            featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
+
             Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
 
             FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,

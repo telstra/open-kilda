@@ -53,6 +53,7 @@ import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.OutputVlanType;
@@ -164,6 +165,15 @@ public class FlowTopologyTest extends AbstractStormTest {
         sendClearState();
 
         ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession().purgeDatabase();
+
+        persistenceManager.getRepositoryFactory().createFeatureTogglesRepository().createOrUpdate(
+                FeatureToggles.builder()
+                        .createFlowEnabled(true)
+                        .updateFlowEnabled(true)
+                        .deleteFlowEnabled(true)
+                        .pushFlowEnabled(true)
+                        .unpushFlowEnabled(true)
+                        .build());
     }
 
     @Test

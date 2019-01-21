@@ -13,21 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.messaging.nbtopology.response;
 
-/**
- * Factory to create {@link Repository} instances.
- */
-public interface RepositoryFactory {
-    FlowRepository createFlowRepository();
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 
-    FlowSegmentRepository createFlowSegmentRepository();
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.ToString;
+import lombok.Value;
 
-    IslRepository createIslRepository();
+@Value
+@ToString
+@Builder
+public class FeatureTogglesResponse extends InfoData {
 
-    SwitchRepository createSwitchRepository();
+    @JsonProperty("feature_toggles")
+    private FeatureTogglesDto featureTogglesDto;
 
-    LinkPropsRepository createLinkPropsRepository();
-
-    FeatureTogglesRepository createFeatureTogglesRepository();
+    public FeatureTogglesResponse(@JsonProperty("feature_toggles") FeatureTogglesDto featureTogglesDto) {
+        this.featureTogglesDto = featureTogglesDto;
+    }
 }
