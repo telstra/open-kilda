@@ -13,21 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.error;
 
-/**
- * Factory to create {@link Repository} instances.
- */
-public interface RepositoryFactory {
-    FlowRepository createFlowRepository();
-
-    FlowSegmentRepository createFlowSegmentRepository();
-
-    IslRepository createIslRepository();
-
-    SwitchRepository createSwitchRepository();
-
-    LinkPropsRepository createLinkPropsRepository();
-
-    FeatureTogglesRepository createFeatureTogglesRepository();
+public class FeatureTogglesNotFoundException extends AbstractException {
+    public FeatureTogglesNotFoundException() {
+        super("Feature toggles not found.");
+    }
 }

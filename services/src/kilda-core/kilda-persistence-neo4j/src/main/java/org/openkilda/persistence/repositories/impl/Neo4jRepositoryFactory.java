@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -59,5 +60,10 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public LinkPropsRepository createLinkPropsRepository() {
         return new Neo4jLinkPropsRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FeatureTogglesRepository createFeatureTogglesRepository() {
+        return new Neo4jFeatureTogglesRepository(sessionFactory, transactionManager);
     }
 }
