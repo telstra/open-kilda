@@ -70,6 +70,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
     public static final String MESSAGE_FIELD = "message";
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
+    public static final Fields KEY_FIELD = new Fields(MessageTranslator.KEY_FIELD);
 
     protected final String topologyName;
 

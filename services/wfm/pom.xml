@@ -39,6 +39,7 @@
         <neo4j.java.driver.version>1.5.1</neo4j.java.driver.version>
         <java-uuid-generator.version>3.1.5</java-uuid-generator.version>
         <failsafe.version>1.0.5</failsafe.version>
+        <squirrelframework.version>0.3.8</squirrelframework.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
@@ -147,6 +148,12 @@
                     <artifactId>jersey-apache-connector</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.squirrelframework</groupId>
+            <artifactId>squirrel-foundation</artifactId>
+            <version>${squirrelframework.version}</version>
         </dependency>
 
         <dependency>
