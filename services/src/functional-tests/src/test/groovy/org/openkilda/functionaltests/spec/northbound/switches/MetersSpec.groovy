@@ -1,13 +1,21 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.meter.SwitchMeterEntries
+import org.openkilda.messaging.info.rule.SwitchFlowEntries
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import groovy.transform.Memoized
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Issue
@@ -15,14 +23,20 @@ import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
 
+import java.math.RoundingMode
+
 @Narrative("The test suite checks if traffic meters, including default, are set and deleted in a correct way.")
 class MetersSpec extends BaseSpecification {
 
     static DISCO_PKT_RATE = 200 // Number of packets per second for the default flows
     static DISCO_PKT_SIZE = 250 // Default size of the discovery packet
-    static NOVI_BURST_MIN = 1.004 // Guaranteed minimum flow burst rate on a Noviflow switch, with rounding errors.
-    static NOVI_BURST_MAX = 1.051 // Possible maximum flow burst rate on a Noviflow switch, with rounding errors.
+    static NOVI_BURST_COEF = 1.005 //driven by the Noviflow specification
     static DISCO_PKT_BURST = 4096 // Default desired packet burst rate for the default flows (ignored by Noviflow)
+    static CENTEC_MIN_BURST = 1024 //driven by the Centec specification
+    static CENTEC_MAX_BURST = 32000 //driven by the Centec specification
+
+    @Value('${burst.coef}')
+    double burstCoef
 
     @Shared
     def centecs
@@ -77,6 +91,10 @@ class MetersSpec extends BaseSpecification {
         0       | getNonCentecSwitches()[0] | "Centec"
     }
 
+    /**
+     * Default meters should be set in PKTPS by default in Kilda, but Centec switches only allow KBPS flag.
+     * System should recalculate the PKTPS value to KBPS on Centec switches.
+     */
     def "Default meters should be re-calculated to kbps on Centec switches"() {
         requireProfiles("hardware")
 
@@ -91,6 +109,7 @@ class MetersSpec extends BaseSpecification {
             assert it.meterEntries.size() == 2
             assert it.meterEntries.every { Math.abs(it.rate - (DISCO_PKT_RATE * DISCO_PKT_SIZE) / 1024L) <= 1 }
             assert it.meterEntries.every { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
+            //unable to use #getExpectedBurst. For Centects there's special burst due to KBPS
             assert it.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
             assert it.meterEntries.every { ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
             assert it.meterEntries.every { it.flags.size() == 3 }
@@ -104,23 +123,17 @@ class MetersSpec extends BaseSpecification {
         given: "All Openflow 1.3 compatible switches"
         def switches = getNonCentecSwitches()
 
-        when: "Try to get meters from all the switches"
-        List<SwitchMeterEntries> meters = switches.collect { northbound.getAllMeters(it.dpId) }
-
-        then: "Only the default meters should be present on each switch"
-        meters.each {
-            assert it.meterEntries.size() == 2
-            assert it.meterEntries.every { it.rate == DISCO_PKT_RATE }
-            assert it.meterEntries.every {
-                //NoviFlow wouldn't let us set burst size to more than 105% of the flow bandwidth
-                //effectively negating the default burst packet rate
-                DISCO_PKT_RATE >= 4096 ? it.burstSize == DISCO_PKT_BURST :
-                        (it.burstSize >= Math.floor(DISCO_PKT_RATE * NOVI_BURST_MIN)) &&
-                                (it.burstSize <= Math.ceil(DISCO_PKT_RATE * NOVI_BURST_MAX))
+        expect: "Only the default meters should be present on each switch"
+        switches.each { sw ->
+            def meters = northbound.getAllMeters(sw.dpId)
+            assert meters.meterEntries.size() == 2
+            assert meters.meterEntries.every { it.rate == DISCO_PKT_RATE }
+            assert meters.meterEntries.every {
+                it.burstSize == getExpectedBurst(sw.dpId, DISCO_PKT_RATE)
             }
-            assert it.meterEntries.every { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
-            assert it.meterEntries.every { ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
-            assert it.meterEntries.every { it.flags.size() == 3 }
+            assert meters.meterEntries.every { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
+            assert meters.meterEntries.every { ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
+            assert meters.meterEntries.every { it.flags.size() == 3 }
         }
     }
 
@@ -213,8 +226,8 @@ class MetersSpec extends BaseSpecification {
         newMeters*.rate.every { it == flowRate }
 
         and: "New meters burst size should be between 100.5% and 105% of the flow's rate"
-        newMeters*.burstSize.every {
-            (it >= Math.floor(flowRate * NOVI_BURST_MIN)) && (it <= Math.ceil(flowRate * NOVI_BURST_MAX))
+        newMeters*.burstSize.each {
+            assert it == getExpectedBurst(sw.dpId, flowRate)
         }
 
         cleanup: "Delete the flow"
@@ -224,12 +237,13 @@ class MetersSpec extends BaseSpecification {
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
     }
 
-    @Unroll
-    def "Flow burst should be set to #burstSize kbps on Centec switches in case of #flowRate kbps flow bandwidth"() {
+    @Unroll("Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth")
+    def "Flow burst is correctly set on Centec switches"() {
         requireProfiles("hardware")
 
-        setup: "A flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
+        setup: "A flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible Centec switch"
         def sw = getCentecSwitches()[0]
+        def expectedBurstSize = getExpectedBurst(sw.dpId, flowRate)
         def defaultMeters = northbound.getAllMeters(sw.dpId)
         def flowPayload = flowHelper.singleSwitchFlow(sw)
         flowPayload.setMaximumBandwidth(100)
@@ -252,16 +266,140 @@ class MetersSpec extends BaseSpecification {
         newMeters*.rate.every { it == flowRate }
 
         and: "New meters burst size should be 1024 kbit/s regardless the flow speed"
-        newMeters*.burstSize.every { it == burstSize }
+        newMeters*.burstSize.every { it == expectedBurstSize }
 
         cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
         where:
-        flowRate | burstSize
-        975      | 1024 //should have been 1023, but use the minimum 1024
-        1000     | 1050 //the 1.05 multiplier
-        30478    | 32000 //should have been 32001, but use the maximum 32000
+        flowRate << [
+            //flowRate below min
+            ((CENTEC_MIN_BURST - 1) / getBurstCoef()).toBigDecimal().setScale(0, RoundingMode.CEILING).toLong(),
+            1000, //casual middle value
+            //flowRate above max
+            ((CENTEC_MAX_BURST + 1) / getBurstCoef()).toBigDecimal().setScale(0, RoundingMode.CEILING).toLong()
+        ]
+    }
+
+    @Unroll
+    def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
+        requireProfiles("hardware")
+
+        given: "A flow with custom meter rate and burst, that differ from defaults"
+        def src = data.srcSwitch
+        def dst = data.dstSwitch
+        assumeTrue("Desired switch combination is not available in current topology", src && dst)
+        def flow = flowHelper.randomFlow(src, dst)
+        flow.maximumBandwidth = 1000
+        flowHelper.addFlow(flow)
+        /*at this point meters are set for given flow. Now update flow bandwidth directly via DB, so that existing meter
+        rate and burst is no longer correspond to the flow bandwidth*/
+        def newBandwidth = 2000
+        database.updateFlowBandwidth(flow.id, newBandwidth)
+        //at this point existing meters do not correspond with the flow
+        //now save some original data for further comparison before resetting meters
+        Map<SwitchId, SwitchFlowEntries> originalRules = [src.dpId, dst.dpId].collectEntries {
+            [(it): northbound.getSwitchRules(it)]
+        }
+        Map<SwitchId, List<MeterEntry>> originalMeters = [src.dpId, dst.dpId].collectEntries {
+            [(it): northbound.getAllMeters(it).meterEntries]
+        }
+        def defaultMeters = { it.meterId < Constants.MAX_DEFAULT_METER_ID }
+        def flowMeters = { it.meterId >= Constants.MAX_DEFAULT_METER_ID }
+
+        when: "Ask system to reset meters for the flow"
+        def response = northbound.resetMeters(flow.id)
+
+        then: "Response contains correct info about new meter values"
+        [response.srcMeter, response.dstMeter].each { switchMeterEntries ->
+            def originalFlowMeters = originalMeters[switchMeterEntries.switchId].findAll(flowMeters)
+            switchMeterEntries.meterEntries.each { meterEntry ->
+                assert meterEntry.rate == newBandwidth
+                assert meterEntry.burstSize == getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
+            }
+            assert switchMeterEntries.meterEntries*.meterId.sort() == originalFlowMeters*.meterId.sort()
+            assert switchMeterEntries.meterEntries*.flags.sort() == originalFlowMeters*.flags.sort()
+        }
+
+        and: "Non-default meter rate and burst are actually changed to expected values both on src and dst switch"
+        def srcFlowMeters = northbound.getAllMeters(src.dpId).meterEntries.findAll(flowMeters)
+        def dstFlowMeters = northbound.getAllMeters(dst.dpId).meterEntries.findAll(flowMeters)
+        expect srcFlowMeters, sameBeanAs(response.srcMeter.meterEntries).ignoring("timestamp")
+        expect dstFlowMeters, sameBeanAs(response.dstMeter.meterEntries).ignoring("timestamp")
+
+        and: "Default meters are unchanged"
+        [src.dpId, dst.dpId].each { SwitchId swId ->
+            assert expect(northbound.getAllMeters(swId).meterEntries.findAll(defaultMeters).sort(),
+                    sameBeanAs(originalMeters[swId].findAll(defaultMeters).sort())
+                            .ignoring("timestamp"))
+        }
+
+        and: "Switch rules are unchanged"
+        [src.dpId, dst.dpId].each { SwitchId swId ->
+            assert expect(northbound.getSwitchRules(swId), sameBeanAs(originalRules[swId])
+                    .ignoring("timestamp")
+                    .ignoring("flowEntries.durationNanoSeconds")
+                    .ignoring("flowEntries.durationSeconds")
+                    .ignoring("flowEntries.byteCount")
+                    .ignoring("flowEntries.packetCount"))
+        }
+
+        and: "Cleanup: delete flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where: data << [
+                [
+                        description: "nonCentec-nonCentec",
+                        srcSwitch: nonCentecSwitches[0],
+                        dstSwitch: nonCentecSwitches[1]
+                ],
+                [
+                        description: "centec-centec",
+                        srcSwitch: centecSwitches[0],
+                        dstSwitch: centecSwitches[1]
+                ],
+                [
+                        description: "centec-nonCentec",
+                        srcSwitch: centecSwitches[0],
+                        dstSwitch: nonCentecSwitches[0]
+                ]
+        ]
+    }
+
+    /**
+     * This method calculates expected burst for different types of switches. The common burst equals to
+     * `rate * burstCoefficient`. There are couple exceptions though:<br>
+     * <b>Noviflow</b>: Does not use our common burst coef and overrides it with its own coefficient (see static variables
+     * at the top of the class).<br>
+     * <b>Centec</b>: Follows our burst coef policy, except for restrictions for the minimum and maximum burst. In cases when
+     * calculated burst is higher or lower of the Centec max/min - the max/min burst value will be used instead.
+     *
+     * @param sw switchId where burst is being calculated. Needed to get the switch manufacturer and apply special
+     * calculations if required
+     * @param rate meter rate which is used to calculate burst
+     * @return the expected burst value for given switch and rate
+     */
+    def getExpectedBurst(SwitchId sw, long rate) {
+        def descr = getSwitchDescription(sw).toLowerCase()
+        if (descr.contains("noviflow")) {
+            return (rate * NOVI_BURST_COEF - 1).setScale(0, RoundingMode.CEILING)
+        } else if (descr.contains("centec")) {
+            def burst = (rate * burstCoef).toBigDecimal().setScale(0, RoundingMode.FLOOR)
+            if(burst <= CENTEC_MIN_BURST) {
+                return CENTEC_MIN_BURST
+            } else if (burst > CENTEC_MIN_BURST && burst <= CENTEC_MAX_BURST) {
+                return burst
+            } else {
+                return CENTEC_MAX_BURST
+            }
+        } else {
+            return (rate * burstCoef).round(0)
+        }
+    }
+
+    @Memoized
+    def getSwitchDescription(SwitchId sw) {
+        northbound.activeSwitches.find { it.switchId == sw }.description
     }
 
     List<Switch> getNonCentecSwitches() {

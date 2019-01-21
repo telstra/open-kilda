@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
@@ -254,6 +255,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     public FlowReroutePayload synchronizeFlow(String flowId) {
         return restTemplate.exchange("/api/v1/flows/{flowId}/sync", HttpMethod.PATCH,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowReroutePayload.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowMeterEntries resetMeters(String flowId) {
+        return restTemplate.exchange("/api/v1/flows/{flowId}/meters", HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowMeterEntries.class, flowId).getBody();
     }
 
     @Override
