@@ -15,19 +15,11 @@
 
 package org.openkilda.persistence.repositories;
 
-/**
- * Factory to create {@link Repository} instances.
- */
-public interface RepositoryFactory {
-    FlowRepository createFlowRepository();
+import org.openkilda.model.FeatureToggles;
 
-    FlowSegmentRepository createFlowSegmentRepository();
+import java.util.Optional;
 
-    IslRepository createIslRepository();
+public interface FeatureTogglesRepository extends Repository<FeatureToggles> {
 
-    SwitchRepository createSwitchRepository();
-
-    LinkPropsRepository createLinkPropsRepository();
-
-    FeatureTogglesRepository createFeatureTogglesRepository();
+    Optional<FeatureToggles> find();
 }

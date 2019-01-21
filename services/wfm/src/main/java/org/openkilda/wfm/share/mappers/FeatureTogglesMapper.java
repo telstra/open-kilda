@@ -13,21 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.share.mappers;
+
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
+import org.openkilda.model.FeatureToggles;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 
 /**
- * Factory to create {@link Repository} instances.
+ * Convert {@link FeatureToggles} to {@link FeatureTogglesDto} and back.
  */
-public interface RepositoryFactory {
-    FlowRepository createFlowRepository();
+@Mapper
+public abstract class FeatureTogglesMapper {
 
-    FlowSegmentRepository createFlowSegmentRepository();
+    public static final FeatureTogglesMapper INSTANCE = Mappers.getMapper(FeatureTogglesMapper.class);
 
-    IslRepository createIslRepository();
+    public abstract FeatureTogglesDto map(FeatureToggles featureToggles);
 
-    SwitchRepository createSwitchRepository();
-
-    LinkPropsRepository createLinkPropsRepository();
-
-    FeatureTogglesRepository createFeatureTogglesRepository();
+    public abstract FeatureToggles map(FeatureTogglesDto featureTogglesDto);
 }
