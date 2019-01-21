@@ -9,7 +9,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.FeatureTogglePayload
+import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
@@ -192,7 +192,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "Set reflow_on_switch_activation=#reflowOnSwitchActivation"
         northbound.toggleFeature(
-                new FeatureTogglePayload(null, reflowOnSwitchActivation, null, null, null, null, null))
+                new FeatureTogglesDto(reflowOnSwitchActivation, null, null, null, null, null))
 
         and: "Connect the intermediate switch back"
         lockKeeper.reviveSwitch(flowPath[1].switchId)

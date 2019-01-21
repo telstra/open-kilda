@@ -21,7 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
@@ -39,7 +39,7 @@ import java.util.Map.Entry;
 @Slf4j
 public class NorthboundSteps {
 
-    private FeatureTogglePayload featureToggleRequest;
+    private FeatureTogglesDto featureToggleRequest;
 
     @Autowired
     private NorthboundService northboundService;
@@ -51,7 +51,7 @@ public class NorthboundSteps {
     private TopologyUnderTest topologyUnderTest;
 
     private HealthCheck healthCheckResponse;
-    private FeatureTogglePayload featureTogglesResponse;
+    private FeatureTogglesDto featureTogglesResponse;
     private DeleteMeterResult deleteMeterResponse;
 
     @When("^request Northbound health check$")
@@ -71,7 +71,7 @@ public class NorthboundSteps {
 
     @When("^create feature toggles request based on the response$")
     public void createFetureTogglesRequestBasedOnTheResponse() {
-        featureToggleRequest = new FeatureTogglePayload(featureTogglesResponse);
+        //featureToggleRequest = new FeatureTogglesDto(featureTogglesResponse);
     }
 
     @When("^update request: switch each toggle to an opposite state$")
@@ -79,9 +79,9 @@ public class NorthboundSteps {
         featureToggleRequest.setCreateFlowEnabled(!featureToggleRequest.getCreateFlowEnabled());
         featureToggleRequest.setDeleteFlowEnabled(!featureToggleRequest.getDeleteFlowEnabled());
         featureToggleRequest.setPushFlowEnabled(!featureToggleRequest.getPushFlowEnabled());
-        featureToggleRequest.setReflowOnSwitchActivationEnabled(
-                !featureToggleRequest.getReflowOnSwitchActivationEnabled());
-        featureToggleRequest.setSyncRulesEnabled(!featureToggleRequest.getSyncRulesEnabled());
+        featureToggleRequest.setFlowsRerouteOnIslDiscoveryEnabled(
+                !featureToggleRequest.getFlowsRerouteOnIslDiscoveryEnabled());
+
         featureToggleRequest.setUnpushFlowEnabled(!featureToggleRequest.getUnpushFlowEnabled());
         featureToggleRequest.setUpdateFlowEnabled(!featureToggleRequest.getUpdateFlowEnabled());
     }

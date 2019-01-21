@@ -1,13 +1,10 @@
 package org.openkilda.atdd;
 
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.SwitchesUtils;
 import org.openkilda.flow.FlowUtils;
-import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
@@ -54,7 +51,7 @@ public class FlowReinstallTest {
                 });
     }
 
-    @When("flow reroute feature is (on|off)$")
+    /*@When("flow reroute feature is (on|off)$")
     public void flowRerouteFeatureStatus(final String statusString) {
         boolean status = statusString.equals("on");
 
@@ -64,5 +61,5 @@ public class FlowReinstallTest {
         assertNotNull(result);
         assertEquals(status, result.getReflowOnSwitchActivationEnabled());
         assertEquals(desired.getReflowOnSwitchActivationEnabled(), result.getReflowOnSwitchActivationEnabled());
-    }
+    }*/
 }

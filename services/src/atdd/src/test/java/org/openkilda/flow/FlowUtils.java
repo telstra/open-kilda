@@ -28,7 +28,6 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.payload.FeatureTogglePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -544,7 +543,7 @@ public final class FlowUtils {
     /**
      * Method updateFeaturesStatus.
      */
-    public static FeatureTogglePayload updateFeaturesStatus(FeatureTogglePayload desired) {
+    /*public static FeatureTogglePayload updateFeaturesStatus(FeatureTogglePayload desired) {
         System.out.println("\n==> toggle features status");
 
         Client client = clientFactory();
@@ -578,7 +577,7 @@ public final class FlowUtils {
         }
 
         return response.readEntity(FeatureTogglePayload.class);
-    }
+    }*/
 
     /**
      * Perform the flow cache invalidation (via Northbound service).

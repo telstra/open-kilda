@@ -8,6 +8,7 @@ import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -48,7 +49,7 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
 
     void buildVirtualEnvironment() {
         //turn on all features
-        def features = northbound.getFeatureToggles()
+        def features = new FeatureTogglesDto()
         features.metaClass.properties.each {
             if (it.type == Boolean.class) {
                 features.metaClass.setAttribute(features, it.name, true)

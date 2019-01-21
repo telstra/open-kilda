@@ -24,7 +24,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -135,9 +135,9 @@ public interface NorthboundService {
 
     //feature toggles
 
-    FeatureTogglePayload getFeatureToggles();
+    FeatureTogglesDto getFeatureToggles();
 
-    FeatureTogglePayload toggleFeature(FeatureTogglePayload request);
+    FeatureTogglesDto toggleFeature(FeatureTogglesDto request);
 
     /**
      * Returns all active links.
