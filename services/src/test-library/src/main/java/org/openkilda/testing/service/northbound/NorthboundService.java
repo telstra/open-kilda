@@ -117,6 +117,8 @@ public interface NorthboundService {
 
     List<IslInfoData> getAllLinks();
 
+    List<IslInfoData> getLinks(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
+
     List<LinkPropsDto> getAllLinkProps();
 
     List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
