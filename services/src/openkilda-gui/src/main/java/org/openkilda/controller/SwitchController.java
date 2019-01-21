@@ -21,6 +21,7 @@ import org.openkilda.integration.model.PortConfiguration;
 import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
+import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchInfo;
@@ -143,5 +144,28 @@ public class SwitchController  {
             @PathVariable final String switchId, @PathVariable final String port) {
         activityLogger.log(ActivityType.CONFIGURE_SWITCH_PORT, "SW_" + switchId + ", P_" + port);
         return serviceSwitch.configurePort(switchId, port, configuration);
+    }
+    
+    /**
+     * Gets Isl flows.
+     *
+     * @param srcSwitch
+     *            the source switch
+     * @param srcPort
+     *            the source port
+     * @param dstSwitch
+     *            the destination switch
+     * @param dstPort
+     *            the destination port
+     * @return isl flows exists in the system.
+     */
+    @RequestMapping(value = "/links/flows", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody List<FlowInfo> getIslFlows(
+            @RequestParam(name = "src_switch", required = true) String srcSwitch,
+            @RequestParam(name = "src_port", required = true) String srcPort,
+            @RequestParam(name = "dst_switch", required = true) String dstSwitch,
+            @RequestParam(name = "dst_port", required = true) String dstPort) {
+        return serviceSwitch.getIslFlows(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 }

@@ -58,8 +58,9 @@ public class IslStatsBoltTest {
     private static final long SPEED = 400L;
     private static final IslChangeType STATE = IslChangeType.DISCOVERED;
     private static final long AVAILABLE_BANDWIDTH = 500L;
+    private static final boolean UNDER_MAINTENANCE = false;
     private static final IslInfoData ISL_INFO_DATA = new IslInfoData(LATENCY,
-            NODE1, NODE2, SPEED, STATE, AVAILABLE_BANDWIDTH);
+            NODE1, NODE2, SPEED, STATE, AVAILABLE_BANDWIDTH, UNDER_MAINTENANCE);
     private static final long TIMESTAMP = 1507433872L;
 
     private IslStatsBolt statsBolt = new IslStatsBolt();

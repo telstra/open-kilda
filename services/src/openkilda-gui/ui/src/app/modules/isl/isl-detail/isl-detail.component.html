@@ -96,7 +96,7 @@
             <div class="update_isl_cost col-sm-8" id="isl_cost_update" [hidden]="!showCostEditing">
               <div class="row" style=" margin-bottom: 10px;">
                 <input formControlName="cost" type="number" name="cost" style="height: 35px; margin-left: 15px; width: 10%; padding: 10px;">
-                <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1" data-toggle="modal" (click)="saveEditedCost()"><i class="icon icon-ok-sign"></i></span>
+                 <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1" data-toggle="modal" (click)="saveEditedCost()"><i class="icon icon-ok-sign"></i></span>
                 <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_cost_update" class="btn kilda_btn ml-0.5" (click)="cancelEditedCost()"><i class="icon icon-remove-sign"></i></span>
               </div>
             </div>
@@ -115,105 +115,125 @@
       </div>
     </form>
   </div>
-  <form [formGroup]="filterForm">
-    <h5 class='modal-title'>GRAPH</h5>
-  <div class="container-fluid graph_div topology-graph" style="border: 1px solid #ccc;">
-    <div class="row">
-      <div class="col-xs-8 col-md-8 " id="stats_div" style="border: 0px white; padding-top: 15px;
-            padding-bottom: 15px;
-            padding-left: 0;
-            padding-right: 0;">
-          
-            <h2 class="isl-header text-center" id="graphLabel">{{currentGraphName}}</h2>
-           <app-dygraph (zoomChange)='zoomHandler($event)' style="width: 780px !important;  height: 400px;"></app-dygraph>
-          
-      </div>
-      <div class="col-md-4 col-xs-4 filter">
-        <div class="stats-graph row" style="margin-top: 30px;">
-          <ul class="line-legend col-lg-12">
-            <li>Forward</li>
-            <li>Reverse</li>
-          </ul>
-        </div>
-        <div>
-          <div class="row form-group clearfix">
-            <label class="col-xs-4 col-md-4 text-label">Timezone:</label>
-            <div class="col-xs-8 col-md-8">
-               <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimezone()">
-              <option value="UTC">UTC</option>
-              <option value="LOCAL">My Timezone</option>
-            </select>
-            </div>
-           </div>
-          <div class="row form-group clearfix">
-            <label class="col-xs-4 col-md-4 text-label">From:</label>
-            <div class="col-xs-8 col-md-8">
-               <input formControlName="fromDate" type="text"  (change)="changeDate('fromDate',$event)" datetime-picker  placeholder="From" class="form-control">
-            </div>
-           </div>
-           <div class="row form-group clearfix" *ngIf="!f.auto_reload.value">
-            <label class="col-xs-4 col-md-4 text-label">To:</label>
-            <div class="col-xs-8 col-md-8">
-              <input type="text" formControlName="toDate"    (change)="changeDate('toDate',$event)" datetime-picker  placeholder="From" class="form-control">
-            </div>
-           </div>
-          <div id="DownsampleID" class="row form-group clearfix">
-            <label class="col-xs-4 col-md-4 text-label">Downsample:</label>
-            <div class="col-xs-8 col-md-8">
-              <select formControlName="download_sample" class="form-control" (change)="loadGraphData()">
-                <option value="30s">30s</option>
-                <option value="1m">1m</option>
-                <option value="5m">5m</option>
-                <option value="10m">10m</option>
-              </select>
-              <span class="downsample-error-message pull-left"></span>
-            </div>
-          </div>
-          <div id="autoreloadId" class="row form-group clearfix">
-            <label class="col-xs-4 col-md-4 text-label">Autoreload(Sec):</label>
-            <div class="col-xs-8 col-md-8">
-              <input formControlName="auto_reload" value="1" type="checkbox">
-              <span [hidden]="!f.auto_reload.value">
-                 <select formControlName="auto_reload_time" name="auto_reload_time" (change)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;">
-                   <option value="">Please select a value</option>
-                   <option *ngFor="let option of getautoReloadValues" value="{{option.value}}">{{option.text}}</option>
-                   </select>
-                <div class="invalid-feedback" *ngIf="!f.auto_reload_time.valid && f.auto_reload_time.dirty">
-                  <div *ngIf="f.auto_reload_time.errors.pattern">Auto reload time should be number</div>
-                  <div *ngIf="f.auto_reload_time.errors.required">Auto reload time required</div>
+  <div class="row">
+    <div id="exTab1" class="col-lg-12 tab-wrapper">
+      <ul class="nav nav-pills">
+        <li [ngClass]="{'active': openedTab == 'graph'}">
+          <a href="javascript:void(0);" (click)="openTab('graph');">Graph</a>
+        </li>
+        <li [ngClass]="{'active': openedTab == 'flow'}" >
+          <a href="javascript:void(0);" (click)="openTab('flow');">Flows</a>
+        </li>
+      </ul>
+      <div class="tab-content padding-15 clearfix">
+        <div class="tab-pane" *ngIf="openedTab == 'graph'" [ngClass]="{'active': openedTab == 'graph'}">
+            <form [formGroup]="filterForm">
+              <div class="container-fluid graph_div topology-graph" >
+                <div class="row">
+                  <div class="col-xs-8 col-md-8 " id="stats_div" style="border: 0px white; padding-top: 15px;
+                        padding-bottom: 15px;
+                        padding-left: 0;
+                        padding-right: 0;">
+                      
+                        <h2 class="isl-header text-center" id="graphLabel">{{currentGraphName}}</h2>
+                       <app-dygraph (zoomChange)='zoomHandler($event)' style="width: 780px !important;  height: 400px;"></app-dygraph>
+                      
+                  </div>
+                  <div class="col-md-4 col-xs-4 filter">
+                    <div class="stats-graph row" style="margin-top: 30px;">
+                      <ul class="line-legend col-lg-12">
+                        <li>Forward</li>
+                        <li>Reverse</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <div class="row form-group clearfix">
+                        <label class="col-xs-4 col-md-4 text-label">Timezone:</label>
+                        <div class="col-xs-8 col-md-8">
+                           <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimezone()">
+                          <option value="UTC">UTC</option>
+                          <option value="LOCAL">My Timezone</option>
+                        </select>
+                        </div>
+                       </div>
+                      <div class="row form-group clearfix">
+                        <label class="col-xs-4 col-md-4 text-label">From:</label>
+                        <div class="col-xs-8 col-md-8">
+                           <input formControlName="fromDate" type="text"  (change)="changeDate('fromDate',$event)" datetime-picker  placeholder="From" class="form-control">
+                        </div>
+                       </div>
+                       <div class="row form-group clearfix" *ngIf="!f.auto_reload.value">
+                        <label class="col-xs-4 col-md-4 text-label">To:</label>
+                        <div class="col-xs-8 col-md-8">
+                          <input type="text" formControlName="toDate"    (change)="changeDate('toDate',$event)" datetime-picker  placeholder="From" class="form-control">
+                        </div>
+                       </div>
+                      <div id="DownsampleID" class="row form-group clearfix">
+                        <label class="col-xs-4 col-md-4 text-label">Downsample:</label>
+                        <div class="col-xs-8 col-md-8">
+                          <select formControlName="download_sample" class="form-control" (change)="loadGraphData()">
+                            <option value="30s">30s</option>
+                            <option value="1m">1m</option>
+                            <option value="5m">5m</option>
+                            <option value="10m">10m</option>
+                          </select>
+                          <span class="downsample-error-message pull-left"></span>
+                        </div>
+                      </div>
+                      <div id="autoreloadId" class="row form-group clearfix">
+                        <label class="col-xs-4 col-md-4 text-label">Autoreload(Sec):</label>
+                        <div class="col-xs-8 col-md-8">
+                          <input formControlName="auto_reload" value="1" type="checkbox">
+                          <span [hidden]="!f.auto_reload.value">
+                            <select formControlName="auto_reload_time" name="auto_reload_time" (change)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;">
+                              <option value="">Please select a value</option>
+                              <option *ngFor="let option of getautoReloadValues" value="{{option.value}}">{{option.text}}</option>
+                              </select>
+                           <div class="invalid-feedback" *ngIf="!f.auto_reload_time.valid && f.auto_reload_time.dirty">
+                             <div *ngIf="f.auto_reload_time.errors.pattern">Auto reload time should be number</div>
+                             <div *ngIf="f.auto_reload_time.errors.required">Auto reload time required</div>
+                           </div>
+                          </span>
+                        </div>
+                      </div>
+                      <div id="SourceDestinationSwitchId" class="row form-group clearfix">
+                        <label class="col-xs-4 col-md-4 text-label">Graph:</label>
+                        <div class="col-xs-8 col-md-8">
+                          <select formControlName="graph" class="form-control" (change)="graphChanged()">
+                          <option value="latency">Latency</option>
+                          <option value="source">Source</option>
+                          <option value="target">Destination</option>
+                          <option value="isllossforward">Loss packet forward</option>
+                          <option value="isllossreverse">Loss packet reverse</option>
+                        </select>
+                        </div>
+                      </div>
+                      <div class="row form-group clearfix" id="islMetric" *ngIf="f.graph.value !='latency'">
+                        <label class="col-xs-4 col-md-4 text-label">Metric:</label>
+                        <div class="col-xs-8 col-md-8">
+                           <select formControlName="metric" class="form-control" (change)="loadGraphData()">
+                          <option *ngFor="let option of graphMetrics" value="{{option.value}}">{{option.label}}</option>
+                        </select>
+                        </div>
+                      </div>
+                      <div class="col-xs-12 col-md-12 submit-btn">
+                      
+                        <div id="errorMesg" class="error"></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </span>
-            </div>
-          </div>
-          <div id="SourceDestinationSwitchId" class="row form-group clearfix">
-            <label class="col-xs-4 col-md-4 text-label">Graph:</label>
-            <div class="col-xs-8 col-md-8">
-              <select formControlName="graph" class="form-control" (change)="graphChanged()">
-              <option value="latency">Latency</option>
-              <option value="source">Source</option>
-              <option value="target">Destination</option>
-              <option value="isllossforward">Loss packet forward</option>
-              <option value="isllossreverse">Loss packet reverse</option>
-            </select>
-            </div>
-          </div>
-          <div class="row form-group clearfix" id="islMetric" *ngIf="f.graph.value !='latency'">
-            <label class="col-xs-4 col-md-4 text-label">Metric:</label>
-            <div class="col-xs-8 col-md-8">
-               <select formControlName="metric" class="form-control" (change)="loadGraphData()">
-              <option *ngFor="let option of graphMetrics" value="{{option.value}}">{{option.label}}</option>
-            </select>
-            </div>
-          </div>
-          <div class="col-xs-12 col-md-12 submit-btn">
-          
-            <div id="errorMesg" class="error"></div>
-          </div>
+              </div>
+              </form>
+
+        </div>
+        <div class="tab-pane" *ngIf="openedTab == 'flow'" [ngClass]="{'active': openedTab == 'flow'}">
+            <app-isl-flow-datatables [srcSwitch]="src_switch" (refresh)="refreshIslFlows()" [dstSwitch]="dst_switch" [data]="dataSet" *ngIf="!loadingData"></app-isl-flow-datatables>
         </div>
       </div>
     </div>
   </div>
-  </form>
+  
 </div>
 <context-menu #copySrcSwitch>
   <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitch');">

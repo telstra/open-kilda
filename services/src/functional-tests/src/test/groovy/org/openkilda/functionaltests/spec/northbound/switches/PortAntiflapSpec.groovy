@@ -6,22 +6,14 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.info.InfoData
-import org.openkilda.messaging.info.InfoMessage
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PortChangeType
-import org.openkilda.messaging.info.event.PortInfoData
-import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.util.logging.Slf4j
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 import spock.lang.Issue
 import spock.lang.Narrative
 
@@ -46,7 +38,7 @@ class PortAntiflapSpec extends BaseSpecification {
     int antiflapWarmup
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
-    @Value('${kafka.topic.topo.disco}')
+    @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
     String topoDiscoTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
@@ -57,13 +49,12 @@ class PortAntiflapSpec extends BaseSpecification {
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {
         given: "Switch, port and ISL related to that port"
-        def sw = topology.activeSwitches.first()
-        Isl isl = topology.islsForActiveSwitches.find { it.srcSwitch == sw || it.dstSwitch == sw }
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assert isl
-        int islPort = isl.with { it.srcSwitch == sw ? it.srcPort : it.dstPort }
 
         when: "ISL port begins to blink"
-        def blinker = new PortBlinker(northbound, sw, islPort)
+        def interval = (long) (antiflapMin * 1000 / 2)
+        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, interval)
         def untilWarmupEnds = { blinker.timeStarted.time + antiflapWarmup * 1000 - new Date().time }
         def untilCooldownEnds = { blinker.timeStopped.time + antiflapCooldown * 1000 - new Date().time }
         blinker.start()
@@ -130,32 +121,22 @@ timeout"() {
     def "System properly registers events order when port flaps incredibly fast (end with Up)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
-        def producer = new KafkaProducer<>(producerProps)
         def isl = topology.islsForActiveSwitches[0]
-        def messagesGenerated = 0
-        Wrappers.timedLoop(antiflapWarmup + 1) {
-            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
-            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.UP)
-            //note that we end with 'UP' event
-            messagesGenerated += 2
-            sleep(1) //do not overload storm, it can die
-        }
-        log.debug("Generated $messagesGenerated port up/down messages in ${antiflapWarmup + 1} seconds")
+        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 1)
+        blinker.start()
+        TimeUnit.SECONDS.sleep(antiflapWarmup + 1)
+        blinker.stop(true)
 
         then: "Related ISL is FAILED"
         Wrappers.wait(WAIT_OFFSET / 2.0) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
-        producer.close()
 
         and: "After the port cools down the ISL is discovered again"
         TimeUnit.SECONDS.sleep(antiflapCooldown - 1)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
-
-        cleanup:
-        producer?.close()
     }
 
     /**
@@ -169,25 +150,17 @@ timeout"() {
     def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"
-        def producer = new KafkaProducer<>(producerProps)
         def isl = topology.islsForActiveSwitches[0]
-        def messagesGenerated = 0
-        kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
-
-        Wrappers.timedLoop(antiflapWarmup + 1) {
-            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.UP)
-            kafkaChangePort(producer, isl.srcSwitch.dpId, isl.srcPort, PortChangeType.DOWN)
-            //note that we end with 'DOWN' event
-            messagesGenerated += 2
-            sleep(1) //do not overload storm, it can die
-        }
-        log.debug("Generated $messagesGenerated port up/down messages in ${antiflapWarmup + 1} seconds")
+        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 1)
+        blinker.kafkaChangePort(PortChangeType.DOWN)
+        blinker.start()
+        TimeUnit.SECONDS.sleep(antiflapWarmup + 1)
+        blinker.stop(false)
 
         then: "Related ISL is FAILED"
         Wrappers.wait(WAIT_OFFSET / 2.0) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
-        producer.close()
 
         and: "ISL remains failed even after the port cools down"
         Wrappers.timedLoop(antiflapCooldown + discoveryInterval + WAIT_OFFSET / 2) {
@@ -196,20 +169,8 @@ timeout"() {
         }
 
         and: "cleanup: restore broken ISL"
-        new KafkaProducer<>(producerProps).send(new ProducerRecord(topoDiscoTopic, buildMessage(
-                new PortInfoData(isl.srcSwitch.dpId, isl.srcPort, null, PortChangeType.UP)).toJson())).get()
+        new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 0)
+                .kafkaChangePort(PortChangeType.UP)
         Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED }
-
-        cleanup:
-        producer?.close()
-    }
-    
-    def kafkaChangePort(KafkaProducer producer, SwitchId sw, Integer port, PortChangeType status) {
-        producer.send(new ProducerRecord(topoDiscoTopic, sw.toString(), 
-                buildMessage(new PortInfoData(sw, port, null, status)).toJson()))
-    }
-
-    private static Message buildMessage(final InfoData data) {
-        return new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
     }
 }

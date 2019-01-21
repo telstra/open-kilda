@@ -17,13 +17,16 @@ package org.openkilda.integration.service;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
+import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
+import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.PortConfiguration;
 import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.model.response.IslLink;
+import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchInfo;
@@ -52,6 +55,7 @@ import java.io.UnsupportedEncodingException;
 
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +84,9 @@ public class SwitchIntegrationService {
 
     @Autowired
     private ObjectMapper objectMapper;
+    
+    @Autowired
+    private FlowConverter flowConverter;
 
     /**
      * Gets the switches.
@@ -337,6 +344,56 @@ public class SwitchIntegrationService {
         } catch (JsonProcessingException e) {
             LOGGER.error("Error occurred while converting configration to string. Exception: " + e.getMessage(), e);
             throw new IntegrationException(e);
+        }
+        return null;
+    }
+    
+    /**
+     * Gets the isl flows.
+     *
+     * @param srcSwitch the source switch
+     * @param srcPort the source port
+     * @param dstSwitch the destination switch
+     * @param dstPort the destination port
+     * @return the isl flows
+     */
+    public List<FlowInfo> getIslFlows(String srcSwitch, String srcPort, String dstSwitch,
+            String dstPort) {
+        
+        List<Flow> flowList = getIslFlowList(srcSwitch, srcPort, dstSwitch, dstPort);
+        if (flowList != null) {
+            return flowConverter.toFlowsInfo(flowList);
+        }
+        return new ArrayList<FlowInfo>();
+    }
+    
+    /**
+     * Gets the isl flow list.
+     *
+     * @param srcSwitch the source switch
+     * @param srcPort the source port
+     * @param dstSwitch the destination switch
+     * @param dstPort the destination port
+     * @return the isl flow list
+     */
+    public List<Flow> getIslFlowList(String srcSwitch, String srcPort, String dstSwitch,
+            String dstPort) {
+        try {
+            HttpResponse response =
+                    restClientManager.invoke(applicationProperties.getNbBaseUrl()
+                            + IConstants.NorthBoundUrl.GET_ISL_FLOW.replace("{src_switch}", srcSwitch)
+                                    .replace("{src_port}", srcPort).replace("{dst_switch}", dstSwitch)
+                                    .replace("{dst_port}", dstPort), HttpMethod.GET, "", "",
+                            applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponseList(response, Flow.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Inside getIslFlowList  Exception :", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (Exception exception) {
+            LOGGER.error("Exception in getIslFlowList " + exception.getMessage());
+            throw new IntegrationException(exception);
         }
         return null;
     }

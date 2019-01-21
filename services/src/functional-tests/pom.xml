@@ -24,6 +24,7 @@
         <spock.reports.version>1.6.0</spock.reports.version>
         <log4j-slf4j.version>2.10.0</log4j-slf4j.version>
         <shazamcrest.version>0.9</shazamcrest.version>
+        <gpars.version>1.2.1</gpars.version>
     </properties>
 
     <dependencyManagement>
@@ -80,7 +81,15 @@
             <version>${shazamcrest.version}</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.codehaus.gpars</groupId>
+            <artifactId>gpars</artifactId>
+            <version>${gpars.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sabre.oss.conf4j</groupId>
+            <artifactId>conf4j-spring-boot</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -144,6 +153,12 @@
                             <disableXmlReport>true</disableXmlReport>
                         </configuration>
                         <executions>
+                            <execution>
+                                <id>default-test</id>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
                             <execution>
                                 <id>test</id>
                                 <phase>test</phase>

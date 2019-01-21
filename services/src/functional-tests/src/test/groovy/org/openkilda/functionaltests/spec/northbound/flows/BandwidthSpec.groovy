@@ -4,7 +4,6 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslInfoData
@@ -16,7 +15,6 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
-@CleanupSwitches
 class BandwidthSpec extends BaseSpecification {
 
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {
@@ -185,7 +183,11 @@ class BandwidthSpec extends BaseSpecification {
         long maxBandwidth = northbound.getAllLinks()*.availableBandwidth.max()
         flow.maximumBandwidth = maxBandwidth + 1
         flow.ignoreBandwidth = true
-        flowHelper.addFlow(flow)
+        /*This creates a 40G+ flow, which is invalid for Centecs (due to too high meter rate). Ignoring this issue,
+        since we are focused on proper path computation and link bw change, not the meter requirements, thus not
+        using flowHelper.addFlow in order not to validate successful rules installation in this case*/
+        northbound.addFlow(flow)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
         assert northbound.getFlow(flow.id).maximumBandwidth == flow.maximumBandwidth
 
         then: "Available bandwidth on ISLs is not changed in accordance with flow maximum bandwidth"

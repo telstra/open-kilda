@@ -4,10 +4,10 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.SwitchId
@@ -26,7 +26,6 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 @Slf4j
-@CleanupSwitches
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
 class FlowCrudSpec extends BaseSpecification {
 
@@ -357,6 +356,57 @@ class FlowCrudSpec extends BaseSpecification {
         and: "Delete the flow and reset costs"
         flowHelper.deleteFlow(flow.id)
         database.resetCosts()
+    }
+
+    @Unroll
+    def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
+        given: "A switch that has no connection to other switches"
+        def isolatedSwitch = topology.activeSwitches.first()
+        topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
+            northbound.portDown(isolatedSwitch.dpId, port)
+        }
+        //wait until ISLs are actually got failed
+        Wrappers.wait(WAIT_OFFSET) {
+            def islData = northbound.getAllLinks()
+            topology.getRelatedIsls(isolatedSwitch).each {
+                assert islUtils.getIslInfo(islData, it).get().state == IslChangeType.FAILED
+            }
+        }
+
+        when: "Try building a flow using the isolated switch"
+        def flow = data.getFlow(isolatedSwitch)
+        northbound.addFlow(flow)
+
+        then: "Error is returned, stating that there is no path found for such flow"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.NOT_FOUND
+        error.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not create flow: Not enough bandwidth found or path not found : Failed to find path with " +
+                "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
+                "links with enough bandwidth"
+
+        and: "cleanup: restore connection to the isolated switch"
+        topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
+            northbound.portUp(isolatedSwitch.dpId, port)
+        }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
+        }
+
+        where: data << [
+                [
+                        isolatedSwitchType: "source",
+                        getFlow: { Switch theSwitch ->
+                            getFlowHelper().randomFlow(theSwitch, getTopology().activeSwitches.find { it != theSwitch })
+                        }
+                ],
+                [
+                        isolatedSwitchType: "destination",
+                        getFlow: { Switch theSwitch ->
+                            getFlowHelper().randomFlow(getTopology().activeSwitches.find { it != theSwitch }, theSwitch)
+                        }
+                ]
+        ]
     }
 
     @Shared

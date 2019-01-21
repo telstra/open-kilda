@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload;
+package org.openkilda.wfm.share.cache;
 
 import static org.junit.Assert.assertEquals;
 
@@ -62,7 +62,7 @@ public class ResourcePoolTest {
     }
 
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    @Test(expected = ResourcePoolIsFullException.class)
     public void resourcePoolFullTest() {
         ResourcePool pool = new ResourcePool(1, 1);
         pool.allocate();

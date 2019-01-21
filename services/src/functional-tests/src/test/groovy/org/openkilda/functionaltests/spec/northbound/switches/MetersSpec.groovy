@@ -29,11 +29,37 @@ class MetersSpec extends BaseSpecification {
     def nonCentecs
 
     def setupOnce() {
-        requireProfiles("hardware") //TODO: remove as soon as OVS 2.10 + kernel 4.18+ get wired in
+        //TODO: remove as soon as OVS 2.10 + kernel 4.18+ get wired in and meters support will be available
+        // on virtual environments
+        requireProfiles("hardware")
+    }
+
+    @Ignore
+    @Issue("https://github.com/telstra/open-kilda/issues/1733")
+    def "Able to delete a meter from a switch"() {
+        setup: "Select a switch and retrieve default meters"
+        def sw = topology.getActiveSwitches()[0]
+        def defaultMeters = northbound.getAllMeters(sw.dpId)
+
+        when: "A flow is created and its meter is deleted"
+        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def meterToDelete = northbound.getAllMeters(sw.dpId).meterEntries.find {
+            !defaultMeters.meterEntries*.meterId.contains(it.meterId)
+        }.meterId
+        def deleteResult = northbound.deleteMeter(sw.dpId, meterToDelete)
+
+        then: "Delete operation should be successful"
+        deleteResult.deleted
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        and: "Check if no excessive meters are installed on the switch"
+        defaultMeters.meterEntries == northbound.getAllMeters(sw.dpId).meterEntries
     }
 
     @Unroll
-    def "Unable to delete meter with invalid ID #meterId on a #switchType switch"() {
+    def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
         when: "Try to delete meter with invalid ID"
         northbound.deleteMeter(sw.getDpId(), -1)
 
@@ -96,7 +122,8 @@ class MetersSpec extends BaseSpecification {
         }
     }
 
-    def "Creating a flow should create new meters on a switch"() {
+    @Unroll
+    def "Meters are created/deleted when creating/deleting a flow (ignore_bandwidth=#ignoreBandwidth)"() {
         given: "A switch with OpenFlow 1.3 support"
         def sw = topology.getActiveSwitches().find { it.ofVersion == "OF_13" }
 
@@ -105,7 +132,9 @@ class MetersSpec extends BaseSpecification {
         assert defaultMeters
 
         and: "Create a flow"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def flow = flowHelper.singleSwitchFlow(sw)
+        flow.ignoreBandwidth = ignoreBandwidth
+        flowHelper.addFlow(flow)
 
         then: "New meters should appear after flow setup"
         def newMeters = northbound.getAllMeters(sw.dpId)
@@ -125,10 +154,37 @@ class MetersSpec extends BaseSpecification {
         def newestMeters = northbound.getAllMeters(sw.dpId)
         newestMeters.meterEntries.containsAll(defaultMeters.meterEntries)
         newestMeters.meterEntries.size() == defaultMeters.meterEntries.size()
+
+        where:
+        ignoreBandwidth << [false, true]
+    }
+
+    def "Meters are not created when creating a flow with maximum_bandwidth=0"() {
+        given: "A switch with OpenFlow 1.3 support"
+        def sw = topology.getActiveSwitches().find { it.ofVersion == "OF_13" }
+
+        when: "Get default meters from the switch"
+        def defaultMeters = northbound.getAllMeters(sw.dpId)
+        assert defaultMeters
+
+        and: "Create a flow with maximum_bandwidth = 0"
+        def flow = flowHelper.singleSwitchFlow(sw)
+        flow.maximumBandwidth = 0
+        flowHelper.addFlow(flow)
+
+        then: "Ony default meters should be present on the switch and new meters should not appear after flow setup"
+        def newMeters = northbound.getAllMeters(sw.dpId)
+        def newMeterEntries = newMeters.meterEntries.findAll { !defaultMeters.meterEntries.contains(it) }
+        newMeterEntries.empty
+
+        and: "Delete a flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     @Unroll
     def "Meter burst size should not exceed 105% of #flowRate kbps on non-Centec switches"() {
+        requireProfiles("hardware") //TODO: Research how this behaves on OpenVSwitch
+
         setup: "A flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def sw = getNonCentecSwitches()[0]
         def defaultMeters = northbound.getAllMeters(sw.dpId)
@@ -160,12 +216,13 @@ class MetersSpec extends BaseSpecification {
         }
 
         cleanup: "Delete the flow"
-        northbound.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
 
         where:
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
     }
 
+    @Unroll
     def "Flow burst should be set to #burstSize kbps on Centec switches in case of #flowRate kbps flow bandwidth"() {
         requireProfiles("hardware")
 
@@ -196,38 +253,13 @@ class MetersSpec extends BaseSpecification {
         newMeters*.burstSize.every { it == burstSize }
 
         cleanup: "Delete the flow"
-        northbound.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
 
         where:
         flowRate | burstSize
-        100      | 1024
-        1024     | 1024
-        20480    | 1024
-        960000   | 1024
-    }
-
-    @Ignore
-    @Issue("https://github.com/telstra/open-kilda/issues/1733")
-    def "Kilda should be able to delete a meter"() {
-        setup: "Select a switch and retrieve default meters"
-        def sw = topology.getActiveSwitches()[0]
-        def defaultMeters = northbound.getAllMeters(sw.dpId)
-
-        when: "A flow is created and its meter is deleted"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
-        def meterToDelete = northbound.getAllMeters(sw.dpId).meterEntries.find {
-            !defaultMeters.meterEntries*.meterId.contains(it.meterId)
-        }.meterId
-        def deleteResult = northbound.deleteMeter(sw.dpId, meterToDelete)
-
-        then: "Delete operation should be successful"
-        deleteResult.deleted
-
-        and: "Delete the flow"
-        northbound.deleteFlow(flow.id)
-
-        and: "Check if no excessive meters are installed on the switch"
-        defaultMeters.meterEntries == northbound.getAllMeters(sw.dpId).meterEntries
+        975      | 1024 //should have been 1023, but use the minimum 1024
+        1000     | 1050 //the 1.05 multiplier
+        30478    | 32000 //should have been 32001, but use the maximum 32000
     }
 
     List<Switch> getNonCentecSwitches() {

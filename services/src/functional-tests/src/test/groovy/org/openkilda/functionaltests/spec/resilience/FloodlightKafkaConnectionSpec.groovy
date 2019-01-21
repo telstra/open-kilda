@@ -8,7 +8,6 @@ import org.openkilda.messaging.HeartBeat
 import org.openkilda.messaging.Message
 import org.openkilda.messaging.ctrl.KafkaBreakTarget
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.kafka.KafkaBreaker
 
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -26,8 +25,9 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
     @Autowired
     @Qualifier("kafkaConsumerProperties")
     Properties consumerProps
-    @Value('${kafka.topic.topo.disco}')
-    String topic
+
+    @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
+    String topoDiscoTopic
 
     def "System survives temporary connection outage between Floodlight and Kafka"() {
         when: "Controller loses connection to kafka"
@@ -60,7 +60,7 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
     def "Floodlight emits heartbeat messages to notify about its availability"() {
         setup: "Create kafka consumer and seek to the end"
         def consumer = new KafkaConsumer<String, String>(consumerProps)
-        consumer.subscribe([topic]);
+        consumer.subscribe([topoDiscoTopic]);
         consumer.poll(0)
         consumer.seekToEnd([]);
         consumer.poll(0)

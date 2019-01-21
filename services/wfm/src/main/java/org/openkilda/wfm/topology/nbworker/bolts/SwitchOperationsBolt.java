@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,31 +15,49 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
+import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class SwitchOperationsBolt extends PersistenceOperationsBolt {
+    private transient SwitchOperationsService switchOperationsService;
+
     public SwitchOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void init() {
+        switchOperationsService = new SwitchOperationsService(repositoryFactory);
+    }
+
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
         List<? extends InfoData> result = null;
         if (request instanceof GetSwitchesRequest) {
             result = getSwitches();
+        } else if (request instanceof GetSwitchRequest) {
+            result = getSwitch((GetSwitchRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -48,13 +66,22 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<SwitchInfoData> getSwitches() {
-        return repositoryFactory.createSwitchRepository().findAll().stream()
-                .map(SwitchMapper.INSTANCE::map)
-                .collect(Collectors.toList());
+        return switchOperationsService.getAllSwitches();
+    }
+
+    private List<SwitchInfoData> getSwitch(GetSwitchRequest request) {
+        SwitchId switchId = request.getSwitchId();
+
+        try {
+            return Collections.singletonList(SwitchMapper.INSTANCE.map(switchOperationsService.getSwitch(switchId)));
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
+        }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
     }
 }

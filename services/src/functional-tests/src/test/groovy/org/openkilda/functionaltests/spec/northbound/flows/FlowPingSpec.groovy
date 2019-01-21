@@ -6,7 +6,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -17,6 +16,8 @@ import org.openkilda.northbound.dto.flows.UniFlowPingOutput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 
+import spock.lang.Ignore
+import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -25,7 +26,6 @@ This spec tests all the functionality related to flow pings.
 Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 
 be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
 """)
-@CleanupSwitches
 class FlowPingSpec extends BaseSpecification {
 
     @Unroll("Able to ping a flow with vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
@@ -80,6 +80,8 @@ class FlowPingSpec extends BaseSpecification {
         [srcSwitch, dstSwitch] << ofSwitchCombinations
     }
 
+    @Ignore
+    @Issue("https://github.com/telstra/open-kilda/issues/1865")
     @Unroll("Flow ping can detect a broken #description")
     def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
@@ -172,7 +174,8 @@ class FlowPingSpec extends BaseSpecification {
 
     def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
-        def sw = nonCentecSwitches().first()
+        def sw = nonCentecSwitches().find{ it.ofVersion != "OF_12" }
+        assert sw
         def flow = flowHelper.singleSwitchFlow(sw)
         flowHelper.addFlow(flow)
 

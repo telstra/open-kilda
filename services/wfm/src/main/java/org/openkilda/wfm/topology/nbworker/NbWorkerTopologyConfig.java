@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker;
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
@@ -29,4 +30,11 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaNorthboundTopic() {
         return getKafkaTopics().getNorthboundTopic();
     }
+
+    default String getKafkaFlowTopic() {
+        return getKafkaTopics().getFlowTopic();
+    }
+
+    @Key("isl.cost.when.under.maintenance")
+    int getIslCostWhenUnderMaintenance();
 }

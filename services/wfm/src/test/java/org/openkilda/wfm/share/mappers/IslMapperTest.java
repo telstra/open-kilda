@@ -34,7 +34,7 @@ public class IslMapperTest {
     public void islMapperTest() {
         IslInfoData islInfoData = new IslInfoData(1, new PathNode(TEST_SWITCH_A_ID, 1, 0),
                 new PathNode(TEST_SWITCH_B_ID, 1, 1),
-                2, IslChangeType.DISCOVERED, 4);
+                2, IslChangeType.DISCOVERED, 4, false);
 
         Isl isl = IslMapper.INSTANCE.map(islInfoData);
 

@@ -125,6 +125,9 @@ public class Isl implements Serializable {
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
 
+    @Property(name = "under_maintenance")
+    private boolean underMaintenance;
+
     /**
      * Constructor used by the builder only and needed to copy srcSwitch to srcSwitchId, destSwitch to destSwitchId.
      */
@@ -132,7 +135,7 @@ public class Isl implements Serializable {
     Isl(Switch srcSwitch, Switch destSwitch, int srcPort, int destPort, //NOSONAR
             int latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth,
             long availableBandwidth, IslStatus status, IslStatus actualStatus,
-            Instant timeCreate, Instant timeModify) {
+            Instant timeCreate, Instant timeModify, boolean underMaintenance) {
         setSrcSwitch(srcSwitch);
         setDestSwitch(destSwitch);
         this.srcPort = srcPort;
@@ -147,6 +150,7 @@ public class Isl implements Serializable {
         this.actualStatus = actualStatus;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
+        this.underMaintenance = underMaintenance;
     }
 
     public final void setSrcSwitch(Switch srcSwitch) {

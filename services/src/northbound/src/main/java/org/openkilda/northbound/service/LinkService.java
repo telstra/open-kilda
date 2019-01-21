@@ -21,6 +21,7 @@ import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 
 import java.util.List;
@@ -73,6 +74,26 @@ public interface LinkService {
      */
     CompletableFuture<List<FlowPayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
                                                          SwitchId dstSwitch, Integer dstPort);
+
+    /**
+     * Reroute all flows for a particular link.
+     *
+     * @param srcSwitch source switch dpid.
+     * @param srcPort source port number.
+     * @param dstSwitch destination switch dpid.
+     * @param dstPort destination port number.
+     * @return list of flow ids which was sent to reroute.
+     */
+    CompletableFuture<List<String>> rerouteFlowsForLink(SwitchId srcSwitch, Integer srcPort,
+                                                        SwitchId dstSwitch, Integer dstPort);
+
+    /**
+     * Update "Under maintenance" flag.
+     *
+     * @param link link parameters.
+     * @return updated link.
+     */
+    CompletableFuture<List<LinkDto>> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link);
 
     /**
      * Link with corresponding parameters will be deleted.

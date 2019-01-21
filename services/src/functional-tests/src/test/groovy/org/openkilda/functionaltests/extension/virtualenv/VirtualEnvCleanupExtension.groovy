@@ -23,10 +23,10 @@ class VirtualEnvCleanupExtension extends AbstractGlobalExtension implements Spri
     TopologyDefinition topology
 
     @Autowired
-    NorthboundService northboundService
+    NorthboundService northbound
 
     @Autowired
-    Database db
+    Database database
 
     @Autowired
     IslUtils islUtils
@@ -42,18 +42,23 @@ class VirtualEnvCleanupExtension extends AbstractGlobalExtension implements Spri
             applicationContext.autowireCapableBeanFactory.autowireBean(this)
 
             log.info("Deleting all flows")
-            northboundService.deleteAllFlows()
+            northbound.deleteAllFlows()
 
             log.info("Resetting available bandwidth on all links")
             topology.islsForActiveSwitches.collect { [it, islUtils.reverseIsl(it)] }.flatten().each {
-                db.revertIslBandwidth(it)
+                database.revertIslBandwidth(it)
+            }
+
+            log.info("Unset maintenance mode from all links")
+            northbound.getAllLinks().findAll { it.underMaintenance }.each {
+                northbound.updateLinkUnderMaintenance(islUtils.getLinkUnderMaintenance(it, false, false))
             }
 
             log.info("Deleting all link props")
-            northboundService.deleteLinkProps(northboundService.getAllLinkProps())
+            northbound.deleteLinkProps(northbound.getAllLinkProps())
 
             log.info("Resetting all link costs")
-            db.resetCosts()
+            database.resetCosts()
         }
     }
 }
