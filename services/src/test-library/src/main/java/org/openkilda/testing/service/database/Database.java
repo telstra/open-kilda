@@ -45,4 +45,6 @@ public interface Database {
     List<PathInfoData> getPaths(SwitchId src, SwitchId dst);
 
     FlowPairDto<FlowDto, FlowDto> getFlow(String flowId);
+
+    void updateFlowBandwidth(String flowId, long newBw);
 }
