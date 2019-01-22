@@ -591,8 +591,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             long burstSize = calculateBurstSize(sw, bandwidth);
 
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
-            OFMeterMod meterMod = buildMeterMode(sw, OFMeterModCommand.ADD, bandwidth, burstSize, meterId, flags);
-            buildAndInstallMeter(meterMod, sw, bandwidth);
+            buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
             throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
         }
@@ -611,8 +610,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             long burstSize = calculateBurstSize(sw, bandwidth);
 
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
-            OFMeterMod meterMod = buildMeterMode(sw, OFMeterModCommand.MODIFY, bandwidth, burstSize, meterId, flags);
-            buildAndModifyMeter(meterMod, sw);
+
+            buildAndModifyMeter(sw, bandwidth, burstSize, meterId, flags);
         } else {
             String message = meterId <= 0
                     ? "Meter id must be positive." : "Meter IDs from 1 to 31 inclusively are for default rules.";
@@ -918,8 +917,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), "Centec");
     }
 
-    private void buildAndInstallMeter(OFMeterMod meterMod, IOFSwitch sw, long bandwidth) throws OfInstallException {
-        logger.info("Installing meter {} on switch {} with bandwidth {}", meterMod.getMeterId(), sw.getId(), bandwidth);
+    private void buildAndInstallMeter(IOFSwitch sw, Set<OFMeterFlags> flags, long bandwidth, long burstSize,
+                                      long meterId) throws OfInstallException {
+        logger.info("Installing meter {} on switch {} with bandwidth {}", meterId, sw.getId(), bandwidth);
+
+        OFMeterMod meterMod = buildMeterMode(sw, OFMeterModCommand.ADD, bandwidth, burstSize, meterId, flags);
 
         pushFlow(sw, "--InstallMeter--", meterMod);
 
@@ -928,8 +930,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         sendBarrierRequest(sw);
     }
 
-    private void buildAndModifyMeter(OFMeterMod meterMod, IOFSwitch sw) throws OfInstallException {
-        logger.info("Updating meter {} on Switch {}", meterMod.getMeterId(), sw.getId());
+    private void buildAndModifyMeter(IOFSwitch sw, long bandwidth, long burstSize, long meterId,
+                                     Set<OFMeterFlags> flags) throws OfInstallException {
+        logger.info("Updating meter {} on Switch {}", meterId, sw.getId());
+
+        OFMeterMod meterMod = buildMeterMode(sw, OFMeterModCommand.MODIFY, bandwidth, burstSize, meterId, flags);
 
         pushFlow(sw, "--ModifyMeter--", meterMod);
     }
@@ -1412,8 +1417,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 sendBarrierRequest(sw);
             }
 
-            OFMeterMod meterMod = buildMeterMode(sw, OFMeterModCommand.ADD, rate, burstSize, meterId, flags);
-            buildAndInstallMeter(meterMod, sw, rate);
+            buildAndInstallMeter(sw, flags, rate, burstSize, meterId);
         } catch (SwitchOperationException e) {
             logger.warn("Failed to (re)install meter {} on switch {}: {}", meterId, sw.getId(), e.getMessage());
             return null;
