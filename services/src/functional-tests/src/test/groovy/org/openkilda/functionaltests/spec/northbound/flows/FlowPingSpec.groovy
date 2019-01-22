@@ -37,7 +37,7 @@ class FlowPingSpec extends BaseSpecification {
         when: "Ping the flow"
         def response = northbound.pingFlow(flow.id, new PingInput())
 
-        then: "Ping is successfull"
+        then: "Ping is successful"
         response.forward.pingSuccess
         response.reverse.pingSuccess
 
