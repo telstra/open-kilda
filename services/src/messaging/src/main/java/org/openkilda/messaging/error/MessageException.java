@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.error;
 
+import org.openkilda.model.LogLevel;
 
 /**
  * The exception for notifying errors.
@@ -28,12 +29,12 @@ public class MessageException extends CacheException {
     /**
      * The correlation id.
      */
-    protected String correlationId;
+    private final String correlationId;
 
     /**
      * The timestamp.
      */
-    protected long timestamp;
+    private final long timestamp;
 
     /**
      * Instance constructor.
@@ -46,20 +47,24 @@ public class MessageException extends CacheException {
      */
     public MessageException(String correlationId, long timestamp, ErrorType errorType,
                             String errorMessage, String errorDescription) {
-        super(errorType, errorMessage, errorDescription);
-        this.correlationId = correlationId;
-        this.timestamp = timestamp;
+        this(correlationId, timestamp, errorType, errorMessage, errorDescription, LogLevel.ERROR);
     }
 
     /**
      * Instance constructor.
      *
+     * @param correlationId    error correlation id
+     * @param timestamp        error timestamp
      * @param errorType        error type
      * @param errorMessage     error message
      * @param errorDescription error description
+     * @param logLevel         log level
      */
-    public MessageException(ErrorType errorType, String errorMessage, String errorDescription) {
-        super(errorType, errorMessage, errorDescription);
+    public MessageException(String correlationId, long timestamp, ErrorType errorType,
+                            String errorMessage, String errorDescription, LogLevel logLevel) {
+        super(errorType, errorMessage, errorDescription, logLevel);
+        this.correlationId = correlationId;
+        this.timestamp = timestamp;
     }
 
     /**
@@ -68,11 +73,11 @@ public class MessageException extends CacheException {
      * @param message the {@link MessageError}
      */
     public MessageException(ErrorMessage message) {
-        super(message.getData().getErrorType(),
+        this(message.getCorrelationId(),
+                message.getTimestamp(),
+                message.getData().getErrorType(),
                 message.getData().getErrorMessage(),
                 message.getData().getErrorDescription());
-        this.correlationId = message.getCorrelationId();
-        this.timestamp = message.getTimestamp();
     }
 
     /**

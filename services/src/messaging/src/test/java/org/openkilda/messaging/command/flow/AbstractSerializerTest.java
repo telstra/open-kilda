@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.messaging.command.Constants.flowName;
 
@@ -48,6 +49,7 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.LogLevel;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -475,9 +477,11 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void errorMessageTest() throws IOException, ClassNotFoundException {
         ErrorData data = new ErrorData(ErrorType.AUTH_FAILED, FLOW_NAME, "Bad credentials");
+        LogLevel logLevel = LogLevel.ERROR;
         System.out.println(data);
 
-        ErrorMessage info = new ErrorMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
+        ErrorMessage info = new ErrorMessage(
+                data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION, LogLevel.ERROR);
         info.setData(data);
         serialize(info);
 
@@ -485,7 +489,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(message instanceof ErrorMessage);
 
         ErrorMessage resultInfo = (ErrorMessage) message;
-        assertTrue(resultInfo.getData() != null);
+        assertNotNull(resultInfo.getData());
+        assertEquals(logLevel, resultInfo.getLogLevel());
 
         ErrorData resultData = resultInfo.getData();
         System.out.println(resultData);

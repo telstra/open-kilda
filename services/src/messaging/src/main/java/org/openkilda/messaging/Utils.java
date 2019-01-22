@@ -48,6 +48,10 @@ public final class Utils {
      * The destination property.
      */
     public static final String DESTINATION = "destination";
+    /**
+     * Log level.
+     */
+    public static final String LOG_LEVEL = "log_level";
 
     public static final String ROUTE = "route";
     /**

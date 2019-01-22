@@ -57,7 +57,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         if (request instanceof GetSwitchesRequest) {
             result = getSwitches();
         } else if (request instanceof GetSwitchRequest) {
-            result = getSwitch((GetSwitchRequest) request);
+            result = getSwitch((GetSwitchRequest) request, correlationId);
         } else {
             unhandledInput(tuple);
         }
@@ -69,13 +69,14 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         return switchOperationsService.getAllSwitches();
     }
 
-    private List<SwitchInfoData> getSwitch(GetSwitchRequest request) {
+    private List<SwitchInfoData> getSwitch(GetSwitchRequest request, String correlationId) {
         SwitchId switchId = request.getSwitchId();
 
         try {
             return Collections.singletonList(SwitchMapper.INSTANCE.map(switchOperationsService.getSwitch(switchId)));
         } catch (SwitchNotFoundException e) {
-            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
+            throw new MessageException(correlationId, request.getTimestamp(), ErrorType.NOT_FOUND,
+                                       e.getMessage(), "Switch was not found.");
         }
     }
 

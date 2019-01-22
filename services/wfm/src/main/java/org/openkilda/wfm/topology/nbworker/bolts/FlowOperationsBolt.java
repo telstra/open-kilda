@@ -85,7 +85,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (IslNotFoundException e) {
-            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+            throw new MessageException(request.getCorrelationId(), request.getTimestamp(), ErrorType.NOT_FOUND,
+                                       e.getMessage(), "ISL was not found.");
         }
     }
 
@@ -102,7 +103,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
                     .map(Flow::getFlowId)
                     .collect(Collectors.toList());
         } catch (IslNotFoundException e) {
-            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+            throw new MessageException(message.getCorrelationId(), message.getTimestamp(), ErrorType.NOT_FOUND,
+                                       e.getMessage(), "ISL was not found.");
         }
 
 

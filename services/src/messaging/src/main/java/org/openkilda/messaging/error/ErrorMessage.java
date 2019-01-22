@@ -18,11 +18,13 @@ package org.openkilda.messaging.error;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DESTINATION;
+import static org.openkilda.messaging.Utils.LOG_LEVEL;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
+import org.openkilda.model.LogLevel;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -39,7 +41,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         DESTINATION,
         PAYLOAD,
         TIMESTAMP,
-        CORRELATION_ID})
+        CORRELATION_ID,
+        LOG_LEVEL})
 public class ErrorMessage extends Message {
     /**
      * Serialization version number constant.
@@ -51,6 +54,24 @@ public class ErrorMessage extends Message {
      */
     @JsonProperty(PAYLOAD)
     private ErrorData data;
+
+    @JsonProperty(LOG_LEVEL)
+    private LogLevel logLevel;
+
+    /**
+     * Instance constructor.
+     *
+     * @param data          error message payload
+     * @param timestamp     timestamp value
+     * @param correlationId message correlation id
+     * @param destination   message destination
+     */
+    public ErrorMessage(@JsonProperty(PAYLOAD) final ErrorData data,
+                        @JsonProperty(TIMESTAMP) final long timestamp,
+                        @JsonProperty(CORRELATION_ID) final String correlationId,
+                        @JsonProperty(DESTINATION) final Destination destination) {
+        this(data, timestamp, correlationId, destination, LogLevel.ERROR);
+    }
 
     /**
      * Instance constructor.
@@ -64,10 +85,13 @@ public class ErrorMessage extends Message {
     public ErrorMessage(@JsonProperty(PAYLOAD) final ErrorData data,
                         @JsonProperty(TIMESTAMP) final long timestamp,
                         @JsonProperty(CORRELATION_ID) final String correlationId,
-                        @JsonProperty(DESTINATION) final Destination destination) {
+                        @JsonProperty(DESTINATION) final Destination destination,
+                        @JsonProperty(LOG_LEVEL) final LogLevel logLevel) {
         super(timestamp, correlationId, destination);
         setData(data);
+        this.logLevel = logLevel;
     }
+
 
     /**
      * Instance constructor.
@@ -81,6 +105,7 @@ public class ErrorMessage extends Message {
                         final String correlationId) {
         super(timestamp, correlationId);
         setData(data);
+        this.logLevel = LogLevel.ERROR;
     }
 
     /**
@@ -102,6 +127,15 @@ public class ErrorMessage extends Message {
     }
 
     /**
+     * Returns log level which should (not must) be used to log this exception.
+     *
+     * @return log level {@link LogLevel}
+     */
+    public LogLevel getLogLevel() {
+        return logLevel;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -111,6 +145,7 @@ public class ErrorMessage extends Message {
                 .add(CORRELATION_ID, correlationId)
                 .add(DESTINATION, destination)
                 .add(PAYLOAD, data)
+                .add(LOG_LEVEL, logLevel)
                 .toString();
     }
 }

@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.model.LogLevel;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.exception.MessageNotSentException;
@@ -154,7 +155,7 @@ public class KafkaMessagingChannel implements MessagingChannel {
 
         if (message instanceof ErrorMessage) {
             ErrorMessage error = (ErrorMessage) message;
-            logger.error("Response message is error: {}", error);
+            LogLevel.log(logger, error.getLogLevel(), String.format("Response message is error: %s", error));
 
             completeWithError(error);
         } else if (message instanceof InfoMessage) {

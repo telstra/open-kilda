@@ -55,6 +55,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.LogLevel;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -259,11 +260,10 @@ public class CrudBolt
             // isRecoverable = true;
         } catch (CacheException exception) {
             String logMessage = format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
-            logger.error("{}, {}={}, {}={}, component={}, stream={}", logMessage, Utils.CORRELATION_ID,
-                    correlationId, Utils.FLOW_ID, flowId, componentId, streamId, exception);
+            LogLevel.log(logger, exception.getLogLevel(), logMessage);
 
             ErrorMessage errorMessage = buildErrorMessage(correlationId, exception.getErrorType(),
-                    logMessage, componentId.toString().toLowerCase());
+                    logMessage, componentId.toString().toLowerCase(), exception.getLogLevel());
 
             Values error = new Values(errorMessage, exception.getErrorType());
             outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
@@ -512,7 +512,8 @@ public class CrudBolt
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
         FlowPair flowPair = flowService.getFlowPair(flowId)
                 .orElseThrow(() -> new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                        ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
+                        ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId),
+                        LogLevel.WARN));
 
         BidirectionalFlowDto flow =
                 new BidirectionalFlowDto(FlowMapper.INSTANCE.map(flowPair));
@@ -535,9 +536,10 @@ public class CrudBolt
         return new FlowResponse(flowDto);
     }
 
-    private ErrorMessage buildErrorMessage(String correlationId, ErrorType type, String message, String description) {
+    private ErrorMessage buildErrorMessage(
+            String correlationId, ErrorType type, String message, String description, LogLevel logLevel) {
         return new ErrorMessage(new ErrorData(type, message, description),
-                System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
+                System.currentTimeMillis(), correlationId, Destination.NORTHBOUND, logLevel);
     }
 
     private void initFlowResourcesManager() {

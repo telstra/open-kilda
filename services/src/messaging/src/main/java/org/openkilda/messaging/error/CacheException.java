@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.error;
 
+import org.openkilda.model.LogLevel;
 
 /**
  * The exception for notifying errors.
@@ -28,17 +29,22 @@ public class CacheException extends RuntimeException {
     /**
      * The error type.
      */
-    protected ErrorType errorType;
+    private final ErrorType errorType;
 
     /**
      * The error message.
      */
-    protected String errorMessage;
+    private final String errorMessage;
 
     /**
      * The error description.
      */
-    protected String errorDescription;
+    private final String errorDescription;
+
+    /**
+     * Log level which should (not must) be used to log this exception.
+     */
+    private final LogLevel logLevel;
 
     /**
      * Instance constructor.
@@ -48,10 +54,23 @@ public class CacheException extends RuntimeException {
      * @param errorDescription error description
      */
     public CacheException(ErrorType errorType, String errorMessage, String errorDescription) {
+        this(errorType, errorMessage, errorDescription, LogLevel.ERROR);
+    }
+
+    /**
+     * Instance constructor.
+     *
+     * @param errorType        error type
+     * @param errorMessage     error message
+     * @param errorDescription error description
+     * @param logLevel         log level
+     */
+    public CacheException(ErrorType errorType, String errorMessage, String errorDescription, LogLevel logLevel) {
         super(errorMessage);
         this.errorType = errorType;
         this.errorMessage = errorMessage;
         this.errorDescription = errorDescription;
+        this.logLevel = logLevel;
     }
 
     /**
@@ -79,5 +98,14 @@ public class CacheException extends RuntimeException {
      */
     public String getErrorDescription() {
         return errorDescription;
+    }
+
+    /**
+     * Returns log level which should (not must) be used to log this exception.
+     *
+     * @return log level {@link LogLevel}
+     */
+    public LogLevel getLogLevel() {
+        return logLevel;
     }
 }

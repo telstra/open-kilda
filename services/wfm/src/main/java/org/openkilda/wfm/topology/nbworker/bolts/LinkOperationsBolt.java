@@ -92,7 +92,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         } else if (request instanceof LinkPropsDrop) {
             result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
         } else if (request instanceof DeleteLinkRequest) {
-            result = Collections.singletonList(deleteLink((DeleteLinkRequest) request));
+            result = Collections.singletonList(deleteLink((DeleteLinkRequest) request, correlationId));
         } else if (request instanceof UpdateLinkUnderMaintenanceRequest) {
             result = updateLinkUnderMaintenanceFlag((UpdateLinkUnderMaintenanceRequest) request, tuple, correlationId);
         } else {
@@ -217,15 +217,17 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         }
     }
 
-    private DeleteIslResponse deleteLink(DeleteLinkRequest request) {
+    private DeleteIslResponse deleteLink(DeleteLinkRequest request, String correlationId) {
         boolean deleted;
         try {
             deleted = linkOperationsService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
                                                       request.getDstSwitch(), request.getDstPort());
         } catch (IslNotFoundException e) {
-            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+            throw new MessageException(correlationId, request.getTimestamp(), ErrorType.NOT_FOUND,
+                                       e.getMessage(), "ISL was not found.");
         } catch (IllegalIslStateException e) {
-            throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), "ISL is in illegal state.");
+            throw new MessageException(correlationId, request.getTimestamp(), ErrorType.REQUEST_INVALID,
+                                       e.getMessage(), "ISL is in illegal state.");
         }
         return new DeleteIslResponse(deleted);
     }
@@ -256,7 +258,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
             }
 
         } catch (IslNotFoundException e) {
-            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+            throw new MessageException(correlationId, request.getTimestamp(), ErrorType.NOT_FOUND,
+                                       e.getMessage(), "ISL was not found.");
         }
 
         return isl.stream()
