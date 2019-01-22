@@ -8,6 +8,7 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
@@ -161,7 +162,7 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
-    def "Cannot delete nonexistent link"() {
+    def "Unable to delete nonexistent link"() {
         given: "Parameters of nonexistent link"
         def parameters = new LinkParametersDto(new SwitchId(1).toString(), 100, new SwitchId(2).toString(), 100)
 
@@ -174,7 +175,7 @@ class LinkSpec extends BaseSpecification {
         exc.responseBodyAsString.contains("ISL was not found")
     }
 
-    def "Cannot delete active link"() {
+    def "Unable to delete active link"() {
         given: "Parameters for active link"
         def link = northbound.getActiveLinks()[0]
         def parameters = new LinkParametersDto(link.source.switchId.toString(), link.source.portNo,
@@ -333,8 +334,76 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
+    @Unroll
+    def "Get links with specifying query parameters"() {
+        when: "Get links with specifying query parameters"
+        def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
+
+        then: "The corresponding list of links is returned"
+        links.sort() == filterLinks(northbound.getAllLinks(), srcSwId, srcSwPort, dstSwId, dstSwPort).sort()
+
+        where:
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort
+        null                    | null             | null                    | null
+        getIsl().srcSwitch.dpId | null             | null                    | null
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | getIsl().dstPort
+    }
+
+    @Unroll
+    def "Get links with specifying NOT existing query parameters (#item doesn't exist) "() {
+        when: "Get links with specifying NOT existing query parameters"
+        def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
+
+        then: "An empty list of links is returned"
+        links.empty
+
+        where:
+        srcSwId                   | srcSwPort        | dstSwId                   | dstSwPort        | item
+        new SwitchId("123456789") | getIsl().srcPort | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_switch"
+        getIsl().srcSwitch.dpId   | 4096             | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId   | getIsl().srcPort | new SwitchId("987654321") | getIsl().dstPort | "dst_switch"
+        getIsl().srcSwitch.dpId   | getIsl().srcPort | getIsl().dstSwitch.dpId   | 4096             | "dst_port"
+    }
+
+    @Unroll
+    def "Unable to get links with specifying invalid query parameters (#item is invalid) "() {
+        when: "Get links with specifying invalid #item"
+        northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
+
+        then: "An error is received (400 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+
+        where:
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+    }
+
     @Memoized
     Isl getIsl() {
         topology.islsForActiveSwitches.first()
+    }
+
+    List<IslInfoData> filterLinks(List<IslInfoData> links, SwitchId srcSwId, Integer srcSwPort, SwitchId dstSwId,
+                                  Integer dstSwPort) {
+        if (srcSwId) {
+            links = links.findAll { it.source.switchId == srcSwId }
+        }
+        if (srcSwPort) {
+            links = links.findAll { it.source.portNo == srcSwPort }
+        }
+        if (dstSwId) {
+            links = links.findAll { it.destination.switchId == dstSwId }
+        }
+        if (dstSwPort) {
+            links = links.findAll { it.destination.portNo == dstSwPort }
+        }
+
+        return links
     }
 }
