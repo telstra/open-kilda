@@ -71,7 +71,12 @@ public class NorthboundSteps {
 
     @When("^create feature toggles request based on the response$")
     public void createFetureTogglesRequestBasedOnTheResponse() {
-        //featureToggleRequest = new FeatureTogglesDto(featureTogglesResponse);
+        featureToggleRequest = new FeatureTogglesDto(featureTogglesResponse.getFlowsRerouteOnIslDiscoveryEnabled(),
+                featureTogglesResponse.getCreateFlowEnabled(),
+                featureTogglesResponse.getUpdateFlowEnabled(),
+                featureTogglesResponse.getDeleteFlowEnabled(),
+                featureTogglesResponse.getPushFlowEnabled(),
+                featureTogglesResponse.getUnpushFlowEnabled());
     }
 
     @When("^update request: switch each toggle to an opposite state$")
