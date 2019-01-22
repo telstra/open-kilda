@@ -86,7 +86,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
         if (start == null || end == null) {
-            throw new UnroutableFlowException(format("Node %s doesn't have links with enough bandwidth",
+            throw new UnroutableFlowException(format("Switch %s doesn't have links with enough bandwidth",
                     start == null ? startSwitchId : endSwitchId));
         }
 

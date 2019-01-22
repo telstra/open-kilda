@@ -33,6 +33,7 @@ import lombok.ToString;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 @Getter
 @AllArgsConstructor
@@ -71,16 +72,17 @@ public class Node {
      * @param weightFunction the function for weigh calculation.
      */
     public void reduceByWeight(WeightFunction weightFunction) {
-        outgoingLinks = reduceByWeight(outgoingLinks, weightFunction);
-        incomingLinks = reduceByWeight(incomingLinks, weightFunction);
+        outgoingLinks = reduceByWeight(outgoingLinks, Edge::getDestSwitch, weightFunction);
+        incomingLinks = reduceByWeight(incomingLinks, Edge::getSrcSwitch, weightFunction);
     }
 
-    private Set<Edge> reduceByWeight(Set<Edge> edges, WeightFunction weightFunction) {
+    private Set<Edge> reduceByWeight(
+            Set<Edge> edges, Function<Edge, Node> groupingFunction, WeightFunction weightFunction) {
         if (edges.isEmpty()) {
             return edges;
         }
         return edges.stream()
-                .collect(groupingBy(Edge::getDestSwitch, minBy(comparingLong(weightFunction::apply))))
+                .collect(groupingBy(groupingFunction, minBy(comparingLong(weightFunction::apply))))
                 .values().stream()
                 .filter(Optional::isPresent)
                 .map(Optional::get)
