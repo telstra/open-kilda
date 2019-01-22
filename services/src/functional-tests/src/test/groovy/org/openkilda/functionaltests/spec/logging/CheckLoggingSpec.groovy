@@ -48,9 +48,9 @@ class CheckLoggingSpec extends BaseSpecification {
         then: "Northbound, Storm and Topology Engine should log these actions within 1 minute"
         Wrappers.wait(timeout, 10) {
             def nbLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
-                    setTimeRange(timeout * 2).setLevel("ERROR").build())
+                    setTimeRange(timeout * 2).setLevel("WARN").build())
             def stormLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.STORM_WORKER).
-                    setTimeRange(timeout * 2).setLevel("ERROR").build())
+                    setTimeRange(timeout * 2).setLevel("WARN").build())
             def tpLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.TOPOLOGY_ENGINE).
                     setTimeRange(timeout * 2).setLevel("INFO").build())
 
