@@ -409,6 +409,30 @@ class FlowCrudSpec extends BaseSpecification {
         ]
     }
 
+    def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
+        given: "A potential flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def paths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
+
+        when: "Init creation of a new flow"
+        northbound.addFlow(flow)
+
+        and: "Immediately remove the flow"
+        northbound.deleteFlow(flow.id)
+
+        then: "All related switches have no discrepancies in rules"
+        Wrappers.wait(WAIT_OFFSET) {
+            switches.each {
+                def rules = northbound.validateSwitchRules(it.dpId)
+                assert rules.excessRules.empty
+                assert rules.missingRules.empty
+                assert rules.properRules.empty
+            }
+        }
+    }
+
     @Shared
     def portError = { String operation, int port, SwitchId switchId, String flowId ->
         "Could not $operation flow: The port $port on the switch '$switchId' has already occupied " +
