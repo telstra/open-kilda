@@ -202,7 +202,8 @@ class AutoRerouteSpec extends BaseSpecification {
         TimeUnit.SECONDS.sleep(discoveryInterval + rerouteDelay + WAIT_OFFSET * 2)
         northbound.getFlowStatus(flow.id).status == flowStatus
 
-        and: "Restore topology to the original state, remove the flow"
+        and: "Restore topology to the original state, remove the flow, reset toggles"
+        northbound.toggleFeature(new FeatureTogglesDto(true, null, null, null, null ,null))
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -212,9 +213,7 @@ class AutoRerouteSpec extends BaseSpecification {
         where:
         reflowOnSwitchActivation | flowStatus
         true                     | FlowState.UP
-
-        /*TODO(siakovenko): the feature toggle for reflow is not supported yet.
-        false                    | FlowState.DOWN*/
+        false                    | FlowState.DOWN
     }
 
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
