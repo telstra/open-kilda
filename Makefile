@@ -86,8 +86,11 @@ update-props:
 update-props-dryrun:
 	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only -noop
 
+func-tests:
+	mvn -Pfunctional -f services/src/functional-tests/pom.xml test $(params)
+
 .PHONY: default run-dev build-latest build-base	
 .PHONY: up-test-mode up-log-mode run-test clean-test	
 .PHONY: clean-sources unit update	
 .PHONY: clean
-
+.PHONY: func-tests
