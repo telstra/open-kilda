@@ -9,13 +9,20 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.flows.PingInput
 import org.openkilda.testing.Constants.DefaultRule
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Narrative
@@ -421,6 +428,59 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    def "Traffic counters in ingress rule are reset on flow rerouting"() {
+        given: "Two active switches and two possible flow paths at least"
+        def switches = topology.getActiveSwitches()
+        List<List<PathNode>> possibleFlowPaths = []
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            possibleFlowPaths.size() > 1
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Create a flow going through these switches"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        when: "Ping the flow"
+        def response = northbound.pingFlow(flow.id, new PingInput())
+
+        then: "Operation is successful"
+        response.forward.pingSuccess
+        response.reverse.pingSuccess
+
+        and: "Traffic counters in ingress rule on source and destination switches represent packets movement"
+        checkTrafficCountersInRules(flow.source, true)
+        checkTrafficCountersInRules(flow.destination, true)
+
+        when: "Break a flow ISL (bring switch port down) to cause flow rerouting"
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+        def flowIsls = pathHelper.getInvolvedIsls(flowPath)
+
+        Set<Isl> altFlowIsls = []
+        possibleFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
+
+        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(islUtils.reverseIsl(it) in altFlowIsls) }
+        northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+
+        then: "The flow was rerouted after reroute timeout"
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+            assert PathHelper.convert(northbound.getFlowPath(flow.id)) != flowPath
+        }
+
+        and: "Traffic counters in ingress rule on source and destination switches are reset"
+        checkTrafficCountersInRules(flow.source, false)
+        checkTrafficCountersInRules(flow.destination, false)
+
+        and: "Revive the ISL back (bring switch port up) and delete the flow"
+        northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+    }
+
     void compareRules(actualRules, expectedRules) {
         assert expect(actualRules.sort { it.cookie }, sameBeanAs(expectedRules.sort { it.cookie })
                 .ignoring("byteCount")
@@ -456,5 +516,21 @@ class SwitchRulesSpec extends BaseSpecification {
         }
 
         return rules
+    }
+
+    void checkTrafficCountersInRules(FlowEndpointPayload flowEndpoint, isTrafficThroughIngressRuleExpected) {
+        def rules = northbound.getSwitchRules(flowEndpoint.datapath).flowEntries
+        def ingressRule = filterRules(rules, flowEndpoint.portNumber, flowEndpoint.vlanId, null)[0]
+        def egressRule = filterRules(rules, null, null, flowEndpoint.portNumber).find {
+            it.instructions.applyActions.fieldAction.fieldValue == flowEndpoint.vlanId.toString()
+        }
+
+        assert ingressRule.flags.contains("RESET_COUNTS")
+        assert isTrafficThroughIngressRuleExpected == (ingressRule.packetCount > 0)
+        assert isTrafficThroughIngressRuleExpected == (ingressRule.byteCount > 0)
+
+        assert !egressRule.flags.contains("RESET_COUNTS")
+        assert egressRule.packetCount == 0
+        assert egressRule.byteCount == 0
     }
 }
