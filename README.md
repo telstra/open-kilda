@@ -231,7 +231,6 @@ make build-base
 docker-compose build
 make unit
 make up-test-mode
-make atdd
 ```
 
 ### How to use confd for config/properties templating
