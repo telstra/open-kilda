@@ -61,7 +61,6 @@ import org.apache.storm.tuple.Values;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -69,6 +68,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -112,11 +112,12 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         embeddedNeo4jDb.stop();
     }
 
-    @Ignore
     @Test
     public void portStatsTest() throws Exception {
         final SwitchId switchId = new SwitchId(1L);
-        final List<PortStatsEntry> entries = IntStream.range(1, 53).boxed().map(port -> {
+        int portCount = 52;
+
+        final List<PortStatsEntry> entries = IntStream.range(1, portCount + 1).boxed().map(port -> {
             int baseCount = port * 20;
             return new PortStatsEntry(port, baseCount, baseCount + 1, baseCount + 2, baseCount + 3,
                     baseCount + 4, baseCount + 5, baseCount + 6, baseCount + 7,
@@ -130,6 +131,8 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         MockedSources sources = new MockedSources();
         sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
                 new Values(MAPPER.writeValueAsString(message)));
+        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
+                new Values(""));
         completeTopologyParam.setMockedSources(sources);
 
         //execute topology
@@ -142,13 +145,43 @@ public class StatsTopologyTest extends StableAbstractStormTest {
             ArrayList<FixedTuple> tuples =
                     (ArrayList<FixedTuple>) result.get(StatsComponentType.PORT_STATS_METRIC_GEN.name());
             assertThat(tuples.size(), is(728));
+
+            Map<String, Map<String, Number>> metricsByPort = new HashMap<>();
+            for (int i = 1; i <= portCount; i++) {
+                metricsByPort.put(String.valueOf(i), new HashMap<>());
+            }
+
             tuples.stream()
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
-                        assertThat(datapoint.getTags().get("switchId"), is(switchId.toString().replaceAll(":", "")));
+                        assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
                         assertThat(datapoint.getTime(), is(timestamp));
                         assertThat(datapoint.getMetric(), startsWith("pen.switch"));
+
+                        metricsByPort.get(datapoint.getTags().get("port"))
+                                .put(datapoint.getMetric(), datapoint.getValue());
                     });
+
+            for (int i = 1; i <= portCount; i++) {
+                Map<String, Number> metrics = metricsByPort.get(String.valueOf(i));
+                Assert.assertEquals(14, metrics.size());
+
+                int baseCount = i * 20;
+                Assert.assertEquals(baseCount, metrics.get("pen.switch.rx-packets"));
+                Assert.assertEquals(baseCount + 1, metrics.get("pen.switch.tx-packets"));
+                Assert.assertEquals(baseCount + 2, metrics.get("pen.switch.rx-bytes"));
+                Assert.assertEquals((baseCount + 2) * 8, metrics.get("pen.switch.rx-bits"));
+                Assert.assertEquals(baseCount + 3, metrics.get("pen.switch.tx-bytes"));
+                Assert.assertEquals((baseCount + 3) * 8, metrics.get("pen.switch.tx-bits"));
+                Assert.assertEquals(baseCount + 4, metrics.get("pen.switch.rx-dropped"));
+                Assert.assertEquals(baseCount + 5, metrics.get("pen.switch.tx-dropped"));
+                Assert.assertEquals(baseCount + 6, metrics.get("pen.switch.rx-errors"));
+                Assert.assertEquals(baseCount + 7, metrics.get("pen.switch.tx-errors"));
+                Assert.assertEquals(baseCount + 8, metrics.get("pen.switch.rx-frame-error"));
+                Assert.assertEquals(baseCount + 9, metrics.get("pen.switch.rx-over-error"));
+                Assert.assertEquals(baseCount + 10, metrics.get("pen.switch.rx-crc-error"));
+                Assert.assertEquals(baseCount + 11, metrics.get("pen.switch.collisions"));
+            }
         });
     }
 
