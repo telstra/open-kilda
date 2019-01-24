@@ -84,7 +84,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
-            result = getAllLinks();
+            result = getAllLinks((GetLinksRequest) request);
         } else if (request instanceof LinkPropsGet) {
             result = getLinkProps((LinkPropsGet) request);
         } else if (request instanceof LinkPropsPut) {
@@ -102,8 +102,13 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         return (List<InfoData>) result;
     }
 
-    private List<IslInfoData> getAllLinks() {
-        return linkOperationsService.getAllIsls();
+    private List<IslInfoData> getAllLinks(GetLinksRequest request) {
+        Integer srcPort = request.getSource().getPortNumber();
+        SwitchId srcSwitch = request.getSource().getDatapath();
+        Integer dstPort = request.getDestination().getPortNumber();
+        SwitchId dstSwitch = request.getDestination().getDatapath();
+
+        return linkOperationsService.getAllIsls(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
     private List<LinkPropsData> getLinkProps(LinkPropsGet request) {

@@ -31,6 +31,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 
 import java.util.Collection;
 import java.util.Map;
@@ -80,6 +81,26 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                     srcSwitchId, srcPort, dstSwitchId, dstPort));
         }
         return isls.isEmpty() ? Optional.empty() : Optional.of(isls.iterator().next());
+    }
+
+    @Override
+    public Collection<Isl> findByPartialEndpoints(SwitchId srcSwitchId, Integer srcPort,
+                                                  SwitchId dstSwitchId, Integer dstPort) {
+        Filters filters = new Filters();
+        if (srcSwitchId != null) {
+            filters.and(createSrcSwitchFilter(srcSwitchId));
+        }
+        if (srcPort != null) {
+            filters.and(new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort));
+        }
+        if (dstSwitchId != null) {
+            filters.and(createDstSwitchFilter(dstSwitchId));
+        }
+        if (dstPort != null) {
+            filters.and(new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort));
+        }
+
+        return getSession().loadAll(getEntityType(), filters, DEPTH_LOAD_ENTITY);
     }
 
     @Override
