@@ -17,7 +17,6 @@ package org.openkilda.pce.finder;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -39,8 +38,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -66,7 +63,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     /**
      * Constructs the finder with the specified limit on path depth.
      *
-     * @param allowedDepth    the allowed depth for a potential path.
+     * @param allowedDepth the allowed depth for a potential path.
      * @param weightFunction  the edge weight computing function.
      */
     public BestCostAndShortestPathFinder(int allowedDepth, WeightFunction weightFunction) {
@@ -181,23 +178,8 @@ public class BestCostAndShortestPathFinder implements PathFinder {
         List<Edge> reversePath = Lists.reverse(forwardPath);
         reversePath = swapSrcDst(reversePath);
 
-        if (isPathEndpointsCorrect(src, dst, reversePath)) {
-            if (isPathValid(reversePath)) {
-                log.debug("Reverse path is available from {} to {}", src.getSwitchId(), dst.getSwitchId());
-                return reversePath;
-            } else {
-                log.warn(format("Failed to find symmetric reverse path from %s to %s. Forward path: %s",
-                        src.getSwitchId(), dst.getSwitchId(), StringUtils.join(forwardPath, ", ")));
-            }
-        }
-
-        // find an alternative path
-        return getPath(src, dst);
-    }
-
-    private boolean isPathEndpointsCorrect(Node src, Node dst, List<Edge> path) {
-        return Objects.equals(src, path.get(0).getSrcSwitch())
-                && Objects.equals(dst, path.get(path.size() - 1).getDestSwitch());
+        log.debug("Reverse path is available from {} to {}", src.getSwitchId(), dst.getSwitchId());
+        return reversePath;
     }
 
     /**
@@ -207,45 +189,6 @@ public class BestCostAndShortestPathFinder implements PathFinder {
         return originalIsls.stream()
                 .map(Edge::swap)
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * This helper function is used with getReversePath(hint) to confirm the hint path exists.
-     */
-    private boolean isPathValid(List<Edge> path) {
-        boolean validPath = true;
-
-        for (Edge i : path) {
-            Node srcSwitch = i.getSrcSwitch();
-            if (srcSwitch == null) {
-                throw new IllegalStateException(
-                        format("confirmIsls: Found a null switch during getPath(hint): %s", i.getSrcSwitch()));
-            }
-
-            Set<Edge> pathsToDst = srcSwitch.getOutgoingLinks().stream()
-                    .filter(link -> link.getDestSwitch().equals(i.getDestSwitch()))
-                    .collect(toSet());
-            if (pathsToDst.isEmpty()) {
-                log.debug("No ISLS from {} to {}", i.getSrcSwitch(), i.getDestSwitch());
-            }
-
-            boolean foundThisOne = false;
-            for (Edge orig : pathsToDst) {
-                if (i.getSrcSwitch().getSwitchId().equals(orig.getSrcSwitch().getSwitchId())
-                        && i.getSrcPort() == orig.getSrcPort()
-                        && i.getDestSwitch().getSwitchId().equals(orig.getDestSwitch().getSwitchId())
-                        && i.getDestPort() == orig.getDestPort()) {
-                    foundThisOne = true;
-                    break; // stop looking, we found the Edge
-                }
-            }
-            if (!foundThisOne) {
-                validPath = false;
-                break; // found an Edge that doesn't exist, stop looking for others
-            }
-        }
-
-        return validPath;
     }
 
     /**
