@@ -95,6 +95,8 @@ kilda_port_up_down_throttling_delay_seconds_min: 1
 kilda_port_up_down_throttling_delay_seconds_warm_up: 5
 kilda_port_up_down_throttling_delay_seconds_cool_down: 5
 
+kilda_bfd_port_offset: 100
+
 kilda_pce_strategy: "COST"
 kilda_pce_network_strategy: "SYMMETRIC_COST"
 

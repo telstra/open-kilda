@@ -117,6 +117,7 @@ public class OfeLinkBolt
     private final int islHealthCheckTimeout;
     private final int islHealthFailureLimit;
     private final int islKeepRemovedTimeout;
+    private final int bfdPortOffset;
     private final float watchDogInterval;
     private WatchDog watchDog;
     private TopologyContext context;
@@ -152,6 +153,7 @@ public class OfeLinkBolt
         dumpRequestTimeout = discoveryConfig.getDiscoveryDumpRequestTimeout();
 
         islDiscoveryTopic = config.getKafkaSpeakerDiscoTopic();
+        bfdPortOffset = config.getBfdPortOffset();
     }
 
     @Override
@@ -401,6 +403,12 @@ public class OfeLinkBolt
             handleSwitchEvent(tuple, infoMessage);
             passToNetworkTopologyBolt(tuple, infoMessage);
         } else if (data instanceof PortInfoData) {
+
+            int portNo = ((PortInfoData) data).getPortNo();
+            if (portNo > bfdPortOffset) {
+                ((PortInfoData) data).setPortNo(portNo - bfdPortOffset);
+            }
+
             handlePortEvent(tuple, (PortInfoData) data);
             passToNetworkTopologyBolt(tuple, infoMessage);
         } else if (data instanceof IslInfoData) {
