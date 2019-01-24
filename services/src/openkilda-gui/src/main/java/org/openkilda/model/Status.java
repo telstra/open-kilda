@@ -15,17 +15,17 @@
 
 package org.openkilda.model;
 
-import java.util.List;
+import java.util.Set;
 
 public enum Status {
     INSTANCE;
-    private List<String> statuses;
+    private Set<String> statuses;
 
-    public List<String> getStatuses() {
+    public Set<String> getStatuses() {
         return statuses;
     }
 
-    public void setStatuses(List<String> statuses) {
+    public void setStatuses(Set<String> statuses) {
         this.statuses = statuses;
     }
 

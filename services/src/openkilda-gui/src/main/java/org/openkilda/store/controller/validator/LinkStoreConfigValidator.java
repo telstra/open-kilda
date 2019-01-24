@@ -15,16 +15,19 @@
 
 package org.openkilda.store.controller.validator;
 
+import org.openkilda.store.auth.constants.AuthType;
+import org.openkilda.store.auth.dao.entity.OauthConfigEntity;
+import org.openkilda.store.auth.dao.repository.OauthConfigRepository;
 import org.openkilda.store.common.constants.StoreType;
 import org.openkilda.store.common.constants.StoreUrl;
 import org.openkilda.store.model.LinkStoreConfigDto;
 import org.openkilda.store.model.UrlDto;
+import org.openkilda.utility.CollectionUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.util.MessageUtils;
 import org.usermanagement.util.ValidatorUtil;
@@ -43,6 +46,10 @@ public class LinkStoreConfigValidator {
     
     @Autowired
     private MessageUtils messageUtil;
+    
+    @Autowired
+    private OauthConfigRepository oauthConfigRepository;
+    
 
     /**
      * Validate.
@@ -50,7 +57,14 @@ public class LinkStoreConfigValidator {
      * @param linkStoreConfigDto the link store config dto
      */
     public void validate(final LinkStoreConfigDto linkStoreConfigDto) {
+        List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
+                .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
+        if (CollectionUtil.isEmpty(oauthConfigEntityList)) {
+            LOGGER.error(messageUtil.getStoreMustConfigured());
+            throw new RequestValidationException(messageUtil.getStoreMustConfigured());
+        }
         List<String> urls = StoreUrl.getUrlName(StoreType.LINK_STORE.getCode());
+
         for (Entry<String, UrlDto> urlEntrySet : linkStoreConfigDto.getUrls().entrySet()) {
             if (!urls.contains(urlEntrySet.getKey())) {
                 LOGGER.error("Validation fail for link store configuration. Error: "

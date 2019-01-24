@@ -19,7 +19,6 @@ import org.openkilda.store.auth.constants.AuthType;
 import org.openkilda.store.auth.dao.entity.OauthConfigEntity;
 import org.openkilda.store.auth.dao.repository.OauthConfigRepository;
 import org.openkilda.store.common.constants.StoreType;
-import org.openkilda.store.common.dao.repository.StoreTypeRepository;
 import org.openkilda.store.model.AuthConfigDto;
 import org.openkilda.store.model.AuthTypeDto;
 import org.openkilda.store.model.OauthTwoConfigDto;
@@ -43,9 +42,6 @@ public class AuthService {
     
     @Autowired
     private OauthConfigRepository oauthConfigRepository;
-    
-    @Autowired
-    private StoreTypeRepository storeTypeRepository;
     
     /**
      * Gets the auth types.
@@ -83,9 +79,6 @@ public class AuthService {
 
         oauthConfigEntity = oauthConfigRepository.save(oauthConfigEntity);
 
-        StoreType.LINK_STORE.getStoreTypeEntity().setOauthConfigEntity(oauthConfigEntity);
-        storeTypeRepository.save(StoreType.LINK_STORE.getStoreTypeEntity());
-
         return OauthConfigConverter.toOauthTwoConfigDto(oauthConfigEntity);
     }
     
@@ -116,7 +109,7 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public AuthConfigDto getAuth(final StoreType storeType) {
-        if (storeType == StoreType.LINK_STORE) {
+        if (storeType == StoreType.LINK_STORE || storeType == StoreType.SWITCH_STORE) {
             return OauthConfigConverter.toOauthTwoConfigDto(storeType.getStoreTypeEntity().getOauthConfigEntity());
         }
         return null;

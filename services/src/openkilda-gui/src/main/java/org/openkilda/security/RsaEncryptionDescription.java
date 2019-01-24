@@ -115,6 +115,7 @@ public final class RsaEncryptionDescription {
      * @throws Exception the exception
      */
     // Use this PublicKey object to initialize a Cipher and decrypt some data
+    @SuppressWarnings("restriction")
     public static String rsaDecrypt(final String text, final String fileDes) throws Exception {
         Key priKey = readKeyFromFile("private.key");
         Cipher cipher = Cipher.getInstance("RSA");

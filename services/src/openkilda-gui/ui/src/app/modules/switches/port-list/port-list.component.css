@@ -10,8 +10,11 @@
 }
 
 #portsTable .divTableCell p{
-	padding: 15px 0px;
+	padding: 15px 8px;
     text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 #portsTable .down-status .divTableCell:first-child{

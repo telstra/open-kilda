@@ -72,6 +72,7 @@
             <input formControlName="auto_reload" value="1" type="checkbox">
           </div>
           <div class="col-sm-7" *ngIf="f.auto_reload.value">
+            <!-- <input formControlName="auto_reload_time" type="text" name="auto_reload_time" (blur)="startAutoReload()" class="form-control"> -->
             <select formControlName="auto_reload_time" name="auto_reload_time" (change)="startAutoReload()" class="form-control">
                 <option value="">Please select a value</option>
                 <option *ngFor="let option of getautoReloadValues" value="{{option.value}}">{{option.text}}</option>

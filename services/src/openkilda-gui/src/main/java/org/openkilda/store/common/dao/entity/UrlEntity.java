@@ -18,6 +18,7 @@ package org.openkilda.store.common.dao.entity;
 import org.openkilda.entity.BaseEntity;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.Column;
@@ -31,6 +32,7 @@ import javax.persistence.Table;
 @Table(name = "kilda_urls")
 @Data
 @NoArgsConstructor
+@EqualsAndHashCode(callSuper = false)
 public class UrlEntity extends BaseEntity {
 
     @Id

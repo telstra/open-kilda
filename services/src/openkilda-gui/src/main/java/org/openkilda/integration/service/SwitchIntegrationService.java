@@ -30,6 +30,7 @@ import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchInfo;
+import org.openkilda.model.SwitchMeter;
 import org.openkilda.service.ApplicationService;
 import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
@@ -37,7 +38,6 @@ import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpResponse;
@@ -50,9 +50,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.InputStream;
-
 import java.io.UnsupportedEncodingException;
-
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -396,5 +394,22 @@ public class SwitchIntegrationService {
             throw new IntegrationException(exception);
         }
         return null;
+    }
+    
+    /**
+     * Gets the meters.
+     *
+     * @return the meters
+     */
+    public SwitchMeter getMeters(String switchId) {
+        SwitchMeter switchesResponse = null;
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl()
+                        + IConstants.NorthBoundUrl.GET_SWITCH_METERS.replace("{switch_id}", switchId),
+                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            switchesResponse = restClientManager.getResponse(response, SwitchMeter.class);
+        }
+        return switchesResponse;
     }
 }

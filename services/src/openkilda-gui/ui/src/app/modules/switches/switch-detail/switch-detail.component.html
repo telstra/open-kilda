@@ -2,19 +2,21 @@
   <!-- <div> -->
   <!-- Switch Details -->
     <div id="switchdetails_div">
-      <h5 class="modal-title">SWITCH DETAILS</h5>
+      <h5 class="modal-title mb-2">SWITCH DETAILS</h5>
       <div class="form-wrapper">
         <div class="row">
-          <label class="col-sm-4 ">Name:</label>
-          <p class="col-sm-8 copy_to_clipBoard switchdetails_div_name" [contextMenu]="copySrcSwitchName">{{name}}</p>
+          <label class="col-sm-2 col-form-label">Name:</label>
+          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label" [contextMenu]="copySrcSwitchName">{{ switchDetail['common-name'] ? switchDetail['common-name'] : switchDetail['name'] }}</p>
+          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">UUID:</label>
+          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard col-form-label switchdetails_div_name">{{ switchDetail['uuid'] || '-'}}</p>
         </div>
         <div class="row">
-          <label class="col-sm-4 ">Switch ID:</label>
+          <label class="col-sm-2 col-form-label">Switch ID:</label>
           <div class="col-sm-2">
-            <p [contextMenu]="copySrcSwitch">{{switch_id}}</p>
+            <p class="col-form-label" [contextMenu]="copySrcSwitch">{{ switchDetail['switch_id'] }}</p>
             <span class="switchdetails_div_switch_id copy_to_clipBoard"></span>
           </div>
-          <div class="col-sm-6">
+          <div class="col-sm-2">
             <input type="hidden" class="on-off-switch" value="0" style="display: none;">
             <div class="pull-left">
               <div class="onoffswitch">
@@ -26,22 +28,52 @@
               </div>
             </div>
           </div>
+          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Pop Location :</label>
+          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['pop-location'] && switchDetail['pop-location']['pop-code'] ? switchDetail['pop-location']['pop-code'] : '-'}}</p>
+        
         </div>
         <div class="row">
-          <label class="col-sm-4 ">Hostname:</label>
-          <p class="col-sm-8 copy_to_clipBoard switchdetails_div_hostname" [contextMenu]="copyTrgSwitchName">{{hostname}}</p>
+          <label class="col-sm-2 col-form-label">Hostname:</label>
+          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_hostname col-form-label" [contextMenu]="copyTrgSwitchName">{{ switchDetail['hostname'] || '-' }}</p>
+          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Rack Number:</label>
+          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['rack-number'] || '-' }}</p>
         </div>
         <div class="row">
-          <label class="col-sm-4 ">Address:</label>
-          <p class="col-sm-8 switchdetails_div_address">{{address}}</p>
+          <label class="col-sm-2 col-form-label">Address:</label>
+          <p class="col-sm-4 switchdetails_div_address col-form-label">{{ switchDetail['address'] || '-' }}</p>
+          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Rack Location:</label>
+          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['rack-location'] || '-' }}</p>
+        
         </div>
         <div class="row">
-          <label class="col-sm-4 ">Description:</label>
-          <p class="col-sm-8 switchdetails_div_desc">{{description}}</p>
+          <label class="col-sm-2 col-form-label">Description:</label>
+          <p class="col-sm-4 switchdetails_div_desc col-form-label">{{ switchDetail['description'] || '-' }}</p>
+          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Model:</label>
+          <p  *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['model'] || '-' }}</p>
+        
         </div>
         <div class="row">
-          <label class="col-sm-4 ">State:</label>
-          <p class="col-sm-8 switchdetails_div_state">{{state}}</p>
+          <label class="col-sm-2 col-form-label">State:</label>
+          <p class="col-sm-4 switchdetails_div_state col-form-label">{{ switchDetail['state'] || '-' }}
+            <i title="Controller : {{descrepancyData.status.controller}}, Inventory : {{descrepancyData.status.inventory}}" *ngIf="hasStoreSetting && statusDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
+          </p>
+          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Serial:</label>
+          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['serial-number'] || '-' }}</p>
+        
+         </div>
+        <div class="row" *ngIf="hasStoreSetting">
+          <label class="col-sm-2 col-form-label">Manufacturer:</label>
+          <p class="col-sm-4 switchdetails_div_address col-form-label">{{ switchDetail['manufacturer'] || '-' }}</p>
+          <label class="col-sm-2 col-form-label">Software Version:</label>
+          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['software-version'] || '-' }}</p>
+        </div>
+        <div class="row" *ngIf="hasStoreSetting">
+          <label class="col-sm-2 col-form-label">Ref URL:</label>
+          <p class="col-sm-4 switchdetails_div_address col-form-label">
+            <a *ngIf="!switchDetail['reference-url']">-</a>
+            <a *ngIf="switchDetail['reference-url']" href="{{ switchDetail['reference-url'] }}" target="blank">{{ switchDetail['reference-url'] }}</a>
+          </p>
+        
         </div>
       </div>
     </div>
@@ -50,18 +82,51 @@
       <div id="exTab1" class="col-lg-12 tab-wrapper">
         <ul class="nav nav-pills">
           <li [ngClass]="{'active': openedTab == 'port'}">
-            <a href="javascript:void(0)" (click)="toggleTab('port')" data-toggle="tab">PORT DETAILS</a>
+            <a href="javascript:void(0)" (click)="toggleTab('port',true)" data-toggle="tab">PORT DETAILS</a>
           </li>
           <li *ngIf="commonService.hasPermission('sw_permission_rules')" [ngClass]="{'active': openedTab == 'rules'}">
             <a href="javascript:void(0)" (click)="toggleTab('rules')" data-toggle="tab" id="flow-list">RULES</a>
           </li>
+          <li  [ngClass]="{'active': openedTab == 'meters'}">
+            <a href="javascript:void(0)" (click)="toggleTab('meters')" data-toggle="tab" id="meters-list">METERS</a>
+          </li>
+          <li *ngIf="hasStoreSetting && statusDescrepancy" [ngClass]="{'active': openedTab == 'descripancy'}">
+            <a href="javascript:void(0)" (click)="toggleTab('descripancy')" data-toggle="tab" id="descripancy-list">DISCREPANCY</a>
+          </li>
         </ul>
         <div class="tab-content clearfix">
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'port'}" id="1a">
-            <app-port-list *ngIf="openedTab == 'port'"></app-port-list>
+            <app-port-list [loadinterval]="isLoaderActive" [switch]="switchId" ></app-port-list>
           </div>
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'rules'}" id="2a">
             <app-rule-details *ngIf="openedTab == 'rules'"></app-rule-details>
+          </div>
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'meters'}" >
+            <app-switch-meters *ngIf="openedTab == 'meters'"></app-switch-meters>
+          </div>
+            <div class="tab-pane" [ngClass]="{'active': openedTab == 'descripancy'}" id="a">
+            <div class="table-responsive">
+              <table class="row-border hover dataTable no-footer">
+                  <thead class="thead-light"><tr class="tableHeading"><th>Discrepancy</th><th>Kilda Controller</th><th>Switch Store</th></tr></thead>
+                <tbody>
+                  <tr *ngIf="statusDescrepancy" >
+                    <td class="divTableCell">Status</td>
+                    <td class="divTableCell">{{ descrepancyData.status.controller}}</td>
+                    <td class="divTableCell">{{ descrepancyData.status.inventory}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="note-container">
+              <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.controller =='-' && descrepancyData.status.inventory != '-')">
+                 <strong>*Note:</strong> Switch doesn't exist in the controller</p>
+                 
+                 <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.inventory == '-' ) ">
+                  <strong>*Note:</strong> Switch doesn't exist in the inventory</p>
+                  <p class="col-md-6 alert alert-warning" *ngIf="(descrepancyData.status.inventory != '-' && descrepancyData.status.controller != '-') && (descrepancyData.status.inventory != descrepancyData.status.controller) ">
+                    <strong>*Note:</strong> There is descrepancy in switch status</p>
+  
+          </div>
           </div>
         </div>
       </div>

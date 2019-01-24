@@ -30,3 +30,9 @@
   content: "";
   background: #182488;
 }
+
+.dt-buttons {
+  float: right !important;
+}
+
+.onoffswitch {margin-top: -5px;}
