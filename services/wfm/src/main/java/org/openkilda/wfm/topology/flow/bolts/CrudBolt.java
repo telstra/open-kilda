@@ -56,6 +56,7 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -179,7 +180,9 @@ public class CrudBolt
 
         repositoryFactory = persistenceManager.getRepositoryFactory();
         flowValidator = new FlowValidator(repositoryFactory);
-        pathComputerFactory = new PathComputerFactory(pathComputerConfig, repositoryFactory);
+        AvailableNetworkFactory availableNetworkFactory =
+                new AvailableNetworkFactory(pathComputerConfig, repositoryFactory);
+        pathComputerFactory = new PathComputerFactory(pathComputerConfig, availableNetworkFactory);
         commandFactory = new FlowCommandFactory();
     }
 

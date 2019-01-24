@@ -17,39 +17,35 @@ package org.openkilda.pce;
 
 import org.openkilda.pce.finder.BestCostAndShortestPathFinder;
 import org.openkilda.pce.impl.InMemoryPathComputer;
-import org.openkilda.pce.impl.SymmetricPathComputer;
-import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.pce.model.WeightFunction;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * A factory for {@link PathComputer} instances. It provides a specific {@link PathComputer} depending on configuration
- * ({@link PathComputerConfig}) and requested strategy ({@link Strategy}).
+ * ({@link PathComputerConfig}) and requested strategy ({@link WeightStrategy}).
  */
 public class PathComputerFactory {
 
     private PathComputerConfig config;
-    private RepositoryFactory repositoryFactory;
+    private AvailableNetworkFactory availableNetworkFactory;
 
-    public PathComputerFactory(PathComputerConfig config, RepositoryFactory repositoryFactory) {
+    public PathComputerFactory(PathComputerConfig config, AvailableNetworkFactory availableNetworkFactory) {
         this.config = config;
-        this.repositoryFactory = repositoryFactory;
+        this.availableNetworkFactory = availableNetworkFactory;
     }
 
     /**
-     * Gets a specific {@link PathComputer} as per the strategy.
+     * Gets a specific {@link PathComputer} as per the weight strategy.
      *
-     * @param strategy the path find strategy.
+     * @param weightStrategy the path find weight strategy.
      * @return {@link PathComputer} instances
      */
-    public PathComputer getPathComputer(Strategy strategy) {
-        if (strategy == Strategy.COST) {
-            return new InMemoryPathComputer(repositoryFactory.createIslRepository(),
-                    new BestCostAndShortestPathFinder(config.getMaxAllowedDepth(), config.getDefaultIslCost()));
-        } else if (strategy == Strategy.SYMMETRIC_COST) {
-            return new SymmetricPathComputer(repositoryFactory.createIslRepository(),
-                    new BestCostAndShortestPathFinder(config.getDefaultIslCost(), config.getDefaultIslCost()));
-        } else {
-            throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
-        }
+    public PathComputer getPathComputer(WeightStrategy weightStrategy) {
+        return new InMemoryPathComputer(availableNetworkFactory,
+                new BestCostAndShortestPathFinder(
+                        config.getMaxAllowedDepth(),
+                        getWeightFunctionByStrategy(weightStrategy)));
     }
 
     /**
@@ -58,31 +54,45 @@ public class PathComputerFactory {
      * @return {@link PathComputer} instances
      */
     public PathComputer getPathComputer() {
-        return getPathComputer(Strategy.from(config.getStrategy()));
+        return getPathComputer(WeightStrategy.from(config.getStrategy()));
     }
 
     /**
-     * Strategy is used for getting a PathComputer instance  - ie what filters to apply. In reality, to provide
+     * Returns weight computing function for passed strategy.
+     *
+     * @param strategy the weight computation strategy
+     * @return weight computing function.
+     */
+    @VisibleForTesting
+    public WeightFunction getWeightFunctionByStrategy(WeightStrategy strategy) {
+        switch (strategy) { //NOSONAR
+            case COST:
+                return edge ->
+                        (long) (edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost());
+            default:
+                throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
+        }
+    }
+
+    /**
+     * BuildStrategy is used for getting a PathComputer instance  - ie what filters to apply. In reality, to provide
      * flexibility, this should most likely be one or more strings.
      */
-    public enum Strategy {
+    public enum WeightStrategy {
         HOPS,
 
         /**
-         * Strategy based on cost of links.
+         * BuildStrategy based on cost of links.
          */
         COST,
 
-        /**
-         * Based on cost with always equal forward and reverse paths.
-         */
-        SYMMETRIC_COST, LATENCY, EXTERNAL;
+        LATENCY, EXTERNAL;
 
-        private static Strategy from(String strategy) {
+        private static WeightStrategy from(String strategy) {
             try {
                 return valueOf(strategy.toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException(String.format("Strategy %s is not supported", strategy));
+                throw new IllegalArgumentException(String.format("BuildStrategy %s is not supported", strategy));
             }
         }
     }
