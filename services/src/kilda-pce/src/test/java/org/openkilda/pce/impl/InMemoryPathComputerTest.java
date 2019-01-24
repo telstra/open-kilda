@@ -41,7 +41,7 @@ import org.openkilda.pce.finder.BestCostAndShortestPathFinder;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -68,7 +68,7 @@ public class InMemoryPathComputerTest {
     static TransactionManager txManager;
     static SwitchRepository switchRepository;
     static IslRepository islRepository;
-    static FlowSegmentRepository flowSegmentRepository;
+    static FlowPathRepository flowSegmentRepository;
 
     private static JdkProxyStaticConfigurationFactory configFactory = new JdkProxyStaticConfigurationFactory();
     static PathComputerConfig config;

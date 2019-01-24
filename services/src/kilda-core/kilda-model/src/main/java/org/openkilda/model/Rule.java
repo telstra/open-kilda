@@ -15,32 +15,24 @@
 
 package org.openkilda.model;
 
-import lombok.Builder;
-import lombok.NonNull;
-import lombok.Value;
+import lombok.Data;
 
 import java.io.Serializable;
 
 /**
- * A pair (forward & reverse) of flows.
+ * Represents a rule on a switch.
  */
-@Value
-@Builder
-public class FlowPair implements Serializable {
+@Data
+public class Rule implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @NonNull
-    public final Flow forward;
+    private SwitchId switchId;
 
-    @NonNull
-    public final Flow reverse;
+    private Cookie cookie;
 
-    public void setStatus(FlowStatus status) {
-        forward.setStatus(status);
-        reverse.setStatus(status);
-    }
+    private MeterId meter;
 
-    public boolean isActive() {
-        return forward.isActive() && reverse.isActive();
-    }
+    private PathId pathId;
+
+    private String flowId;
 }

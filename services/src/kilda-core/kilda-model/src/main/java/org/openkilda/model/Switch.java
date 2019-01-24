@@ -20,26 +20,25 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.Setter;
-import lombok.ToString;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
+import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Required;
-import org.neo4j.ogm.annotation.Transient;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
+import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
-import java.util.List;
+import java.time.Instant;
 
 /**
- * Represents information about a switch.
+ * Represents a switch.
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "incomingLinks", "outgoingLinks"})
-@ToString(exclude = {"incomingLinks", "outgoingLinks"})
+@EqualsAndHashCode(exclude = {"entityId"})
 @NodeEntity(label = "switch")
 public class Switch implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -50,47 +49,50 @@ public class Switch implements Serializable {
     @Setter(AccessLevel.NONE)
     private Long entityId;
 
+    @NonNull
     @Property(name = "name")
     @Convert(graphPropertyType = String.class)
-    @Required
+    @Index(unique = true)
     private SwitchId switchId;
 
+    @NonNull
     @Property(name = "state")
     // Enforce usage of custom converters.
     @Convert(graphPropertyType = String.class)
     private SwitchStatus status;
 
+    @NonNull
     private String address;
 
+    @NonNull
     private String hostname;
 
+    @NonNull
     private String controller;
 
     private String description;
 
-    /**
-     * TODO(siakovenko): incomingLinks and outgoingLinks are marked as transient as Neo4j OGM handles load strategy
-     * "depth" improperly: when a relation entity is being loaded, OGM fetches ALL relations of start and end nodes
-     * of the requested relation. Even with the "depth" = 1.
-     * See {@link org.neo4j.ogm.session.request.strategy.impl.SchemaRelationshipLoadClauseBuilder}
-     */
-    @Transient
-    private List<Isl> incomingLinks;
+    @NonNull
+    @Property(name = "time_create")
+    @Convert(InstantStringConverter.class)
+    private Instant timeCreate;
 
-    @Transient
-    private List<Isl> outgoingLinks;
+    @NonNull
+    @Property(name = "time_modify")
+    @Convert(InstantStringConverter.class)
+    private Instant timeModify;
 
     @Builder(toBuilder = true)
-    Switch(SwitchId switchId, SwitchStatus status, String address, String hostname, //NOSONAR
-            String controller, String description,
-            List<Isl> incomingLinks, List<Isl> outgoingLinks) {
+    public Switch(@NonNull SwitchId switchId, @NonNull SwitchStatus status, @NonNull String address,
+                  @NonNull String hostname, @NonNull String controller, String description,
+                  @NonNull Instant timeCreate, @NonNull Instant timeModify) {
         this.switchId = switchId;
         this.status = status;
         this.address = address;
         this.hostname = hostname;
         this.controller = controller;
         this.description = description;
-        this.incomingLinks = incomingLinks;
-        this.outgoingLinks = outgoingLinks;
+        this.timeCreate = timeCreate;
+        this.timeModify = timeModify;
     }
 }

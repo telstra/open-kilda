@@ -15,12 +15,10 @@
 
 package org.openkilda.persistence;
 
-import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.FlowPath;
+import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -31,13 +29,13 @@ public class SimpleConversionCallbackTest {
         // given
         SimpleConversionCallback conversionCallback =
                 new SimpleConversionCallback("org.openkilda.persistence.converters");
-        FlowPath entity = new FlowPath(0, emptyList(), null);
+        SwitchId entity = new SwitchId(0);
 
         // when
         String graphObject = conversionCallback.convert(String.class, entity);
 
         // then
-        String expectedObject = new ObjectMapper().writeValueAsString(entity);
+        String expectedObject = entity.toString();
         assertEquals(expectedObject, graphObject);
     }
 
@@ -46,11 +44,11 @@ public class SimpleConversionCallbackTest {
         // given
         SimpleConversionCallback conversionCallback =
                 new SimpleConversionCallback("org.openkilda.persistence.converters");
-        FlowPath entity = new FlowPath(0, emptyList(), null);
-        String graphObject = new ObjectMapper().writeValueAsString(entity);
+        SwitchId entity = new SwitchId(0);
+        String graphObject = entity.toString();
 
         // when
-        FlowPath actualEntity = conversionCallback.convert(FlowPath.class, graphObject);
+        SwitchId actualEntity = conversionCallback.convert(SwitchId.class, graphObject);
 
         // then
         assertEquals(entity, actualEntity);

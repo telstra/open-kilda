@@ -31,7 +31,7 @@ import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -57,7 +57,7 @@ import java.util.Set;
 @Slf4j
 public class FlowService extends BaseFlowService {
     private SwitchRepository switchRepository;
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowSegmentRepository;
     private IslRepository islRepository;
     private PathComputerFactory pathComputerFactory;
     private FlowResourcesManager flowResourcesManager;

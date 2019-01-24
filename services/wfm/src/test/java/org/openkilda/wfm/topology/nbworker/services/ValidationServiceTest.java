@@ -28,7 +28,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import com.google.common.collect.ImmutableSet;
@@ -117,7 +117,7 @@ public class ValidationServiceTest {
                 when(flow.getCookie()).thenReturn(cookie);
                 flows.add(flow);
             }
-            FlowSegmentRepository flowSegmentRepository = mock(FlowSegmentRepository.class);
+            FlowPathRepository flowSegmentRepository = mock(FlowPathRepository.class);
             when(flowSegmentRepository.findByDestSwitchId(any())).thenReturn(flowSegments);
             FlowRepository flowRepository = mock(FlowRepository.class);
             when(flowRepository.findBySrcSwitchId(any())).thenReturn(flows);

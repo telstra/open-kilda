@@ -15,15 +15,13 @@
 
 package org.openkilda.persistence.repositories;
 
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.Port;
 import org.openkilda.model.SwitchId;
 
-import java.util.Collection;
+import java.util.Optional;
 
-public interface FlowSegmentRepository extends Repository<FlowSegment> {
-    Collection<FlowSegment> findByFlowIdAndCookie(String flowId, long flowCookie);
+public interface SwitchPortRepository extends Repository<Port> {
+    boolean exists(SwitchId switchId, int port);
 
-    Collection<FlowSegment> findByDestSwitchId(SwitchId switchId);
-
-    long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
+    Optional<Port> findById(SwitchId switchId, int port);
 }

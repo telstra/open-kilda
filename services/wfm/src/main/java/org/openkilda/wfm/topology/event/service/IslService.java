@@ -19,7 +19,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -40,7 +40,7 @@ public class IslService {
     private IslRepository islRepository;
     private LinkPropsRepository linkPropsRepository;
     private SwitchRepository switchRepository;
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowSegmentRepository;
 
     public IslService(TransactionManager transactionManager, RepositoryFactory repositoryFactory) {
         this.transactionManager = transactionManager;
