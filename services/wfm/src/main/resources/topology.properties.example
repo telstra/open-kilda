@@ -33,6 +33,8 @@ port.up.down.throttling.delay.seconds.min = 1
 port.up.down.throttling.delay.seconds.warm.up = 5
 port.up.down.throttling.delay.seconds.cool.down = 5
 
+bfd.port.offset = 200
+
 opentsdb.hosts = http://opentsdb.pendev:4242
 opentsdb.timeout = 30
 opentsdb.num.spouts = 1
