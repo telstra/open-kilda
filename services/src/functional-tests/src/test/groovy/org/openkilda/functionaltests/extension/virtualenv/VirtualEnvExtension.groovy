@@ -47,14 +47,15 @@ class VirtualEnvExtension extends AbstractGlobalExtension implements SpringConte
     }
 
     void buildVirtualEnvironment() {
+        //TODO(dpoltavets): Feature toggles has been removed from the TE, but after implementing them in nbworker, this code needs to be revised.
         //turn on all features
-        def features = northbound.getFeatureToggles()
-        features.metaClass.properties.each {
-            if (it.type == Boolean.class) {
-                features.metaClass.setAttribute(features, it.name, true)
-            }
-        }
-        northbound.toggleFeature(features)
+        //def features = northbound.getFeatureToggles()
+        //features.metaClass.properties.each {
+        //    if (it.type == Boolean.class) {
+        //        features.metaClass.setAttribute(features, it.name, true)
+        //    }
+        //}
+        //northbound.toggleFeature(features)
 
         labService.flushLabs()
         labService.getLab()
