@@ -66,7 +66,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     /**
      * Constructs the finder with the specified limit on path depth.
      *
-     * @param allowedDepth    the allowed depth for a potential path.
+     * @param allowedDepth the allowed depth for a potential path.
      * @param weightFunction  the edge weight computing function.
      */
     public BestCostAndShortestPathFinder(int allowedDepth, WeightFunction weightFunction) {
@@ -275,15 +275,12 @@ public class BestCostAndShortestPathFinder implements PathFinder {
         if (isPathEndpointsCorrect(src, dst, reversePath)) {
             if (isPathValid(reversePath)) {
                 log.debug("Reverse path is available from {} to {}", src.getSwitchId(), dst.getSwitchId());
-                return reversePath;
             } else {
                 log.warn(format("Failed to find symmetric reverse path from %s to %s. Forward path: %s",
                         src.getSwitchId(), dst.getSwitchId(), StringUtils.join(forwardPath, ", ")));
             }
         }
-
-        // find an alternative path
-        return getPath(src, dst);
+        return reversePath;
     }
 
     private boolean isPathEndpointsCorrect(Node src, Node dst, List<Edge> path) {
