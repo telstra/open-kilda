@@ -37,7 +37,6 @@ run-test: up-log-mode
 
 clean-sources:
 	$(MAKE) -C services/src clean
-	$(MAKE) -C services/mininet clean
 	$(MAKE) -C services/lab-service/lab clean
 	mvn -f services/wfm/pom.xml clean
 
@@ -58,7 +57,6 @@ update: update-parent update-core update-msg update-pce
 compile:
 	$(MAKE) -C services/src
 	$(MAKE) -C services/wfm all-in-one
-	$(MAKE) -C services/mininet
 	$(MAKE) -C services/lab-service/lab test
 
 .PHONY: unit unit-java-common unit-java-storm
