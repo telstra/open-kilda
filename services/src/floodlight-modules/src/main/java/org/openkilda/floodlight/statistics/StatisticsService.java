@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
@@ -53,7 +52,6 @@ import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +67,6 @@ import java.util.function.Function;
  */
 public class StatisticsService implements IStatisticsService, IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
-    private static final U64 SYSTEM_MASK = U64.of(0x8000000000000000L);
     private static final long OFPM_ALL = 0xffffffffL;
 
     private IOFSwitchService switchService;
@@ -202,7 +199,6 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         OFFlowStatsRequest flowStatsRequest = factory
                 .buildFlowStatsRequest()
                 .setOutGroup(OFGroup.ANY)
-                .setCookieMask(SYSTEM_MASK)
                 .build();
 
         if (factory.getVersion().compareTo(OFVersion.OF_15) != 0) {
@@ -211,17 +207,15 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
             Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest),
                     new RequestCallback<>(data -> {
-                        List<FlowStatsReply> replies = data.stream().map(reply -> {
-                            List<FlowStatsEntry> entries = reply.getEntries().stream()
-                                    .map(entry -> new FlowStatsEntry(
-                                            entry.getTableId().getValue(),
-                                            entry.getCookie().getValue(),
-                                            entry.getPacketCount().getValue(),
-                                            entry.getByteCount().getValue()))
-                                    .collect(toList());
-                            return new FlowStatsReply(reply.getXid(), entries);
-                        }).collect(toList());
-                        return new FlowStatsData(switchId, replies);
+                        List<FlowStatsEntry> entries = data.stream().flatMap(reply ->
+                                reply.getEntries().stream()
+                                        .map(entry -> new FlowStatsEntry(
+                                                entry.getTableId().getValue(),
+                                                entry.getCookie().getValue(),
+                                                entry.getPacketCount().getValue(),
+                                                entry.getByteCount().getValue()))
+                        ).collect(toList());
+                        return new FlowStatsData(switchId, entries);
                     }, "flow", CorrelationContext.getId()));
         }
     }

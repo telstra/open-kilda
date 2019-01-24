@@ -27,6 +27,7 @@ import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 
 import org.openkilda.floodlight.OFFactoryMock;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.model.Cookie;
 
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.util.FlowModUtils;
@@ -293,7 +294,7 @@ public interface OutputCommands {
                 .build();
 
         return ofFactory.buildFlowAdd()
-                .setCookie(U64.of(SwitchManager.DROP_VERIFICATION_LOOP_RULE_COOKIE))
+                .setCookie(U64.of(Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE))
                 .setPriority(SwitchManager.DROP_VERIFICATION_LOOP_RULE_PRIORITY)
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)

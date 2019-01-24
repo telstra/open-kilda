@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
+import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
@@ -30,12 +31,12 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.messaging.info.stats.MeterConfigReply;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsReply;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.OutputVlanType;
@@ -52,6 +53,7 @@ import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.topology.TestingKafkaBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
 
+import com.google.common.collect.Lists;
 import org.apache.storm.Testing;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -255,10 +257,70 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
         flowRepository.createOrUpdate(flow);
 
-        List<FlowStatsEntry> entries = Collections.singletonList(
-                new FlowStatsEntry((short) 1, cookie, 1500L, 3000L));
-        final List<FlowStatsReply> stats = Collections.singletonList(new FlowStatsReply(3, entries));
-        InfoMessage message = new InfoMessage(new FlowStatsData(switchId, stats),
+        FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L);
+        FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L);
+
+        // Stats for system rule must NOT be processes by FlowMetricGenBolt
+        List<FlowStatsEntry> entries = Lists.newArrayList(flowStats, systemRuleStats);
+        InfoMessage message = new InfoMessage(new FlowStatsData(switchId, entries),
+                timestamp, CORRELATION_ID, Destination.WFM_STATS);
+
+        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
+                new Values(MAPPER.writeValueAsString(message)));
+
+        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
+                new Values("")
+        );
+
+        completeTopologyParam.setMockedSources(sources);
+
+        //execute topology
+        Testing.withTrackedCluster(clusterParam, (cluster) -> {
+            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
+            StormTopology stormTopology = topology.createTopology();
+
+            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
+
+            Assert.assertTrue(result.containsKey(StatsComponentType.FLOW_STATS_METRIC_GEN.name()));
+            //verify results which were sent to Kafka bolt
+            ArrayList<FixedTuple> tuples =
+                    (ArrayList<FixedTuple>) result.get(StatsComponentType.FLOW_STATS_METRIC_GEN.name());
+            assertThat(tuples.size(), is(9)); // Stats for system rule must NOT be processes by FlowMetricGenBolt
+            tuples.stream()
+                    .map(this::readFromJson)
+                    .forEach(datapoint -> {
+                        switch (datapoint.getMetric()) {
+                            case "pen.flow.packets":
+                                assertThat(datapoint.getTags().get("direction"), is("forward"));
+                                assertThat(datapoint.getValue().longValue(), is(flowStats.getPacketCount()));
+                                break;
+                            case "pen.flow.raw.bytes":
+                                assertThat(datapoint.getValue().longValue(), is(flowStats.getByteCount()));
+                                break;
+                            case "pen.flow.raw.bits":
+                                assertThat(datapoint.getValue().longValue(), is(flowStats.getByteCount() * 8));
+                                break;
+                            default:
+                                break;
+                        }
+
+                        assertThat(datapoint.getTags().get("flowid"), is(flowId));
+                        assertThat(datapoint.getTime(), is(timestamp));
+                    });
+        });
+    }
+
+    @Test
+    public void systemRuleStatsTest() throws Exception {
+        //mock kafka spout
+        MockedSources sources = new MockedSources();
+
+        FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L);
+        FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L);
+
+        // Stats for flow must NOT be processes by SystemRuleMetricGenBolt
+        List<FlowStatsEntry> entries = Lists.newArrayList(flowStats, systemRuleStats);
+        InfoMessage message = new InfoMessage(new FlowStatsData(switchId, entries),
                 timestamp, CORRELATION_ID, Destination.WFM_STATS);
 
         sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
@@ -279,15 +341,27 @@ public class StatsTopologyTest extends StableAbstractStormTest {
 
             //verify results which were sent to Kafka bolt
             ArrayList<FixedTuple> tuples =
-                    (ArrayList<FixedTuple>) result.get(StatsComponentType.FLOW_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(9));
+                    (ArrayList<FixedTuple>) result.get(StatsComponentType.SYSTEM_RULE_STATS_METRIC_GEN.name());
+            assertThat(tuples.size(), is(3)); // Stats for flow must NOT be processes by SystemRuleMetricGenBolt
             tuples.stream()
                     .map(this::readFromJson)
                     .forEach(datapoint -> {
-                        if (datapoint.getMetric().equals("pen.flow.packets")) {
-                            assertThat(datapoint.getTags().get("direction"), is("forward"));
+                        switch (datapoint.getMetric()) {
+                            case "pen.switch.flow.system.packets":
+                                assertThat(datapoint.getValue().longValue(), is(systemRuleStats.getPacketCount()));
+                                break;
+                            case "pen.switch.flow.system.bytes":
+                                assertThat(datapoint.getValue().longValue(), is(systemRuleStats.getByteCount()));
+                                break;
+                            case "pen.switch.flow.system.bits":
+                                assertThat(datapoint.getValue().longValue(), is(systemRuleStats.getByteCount() * 8));
+                                break;
+                            default:
+                                break;
                         }
-                        assertThat(datapoint.getTags().get("flowid"), is(flowId));
+
+                        assertThat(datapoint.getTags().get("cookieHex"),
+                                is(Cookie.toString(systemRuleStats.getCookie())));
                         assertThat(datapoint.getTime(), is(timestamp));
                     });
         });
