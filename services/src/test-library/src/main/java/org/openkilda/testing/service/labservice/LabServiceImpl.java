@@ -32,42 +32,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class LabServiceImpl implements LabService, DisposableBean {
-
-    @Value("${spring.profiles.active}")
-    private String profile;
-    @Value("${mode.topology.single:false}")
-    private boolean singleTopologyMode;
-    @Autowired
-    private TopologyDefinition topology;
     @Autowired
     @Qualifier("labApiRestTemplate")
     private RestTemplate restTemplate;
+    @Value("${spring.profiles.active}")
+    private String profile;
 
-    private LabInstance labInstance;
-
-    private boolean isHwProfile() {
-        return profile.equals("hardware");
-    }
-
-    @Override
-    public synchronized LabInstance getLab() {
-        if (singleTopologyMode) {
-            List<Long> labsId = getLabs();
-
-            if (!labsId.isEmpty()) {
-                labInstance = getSingleExistingLab(labsId);
-            }
-        }
-
-        if (labInstance == null) {
-            labInstance = createLab();
-        }
-        return labInstance;
-    }
+    private LabInstance currentLab;
 
     @Override
     public synchronized List<Long> flushLabs() {
@@ -78,45 +54,60 @@ public class LabServiceImpl implements LabService, DisposableBean {
     }
 
     @Override
-    public synchronized void destroy() {
-        if (labInstance != null && !singleTopologyMode) {
-            deleteLab(labInstance);
-            labInstance = null;
-        }
+    public LabInstance getLab() {
+        return currentLab;
     }
 
-    private LabInstance getSingleExistingLab(List<Long> labsId) {
-        if (labsId.size() > 1) {
-            throw new IllegalArgumentException("There are several alive lab topologies");
-        }
-        // should check that topology definition not changed
-        return new LabInstance(labsId.get(0));
-    }
-
-    private LabInstance createLab() {
-        log.info("Creating topology");
-        return restTemplate.exchange("/api", HttpMethod.POST,
+    @Override
+    public LabInstance createLab(TopologyDefinition topology) {
+        log.info("Creating lab with deploying virtual topology");
+        currentLab = restTemplate.exchange("/api", HttpMethod.POST,
                 new HttpEntity<>(topology, buildJsonHeaders()), LabInstance.class).getBody();
+        return currentLab;
     }
 
-    private List<Long> getLabs() {
+    @Override
+    public LabInstance createHwLab(TopologyDefinition topology) {
+        log.info("Creating lab with redirecting to hardware topology");
+        HttpHeaders headers = buildJsonHeaders();
+        headers.add("Hw-Env", "HW");
+        currentLab = restTemplate.exchange("/api", HttpMethod.POST,
+                new HttpEntity<>(topology, headers), LabInstance.class).getBody();
+        return currentLab;
+    }
+
+    @Override
+    public List<LabInstance> getLabs() {
         log.info("Get live labs");
         return restTemplate.exchange("/api", HttpMethod.GET,
                 new HttpEntity(buildJsonHeaders()), new ParameterizedTypeReference<List<Long>>() {
-                }).getBody();
+                }).getBody().stream().map(LabInstance::new).collect(Collectors.toList());
     }
 
-    private void deleteLab(LabInstance lab) {
+    @Override
+    public void deleteLab(LabInstance lab) {
         log.info("Deleting topology {}", lab.getLabId());
         restTemplate.delete("/api/" + lab.getLabId());
+        if (lab.getLabId().equals(currentLab.getLabId())) {
+            currentLab = null;
+        }
+    }
+
+    @Override
+    public void deleteLab() {
+        deleteLab(currentLab);
     }
 
     private HttpHeaders buildJsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        if (isHwProfile()) {
-            headers.add("Hw-Env", "HW");
-        }
         return headers;
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        if ("hardware".equals(profile)) {
+            deleteLab();
+        }
     }
 }
