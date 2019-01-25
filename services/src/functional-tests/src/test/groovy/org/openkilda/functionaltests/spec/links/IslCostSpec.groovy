@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.isl
+package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -23,13 +23,15 @@ class IslCostSpec extends BaseSpecification {
 
         lockKeeper.removeFlows(rulesToRemove)
 
-        then: "Link status becomes 'FAILED'"
+        then: "ISL status becomes 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
         }
 
         and: "ISL cost after connection loss is not increased"
         islUtils.getIslCost(isl) == islCost
+        islUtils.getIslCost(islUtils.reverseIsl(isl)) == islCost
 
         and: "Add a-switch rules to restore connection"
         lockKeeper.addFlows(rulesToRemove)
