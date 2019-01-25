@@ -86,6 +86,14 @@ public interface ISwitchManager extends IFloodlightService {
     void installDropFlow(final DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Installs the default catch rule for BFD. Only applicable for NoviFlow switches.
+     *
+     * @param dpid datapathId of switch
+     * @throws SwitchOperationException in case of errors
+     */
+    void installBfdCatchFlow(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Installs custom drop rule .. ie cookie, priority, match
      *
      * @param dpid datapathId of switch
