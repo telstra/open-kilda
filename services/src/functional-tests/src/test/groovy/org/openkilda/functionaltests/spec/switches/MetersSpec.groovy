@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.northbound.switches
+package org.openkilda.functionaltests.spec.switches
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers

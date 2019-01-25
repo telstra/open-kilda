@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.northbound.switches
+package org.openkilda.functionaltests.spec.switches
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.messaging.error.MessageError
@@ -9,12 +9,12 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
 class SwitchesSpec extends BaseSpecification {
-    def "System can return list of all switches"() {
+    def "System is able to return a list of all switches"() {
         expect: "System can return list of all switches"
         !northbound.getAllSwitches().empty
     }
 
-    def "System can return certain switch info by its id"() {
+    def "System is able to return a certain switch info by its id"() {
         when: "Request info about certain switch from Northbound"
         def sw = topology.activeSwitches[0]
         def response = northbound.getSwitch(sw.dpId)

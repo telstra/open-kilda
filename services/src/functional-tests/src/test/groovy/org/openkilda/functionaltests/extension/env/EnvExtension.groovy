@@ -49,7 +49,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
             log.info("Virtual topology is successfully created")
         } else if (profile == "hardware") {
             labService.createHwLab(topology)
-            log.info("Successfully redirected to a hardware topology")
+            log.info("Successfully redirected to hardware topology")
         } else {
             throw new RuntimeException("Provided profile '$profile' is unknown. Select one of the following profiles:" +
                     " hardware, virtual")

@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.northbound.switches
+package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeFalse
@@ -22,7 +22,6 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.flows.PingInput
 import org.openkilda.testing.Constants.DefaultRule
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Narrative
@@ -449,14 +448,13 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
-        given: "Two active switches and two possible flow paths at least"
-        def switches = topology.getActiveSwitches()
+        given: "Two active neighboring switches and two possible flow paths at least"
         List<List<PathNode>> possibleFlowPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+        def isl = topology.getIslsForActiveSwitches().find {
+            possibleFlowPaths = database.getPaths(it.srcSwitch.dpId, it.dstSwitch.dpId)*.path.sort { it.size() }
             possibleFlowPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
+        def (srcSwitch, dstSwitch) = [isl.srcSwitch, isl.dstSwitch]
 
         and: "Create a flow going through these switches"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -473,14 +471,10 @@ class SwitchRulesSpec extends BaseSpecification {
         checkTrafficCountersInRules(flow.source, true)
         checkTrafficCountersInRules(flow.destination, true)
 
-        when: "Break a flow ISL (bring switch port down) to cause flow rerouting"
+        when: "Break the flow ISL (bring switch port down) to cause flow rerouting"
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
-        def flowIsls = pathHelper.getInvolvedIsls(flowPath)
-
-        Set<Isl> altFlowIsls = []
-        possibleFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
-
-        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(islUtils.reverseIsl(it) in altFlowIsls) }
+        // Switches may have parallel links, so we need to get involved ISLs.
+        def islToFail = pathHelper.getInvolvedIsls(flowPath).first()
         northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
@@ -493,9 +487,10 @@ class SwitchRulesSpec extends BaseSpecification {
         checkTrafficCountersInRules(flow.source, false)
         checkTrafficCountersInRules(flow.destination, false)
 
-        and: "Revive the ISL back (bring switch port up) and delete the flow"
+        and: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
         northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
+        database.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
