@@ -215,7 +215,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param bandwidth the bandwidth
      * @throws SwitchOperationException Switch not found
      */
-    void modifyMeter(DatapathId dpid, long meterId, long bandwidth) throws SwitchOperationException;
+    void modifyMeterForFlow(DatapathId dpid, long meterId, long bandwidth) throws SwitchOperationException;
 
     /**
      * Deletes the meter from the switch OF_13.

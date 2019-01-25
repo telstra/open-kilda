@@ -929,8 +929,8 @@ class RecordHandler implements Runnable {
         ISwitchManager switchManager = context.getSwitchManager();
 
         try {
-            switchManager.modifyMeter(fwdDpId, fwdMeterId, request.getBandwidth());
-            switchManager.modifyMeter(rvsDpId, rvsMeterId, request.getBandwidth());
+            switchManager.modifyMeterForFlow(fwdDpId, fwdMeterId, request.getBandwidth());
+            switchManager.modifyMeterForFlow(rvsDpId, rvsMeterId, request.getBandwidth());
 
             MeterEntry fwdMeterEntry = OfMeterConverter.toMeterEntry(switchManager.dumpMeterById(fwdDpId, fwdMeterId));
             MeterEntry rvsMeterEntry = OfMeterConverter.toMeterEntry(switchManager.dumpMeterById(rvsDpId, rvsMeterId));
