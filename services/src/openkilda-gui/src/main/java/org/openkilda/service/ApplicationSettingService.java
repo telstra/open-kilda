@@ -18,6 +18,7 @@ package org.openkilda.service;
 import org.openkilda.constants.IConstants;
 import org.openkilda.dao.entity.ApplicationSettingEntity;
 import org.openkilda.dao.repository.ApplicationSettingRepository;
+import org.openkilda.model.SwitchNameStorageType;
 import org.openkilda.utility.CollectionUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,5 +64,39 @@ public class ApplicationSettingService {
             return Integer.valueOf(applicationSettings.get(0).getValue());
         }
         return IConstants.SessionTimeout.DEFAULT_TIME_IN_MINUTE;
+    }
+    
+    /**
+     * Gets the switch name storage type.
+     *
+     * @return the switch name storage type
+     */
+    public SwitchNameStorageType getSwitchNameStorageType() {
+        List<ApplicationSettingEntity> applicationSettings = applicationSettingRepository
+                .findBySettingType(IConstants.ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
+        if (!CollectionUtil.isEmpty(applicationSettings)) {
+            return new SwitchNameStorageType(applicationSettings.get(0).getValue());
+            
+        }
+        return new SwitchNameStorageType(IConstants.SwitchNameStorageType.FILE_STORAGE);
+    }
+    
+    /**
+     * Update switch name storage type.
+     *
+     * @param switchNameStorageType the switch name storage type
+     */
+    public void updateSwitchNameStorageType(final String switchNameStorageType) {
+        List<ApplicationSettingEntity> applicationSettings = applicationSettingRepository
+                .findBySettingType(IConstants.ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
+        ApplicationSettingEntity applicationSetting = new ApplicationSettingEntity();
+        if (!CollectionUtil.isEmpty(applicationSettings)) {
+            applicationSetting = applicationSettings.get(0);
+        }
+        applicationSetting.setSettingType(IConstants.ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
+        applicationSetting.setValue(switchNameStorageType.trim().toUpperCase());
+        applicationSetting.setUpdatedDate(new Date());
+        applicationSettingRepository.save(applicationSetting);
+        IConstants.SwitchNameStorageType.VALUE = switchNameStorageType;
     }
 }

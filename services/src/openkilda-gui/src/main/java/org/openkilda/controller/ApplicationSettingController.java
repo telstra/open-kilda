@@ -19,7 +19,9 @@ import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
+import org.openkilda.model.SwitchNameStorageType;
 import org.openkilda.service.ApplicationSettingService;
+import org.openkilda.utility.StringUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.usermanagement.controller.UserController;
 import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.util.MessageUtils;
+
+import java.util.Arrays;
+import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -89,5 +94,52 @@ public class ApplicationSettingController extends BaseController {
         applicationSettingService.updateSessionTimeout(sessionTimeoutInMinutes);
         request.getSession().setMaxInactiveInterval(sessionTimeoutInMinutes * 60);
         return sessionTimeoutInMinutes;
+    }
+    
+    /**
+     * Gets the switch name storage types.
+     *
+     * @return the switch name storage types
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @RequestMapping(value = "/switchnamestoragetype/list", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.SWITCH_NAME_STORAGE_TYPE })
+    public List<String> getSwitchNameStorageTypes() {
+        return Arrays.asList(IConstants.SwitchNameStorageType.TYPES);
+    }
+    
+    /**
+     * Gets the switch name storage type.
+     *
+     * @return the switch name storage type
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @RequestMapping(value = "/switchnamestoragetype", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.SWITCH_NAME_STORAGE_TYPE })
+    public SwitchNameStorageType getSwitchNameStorageType() {
+        return applicationSettingService.getSwitchNameStorageType();
+    }
+    
+    /**
+     * Save or update switch name storage type.
+     *
+     * @param switchNameStorageType the switch name storage type
+     * @param request the request
+     * @return the string
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @RequestMapping(value = "/switchnamestoragetype", method = RequestMethod.PATCH)
+    @Permissions(values = { IConstants.Permission.SWITCH_NAME_STORAGE_TYPE })
+    public SwitchNameStorageType saveOrUpdateSwitchNameStorageType(@RequestBody final String switchNameStorageType,
+            HttpServletRequest request) {
+        LOGGER.info("[saveOrUpdateSwitchNameStorageType] (switchNameStorageType: " + switchNameStorageType + ")");
+        if (StringUtil.isNullOrEmpty(switchNameStorageType) || !Arrays.asList(IConstants.SwitchNameStorageType.TYPES)
+                .contains(switchNameStorageType.trim().toUpperCase())) {
+            throw new RequestValidationException(
+                    messageUtil.getAttributeNotvalid(IConstants.ApplicationSetting.SWITCH_NAME_STORAGE_TYPE));
+        }
+        activityLogger.log(ActivityType.CONFIG_SWITCH_NAME_STORAGE_TYPE, switchNameStorageType);
+        applicationSettingService.updateSwitchNameStorageType(switchNameStorageType);
+        return new SwitchNameStorageType(switchNameStorageType);
     }
 }

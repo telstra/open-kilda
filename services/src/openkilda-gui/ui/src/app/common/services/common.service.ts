@@ -97,4 +97,15 @@ export class CommonService {
   saveSessionTimeoutSetting(timeout){
     return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/sessiontimeout`,timeout);
   }
+
+  getSwitchNameSourceTypes(){
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/settings/switchnamestoragetype/list`);
+  }
+  getSwitchNameSourceSettings(){
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/settings/switchnamestoragetype`);
+  }
+
+  saveSwitchNameSourceSettings(value){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/switchnamestoragetype`,value);
+  }
 }

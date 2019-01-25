@@ -16,6 +16,8 @@
 package org.openkilda.service;
 
 import org.openkilda.constants.HttpError;
+import org.openkilda.dao.entity.SwitchNameEntity;
+import org.openkilda.dao.repository.SwitchNameRepository;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.PortConfiguration;
@@ -33,6 +35,7 @@ import org.openkilda.model.SwitchMeter;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.store.model.Customer;
 import org.openkilda.store.service.StoreService;
+import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
@@ -41,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -61,6 +65,9 @@ public class SwitchService {
 
     @Autowired
     private StoreService storeService;
+    
+    @Autowired
+    private SwitchNameRepository switchNameRepository;
 
     /**
      * get All SwitchList.
@@ -106,6 +113,16 @@ public class SwitchService {
                 InventorySwitch inventorySwitch = switchStoreService.getSwitch(switchId);
                 if (inventorySwitch != null) {
                     switchInfo = processInventorySwitch(switchInfo, inventorySwitch);
+                } else {
+                    SwitchDiscrepancy discrepancy = new SwitchDiscrepancy();
+                    discrepancy.setControllerDiscrepancy(false);
+                    discrepancy.setStatus(true);
+                    discrepancy.setInventoryDiscrepancy(true);
+
+                    SwitchStatus switchState = new SwitchStatus();
+                    switchState.setControllerStatus(switchInfo.getState());
+                    discrepancy.setStatusValue(switchState);
+                    switchInfo.setDiscrepancy(discrepancy);
                 }
             } catch (Exception ex) {
                 LOGGER.error("[getSwitches] Exception while retrieving switches from store. Exception: "
@@ -387,5 +404,28 @@ public class SwitchService {
      */
     public SwitchMeter getMeters(String switchId) {
         return switchIntegrationService.getMeters(switchId);
+    }
+
+    /**
+     * Save or update switch name.
+     *
+     * @param switchId the switch id
+     * @param switchName the switch name
+     * @return the SwitchInfo
+     */
+    public SwitchInfo saveOrUpdateSwitchName(String switchId, String switchName) {
+        SwitchNameEntity switchNameEntity = new SwitchNameEntity();
+        List<SwitchNameEntity> switchNameList = switchNameRepository.findBySwitchDpid(switchId);
+        if (!CollectionUtil.isEmpty(switchNameList)) {
+            switchNameEntity = switchNameList.get(0);
+        }
+        switchNameEntity.setSwitchDpid(switchId);
+        switchNameEntity.setSwitchName(switchName);
+        switchNameEntity.setUpdatedDate(new Date());
+        switchNameRepository.save(switchNameEntity);
+        SwitchInfo switchInfo = new SwitchInfo();
+        switchInfo.setSwitchId(switchId);
+        switchInfo.setName(switchName);
+        return switchInfo;
     }
 }

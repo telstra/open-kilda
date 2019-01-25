@@ -16,6 +16,8 @@
 package org.openkilda.integration.service;
 
 import org.openkilda.constants.IConstants;
+import org.openkilda.dao.entity.SwitchNameEntity;
+import org.openkilda.dao.repository.SwitchNameRepository;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.converter.IslLinkConverter;
@@ -32,10 +34,12 @@ import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.service.ApplicationService;
+import org.openkilda.service.ApplicationSettingService;
 import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
+import org.openkilda.utility.StringUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -85,6 +89,12 @@ public class SwitchIntegrationService {
     
     @Autowired
     private FlowConverter flowConverter;
+    
+    @Autowired
+    private ApplicationSettingService applicationSettingService;
+    
+    @Autowired
+    private SwitchNameRepository switchNameRepository;
 
     /**
      * Gets the switches.
@@ -113,8 +123,17 @@ public class SwitchIntegrationService {
         LOGGER.info("Inside getSwitchInfoSetName : Start");
         if (switches != null && !StringUtils.isEmpty(switches)) {
 
-            Map<String, String> csNames = getCustomSwitchNameFromFile();
-
+            Map<String, String> csNames = new HashMap<String, String>();
+            if (StringUtil.isNullOrEmpty(IConstants.SwitchNameStorageType.VALUE)) {
+                IConstants.SwitchNameStorageType.VALUE = applicationSettingService.getSwitchNameStorageType().getType();
+            }
+            if (IConstants.SwitchNameStorageType.VALUE
+                    .equalsIgnoreCase(IConstants.SwitchNameStorageType.FILE_STORAGE)) {
+                csNames = getCustomSwitchNameFromFile();
+            } else if (IConstants.SwitchNameStorageType.VALUE
+                    .equalsIgnoreCase(IConstants.SwitchNameStorageType.DATABASE_STORAGE)) {
+                csNames = getCustomSwitchNameFromDatabase();
+            }
             for (SwitchInfo switchInfo : switches) {
                 switchInfo.setName(customSwitchName(csNames, switchInfo.getSwitchId()));
             }
@@ -247,6 +266,20 @@ public class SwitchIntegrationService {
         }
         return csNames;
 
+    }
+    
+    /**
+     * Gets the custom switch name from database.
+     *
+     * @return the custom switch name from database
+     */
+    public Map<String, String> getCustomSwitchNameFromDatabase() {
+        Map<String, String> csNames = new HashMap<String, String>();
+        List<SwitchNameEntity> switchNames = switchNameRepository.findAll();
+        for (SwitchNameEntity name : switchNames) {
+            csNames.put(name.getSwitchDpid(), name.getSwitchName());
+        }
+        return csNames;
     }
 
     /**

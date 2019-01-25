@@ -10,6 +10,7 @@ import { ClipboardService } from "ngx-clipboard";
 import { Title } from '@angular/platform-browser';
 import { CommonService } from '../../../common/services/common.service';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
+import { FormGroup, FormBuilder } from '@angular/forms';
 
 @Component({
   selector: 'app-switch-detail',
@@ -19,12 +20,15 @@ import { StoreSettingtService } from 'src/app/common/services/store-setting.serv
 export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
   switchDetail:any = {};
   switch_id: string;
+  switchNameForm:FormGroup;
   name: string;
   address: string;
   hostname: string;
   description: string;
   state: string;
   openedTab : string = 'port';
+  isSwitchNameEdit = false;
+  isStorageDBType= false;
   currentRoute: string = 'switch-details';
   clipBoardItems = {
     sourceSwitchName:"",
@@ -56,7 +60,8 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
         private clipboardService: ClipboardService,
         private titleService: Title,
         private commonService: CommonService,
-        private storeSwitchService:StoreSettingtService
+        private storeSwitchService:StoreSettingtService,
+        private formBuilder:FormBuilder
         ) {
 
       this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
@@ -75,7 +80,11 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
          this.router.navigated = false;
         this.router.navigate([this.router.url]);
     }
+    this.commonService.getSwitchNameSourceSettings().subscribe((response)=>{
+      this.isStorageDBType = response && response['type']=="DATABASE_STORAGE";
+    },error=>{
 
+    })
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd)).pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(event => {
@@ -86,7 +95,10 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
         else{
           this.currentRoute = 'switch-details';
         }
-      });     
+      });
+      this.switchNameForm = this.formBuilder.group({
+        name: [""]
+      });   
   }
 
   maskSwitchId(switchType, e) {
@@ -113,6 +125,34 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     this.clipboardService.copyFromContent(this.clipBoardItems[copyItem]);
   }
 
+  editSwitchName(){
+    this.isSwitchNameEdit = true;
+  }
+
+  cancelSwitchName(){
+      this.isSwitchNameEdit = false;
+  }
+
+  saveSwitchName(){
+    this.isSwitchNameEdit = false;
+    var self =this;
+    this.loaderService.show('Saving Switch Name..');
+    let name = this.switchNameForm.controls['name'].value;
+    let switchId = this.switch_id;
+    this.switchService.saveSwitcName(name,switchId).subscribe((response)=>{
+      self.loaderService.hide();
+      self.name = response.name;
+      self.switchDetail.name = response.name;
+      let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
+      localStorage.removeItem('switchDetailsJSON');
+      retrievedSwitchObject.name = response.name;
+      localStorage.setItem('switchDetailsJSON',JSON.stringify(retrievedSwitchObject));
+      localStorage.removeItem('SWITCHES_LIST');
+    },(error)=>{ 
+      this.loaderService.hide();
+    })
+  }
+
   ngAfterViewInit(){
     
   }
@@ -135,6 +175,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
         this.switchDetail = retrievedSwitchObject;
         localStorage.setItem('switchDetailsJSON',JSON.stringify(retrievedSwitchObject));
         this.switch_id =retrievedSwitchObject.switch_id;
+        this.switchNameForm.controls['name'].setValue(retrievedSwitchObject.name);
         this.name =retrievedSwitchObject.name;
         this.address =retrievedSwitchObject.address;
         this.hostname =retrievedSwitchObject.hostname;

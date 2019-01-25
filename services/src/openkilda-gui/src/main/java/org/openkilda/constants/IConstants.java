@@ -16,7 +16,6 @@
 package org.openkilda.constants;
 
 import java.util.ArrayList;
-
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -52,6 +51,22 @@ public abstract class IConstants {
         }
         
         public static String SESSION_TIMEOUT = "session_timeout";
+        
+        public static String SWITCH_NAME_STORAGE_TYPE = "switch_name_storage_type";
+    }
+    
+    public static final class SwitchNameStorageType {
+        private SwitchNameStorageType() {
+
+        }
+
+        public static String VALUE = "";
+        
+        public static final String FILE_STORAGE = "FILE_STORAGE";
+
+        public static final String DATABASE_STORAGE = "DATABASE_STORAGE";
+        
+        public static final String[] TYPES = { FILE_STORAGE, DATABASE_STORAGE };
     }
     
     public final class Role {
@@ -190,6 +205,10 @@ public abstract class IConstants {
         public static final String STORE_SETTING = "store_setting";
         
         public static final String SESSION_TIMEOUT_SETTING = "session_timeout_setting";
+        
+        public static final String SWITCH_NAME_STORAGE_TYPE = "switch_name_storage_type";
+        
+        public static final String SW_SWITCH_NAME_UPDATE = "sw_switch_name_update";
         
     }
 

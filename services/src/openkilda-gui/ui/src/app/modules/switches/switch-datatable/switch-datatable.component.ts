@@ -111,12 +111,13 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
   showSwitch(switchObj: Switch) {
     var switchDetailsJSON = {
-      switch_id: switchObj.switch_id,
-      name: switchObj.name,
-      address: switchObj.address,
-      hostname: switchObj.hostname,
-      description: switchObj.description,
-      state: switchObj.state
+      "switch_id": switchObj.switch_id,
+      "name": switchObj.name,
+      "common-name":switchObj['common-name'],
+      "address": switchObj.address,
+      "hostname": switchObj.hostname,
+      "description": switchObj.description,
+      "state": switchObj.state
     };
 
     localStorage.setItem(

@@ -28,6 +28,7 @@ import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.service.SwitchService;
 import org.openkilda.store.model.Customer;
+import org.openkilda.utility.StringUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.usermanagement.exception.RequestValidationException;
+import org.usermanagement.util.MessageUtils;
 
 import java.util.List;
 
@@ -59,11 +62,14 @@ public class SwitchController {
     @Autowired
     private ActivityLogger activityLogger;
 
+    @Autowired
+    private MessageUtils messageUtil;
     /**
      * Gets the switches detail.
      *
      * @return the switches detail
      */
+    
     @RequestMapping(value = "/list")
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<SwitchInfo> getSwitchesDetail(
@@ -80,6 +86,27 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody SwitchInfo getSwitchDetail(@PathVariable final String switchId) {
         return serviceSwitch.getSwitch(switchId);
+    }
+
+    /**
+     * Save or update switch name.
+     *
+     * @param switchId
+     *            the switch id
+     * @param switchName
+     *            the switch name
+     * @return the SwitchInfo
+     */
+    @RequestMapping(value = "/name/{switchId}", method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.SW_SWITCH_NAME_UPDATE })
+    public @ResponseBody SwitchInfo saveOrUpdateSwitchName(@PathVariable final String switchId,
+            @RequestBody final String switchName) {
+        if (StringUtil.isNullOrEmpty(switchName)) {
+            throw new RequestValidationException(messageUtil.getAttributeNotNull("switch_name"));
+        }
+        activityLogger.log(ActivityType.UPDATE_SWITCH_NAME, switchId);
+        return serviceSwitch.saveOrUpdateSwitchName(switchId, switchName);
     }
 
     /**
