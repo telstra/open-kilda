@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.openkilda.floodlight.kafka.ErrorMessageBuilder.anError;
 import static org.openkilda.messaging.Utils.MAPPER;
+import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
@@ -35,9 +36,7 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.kafka.dispatcher.CommandDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.PingRequestDispatcher;
-import org.openkilda.floodlight.kafka.dispatcher.RemoveBfdCatchDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.RemoveBfdSessionDispatcher;
-import org.openkilda.floodlight.kafka.dispatcher.SetupBfdCatchDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.SetupBfdSessionDispatcher;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
@@ -482,13 +481,18 @@ class RecordHandler implements Runnable {
                 // TODO: this isn't always added (ie if OF1.2). Is there a better response?
                 switchManager.installVerificationRule(dpid, false);
                 installedRules.add(VERIFICATION_UNICAST_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_BFD_CATCH) {
+                // TODO: this isn't installed as well. Refactor this section
+                switchManager.installCatchFlow(dpid);
+                installedRules.add(CATCH_BFD_RULE_COOKIE);
             } else {
                 switchManager.installDefaultRules(dpid);
                 installedRules.addAll(asList(
                         DROP_RULE_COOKIE,
                         VERIFICATION_BROADCAST_RULE_COOKIE,
                         VERIFICATION_UNICAST_RULE_COOKIE,
-                        DROP_VERIFICATION_LOOP_RULE_COOKIE
+                        DROP_VERIFICATION_LOOP_RULE_COOKIE,
+                        CATCH_BFD_RULE_COOKIE
                 ));
             }
 
@@ -542,6 +546,10 @@ class RecordHandler implements Runnable {
                     case REMOVE_VERIFICATION_LOOP:
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE).build();
+                        break;
+                    case REMOVE_BFD_CATCH:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(CATCH_BFD_RULE_COOKIE).build();
                         break;
                     default:
                         logger.warn("Received unexpected delete switch rule action: {}", deleteAction);
@@ -968,9 +976,7 @@ class RecordHandler implements Runnable {
         private final List<CommandDispatcher<?>> dispatchers = ImmutableList.of(
                 new PingRequestDispatcher(),
                 new SetupBfdSessionDispatcher(),
-                new RemoveBfdSessionDispatcher(),
-                new SetupBfdCatchDispatcher(),
-                new RemoveBfdCatchDispatcher());
+                new RemoveBfdSessionDispatcher());
 
         public Factory(ConsumerContext context) {
             this.context = context;
