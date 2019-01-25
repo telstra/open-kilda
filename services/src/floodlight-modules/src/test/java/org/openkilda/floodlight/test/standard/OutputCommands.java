@@ -85,6 +85,7 @@ public interface OutputCommands {
 
     /**
      * Build transit rule for flow.
+     *
      * @param inputPort input port.
      * @param outputPort output port.
      * @param transitVlan vlan value.
@@ -116,6 +117,7 @@ public interface OutputCommands {
 
     /**
      * Create rule for one switch replace flow.
+     *
      * @param inputPort input port.
      * @param outputPort output port.
      * @param inputVlan input vlan.
@@ -157,6 +159,7 @@ public interface OutputCommands {
 
     /**
      * Create rule for one switch flow.
+     *
      * @param inputPort input port.
      * @param outputPort output port.
      * @param meterId meter id.
@@ -189,6 +192,7 @@ public interface OutputCommands {
 
     /**
      * Create rule for one switch pop flow.
+     *
      * @param inputPort input port.
      * @param outputPort output port.
      * @param meterId meter id.
@@ -223,6 +227,7 @@ public interface OutputCommands {
 
     /**
      * Create rule for one switch push flow.
+     *
      * @param inputPort input port.
      * @param outputPort output port.
      * @param outputVlan output vlan.
@@ -264,6 +269,7 @@ public interface OutputCommands {
 
     /**
      * Create meter.
+     *
      * @param bandwidth rate for the meter.
      * @param burstSize burst size.
      * @param meterId meter identifier.
@@ -284,6 +290,7 @@ public interface OutputCommands {
 
     /**
      * Create droop loop rule.
+     *
      * @param dpid datapath of the switch.
      * @return created OFFlowAdd.
      */
@@ -300,6 +307,77 @@ public interface OutputCommands {
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setMatch(match)
+                .build();
+    }
+
+    default OFFlowAdd installVerificationBroadcastRule(DatapathId defaultDpId) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(SwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE))
+                .setPriority(SwitchManager.VERIFICATION_RULE_PRIORITY)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(Arrays.asList(
+                        ofFactory.instructions().buildMeter().setMeterId(2L).build(),
+                        ofFactory.instructions().applyActions(Arrays.asList(
+                                ofFactory.actions().buildOutput()
+                                        .setMaxLen(0xFFFFFFFF)
+                                        .setPort(OFPort.CONTROLLER)
+                                        .build(),
+                                ofFactory.actions().buildSetField()
+                                        .setField(
+                                                ofFactory.oxms().buildEthDst()
+                                                        .setValue(MacAddress.of(defaultDpId))
+                                                        .build())
+                                        .build()))))
+                .build();
+    }
+
+    default OFFlowAdd installVerificationUnicastRule(DatapathId defaultDpId) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_DST, MacAddress.of(defaultDpId))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(SwitchManager.VERIFICATION_UNICAST_RULE_COOKIE))
+                .setPriority(SwitchManager.VERIFICATION_RULE_PRIORITY)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(Arrays.asList(
+                        ofFactory.instructions().buildMeter().setMeterId(3L).build(),
+                        ofFactory.instructions().applyActions(Arrays.asList(
+                                ofFactory.actions().buildOutput()
+                                        .setMaxLen(0xFFFFFFFF)
+                                        .setPort(OFPort.CONTROLLER)
+                                        .build(),
+                                ofFactory.actions().buildSetField()
+                                        .setField(
+                                                ofFactory.oxms().buildEthDst()
+                                                        .setValue(MacAddress.of(defaultDpId))
+                                                        .build())
+                                        .build()))))
+                .build();
+    }
+
+    /**
+     * Expected result for install default rules.
+     *
+     * @return expected OFFlowAdd instance.
+     */
+    default OFFlowAdd installDropFlowRule() {
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(SwitchManager.DROP_RULE_COOKIE))
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setPriority(1)
+                .setMatch(ofFactory.buildMatch().build())
+                .setXid(0L)
                 .build();
     }
 }

@@ -58,6 +58,8 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -96,6 +98,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -109,6 +112,7 @@ public class SwitchManagerTest {
     private static final long smallBandwidth = 100L;
     private static final String cookieHex = "7B";
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
+    private static final DatapathId defaultDpid = DatapathId.of(1);
     public static final String CENTEC_SWITCH_DESCRIPTION = "Centec";
     public static final int hugeBandwidth = 400000;
     private SwitchManager switchManager;
@@ -137,8 +141,60 @@ public class SwitchManagerTest {
     }
 
     @Test
-    public void installDefaultRules() {
-        // TODO
+    public void installDefaultRules() throws Exception {
+        Map<Long, Capture<OFFlowMod>> capture = prepareForDefaultRuleInstall();
+
+        switchManager.installDefaultRules(defaultDpid);
+        OFFlowMod dropFlow = capture.get(DROP_RULE_COOKIE).getValue();
+        OFFlowMod verificationBroadcast = capture.get(VERIFICATION_BROADCAST_RULE_COOKIE).getValue();
+        OFFlowMod verificationUnicast = capture.get(VERIFICATION_UNICAST_RULE_COOKIE).getValue();
+        OFFlowMod dropLoop = capture.get(DROP_VERIFICATION_LOOP_RULE_COOKIE).getValue();
+
+        assertEquals(scheme.installDropFlowRule(), dropFlow);
+        assertEquals(scheme.installVerificationBroadcastRule(defaultDpid), verificationBroadcast);
+        assertEquals(scheme.installVerificationUnicastRule(defaultDpid), verificationUnicast);
+        assertEquals(scheme.installDropLoopRule(defaultDpid), dropLoop);
+    }
+
+    private Map<Long, Capture<OFFlowMod>> prepareForDefaultRuleInstall() throws Exception {
+        ListenableFuture<List<OFMeterConfigStatsReply>> ofStatsFuture = mock(ListenableFuture.class);
+        OFMeterConfigStatsReply statsReply = mock(OFMeterConfigStatsReply.class);
+        mockGetMetersRequest(ImmutableList.of(meterId), true, 10L);
+
+        Capture<OFFlowMod> captureDropFlow = EasyMock.newCapture();
+        Capture<OFFlowMod> captureVerificationBroadcast = EasyMock.newCapture();
+        Capture<OFFlowMod> captureVerificationUnicast = EasyMock.newCapture();
+        Capture<OFFlowMod> captureDropLoop = EasyMock.newCapture();
+
+        expect(ofSwitchService.getActiveSwitch(defaultDpid)).andStubReturn(iofSwitch);
+
+        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+        expect(iofSwitch.getId()).andReturn(defaultDpid).times(8);
+        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(iofSwitch.writeStatsRequest(anyObject(OFMeterConfigStatsRequest.class))).andStubReturn(ofStatsFuture);
+        expect(iofSwitch.write(capture(captureDropFlow))).andReturn(true).times(1);
+        expect(iofSwitch.write(capture(captureVerificationBroadcast))).andReturn(true).times(2);
+        expect(iofSwitch.write(capture(captureVerificationUnicast))).andReturn(true).times(2);
+        expect(iofSwitch.write(capture(captureDropLoop))).andReturn(true).times(2);
+        expect(iofSwitch.write(anyObject(OFMeterMod.class))).andReturn(true).times(5);
+        expect(iofSwitch.writeRequest(anyObject(OFBarrierRequest.class)))
+                .andReturn(Futures.immediateFuture(createMock(OFBarrierReply.class))).times(2);
+
+        expect(ofStatsFuture.get(anyLong(), anyObject())).andStubReturn(Collections.singletonList(statsReply));
+
+        expect(switchDescription.getManufacturerDescription()).andReturn("").times(6);
+
+        expectLastCall();
+
+        replay(ofSwitchService);
+        replay(iofSwitch);
+        replay(ofStatsFuture);
+        replay(statsReply);
+        replay(switchDescription);
+        return ImmutableMap.of(DROP_RULE_COOKIE, captureDropFlow,
+                VERIFICATION_BROADCAST_RULE_COOKIE, captureVerificationBroadcast,
+                VERIFICATION_UNICAST_RULE_COOKIE, captureVerificationUnicast,
+                DROP_VERIFICATION_LOOP_RULE_COOKIE, captureDropLoop);
     }
 
     @Test
