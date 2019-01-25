@@ -5,9 +5,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.meter.SwitchMeterEntries
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -34,7 +32,6 @@ class MetersSpec extends BaseSpecification {
         requireProfiles("hardware")
     }
 
-    @Ignore
     @Issue("https://github.com/telstra/open-kilda/issues/1733")
     def "Able to delete a meter from a switch"() {
         setup: "Select a switch and retrieve default meters"
