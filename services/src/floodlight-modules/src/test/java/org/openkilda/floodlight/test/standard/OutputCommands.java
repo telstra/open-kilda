@@ -315,7 +315,7 @@ public interface OutputCommands {
                 .setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST))
                 .build();
         return ofFactory.buildFlowAdd()
-                .setCookie(U64.of(SwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE))
+                .setCookie(U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE))
                 .setPriority(SwitchManager.VERIFICATION_RULE_PRIORITY)
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
@@ -342,7 +342,7 @@ public interface OutputCommands {
                 .setExact(MatchField.ETH_DST, MacAddress.of(defaultDpId))
                 .build();
         return ofFactory.buildFlowAdd()
-                .setCookie(U64.of(SwitchManager.VERIFICATION_UNICAST_RULE_COOKIE))
+                .setCookie(U64.of(Cookie.VERIFICATION_UNICAST_RULE_COOKIE))
                 .setPriority(SwitchManager.VERIFICATION_RULE_PRIORITY)
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
@@ -371,7 +371,7 @@ public interface OutputCommands {
      */
     default OFFlowAdd installDropFlowRule() {
         return ofFactory.buildFlowAdd()
-                .setCookie(U64.of(SwitchManager.DROP_RULE_COOKIE))
+                .setCookie(U64.of(Cookie.DROP_RULE_COOKIE))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
