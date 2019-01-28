@@ -46,6 +46,8 @@ import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
@@ -158,6 +160,31 @@ public class LinkServiceImpl implements LinkService {
                 .thenApply(responses -> getLinkPropsResult(responses, errors));
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<LinkMaxBandwidthDto> updateLinkBandwidth(SwitchId srcSwitch, Integer srcPort,
+                                                                      SwitchId dstSwitch, Integer dstPort,
+                                                                      LinkMaxBandwidthRequest request) {
+        org.openkilda.messaging.model.LinkPropsDto linkProps = linkPropsMapper.toLinkProps(srcSwitch, srcPort,
+                dstSwitch, dstPort, request);
+        LinkPropsPut teRequest = new LinkPropsPut(linkProps);
+        String correlationId = RequestCorrelationId.getId();
+        CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), correlationId);
+        CompletableFuture<LinkPropsResponse> responseFuture =
+                messagingChannel.sendAndGet(nbworkerTopic, message)
+                        .thenApply(LinkPropsResponse.class::cast);
+        LinkMaxBandwidthDto response;
+        try {
+            response = linkPropsMapper.toLinkMaxBandwidth(responseFuture.get().getLinkProps());
+        } catch (Exception e) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.PARAMETERS_INVALID,
+                    e.getMessage(), "Unhandled exception in put linkprops operation");
+        }
+        return CompletableFuture.completedFuture(response);
+    }
+
     @Override
     public CompletableFuture<BatchResults> delLinkProps(List<LinkPropsDto> linkPropsList) {
         List<CompletableFuture<List<InfoData>>> pendingRequest = new ArrayList<>(linkPropsList.size());
@@ -213,7 +240,7 @@ public class LinkServiceImpl implements LinkService {
 
     @Override
     public CompletableFuture<List<String>> rerouteFlowsForLink(SwitchId srcSwitch, Integer srcPort,
-                                                                SwitchId dstSwitch, Integer dstPort) {
+                                                               SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Reroute all flows for a particular link request processing");
         RerouteFlowsForIslRequest data = null;
@@ -243,7 +270,7 @@ public class LinkServiceImpl implements LinkService {
         DeleteLinkRequest request;
         try {
             request = new DeleteLinkRequest(new SwitchId(linkParameters.getSrcSwitch()), linkParameters.getSrcPort(),
-                                            new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort());
+                    new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort());
         } catch (IllegalArgumentException e) {
             logger.error("Could not parse delete link request arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
