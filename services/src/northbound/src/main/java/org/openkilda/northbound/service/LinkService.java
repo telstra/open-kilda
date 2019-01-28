@@ -19,6 +19,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
@@ -103,4 +104,12 @@ public interface LinkService {
      * @return result of the operation wrapped into {@link DeleteLinkResult}. True means no errors is occurred.
      */
     CompletableFuture<DeleteLinkResult> deleteLink(LinkParametersDto linkParameters);
+
+    /**
+     * Update maximum bandwidth and cost for link.
+     *
+     * @param linkMaxBandwidth a link parameters.
+     * @return updated link parameters.
+     */
+    CompletableFuture<LinkMaxBandwidthDto> updateLinkBandwidth(LinkMaxBandwidthDto linkMaxBandwidth);
 }
