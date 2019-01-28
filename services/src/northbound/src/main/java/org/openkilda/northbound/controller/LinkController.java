@@ -20,6 +20,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
@@ -183,5 +185,17 @@ public class LinkController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LinkDto>> updateLinkUnderMaintenance(@RequestBody LinkUnderMaintenanceDto link) {
         return linkService.updateLinkUnderMaintenance(link);
+    }
+
+    @ApiOperation(value = "Update maximum bandwidth and cost on the link", response = LinkMaxBandwidthDto.class)
+    @PatchMapping(path = "/links/bandwidth")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<LinkMaxBandwidthDto> updateLinkParams(
+            @RequestParam(value = "src_switch") SwitchId srcSwitch,
+            @RequestParam(value = "src_port") Integer srcPort,
+            @RequestParam(value = "dst_switch") SwitchId dstSwitch,
+            @RequestParam(value = "dst_port") Integer dstPort,
+            @RequestBody LinkMaxBandwidthRequest linkMaxBandwidth) {
+        return linkService.updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
     }
 }

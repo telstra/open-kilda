@@ -51,6 +51,12 @@ public class IslInfoData extends CacheTimeTag {
     private final long speed;
 
     /**
+     * Maximum bandwidth.
+     */
+    @JsonProperty("maximum_bandwidth")
+    private final long maxBandwidth;
+
+    /**
      * Available bandwidth.
      */
     @JsonProperty("available_bandwidth")
@@ -92,19 +98,20 @@ public class IslInfoData extends CacheTimeTag {
                 that.getState(),
                 that.getTimeCreateMillis(),
                 that.getTimeModifyMillis(),
-                that.isUnderMaintenance());
+                that.isUnderMaintenance(),
+                that.getMaxBandwidth());
     }
 
     /**
      * Simple constructor for an ISL with only source/destination and state.
      */
     public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
-        this(-1, source, destination, 0, 0, state, null, null, underMaintenance);
+        this(-1, source, destination, 0, 0, state, null, null, underMaintenance, 0);
     }
 
     public IslInfoData(long latency, PathNode source, PathNode destination, long speed,
                        IslChangeType state, long availableBandwidth, boolean underMaintenance) {
-        this(latency, source, destination, speed, availableBandwidth, state, null, null, underMaintenance);
+        this(latency, source, destination, speed, availableBandwidth, state, null, null, underMaintenance, 0);
     }
 
     @JsonCreator
@@ -116,7 +123,8 @@ public class IslInfoData extends CacheTimeTag {
                        @JsonProperty("state") IslChangeType state,
                        @JsonProperty("time_create") Long timeCreateMillis,
                        @JsonProperty("time_modify") Long timeModifyMillis,
-                       @JsonProperty("under_maintenance") boolean underMaintenance) {
+                       @JsonProperty("under_maintenance") boolean underMaintenance,
+                       @JsonProperty("maximum_bandwidth") long maxBandwidth) {
         this.latency = latency;
         this.source = source;
         this.destination = destination;
@@ -127,6 +135,7 @@ public class IslInfoData extends CacheTimeTag {
         this.timeModifyMillis = timeModifyMillis;
         this.id = String.format("%s_%d", source.getSwitchId(), source.getPortNo());
         this.underMaintenance = underMaintenance;
+        this.maxBandwidth = maxBandwidth;
     }
 
     /**

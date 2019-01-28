@@ -491,7 +491,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                         pathDto.getSeqId(),
                         pathDto.getSegLatency()))
                 .collect(Collectors.toList());
-        return new IslInfoData(0, path.get(0), path.get(1), dto.getSpeed(),
+        return new IslInfoData(0, path.get(0), path.get(1), dto.getMaxBandwidth(),
                 IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth(), dto.isUnderMaintenance());
     }
 
