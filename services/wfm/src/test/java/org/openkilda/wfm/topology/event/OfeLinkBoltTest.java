@@ -236,7 +236,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.discovery = Mockito.mock(DiscoveryManager.class);
         ArgumentCaptor<Switch> switchCaptor = ArgumentCaptor.forClass(Switch.class);
-        bolt.dispatchSyncInProgress(tuple, inputMessage);
+        bolt.dispatch(tuple, inputMessage);
         Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
 
         assertEquals(2, switchCaptor.getValue().getPorts().size());
@@ -264,7 +264,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.discovery = Mockito.mock(DiscoveryManager.class);
         ArgumentCaptor<Switch> switchCaptor = ArgumentCaptor.forClass(Switch.class);
-        bolt.dispatchMain(tuple, inputMessage);
+        bolt.dispatch(tuple, inputMessage);
         Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
 
         assertEquals(2, switchCaptor.getValue().getPorts().size());
