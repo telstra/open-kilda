@@ -40,12 +40,15 @@ import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
@@ -55,6 +58,7 @@ import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
+import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -158,14 +162,35 @@ public class LinkServiceImpl implements LinkService {
                 .thenApply(responses -> getLinkPropsResult(responses, errors));
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<LinkMaxBandwidthDto> updateLinkBandwidth(SwitchId srcSwitch, Integer srcPort,
+                                                                      SwitchId dstSwitch, Integer dstPort,
+                                                                      LinkMaxBandwidthRequest input) {
+        org.openkilda.messaging.model.LinkPropsDto linkProps = org.openkilda.messaging.model.LinkPropsDto.builder()
+                .source(new NetworkEndpoint(srcSwitch, srcPort))
+                .dest(new NetworkEndpoint(dstSwitch, dstPort))
+                .props(ImmutableMap.of(LinkProps.MAX_BANDWIDTH_PROP_NAME,
+                        String.valueOf(input.getMaximumBandwidth())))
+                .build();
+        LinkPropsPut request = new LinkPropsPut(linkProps);
+        String correlationId = RequestCorrelationId.getId();
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(response -> linkPropsMapper
+                        .toLinkMaxBandwidth(((LinkPropsResponse) response).getLinkProps()));
+    }
+
     @Override
     public CompletableFuture<BatchResults> delLinkProps(List<LinkPropsDto> linkPropsList) {
         List<CompletableFuture<List<InfoData>>> pendingRequest = new ArrayList<>(linkPropsList.size());
 
         for (LinkPropsDto requestItem : linkPropsList) {
-            LinkPropsDrop teRequest = new LinkPropsDrop(linkPropsMapper.toLinkPropsMask(requestItem));
+            LinkPropsDrop request = new LinkPropsDrop(linkPropsMapper.toLinkPropsMask(requestItem));
             String requestId = idFactory.produceChained(RequestCorrelationId.getId());
-            CommandMessage message = new CommandMessage(teRequest, System.currentTimeMillis(), requestId);
+            CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), requestId);
 
             pendingRequest.add(messagingChannel.sendAndGetChunked(nbworkerTopic, message));
         }
@@ -213,7 +238,7 @@ public class LinkServiceImpl implements LinkService {
 
     @Override
     public CompletableFuture<List<String>> rerouteFlowsForLink(SwitchId srcSwitch, Integer srcPort,
-                                                                SwitchId dstSwitch, Integer dstPort) {
+                                                               SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Reroute all flows for a particular link request processing");
         RerouteFlowsForIslRequest data = null;
@@ -243,7 +268,7 @@ public class LinkServiceImpl implements LinkService {
         DeleteLinkRequest request;
         try {
             request = new DeleteLinkRequest(new SwitchId(linkParameters.getSrcSwitch()), linkParameters.getSrcPort(),
-                                            new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort());
+                    new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort());
         } catch (IllegalArgumentException e) {
             logger.error("Could not parse delete link request arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,

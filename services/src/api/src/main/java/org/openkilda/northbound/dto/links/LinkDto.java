@@ -35,6 +35,9 @@ public class LinkDto {
     @JsonProperty("speed")
     private long speed;
 
+    @JsonProperty("maximum_bandwidth")
+    private long maxBandwidth;
+
     @JsonProperty("available_bandwidth")
     private long availableBandwidth;
 

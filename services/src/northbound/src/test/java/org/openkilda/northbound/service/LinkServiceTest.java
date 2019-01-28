@@ -103,7 +103,7 @@ public class LinkServiceTest {
         assertFalse("List of link shouldn't be empty", result.isEmpty());
 
         LinkDto link = result.get(0);
-        assertThat(link.getSpeed(), is(0L));
+        assertThat(link.getMaxBandwidth(), is(0L));
         assertThat(link.getState(), is(LinkStatus.DISCOVERED));
 
         assertFalse(link.getPath().isEmpty());
@@ -225,7 +225,7 @@ public class LinkServiceTest {
         assertFalse("List of link shouldn't be empty", result.isEmpty());
 
         LinkDto link = result.get(0);
-        assertThat(link.getSpeed(), is(0L));
+        assertThat(link.getMaxBandwidth(), is(0L));
         assertThat(link.getState(), is(LinkStatus.DISCOVERED));
 
         assertFalse(link.getPath().isEmpty());
