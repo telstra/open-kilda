@@ -191,7 +191,7 @@ class RecordHandler implements Runnable {
         } else if (data instanceof DumpPortDescriptionRequest) {
             doDumpPortDescriptionRequest(message);
         } else if (data instanceof DumpMetersRequest) {
-            doDumpMetersRequest(message, replyToTopic);
+            doDumpMetersRequest(message);
         } else {
             logger.error("Unable to handle '{}' request - handler not found.", data);
         }
@@ -850,9 +850,10 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDumpMetersRequest(CommandMessage message, String replyToTopic) {
+    private void doDumpMetersRequest(CommandMessage message) {
         DumpMetersRequest request = (DumpMetersRequest) message.getData();
 
+        String replyToTopic = context.getKafkaNorthboundTopic();
         final IKafkaProducerService producerService = getKafkaProducer();
 
         try {
