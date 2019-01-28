@@ -206,7 +206,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
             try (CorrelationContextClosable closable = CorrelationContext.create(correlationId)) {
 
                 InfoMessage infoMessage = new InfoMessage(transform.apply(data),
-                        System.currentTimeMillis(), correlationId, Destination.WFM_STATS);
+                        System.currentTimeMillis(), correlationId, Destination.WFM_STATS, null);
                 producerService.sendMessageAndTrack(statisticsTopic, infoMessage);
             }
         }

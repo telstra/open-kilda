@@ -16,15 +16,20 @@
 package org.openkilda.messaging.ctrl;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.openkilda.messaging.Utils.*;
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
+import static org.openkilda.messaging.Utils.DESTINATION;
+import static org.openkilda.messaging.Utils.PAYLOAD;
+import static org.openkilda.messaging.Utils.ROUTE;
+import static org.openkilda.messaging.Utils.TIMESTAMP;
+
+import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
 
 /**
  * Class represents CTRL request message.
