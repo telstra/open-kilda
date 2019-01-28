@@ -32,7 +32,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.net.Inet4Address;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -352,7 +351,7 @@ public class DiscoveryManagerTest {
         List<NetworkEndpoint> affectedEndpoints = filterEndpointsByDatapath(srcNode1.getDatapath(), allEndpoints);
         Switch switchRecord = new Switch(
                 srcNode1.getDatapath(),
-                Inet4Address.getByName("127.0.2.2"), ImmutableSet.of(Switch.Feature.METERS),
+                "127.0.2.2", ImmutableSet.of(Switch.Feature.METERS),
                 affectedEndpoints.stream()
                         .map(entry -> new SwitchPort(entry.getPortNumber(), SwitchPort.State.UP))
                         .collect(Collectors.toList())

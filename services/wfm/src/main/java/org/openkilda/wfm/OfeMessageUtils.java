@@ -215,8 +215,7 @@ public final class OfeMessageUtils {
         CommandMessage message = new CommandMessage(
                 new DiscoverIslCommandData(switchId, Integer.valueOf(portId)), // Payload
                 System.currentTimeMillis(),
-                correlationId, Destination.CONTROLLER
-        );
+                correlationId, Destination.CONTROLLER);
         return MAPPER.writeValueAsString(message);
     }
 }
