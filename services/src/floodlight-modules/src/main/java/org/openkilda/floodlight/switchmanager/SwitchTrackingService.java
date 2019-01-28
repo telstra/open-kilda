@@ -289,7 +289,8 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
                                             port.isEnabled() ? SwitchPort.State.UP : SwitchPort.State.DOWN))
                 .collect(Collectors.toList());
         Set<Switch.Feature> features = featureDetector.detectSwitch(sw);
-        return new Switch(new SwitchId(sw.getId().getLong()), switchManager.getSwitchIpAddress(sw), features, ports);
+        return new Switch(new SwitchId(sw.getId().getLong()), switchManager.getSwitchIpAddress(sw).toString(), features,
+                ports);
     }
 
     private void logSwitchEvent(DatapathId dpId, SwitchChangeType event) {
