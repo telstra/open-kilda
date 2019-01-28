@@ -394,7 +394,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     private void sendStatsMessage(InfoData infoData) throws IOException {
         InfoMessage infoMessage = new InfoMessage(infoData, timestamp, UUID.randomUUID().toString(),
-                Destination.WFM_STATS);
+                Destination.WFM_STATS, null);
         sendMessage(infoMessage, statsTopologyConfig.getKafkaStatsTopic());
     }
 
