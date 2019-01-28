@@ -22,9 +22,15 @@ import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthRequest;
 
+import com.google.common.collect.ImmutableMap;
 import org.mapstruct.Mapper;
+
+import java.util.Map;
 
 @Mapper(componentModel = "spring")
 public interface LinkPropsMapper {
@@ -53,11 +59,35 @@ public interface LinkPropsMapper {
     }
 
     /**
+     * Converts {@link LinkMaxBandwidthDto} to {@link LinkPropsDto}.
+     */
+    default LinkPropsDto toLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort,
+                                     LinkMaxBandwidthRequest input) {
+        NetworkEndpoint source = new NetworkEndpoint(srcSwitch, srcPort);
+        NetworkEndpoint dest = new NetworkEndpoint(dstSwitch, dstPort);
+        Map<String, String> props =
+                ImmutableMap.of(LinkProps.MAX_BANDWIDTH_PROP_NAME, String.valueOf(input.getMaxBandwidth()));
+        return new LinkPropsDto(source, dest, props);
+    }
+
+    /**
      * Converts {@link org.openkilda.northbound.dto.links.LinkPropsDto} into {@link LinkPropsMask}.
      */
     default LinkPropsMask toLinkPropsMask(org.openkilda.northbound.dto.links.LinkPropsDto input) {
         NetworkEndpointMask source = new NetworkEndpointMask(new SwitchId(input.getSrcSwitch()), input.getSrcPort());
         NetworkEndpointMask dest = new NetworkEndpointMask(new SwitchId(input.getDstSwitch()), input.getDstPort());
         return new LinkPropsMask(source, dest);
+    }
+
+    /**
+     * Converts {@link LinkPropsDto} to {@link LinkMaxBandwidthDto}.
+     */
+    default LinkMaxBandwidthDto toLinkMaxBandwidth(LinkPropsDto input) {
+        NetworkEndpoint source = input.getSource();
+        NetworkEndpoint dest = input.getDest();
+        Long maxBandwidth = Long.valueOf(input.getProps().get(LinkProps.MAX_BANDWIDTH_PROP_NAME));
+        return new LinkMaxBandwidthDto(
+                source.getDatapath().toString(), source.getPortNumber(),
+                dest.getDatapath().toString(), dest.getPortNumber(), maxBandwidth);
     }
 }

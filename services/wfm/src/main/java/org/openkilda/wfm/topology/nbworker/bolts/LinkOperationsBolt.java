@@ -127,52 +127,12 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private LinkPropsResponse putLinkProps(LinkPropsPut request) {
-        LinkPropsRepository linkPropsRepository = repositoryFactory.createLinkPropsRepository();
-        IslRepository islRepository = repositoryFactory.createIslRepository();
-
         try {
-            LinkProps linkPropsToSet = LinkPropsMapper.INSTANCE.map(request.getLinkProps());
+            LinkProps toSetForward = LinkPropsMapper.INSTANCE.map(request.getLinkProps());
+            LinkProps toSetBackward = swapLinkProps(toSetForward);
 
-            LinkProps result = transactionManager.doInTransaction(() -> {
-                Collection<LinkProps> existingLinkProps = linkPropsRepository.findByEndpoints(
-                        linkPropsToSet.getSrcSwitchId(), linkPropsToSet.getSrcPort(),
-                        linkPropsToSet.getDstSwitchId(), linkPropsToSet.getDstPort());
-
-                LinkProps linkProps;
-                if (!existingLinkProps.isEmpty()) {
-                    linkProps = existingLinkProps.iterator().next();
-                    if (linkPropsToSet.getCost() != null) {
-                        linkProps.setCost(linkPropsToSet.getCost());
-                    }
-                    if (linkPropsToSet.getMaxBandwidth() != null) {
-                        linkProps.setMaxBandwidth(linkPropsToSet.getMaxBandwidth());
-                    }
-                    linkProps.setTimeModify(Instant.now());
-                } else {
-                    linkProps = linkPropsToSet;
-                    Instant timestamp = Instant.now();
-                    linkProps.setTimeCreate(timestamp);
-                    linkProps.setTimeModify(timestamp);
-                }
-                linkPropsRepository.createOrUpdate(linkProps);
-
-                Optional<Isl> existingIsl = islRepository.findByEndpoints(
-                        linkPropsToSet.getSrcSwitchId(), linkPropsToSet.getSrcPort(),
-                        linkPropsToSet.getDstSwitchId(), linkPropsToSet.getDstPort());
-                existingIsl.ifPresent(link -> {
-                    if (linkPropsToSet.getCost() != null) {
-                        link.setCost(linkPropsToSet.getCost());
-                    }
-                    if (linkPropsToSet.getMaxBandwidth() != null) {
-                        link.setMaxBandwidth(linkPropsToSet.getMaxBandwidth());
-                    }
-                    link.setTimeModify(Instant.now());
-
-                    islRepository.createOrUpdate(link);
-                });
-
-                return linkProps;
-            });
+            LinkProps result = createOrUpdateProps(toSetForward);
+            createOrUpdateProps(toSetBackward);
 
             return new LinkPropsResponse(request, LinkPropsMapper.INSTANCE.map(result), null);
         } catch (Exception e) {
@@ -180,6 +140,71 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
 
             return new LinkPropsResponse(request, null, e.getMessage());
         }
+    }
+
+    private LinkProps createOrUpdateProps(LinkProps linkPropsToSet) {
+        LinkPropsRepository linkPropsRepository = repositoryFactory.createLinkPropsRepository();
+        IslRepository islRepository = repositoryFactory.createIslRepository();
+
+        return transactionManager.doInTransaction(() -> {
+            Collection<LinkProps> existingLinkProps = linkPropsRepository.findByEndpoints(
+                    linkPropsToSet.getSrcSwitchId(), linkPropsToSet.getSrcPort(),
+                    linkPropsToSet.getDstSwitchId(), linkPropsToSet.getDstPort());
+
+            LinkProps linkProps;
+            if (!existingLinkProps.isEmpty()) {
+                linkProps = existingLinkProps.iterator().next();
+                if (linkPropsToSet.getCost() != null) {
+                    linkProps.setCost(linkPropsToSet.getCost());
+                }
+                if (linkPropsToSet.getMaxBandwidth() != null) {
+                    linkProps.setMaxBandwidth(linkPropsToSet.getMaxBandwidth());
+                }
+                linkProps.setTimeModify(Instant.now());
+            } else {
+                linkProps = linkPropsToSet;
+                Instant timestamp = Instant.now();
+                linkProps.setTimeCreate(timestamp);
+                linkProps.setTimeModify(timestamp);
+            }
+            linkPropsRepository.createOrUpdate(linkProps);
+
+            Optional<Isl> existingIsl = islRepository.findByEndpoints(
+                    linkPropsToSet.getSrcSwitchId(), linkPropsToSet.getSrcPort(),
+                    linkPropsToSet.getDstSwitchId(), linkPropsToSet.getDstPort());
+            existingIsl.ifPresent(link -> {
+                if (linkPropsToSet.getCost() != null) {
+                    link.setCost(linkPropsToSet.getCost());
+                }
+                if (linkPropsToSet.getMaxBandwidth() != null) {
+                    long currentMaxBandwidth = link.getMaxBandwidth();
+                    long availableBandwidth = link.getAvailableBandwidth();
+                    if (linkPropsToSet.getMaxBandwidth() > currentMaxBandwidth) {
+                        availableBandwidth += linkPropsToSet.getMaxBandwidth() - currentMaxBandwidth;
+                    } else {
+                        availableBandwidth -= currentMaxBandwidth - linkPropsToSet.getMaxBandwidth();
+                    }
+                    link.setMaxBandwidth(linkPropsToSet.getMaxBandwidth());
+                    link.setAvailableBandwidth(availableBandwidth);
+                }
+                link.setTimeModify(Instant.now());
+
+                islRepository.createOrUpdate(link);
+            });
+
+            return linkProps;
+        });
+    }
+
+    private LinkProps swapLinkProps(LinkProps source) {
+        return LinkProps.builder()
+                .srcSwitchId(source.getDstSwitchId())
+                .srcPort(source.getDstPort())
+                .dstSwitchId(source.getSrcSwitchId())
+                .dstPort(source.getSrcPort())
+                .maxBandwidth(source.getMaxBandwidth())
+                .cost(source.getCost())
+                .build();
     }
 
     private LinkPropsResponse dropLinkProps(LinkPropsDrop request) {

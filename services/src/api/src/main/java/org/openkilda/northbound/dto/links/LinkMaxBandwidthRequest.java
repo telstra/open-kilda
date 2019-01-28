@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,31 +16,28 @@
 package org.openkilda.northbound.dto.links;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.util.List;
+import java.io.Serializable;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class LinkDto {
+@EqualsAndHashCode
+@Getter
+@Setter
+@JsonInclude(Include.NON_NULL)
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class LinkMaxBandwidthRequest implements Serializable {
 
-    @JsonProperty("maximum_bandwidth")
-    private long maxBandwidth;
+    private Long maxBandwidth;
 
-    @JsonProperty("available_bandwidth")
-    private long availableBandwidth;
-
-    @JsonProperty("state")
-    protected LinkStatus state;
-
-    @JsonProperty("under_maintenance")
-    private boolean underMaintenance;
-
-    @JsonProperty("path")
-    private List<PathDto> path;
 }
