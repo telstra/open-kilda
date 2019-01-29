@@ -1,0 +1,33 @@
+digraph {
+compound=true;
+subgraph cluster_StateMachine {
+label="org.openkilda.wfm.topology.switchmanager.service.fsm.SwitchSyncRulesFsm";
+FinishedWithError [label="FinishedWithError"];
+InstallingRules [label="InstallingRules"];
+ComputeMissingRules [label="ComputeMissingRules"];
+ValidatingRules [label="ValidatingRules"];
+Initialized [label="Initialized"];
+Finished [label="Finished"];
+ReceivingRules [label="ReceivingRules"];
+ValidatingRemovedRules [label="ValidatingRemovedRules"];
+RemovingRules [label="RemovingRules"];
+
+InstallingRules -> RemovingRules [ label="Timeout"];
+InstallingRules -> RemovingRules [ label="Error"];
+InstallingRules -> ValidatingRules [ label="Next"];
+ComputeMissingRules -> FinishedWithError [ label="Timeout"];
+ComputeMissingRules -> FinishedWithError [ label="Error"];
+ComputeMissingRules -> InstallingRules [ label="Next"];
+ValidatingRules -> Finished [ label="Next"];
+ValidatingRules -> RemovingRules [ label="Timeout"];
+ValidatingRules -> RemovingRules [ label="Error"];
+Initialized -> ReceivingRules [ label="Next"];
+ReceivingRules -> FinishedWithError [ label="Timeout"];
+ReceivingRules -> FinishedWithError [ label="Error"];
+ReceivingRules -> ComputeMissingRules [ label="Next"];
+ValidatingRemovedRules -> FinishedWithError [ label="Next"];
+ValidatingRemovedRules -> FinishedWithError [ label="Timeout"];
+ValidatingRemovedRules -> FinishedWithError [ label="Error"];
+RemovingRules -> ValidatingRemovedRules [ label="Next"];
+RemovingRules -> FinishedWithError [ label="Timeout"];
+RemovingRules -> FinishedWithError [ label="Error"];}}

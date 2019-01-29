@@ -1,0 +1,69 @@
+@startuml
+title Hub And Spoke Flow Create
+
+  actor User
+boundary Northbound as NB
+participant SwitchManager << Hub >>
+participant CommandBuilder
+participant Floodlight as FL
+participant ValidationService
+database DAO
+
+User -> NB : Switch sync rules
+
+activate NB
+NB -> SwitchManager : SwitchRulesSyncRequest
+activate SwitchManager
+
+== Rules validation ==
+SwitchManager -> FL : DumpRulesRequest
+deactivate SwitchManager
+FL -> SwitchManager : SwitchFlowEntries
+activate SwitchManager
+SwitchManager -> ValidationService : Get missing rules
+activate ValidationService
+ValidationService -> DAO : Get flow segments\nby dst switch id
+activate DAO
+DAO -> ValidationService : Flow segments
+deactivate DAO
+ValidationService -> DAO : Get flows\nby src switch id
+activate DAO
+DAO -> ValidationService : Flows
+deactivate DAO
+ValidationService -> ValidationService : Compute missing rules
+ValidationService -> SwitchManager : Missing rules
+deactivate ValidationService
+
+== Rules installation ==
+SwitchManager -> CommandBuilder : Create Switch Rules
+CommandBuilder -> CommandBuilder : Build commands
+
+CommandBuilder -> SwitchManager : Rule installation commands
+SwitchManager -> FL : BatchInstallRequest
+deactivate SwitchManager
+FL -> SwitchManager : Rules has been installed
+activate SwitchManager
+SwitchManager -> FL : DumpRulesRequest
+deactivate SwitchManager
+
+FL -> SwitchManager : SwitchFlowEntries
+activate SwitchManager
+SwitchManager -> ValidationService : Validate rules
+activate ValidationService
+ValidationService -> DAO : Get flow segments\nby dst switch id
+activate DAO
+DAO -> ValidationService : Flow segments
+deactivate DAO
+ValidationService -> DAO : Get flows\nby src switch id
+activate DAO
+DAO -> ValidationService : Flows
+deactivate DAO
+ValidationService -> ValidationService : Compare rules
+ValidationService -> SwitchManager : Rules are valid
+deactivate ValidationService
+SwitchManager -> NB
+deactivate SwitchManager
+NB -> User
+deactivate NB
+
+ @enduml
