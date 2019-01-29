@@ -13,9 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.flow;
+package org.openkilda.atdd.staging.service;
 
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 
 /**
  * Northbound utility methods.

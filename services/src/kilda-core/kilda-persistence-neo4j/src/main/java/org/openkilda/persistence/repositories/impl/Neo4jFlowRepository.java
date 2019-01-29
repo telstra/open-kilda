@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
  */
 public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements FlowRepository {
     private static final String FLOW_ID_PROPERTY_NAME = "flowid";
+    private static final String FLOW_GROUP_ID_PROPERTY_NAME = "group_id";
     private static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
 
     private final FlowStatusConverter flowStatusConverter = new FlowStatusConverter();
@@ -70,12 +71,24 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
+    public Collection<Flow> findByGroupId(String flowGroupId) {
+        Filter flowIdFilter = new Filter(FLOW_GROUP_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowGroupId);
+
+        return getSession().loadAll(getEntityType(), flowIdFilter, DEPTH_LOAD_ENTITY);
+    }
+
+    @Override
     public Optional<FlowPair> findFlowPairById(String flowId) {
         Collection<FlowPair> flowPairs = buildFlowPairs(findById(flowId));
         if (flowPairs.size() > 1) {
             throw new PersistenceException(format("Found more that 1 FlowPair entity by %s as flowId", flowId));
         }
         return flowPairs.isEmpty() ? Optional.empty() : Optional.of(flowPairs.iterator().next());
+    }
+
+    @Override
+    public Collection<FlowPair> findFlowPairsByGroupId(String flowGroupId) {
+        return buildFlowPairs(findByGroupId(flowGroupId));
     }
 
     @Override

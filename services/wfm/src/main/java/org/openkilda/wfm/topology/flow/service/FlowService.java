@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.flow.service;
 import static java.util.Objects.requireNonNull;
 import static org.apache.commons.collections4.ListUtils.union;
 
+import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
@@ -49,11 +51,14 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowService extends BaseFlowService {
@@ -358,6 +363,69 @@ public class FlowService extends BaseFlowService {
         sender.sendUpdateRulesCommand(result);
 
         return new ReroutedFlow(currentFlow, result.getFlowPair());
+    }
+
+    /**
+     * Returns flow path. If flow has group, returns also path for each flow in group.
+     *
+     * @param flowId the flow to get a path.
+     */
+    public List<GroupFlowPathPayload> getFlowPath(String flowId) throws FlowNotFoundException {
+        FlowPair currentFlow = getFlowPair(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
+
+        String groupId = currentFlow.getForward().getGroupId();
+        if (groupId == null) {
+            return Collections.singletonList(
+                    toGroupFlowPathPayloadBuilder(currentFlow).build());
+        } else {
+            Collection<FlowPair> flowPairsInGroup = flowRepository.findFlowPairsByGroupId(groupId);
+            IntersectionComputer intersectionComputer =
+                    new IntersectionComputer(flowId, flowSegmentRepository.findByFlowGroupId(groupId));
+
+            // other flows in group
+            List<GroupFlowPathPayload> payloads = flowPairsInGroup.stream()
+                    .filter(e -> !e.getForward().getFlowId().equals(flowId))
+                    .map(e -> this.toGroupFlowPathPayloadBuilder(e)
+                            .segmentsStats(intersectionComputer.getOverlappingStats(e.getForward().getFlowId()))
+                            .build())
+                    .collect(Collectors.toList());
+            // current flow
+            payloads.add(this.toGroupFlowPathPayloadBuilder(currentFlow)
+                    .segmentsStats(intersectionComputer.getOverlappingStats())
+                    .build());
+
+            return payloads;
+        }
+    }
+
+    private GroupFlowPathPayload.GroupFlowPathPayloadBuilder toGroupFlowPathPayloadBuilder(FlowPair flowPair) {
+        return GroupFlowPathPayload.builder()
+                .id(flowPair.getForward().getFlowId())
+                .forwardPath(buildPathFromFlow(flowPair.getForward()))
+                .reversePath(buildPathFromFlow(flowPair.getReverse()));
+    }
+
+    private List<PathNodePayload> buildPathFromFlow(Flow flow) {
+        List<FlowPath.Node> path = new ArrayList<>(flow.getFlowPath().getNodes());
+        // add input and output nodes
+        path.add(0, FlowPath.Node.builder()
+                .switchId(flow.getSrcSwitch().getSwitchId())
+                .portNo(flow.getSrcPort())
+                .build());
+        path.add(FlowPath.Node.builder()
+                .switchId(flow.getDestSwitch().getSwitchId())
+                .portNo(flow.getDestPort())
+                .build());
+
+        List<PathNodePayload> resultList = new ArrayList<>();
+        for (int i = 1; i < path.size(); i += 2) {
+            FlowPath.Node inputNode = path.get(i - 1);
+            FlowPath.Node outputNode = path.get(i);
+
+            resultList.add(
+                    new PathNodePayload(inputNode.getSwitchId(), inputNode.getPortNo(), outputNode.getPortNo()));
+        }
+        return resultList;
     }
 
     private FlowPair buildFlowPair(Flow flow, PathPair pathPair) {

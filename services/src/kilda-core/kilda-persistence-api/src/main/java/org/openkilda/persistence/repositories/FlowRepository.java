@@ -28,6 +28,8 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findById(String flowId);
 
+    Collection<Flow> findByGroupId(String flowGroupId);
+
     Optional<FlowPair> findFlowPairById(String flowId);
 
     Collection<FlowPair> findAllFlowPairs();
@@ -52,4 +54,6 @@ public interface FlowRepository extends Repository<Flow> {
                                                      SwitchId dstSwitchId, int dstPort);
 
     Set<String> findFlowIdsBySwitch(SwitchId switchId);
+
+    Collection<FlowPair> findFlowPairsByGroupId(String flowGroupId);
 }
