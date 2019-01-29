@@ -139,7 +139,7 @@ public class FlowTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.nameUUIDFromBytes(Destination.CTRL_CLIENT.toString().getBytes()).toString()));
         ctrlConsumer.start();
 
-        Utils.sleep(10000);
+        Utils.sleep(TOPOLOGY_START_TIMEOUT);
     }
 
     @AfterClass
