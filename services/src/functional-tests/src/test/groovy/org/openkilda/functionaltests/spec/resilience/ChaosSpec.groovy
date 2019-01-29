@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import static org.openkilda.testing.Constants.MAX_DEFAULT_METER_ID
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -22,9 +24,10 @@ class ChaosSpec extends BaseSpecification {
 
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
+
     /**
-     * This spec simulates a busy network with a lot of flows. Random isls across the topology begin to blink,
-     * causing some of the flows to reroute. Verify that system remains stable
+     * This test simulates a busy network with a lot of flows. Random ISLs across the topology begin to blink,
+     * causing some of the flows to reroute. Verify that system remains stable.
      */
     def "Nothing breaks when multiple flows get rerouted due to randomly failing ISLs"() {
         setup: "Create multiple random flows"
@@ -36,7 +39,7 @@ class ChaosSpec extends BaseSpecification {
             flows << flow
         }
 
-        when: "Random isls 'blink' for some time"
+        when: "Random ISLs 'blink' for some time"
         def islsAmountToBlink = topology.islsForActiveSwitches.size() * 5
         def r = new Random()
         islsAmountToBlink.times {
@@ -58,8 +61,15 @@ class ChaosSpec extends BaseSpecification {
             }
         }
 
-        and: "cleanup: remove flows"
+        and: "Cleanup: remove flows"
         flows.each { northbound.deleteFlow(it.id) }
+        // Wait for meters deletion from all OF_13 switches since it impacts other tests.
+        // Virtual and hardware OF_12 switches don't support meters.
+        profile != "virtual" ? Wrappers.wait(WAIT_OFFSET + flowsAmount * RULES_DELETION_TIME) {
+            topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {
+                assert northbound.getAllMeters(it.dpId).meterEntries.findAll { it.meterId > MAX_DEFAULT_METER_ID }.empty
+            }
+        } : true
     }
 
     def validateFlow(String flowId) {
@@ -75,7 +85,7 @@ class ChaosSpec extends BaseSpecification {
 
     def bothDirectionsHaveSamePath(FlowPathPayload path) {
         [path.forwardPath, path.reversePath.reverse()].transpose().each { PathNodePayload forwardNode,
-                PathNodePayload reverseNode ->
+                                                                          PathNodePayload reverseNode ->
             def failureMessage = "Failed nodes: $forwardNode $reverseNode"
             assert forwardNode.switchId == reverseNode.switchId, failureMessage
             assert forwardNode.outputPort == reverseNode.inputPort, failureMessage

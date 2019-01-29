@@ -43,6 +43,12 @@ public interface SwitchService {
     CompletableFuture<List<SwitchDto>> getSwitches();
 
     /**
+     * Get available switch.
+     * @return switch.
+     */
+    CompletableFuture<SwitchDto> getSwitch(SwitchId switchId);
+
+    /**
      * Get all rules from the switch. If cookie is specified, then return just that cookie rule.
      *
      * @param switchId the switch

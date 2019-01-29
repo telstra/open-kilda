@@ -85,7 +85,7 @@ floodlight.password=kilda
 
 # Developers
 ## How to run 
-### ATDD tests
+### ATDD-Staging tests
 The command __mvn clean package__ builds the executable artifact.
 
 The following command runs the tests:

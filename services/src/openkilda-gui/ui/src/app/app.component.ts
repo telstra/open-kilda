@@ -54,6 +54,7 @@ export class AppComponent implements OnInit, AfterViewChecked {
       if(data.show){
         this.loader.show();
         this.loaderMessage = data.message;
+       
       }
       else if(!data.show){
         this.loader.hide();

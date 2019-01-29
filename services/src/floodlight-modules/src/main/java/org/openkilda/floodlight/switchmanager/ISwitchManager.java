@@ -38,11 +38,6 @@ public interface ISwitchManager extends IFloodlightService {
     /** OVS software switch manufacturer constant value. */
     String OVS_MANUFACTURER = "Nicira, Inc.";
 
-    long DROP_RULE_COOKIE = 0x8000000000000001L;
-    long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
-    long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
-    long DROP_VERIFICATION_LOOP_RULE_COOKIE = 0x8000000000000004L;
-
     /** Mask is being used to get meter id for corresponding system rule.
      * E.g. for 0x8000000000000002L & PACKET_IN_RULES_METERS_MASK we will get meter id 2.
      */

@@ -79,6 +79,12 @@ body {
   border-radius: 4px;
 }
 
+/* .content .row {
+    margin-right: -15px;
+    margin-left: -15px;
+} */
+
+
 label {margin-bottom: 0; font-weight: 600;}
 .container-fluid {
   padding-right: 15px;
@@ -212,6 +218,11 @@ h1 {
   padding: 0 10px 15px 20px;
   margin: 0 0 20px;
 }
+
+/* .navigation-bar .topology-header {
+  padding-top: 7px;
+  margin-top: -3px;
+} */
 
 .navigation-bar ul.col li {
   display: inline-block;
@@ -780,9 +791,15 @@ select2:focus,
   font-size: 12px;
 }
 
+/* .form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 4px 10px;
+} */
 
 .divTableCell,
 .divTableHead {
+  /* border: 1px solid #999999; */
   display: table-cell;
   padding: 10px;
 }
@@ -1063,7 +1080,11 @@ text {
   padding: 0px 15px;
   margin: 4px 0px;
 }
-
+/* #topology-hover-txt div.form-wrapper .row,
+#topology-click-txt div.form-wrapper .row {
+  margin-right: 0px;
+  margin-left: 0px;
+} */
 #topology-hover-txt div.form-wrapper,
 #topology-click-txt div.form-wrapper {
   padding: 5px 10px;
@@ -1410,16 +1431,30 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
 }
 
 table.dataTable thead .sorting {
+  /* background-image: url('../images/sort_both.png'); 
+  background-image: url(assets/images/sort_both.png);*/
   background-image: url(assets/images/sort_both_white.png);
 }
 
 
 table.dataTable thead .sorting_asc {
+  /*background-image: url(assets/images/sort_asc.png);*/
   background-image: url(assets/images/sort_asc_white.png);
 }
 table.dataTable thead .sorting_desc {
+  /*background-image: url(assets/images/sort_desc.png);*/
   background-image: url(assets/images/sort_desc_white.png);
 }
+/* table#flowDataTable.dataTable thead .sorting {
+  /* background-image: url('../images/sort_both.png'); *
+  background-image: url(assets/images/sort_both_white.png);
+}
+table#flowDataTable.dataTable thead .sorting_asc {
+  background-image: url(assets/images/sort_asc_white.png);
+}
+table#flowDataTable.dataTable thead .sorting_desc {
+  background-image: url(assets/images/sort_desc_white.png);
+} */
 
 table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTable thead .sorting_desc, table.dataTable thead .sorting_asc_disabled, table.dataTable thead .sorting_desc_disabled {
   background-position: right 8px;
@@ -1454,6 +1489,7 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
 
 .alertify .ajs-modal .ajs-footer .ajs-buttons .ajs-button{ cursor: pointer; }
 
+/* .ng-select .ng-select-container {min-height: inherit; height: 35px;} */
 
 .home-container {
   display: none;
@@ -1650,7 +1686,6 @@ label.btn.kilda_btn > span.copy_to_clipBoard {
 
 .portStatusInput select{
   width: 95px;
-  margin-left: 15px;
 }
 
 .final_configure_confirm_modal_text span.confirmationText {
@@ -1861,6 +1896,25 @@ table.dataTable thead th span,table.custom-margin-datatable thead th span {
 button:focus{
   outline: none;
 }
+
+#port-flow .dt-buttons {
+  float: right;
+}
+
+#port-flow .dt-buttons .dt-button {
+  float: right;
+  padding: 6px 12px !important;
+  margin-bottom: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.42857143;
+  text-align: center;
+  background: #262d37;
+  color: #fff;
+  margin-right: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
 .cursor-pointer{
   cursor: pointer;
 }
@@ -1889,7 +1943,13 @@ button:focus{
   border: 1px solid #ccc;
 
 }
+.margin-top-zero{
+  margin-top:0px !important;
+}
 
 .custom-alert{
   padding: 2px 10px;
+}
+.setting .form-control:disabled,.setting .form-control[readonly] {
+  background-color: #d1d1d2;
 }

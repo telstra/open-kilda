@@ -1,6 +1,6 @@
 # OpenKilda REST API Design Guidelines
 
-The document provides general guidance on priciples and conventions used during development of OpenKilda REST API. 
+The document provides general guidance on principles and conventions used during development of OpenKilda REST API. 
 It is addressed to developers who design or enhance Northbound API, Floodlight Modules REST or another REST API in OpenKilda.
 
 # Principles
@@ -11,14 +11,17 @@ It is addressed to developers who design or enhance Northbound API, Floodlight M
 * Prefer REST-based API with JSON payload.
 * Follow the RESTful architectural style as much as possible. 
 
-    Although per definition RESTful API has to support HATEOAS (maturity level 3). Our guidelines don't enforce full RESTful compliance, but limited hypermedia support. However, we use "RESTful API" to refer implementation of the [REST Maturity level 2](https://martinfowler.com/articles/richardsonMaturityModel.html#level2).
+    Although per definition RESTful API has to support HATEOAS (maturity level 3). 
+    Our guidelines don't enforce full RESTful compliance, but limited hypermedia support. 
+    However, we use "RESTful API" to refer implementation of 
+    the [REST Maturity level 2](https://martinfowler.com/articles/richardsonMaturityModel.html#level2).
 
 ### What is RESTful API?
 
 The RESTful architectural style describes six constraints:
 * Client-Server    
 * Stateless
-* Cacheable/switches/{switch_id}/port
+* Cacheable
 * Layered System
 * Code on Demand (optional)
 * Uniform Interface
@@ -27,7 +30,8 @@ A web service which violates any of the required constraints **cannot be conside
 
 For a more detailed overview, check out:
 * [REST on Wikipedia](https://en.wikipedia.org/wiki/Representational_state_transfer)
-* [Architectural Styles and the Design of Network-based Software Architectures](https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm) - the chapter on REST in Roy Fielding's dissertation on Network Architecture.
+* [Architectural Styles and the Design of Network-based Software Architectures](https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm) - 
+the chapter on REST in Roy Fielding's dissertation on Network Architecture.
 * [RFC 7231](https://tools.ietf.org/html/rfc7231)
 
 # Conventions & Rules
@@ -59,11 +63,10 @@ URIs follow [RFC 3986](https://tools.ietf.org/html/rfc3986) specification.
 
 E.g.
 
-| Resource / HTTP method | POST (create)    | GET (read)  | PUT (update)           | DELETE (delete)    |
-| ---------------------- | ---------------- | ----------- | ---------------------- | ------------------ |
-| /flows                 | Create new flow  | List flows  | Error                  | Error              |
-| /flows/{flow_id}       | Error            | Get flow    | Update flow if exists  | Delete flow        |
-
+| Resource / HTTP method | POST (create)    | GET (read)  | PUT (update)           | PATCH (partial update) | DELETE (delete)    |
+| ---------------------- | ---------------- | ----------- | ---------------------- | ---------------------- | ------------------ |
+| /flows                 | Create new flow  | List flows  | Error                  | Error                  | Error              |
+| /flows/{flow_id}       | Error            | Get flow    | Update flow if exists  | Partially update flow  | Delete flow        |
 
 #### Create entity
 
@@ -73,11 +76,18 @@ E.g.
 
 #### List entities (collection)
 
-* Response collection is presented as an array wrapped in a root object. The corresponding field has the same name as the resource. See [Wrap collection in object](#wrap-collection-in-object)
+* Response collection is presented as an array wrapped in a root object. 
+The corresponding field has the same name as the resource. See [Wrap collection in object](#wrap-collection-in-object)
 
 #### Update entity
 
 * To update an entity, the server requires being provided with all the properties that can be subject to update
+* Server returns an updated entity
+
+#### Partially update entity
+
+* Partially update an entity using [JSON Merge](https://tools.ietf.org/html/rfc7396) format. 
+The server requires being provided with the properties that can be subject to update.
 * Server returns an updated entity
 
 #### Delete entity

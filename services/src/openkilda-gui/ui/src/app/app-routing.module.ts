@@ -138,7 +138,7 @@ const routes: Routes = [{
 		path: 'storesetting',
 		component: SettingsComponent,
 		data:{
-			breadcrumb: "Store Setting"
+			breadcrumb: "Store Settings"
 		}
 	},
 	{

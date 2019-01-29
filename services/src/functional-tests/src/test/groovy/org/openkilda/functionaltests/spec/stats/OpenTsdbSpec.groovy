@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.testing.Constants.DefaultRule
 
 import groovy.time.TimeCategory
 import spock.lang.Issue
@@ -26,7 +27,9 @@ class OpenTsdbSpec extends BaseSpecification {
                  "pen.switch.tx-bytes", "pen.switch.tx-bits", "pen.switch.tx-packets"],
                 uniqueSwitches.collect { [switchid: it.dpId.toOtsdFormat()] }].combinations()
                 + [["pen.isl.latency"], uniqueSwitches.collect { [src_switch: it.dpId.toOtsdFormat()] }].combinations()
-                + [["pen.isl.latency"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations())
+                + [["pen.isl.latency"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations()
+                + [["pen.switch.flow.system.packets", "pen.switch.flow.system.bytes", "pen.switch.flow.system.bits"],
+                   [[cookieHex: DefaultRule.VERIFICATION_BROADCAST_RULE.toHexString()]]].combinations())
     }
 
     def getUniqueSwitches() {

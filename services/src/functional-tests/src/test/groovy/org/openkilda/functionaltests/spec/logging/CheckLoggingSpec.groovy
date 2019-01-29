@@ -23,7 +23,7 @@ class CheckLoggingSpec extends BaseSpecification {
     def "Check Floodlight logging"() {
         when: "Retrieve floodlight logs for last 5 minutes"
         def result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT)
-                                                              .setLevel("INFO").setTimeRange(300).build())
+                .setLevel("INFO").setTimeRange(300).build())
 
         assert result?.hits?.total > 0: "No logs could be found for Floodlight"
 
@@ -33,7 +33,7 @@ class CheckLoggingSpec extends BaseSpecification {
 
     def "Check Northbound, Storm and Topology Engine logging"() {
         when: "A non-existent flow is requested"
-        int timeout = 60
+        int timeout = 180
         def flowId = "nonexistentflowid" + System.currentTimeMillis()
         try {
             northbound.getFlow(flowId)
@@ -45,7 +45,7 @@ class CheckLoggingSpec extends BaseSpecification {
         def switchId = topology.activeSwitches.first().dpId
         northbound.validateSwitchRules(switchId)
 
-        then: "Northbound, Storm and Topology Engine should log these actions within 1 minute"
+        then: "Northbound, Storm and Topology Engine should log these actions within 3 minutes"
         Wrappers.wait(timeout, 10) {
             def nbLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
                     setTimeRange(timeout * 2).setLevel("ERROR").build())

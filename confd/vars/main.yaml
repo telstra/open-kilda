@@ -3,7 +3,6 @@
 kilda_environment_naming_prefix: ""
 kilda_environment_role: "devel"
 kilda_test_profile: "virtual"
-kilda_test_topology_single: True
 
 kilda_neo4j_host: "neo4j.pendev"
 kilda_neo4j_bolt_port: "7687"
@@ -96,7 +95,8 @@ kilda_port_up_down_throttling_delay_seconds_min: 1
 kilda_port_up_down_throttling_delay_seconds_warm_up: 5
 kilda_port_up_down_throttling_delay_seconds_cool_down: 5
 
-kilda_pce_strategy: "SYMMETRIC_COST"
+kilda_pce_strategy: "COST"
+kilda_pce_network_strategy: "SYMMETRIC_COST"
 
 kilda_logging_json_file: False
 kilda_logging_logstash: True

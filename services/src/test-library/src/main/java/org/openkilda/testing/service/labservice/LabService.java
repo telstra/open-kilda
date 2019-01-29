@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.service.labservice;
 
+import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.labservice.model.LabInstance;
 
 import java.util.List;
@@ -23,5 +24,15 @@ public interface LabService {
 
     LabInstance getLab();
 
+    LabInstance createLab(TopologyDefinition topology);
+
+    LabInstance createHwLab(TopologyDefinition topology);
+
+    List<LabInstance> getLabs();
+
     List<Long> flushLabs();
+
+    void deleteLab(LabInstance lab);
+
+    void deleteLab();
 }

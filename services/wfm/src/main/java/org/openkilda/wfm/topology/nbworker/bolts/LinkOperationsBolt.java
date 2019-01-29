@@ -46,8 +46,6 @@ import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.LinkOperationsService;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -57,7 +55,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -76,8 +73,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
      * {@inheritDoc}
      */
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
+    public void init() {
         this.linkOperationsService =
                 new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory);
@@ -88,7 +84,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
-            result = getAllLinks();
+            result = getAllLinks((GetLinksRequest) request);
         } else if (request instanceof LinkPropsGet) {
             result = getLinkProps((LinkPropsGet) request);
         } else if (request instanceof LinkPropsPut) {
@@ -106,8 +102,13 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         return (List<InfoData>) result;
     }
 
-    private List<IslInfoData> getAllLinks() {
-        return linkOperationsService.getAllIsls();
+    private List<IslInfoData> getAllLinks(GetLinksRequest request) {
+        Integer srcPort = request.getSource().getPortNumber();
+        SwitchId srcSwitch = request.getSource().getDatapath();
+        Integer dstPort = request.getDestination().getPortNumber();
+        SwitchId dstSwitch = request.getDestination().getDatapath();
+
+        return linkOperationsService.getAllIsls(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
     private List<LinkPropsData> getLinkProps(LinkPropsGet request) {
@@ -225,7 +226,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         boolean deleted;
         try {
             deleted = linkOperationsService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
-                    request.getDstSwitch(), request.getDstPort());
+                                                      request.getDstSwitch(), request.getDstPort());
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
         } catch (IllegalIslStateException e) {

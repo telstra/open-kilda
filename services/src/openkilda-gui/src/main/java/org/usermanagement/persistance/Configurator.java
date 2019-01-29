@@ -36,7 +36,7 @@ public class Configurator {
      * @param statusRepository
      *            the status repository.
      */
-    public Configurator(@SuppressWarnings("unused") @Autowired final DatabaseConfigurator databaseConfigurator,
+    public Configurator(@Autowired final DatabaseConfigurator databaseConfigurator,
             @Autowired final StatusRepository statusRepository) {
         this.statusRepository = statusRepository;
         init();

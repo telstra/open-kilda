@@ -1,8 +1,8 @@
 org.openkilda.functionaltests.extension.spring.SpringContextExtension
 org.openkilda.functionaltests.extension.fixture.SetupOnceExtension
 org.openkilda.functionaltests.extension.tags.TagExtension
-org.openkilda.functionaltests.extension.virtualenv.VirtualEnvExtension
-org.openkilda.functionaltests.extension.virtualenv.VirtualEnvCleanupExtension
+org.openkilda.functionaltests.extension.env.EnvExtension
+org.openkilda.functionaltests.extension.env.VirtualEnvCleanupExtension
 org.openkilda.functionaltests.extension.healthcheck.HealthCheckExtension
 org.openkilda.functionaltests.extension.FeatureOrderExtension
 org.openkilda.functionaltests.extension.TestDataLoggingExtension

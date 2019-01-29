@@ -15,6 +15,7 @@ import { Router } from "@angular/router";
 import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Title } from "@angular/platform-browser";
+import { StoreSettingtService } from "src/app/common/services/store-setting.service";
 
 @Component({
   selector: "app-switch-list",
@@ -23,9 +24,10 @@ import { Title } from "@angular/platform-browser";
 })
 export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
   dataSet = [];
-  
+
   loadingData = true;
-  
+  hasStoreSetting = false;
+  settingSubscriber = null;
 
   constructor(
     private router: Router,
@@ -33,14 +35,22 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
     private toastr: ToastrService,
     private loaderService: LoaderService,
     private titleService: Title,
-    private renderer: Renderer2
+    private renderer: Renderer2,
+    private storeSwitchService: StoreSettingtService
   ) {}
 
   ngOnInit() {
-    let ref  =this;
+    let ref = this;
     this.titleService.setTitle("OPEN KILDA - Switches");
-    this.dataSet = [];
+    this.getStoreSwitchSettings();
+  }
 
+  ngAfterViewInit(): void {}
+
+
+
+  loadSwitchList(){
+    this.dataSet = [];
     var switchList = JSON.parse(localStorage.getItem("SWITCHES_LIST"));
     if (switchList) {
       this.dataSet = switchList;
@@ -50,19 +60,10 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
     }
   }
 
-  ngAfterViewInit(): void {
-    
-  }
-
-  ngOnDestroy(): void {
-   
-  }
-  
-
   getSwitchList() {
     this.loadingData = true;
     this.loaderService.show("Loading Switches");
-    let query = {_:new Date().getTime()};
+    let query = { _: new Date().getTime(),storeConfigurationStatus:this.hasStoreSetting };
     this.switchService.getSwitchList(query).subscribe(
       (data: any) => {
         localStorage.setItem("SWITCHES_LIST", JSON.stringify(data));
@@ -73,15 +74,32 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
           this.dataSet = data;
         }
         this.loadingData = false;
-        
       },
       error => {
         this.loaderService.hide();
         this.toastr.info("No Switch Available", "Information");
-        this.dataSet = []
+        this.dataSet = [];
         this.loadingData = false;
       }
     );
+  }
+
+  getStoreSwitchSettings(){
+    let query = {_:new Date().getTime()};
+    
+    this.settingSubscriber = this.storeSwitchService.switchSettingReceiver.subscribe(setting=>{
+      this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
+      this.loadSwitchList();
+    });
+
+    this.storeSwitchService.checkSwitchStoreDetails(query);
+  }
+  
+  ngOnDestroy(): void {
+    if(this.settingSubscriber){
+      this.settingSubscriber.unsubscribe();
+      this.settingSubscriber = null;
+    }
   }
 
   

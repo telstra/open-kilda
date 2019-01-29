@@ -278,9 +278,26 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public List<IslInfoData> getAllLinks() {
-        LinkDto[] links = restTemplate.exchange("/api/v1/links", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
+        return getLinks(null, null, null, null);
+    }
 
+    @Override
+    public List<IslInfoData> getLinks(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        LinkDto[] links = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
         return Stream.of(links)
                 .map(this::convertToIslInfoData)
                 .collect(Collectors.toList());
@@ -401,6 +418,12 @@ public class NorthboundServiceImpl implements NorthboundService {
         return Stream.of(switches)
                 .map(this::convertToSwitchInfoData)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public SwitchInfoData getSwitch(SwitchId switchId) {
+        return convertToSwitchInfoData(restTemplate.exchange("/api/v1/switches/{switch_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto.class, switchId).getBody());
     }
 
     @Override

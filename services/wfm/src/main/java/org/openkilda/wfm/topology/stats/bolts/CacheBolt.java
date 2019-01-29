@@ -15,15 +15,13 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
+import static org.openkilda.messaging.Utils.TIMESTAMP;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_OFS_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.FLOW_STATS;
 
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -31,6 +29,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
+import org.openkilda.wfm.topology.stats.StatsTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
 
@@ -52,9 +51,7 @@ public class CacheBolt extends BaseRichBolt {
     public static final String CACHE_FIELD = "cache";
 
     public static final Fields fieldsMessageFlowStats =
-            new Fields(
-                    MESSAGE_FIELD,
-                    CACHE_FIELD);
+            new Fields(StatsTopology.FLOW_STATS_FIELD, TIMESTAMP, CACHE_FIELD);
     /**
      * The logger.
      */
@@ -139,21 +136,18 @@ public class CacheBolt extends BaseRichBolt {
 
                 logger.debug("updated cookieToFlow: {}", cookieToFlow);
             } else if (componentId == STATS_OFS_BOLT) {
-                InfoMessage message = (InfoMessage) tuple.getValueByField(MESSAGE_FIELD);
-
-                FlowStatsData data = (FlowStatsData) message.getData();
+                FlowStatsData data = (FlowStatsData) tuple.getValueByField(StatsTopology.FLOW_STATS_FIELD);
 
                 Map<Long, CacheFlowEntry> dataCache = new HashMap<>();
-                for (FlowStatsReply reply : data.getStats()) {
-                    for (FlowStatsEntry entry : reply.getEntries()) {
-                        if (cookieToFlow.containsKey(entry.getCookie())) {
-                            CacheFlowEntry cacheFlowEntry = cookieToFlow.get(entry.getCookie());
-                            dataCache.put(entry.getCookie(), cacheFlowEntry);
-                        }
+                for (FlowStatsEntry entry : data.getStats()) {
+                    if (cookieToFlow.containsKey(entry.getCookie())) {
+                        CacheFlowEntry cacheFlowEntry = cookieToFlow.get(entry.getCookie());
+                        dataCache.put(entry.getCookie(), cacheFlowEntry);
                     }
                 }
                 logger.debug("execute:dataCache: {}", dataCache);
-                Values values = new Values(message, dataCache);
+                Values values = new Values(
+                        data, tuple.getLongByField(TIMESTAMP), dataCache);
                 outputCollector.emit(FLOW_STATS.name(), tuple, values);
             }
         } finally {
@@ -166,8 +160,7 @@ public class CacheBolt extends BaseRichBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(FLOW_STATS.name(),
-                fieldsMessageFlowStats);
+        outputFieldsDeclarer.declareStream(FLOW_STATS.name(), fieldsMessageFlowStats);
     }
 
     private void updateCacheEntry(Long cookie, String flowId, String sw, MeasurePoint measurePoint) {

@@ -39,6 +39,7 @@ import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -48,8 +49,10 @@ import org.usermanagement.service.UserService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -439,17 +442,17 @@ public class FlowService {
      *
      * @return the all status list
      */
-    public List<String> getAllStatus() {
+    public Set<String> getAllStatus() {
         LinkStoreConfigDto linkStoreConfigDto = storeService.getLinkStoreConfig();
         boolean isLinkStoreConfig = linkStoreConfigDto.getUrls().isEmpty();
         Status status = Status.INSTANCE;
         if (!isLinkStoreConfig) {
-            if (status.getStatuses() == null) {
-                status.setStatuses(flowStoreService.getAllStatus());
+            if (CollectionUtil.isEmpty(status.getStatuses())) {
+                status.setStatuses(new HashSet<String>(flowStoreService.getAllStatus()));
             }
         } else {
             LOGGER.info("Link store is not configured. ");
         }
-        return status.getStatuses();
+        return status.getStatuses() != null ? status.getStatuses() : new HashSet<String>();
     }
 }

@@ -5,10 +5,12 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
@@ -96,6 +98,10 @@ class IslMovementSpec extends BaseSpecification {
         def islToPlugInto = notConnectedIsls[1]
 
         when: "Plug an ISL between two ports on the same switch"
+        def beforeReplugTime = new Date()
+        def dropCounterBefore = northbound.getSwitchRules(islToPlugInto.srcSwitch.dpId).flowEntries.find {
+            it.cookie == DefaultRule.DROP_LOOP_RULE.cookie
+        }.packetCount
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true)
 
         then: "The potential self-loop ISL is not present in list of isls (wait for discovery interval)"
@@ -104,6 +110,15 @@ class IslMovementSpec extends BaseSpecification {
         !islUtils.getIslInfo(allLinks, expectedIsl).present
         !islUtils.getIslInfo(allLinks, islUtils.reverseIsl(expectedIsl)).present
 
+        and: "Self-loop rule packet counter is incremented and logged in otsdb"
+        def statsData = null
+        Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
+            statsData = otsdb.query(beforeReplugTime, "pen.switch.flow.system.packets",
+                    [switchid: expectedIsl.srcSwitch.dpId.toOtsdFormat(),
+                     cookieHex: DefaultRule.DROP_LOOP_RULE.toHexString()]).dps
+            assert statsData && !statsData.empty
+        }
+        statsData.values().last().toLong() > dropCounterBefore
 
         and: "Unplug the link how it was before"
         lockKeeper.removeFlows([

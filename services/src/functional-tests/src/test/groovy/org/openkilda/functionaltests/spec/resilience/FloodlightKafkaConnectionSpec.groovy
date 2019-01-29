@@ -8,7 +8,6 @@ import org.openkilda.messaging.HeartBeat
 import org.openkilda.messaging.Message
 import org.openkilda.messaging.ctrl.KafkaBreakTarget
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.kafka.KafkaBreaker
 
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -26,6 +25,7 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
     @Autowired
     @Qualifier("kafkaConsumerProperties")
     Properties consumerProps
+
     @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
     String topoDiscoTopic
 

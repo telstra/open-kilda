@@ -121,7 +121,7 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
     });
    
   }
-
+  
   toggleSearch(e,inputContainer){ 
     this[inputContainer] = this[inputContainer] ? false : true;
     if(this[inputContainer]){

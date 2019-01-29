@@ -97,6 +97,8 @@ public interface NorthboundService {
 
     List<SwitchInfoData> getAllSwitches();
 
+    SwitchInfoData getSwitch(SwitchId switchId);
+
     DeleteMeterResult deleteMeter(SwitchId switchId, Long meterId);
 
     SwitchMeterEntries getAllMeters(SwitchId switchId);
@@ -114,6 +116,8 @@ public interface NorthboundService {
     //links
 
     List<IslInfoData> getAllLinks();
+
+    List<IslInfoData> getLinks(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
     List<LinkPropsDto> getAllLinkProps();
 

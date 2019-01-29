@@ -4,7 +4,6 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.fixture.rule.CleanupSwitches
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -20,22 +19,21 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Lazy
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
 
+import javax.inject.Provider
+
 @Slf4j
-@CleanupSwitches
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
 class FlowCrudSpec extends BaseSpecification {
 
     @Autowired
-    TraffExamService traffExam
-
-    @Shared
-    FlowTrafficExamBuilder examBuilder
+    Provider<TraffExamService> traffExamProvider
 
     /**
      * Switch pairs with more traffgen-available switches will go first. Then the less tg-available switches there is
@@ -48,14 +46,11 @@ class FlowCrudSpec extends BaseSpecification {
         switches.count { sw -> !topology.activeTraffGens.find { it.switchConnected == sw } }
     }
 
-    def setupOnce() {
-        examBuilder = new FlowTrafficExamBuilder(topology, traffExam)
-    }
-
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
 (#flow.source.datapath - #flow.destination.datapath)")
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
+        def traffExam = traffExamProvider.get()
         flowHelper.addFlow(flow)
         def path = PathHelper.convert(northbound.getFlowPath(flow.id))
         def switches = pathHelper.getInvolvedSwitches(path)
@@ -77,7 +72,7 @@ class FlowCrudSpec extends BaseSpecification {
 
         and: "The flow allows traffic (only applicable flows are checked)"
         try {
-            def exam = examBuilder.buildBidirectionalExam(flow, 0)
+            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
             [exam.forward, exam.reverse].each { direction ->
                 def resources = traffExam.startExam(direction)
                 direction.setResources(resources)
@@ -409,6 +404,30 @@ class FlowCrudSpec extends BaseSpecification {
                         }
                 ]
         ]
+    }
+
+    def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
+        given: "A potential flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def paths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
+
+        when: "Init creation of a new flow"
+        northbound.addFlow(flow)
+
+        and: "Immediately remove the flow"
+        northbound.deleteFlow(flow.id)
+
+        then: "All related switches have no discrepancies in rules"
+        Wrappers.wait(WAIT_OFFSET) {
+            switches.each {
+                def rules = northbound.validateSwitchRules(it.dpId)
+                assert rules.excessRules.empty
+                assert rules.missingRules.empty
+                assert rules.properRules.empty
+            }
+        }
     }
 
     @Shared

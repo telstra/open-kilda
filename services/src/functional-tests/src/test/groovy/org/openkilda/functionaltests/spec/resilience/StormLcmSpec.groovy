@@ -15,7 +15,7 @@ import spock.lang.Shared
 Storm Lifecycle Management: verifies system behavior during restart of certain parts of Storm. This is required to 
 simulate prod deployments, which are done on the live environment.
 """)
-@Ignore("on demand test. Takes too much time")
+@Ignore("On demand test. Takes too much time")
 class StormLcmSpec extends BaseSpecification {
     private static final String WFM_CONTAINER_NAME = "/wfm"
 
