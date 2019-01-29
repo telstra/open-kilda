@@ -1,0 +1,98 @@
+@startuml
+title Hub And Spoke Flow Create
+
+  actor User
+boundary Northbound as NB
+participant SwitchManager << Hub >>
+participant CommandBuilder
+participant SwitchService
+database DAO
+participant History
+participant SpeakerWorker
+participant RulesValidator
+
+User -> NB : Switch sync rules\nrequest
+
+activate NB
+NB -> SwitchManager : Switch sync rules
+activate SwitchManager
+SwitchManager -> History : Switch sync rules request with switch id X
+
+== Rules validation ==
+SwitchManager -> SpeakerWorker : dump switch rules
+deactivate SwitchManager
+SpeakerWorker -> SwitchManager : switch rules
+activate SwitchManager
+SwitchManager -> History : Received rules for switch X
+SwitchManager -> SwitchService : get flow segments by dst switch id
+activate SwitchService
+SwitchService -> DAO : get flow segments\nby dst switch id
+activate DAO
+DAO -> SwitchService : flow segments
+deactivate DAO
+SwitchService -> SwitchManager : flow segments
+deactivate SwitchService
+
+SwitchManager -> SwitchService : get flows by src switch id
+activate SwitchService
+SwitchService -> DAO : get flows\nby src switch id
+activate DAO
+DAO -> SwitchService : flows
+deactivate DAO
+SwitchService -> SwitchManager : flows
+deactivate SwitchService
+
+SwitchManager -> SwitchManager : compute missing rules
+
+SwitchManager -> History : Rules for switch X validated
+
+== Rules installation ==
+SwitchManager -> CommandBuilder : Create Switch Rules
+CommandBuilder -> CommandBuilder : Build commands
+note right : Two groups of commands is created:\nEgress/transit (1st stage) and ingress (2nd stage)
+
+CommandBuilder -> SwitchManager : Flow installation commands
+loop in (1st stage commands)
+    SwitchManager -> SpeakerWorker : Install a rule
+    deactivate SwitchManager
+end
+
+ loop for each installed rule from 1st stage
+    SpeakerWorker -> SwitchManager : a rule has been installed
+    activate SwitchManager
+    SwitchManager -> SwitchManager : mark corresponding rule as installed
+    SwitchManager -> History : N of M rules are installed
+    opt Is the last command in 1st group?
+        SwitchManager -> History : Validating non-ingress installed rules
+        SwitchManager -> RulesValidator : Validate egress/transit rules from 1st stage
+        deactivate SwitchManager
+    end
+end
+
+RulesValidator -> SwitchManager : Egress/transit rules are installed and valid
+activate SwitchManager
+loop in (2nd stage commands)
+    SwitchManager -> SpeakerWorker : Install an ingress rule
+    deactivate SwitchManager
+end
+
+ loop for each installed rule from 2nd stage
+    SpeakerWorker -> SwitchManager : a rule has been installed
+    activate SwitchManager
+    SwitchManager -> History : N of M rules are installed
+    SwitchManager -> SwitchManager : mark corresponding rule as installed
+    opt Is the last command in 2nd group?
+        SwitchManager -> History : Final validation of installed rules
+        SwitchManager -> RulesValidator : Validate ingress rules
+     deactivate SwitchManager
+    end
+end
+
+RulesValidator -> SwitchManager : Ingress rules are installed and valid
+activate SwitchManager
+SwitchManager -> NB
+deactivate SwitchManager
+NB -> User
+deactivate NB
+
+ @enduml
