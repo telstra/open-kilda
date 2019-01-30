@@ -21,7 +21,10 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+import static org.openkilda.wfm.topology.event.OfeLinkBolt.NETWORK_TOPOLOGY_CHANGE_STREAM;
 import static org.openkilda.wfm.topology.event.OfeLinkBolt.STATE_ID_DISCOVERY;
 
 import org.openkilda.messaging.Destination;
@@ -172,5 +175,28 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         bolt.doWork(tuple);
 
         assertFalse(discoveryLink.getState().isActive());
+    }
+
+    @Test
+    public void checkBfdOffset() throws JsonProcessingException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final int port = 205;
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
+        bolt.state = State.MAIN;
+
+        PortInfoData portInfoData = new PortInfoData(switchId, port, PortChangeType.DOWN);
+        InfoMessage inputMessage = new InfoMessage(portInfoData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.doWork(tuple);
+
+
+        PortInfoData updatedData = new PortInfoData(switchId, port - config.getBfdPortOffset(), PortChangeType.DOWN);
+        InfoMessage outputMessage = new InfoMessage(updatedData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+
+        Mockito.verify(outputDelegate).ack(tuple);
+        Mockito.verify(outputDelegate).emit(eq(NETWORK_TOPOLOGY_CHANGE_STREAM),
+                anyCollection(), eq(new Values(outputMessage)));
     }
 }
