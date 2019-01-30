@@ -32,8 +32,14 @@ public abstract class SwitchMapper {
 
     public static final SwitchMapper INSTANCE = Mappers.getMapper(SwitchMapper.class);
 
-    @Mapping(source = "status", target = "state")
-    public abstract SwitchInfoData map(Switch sw);
+    /**
+     * Convert {@link Switch} to {@link SwitchInfoData}.
+     */
+    public SwitchInfoData map(Switch sw) {
+        return new SwitchInfoData(
+                sw.getSwitchId(), map(sw.getStatus()),
+                sw.getAddress(), sw.getHostname(), sw.getDescription(), sw.getController());
+    }
 
     @Mapping(source = "state", target = "status")
     public abstract Switch map(SwitchInfoData sw);
