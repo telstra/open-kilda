@@ -15,6 +15,9 @@
 
 package org.openkilda.floodlight.command;
 
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 
 import java.util.UUID;
@@ -32,6 +35,10 @@ public class CommandContext {
         this.moduleContext = moduleContext;
         this.ctime = System.currentTimeMillis();
         this.correlationId = correlationId;
+    }
+
+    public InfoMessage makeInfoMessage(InfoData payload) {
+        return new InfoMessage(payload, System.currentTimeMillis(), correlationId);
     }
 
     public FloodlightModuleContext getModuleContext() {

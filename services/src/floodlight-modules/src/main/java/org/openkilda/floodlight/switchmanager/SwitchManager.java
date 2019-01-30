@@ -21,6 +21,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
+import static org.openkilda.model.Cookie.DEFAULT_RULES_MASK;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
@@ -110,6 +111,8 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -142,7 +145,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
-
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -1219,6 +1221,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             throw new SwitchNotFoundException(dpId);
         }
         return sw;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InetAddress getSwitchIpAddress(IOFSwitch sw) {
+        return ((InetSocketAddress) sw.getInetAddress()).getAddress();
     }
 
     @Override
