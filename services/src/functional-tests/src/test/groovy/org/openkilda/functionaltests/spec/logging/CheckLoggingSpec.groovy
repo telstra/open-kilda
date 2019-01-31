@@ -9,6 +9,8 @@ import org.openkilda.testing.service.elastic.model.KildaTags
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
+import spock.lang.Issue
 import spock.lang.Narrative
 
 @Slf4j
@@ -31,6 +33,8 @@ class CheckLoggingSpec extends BaseSpecification {
         result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMessage) }
     }
 
+    @Issue("https://github.com/telstra/open-kilda/issues/1966")
+    @Ignore
     def "Check Northbound, Storm and Topology Engine logging"() {
         when: "A non-existent flow is requested"
         int timeout = 180
