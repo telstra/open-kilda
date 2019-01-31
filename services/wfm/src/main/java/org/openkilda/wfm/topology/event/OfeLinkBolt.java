@@ -378,17 +378,23 @@ public class OfeLinkBolt
         }
     }
 
+    private Switch cleanUpLogicalPorts(Switch originalSwitch) {
+        if (originalSwitch == null) {
+            return null;
+        }
+        return originalSwitch.toBuilder()
+                .ports(originalSwitch.getPorts()
+                        .stream()
+                        .filter(port -> port.getNumber() <= bfdPortOffset).collect(Collectors.toList()))
+                .build();
+    }
+
     @VisibleForTesting
     void dispatchSyncInProgress(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
         if (data instanceof NetworkDumpSwitchData) {
             NetworkDumpSwitchData networkDumpSwitchData = (NetworkDumpSwitchData) data;
-            Switch originalSwitch = networkDumpSwitchData.getSwitchRecord();
-            Switch switchWithNoBfdPorts = originalSwitch.toBuilder()
-                    .ports(originalSwitch.getPorts()
-                            .stream()
-                            .filter(port -> port.getNumber() <= bfdPortOffset).collect(Collectors.toList()))
-                    .build();
+            Switch switchWithNoBfdPorts = cleanUpLogicalPorts(networkDumpSwitchData.getSwitchRecord());
             logger.info("Event/WFM Sync: switch {}", data);
             discovery.registerSwitch(switchWithNoBfdPorts);
 
@@ -407,10 +413,15 @@ public class OfeLinkBolt
         stateTransition(State.NEED_SYNC);
     }
 
-    private void dispatchMain(Tuple tuple, InfoMessage infoMessage) {
+    @VisibleForTesting
+    protected void dispatchMain(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
         if (data instanceof SwitchInfoData) {
-            handleSwitchEvent(tuple, infoMessage);
+            SwitchInfoData switchData = (SwitchInfoData) infoMessage.getData();
+            Switch switchWithNoBfdPorts = cleanUpLogicalPorts(switchData.getSwitchRecord());
+            SwitchInfoData switchDataWithNoBfdPorts = switchData.toBuilder().switchRecord(switchWithNoBfdPorts).build();
+            InfoMessage cleanedInfoMessage = infoMessage.toBuilder().data(switchDataWithNoBfdPorts).build();
+            handleSwitchEvent(tuple, cleanedInfoMessage);
             passToNetworkTopologyBolt(tuple, infoMessage);
         } else if (data instanceof PortInfoData) {
 
@@ -447,10 +458,11 @@ public class OfeLinkBolt
                 event.getClass().getName());
     }
 
-    private void handleSwitchEvent(Tuple tuple, InfoMessage infoMessage) {
+    protected void handleSwitchEvent(Tuple tuple, InfoMessage infoMessage) {
         SwitchInfoData switchData = (SwitchInfoData) infoMessage.getData();
         SwitchId switchId = switchData.getSwitchId();
         SwitchChangeType switchState = switchData.getState();
+
         logger.info("DISCO: Switch Event: switch={} state={}", switchId, switchState);
         logWrapper.onSwitchDiscovery(switchId, switchState);
 
