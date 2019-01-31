@@ -38,6 +38,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -175,6 +176,21 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
             createOrUpdate(flowPair.getForward());
             createOrUpdate(flowPair.getReverse());
         });
+    }
+
+    @Override
+    public Optional<String> getOrCreateFlowGroupId(String flowId) {
+        return findFlowPairById(flowId)
+                .map(diverseFlow -> {
+                    if (diverseFlow.getForward().getGroupId() == null) {
+                        String groupId = UUID.randomUUID().toString();
+
+                        diverseFlow.getForward().setGroupId(groupId);
+                        diverseFlow.getReverse().setGroupId(groupId);
+                        createOrUpdate(diverseFlow);
+                    }
+                    return diverseFlow.getForward().getGroupId();
+                });
     }
 
     @Override

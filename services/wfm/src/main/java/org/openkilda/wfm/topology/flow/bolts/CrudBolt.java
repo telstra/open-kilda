@@ -466,9 +466,11 @@ public class CrudBolt
         final String errorType = "Could not update flow";
 
         try {
-            Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
+            FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
+            Flow flow = FlowMapper.INSTANCE.map((request).getPayload());
 
-            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,
+            FlowPair updatedFlow = flowService.updateFlow(flow,
+                    request.getDiverseFlowId(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);

@@ -37,7 +37,7 @@ public class FlowCreateRequest extends CommandData {
 
     @NonNull
     @JsonProperty(Utils.PAYLOAD)
-    protected FlowDto payload;
+    FlowDto payload;
 
     @JsonProperty("diverse-flowid")
     String diverseFlowId;
@@ -46,7 +46,8 @@ public class FlowCreateRequest extends CommandData {
      * Instance constructor.
      *
      * @param payload request payload
-     * @throws IllegalArgumentException if payload is null
+     * @param diverseFlowId the flow id to build diverse group
+     * @throws NullPointerException if payload is null
      */
     @JsonCreator
     public FlowCreateRequest(
