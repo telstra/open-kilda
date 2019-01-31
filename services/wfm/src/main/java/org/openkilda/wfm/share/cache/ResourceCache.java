@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.share.cache;
 
+import static org.openkilda.model.MeterId.MAX_FLOW_METER_ID;
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
+
 import org.openkilda.model.SwitchId;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -47,20 +50,6 @@ public class ResourceCache {
      */
     @VisibleForTesting
     public static final int MAX_VLAN_ID = 4094;
-
-    /**
-     * Minimum meter id value.
-     */
-    @VisibleForTesting
-    public static final int MIN_METER_ID = 11;
-
-    /**
-     * Maximum meter id value.
-     * NB: Should be the same as VLAN range at the least, could be more. The formula ensures we have a sufficient range.
-     * As centecs have limit of max value equals to 2560 we set it to 2500.
-     */
-    @VisibleForTesting
-    public static final int MAX_METER_ID = 2500;
 
     /**
      * Maximum cookie value.
@@ -171,7 +160,7 @@ public class ResourceCache {
      * @return allocated meter id value
      */
     public synchronized Integer allocateMeterId(SwitchId switchId) {
-        return meterPool.computeIfAbsent(switchId, k -> new MeterPool(MIN_METER_ID, MAX_METER_ID)).allocate();
+        return meterPool.computeIfAbsent(switchId, k -> new MeterPool(MIN_FLOW_METER_ID, MAX_FLOW_METER_ID)).allocate();
     }
 
     /**
@@ -183,7 +172,7 @@ public class ResourceCache {
      */
     public synchronized Integer allocateMeterId(SwitchId switchId, Integer meterId) {
         if (meterId != null && meterId != 0) {
-            meterPool.computeIfAbsent(switchId, k -> new MeterPool(MIN_METER_ID, MAX_METER_ID))
+            meterPool.computeIfAbsent(switchId, k -> new MeterPool(MIN_FLOW_METER_ID, MAX_FLOW_METER_ID))
                     .allocate(meterId);
             return meterId;
         }

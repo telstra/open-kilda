@@ -39,11 +39,6 @@ public interface ISwitchManager extends IFloodlightService {
     /** OVS software switch manufacturer constant value. */
     String OVS_MANUFACTURER = "Nicira, Inc.";
 
-    /** Mask is being used to get meter id for corresponding system rule.
-     * E.g. for 0x8000000000000002L & PACKET_IN_RULES_METERS_MASK we will get meter id 2.
-     */
-    long PACKET_IN_RULES_METERS_MASK = 0x00000000000000FL;
-
     long COOKIE_FLAG_SERVICE = 0x8000000000000000L;
     long COOKIE_FLAG_BFD_CATCH = 0x0001000000000001L;
 
@@ -192,7 +187,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param meterId   the meter ID
      * @throws SwitchOperationException Switch not found
      */
-    void installMeter(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
+    void installMeterForFlow(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
 
     /**
      * Deletes the meter from the switch OF_13.
