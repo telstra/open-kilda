@@ -35,11 +35,11 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
+import org.openkilda.wfm.topology.stats.MeterCacheKey;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
 
-import javafx.util.Pair;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -72,7 +72,7 @@ public class CacheBolt extends AbstractBolt {
      * Cookie to flow and meter to flow maps.
      */
     private Map<Long, CacheFlowEntry> cookieToFlow = new HashMap<>();
-    private Map<Pair<SwitchId, Long>, CacheFlowEntry> switchAndMeterToFlow = new HashMap<>();
+    private Map<MeterCacheKey, CacheFlowEntry> switchAndMeterToFlow = new HashMap<>();
 
     public CacheBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -91,7 +91,8 @@ public class CacheBolt extends AbstractBolt {
                         cookieToFlow.put(flow.getCookie(), entry);
                         if (flow.getMeterId() != null) {
                             switchAndMeterToFlow.put(
-                                    new Pair<>(flow.getSrcSwitch().getSwitchId(), (long) flow.getMeterId()), entry);
+                                    new MeterCacheKey(
+                                            flow.getSrcSwitch().getSwitchId(), new Long(flow.getMeterId())), entry);
                         } else {
                             log.warn("Flow {} has no meter ID", flow.getFlowId());
                         }
@@ -130,7 +131,7 @@ public class CacheBolt extends AbstractBolt {
     private void handleGetDataFromCache(Tuple tuple) throws PipelineException {
         InfoData data = pullValue(tuple, STATS_FIELD, InfoData.class);
         Map<Long, CacheFlowEntry> cookieDataCache = null;
-        Map<Pair<SwitchId, Long>, CacheFlowEntry> meterDataCache = null;
+        Map<MeterCacheKey, CacheFlowEntry> meterDataCache = null;
         String streamId;
 
         if (data instanceof FlowStatsData) {
@@ -166,7 +167,7 @@ public class CacheBolt extends AbstractBolt {
                 break;
             case REMOVE:
                 cookieToFlow.remove(cookie);
-                switchAndMeterToFlow.remove(new Pair<>(switchId, meterId));
+                switchAndMeterToFlow.remove(new MeterCacheKey(switchId, meterId));
                 break;
             default:
                 logger.error("invalid command");
@@ -188,11 +189,11 @@ public class CacheBolt extends AbstractBolt {
         return cache;
     }
 
-    private Map<Pair<SwitchId, Long>, CacheFlowEntry> createSwitchAndMeterToFlowCache(MeterStatsData data) {
-        Map<Pair<SwitchId, Long>, CacheFlowEntry> cache = new HashMap<>();
+    private Map<MeterCacheKey, CacheFlowEntry> createSwitchAndMeterToFlowCache(MeterStatsData data) {
+        Map<MeterCacheKey, CacheFlowEntry> cache = new HashMap<>();
 
         for (MeterStatsEntry entry : data.getStats()) {
-            Pair<SwitchId, Long> key = new Pair<>(data.getSwitchId(), entry.getMeterId());
+            MeterCacheKey key = new MeterCacheKey(data.getSwitchId(), entry.getMeterId());
             if (switchAndMeterToFlow.containsKey(key)) {
                 CacheFlowEntry cacheEntry = switchAndMeterToFlow.get(key);
                 cache.put(key, cacheEntry);
@@ -219,7 +220,7 @@ public class CacheBolt extends AbstractBolt {
     }
 
     private void updateSwitchMeterFlowCache(Long cookie, Long meterId, String flowId, SwitchId switchId) {
-        Pair<SwitchId, Long> key = new Pair<>(switchId, meterId);
+        MeterCacheKey key = new MeterCacheKey(switchId, meterId);
         CacheFlowEntry current = switchAndMeterToFlow.get(key);
 
         if (current == null) {

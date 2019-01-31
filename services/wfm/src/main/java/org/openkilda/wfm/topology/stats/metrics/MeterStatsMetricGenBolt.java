@@ -28,8 +28,8 @@ import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
+import org.openkilda.wfm.topology.stats.MeterCacheKey;
 
-import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
 
@@ -46,14 +46,14 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
         log.debug("Received meter statistics: {}.", data);
 
         @SuppressWarnings("unchecked")
-        Map<Pair<SwitchId, Long>, CacheFlowEntry> flowCache =
-                (Map<Pair<SwitchId, Long>, CacheFlowEntry>) input.getValueByField(METER_CACHE_FIELD);
+        Map<MeterCacheKey, CacheFlowEntry> meterCache =
+                (Map<MeterCacheKey, CacheFlowEntry>) input.getValueByField(METER_CACHE_FIELD);
 
         long timestamp = input.getLongByField(TIMESTAMP);
 
         SwitchId switchId = data.getSwitchId();
         for (MeterStatsEntry entry : data.getStats()) {
-            @Nullable CacheFlowEntry flowEntry = flowCache.get(new Pair<>(switchId, entry.getMeterId()));
+            @Nullable CacheFlowEntry flowEntry = meterCache.get(new MeterCacheKey(switchId, entry.getMeterId()));
             emit(entry, timestamp, switchId, flowEntry);
         }
     }
