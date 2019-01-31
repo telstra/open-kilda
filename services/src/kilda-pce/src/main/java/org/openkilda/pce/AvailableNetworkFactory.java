@@ -25,12 +25,15 @@ import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Collection;
 import java.util.stream.Collectors;
 
 /**
  * A factory for {@link AvailableNetwork} instances.
  */
+@Slf4j
 public class AvailableNetworkFactory {
     private PathComputerConfig config;
     private IslRepository islRepository;
@@ -81,6 +84,8 @@ public class AvailableNetworkFactory {
         }
 
         if (flow.getGroupId() != null) {
+            log.info("Filling AvailableNetwork diverse weighs for group with id ", flow.getGroupId());
+
             Collection<FlowSegment> flowGroupSegments = flowSegmentRepository.findByFlowGroupId(flow.getGroupId());
             if (reuseAllocatedFlowResources) {
                 flowGroupSegments = flowGroupSegments.stream()
