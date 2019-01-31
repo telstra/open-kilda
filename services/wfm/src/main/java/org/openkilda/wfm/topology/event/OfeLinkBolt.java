@@ -33,7 +33,6 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -44,6 +43,7 @@ import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SwitchPort;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.OfeMessageUtils;
 import org.openkilda.wfm.WatchDog;
@@ -117,6 +117,7 @@ public class OfeLinkBolt
     private final int islHealthCheckTimeout;
     private final int islHealthFailureLimit;
     private final int islKeepRemovedTimeout;
+    private final int bfdPortOffset;
     private final float watchDogInterval;
     private WatchDog watchDog;
     private TopologyContext context;
@@ -152,6 +153,7 @@ public class OfeLinkBolt
         dumpRequestTimeout = discoveryConfig.getDiscoveryDumpRequestTimeout();
 
         islDiscoveryTopic = config.getKafkaSpeakerDiscoTopic();
+        bfdPortOffset = config.getBfdPortOffset();
     }
 
     @Override
@@ -378,16 +380,12 @@ public class OfeLinkBolt
         InfoData data = infoMessage.getData();
         if (data instanceof NetworkDumpSwitchData) {
             logger.info("Event/WFM Sync: switch {}", data);
-            // no sync actions required for switches.
-
-        } else if (data instanceof NetworkDumpPortData) {
-            logger.info("Event/WFM Sync: port {}", data);
-            NetworkDumpPortData portData = (NetworkDumpPortData) data;
-            discovery.registerPort(portData.getSwitchId(), portData.getPortNo());
+            discovery.registerSwitch(((NetworkDumpSwitchData) data).getSwitchRecord());
 
         } else if (data instanceof NetworkDumpEndMarker) {
             logger.info("End of network sync stream received");
             stateTransition(State.MAIN);
+
         } else {
             reportInvalidEvent(data);
         }
@@ -405,6 +403,12 @@ public class OfeLinkBolt
             handleSwitchEvent(tuple, infoMessage);
             passToNetworkTopologyBolt(tuple, infoMessage);
         } else if (data instanceof PortInfoData) {
+
+            int portNo = ((PortInfoData) data).getPortNo();
+            if (portNo > bfdPortOffset) {
+                ((PortInfoData) data).setPortNo(portNo - bfdPortOffset);
+            }
+
             handlePortEvent(tuple, (PortInfoData) data);
             passToNetworkTopologyBolt(tuple, infoMessage);
         } else if (data instanceof IslInfoData) {
@@ -446,7 +450,16 @@ public class OfeLinkBolt
             // It's possible that we get duplicated switch up events .. particulary if
             // FL goes down and then comes back up; it'll rebuild its switch / port information.
             // NB: need to account for this, and send along to TE to be conservative.
-            discovery.handleSwitchUp(switchId);
+            discovery.registerSwitch(switchData.getSwitchRecord());
+
+            // Produce port UP log records to match with current behavior i.e. switch-ADD event is a predecessor
+            // for set of port-UP events.
+            for (SwitchPort port : switchData.getSwitchRecord().getPorts()) {
+                if (SwitchPort.State.UP == port.getState()) {
+                    logger.info("DISCO: Port Event: switch={} port={} state={}",
+                                switchId, port.getNumber(), PortChangeType.UP);
+                }
+            }
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("SWITCH Event: ignoring state: {}", switchState);

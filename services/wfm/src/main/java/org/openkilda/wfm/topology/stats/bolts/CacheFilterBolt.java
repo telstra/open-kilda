@@ -48,6 +48,7 @@ public class CacheFilterBolt extends BaseRichBolt {
         SWITCH,
         FLOW,
         COOKIE,
+        METER,
         MEASURE_POINT
     }
 
@@ -62,6 +63,7 @@ public class CacheFilterBolt extends BaseRichBolt {
                     FieldsNames.FLOW.name(),
                     FieldsNames.SWITCH.name(),
                     FieldsNames.COOKIE.name(),
+                    FieldsNames.METER.name(),
                     FieldsNames.MEASURE_POINT.name());
 
 
@@ -96,7 +98,7 @@ public class CacheFilterBolt extends BaseRichBolt {
                 if (data instanceof InstallIngressFlow) {
                     InstallIngressFlow command = (InstallIngressFlow) data;
                     logMatchedRecord(command);
-                    emit(tuple, Commands.UPDATE, command, MeasurePoint.INGRESS);
+                    emit(tuple, Commands.UPDATE, command, command.getMeterId(), MeasurePoint.INGRESS);
                 } else if (data instanceof InstallEgressFlow) {
                     InstallEgressFlow command = (InstallEgressFlow) data;
                     logMatchedRecord(command);
@@ -104,7 +106,7 @@ public class CacheFilterBolt extends BaseRichBolt {
                 } else if (data instanceof InstallOneSwitchFlow) {
                     InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
                     logMatchedRecord(command);
-                    emit(tuple, Commands.UPDATE, command, MeasurePoint.INGRESS);
+                    emit(tuple, Commands.UPDATE, command, command.getMeterId(), MeasurePoint.INGRESS);
                     emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
                 } else if (data instanceof RemoveFlow) {
                     RemoveFlow command = (RemoveFlow) data;
@@ -121,16 +123,21 @@ public class CacheFilterBolt extends BaseRichBolt {
         }
     }
 
-    private void emit(Tuple tuple, Commands action, BaseFlow command) {
-        emit(tuple, action, command, null);
+    private void emit(Tuple tuple, Commands action, BaseFlow command, MeasurePoint point) {
+        emit(tuple, action, command, null, point);
     }
 
-    private void emit(Tuple tuple, Commands action, BaseFlow command, MeasurePoint point) {
+    private void emit(Tuple tuple, Commands action, BaseFlow command) {
+        emit(tuple, action, command, null, null);
+    }
+
+    private void emit(Tuple tuple, Commands action, BaseFlow command, Long meterId, MeasurePoint point) {
         Values values = new Values(
                 action,
                 command.getId(),
                 command.getSwitchId(),
                 command.getCookie(),
+                meterId,
                 point);
         outputCollector.emit(CACHE_UPDATE.name(), tuple, values);
     }

@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.northbound.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -13,6 +14,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData
 import org.openkilda.northbound.dto.flows.PingInput
 import org.openkilda.northbound.dto.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput
+import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 
@@ -35,6 +37,10 @@ class FlowPingSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Ping the flow"
+        def beforePingTime = new Date()
+        def unicastCounterBefore = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
+            it.cookie == DefaultRule.VERIFICATION_UNICAST_RULE.cookie
+        }.byteCount
         def response = northbound.pingFlow(flow.id, new PingInput())
 
         then: "Ping is successful"
@@ -45,6 +51,16 @@ class FlowPingSpec extends BaseSpecification {
         !response.error
         !response.forward.error
         !response.reverse.error
+
+        and: "Unicast rule packet count is increased and logged to otsdb"
+        def statsData = null
+        Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
+            statsData = otsdb.query(beforePingTime, "pen.switch.flow.system.bytes",
+                    [switchid: srcSwitch.dpId.toOtsdFormat(),
+                     cookieHex: DefaultRule.VERIFICATION_UNICAST_RULE.toHexString()]).dps
+            assert statsData && !statsData.empty
+        }
+        statsData.values().last().toLong() > unicastCounterBefore
 
         and: "Remove the flow"
         flowHelper.deleteFlow(flow.id)

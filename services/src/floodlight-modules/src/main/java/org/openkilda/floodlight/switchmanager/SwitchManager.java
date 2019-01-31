@@ -25,6 +25,8 @@ import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.model.Cookie.isDefaultRule;
+import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
@@ -35,6 +37,7 @@ import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
@@ -107,6 +110,8 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -134,13 +139,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Cookie IDs when creating a flow.
      */
     public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
-    private static final long DEFAULT_RULES_MASK = 0x8000000000000000L;
 
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
-
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -196,7 +199,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 IOFSwitchService.class,
                 IRestApiService.class,
                 KafkaUtilityService.class,
-                IKafkaProducerService.class);
+                IKafkaProducerService.class,
+                FeatureDetectorService.class);
     }
 
     /**
@@ -671,8 +675,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE);
 
         try {
-            deleteMeter(dpid, VERIFICATION_BROADCAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK);
-            deleteMeter(dpid, VERIFICATION_UNICAST_RULE_COOKIE & PACKET_IN_RULES_METERS_MASK);
+            deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue());
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Skip meters deletion from switch {} due to lack of meters support", dpid);
         }
@@ -705,7 +709,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
 
         long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
-        long meterId = cookie & PACKET_IN_RULES_METERS_MASK;
+        long meterId = createMeterIdForDefaultRule(cookie).getValue();
         long meterRate = isBroadcast ? config.getBroadcastRateLimit() : config.getUnicastRateLimit();
         OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
         OFInstructionApplyActions actions = ofFactory.instructions()
@@ -1218,6 +1222,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return sw;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InetAddress getSwitchIpAddress(IOFSwitch sw) {
+        return ((InetSocketAddress) sw.getInetAddress()).getAddress();
+    }
+
     @Override
     public List<OFPortDesc> getEnabledPhysicalPorts(DatapathId dpId) throws SwitchNotFoundException {
         return getPhysicalPorts(dpId).stream()
@@ -1227,8 +1239,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<OFPortDesc> getPhysicalPorts(DatapathId dpId) throws SwitchNotFoundException {
-        IOFSwitch sw = lookupSwitch(dpId);
+        return this.getPhysicalPorts(lookupSwitch(dpId));
+    }
 
+    @Override
+    public List<OFPortDesc> getPhysicalPorts(IOFSwitch sw) {
         final Collection<OFPortDesc> ports = sw.getPorts();
         if (ports == null) {
             return ImmutableList.of();
@@ -1596,19 +1611,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return portDesc.getHwAddr();
     }
 
-    private boolean isDefaultRule(long cookie) {
-        return (cookie & DEFAULT_RULES_MASK) != 0L;
-    }
-
     private OFMeterConfig getMeter(DatapathId dpid, long meter) throws SwitchOperationException {
         return dumpMeters(dpid).stream()
                 .filter(meterConfig -> meterConfig.getMeterId() == meter)
                 .findFirst()
                 .orElse(null);
-    }
-
-    @VisibleForTesting
-    void setConfig(SwitchManagerConfig config) {
-        this.config = config;
     }
 }

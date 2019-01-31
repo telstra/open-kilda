@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.event;
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.IgnoreKey;
 import com.sabre.oss.conf4j.annotation.Key;
 
@@ -54,6 +55,10 @@ public interface OFEventWfmTopologyConfig extends AbstractTopologyConfig {
 
     @Key("port.up.down.throttling.delay.seconds.cool.down")
     int getPortUpDownThrottlingDelaySecondsCoolDown();
+
+    @Key("bfd.port.offset")
+    @Default("200")
+    int getBfdPortOffset();
 
     @Configuration
     @Key("discovery")
