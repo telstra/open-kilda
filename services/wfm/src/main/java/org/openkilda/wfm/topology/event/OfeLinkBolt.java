@@ -43,6 +43,7 @@ import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.Switch;
 import org.openkilda.messaging.model.SwitchPort;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.OfeMessageUtils;
@@ -124,7 +125,8 @@ public class OfeLinkBolt
     private OutputCollector collector;
 
     private DummyIIslFilter islFilter;
-    private DiscoveryManager discovery;
+    @VisibleForTesting
+    DiscoveryManager discovery;
     private Map<SwitchId, Set<DiscoveryLink>> linksBySwitch;
 
     private String dumpRequestCorrelationId = null;
@@ -376,11 +378,19 @@ public class OfeLinkBolt
         }
     }
 
-    private void dispatchSyncInProgress(Tuple tuple, InfoMessage infoMessage) {
+    @VisibleForTesting
+    void dispatchSyncInProgress(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
         if (data instanceof NetworkDumpSwitchData) {
+            NetworkDumpSwitchData networkDumpSwitchData = (NetworkDumpSwitchData) data;
+            Switch originalSwitch = networkDumpSwitchData.getSwitchRecord();
+            Switch switchWithNoBfdPorts = originalSwitch.toBuilder()
+                    .ports(originalSwitch.getPorts()
+                            .stream()
+                            .filter(port -> port.getNumber() < bfdPortOffset).collect(Collectors.toList()))
+                    .build();
             logger.info("Event/WFM Sync: switch {}", data);
-            discovery.registerSwitch(((NetworkDumpSwitchData) data).getSwitchRecord());
+            discovery.registerSwitch(switchWithNoBfdPorts);
 
         } else if (data instanceof NetworkDumpEndMarker) {
             logger.info("End of network sync stream received");

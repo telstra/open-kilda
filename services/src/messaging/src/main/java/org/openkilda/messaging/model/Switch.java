@@ -43,7 +43,7 @@ public class Switch implements Serializable {
     @JsonProperty(value = "ports", required = true)
     private List<SwitchPort> ports;
 
-    @Builder
+    @Builder(toBuilder = true)
     @JsonCreator
     public Switch(
             @JsonProperty("datapath") SwitchId datapath,
