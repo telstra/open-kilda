@@ -5,6 +5,7 @@ import { ToastrService } from "ngx-toastr";
 import { CommonService } from "src/app/common/services/common.service";
 import { LoaderService } from "src/app/common/services/loader.service";
 import {forkJoin } from "rxjs";
+import { ModalconfirmationComponent } from "src/app/common/components/modalconfirmation/modalconfirmation.component";
 
 @Component({
   selector: "app-session",
@@ -24,6 +25,7 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
     private commonService: CommonService,
     private loaderService : LoaderService,
     private toastrService : ToastrService,
+    private modalService:NgbModal,
   ) {}
 
   ngOnInit() {
@@ -42,11 +44,13 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
   ngAfterViewInit(){
     this.loaderService.show("Loading Application Setting");
     this.loadAllsettings().subscribe((responseList)=>{
-      this.sessionForm.setValue({"session_time":responseList[0]});
-      this.initialVal  = responseList[0];
-      this.switchNameSourceTypes = responseList[1];
-      this.switchNameSourceForm.setValue({"switch_name_source":responseList[2]['type'] || 'FILE_STORAGE'});
-      this.initialNameSource = responseList[2]['type'] || 'FILE_STORAGE';
+      console.log('responseList',responseList);
+      var settings = responseList[0];
+       this.sessionForm.setValue({"session_time":settings['SESSION_TIMEOUT']});
+       this.initialVal  = settings['SESSION_TIMEOUT'];
+       this.switchNameSourceTypes = responseList[1];
+       this.switchNameSourceForm.setValue({"switch_name_source":settings['SWITCH_NAME_STORAGE_TYPE'] || 'FILE_STORAGE'});
+       this.initialNameSource = settings['SWITCH_NAME_STORAGE_TYPE'] || 'FILE_STORAGE';
       this.loaderService.hide();
     },error=>{
       var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Api response error';
@@ -57,11 +61,9 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
   }
 
   loadAllsettings(){
-    let sessionSetting = this.commonService.getSessionTimeoutSetting();
-    let SwitchNameListTypes = this.commonService.getSwitchNameSourceTypes();
-    let SwitchNameSettings = this.commonService.getSwitchNameSourceSettings();
-
-    return forkJoin([sessionSetting,SwitchNameListTypes,SwitchNameSettings]);
+    let allSettings = this.commonService.getAllSettings();
+     let SwitchNameListTypes = this.commonService.getSwitchNameSourceTypes();
+    return forkJoin([allSettings,SwitchNameListTypes]);
   }
 
   ngDoCheck(){
@@ -86,18 +88,26 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
     if(session_time < 5){
       return false;
     }
-    this.loaderService.show("Saving Session Setting");
-    this.commonService.saveSessionTimeoutSetting(session_time).subscribe((response)=>{
-      this.toastrService.success("Session Setting saved",'Success');
-      this.loaderService.hide();
-      this.initialVal = this.sessionForm.controls['session_time'].value;
-      this.isEdit = false;
-      this.sessionForm.disable();
-    },error=>{
-      var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Unable to save';
-      this.toastrService.error(errorMsg,'Error');
-      this.loaderService.hide();
+    const modalReff = this.modalService.open(ModalconfirmationComponent);
+    modalReff.componentInstance.title = "Confirmation";
+    modalReff.componentInstance.content = 'Are you sure you want to save session settings ?';
+    modalReff.result.then((response) => {
+      if(response && response == true){
+        this.loaderService.show("Saving Session Setting");
+          this.commonService.saveSessionTimeoutSetting(session_time).subscribe((response)=>{
+            this.toastrService.success("Session Setting saved",'Success');
+            this.loaderService.hide();
+            this.initialVal = this.sessionForm.controls['session_time'].value;
+            this.isEdit = false;
+            this.sessionForm.disable();
+          },error=>{
+            var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Unable to save';
+            this.toastrService.error(errorMsg,'Error');
+            this.loaderService.hide();
+          });
+      }
     });
+    
   }
 
   editSession(){
@@ -106,7 +116,7 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
   }
 
   cancelSession(){
-    this.sessionForm.setValue({"session_time":this.initialNameSource});
+    this.sessionForm.setValue({"session_time":this.initialVal});
     this.isEdit = false;
     this.sessionForm.disable();
   }
@@ -116,18 +126,24 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
     if(source_name_source == ''){
       return false;
     }
-
-    this.loaderService.show("Saving Switch Name Source Setting");
-    this.commonService.saveSwitchNameSourceSettings(source_name_source).subscribe((response)=>{
-      this.toastrService.success("Switch Name Source Saved",'Success');
-      this.loaderService.hide();
-      this.initialNameSource = this.switchNameSourceForm.controls['switch_name_source'].value;
-      this.isSwitchNameSourcEdit = false;
-      this.switchNameSourceForm.disable();
-    },error=>{
-      var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Unable to save';
-      this.toastrService.error(errorMsg,'Error');
-      this.loaderService.hide();
+    const modalReff = this.modalService.open(ModalconfirmationComponent);
+    modalReff.componentInstance.title = "Confirmation";
+    modalReff.componentInstance.content = 'Are you sure you want to save switch name source settings ?';
+    modalReff.result.then((response) => {
+      if(response && response == true){
+        this.loaderService.show("Saving Switch Name Source Setting");
+        this.commonService.saveSwitchNameSourceSettings(source_name_source).subscribe((response)=>{
+          this.toastrService.success("Switch Name Source Saved",'Success');
+          this.loaderService.hide();
+          this.initialNameSource = this.switchNameSourceForm.controls['switch_name_source'].value;
+          this.isSwitchNameSourcEdit = false;
+          this.switchNameSourceForm.disable();
+        },error=>{
+          var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Unable to save';
+          this.toastrService.error(errorMsg,'Error');
+          this.loaderService.hide();
+        });
+      }
     });
   }
   editSwitchNameSource(){

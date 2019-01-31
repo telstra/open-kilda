@@ -11,6 +11,8 @@ import { Title } from '@angular/platform-browser';
 import { CommonService } from '../../../common/services/common.service';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
 import { FormGroup, FormBuilder } from '@angular/forms';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { ModalconfirmationComponent } from 'src/app/common/components/modalconfirmation/modalconfirmation.component';
 
 @Component({
   selector: 'app-switch-detail',
@@ -61,7 +63,8 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
         private titleService: Title,
         private commonService: CommonService,
         private storeSwitchService:StoreSettingtService,
-        private formBuilder:FormBuilder
+        private formBuilder:FormBuilder,
+        private modalService:NgbModal,
         ) {
 
       this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
@@ -80,8 +83,8 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
          this.router.navigated = false;
         this.router.navigate([this.router.url]);
     }
-    this.commonService.getSwitchNameSourceSettings().subscribe((response)=>{
-      this.isStorageDBType = response && response['type']=="DATABASE_STORAGE";
+    this.commonService.getAllSettings().subscribe((response)=>{
+      this.isStorageDBType = response && response['SWITCH_NAME_STORAGE_TYPE']=="DATABASE_STORAGE";
     },error=>{
 
     })
@@ -134,23 +137,30 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
   }
 
   saveSwitchName(){
-    this.isSwitchNameEdit = false;
-    var self =this;
-    this.loaderService.show('Saving Switch Name..');
-    let name = this.switchNameForm.controls['name'].value;
-    let switchId = this.switch_id;
-    this.switchService.saveSwitcName(name,switchId).subscribe((response)=>{
-      self.loaderService.hide();
-      self.name = response.name;
-      self.switchDetail.name = response.name;
-      let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
-      localStorage.removeItem('switchDetailsJSON');
-      retrievedSwitchObject.name = response.name;
-      localStorage.setItem('switchDetailsJSON',JSON.stringify(retrievedSwitchObject));
-      localStorage.removeItem('SWITCHES_LIST');
-    },(error)=>{ 
-      this.loaderService.hide();
-    })
+    const modalReff = this.modalService.open(ModalconfirmationComponent);
+    modalReff.componentInstance.title = "Confirmation";
+    modalReff.componentInstance.content = 'Are you sure you want to update switch name ?';
+    modalReff.result.then((response) => {
+      if(response && response == true){
+          this.isSwitchNameEdit = false;
+          var self =this;
+          this.loaderService.show('Saving Switch Name..');
+          let name = this.switchNameForm.controls['name'].value;
+          let switchId = this.switch_id;
+          this.switchService.saveSwitcName(name,switchId).subscribe((response)=>{
+            self.loaderService.hide();
+            self.name = response.name;
+            self.switchDetail.name = response.name;
+            let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
+            localStorage.removeItem('switchDetailsJSON');
+            retrievedSwitchObject.name = response.name;
+            localStorage.setItem('switchDetailsJSON',JSON.stringify(retrievedSwitchObject));
+            localStorage.removeItem('SWITCHES_LIST');
+          },(error)=>{ 
+            this.loaderService.hide();
+          })
+        }
+      });
   }
 
   ngAfterViewInit(){
