@@ -190,9 +190,10 @@ class AutoRerouteSpec extends BaseSpecification {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
-        when: "Set reflow_on_switch_activation=#reflowOnSwitchActivation"
-        northbound.toggleFeature(
-                new FeatureTogglesDto(reflowOnSwitchActivation, null, null, null, null, null))
+        when: "Set flowsRerouteOnIslDiscovery=#flowsRerouteOnIslDiscovery"
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                        .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscovery)
+                        .build())
 
         and: "Connect the intermediate switch back"
         lockKeeper.reviveSwitch(flowPath[1].switchId)
@@ -203,7 +204,9 @@ class AutoRerouteSpec extends BaseSpecification {
         northbound.getFlowStatus(flow.id).status == flowStatus
 
         and: "Restore topology to the original state, remove the flow, reset toggles"
-        northbound.toggleFeature(new FeatureTogglesDto(true, null, null, null, null ,null))
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowsRerouteOnIslDiscoveryEnabled(true)
+                .build())
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -211,9 +214,9 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         where:
-        reflowOnSwitchActivation | flowStatus
-        true                     | FlowState.UP
-        false                    | FlowState.DOWN
+        flowsRerouteOnIslDiscovery | flowStatus
+        true                       | FlowState.UP
+        false                      | FlowState.DOWN
     }
 
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {

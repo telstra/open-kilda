@@ -18,19 +18,19 @@ package org.openkilda.messaging.nbtopology.response;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.ToString;
 import lombok.Value;
 
 @Value
 @ToString
-@Builder
 public class FeatureTogglesResponse extends InfoData {
 
     @JsonProperty("feature_toggles")
     private FeatureTogglesDto featureTogglesDto;
 
+    @JsonCreator
     public FeatureTogglesResponse(@JsonProperty("feature_toggles") FeatureTogglesDto featureTogglesDto) {
         this.featureTogglesDto = featureTogglesDto;
     }

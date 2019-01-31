@@ -76,7 +76,7 @@ public class FeatureTogglesService {
             }
         }
 
-        log.info("Feature toggle '{}' is disabled", featureToggle.toString());
+        log.warn("Feature toggle '{}' is disabled", featureToggle.toString());
         throw new FeatureTogglesNotEnabledException(featureToggle.toString());
     }
 }

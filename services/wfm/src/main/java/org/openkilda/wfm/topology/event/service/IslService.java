@@ -76,6 +76,8 @@ public class IslService {
                     isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
                     isl.getDestSwitch().getSwitchId(), isl.getDestPort(), isl.getStatus());
             sender.sendRerouteInactiveFlowsMessage(reason);
+        } else {
+            log.warn("Feature toggle 'flows_reroute_on_isl_discovery' is disabled");
         }
     }
 
