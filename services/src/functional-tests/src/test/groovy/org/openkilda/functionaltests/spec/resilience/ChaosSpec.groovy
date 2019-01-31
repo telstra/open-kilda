@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.resilience
 
-import static org.openkilda.testing.Constants.MAX_DEFAULT_METER_ID
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -67,7 +67,9 @@ class ChaosSpec extends BaseSpecification {
         // Virtual and hardware OF_12 switches don't support meters.
         profile != "virtual" ? Wrappers.wait(WAIT_OFFSET + flowsAmount * RULES_DELETION_TIME) {
             topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {
-                assert northbound.getAllMeters(it.dpId).meterEntries.findAll { it.meterId > MAX_DEFAULT_METER_ID }.empty
+                assert northbound.getAllMeters(it.dpId).meterEntries.findAll {
+                    it.meterId > MAX_SYSTEM_RULE_METER_ID
+                }.empty
             }
         } : true
     }
