@@ -82,7 +82,7 @@ public class FlowValidator {
                                                                  requestedFlow.getSrcPort());
 
 
-        Optional<String> conflictedFlow = conflictsOnSource.stream()
+        Optional<Flow> conflictedFlow = conflictsOnSource.stream()
                 .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
                 .filter(flow -> (flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
                             && flow.getSrcPort() == requestedFlow.getSrcPort()
@@ -92,15 +92,10 @@ public class FlowValidator {
                             && flow.getDestPort() == requestedFlow.getSrcPort()
                             && (flow.getDestVlan() == requestedFlow.getSrcVlan() || flow.getDestVlan() == 0
                                 || requestedFlow.getSrcVlan() == 0)))
-                .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
-            throw new FlowValidationException(
-                    format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getSrcPort(),
-                            requestedFlow.getSrcSwitch().getSwitchId(),
-                            conflictedFlow.get()),
-                    ErrorType.ALREADY_EXISTS);
+            String errorMessage = buildFlowConflictMessage(requestedFlow, conflictedFlow.get());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
 
         // Check the destination
@@ -120,15 +115,38 @@ public class FlowValidator {
                             && flow.getDestPort() == requestedFlow.getDestPort()
                             && (flow.getDestVlan() == requestedFlow.getDestVlan() || flow.getDestVlan() == 0
                                 || requestedFlow.getDestVlan() == 0)))
-                .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
-            throw new FlowValidationException(
-                    format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getDestPort(),
-                            requestedFlow.getDestSwitch().getSwitchId(),
-                            conflictedFlow.get()),
-                    ErrorType.ALREADY_EXISTS);
+            String errorMessage = buildFlowConflictMessage(requestedFlow, conflictedFlow.get());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+    }
+
+    private String buildFlowConflictMessage(Flow requestedFlow, Flow conflictedFlow) {
+        if (conflictedFlow.getSrcVlan() == 0) {
+            return format("Flow '%s' with untagged port %d on the switch '%s' already exists",
+                    conflictedFlow.getFlowId(),
+                    conflictedFlow.getSrcPort(),
+                    conflictedFlow.getSrcSwitch().getSwitchId());
+        } else if (conflictedFlow.getDestVlan() == 0) {
+            return format("Flow '%s' with untagged port %d on the switch '%s' already exists",
+                    conflictedFlow.getFlowId(),
+                    conflictedFlow.getDestPort(),
+                    conflictedFlow.getDestSwitch().getSwitchId());
+        } else if (requestedFlow.getSrcVlan() == 0) {
+            return format("The port %d on the switch %s can't be untagged",
+                    requestedFlow.getSrcPort(),
+                    requestedFlow.getSrcSwitch());
+        } else if (requestedFlow.getDestVlan() == 0) {
+            return format("The port %d on the switch %s can't be untagged",
+                    requestedFlow.getDestPort(),
+                    requestedFlow.getDestSwitch());
+        } else {
+            return format("The VLAN %d on the port %d on the switch '%s' has already occupied by the flow '%s'.",
+                    requestedFlow.getSrcVlan(),
+                    requestedFlow.getSrcPort(),
+                    requestedFlow.getSrcSwitch().getSwitchId(),
+                    conflictedFlow.getFlowId());
         }
     }
 
