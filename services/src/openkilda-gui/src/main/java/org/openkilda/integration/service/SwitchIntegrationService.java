@@ -16,6 +16,8 @@
 package org.openkilda.integration.service;
 
 import org.openkilda.constants.IConstants;
+import org.openkilda.constants.IConstants.ApplicationSetting;
+import org.openkilda.constants.IConstants.StorageType;
 import org.openkilda.dao.entity.SwitchNameEntity;
 import org.openkilda.dao.repository.SwitchNameRepository;
 import org.openkilda.helper.RestClientManager;
@@ -39,7 +41,6 @@ import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 import org.openkilda.utility.JsonUtil;
-import org.openkilda.utility.StringUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -86,13 +87,13 @@ public class SwitchIntegrationService {
 
     @Autowired
     private ObjectMapper objectMapper;
-    
+
     @Autowired
     private FlowConverter flowConverter;
-    
+
     @Autowired
     private ApplicationSettingService applicationSettingService;
-    
+
     @Autowired
     private SwitchNameRepository switchNameRepository;
 
@@ -115,7 +116,8 @@ public class SwitchIntegrationService {
     /**
      * Gets the switch info set name.
      *
-     * @param switches the switches
+     * @param switches
+     *            the switches
      * @return the switch info set name
      */
     private List<SwitchInfo> getSwitchInfoSetName(List<SwitchInfo> switches) {
@@ -124,14 +126,15 @@ public class SwitchIntegrationService {
         if (switches != null && !StringUtils.isEmpty(switches)) {
 
             Map<String, String> csNames = new HashMap<String, String>();
-            if (StringUtil.isNullOrEmpty(IConstants.SwitchNameStorageType.VALUE)) {
-                IConstants.SwitchNameStorageType.VALUE = applicationSettingService.getSwitchNameStorageType().getType();
+            if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == null) {
+                String value = applicationSettingService
+                        .getApplicationSetting(ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
+                IConstants.STORAGE_TYPE_FOR_SWITCH_NAME = StorageType.get(value);
             }
-            if (IConstants.SwitchNameStorageType.VALUE
-                    .equalsIgnoreCase(IConstants.SwitchNameStorageType.FILE_STORAGE)) {
+
+            if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.FILE_STORAGE) {
                 csNames = getCustomSwitchNameFromFile();
-            } else if (IConstants.SwitchNameStorageType.VALUE
-                    .equalsIgnoreCase(IConstants.SwitchNameStorageType.DATABASE_STORAGE)) {
+            } else if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.DATABASE_STORAGE) {
                 csNames = getCustomSwitchNameFromDatabase();
             }
             for (SwitchInfo switchInfo : switches) {
@@ -144,14 +147,15 @@ public class SwitchIntegrationService {
     /**
      * Custom switch name.
      *
-     * @param csNames the cs names
-     * @param switchId the switch id
+     * @param csNames
+     *            the cs names
+     * @param switchId
+     *            the switch id
      * @return the string
      */
     public String customSwitchName(Map<String, String> csNames, String switchId) {
         if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
-            if (csNames.containsKey(switchId.toLowerCase())
-                    || csNames.containsKey(switchId.toUpperCase())) {
+            if (csNames.containsKey(switchId.toLowerCase()) || csNames.containsKey(switchId.toUpperCase())) {
                 if (!IoUtil.chkStringIsNotEmpty(csNames.get(switchId))) {
                     return switchId;
                 } else {
@@ -177,7 +181,7 @@ public class SwitchIntegrationService {
         }
         return islLinkConverter.toIslLinksInfo(links, islCostMap());
     }
-    
+
     /**
      * Gets the isl links port info.
      *
@@ -193,7 +197,7 @@ public class SwitchIntegrationService {
         }
         return null;
     }
-    
+
     private Map<String, String> islCostMap() {
         List<LinkProps> linkProps = getIslLinkProps(null);
         Map<String, String> islCostMap = new HashMap<>();
@@ -210,7 +214,6 @@ public class SwitchIntegrationService {
         return islCostMap;
 
     }
-    
 
     /**
      * Gets the isl link cost.
@@ -238,7 +241,6 @@ public class SwitchIntegrationService {
         return null;
     }
 
-
     /**
      * Get custom switch name from file.
      * 
@@ -260,14 +262,12 @@ public class SwitchIntegrationService {
                 }
             }
         } catch (Exception ex) {
-            LOGGER.error(
-                    "Inside getCustomSwitchNameFromFile unable to find switch file path Exception :",
-                    ex);
+            LOGGER.error("Inside getCustomSwitchNameFromFile unable to find switch file path Exception :", ex);
         }
         return csNames;
 
     }
-    
+
     /**
      * Gets the custom switch name from database.
      *
@@ -285,7 +285,8 @@ public class SwitchIntegrationService {
     /**
      * Update isl link props.
      *
-     * @param keys the keys
+     * @param keys
+     *            the keys
      * @return the string
      */
     public String updateIslLinkProps(List<LinkProps> keys) {
@@ -303,23 +304,23 @@ public class SwitchIntegrationService {
     /**
      * This Method is used to set link props.
      * 
-     * @param keys th link properties
-     * @param builder the uri component builder
+     * @param keys
+     *            th link properties
+     * @param builder
+     *            the uri component builder
      * @return UriComponentsBuilder
      */
     private UriComponentsBuilder setLinkProps(LinkProps keys, UriComponentsBuilder builder) {
         try {
             if (keys != null) {
                 if (!keys.getSrcSwitch().isEmpty()) {
-                    builder.queryParam("src_switch",
-                            URLEncoder.encode(keys.getSrcSwitch(), "UTF-8"));
+                    builder.queryParam("src_switch", URLEncoder.encode(keys.getSrcSwitch(), "UTF-8"));
                 }
                 if (!keys.getSrcPort().isEmpty()) {
                     builder.queryParam("src_port", URLEncoder.encode(keys.getSrcPort(), "UTF-8"));
                 }
                 if (!keys.getDstSwitch().isEmpty()) {
-                    builder.queryParam("dst_switch",
-                            URLEncoder.encode(keys.getDstSwitch(), "UTF-8"));
+                    builder.queryParam("dst_switch", URLEncoder.encode(keys.getDstSwitch(), "UTF-8"));
                 }
                 if (!keys.getDstPort().isEmpty()) {
                     builder.queryParam("dst_port", URLEncoder.encode(keys.getDstPort(), "UTF-8"));
@@ -330,11 +331,12 @@ public class SwitchIntegrationService {
         }
         return builder;
     }
-    
+
     /**
      * This Method is used to get switch rules.
      * 
-     * @param switchId the switch id
+     * @param switchId
+     *            the switch id
      * @return the switch rules
      */
     public String getSwitchRules(String switchId) {
@@ -350,13 +352,16 @@ public class SwitchIntegrationService {
             throw new IntegrationException(e);
         }
     }
-    
+
     /**
      * Configure port.
      *
-     * @param switchId the switch id
-     * @param port the port
-     * @param configuration the configuration
+     * @param switchId
+     *            the switch id
+     * @param port
+     *            the port
+     * @param configuration
+     *            the configuration
      * @return the configured port
      */
     public ConfiguredPort configurePort(String switchId, String port, PortConfiguration configuration) {
@@ -378,44 +383,49 @@ public class SwitchIntegrationService {
         }
         return null;
     }
-    
+
     /**
      * Gets the isl flows.
      *
-     * @param srcSwitch the source switch
-     * @param srcPort the source port
-     * @param dstSwitch the destination switch
-     * @param dstPort the destination port
+     * @param srcSwitch
+     *            the source switch
+     * @param srcPort
+     *            the source port
+     * @param dstSwitch
+     *            the destination switch
+     * @param dstPort
+     *            the destination port
      * @return the isl flows
      */
-    public List<FlowInfo> getIslFlows(String srcSwitch, String srcPort, String dstSwitch,
-            String dstPort) {
-        
+    public List<FlowInfo> getIslFlows(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
+
         List<Flow> flowList = getIslFlowList(srcSwitch, srcPort, dstSwitch, dstPort);
         if (flowList != null) {
             return flowConverter.toFlowsInfo(flowList);
         }
         return new ArrayList<FlowInfo>();
     }
-    
+
     /**
      * Gets the isl flow list.
      *
-     * @param srcSwitch the source switch
-     * @param srcPort the source port
-     * @param dstSwitch the destination switch
-     * @param dstPort the destination port
+     * @param srcSwitch
+     *            the source switch
+     * @param srcPort
+     *            the source port
+     * @param dstSwitch
+     *            the destination switch
+     * @param dstPort
+     *            the destination port
      * @return the isl flow list
      */
-    public List<Flow> getIslFlowList(String srcSwitch, String srcPort, String dstSwitch,
-            String dstPort) {
+    public List<Flow> getIslFlowList(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
         try {
-            HttpResponse response =
-                    restClientManager.invoke(applicationProperties.getNbBaseUrl()
-                            + IConstants.NorthBoundUrl.GET_ISL_FLOW.replace("{src_switch}", srcSwitch)
-                                    .replace("{src_port}", srcPort).replace("{dst_switch}", dstSwitch)
-                                    .replace("{dst_port}", dstPort), HttpMethod.GET, "", "",
-                            applicationService.getAuthHeader());
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_ISL_FLOW
+                            .replace("{src_switch}", srcSwitch).replace("{src_port}", srcPort)
+                            .replace("{dst_switch}", dstSwitch).replace("{dst_port}", dstPort),
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, Flow.class);
             }
@@ -428,7 +438,7 @@ public class SwitchIntegrationService {
         }
         return null;
     }
-    
+
     /**
      * Gets the meters.
      *

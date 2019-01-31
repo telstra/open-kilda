@@ -35,7 +35,6 @@ import org.openkilda.model.SwitchMeter;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.store.model.Customer;
 import org.openkilda.store.service.StoreService;
-import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
@@ -414,10 +413,9 @@ public class SwitchService {
      * @return the SwitchInfo
      */
     public SwitchInfo saveOrUpdateSwitchName(String switchId, String switchName) {
-        SwitchNameEntity switchNameEntity = new SwitchNameEntity();
-        List<SwitchNameEntity> switchNameList = switchNameRepository.findBySwitchDpid(switchId);
-        if (!CollectionUtil.isEmpty(switchNameList)) {
-            switchNameEntity = switchNameList.get(0);
+        SwitchNameEntity switchNameEntity = switchNameRepository.findBySwitchDpid(switchId);
+        if (switchNameEntity == null) {
+            switchNameEntity = new SwitchNameEntity();
         }
         switchNameEntity.setSwitchDpid(switchId);
         switchNameEntity.setSwitchName(switchName);

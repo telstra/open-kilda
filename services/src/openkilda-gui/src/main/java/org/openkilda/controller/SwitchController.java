@@ -99,7 +99,7 @@ public class SwitchController {
      */
     @RequestMapping(value = "/name/{switchId}", method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = { IConstants.Permission.SW_SWITCH_NAME_UPDATE })
+    @Permissions(values = { IConstants.Permission.SW_SWITCH_UPDATE_NAME })
     public @ResponseBody SwitchInfo saveOrUpdateSwitchName(@PathVariable final String switchId,
             @RequestBody final String switchName) {
         if (StringUtil.isNullOrEmpty(switchName)) {

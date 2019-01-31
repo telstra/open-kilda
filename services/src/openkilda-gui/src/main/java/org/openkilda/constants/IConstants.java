@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-
 /**
  * The Interface IConstants.
  *
@@ -45,29 +44,32 @@ public abstract class IConstants {
         public static Integer DEFAULT_TIME_IN_MINUTE = 45;
     }
     
-    public static final class ApplicationSetting {
-        private ApplicationSetting() {
+    public enum ApplicationSetting {
 
+        SESSION_TIMEOUT(String.valueOf(SessionTimeout.DEFAULT_TIME_IN_MINUTE)), SWITCH_NAME_STORAGE_TYPE(
+                StorageType.FILE_STORAGE.name());
+
+        final String value;
+
+        private ApplicationSetting(final String value) {
+            this.value = value;
         }
-        
-        public static String SESSION_TIMEOUT = "session_timeout";
-        
-        public static String SWITCH_NAME_STORAGE_TYPE = "switch_name_storage_type";
+
+        public String getValue() {
+            return value;
+        }
     }
     
-    public static final class SwitchNameStorageType {
-        private SwitchNameStorageType() {
+    public enum StorageType {
 
+        DATABASE_STORAGE, FILE_STORAGE;
+        
+        public static StorageType get(final String name) {
+            return name.equalsIgnoreCase(DATABASE_STORAGE.name()) ? DATABASE_STORAGE : FILE_STORAGE;
         }
-
-        public static String VALUE = "";
-        
-        public static final String FILE_STORAGE = "FILE_STORAGE";
-
-        public static final String DATABASE_STORAGE = "DATABASE_STORAGE";
-        
-        public static final String[] TYPES = { FILE_STORAGE, DATABASE_STORAGE };
     }
+    
+    public static StorageType STORAGE_TYPE_FOR_SWITCH_NAME = null;
     
     public final class Role {
         
@@ -204,11 +206,9 @@ public abstract class IConstants {
         
         public static final String STORE_SETTING = "store_setting";
         
-        public static final String SESSION_TIMEOUT_SETTING = "session_timeout_setting";
+        public static final String APPLICATION_SETTING = "application_setting";
         
-        public static final String SWITCH_NAME_STORAGE_TYPE = "switch_name_storage_type";
-        
-        public static final String SW_SWITCH_NAME_UPDATE = "sw_switch_name_update";
+        public static final String SW_SWITCH_UPDATE_NAME = "sw_switch_update_name";
         
     }
 

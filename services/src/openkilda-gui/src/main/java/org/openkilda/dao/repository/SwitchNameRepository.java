@@ -20,11 +20,9 @@ import org.openkilda.dao.entity.SwitchNameEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
 @Repository
 public interface SwitchNameRepository extends JpaRepository<SwitchNameEntity, Integer> {
     
-    public List<SwitchNameEntity> findBySwitchDpid(String switchDpid);
+    public SwitchNameEntity findBySwitchDpid(String switchDpid);
 
 }
