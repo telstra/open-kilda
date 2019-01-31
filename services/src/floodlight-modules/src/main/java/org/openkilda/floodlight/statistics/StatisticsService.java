@@ -162,11 +162,13 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                 .setMeterId(OFPM_ALL)
                 .build();
 
-        logger.trace("Getting meter stats for switch={}", iofSwitch.getId());
+        if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
+            logger.trace("Getting meter stats for switch={}", iofSwitch.getId());
 
-        Futures.addCallback(iofSwitch.writeStatsRequest(meterStatsRequest),
-                new RequestCallback<>(data -> OfMeterStatsMapper.INSTANCE.toMeterStatsData(data, switchId),
-                        "meter", CorrelationContext.getId()));
+            Futures.addCallback(iofSwitch.writeStatsRequest(meterStatsRequest),
+                    new RequestCallback<>(data -> OfMeterStatsMapper.INSTANCE.toMeterStatsData(data, switchId),
+                            "meter", CorrelationContext.getId()));
+        }
     }
 
     private class RequestCallback<T extends OFStatsReply> implements FutureCallback<List<T>> {
