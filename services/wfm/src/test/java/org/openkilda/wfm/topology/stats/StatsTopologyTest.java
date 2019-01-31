@@ -38,6 +38,7 @@ import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
+import org.openkilda.messaging.info.stats.PortStatsReply;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.OutputVlanType;
@@ -128,7 +129,8 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                     baseCount + 4, baseCount + 5, baseCount + 6, baseCount + 7,
                     baseCount + 8, baseCount + 9, baseCount + 10, baseCount + 11);
         }).collect(toList());
-        InfoMessage message = new InfoMessage(new PortStatsData(switchId, entries), timestamp, CORRELATION_ID,
+        final List<PortStatsReply> replies = Collections.singletonList(new PortStatsReply(1, entries));
+        InfoMessage message = new InfoMessage(new PortStatsData(switchId, replies), timestamp, CORRELATION_ID,
                 Destination.WFM_STATS);
 
         //mock kafka spout

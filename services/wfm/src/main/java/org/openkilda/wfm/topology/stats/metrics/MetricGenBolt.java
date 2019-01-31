@@ -17,18 +17,22 @@ package org.openkilda.wfm.topology.stats.metrics;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseRichBolt;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public abstract class MetricGenBolt extends AbstractBolt {
+public abstract class MetricGenBolt extends BaseRichBolt {
+
+    protected OutputCollector collector;
 
     protected static List<Object> tuple(String metric, long timestamp, Number value, Map<String, String> tag)
             throws JsonEncodeException {
@@ -42,16 +46,13 @@ public abstract class MetricGenBolt extends AbstractBolt {
         return Collections.singletonList(json);
     }
 
-    void emitMetric(String metric, long timestamp, Number value, Map<String, String> tag) {
-        try {
-            getOutput().emit(tuple(metric, timestamp, value, tag));
-        } catch (JsonEncodeException e) {
-            log.error("Error during serialization of datapoint", e);
-        }
-    }
-
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(AbstractTopology.fieldMessage);
+    }
+
+    @Override
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+        this.collector = collector;
     }
 }

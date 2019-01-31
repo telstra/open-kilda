@@ -40,10 +40,10 @@ public class PortStatsData extends InfoData {
     private SwitchId switchId;
 
     @JsonProperty
-    private List<PortStatsEntry> stats;
+    private List<PortStatsReply> stats;
 
     public PortStatsData(@JsonProperty("switch_id") SwitchId switchId,
-                         @JsonProperty("stats") List<PortStatsEntry> switchStats) {
+                         @JsonProperty("stats") List<PortStatsReply> switchStats) {
         this.switchId = switchId;
         this.stats = switchStats;
     }
@@ -52,7 +52,7 @@ public class PortStatsData extends InfoData {
         return switchId;
     }
 
-    public List<PortStatsEntry> getStats() {
+    public List<PortStatsReply> getStats() {
         return stats;
     }
 }

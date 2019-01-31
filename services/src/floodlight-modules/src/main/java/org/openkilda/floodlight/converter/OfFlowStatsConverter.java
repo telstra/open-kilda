@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,24 +15,15 @@
 
 package org.openkilda.floodlight.converter;
 
-import static java.util.stream.Collectors.toList;
-
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
-import org.openkilda.messaging.info.stats.FlowStatsData;
-import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.model.SwitchId;
 
-import lombok.extern.slf4j.Slf4j;
-import org.mapstruct.Mapper;
-import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFInstructionType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
@@ -55,11 +46,7 @@ import java.util.stream.Collectors;
 /**
  * Utility class that converts OFlowStats from the switch to kilda known format for further processing.
  */
-@Mapper
-@Slf4j
-public abstract class OfFlowStatsMapper {
-
-    public static final OfFlowStatsMapper INSTANCE = Mappers.getMapper(OfFlowStatsMapper.class);
+public final class OfFlowStatsConverter {
 
     /**
      * OF specification added 13 bit that defines existence of vlan tag.
@@ -67,11 +54,11 @@ public abstract class OfFlowStatsMapper {
     private static final int VLAN_MASK = 0xFFF;
 
     /**
-     * Convert {@link OFFlowStatsEntry} to format that kilda supports {@link FlowEntry}.
+     * Convert {@link OFFlowStatsEntry} to format that kilda supports.
      * @param entry flow stats to be converted.
-     * @return result of transformation {@link FlowEntry}.
+     * @return result of transformation.
      */
-    public FlowEntry toFlowEntry(final OFFlowStatsEntry entry) {
+    public static FlowEntry toFlowEntry(final OFFlowStatsEntry entry) {
         return FlowEntry.builder()
                 .version(entry.getVersion().toString())
                 .durationSeconds(entry.getDurationSec())
@@ -86,17 +73,12 @@ public abstract class OfFlowStatsMapper {
                         .toArray(String[]::new))
                 .cookie(entry.getCookie().getValue())
                 .tableId(entry.getTableId().getValue())
-                .match(toFlowMatchField(entry.getMatch()))
-                .instructions(toFlowInstructions(entry.getInstructions()))
+                .match(buildFlowMatch(entry.getMatch()))
+                .instructions(buildFlowInstructions(entry.getInstructions()))
                 .build();
     }
 
-    /**
-     * Convert {@link Match} to {@link FlowMatchField}.
-     * @param match match to be converted.
-     * @return result of transformation {@link FlowMatchField}.
-     */
-    public FlowMatchField toFlowMatchField(final Match match) {
+    private static FlowMatchField buildFlowMatch(final Match match) {
         return FlowMatchField.builder()
                 .vlanVid(Optional.ofNullable(match.get(MatchField.VLAN_VID))
                         .map(value -> String.valueOf(value.getVlan() & VLAN_MASK))
@@ -118,18 +100,13 @@ public abstract class OfFlowStatsMapper {
                 .build();
     }
 
-    /**
-     * Convert list of {@link OFInstruction} to {@link FlowInstructions}.
-     * @param instructions list of instructions to be converted.
-     * @return result of transformation {@link FlowInstructions}.
-     */
-    public FlowInstructions toFlowInstructions(final List<OFInstruction> instructions) {
+    private static FlowInstructions buildFlowInstructions(final List<OFInstruction> instructions) {
         Map<OFInstructionType, OFInstruction> instructionMap = instructions
                 .stream()
                 .collect(Collectors.toMap(OFInstruction::getType, instruction -> instruction));
 
         FlowApplyActions applyActions = Optional.ofNullable(instructionMap.get(OFInstructionType.APPLY_ACTIONS))
-                .map(this::toFlowApplyActions)
+                .map(OfFlowStatsConverter::buildApplyActions)
                 .orElse(null);
 
         Long meter = Optional.ofNullable(instructionMap.get(OFInstructionType.METER))
@@ -142,12 +119,7 @@ public abstract class OfFlowStatsMapper {
                 .build();
     }
 
-    /**
-     * Convert {@link OFInstruction} to {@link FlowApplyActions}.
-     * @param instruction instruction to be converted.
-     * @return result of transformation {@link FlowApplyActions}.
-     */
-    public FlowApplyActions toFlowApplyActions(OFInstruction instruction) {
+    private static FlowApplyActions buildApplyActions(OFInstruction instruction) {
         Map<OFActionType, OFAction> actions = ((OFInstructionApplyActions) instruction).getActions()
                 .stream()
                 .collect(Collectors.toMap(OFAction::getType, action -> action));
@@ -163,17 +135,12 @@ public abstract class OfFlowStatsMapper {
                         .map(action -> String.valueOf(((OFActionOutput) action).getPort().toString()))
                         .orElse(null))
                 .fieldAction(Optional.ofNullable(actions.get(OFActionType.SET_FIELD))
-                        .map(this::toFlowSetFieldAction)
+                        .map(OfFlowStatsConverter::buildSetField)
                         .orElse(null))
                 .build();
     }
 
-    /**
-     * Convert {@link OFAction} to {@link FlowSetFieldAction}.
-     * @param action action to be converted.
-     * @return result of transformation {@link FlowSetFieldAction}.
-     */
-    public FlowSetFieldAction toFlowSetFieldAction(OFAction action) {
+    private static FlowSetFieldAction buildSetField(OFAction action) {
         OFOxm<?> setFieldAction = ((OFActionSetField) action).getField();
         String value = setFieldAction.getValue().toString();
 
@@ -186,29 +153,6 @@ public abstract class OfFlowStatsMapper {
                 .build();
     }
 
-    /**
-     * Convert list of {@link OFFlowStatsReply} to {@link FlowStatsData}.
-     * @param data list of flow stats replies to be converted.
-     * @param switchId id of the switch from which these replies were gotten.
-     * @return result of transformation {@link FlowStatsData}.
-     */
-    public FlowStatsData toFlowStatsData(List<OFFlowStatsReply> data, SwitchId switchId) {
-        List<FlowStatsEntry> stats = data.stream()
-                .flatMap(reply -> reply.getEntries().stream()
-                        .map(this::toFlowStatsEntry))
-                .collect(toList());
-        return new FlowStatsData(switchId, stats);
-    }
-
-    /**
-     * Convert {@link OFFlowStatsEntry} to {@link FlowStatsEntry}.
-     * @param entry flow stats entry to be converted.
-     * @return result of transformation {@link FlowStatsEntry}.
-     */
-    public FlowStatsEntry toFlowStatsEntry(OFFlowStatsEntry entry) {
-        return new FlowStatsEntry(entry.getTableId().getValue(),
-                                  entry.getCookie().getValue(),
-                                  entry.getPacketCount().getValue(),
-                                  entry.getByteCount().getValue());
+    private OfFlowStatsConverter() {
     }
 }
