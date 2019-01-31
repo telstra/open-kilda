@@ -17,21 +17,20 @@ package org.openkilda.messaging.nbtopology.request;
 
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
+import lombok.ToString;
 import lombok.Value;
 
 @SuppressWarnings("squid:MaximumInheritanceDepth")
 @Value
-@Builder
-@JsonInclude(Include.NON_NULL)
+@ToString
 public class CreateOrUpdateFeatureTogglesRequest extends FeatureTogglesBaseRequest {
 
     @JsonProperty("feature_toggles")
     private FeatureTogglesDto featureTogglesDto;
 
+    @JsonCreator
     public CreateOrUpdateFeatureTogglesRequest(@JsonProperty("feature_toggles") FeatureTogglesDto featureTogglesDto) {
         this.featureTogglesDto = featureTogglesDto;
     }
