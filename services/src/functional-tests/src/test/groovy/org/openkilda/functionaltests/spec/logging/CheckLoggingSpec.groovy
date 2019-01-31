@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.spec.logging
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.service.elastic.ElasticQueryBuilder
 import org.openkilda.testing.service.elastic.ElasticService
 import org.openkilda.testing.service.elastic.model.KildaTags
@@ -9,8 +11,6 @@ import org.openkilda.testing.service.elastic.model.KildaTags
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
-import spock.lang.Issue
 import spock.lang.Narrative
 
 @Slf4j
@@ -33,37 +33,41 @@ class CheckLoggingSpec extends BaseSpecification {
         result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMessage) }
     }
 
-    @Issue("https://github.com/telstra/open-kilda/issues/1966")
-    @Ignore
-    def "Check Northbound, Storm and Topology Engine logging"() {
+    def "Check Northbound and Storm logging"() {
+        when: "A non-existent switch is requested"
+        def switchId = new SwitchId("123456789")
+        northbound.getSwitch(switchId)
+
+        then: "An error is received (404 code)"
+        def switchExc = thrown(HttpClientErrorException)
+        def switchErrorMsg = "Switch $switchId not found"
+
+        switchExc.rawStatusCode == 404
+        switchExc.responseBodyAsString.to(MessageError).errorMessage.contains(switchErrorMsg)
+
         when: "A non-existent flow is requested"
-        int timeout = 180
-        def flowId = "nonexistentflowid" + System.currentTimeMillis()
-        try {
-            northbound.getFlow(flowId)
-        } catch (HttpClientErrorException e) {
+        def flowId = "nonexistentFlowId" + System.currentTimeMillis()
+        northbound.getFlow(flowId)
 
-        }
+        then: "An error is received (404 code)"
+        def flowExc = thrown(HttpClientErrorException)
+        def flowErrorMsg = "Can not get flow: Flow $flowId not found"
 
-        and: "Rules on a switch are validated"
-        def switchId = topology.activeSwitches.first().dpId
-        northbound.validateSwitchRules(switchId)
+        flowExc.rawStatusCode == 404
+        flowExc.responseBodyAsString.to(MessageError).errorMessage.contains(flowErrorMsg)
 
-        then: "Northbound, Storm and Topology Engine should log these actions within 3 minutes"
+        and: "Northbound and Storm should log these actions within 30 seconds"
+        int timeout = 31
         Wrappers.wait(timeout, 10) {
             def nbLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
-                    setTimeRange(timeout * 2).setLevel("WARN").build())
+                    setTimeRange(timeout * 2).setLevel("ERROR").build())
             def stormLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.STORM_WORKER).
                     setTimeRange(timeout * 2).setLevel("WARN").build())
-            def tpLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.TOPOLOGY_ENGINE).
-                    setTimeRange(timeout * 2).setLevel("INFO").build())
 
-            assert nbLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowId) }:
-                    "Northbound should generate an error message about not being able to find a flow"
-            assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowId) }:
-                    "Storm should generate an error message about not being able to find a flow"
-            assert tpLogs?.hits?.hits?.any { hit -> hit.source.message.contains(switchId.toString()) }:
-                    "Topology Engine should generate an info message in case of a switch rules validation event"
+            assert nbLogs?.hits?.hits?.any { hit -> hit.source.message.contains(switchErrorMsg) }:
+                    "Northbound should generate an error message about not being able to find the switch"
+            assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowErrorMsg) }:
+                    "Storm should generate an error message about not being able to find the flow"
         }
     }
 }

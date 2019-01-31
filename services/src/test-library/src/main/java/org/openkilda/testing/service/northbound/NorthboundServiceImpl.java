@@ -86,16 +86,8 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public FlowPayload getFlow(String flowId) {
-        try {
-            return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
-                    new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
-        } catch (HttpClientErrorException ex) {
-            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
-                throw ex;
-            }
-
-            return null;
-        }
+        return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
     }
 
     @Override
