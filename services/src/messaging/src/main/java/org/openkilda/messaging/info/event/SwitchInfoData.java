@@ -84,7 +84,7 @@ public class SwitchInfoData extends CacheTimeTag {
      * @param controller  switch controller
      * @param switchRecord data for ISL/switch discovery
      */
-    @Builder
+    @Builder(toBuilder = true)
     @JsonCreator
     public SwitchInfoData(@JsonProperty("switch_id") SwitchId switchId,
                           @JsonProperty("state") SwitchChangeType state,
