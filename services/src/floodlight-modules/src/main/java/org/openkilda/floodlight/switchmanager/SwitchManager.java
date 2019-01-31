@@ -21,6 +21,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
+import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
@@ -50,6 +51,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.model.Switch.Feature;
 import org.openkilda.model.OutputVlanType;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -102,11 +104,13 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,8 +147,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
+    public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
+    public static final int BDF_DEFAULT_PORT = 3784;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -153,6 +159,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private IOFSwitchService ofSwitchService;
     private IKafkaProducerService producerService;
     private SwitchTrackingService switchTracking;
+    private FeatureDetectorService featureDetectorService;
 
     private ConnectModeRequest.Mode connectMode;
     private SwitchManagerConfig config;
@@ -212,7 +219,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
         producerService = context.getServiceImpl(IKafkaProducerService.class);
         switchTracking = context.getServiceImpl(SwitchTrackingService.class);
-
+        featureDetectorService = context.getServiceImpl(FeatureDetectorService.class);
         FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(context, this);
         config = provider.getConfiguration(SwitchManagerConfig.class);
         String connectModeProperty = config.getConnectMode();
@@ -325,6 +332,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         installVerificationRule(dpid, true);
         installVerificationRule(dpid, false);
         installDropLoopRule(dpid);
+        installBfdCatchFlow(dpid);
     }
 
     /**
@@ -677,7 +685,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
         List<Long> deletedRules = deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE);
+                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE);
 
         try {
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
@@ -773,6 +781,39 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             String flowName = "--DropRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
+    }
+
+    @Override
+    public void installBfdCatchFlow(DatapathId dpid) throws SwitchOperationException {
+
+        IOFSwitch sw = lookupSwitch(dpid);
+        Set<Feature> features = featureDetectorService.detectSwitch(sw);
+        if (!features.contains(Feature.BFD)) {
+            logger.debug("Skip installation of catch flow for switch {}", dpid);
+        } else {
+            OFFactory ofFactory = sw.getOFFactory();
+
+            Match match = catchRuleMatch(dpid, ofFactory);
+            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, CATCH_BFD_RULE_COOKIE, CATCH_BFD_RULE_PRIORITY)
+                    .setMatch(match)
+                    .setActions(ImmutableList.of(
+                            ofFactory.actions().buildOutput()
+                                    .setPort(OFPort.LOCAL)
+                                    .build()))
+                    .build();
+            String flowName = "--CatchBfdRule--" + dpid.toString();
+            pushFlow(sw, flowName, flowMod);
+        }
+
+    }
+
+    private Match catchRuleMatch(DatapathId dpid, OFFactory ofFactory) {
+        return ofFactory.buildMatch()
+            .setExact(MatchField.ETH_DST, dpIdToMac(dpid))
+            .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+            .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+            .setExact(MatchField.UDP_DST, TransportPort.of(BDF_DEFAULT_PORT))
+            .build();
     }
 
     void installDropLoopRule(DatapathId dpid) throws SwitchOperationException {

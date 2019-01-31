@@ -17,6 +17,8 @@ package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.BDF_DEFAULT_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.CATCH_BFD_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
@@ -29,6 +31,7 @@ import org.openkilda.floodlight.OFFactoryMock;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.model.Cookie;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -39,10 +42,12 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.Arrays;
@@ -378,6 +383,30 @@ public interface OutputCommands {
                 .setPriority(1)
                 .setMatch(ofFactory.buildMatch().build())
                 .setXid(0L)
+                .build();
+    }
+
+    /**
+     * Expected result for install default BFD catch rule.
+     *
+     * @param dpid datapath of the switch.
+     * @return expected OFFlowAdd instance.
+     */
+    default OFFlowAdd installBfdCatchRule(DatapathId dpid) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_DST, MacAddress.of(dpid))
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_DST, TransportPort.of(BDF_DEFAULT_PORT))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(Cookie.CATCH_BFD_RULE_COOKIE))
+                .setMatch(match)
+                .setPriority(CATCH_BFD_RULE_PRIORITY)
+                .setActions(ImmutableList.of(
+                        ofFactory.actions().buildOutput()
+                                .setPort(OFPort.LOCAL)
+                                .build()))
                 .build();
     }
 }
