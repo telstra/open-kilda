@@ -114,12 +114,8 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
                 !rules.excessRules.empty || !rules.missingRules.empty
             }.empty
 
-            def nonVirtualSwitches = northbound.getActiveSwitches()
-                    .findAll { !it.description.contains("Nicira, Inc") }
-                    .collect { sw -> topology.getSwitches().find { it.dpId == sw.switchId } }
-
-            nonVirtualSwitches.findAll {
-                it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
+            topology.activeSwitches.findAll {
+                !it.virtual && it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
                     it.key > MAX_SYSTEM_RULE_METER_ID
                 }.isEmpty()
             }.empty

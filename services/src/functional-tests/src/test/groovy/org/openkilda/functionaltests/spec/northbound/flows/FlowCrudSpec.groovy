@@ -19,7 +19,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.annotation.Lazy
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -448,7 +447,7 @@ class FlowCrudSpec extends BaseSpecification {
             getPreferredPath(src, dst).size() == 2 //switches are neighbors
         }
         .sort(taffgensPrioritized)
-                .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
+                .unique { it.collect { [it.description, it.ofVersion] }.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
             r << [
@@ -482,7 +481,7 @@ class FlowCrudSpec extends BaseSpecification {
             getPreferredPath(src, dst).size() > 2 //switches are not neighbors
         }
         .sort(taffgensPrioritized)
-                .unique { it.collect { [getDescription(it), it.ofVersion] }.sort() }
+                .unique { it.collect { [it.description, it.ofVersion] }.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
             r << [
@@ -511,7 +510,7 @@ class FlowCrudSpec extends BaseSpecification {
     def getSingleSwitchFlows() {
         topology.getActiveSwitches()
                 .sort { sw -> topology.activeTraffGens.findAll { it.switchConnected == sw }.size() }.reverse()
-                .unique { [getDescription(it), it.ofVersion].sort() }
+                .unique { [it.description, it.ofVersion].sort() }
                 .inject([]) { r, sw ->
             r << [
                     description: "single-switch flow with vlans",
@@ -540,13 +539,8 @@ class FlowCrudSpec extends BaseSpecification {
      */
     def getSingleSwitchSinglePortFlows() {
         topology.getActiveSwitches()
-                .unique { [getDescription(it), it.ofVersion].sort() }
+                .unique { [it.description, it.ofVersion].sort() }
                 .collect { flowHelper.singleSwitchSinglePortFlow(it) }
-    }
-
-    @Memoized
-    def getNbSwitches() {
-        northbound.getActiveSwitches()
     }
 
     @Memoized
@@ -561,10 +555,6 @@ class FlowCrudSpec extends BaseSpecification {
              */
             it.size()
         }
-    }
-
-    String getDescription(Switch sw) {
-        getNbSwitches().find { it.switchId == sw.dpId }.description
     }
 
     Switch findSwitch(SwitchId swId) {

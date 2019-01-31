@@ -20,7 +20,6 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Issue
 import spock.lang.Narrative
-import spock.lang.Shared
 import spock.lang.Unroll
 
 import java.math.RoundingMode
@@ -37,12 +36,6 @@ class MetersSpec extends BaseSpecification {
 
     @Value('${burst.coef}')
     double burstCoef
-
-    @Shared
-    def centecs
-
-    @Shared
-    def nonCentecs
 
     def setupOnce() {
         //TODO: remove as soon as OVS 2.10 + kernel 4.18+ get wired in and meters support will be available
@@ -304,8 +297,8 @@ class MetersSpec extends BaseSpecification {
         Map<SwitchId, List<MeterEntry>> originalMeters = [src.dpId, dst.dpId].collectEntries {
             [(it): northbound.getAllMeters(it).meterEntries]
         }
-        def defaultMeters = { it.meterId < Constants.MAX_DEFAULT_METER_ID }
-        def flowMeters = { it.meterId >= Constants.MAX_DEFAULT_METER_ID }
+        def defaultMeters = { it.meterId < MAX_SYSTEM_RULE_METER_ID }
+        def flowMeters = { it.meterId >= MAX_SYSTEM_RULE_METER_ID }
 
         when: "Ask system to reset meters for the flow"
         def response = northbound.resetMeters(flow.id)
@@ -402,22 +395,13 @@ class MetersSpec extends BaseSpecification {
         northbound.activeSwitches.find { it.switchId == sw }.description
     }
 
+    @Memoized
     List<Switch> getNonCentecSwitches() {
-        if (!nonCentecs) {
-            def nonCentecSw = northbound.getActiveSwitches().findAll {
-                !it.description.toLowerCase().contains("centec")
-            }*.switchId
-            nonCentecs = topology.getActiveSwitches().findAll {
-                (it.ofVersion == "OF_13") && (nonCentecSw.contains(it.dpId))
-            }
-        }
-        return nonCentecs
+        topology.activeSwitches.findAll { !it.centec && it.ofVersion == "OF_13" }
     }
 
+    @Memoized
     List<Switch> getCentecSwitches() {
-        if (!centecs) {
-            centecs = topology.getActiveSwitches().findAll { it.ofVersion == "OF_13" } - getNonCentecSwitches()
-        }
-        return centecs
+        topology.getActiveSwitches().findAll { it.centec }
     }
 }
