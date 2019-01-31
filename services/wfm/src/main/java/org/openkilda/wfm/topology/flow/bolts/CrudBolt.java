@@ -500,9 +500,11 @@ public class CrudBolt
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
 
-            Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
+            FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
+            Flow flow = FlowMapper.INSTANCE.map((request).getPayload());
 
-            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,
+            FlowPair updatedFlow = flowService.updateFlow(flow,
+                    request.getDiverseFlowId(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);
