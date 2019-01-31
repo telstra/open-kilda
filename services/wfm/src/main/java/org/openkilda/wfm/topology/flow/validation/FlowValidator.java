@@ -82,7 +82,7 @@ public class FlowValidator {
                                                                  requestedFlow.getSrcPort());
 
 
-        Optional<String> conflictedFlow = conflictsOnSource.stream()
+        Optional<Flow> conflictedFlow = conflictsOnSource.stream()
                 .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
                 .filter(flow -> (flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
                             && flow.getSrcPort() == requestedFlow.getSrcPort()
@@ -92,15 +92,18 @@ public class FlowValidator {
                             && flow.getDestPort() == requestedFlow.getSrcPort()
                             && (flow.getDestVlan() == requestedFlow.getSrcVlan() || flow.getDestVlan() == 0
                                 || requestedFlow.getSrcVlan() == 0)))
-                .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
-            throw new FlowValidationException(
-                    format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getSrcPort(),
-                            requestedFlow.getSrcSwitch().getSwitchId(),
-                            conflictedFlow.get()),
-                    ErrorType.ALREADY_EXISTS);
+            String errorMessage = format("Requested flow '%s' source conflicts with flow '%s' source. "
+                            + "Details: "
+                            + "requested flow '%s' source: Switch_id='%s' port_id=%d VLAN=%d, "
+                            + "conflicted flow '%s' source: Switch_id='%s' port_id=%d VLAN=%d",
+                    requestedFlow.getFlowId(), conflictedFlow.get().getFlowId(),
+                    requestedFlow.getFlowId(), requestedFlow.getSrcSwitch().toString(),
+                    requestedFlow.getSrcPort(), requestedFlow.getSrcVlan(),
+                    conflictedFlow.get().getFlowId(), conflictedFlow.get().getSrcSwitch().toString(),
+                    conflictedFlow.get().getSrcPort(), conflictedFlow.get().getSrcVlan());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
 
         // Check the destination
@@ -120,15 +123,18 @@ public class FlowValidator {
                             && flow.getDestPort() == requestedFlow.getDestPort()
                             && (flow.getDestVlan() == requestedFlow.getDestVlan() || flow.getDestVlan() == 0
                                 || requestedFlow.getDestVlan() == 0)))
-                .map(Flow::getFlowId)
                 .findAny();
         if (conflictedFlow.isPresent()) {
-            throw new FlowValidationException(
-                    format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getDestPort(),
-                            requestedFlow.getDestSwitch().getSwitchId(),
-                            conflictedFlow.get()),
-                    ErrorType.ALREADY_EXISTS);
+            String errorMessage = format("Requested flow '%s' destination conflicts with flow '%s' destination. "
+                            + "Details: "
+                            + "requested flow '%s' destination: Switch_id='%s' port_id=%d VLAN=%d, "
+                            + "conflicted flow '%s' destination: Switch_id='%s' port_id=%d VLAN=%d",
+                    requestedFlow.getFlowId(), conflictedFlow.get().getFlowId(),
+                    requestedFlow.getFlowId(), requestedFlow.getDestSwitch().toString(),
+                    requestedFlow.getDestPort(), requestedFlow.getDestVlan(),
+                    conflictedFlow.get().getFlowId(), conflictedFlow.get().getDestSwitch().toString(),
+                    conflictedFlow.get().getDestPort(), conflictedFlow.get().getDestVlan());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
     }
 
