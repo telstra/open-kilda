@@ -31,6 +31,7 @@ import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Utility class that converts OFPortStats from the switch to kilda known format for further processing.
@@ -49,17 +50,23 @@ public abstract class OfPortStatsMapper {
      * @return result of transformation {@link PortStatsData}.
      */
     public PortStatsData toPostStatsData(List<OFPortStatsReply> data, SwitchId switchId) {
-        List<PortStatsEntry> stats = data.stream()
-                .flatMap(reply -> reply.getEntries().stream()
-                        .map(this::toPortStatsEntry))
-                .collect(toList());
-        return new PortStatsData(switchId, stats);
+        try {
+            List<PortStatsEntry> stats = data.stream()
+                    .flatMap(reply -> reply.getEntries().stream())
+                    .map(this::toPortStatsEntry)
+                    .filter(Objects::nonNull)
+                    .collect(toList());
+            return new PortStatsData(switchId, stats);
+        } catch (NullPointerException | UnsupportedOperationException | IllegalArgumentException e) {
+            log.error(String.format("Could not convert port stats data %s on switch %s", data, switchId), e);
+            return null;
+        }
     }
 
     /**
      * Convert {@link OFPortStatsEntry} to {@link PortStatsEntry}.
      * @param entry port stats entry to be converted.
-     * @return result of transformation {@link PortStatsEntry}.
+     * @return result of transformation {@link PortStatsEntry} or null if object couldn't be parsed.
      */
     public PortStatsEntry toPortStatsEntry(OFPortStatsEntry entry) {
         long rxFrameErr = 0L;
@@ -67,38 +74,43 @@ public abstract class OfPortStatsMapper {
         long rxCrcErr = 0L;
         long collisions = 0L;
 
-        // Since version OF_14 bellow described get***() methods throw UnsupportedOperationException
-        if (entry.getVersion().compareTo(OFVersion.OF_13) > 0) {
-            for (OFPortStatsProp property : entry.getProperties()) {
-                if (property.getType() == ETHERNET_PROPERTY_TYPE) {
-                    OFPortStatsPropEthernet etherProps = (OFPortStatsPropEthernet) property;
-                    rxFrameErr = etherProps.getRxFrameErr().getValue();
-                    rxOverErr = etherProps.getRxOverErr().getValue();
-                    rxCrcErr = etherProps.getRxCrcErr().getValue();
-                    collisions = etherProps.getCollisions().getValue();
-                    break;
+        try {
+            // Since version OF_14 bellow described get***() methods throw UnsupportedOperationException
+            if (entry.getVersion().compareTo(OFVersion.OF_13) > 0) {
+                for (OFPortStatsProp property : entry.getProperties()) {
+                    if (property.getType() == ETHERNET_PROPERTY_TYPE) {
+                        OFPortStatsPropEthernet etherProps = (OFPortStatsPropEthernet) property;
+                        rxFrameErr = etherProps.getRxFrameErr().getValue();
+                        rxOverErr = etherProps.getRxOverErr().getValue();
+                        rxCrcErr = etherProps.getRxCrcErr().getValue();
+                        collisions = etherProps.getCollisions().getValue();
+                        break;
+                    }
                 }
+            } else {
+                rxFrameErr = entry.getRxFrameErr().getValue();
+                rxOverErr = entry.getRxOverErr().getValue();
+                rxCrcErr = entry.getRxCrcErr().getValue();
+                collisions = entry.getCollisions().getValue();
             }
-        } else {
-            rxFrameErr = entry.getRxFrameErr().getValue();
-            rxOverErr = entry.getRxOverErr().getValue();
-            rxCrcErr = entry.getRxCrcErr().getValue();
-            collisions = entry.getCollisions().getValue();
-        }
 
-        return new PortStatsEntry(
-                entry.getPortNo().getPortNumber(),
-                entry.getRxPackets().getValue(),
-                entry.getTxPackets().getValue(),
-                entry.getRxBytes().getValue(),
-                entry.getTxBytes().getValue(),
-                entry.getRxDropped().getValue(),
-                entry.getTxDropped().getValue(),
-                entry.getRxErrors().getValue(),
-                entry.getTxErrors().getValue(),
-                rxFrameErr,
-                rxOverErr,
-                rxCrcErr,
-                collisions);
+            return new PortStatsEntry(
+                    entry.getPortNo().getPortNumber(),
+                    entry.getRxPackets().getValue(),
+                    entry.getTxPackets().getValue(),
+                    entry.getRxBytes().getValue(),
+                    entry.getTxBytes().getValue(),
+                    entry.getRxDropped().getValue(),
+                    entry.getTxDropped().getValue(),
+                    entry.getRxErrors().getValue(),
+                    entry.getTxErrors().getValue(),
+                    rxFrameErr,
+                    rxOverErr,
+                    rxCrcErr,
+                    collisions);
+        } catch (NullPointerException | UnsupportedOperationException | IllegalArgumentException e) {
+            log.error(String.format("Could not OFPortStatsEntry OFMeterStats object %s", entry), e);
+            return null;
+        }
     }
 }

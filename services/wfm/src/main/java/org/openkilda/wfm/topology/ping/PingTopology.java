@@ -226,7 +226,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         topology.setBolt(OtsdbEncoder.BOLT_ID, bolt, scaleFactor)
                 .shuffleGrouping(StatsProducer.BOLT_ID);
 
-        KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaOtsdbTopic());
+        KafkaBolt output = createKafkaBolt(topologyConfig.getKafkaOtsdbTopic());
         topology.setBolt(ComponentId.OTSDB_OUTPUT.toString(), output, scaleFactor)
                 .shuffleGrouping(OtsdbEncoder.BOLT_ID);
     }
