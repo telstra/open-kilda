@@ -51,6 +51,7 @@ import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 
+import org.openkilda.floodlight.OFFactoryVer12Mock;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.test.standard.OutputCommands;
@@ -483,7 +484,7 @@ public class SwitchManagerTest {
     public void shouldDeleteDefaultRulesWithoutMeters() throws Exception {
         // given
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+        expect(iofSwitch.getOFFactory()).andStubReturn(new OFFactoryVer12Mock());
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.getId()).andStubReturn(dpid);
         expect(switchDescription.getManufacturerDescription()).andStubReturn(OVS_MANUFACTURER);

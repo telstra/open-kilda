@@ -62,6 +62,6 @@ public interface SwitchManagerConfig {
     long getSystemMeterBurstSizeInPackets();
 
     @Key("ovs-meters-enabled")
-    @Default("false")
-    boolean getOvsMetersEnabled();
+    @Default("true")
+    boolean isOvsMetersEnabled();
 }

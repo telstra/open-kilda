@@ -789,7 +789,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private void verifySwitchSupportsMeters(IOFSwitch sw) throws UnsupportedSwitchOperationException {
-        if (!config.getOvsMetersEnabled() && isOvs(sw)) {
+        if (!config.isOvsMetersEnabled() && isOvs(sw)) {
             throw new UnsupportedSwitchOperationException(sw.getId(),
                     format("Meters are not supported on OVS switch %s", sw.getId()));
         }
@@ -1308,7 +1308,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private OFInstructionMeter buildMeterInstruction(long meterId, IOFSwitch sw, OFFactory ofFactory,
                                                      List<OFAction> actionList) {
         OFInstructionMeter meterInstruction = null;
-        if (meterId != 0L && (config.getOvsMetersEnabled() || !isOvs(sw))) {
+        if (meterId != 0L && (config.isOvsMetersEnabled() || !isOvs(sw))) {
             if (ofFactory.getVersion().compareTo(OF_12) <= 0) {
                 /* FIXME: Since we can't read/validate meters from switches with OF 1.2 we should not install them
                 actionList.add(legacyMeterAction(ofFactory, meterId));
