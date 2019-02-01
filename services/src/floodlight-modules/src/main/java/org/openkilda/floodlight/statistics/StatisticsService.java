@@ -108,9 +108,23 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         if (interval > 0) {
             threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
                     () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
-                        gatherPortStats(iofSwitch);
-                        gatherFlowStats(iofSwitch);
-                        gatherMeterStats(iofSwitch);
+                        try {
+                            gatherPortStats(iofSwitch);
+                        } catch (Exception e) {
+                            logger.error("Failed to gather stats for ports on switch {}.", iofSwitch.getId(), e);
+                        }
+
+                        try {
+                            gatherFlowStats(iofSwitch);
+                        } catch (Exception e) {
+                            logger.error("Failed to gather stats for flows on switch {}.", iofSwitch.getId(), e);
+                        }
+
+                        try {
+                            gatherMeterStats(iofSwitch);
+                        } catch (Exception e) {
+                            logger.error("Failed to gather stats for meters on switch {}.", iofSwitch.getId(), e);
+                        }
                     }), interval, interval, TimeUnit.SECONDS);
         }
     }
