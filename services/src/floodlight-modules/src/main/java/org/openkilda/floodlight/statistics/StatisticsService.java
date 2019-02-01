@@ -108,9 +108,26 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         if (interval > 0) {
             threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
                     () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
-                        gatherPortStats(iofSwitch);
-                        gatherFlowStats(iofSwitch);
-                        gatherMeterStats(iofSwitch);
+                        try {
+                            gatherPortStats(iofSwitch);
+                        } catch (Exception e) {
+                            logger.error(String.format("Failed to gather stats for ports on switch %s.",
+                                    iofSwitch.getId()), e);
+                        }
+
+                        try {
+                            gatherFlowStats(iofSwitch);
+                        } catch (Exception e) {
+                            logger.error(String.format("Failed to gather stats for flows on switch %s.",
+                                    iofSwitch.getId()), e);
+                        }
+
+                        try {
+                            gatherMeterStats(iofSwitch);
+                        } catch (Exception e) {
+                            logger.error(String.format("Failed to gather stats for meters on switch %s.",
+                                    iofSwitch.getId()), e);
+                        }
                     }), interval, interval, TimeUnit.SECONDS);
         }
     }
@@ -157,12 +174,13 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         OFFactory factory = iofSwitch.getOFFactory();
         SwitchId switchId = new SwitchId(iofSwitch.getId().toString());
 
-        OFMeterStatsRequest meterStatsRequest = factory
-                .buildMeterStatsRequest()
-                .setMeterId(OFPM_ALL)
-                .build();
-
         if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
+
+            OFMeterStatsRequest meterStatsRequest = factory
+                    .buildMeterStatsRequest()
+                    .setMeterId(OFPM_ALL)
+                    .build();
+
             logger.trace("Getting meter stats for switch={}", iofSwitch.getId());
 
             Futures.addCallback(iofSwitch.writeStatsRequest(meterStatsRequest),
