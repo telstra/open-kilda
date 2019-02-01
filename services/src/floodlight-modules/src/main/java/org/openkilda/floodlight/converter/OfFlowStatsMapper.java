@@ -193,22 +193,33 @@ public abstract class OfFlowStatsMapper {
      * @return result of transformation {@link FlowStatsData}.
      */
     public FlowStatsData toFlowStatsData(List<OFFlowStatsReply> data, SwitchId switchId) {
-        List<FlowStatsEntry> stats = data.stream()
-                .flatMap(reply -> reply.getEntries().stream()
-                        .map(this::toFlowStatsEntry))
-                .collect(toList());
-        return new FlowStatsData(switchId, stats);
+        try {
+            List<FlowStatsEntry> stats = data.stream()
+                    .flatMap(reply -> reply.getEntries().stream())
+                    .map(this::toFlowStatsEntry)
+                    .filter(Objects::nonNull)
+                    .collect(toList());
+            return new FlowStatsData(switchId, stats);
+        } catch (NullPointerException | UnsupportedOperationException | IllegalArgumentException e) {
+            log.error(String.format("Could not convert flow stats data %s on switch %s", data, switchId), e);
+            return null;
+        }
     }
 
     /**
      * Convert {@link OFFlowStatsEntry} to {@link FlowStatsEntry}.
      * @param entry flow stats entry to be converted.
-     * @return result of transformation {@link FlowStatsEntry}.
+     * @return result of transformation {@link FlowStatsEntry} or null if object couldn't be parsed.
      */
     public FlowStatsEntry toFlowStatsEntry(OFFlowStatsEntry entry) {
-        return new FlowStatsEntry(entry.getTableId().getValue(),
-                                  entry.getCookie().getValue(),
-                                  entry.getPacketCount().getValue(),
-                                  entry.getByteCount().getValue());
+        try {
+            return new FlowStatsEntry(entry.getTableId().getValue(),
+                    entry.getCookie().getValue(),
+                    entry.getPacketCount().getValue(),
+                    entry.getByteCount().getValue());
+        } catch (NullPointerException | UnsupportedOperationException | IllegalArgumentException e) {
+            log.error(String.format("Could not convert OFFlowStatsEntry object %s", entry), e);
+            return null;
+        }
     }
 }
