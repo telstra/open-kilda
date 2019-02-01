@@ -49,6 +49,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
@@ -384,7 +385,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<LinkDto> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link) {
+    public List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link) {
         LinkDto[] updatedLink = restTemplate.exchange("api/v1/links/under-maintenance", HttpMethod.PATCH,
                 new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
         return Arrays.asList(updatedLink);
@@ -416,6 +417,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     public SwitchInfoData getSwitch(SwitchId switchId) {
         return convertToSwitchInfoData(restTemplate.exchange("/api/v1/switches/{switch_id}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto.class, switchId).getBody());
+    }
+
+    @Override
+    public SwitchDto setSwitchMaintenance(SwitchId switchId, boolean maintenance, boolean evacuate) {
+        return restTemplate.exchange("api/v1/switches/{switch_id}/under-maintenance", HttpMethod.POST,
+                new HttpEntity<>(new UnderMaintenanceDto(maintenance, evacuate), buildHeadersWithCorrelationId()),
+                SwitchDto.class, switchId).getBody();
     }
 
     @Override

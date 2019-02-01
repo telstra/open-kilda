@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.helpers
+package org.openkilda.functionaltests.extension
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
