@@ -136,7 +136,7 @@ public class StubServiceFactory {
         List<ASwitchFlow> aswitchFlows = topologyDefinition.getIslsForActiveSwitches().stream()
                 .filter(isl -> isl.getAswitch() != null)
                 .map(isl -> {
-                    TopologyDefinition.ASwitch asw = isl.getAswitch();
+                    ASwitchFlow asw = isl.getAswitch();
                     return Arrays.asList(new ASwitchFlow(asw.getInPort(), asw.getOutPort()),
                             new ASwitchFlow(asw.getOutPort(), asw.getInPort()));
                 }).flatMap(List::stream).collect(toList());
