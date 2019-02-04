@@ -22,39 +22,31 @@ class OpenTsdbSpec extends BaseSpecification {
         otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
 
         where:
-        [metric, tags] << ([
-                ["pen.switch.rx-bytes", "pen.switch.rx-bits", "pen.switch.rx-packets",
+        [metric, tags] << (
+                //basic stats for rx/tx, use every unique switch in tags
+                [["pen.switch.rx-bytes", "pen.switch.rx-bits", "pen.switch.rx-packets",
                  "pen.switch.tx-bytes", "pen.switch.tx-bits", "pen.switch.tx-packets"],
                 uniqueSwitches.collect { [switchid: it.dpId.toOtsdFormat()] }].combinations()
+                //isl latency stats, use every unique switch in src_switch tag
                 + [["pen.isl.latency"], uniqueSwitches.collect { [src_switch: it.dpId.toOtsdFormat()] }].combinations()
+                //isl latency stats, use every unique switch in dst_switch tag
                 + [["pen.isl.latency"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations()
+                //stats for default rules. use discovery packet cookie in tags, as is doesn't need any specific actions
                 + [["pen.switch.flow.system.packets", "pen.switch.flow.system.bytes", "pen.switch.flow.system.bits"],
                    [[cookieHex: DefaultRule.VERIFICATION_BROADCAST_RULE.toHexString()]]].combinations())
     }
 
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
-    def "Stats for default rule meters"(metric, tags) {
-        requireProfiles("hardware")
-        
-        expect: "At least 1 result in the past 2 minutes"
-        otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
-        where:
-        [metric, tags] << ([
-                ["pen.switch.flow.system.meter.packets", "pen.switch.flow.system.meter.bytes",
-                 "pen.switch.flow.system.meter.bits"],
-                [[cookieHex: String.format("%X", DefaultRule.VERIFICATION_BROADCAST_RULE.cookie)],
-                 [cookieHex: String.format("%X", DefaultRule.VERIFICATION_UNICAST_RULE.cookie)]]
-        ].combinations())
-    }
-
-    @Unroll("Stats are being logged for metric:#metric")
-    def "Stats for flow meters"(metric) {
+    def "Basic stats are being logged (10min interval)"() {
         requireProfiles("hardware")
 
-        expect: "At least 1 result in the past 2 minutes"
-        otsdb.query(2.minutes.ago, metric, [:]).dps.size() > 0
+        expect: "At least 1 result in the past 10 minutes"
+        otsdb.query(10.minutes.ago, metric, [:]).dps.size() > 0
         where:
-        metric << ["pen.flow.meter.packets", "pen.flow.meter.bytes", "pen.flow.meter.bits"]
+        [metric, tags] << (
+                [["pen.switch.flow.system.meter.packets", "pen.switch.flow.system.meter.bytes",
+                  "pen.switch.flow.system.meter.bits"],
+                 [[cookieHex: String.format("0x%X", DefaultRule.VERIFICATION_BROADCAST_RULE.cookie)]]].combinations())
     }
 
     def getUniqueSwitches() {

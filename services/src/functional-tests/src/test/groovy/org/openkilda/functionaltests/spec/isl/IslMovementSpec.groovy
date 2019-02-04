@@ -90,6 +90,7 @@ class IslMovementSpec extends BaseSpecification {
             link.dstSwitch && r[link.dstSwitch] << islUtils.reverseIsl(link)
             r //map where key: switch, value: list of a-switch isls related to this switch
         }.find { k, v ->
+            k.ofVersion != "OF_12" &&
             v.findAll { !it.dstSwitch }.size() > 1 //contains at least 2 not connected asw link
         }?.value as List<TopologyDefinition.Isl>
         assumeNotNull("Not able to find required switch with enough free A-switch ISLs", isls)
