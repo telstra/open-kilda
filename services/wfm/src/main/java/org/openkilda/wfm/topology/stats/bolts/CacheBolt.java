@@ -89,8 +89,12 @@ public class CacheBolt extends AbstractBolt {
                                 flow.getCookie());
 
                         cookieToFlow.put(flow.getCookie(), entry);
-                        switchAndMeterToFlow.put(
-                                new Pair<>(flow.getSrcSwitch().getSwitchId(), (long) flow.getMeterId()), entry);
+                        if (flow.getMeterId() != null) {
+                            switchAndMeterToFlow.put(
+                                    new Pair<>(flow.getSrcSwitch().getSwitchId(), (long) flow.getMeterId()), entry);
+                        } else {
+                            log.warn("Flow {} has no meter ID", flow.getFlowId());
+                        }
                     }
             );
             logger.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
