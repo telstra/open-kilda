@@ -19,23 +19,33 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+import static org.openkilda.wfm.topology.event.OfeLinkBolt.NETWORK_TOPOLOGY_CHANGE_STREAM;
 import static org.openkilda.wfm.topology.event.OfeLinkBolt.STATE_ID_DISCOVERY;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
+import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SwitchPort;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.isl.DiscoveryManager;
 import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.event.OfeLinkBolt.State;
@@ -54,9 +64,14 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -64,6 +79,7 @@ import java.util.stream.Collectors;
 public class OfeLinkBoltTest extends AbstractStormTest {
 
     private static final Integer TASK_ID_BOLT = 0;
+    private static final int BFD_OFFSET = 200;
     private static final String STREAM_ID_INPUT = "input";
 
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -172,5 +188,83 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         bolt.doWork(tuple);
 
         assertFalse(discoveryLink.getState().isActive());
+    }
+
+    @Test
+    public void checkBfdOffset() throws JsonProcessingException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final int port = 205;
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
+        bolt.state = State.MAIN;
+
+        PortInfoData portInfoData = new PortInfoData(switchId, port, PortChangeType.DOWN);
+        InfoMessage inputMessage = new InfoMessage(portInfoData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.doWork(tuple);
+
+
+        PortInfoData updatedData = new PortInfoData(switchId, port - config.getBfdPortOffset(), PortChangeType.DOWN);
+        InfoMessage outputMessage = new InfoMessage(updatedData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+
+        Mockito.verify(outputDelegate).ack(tuple);
+        Mockito.verify(outputDelegate).emit(eq(NETWORK_TOPOLOGY_CHANGE_STREAM),
+                anyCollection(), eq(new Values(outputMessage)));
+    }
+
+    @Test
+    public void testDispatchSyncInProgressMaskLogicalPorts() throws JsonProcessingException, UnknownHostException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final InetAddress ipAddress = InetAddress.getByAddress(new byte[]{127, 0, 0, 1});
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
+        bolt.state = State.SYNC_IN_PROGRESS;
+        List<SwitchPort> switchPorts = new ArrayList<>();
+        switchPorts.add(new SwitchPort(1, SwitchPort.State.UP));
+        switchPorts.add(new SwitchPort(BFD_OFFSET + 1, SwitchPort.State.UP));
+        switchPorts.add(new SwitchPort(3, SwitchPort.State.UP));
+        switchPorts.add(new SwitchPort(BFD_OFFSET + 3, SwitchPort.State.UP));
+        Switch switchRecord = new Switch(switchId, ipAddress, new HashSet<>(), switchPorts);
+        NetworkDumpSwitchData data = new NetworkDumpSwitchData(switchRecord);
+        InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.discovery = Mockito.mock(DiscoveryManager.class);
+        ArgumentCaptor<Switch> switchCaptor = ArgumentCaptor.forClass(Switch.class);
+        bolt.dispatchSyncInProgress(tuple, inputMessage);
+        Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
+
+        assertEquals(2, switchCaptor.getValue().getPorts().size());
+        assertEquals(0, switchCaptor.getValue().getPorts().stream()
+                .filter(switchPort -> (switchPort.getNumber() > BFD_OFFSET)).count());
+    }
+
+    @Test
+    public void testDispatchMainMaskLogicalPortsSwitchActivated() throws JsonProcessingException, UnknownHostException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final InetAddress ipAddress = InetAddress.getByAddress(new byte[]{127, 0, 0, 1});
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
+        bolt.state = State.SYNC_IN_PROGRESS;
+        List<SwitchPort> switchPorts = new ArrayList<>();
+        switchPorts.add(new SwitchPort(1, SwitchPort.State.UP));
+        switchPorts.add(new SwitchPort(BFD_OFFSET + 1, SwitchPort.State.UP));
+        switchPorts.add(new SwitchPort(3, SwitchPort.State.UP));
+        switchPorts.add(new SwitchPort(BFD_OFFSET + 3, SwitchPort.State.UP));
+        Switch switchRecord = new Switch(switchId, ipAddress, new HashSet<>(), switchPorts);
+        SwitchInfoData data = new SwitchInfoData(switchId, SwitchChangeType.ACTIVATED, null, null,
+                null, null, switchRecord);
+        InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.discovery = Mockito.mock(DiscoveryManager.class);
+        ArgumentCaptor<Switch> switchCaptor = ArgumentCaptor.forClass(Switch.class);
+        bolt.dispatchMain(tuple, inputMessage);
+        Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
+
+        assertEquals(2, switchCaptor.getValue().getPorts().size());
+        assertEquals(0, switchCaptor.getValue().getPorts().stream()
+                .filter(switchPort -> (switchPort.getNumber() > BFD_OFFSET)).count());
     }
 }

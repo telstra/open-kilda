@@ -33,6 +33,7 @@ import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
 import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.error.CacheException;
+import org.openkilda.messaging.error.ClientErrorMessage;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -64,6 +65,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
+import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.share.cache.ResourceCache;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
@@ -260,16 +262,10 @@ public class CrudBolt
             // logger.error(
             // "Recoverable error (do not try to recoverable it until retry limit will be implemented): {}", e);
             // isRecoverable = true;
+        } catch (ClientException exception) {
+            emitError(tuple, correlationId, exception, true);
         } catch (CacheException exception) {
-            String logMessage = format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
-            logger.error("{}, {}={}, {}={}, component={}, stream={}", logMessage, Utils.CORRELATION_ID,
-                    correlationId, Utils.FLOW_ID, flowId, componentId, streamId, exception);
-
-            ErrorMessage errorMessage = buildErrorMessage(correlationId, exception.getErrorType(),
-                    logMessage, componentId.toString().toLowerCase());
-
-            Values error = new Values(errorMessage, exception.getErrorType());
-            outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
+            emitError(tuple, correlationId, exception, false);
 
         } catch (Exception e) {
             logger.error("Unhandled exception", e);
@@ -282,6 +278,23 @@ public class CrudBolt
                 outputCollector.ack(tuple);
             }
         }
+    }
+
+    private void emitError(Tuple tuple, String correlationId, CacheException exception, boolean isWarning) {
+        String logMessage = format("%s: %s", exception.getErrorMessage(), exception.getErrorDescription());
+        ErrorData errorData = new ErrorData(exception.getErrorType(), logMessage, exception.getErrorDescription());
+        ErrorMessage errorMessage;
+
+        if (isWarning) {
+            logger.warn(logMessage, exception);
+            errorMessage = buildClientErrorMessage(correlationId, errorData);
+        } else {
+            logger.error(logMessage, exception);
+            errorMessage = buildErrorMessage(correlationId, errorData);
+        }
+
+        Values error = new Values(errorMessage, exception.getErrorType());
+        outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
     }
 
     private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
@@ -514,7 +527,7 @@ public class CrudBolt
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
         FlowPair flowPair = flowService.getFlowPair(flowId)
-                .orElseThrow(() -> new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                .orElseThrow(() -> new ClientException(message.getCorrelationId(), System.currentTimeMillis(),
                         ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
 
         BidirectionalFlowDto flow =
@@ -538,9 +551,12 @@ public class CrudBolt
         return new FlowResponse(flowDto);
     }
 
-    private ErrorMessage buildErrorMessage(String correlationId, ErrorType type, String message, String description) {
-        return new ErrorMessage(new ErrorData(type, message, description),
-                System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
+    private ErrorMessage buildErrorMessage(String correlationId, ErrorData errorData) {
+        return new ErrorMessage(errorData, System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
+    }
+
+    private ErrorMessage buildClientErrorMessage(String correlationId, ErrorData errorData) {
+        return new ClientErrorMessage(errorData, System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
     }
 
     private void initFlowResourcesManager() {

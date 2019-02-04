@@ -19,20 +19,25 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.openkilda.floodlight.kafka.ErrorMessageBuilder.anError;
 import static org.openkilda.messaging.Utils.MAPPER;
+import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 
+import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.command.ping.PingRequestCommand;
-import org.openkilda.floodlight.converter.OfFlowStatsConverter;
+import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.FlowCommandException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.kafka.dispatcher.CommandDispatcher;
+import org.openkilda.floodlight.kafka.dispatcher.PingRequestDispatcher;
+import org.openkilda.floodlight.kafka.dispatcher.RemoveBfdSessionDispatcher;
+import org.openkilda.floodlight.kafka.dispatcher.SetupBfdSessionDispatcher;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -70,7 +75,6 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
-import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.meter.MeterEntry;
@@ -90,6 +94,7 @@ import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
@@ -112,12 +117,15 @@ class RecordHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(RecordHandler.class);
 
     private final ConsumerContext context;
+    private final List<CommandDispatcher<?>> dispatchers;
     private final ConsumerRecord<String, String> record;
 
     private final CommandProcessorService commandProcessor;
 
-    public RecordHandler(ConsumerContext context, ConsumerRecord<String, String> record) {
+    public RecordHandler(ConsumerContext context, List<CommandDispatcher<?>> dispatchers,
+                         ConsumerRecord<String, String> record) {
         this.context = context;
+        this.dispatchers = dispatchers;
         this.record = record;
 
         this.commandProcessor = context.getModuleContext().getServiceImpl(CommandProcessorService.class);
@@ -148,12 +156,9 @@ class RecordHandler implements Runnable {
         logger.debug("Handling message: '{}'. Reply topic: '{}'. Reply destination: '{}'.",
                 message, replyToTopic, replyDestination);
         CommandData data = message.getData();
-        CommandContext commandContext = new CommandContext(this.context.getModuleContext(), message.getCorrelationId());
 
         if (data instanceof DiscoverIslCommandData) {
             doDiscoverIslCommand(message);
-        } else if (data instanceof PingRequest) {
-            doPingRequest(commandContext, (PingRequest) data);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
@@ -216,11 +221,6 @@ class RecordHandler implements Runnable {
                 new NetworkEndpoint(command.getSwitchId(), command.getPortNumber()));
         getKafkaProducer().sendMessageAndTrack(context.getKafkaTopoDiscoTopic(),
                 new InfoMessage(confirmation, System.currentTimeMillis(), message.getCorrelationId()));
-    }
-
-    private void doPingRequest(CommandContext context, PingRequest request) {
-        PingRequestCommand command = new PingRequestCommand(context, request.getPing());
-        commandProcessor.process(command);
     }
 
     private void doDiscoverPathCommand(CommandData data) {
@@ -481,13 +481,18 @@ class RecordHandler implements Runnable {
                 // TODO: this isn't always added (ie if OF1.2). Is there a better response?
                 switchManager.installVerificationRule(dpid, false);
                 installedRules.add(VERIFICATION_UNICAST_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_BFD_CATCH) {
+                // TODO: this isn't installed as well. Refactor this section
+                switchManager.installBfdCatchFlow(dpid);
+                installedRules.add(CATCH_BFD_RULE_COOKIE);
             } else {
                 switchManager.installDefaultRules(dpid);
                 installedRules.addAll(asList(
                         DROP_RULE_COOKIE,
                         VERIFICATION_BROADCAST_RULE_COOKIE,
                         VERIFICATION_UNICAST_RULE_COOKIE,
-                        DROP_VERIFICATION_LOOP_RULE_COOKIE
+                        DROP_VERIFICATION_LOOP_RULE_COOKIE,
+                        CATCH_BFD_RULE_COOKIE
                 ));
             }
 
@@ -541,6 +546,10 @@ class RecordHandler implements Runnable {
                     case REMOVE_VERIFICATION_LOOP:
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE).build();
+                        break;
+                    case REMOVE_BFD_CATCH:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(CATCH_BFD_RULE_COOKIE).build();
                         break;
                     default:
                         logger.warn("Received unexpected delete switch rule action: {}", deleteAction);
@@ -630,7 +639,7 @@ class RecordHandler implements Runnable {
             List<OFFlowStatsEntry> flowEntries =
                     context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
             List<FlowEntry> flows = flowEntries.stream()
-                    .map(OfFlowStatsConverter::toFlowEntry)
+                    .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
                     .collect(Collectors.toList());
 
             SwitchFlowEntries response = SwitchFlowEntries.builder()
@@ -901,7 +910,7 @@ class RecordHandler implements Runnable {
 
     private void installMeter(DatapathId dpid, long meterId, long bandwidth, String flowId) {
         try {
-            context.getSwitchManager().installMeter(dpid, bandwidth, meterId);
+            context.getSwitchManager().installMeterForFlow(dpid, bandwidth, meterId);
         } catch (UnsupportedOperationException e) {
             logger.info("Skip meter {} installation for flow {} on switch {}: {}",
                     meterId, flowId, dpid, e.getMessage());
@@ -928,7 +937,9 @@ class RecordHandler implements Runnable {
 
         // Process the message within the message correlation context.
         try (CorrelationContextClosable closable = CorrelationContext.create(message.getCorrelationId())) {
-            doControllerMsg(message);
+            if (!dispatch(message)) {
+                doControllerMsg(message);
+            }
         } catch (Exception exception) {
             logger.error("error processing message '{}'", message, exception);
         }
@@ -939,19 +950,40 @@ class RecordHandler implements Runnable {
         parseRecord(record);
     }
 
+    private boolean dispatch(CommandMessage message) {
+        CommandContext commandContext = new CommandContext(context.getModuleContext(), message.getCorrelationId());
+        CommandData payload = message.getData();
+
+        for (CommandDispatcher<?> entry : dispatchers) {
+            Optional<Command> command = entry.dispatch(commandContext, payload);
+            if (!command.isPresent()) {
+                continue;
+            }
+
+            commandProcessor.process(command.get());
+            return true;
+        }
+
+        return false;
+    }
+
     private IKafkaProducerService getKafkaProducer() {
         return context.getModuleContext().getServiceImpl(IKafkaProducerService.class);
     }
 
     public static class Factory {
         private final ConsumerContext context;
+        private final List<CommandDispatcher<?>> dispatchers = ImmutableList.of(
+                new PingRequestDispatcher(),
+                new SetupBfdSessionDispatcher(),
+                new RemoveBfdSessionDispatcher());
 
         public Factory(ConsumerContext context) {
             this.context = context;
         }
 
         public RecordHandler produce(ConsumerRecord<String, String> record) {
-            return new RecordHandler(context, record);
+            return new RecordHandler(context, dispatchers, record);
         }
     }
 }

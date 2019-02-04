@@ -22,6 +22,7 @@ import static org.easymock.EasyMock.expect;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.model.SwitchId;
@@ -39,6 +40,7 @@ import org.projectfloodlight.openflow.types.MacAddress;
 
 public class PingServiceTest extends EasyMockSupport {
     private PingService pingService = new PingService();
+    private ISwitchManager switchManager = new SwitchManager();
     private FloodlightModuleContext moduleContext = new FloodlightModuleContext();
     private PathVerificationService pathVerificationService = new PathVerificationService();
 
@@ -58,8 +60,9 @@ public class PingServiceTest extends EasyMockSupport {
         DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
         MacAddress macBeta = MacAddress.of(0xfffe000000000002L);
 
-        expect(moduleContext.getServiceImpl(ISwitchManager.class).dpIdToMac(anyObject(DatapathId.class)))
-                .andReturn(macBeta);
+        moduleContext.getServiceImpl(ISwitchManager.class)
+                .dpIdToMac(dpIdBeta);
+        expect(switchManager.dpIdToMac(dpIdBeta)).andReturn(macBeta);
 
         moduleContext.getServiceImpl(InputService.class)
                 .addTranslator(eq(OFType.PACKET_IN), anyObject(PingInputTranslator.class));

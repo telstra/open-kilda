@@ -32,16 +32,17 @@ public class CacheFlowEntry implements Serializable {
 
     private String ingressSwitch;
     private String egressSwitch;
+    private Long cookie;
 
-    public CacheFlowEntry(String flowId) {
-        this(flowId, null, null);
+    public CacheFlowEntry(String flowId, Long cookie) {
+        this(flowId, null, null, cookie);
     }
 
     /**
      * Make "clone" of existing object, replace ingressSwitch or egressSwitch with new value. Switch that must be
      * replaced determined by point argument value.
      */
-    public CacheFlowEntry replace(String sw, MeasurePoint point) {
+    public CacheFlowEntry replaceSwitch(String sw, MeasurePoint point) {
         CacheFlowEntryBuilder replacement = toBuilder();
         switch (point) {
             case INGRESS:
@@ -54,5 +55,9 @@ public class CacheFlowEntry implements Serializable {
                 throw new IllegalArgumentException(String.format("Unsupported measurement point value %s", point));
         }
         return replacement.build();
+    }
+
+    public CacheFlowEntry replaceCookie(Long cookie) {
+        return toBuilder().cookie(cookie).build();
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,36 +13,40 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.stats;
+package org.openkilda.messaging.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.NonNull;
+import lombok.Value;
 
 import java.io.Serializable;
-import java.util.List;
 
 /**
- * TODO: add javadoc.
+ * Represent details about physical switch port. Should not be used as independent entity, only as part
+ * of {@link Switch} definition.
  */
-public class PortStatsReply implements Serializable {
+@Value
+public class SwitchPort implements Serializable {
+    @JsonProperty(value = "number", required = true)
+    private int number;
 
-    @JsonProperty
-    private long xid;
+    @NonNull
+    @JsonProperty(value = "state", required = true)
+    private State state;
 
-    @JsonProperty
-    private List<PortStatsEntry> entries;
-
+    @Builder
     @JsonCreator
-    public PortStatsReply(@JsonProperty("xid") long xid, @JsonProperty("entries") List<PortStatsEntry> entries) {
-        this.xid = xid;
-        this.entries = entries;
+    public SwitchPort(
+            @JsonProperty("number") int number,
+            @JsonProperty("state") @NonNull State state) {
+        this.number = number;
+        this.state = state;
     }
 
-    public long getXid() {
-        return xid;
-    }
-
-    public List<PortStatsEntry> getEntries() {
-        return entries;
+    public enum State {
+        UP,
+        DOWN;
     }
 }

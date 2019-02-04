@@ -28,7 +28,10 @@ public enum InstallRulesAction {
     // Install just the verification (unicast) rule only
     INSTALL_UNICAST,
 
+    // Install BFD catch rule
+    INSTALL_BFD_CATCH,
+
     // Install all default rules (ie a combination of the above)
-    INSTALL_DEFAULTS
+    INSTALL_DEFAULTS;
 }
 

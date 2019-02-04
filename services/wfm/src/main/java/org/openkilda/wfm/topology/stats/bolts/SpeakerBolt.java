@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
+import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.openkilda.wfm.topology.stats.StatsTopology;
@@ -49,7 +50,7 @@ public class SpeakerBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(SpeakerBolt.class);
     private static final String PORT_STATS_STREAM = StatsStreamType.PORT_STATS.toString();
     private static final String METER_CFG_STATS_STREAM = StatsStreamType.METER_CONFIG_STATS.toString();
-    private static final String FLOW_STATS_STREAM = StatsStreamType.FLOW_STATS.toString();
+    private static final String CACHE_STREAM = StatsStreamType.CACHE_DATA.toString();
     private static final String SYSTEM_RULES_STATS_STREAM = StatsStreamType.SYSTEM_RULE_STATS.toString();
 
     private OutputCollector outputCollector;
@@ -74,6 +75,9 @@ public class SpeakerBolt extends BaseRichBolt {
             } else if (data instanceof MeterConfigStatsData) {
                 logger.debug("Meter config stats message: {}", new Values(request));
                 outputCollector.emit(METER_CFG_STATS_STREAM, tuple, new Values(message));
+            } else if (data instanceof MeterStatsData) {
+                logger.debug("Meter stats message: {}", new Values(request));
+                outputCollector.emit(CACHE_STREAM, tuple, new Values(data, message.getTimestamp()));
             } else if (data instanceof FlowStatsData) {
                 logger.debug("Flow stats message: {}", new Values(request));
                 ImmutablePair<FlowStatsData, FlowStatsData> splitData =
@@ -81,7 +85,7 @@ public class SpeakerBolt extends BaseRichBolt {
 
                 outputCollector.emit(SYSTEM_RULES_STATS_STREAM, tuple,
                         new Values(splitData.getKey(), message.getTimestamp()));
-                outputCollector.emit(FLOW_STATS_STREAM, tuple,
+                outputCollector.emit(CACHE_STREAM, tuple,
                         new Values(splitData.getValue(), message.getTimestamp()));
             }
         } catch (IOException exception) {
@@ -116,8 +120,8 @@ public class SpeakerBolt extends BaseRichBolt {
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(PORT_STATS_STREAM, fieldMessage);
         outputFieldsDeclarer.declareStream(METER_CFG_STATS_STREAM, fieldMessage);
-        outputFieldsDeclarer.declareStream(FLOW_STATS_STREAM, StatsTopology.flowStatsFields);
-        outputFieldsDeclarer.declareStream(SYSTEM_RULES_STATS_STREAM, StatsTopology.flowStatsFields);
+        outputFieldsDeclarer.declareStream(CACHE_STREAM, StatsTopology.statsFields);
+        outputFieldsDeclarer.declareStream(SYSTEM_RULES_STATS_STREAM, StatsTopology.statsFields);
     }
 
     /**

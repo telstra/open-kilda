@@ -13,36 +13,36 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.discovery;
-
-import static java.util.Objects.requireNonNull;
+package org.openkilda.messaging.info.stats;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
-/**
- * Defines the {@link InfoMessage} payload representing a switch port for network sync process.
- */
+import java.util.List;
+
 @Value
-@JsonNaming(SnakeCaseStrategy.class)
-public class NetworkDumpPortData extends InfoData {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonPropertyOrder({"switch_id", "stats"})
+@EqualsAndHashCode(callSuper = false)
+public class MeterStatsData extends InfoData {
+
     private static final long serialVersionUID = 1L;
 
+    @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    private int portNo;
+    @JsonProperty
+    private List<MeterStatsEntry> stats;
 
-    @JsonCreator
-    public NetworkDumpPortData(@JsonProperty("switch_id") SwitchId switchId,
-                               @JsonProperty("port_no") int portNo) {
-        this.switchId = requireNonNull(switchId);
-        this.portNo = portNo;
+    public MeterStatsData(@JsonProperty("switch_id") SwitchId switchId,
+                          @JsonProperty("stats") List<MeterStatsEntry> switchStats) {
+        this.switchId = switchId;
+        this.stats = switchStats;
     }
 }

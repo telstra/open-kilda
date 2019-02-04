@@ -30,6 +30,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
+import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
 
@@ -38,10 +39,8 @@ public interface ISwitchManager extends IFloodlightService {
     /** OVS software switch manufacturer constant value. */
     String OVS_MANUFACTURER = "Nicira, Inc.";
 
-    /** Mask is being used to get meter id for corresponding system rule.
-     * E.g. for 0x8000000000000002L & PACKET_IN_RULES_METERS_MASK we will get meter id 2.
-     */
-    long PACKET_IN_RULES_METERS_MASK = 0x00000000000000FL;
+    long COOKIE_FLAG_SERVICE = 0x8000000000000000L;
+    long COOKIE_FLAG_BFD_CATCH = 0x0001000000000001L;
 
     void activate(DatapathId dpid) throws SwitchOperationException;
 
@@ -80,6 +79,14 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException in case of errors
      */
     void installDropFlow(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Installs the default catch rule for BFD. Only applicable for NoviFlow switches.
+     *
+     * @param dpid datapathId of switch
+     * @throws SwitchOperationException in case of errors
+     */
+    void installBfdCatchFlow(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Installs custom drop rule .. ie cookie, priority, match
@@ -188,7 +195,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param meterId   the meter ID
      * @throws SwitchOperationException Switch not found
      */
-    void installMeter(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
+    void installMeterForFlow(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
 
     /**
      * Deletes the meter from the switch OF_13.
@@ -202,9 +209,28 @@ public interface ISwitchManager extends IFloodlightService {
 
     Map<DatapathId, IOFSwitch> getAllSwitchMap();
 
+    /**
+     * Wrap IOFSwitchService.getSwitch call to check protect from null return value.
+     *
+     * @param dpId switch identifier
+     * @return open flow switch descriptor
+     * @throws SwitchNotFoundException switch operation exception
+     */
+    IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchNotFoundException;
+
+    /**
+     * Get the IP address from a switch.
+     *
+     * @param sw target switch object
+     * @return switch's IP address
+     */
+    InetAddress getSwitchIpAddress(IOFSwitch sw);
+
     List<OFPortDesc> getEnabledPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
 
     List<OFPortDesc> getPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
+
+    List<OFPortDesc> getPhysicalPorts(IOFSwitch sw);
 
     /**
      * Deletes all non-default rules from the switch.
@@ -287,13 +313,4 @@ public interface ISwitchManager extends IFloodlightService {
      * @return {@link MacAddress}
      */
     MacAddress dpIdToMac(final DatapathId dpId);
-
-    /**
-     * Wrap IOFSwitchService.getSwitch call to check protect from null return value.
-     *
-     * @param  dpId switch identifier
-     * @return open flow switch descriptor
-     * @throws SwitchNotFoundException switch operation exception
-     */
-    IOFSwitch lookupSwitch(DatapathId dpId) throws SwitchNotFoundException;
 }

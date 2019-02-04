@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.kafka;
 
+import static java.util.Collections.emptyMap;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createMock;
@@ -32,6 +33,7 @@ import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
 import org.openkilda.floodlight.switchmanager.SwitchTrackingService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
@@ -43,9 +45,12 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 
 import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
+import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -80,6 +85,8 @@ public class ReplaceInstallFlowTest {
     private IOFSwitchService ofSwitchService;
     private KafkaMessageCollector collector;
 
+    private SwitchManagerConfig config;
+
     /**
      * Returns CommandData entity constructed by data string from json resource file.
      *
@@ -94,6 +101,9 @@ public class ReplaceInstallFlowTest {
 
     @Before
     public void setUp() throws FloodlightModuleException {
+        JdkProxyStaticConfigurationFactory factory = new JdkProxyStaticConfigurationFactory();
+        config = factory.createConfiguration(SwitchManagerConfig.class, new MapConfigurationSource(emptyMap()));
+
         final SwitchManager switchManager = new SwitchManager();
         final PathVerificationService pathVerificationService = new PathVerificationService();
 
@@ -135,7 +145,8 @@ public class ReplaceInstallFlowTest {
     public void installOneSwitchNoneFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_one_switch_none_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
-        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), data.getBandwidth() / 10, data.getMeterId());
+        OFMeterMod meterCommand =
+                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.oneSwitchNoneFlowMod(data.getInputPort(), data.getOutputPort(),
                 data.getMeterId(), 123L);
         runTest(value, flowCommand, meterCommand, null, null);
@@ -146,7 +157,8 @@ public class ReplaceInstallFlowTest {
         String value = Resources.toString(
                 getClass().getResource("/install_one_switch_replace_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
-        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), data.getBandwidth() / 10, data.getMeterId());
+        OFMeterMod meterCommand =
+                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.oneSwitchReplaceFlowMod(data.getInputPort(), data.getOutputPort(),
                 data.getInputVlanId(), data.getOutputVlanId(), data.getMeterId(), 123L);
         runTest(value, flowCommand, meterCommand, null, null);
@@ -156,7 +168,8 @@ public class ReplaceInstallFlowTest {
     public void installOneSwitchPushFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_one_switch_push_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
-        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), data.getBandwidth() / 10, data.getMeterId());
+        OFMeterMod meterCommand =
+                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.oneSwitchPushFlowMod(data.getInputPort(), data.getOutputPort(),
                 data.getOutputVlanId(), data.getMeterId(), 123L);
         runTest(value, flowCommand, meterCommand, null, null);
@@ -166,7 +179,8 @@ public class ReplaceInstallFlowTest {
     public void installOneSwitchPopFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_one_switch_pop_flow.json"), Charsets.UTF_8);
         InstallOneSwitchFlow data = (InstallOneSwitchFlow) prepareData(value);
-        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), data.getBandwidth() / 10, data.getMeterId());
+        OFMeterMod meterCommand =
+                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.oneSwitchPopFlowMod(data.getInputPort(), data.getOutputPort(),
                 data.getInputVlanId(), data.getMeterId(), 123L);
         runTest(value, flowCommand, meterCommand, null, null);
@@ -176,7 +190,8 @@ public class ReplaceInstallFlowTest {
     public void installIngressNoneFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_ingress_none_flow.json"), Charsets.UTF_8);
         InstallIngressFlow data = (InstallIngressFlow) prepareData(value);
-        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), data.getBandwidth() / 10, data.getMeterId());
+        OFMeterMod meterCommand =
+                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.ingressNoneFlowMod(data.getInputPort(), data.getOutputPort(),
                 data.getTransitVlanId(), data.getMeterId(), 123L);
         runTest(value, flowCommand, meterCommand, null, null);
@@ -186,7 +201,8 @@ public class ReplaceInstallFlowTest {
     public void installIngressReplaceFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_ingress_replace_flow.json"), Charsets.UTF_8);
         InstallIngressFlow data = (InstallIngressFlow) prepareData(value);
-        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), data.getBandwidth() / 10, data.getMeterId());
+        OFMeterMod meterCommand =
+                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.ingressReplaceFlowMod(data.getInputPort(), data.getOutputPort(),
                 data.getInputVlanId(), data.getTransitVlanId(), data.getMeterId(), 123L);
         runTest(value, flowCommand, meterCommand, null, null);
@@ -196,7 +212,8 @@ public class ReplaceInstallFlowTest {
     public void installIngressPushFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_ingress_push_flow.json"), Charsets.UTF_8);
         InstallIngressFlow data = (InstallIngressFlow) prepareData(value);
-        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), data.getBandwidth() / 10, data.getMeterId());
+        OFMeterMod meterCommand =
+                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.ingressPushFlowMod(data.getInputPort(), data.getOutputPort(),
                 data.getTransitVlanId(), data.getMeterId(), 123L);
         runTest(value, flowCommand, meterCommand, null, null);
@@ -206,7 +223,8 @@ public class ReplaceInstallFlowTest {
     public void installIngressPopFlow() throws IOException, InterruptedException {
         String value = Resources.toString(getClass().getResource("/install_ingress_pop_flow.json"), Charsets.UTF_8);
         InstallIngressFlow data = (InstallIngressFlow) prepareData(value);
-        OFMeterMod meterCommand = scheme.installMeter(data.getBandwidth(), data.getBandwidth() / 10, data.getMeterId());
+        OFMeterMod meterCommand =
+                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.ingressPopFlowMod(data.getInputPort(), data.getOutputPort(),
                 data.getInputVlanId(), data.getTransitVlanId(), data.getMeterId(), 123L);
         runTest(value, flowCommand, meterCommand, null, null);
@@ -272,7 +290,7 @@ public class ReplaceInstallFlowTest {
 
         // create parser instance
         ConsumerContext kafkaContext = new ConsumerContext(context);
-        RecordHandler parseRecord = new RecordHandler(kafkaContext, record);
+        RecordHandler parseRecord = new RecordHandler(kafkaContext, ImmutableList.of(), record);
         // init test mocks
         Capture<OFFlowAdd> flowAddCapture = flowCommand == null ? null : newCapture(CaptureType.ALL);
         Capture<OFMeterMod> meterAddCapture = meterCommand == null ? null : newCapture(CaptureType.ALL);
@@ -326,5 +344,9 @@ public class ReplaceInstallFlowTest {
 
         replay(ofSwitchService);
         replay(iofSwitch);
+    }
+
+    private long calculateBurstSize(long bandwidth) {
+        return (long) (bandwidth * config.getFlowMeterBurstCoefficient());
     }
 }

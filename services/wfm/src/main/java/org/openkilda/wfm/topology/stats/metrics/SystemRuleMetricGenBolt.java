@@ -16,17 +16,15 @@
 package org.openkilda.wfm.topology.stats.metrics;
 
 import static org.openkilda.messaging.Utils.TIMESTAMP;
-import static org.openkilda.wfm.topology.stats.StatsTopology.FLOW_STATS_FIELD;
+import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
 
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.JsonEncodeException;
+import org.openkilda.wfm.error.AbstractException;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.HashMap;
@@ -36,35 +34,24 @@ import java.util.Map;
 public class SystemRuleMetricGenBolt extends MetricGenBolt {
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        this.collector = collector;
-    }
-
-    @Override
-    public void execute(Tuple input) {
-        FlowStatsData data = (FlowStatsData) input.getValueByField(FLOW_STATS_FIELD);
+    protected void handleInput(Tuple input) throws AbstractException {
+        FlowStatsData data = (FlowStatsData) input.getValueByField(STATS_FIELD);
         log.debug("Received system rules statistics: {}.", data);
         long timestamp = input.getLongByField(TIMESTAMP);
         SwitchId switchId = data.getSwitchId();
 
-        try {
-            for (FlowStatsEntry entry : data.getStats()) {
-                emit(entry, timestamp, switchId);
-            }
-        } catch (Exception e) {
-            log.error("Unhandled exception: {}", e.getMessage(), e);
-        } finally {
-            collector.ack(input);
+        for (FlowStatsEntry entry : data.getStats()) {
+            emit(entry, timestamp, switchId);
         }
     }
 
-    private void emit(FlowStatsEntry entry, long timestamp, SwitchId switchId) throws JsonEncodeException {
+    private void emit(FlowStatsEntry entry, long timestamp, SwitchId switchId) {
         Map<String, String> tags = new HashMap<>();
         tags.put("switchid", switchId.toOtsdFormat());
         tags.put("cookieHex", Cookie.toString(entry.getCookie()));
 
-        collector.emit(tuple("pen.switch.flow.system.packets", timestamp, entry.getPacketCount(), tags));
-        collector.emit(tuple("pen.switch.flow.system.bytes", timestamp, entry.getByteCount(), tags));
-        collector.emit(tuple("pen.switch.flow.system.bits", timestamp, entry.getByteCount() * 8, tags));
+        emitMetric("pen.switch.flow.system.packets", timestamp, entry.getPacketCount(), tags);
+        emitMetric("pen.switch.flow.system.bytes", timestamp, entry.getByteCount(), tags);
+        emitMetric("pen.switch.flow.system.bits", timestamp, entry.getByteCount() * 8, tags);
     }
 }

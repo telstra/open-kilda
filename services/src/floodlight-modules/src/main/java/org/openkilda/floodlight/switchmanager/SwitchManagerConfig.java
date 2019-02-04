@@ -25,19 +25,23 @@ import javax.validation.constraints.Min;
 @Configuration
 public interface SwitchManagerConfig {
     @Key("connect-mode")
+    @Default("AUTO")
     String getConnectMode();
 
     @Key("broadcast-rate-limit")
+    @Default("200")
     int getBroadcastRateLimit();
 
     @Key("unicast-rate-limit")
+    @Default("200")
     int getUnicastRateLimit();
 
     @Key("disco-packet-size")
+    @Default("250")
     int getDiscoPacketSize();
 
     @Key("flow-meter-burst-coefficient")
-    @Default("0.1")
+    @Default("1.05")
     @Description("This coefficient is used to calculate burst size for flow meters. "
                + "Burst size will be equal to 'coefficient * bandwidth'. "
                + "Value '0.1' means that burst size will be equal to 10% of flow bandwidth.")
