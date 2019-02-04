@@ -454,7 +454,6 @@ public class SwitchManagerTest {
 
     @Test
     public void installFlowMeterWithIdForDefaultRuleTest() throws SwitchOperationException {
-        // IDs for system rules are from 1 to 31 inclusively
         for (int id = MIN_SYSTEM_RULE_METER_ID; id < MAX_SYSTEM_RULE_METER_ID; id++) {
             runInstallMeterWithInvalidId(id);
         }

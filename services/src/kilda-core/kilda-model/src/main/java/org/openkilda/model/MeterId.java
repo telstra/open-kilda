@@ -48,7 +48,7 @@ public final class MeterId {
     /**
      * Maximum meter id value for system rules.
      */
-    public static final int MAX_SYSTEM_RULE_METER_ID = 31;
+    public static final int MAX_SYSTEM_RULE_METER_ID = 10;
 
     private final long value;
 
