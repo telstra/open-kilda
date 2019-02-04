@@ -22,6 +22,7 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +94,11 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected OutputCollector getOutput() {
         return output;
+    }
+
+    protected void emit(String stream, Tuple input, Values values) throws PipelineException {
+        values.add(pullContext(input));
+        getOutput().emit(stream, input, values);
     }
 
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
