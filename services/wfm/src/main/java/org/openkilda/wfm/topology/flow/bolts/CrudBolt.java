@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flow.bolts;
 
 import static java.lang.String.format;
+import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -28,6 +29,7 @@ import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
@@ -86,6 +88,7 @@ import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -166,6 +169,7 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.UPDATE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         // FIXME(dbogun): use proper tuple format
@@ -246,7 +250,9 @@ public class CrudBolt
                         case DUMP:
                             handleDumpRequest(cmsg, tuple);
                             break;
-
+                        case METER_MODE:
+                            handleMeterModeRequest(cmsg, tuple, flowId);
+                            break;
                         default:
                             logger.error("Unexpected stream: {} in {}", streamId, tuple);
                             break;
@@ -537,6 +543,29 @@ public class CrudBolt
         Values values = new Values(new InfoMessage(new FlowReadResponse(flow),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+    }
+
+    private void handleMeterModeRequest(CommandMessage inMessage, Tuple tuple, final String flowId) {
+        FlowPair flowPair = flowService.getFlowPair(flowId)
+                .orElseThrow(() -> new MessageException(inMessage.getCorrelationId(), System.currentTimeMillis(),
+                        ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
+
+        SwitchId fwdSwitchId = flowPair.getForward().getSrcSwitch().getSwitchId();
+        SwitchId rvsSwitchId = flowPair.getReverse().getSrcSwitch().getSwitchId();
+        long bandwidth = flowPair.getForward().getBandwidth();
+        Integer fwdMeterId = flowPair.getForward().getMeterId();
+        Integer rvsMeterId = flowPair.getReverse().getMeterId();
+
+        MeterModifyCommandRequest request = new MeterModifyCommandRequest(fwdSwitchId, fwdMeterId,
+                rvsSwitchId, rvsMeterId, bandwidth);
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), inMessage.getCorrelationId());
+
+        try {
+            outputCollector.emit(StreamType.METER_MODE.toString(), tuple,
+                    new Values(MAPPER.writeValueAsString(message)));
+        } catch (JsonProcessingException e) {
+            logger.error("Unable to serialize {}", message);
+        }
     }
 
     /**
