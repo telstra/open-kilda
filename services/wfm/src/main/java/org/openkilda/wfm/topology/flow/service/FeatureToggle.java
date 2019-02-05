@@ -13,21 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.topology.flow.service;
 
-/**
- * Factory to create {@link Repository} instances.
- */
-public interface RepositoryFactory {
-    FlowRepository createFlowRepository();
-
-    FlowSegmentRepository createFlowSegmentRepository();
-
-    IslRepository createIslRepository();
-
-    SwitchRepository createSwitchRepository();
-
-    LinkPropsRepository createLinkPropsRepository();
-
-    FeatureTogglesRepository createFeatureTogglesRepository();
+public enum FeatureToggle {
+    CREATE_FLOW,
+    UPDATE_FLOW,
+    DELETE_FLOW,
+    PUSH_FLOW,
+    UNPUSH_FLOW
 }

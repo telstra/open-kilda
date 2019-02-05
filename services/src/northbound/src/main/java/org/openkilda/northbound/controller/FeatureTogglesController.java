@@ -15,20 +15,19 @@
 
 package org.openkilda.northbound.controller;
 
-import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.northbound.service.FeatureTogglesService;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -46,24 +45,19 @@ public class FeatureTogglesController {
     @Autowired
     private FeatureTogglesService featureTogglesService;
 
+    @PatchMapping
     @ApiOperation(value = "Toggle kilda features")
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Operation is successful")
-    })
-    @RequestMapping(method = RequestMethod.POST)
+    @ApiResponse(code = 200, message = "Operation is successful")
     @ResponseStatus(HttpStatus.OK)
-    public void toggleFeatures(@RequestBody FeatureTogglePayload request) {
-        featureTogglesService.toggleFeatures(request);
+    public CompletableFuture<FeatureTogglesDto> toggleFeatures(@RequestBody FeatureTogglesDto request) {
+        return featureTogglesService.toggleFeatures(request);
     }
 
-    @ApiOperation(value = "Get states of feature toggles", response = FeatureTogglePayload.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Operation is successful")
-    })
-
     @GetMapping
+    @ApiOperation(value = "Get states of feature toggles", response = FeatureTogglesDto.class)
+    @ApiResponse(code = 200, message = "Operation is successful")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FeatureTogglePayload> getFeatureTogglesState() {
+    public CompletableFuture<FeatureTogglesDto> getFeatureTogglesState() {
         return featureTogglesService.getFeatureTogglesState();
     }
 }

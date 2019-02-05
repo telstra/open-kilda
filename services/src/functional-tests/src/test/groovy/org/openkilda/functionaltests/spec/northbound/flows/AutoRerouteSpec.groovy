@@ -9,7 +9,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.FeatureTogglePayload
+import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
@@ -190,9 +190,10 @@ class AutoRerouteSpec extends BaseSpecification {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
-        when: "Set reflow_on_switch_activation=#reflowOnSwitchActivation"
-        northbound.toggleFeature(
-                new FeatureTogglePayload(null, reflowOnSwitchActivation, null, null, null, null, null))
+        when: "Set flowsRerouteOnIslDiscovery=#flowsRerouteOnIslDiscovery"
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                        .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscovery)
+                        .build())
 
         and: "Connect the intermediate switch back"
         lockKeeper.reviveSwitch(flowPath[1].switchId)
@@ -202,7 +203,10 @@ class AutoRerouteSpec extends BaseSpecification {
         TimeUnit.SECONDS.sleep(discoveryInterval + rerouteDelay + WAIT_OFFSET * 2)
         northbound.getFlowStatus(flow.id).status == flowStatus
 
-        and: "Restore topology to the original state, remove the flow"
+        and: "Restore topology to the original state, remove the flow, reset toggles"
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowsRerouteOnIslDiscoveryEnabled(true)
+                .build())
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -210,11 +214,9 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         where:
-        reflowOnSwitchActivation | flowStatus
-        true                     | FlowState.UP
-
-        /*TODO(siakovenko): the feature toggle for reflow is not supported yet.
-        false                    | FlowState.DOWN*/
+        flowsRerouteOnIslDiscovery | flowStatus
+        true                       | FlowState.UP
+        false                      | FlowState.DOWN
     }
 
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
