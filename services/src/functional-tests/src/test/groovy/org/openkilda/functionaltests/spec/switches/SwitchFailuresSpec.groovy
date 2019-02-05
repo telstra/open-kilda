@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.northbound.switches
+package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET

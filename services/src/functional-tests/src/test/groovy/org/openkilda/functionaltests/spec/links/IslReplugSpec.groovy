@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.isl
+package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeNotNull
 import static org.junit.Assume.assumeTrue
@@ -20,9 +20,9 @@ import spock.lang.Narrative
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
-class IslMovementSpec extends BaseSpecification {
+class IslReplugSpec extends BaseSpecification {
 
-    def "ISL status changes to MOVED when replugging"() {
+    def "ISL status changes to MOVED when replugging ISL into another switch"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
         assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
@@ -33,24 +33,24 @@ class IslMovementSpec extends BaseSpecification {
         }
         assumeTrue("Wasn't able to find enough of required a-switch links", notConnectedIsl.asBoolean())
 
-        when: "Replug one end of connected link to the not connected one"
+        when: "Replug one end of the connected link to the not connected one"
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
 
         then: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], MOVED)
 
-        and: "New ISL becomes Discovered"
+        and: "New ISL becomes DISCOVERED"
         islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], DISCOVERED)
 
         when: "Replug the link back where it was"
         islUtils.replug(newIsl, true, isl, false)
 
-        then: "Original ISL becomes Discovered again"
+        then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], DISCOVERED)
 
         and: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], MOVED)
-        
+
         and: "MOVED ISL can be deleted"
         [newIsl, islUtils.reverseIsl(newIsl)].each { Isl islToRemove ->
             assert northbound.deleteLink(islUtils.getLinkParameters(islToRemove)).deleted
@@ -59,18 +59,18 @@ class IslMovementSpec extends BaseSpecification {
         }
     }
 
-    def "New ISL is not getting discovered when replugging into a self-loop (same port)"() {
+    def "New potential self-loop ISL (the same port on the same switch) is not getting discovered when replugging"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
         assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
 
-        when: "Replug one end of link into 'itself'"
+        when: "Replug one end of the link into 'itself'"
         def loopedIsl = islUtils.replug(isl, false, isl, true)
 
         then: "Replugged ISL status changes to FAILED"
         islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], FAILED)
 
-        and: "The potential self-loop ISL is not present in list of isls"
+        and: "The potential self-loop ISL is not present in the list of ISLs"
         def allLinks = northbound.getAllLinks()
         !islUtils.getIslInfo(allLinks, loopedIsl).present
         !islUtils.getIslInfo(allLinks, islUtils.reverseIsl(loopedIsl)).present
@@ -78,12 +78,12 @@ class IslMovementSpec extends BaseSpecification {
         when: "Replug the link back where it was"
         islUtils.replug(loopedIsl, true, isl, false)
 
-        then: "Original ISL becomes Discovered again"
+        then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], DISCOVERED)
     }
 
-    def "New ISL is not getting discovered when adding new self-loop ISL (different port)"() {
-        given: "2 a-switch links on a single switch"
+    def "New potential self-loop ISL (different ports on the same switch) is not getting discovered when replugging"() {
+        given: "Two a-switch links on a single switch"
         def isls = topology.isls.findAll { it.aswitch && it.srcSwitch?.active }
                 .inject([:].withDefault { [] }) { r, link ->
             link.srcSwitch && r[link.srcSwitch] << link
@@ -93,7 +93,8 @@ class IslMovementSpec extends BaseSpecification {
             k.ofVersion != "OF_12" &&
             v.findAll { !it.dstSwitch }.size() > 1 //contains at least 2 not connected asw link
         }?.value as List<TopologyDefinition.Isl>
-        assumeNotNull("Not able to find required switch with enough free A-switch ISLs", isls)
+        assumeNotNull("Not able to find required switch with enough free a-switch ISLs", isls)
+
         def notConnectedIsls = isls.findAll { !it.dstSwitch }
         def islToPlug = notConnectedIsls[0]
         def islToPlugInto = notConnectedIsls[1]
@@ -105,7 +106,7 @@ class IslMovementSpec extends BaseSpecification {
         }.packetCount
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true)
 
-        then: "The potential self-loop ISL is not present in list of isls (wait for discovery interval)"
+        then: "The potential self-loop ISL is not present in the list of ISLs (wait for discovery interval)"
         TimeUnit.SECONDS.sleep(discoveryInterval + WAIT_OFFSET)
         def allLinks = northbound.getAllLinks()
         !islUtils.getIslInfo(allLinks, expectedIsl).present
@@ -115,7 +116,7 @@ class IslMovementSpec extends BaseSpecification {
         def statsData = null
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
             statsData = otsdb.query(beforeReplugTime, "pen.switch.flow.system.packets",
-                    [switchid: expectedIsl.srcSwitch.dpId.toOtsdFormat(),
+                    [switchid : expectedIsl.srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.DROP_LOOP_RULE.toHexString()]).dps
             assert statsData && !statsData.empty
         }
