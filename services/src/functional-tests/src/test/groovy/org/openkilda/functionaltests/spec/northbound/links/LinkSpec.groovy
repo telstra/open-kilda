@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.links
+package org.openkilda.functionaltests.spec.northbound.links
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID

@@ -1,6 +1,5 @@
-package org.openkilda.functionaltests.spec.switches
+package org.openkilda.functionaltests.spec.northbound.switches
 
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -32,7 +31,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
 
         and: "Port failure is logged in OpenTSDB"
         def statsData = [:]
-        Wrappers.wait(STATS_LOGGING_TIMEOUT) {
+        Wrappers.wait(WAIT_OFFSET) {
             statsData = otsdb.query(portDownTime, "pen.switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
             assert statsData.size() == 1
@@ -50,7 +49,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
         }
 
         and: "Port UP event is logged in OpenTSDB"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT) {
+        Wrappers.wait(WAIT_OFFSET) {
             statsData = otsdb.query(portUpTime, "pen.switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
             assert statsData.size() == 1

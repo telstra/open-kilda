@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.flows
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -282,9 +282,22 @@ class FlowCrudSpec extends BaseSpecification {
         given: "Two potential flows"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1])
+        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
 
-        def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2])
+        // TODO(ylobankov): Delete this code once we add such a functionality to flow helper.
+        // It is a kind of dirty workaround to not get a conflict at the point of the second flow creation.
+        def random = new Random()
+        def srcSwitchAllowedPorts = topology.getAllowedPortsForSwitch(srcSwitch)
+        def dstSwitchAllowedPorts = topology.getAllowedPortsForSwitch(dstSwitch)
+        while (!(flow1.source.portNumber != flow2.source.portNumber &&
+                flow1.destination.portNumber != flow2.destination.portNumber)) {
+            flow1.source.portNumber = random.nextInt(srcSwitchAllowedPorts.size())
+            flow1.destination.portNumber = random.nextInt(dstSwitchAllowedPorts.size())
+            flow2.source.portNumber = random.nextInt(srcSwitchAllowedPorts.size())
+            flow2.destination.portNumber = random.nextInt(dstSwitchAllowedPorts.size())
+        }
+
+        def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         data.makeFlowsConflicting(flow1, conflictingFlow.tap { it.id = flow2.id })
 
         when: "Create two flows"
@@ -376,17 +389,16 @@ class FlowCrudSpec extends BaseSpecification {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
         }
 
-        where:
-        data << [
+        where: data << [
                 [
                         isolatedSwitchType: "source",
-                        getFlow           : { Switch theSwitch ->
+                        getFlow: { Switch theSwitch ->
                             getFlowHelper().randomFlow(theSwitch, getTopology().activeSwitches.find { it != theSwitch })
                         }
                 ],
                 [
                         isolatedSwitchType: "destination",
-                        getFlow           : { Switch theSwitch ->
+                        getFlow: { Switch theSwitch ->
                             getFlowHelper().randomFlow(getTopology().activeSwitches.find { it != theSwitch }, theSwitch)
                         }
                 ]

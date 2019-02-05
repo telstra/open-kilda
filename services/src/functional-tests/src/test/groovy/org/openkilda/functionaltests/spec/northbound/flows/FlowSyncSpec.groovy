@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.flows
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME

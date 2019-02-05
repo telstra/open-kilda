@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.flows
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.messaging.info.event.IslInfoData

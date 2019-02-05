@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.flows
+package org.openkilda.functionaltests.spec.northbound.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
