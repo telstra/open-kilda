@@ -424,9 +424,13 @@ public class OfeLinkBolt
             handleSwitchEvent(tuple, cleanedInfoMessage);
             passToNetworkTopologyBolt(tuple, infoMessage);
         } else if (data instanceof PortInfoData) {
-
-            int portNo = ((PortInfoData) data).getPortNo();
+            PortInfoData portInfoData = (PortInfoData) data;
+            int portNo = portInfoData.getPortNo();
             if (portNo > bfdPortOffset) {
+                PortChangeType state = portInfoData.getState();
+                if (state != PortChangeType.UP && state != PortChangeType.DOWN) {
+                    return;
+                }
                 ((PortInfoData) data).setPortNo(portNo - bfdPortOffset);
             }
 
