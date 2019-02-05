@@ -13,6 +13,7 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
@@ -25,6 +26,7 @@ import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -446,6 +448,23 @@ class SwitchRulesSpec extends BaseSpecification {
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
+    }
+
+    @Unroll
+    def "Unable to #action rules on a non-existent switch"() {
+        when: "Try to #action rules on a non-existent switch"
+        def switchId = new SwitchId("123456789")
+        northbound."$method"(switchId)
+
+        then: "An error is received (404 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $switchId was not found"
+
+        where:
+        action        | method
+        "synchronize" | "synchronizeSwitchRules"
+        "validate"    | "validateSwitchRules"
     }
 
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
