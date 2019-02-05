@@ -37,6 +37,8 @@ import java.util.Properties;
 
 @Slf4j
 public abstract class AbstractStormTest {
+    public static final int TOPOLOGY_START_TIMEOUT = 20000;
+
     protected static String CONFIG_NAME = "class-level-overlay.properties";
 
     protected static TestKafkaProducer kProducer;

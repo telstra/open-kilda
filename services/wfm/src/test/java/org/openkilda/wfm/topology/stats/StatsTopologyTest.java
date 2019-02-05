@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,19 +16,20 @@
 package org.openkilda.wfm.topology.stats;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.storm.utils.Utils.sleep;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasEntry;
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.MAPPER;
+import static org.junit.Assert.assertEquals;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
+import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
@@ -40,30 +41,28 @@ import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.persistence.spi.PersistenceProvider;
+import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.StableAbstractStormTest;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
-import org.openkilda.wfm.topology.TestingKafkaBolt;
-import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
+import org.openkilda.wfm.topology.TestKafkaConsumer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.collect.Lists;
-import org.apache.storm.Testing;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.testing.FixedTuple;
-import org.apache.storm.testing.MockedSources;
-import org.apache.storm.tuple.Values;
 import org.junit.AfterClass;
-import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -73,35 +72,43 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class StatsTopologyTest extends StableAbstractStormTest {
+public class StatsTopologyTest extends AbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();
+    private static final int POLL_TIMEOUT = 1000;
+    private static final String POLL_DATAPOINT_ASSERT_MESSAGE = "Could not poll all %d datapoints, got only %d records";
 
     private final SwitchId switchId = new SwitchId(1L);
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private final long cookie = 0x4000000000000001L;
+    private final String flowId = "f253423454343";
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
 
-    private static LaunchEnvironment launchEnvironment;
     private static PersistenceManager persistenceManager;
+    private static StatsTopologyConfig statsTopologyConfig;
+
+    private static TestKafkaConsumer otsdbConsumer;
+    private static FlowRepository flowRepository;
+    private static SwitchRepository switchRepository;
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        StableAbstractStormTest.startCompleteTopology();
+        AbstractStormTest.startZooKafkaAndStorm();
 
         embeddedNeo4jDb = new EmbeddedNeo4jDatabase(fsData.getRoot());
 
-        launchEnvironment = makeLaunchEnvironment();
+        LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
         configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
 
@@ -110,11 +117,48 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
         persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+
+        StatsTopology statsTopology = new StatsTopology(launchEnvironment);
+        statsTopologyConfig = statsTopology.getConfig();
+
+        StormTopology stormTopology = statsTopology.createTopology();
+        Config config = stormConfig();
+
+        cluster.submitTopology(StatsTopologyTest.class.getSimpleName(), config, stormTopology);
+
+        otsdbConsumer = new TestKafkaConsumer(statsTopologyConfig.getKafkaOtsdbTopic(),
+                kafkaProperties(UUID.randomUUID().toString()));
+        otsdbConsumer.start();
+
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+
+        sleep(TOPOLOGY_START_TIMEOUT);
     }
 
     @AfterClass
-    public static void teardownOnce() {
+    public static void teardownOnce() throws Exception {
+        otsdbConsumer.wakeup();
+        otsdbConsumer.join();
+
         embeddedNeo4jDb.stop();
+        AbstractStormTest.stopZooKafkaAndStorm();
+    }
+
+    @Before
+    public void setup() throws IOException {
+        otsdbConsumer.clear();
+
+        // need clear data in CacheBolt
+        for (Flow flow : flowRepository.findAll()) {
+            sendRemoveFlowCommand(flow);
+            flowRepository.delete(flow);
+        }
+
+        for (Switch sw : switchRepository.findAll()) {
+            switchRepository.delete(sw);
+        }
+        ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession().purgeDatabase();
     }
 
     @Test
@@ -128,65 +172,45 @@ public class StatsTopologyTest extends StableAbstractStormTest {
                     baseCount + 4, baseCount + 5, baseCount + 6, baseCount + 7,
                     baseCount + 8, baseCount + 9, baseCount + 10, baseCount + 11);
         }).collect(toList());
-        InfoMessage message = new InfoMessage(new PortStatsData(switchId, entries), timestamp, CORRELATION_ID,
-                Destination.WFM_STATS);
 
-        //mock kafka spout
-        MockedSources sources = new MockedSources();
-        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
-                new Values(MAPPER.writeValueAsString(message)));
-        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
-                new Values(""));
-        completeTopologyParam.setMockedSources(sources);
+        sendStatsMessage(new PortStatsData(switchId, entries));
 
-        //execute topology
-        Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
-            StormTopology stormTopology = topology.createTopology();
+        List<Datapoint> datapoints = pollDatapoints(728);
 
-            //verify results
-            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
-            ArrayList<FixedTuple> tuples =
-                    (ArrayList<FixedTuple>) result.get(StatsComponentType.PORT_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(728));
+        Map<String, Map<String, Number>> metricsByPort = new HashMap<>();
+        for (int i = 1; i <= portCount; i++) {
+            metricsByPort.put(String.valueOf(i), new HashMap<>());
+        }
 
-            Map<String, Map<String, Number>> metricsByPort = new HashMap<>();
-            for (int i = 1; i <= portCount; i++) {
-                metricsByPort.put(String.valueOf(i), new HashMap<>());
-            }
+        datapoints.forEach(datapoint -> {
+            assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
+            assertThat(datapoint.getTime(), is(timestamp));
+            assertThat(datapoint.getMetric(), startsWith("pen.switch"));
 
-            tuples.stream()
-                    .map(this::readFromJson)
-                    .forEach(datapoint -> {
-                        assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
-                        assertThat(datapoint.getTime(), is(timestamp));
-                        assertThat(datapoint.getMetric(), startsWith("pen.switch"));
-
-                        metricsByPort.get(datapoint.getTags().get("port"))
-                                .put(datapoint.getMetric(), datapoint.getValue());
-                    });
-
-            for (int i = 1; i <= portCount; i++) {
-                Map<String, Number> metrics = metricsByPort.get(String.valueOf(i));
-                Assert.assertEquals(14, metrics.size());
-
-                int baseCount = i * 20;
-                Assert.assertEquals(baseCount, metrics.get("pen.switch.rx-packets"));
-                Assert.assertEquals(baseCount + 1, metrics.get("pen.switch.tx-packets"));
-                Assert.assertEquals(baseCount + 2, metrics.get("pen.switch.rx-bytes"));
-                Assert.assertEquals((baseCount + 2) * 8, metrics.get("pen.switch.rx-bits"));
-                Assert.assertEquals(baseCount + 3, metrics.get("pen.switch.tx-bytes"));
-                Assert.assertEquals((baseCount + 3) * 8, metrics.get("pen.switch.tx-bits"));
-                Assert.assertEquals(baseCount + 4, metrics.get("pen.switch.rx-dropped"));
-                Assert.assertEquals(baseCount + 5, metrics.get("pen.switch.tx-dropped"));
-                Assert.assertEquals(baseCount + 6, metrics.get("pen.switch.rx-errors"));
-                Assert.assertEquals(baseCount + 7, metrics.get("pen.switch.tx-errors"));
-                Assert.assertEquals(baseCount + 8, metrics.get("pen.switch.rx-frame-error"));
-                Assert.assertEquals(baseCount + 9, metrics.get("pen.switch.rx-over-error"));
-                Assert.assertEquals(baseCount + 10, metrics.get("pen.switch.rx-crc-error"));
-                Assert.assertEquals(baseCount + 11, metrics.get("pen.switch.collisions"));
-            }
+            metricsByPort.get(datapoint.getTags().get("port"))
+                    .put(datapoint.getMetric(), datapoint.getValue());
         });
+
+        for (int i = 1; i <= portCount; i++) {
+            Map<String, Number> metrics = metricsByPort.get(String.valueOf(i));
+            assertEquals(14, metrics.size());
+
+            int baseCount = i * 20;
+            assertEquals(baseCount, metrics.get("pen.switch.rx-packets"));
+            assertEquals(baseCount + 1, metrics.get("pen.switch.tx-packets"));
+            assertEquals(baseCount + 2, metrics.get("pen.switch.rx-bytes"));
+            assertEquals((baseCount + 2) * 8, metrics.get("pen.switch.rx-bits"));
+            assertEquals(baseCount + 3, metrics.get("pen.switch.tx-bytes"));
+            assertEquals((baseCount + 3) * 8, metrics.get("pen.switch.tx-bits"));
+            assertEquals(baseCount + 4, metrics.get("pen.switch.rx-dropped"));
+            assertEquals(baseCount + 5, metrics.get("pen.switch.tx-dropped"));
+            assertEquals(baseCount + 6, metrics.get("pen.switch.rx-errors"));
+            assertEquals(baseCount + 7, metrics.get("pen.switch.tx-errors"));
+            assertEquals(baseCount + 8, metrics.get("pen.switch.rx-frame-error"));
+            assertEquals(baseCount + 9, metrics.get("pen.switch.rx-over-error"));
+            assertEquals(baseCount + 10, metrics.get("pen.switch.rx-crc-error"));
+            assertEquals(baseCount + 11, metrics.get("pen.switch.collisions"));
+        }
     }
 
     @Test
@@ -194,283 +218,158 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         final SwitchId switchId = new SwitchId(1L);
         final List<MeterConfigReply> stats =
                 Collections.singletonList(new MeterConfigReply(2, Arrays.asList(1L, 2L, 3L)));
-        InfoMessage message = new InfoMessage(new MeterConfigStatsData(switchId, stats), timestamp, CORRELATION_ID,
-                Destination.WFM_STATS);
+        sendStatsMessage(new MeterConfigStatsData(switchId, stats));
 
-        //mock kafka spout
-        MockedSources sources = new MockedSources();
-        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
-                new Values(MAPPER.writeValueAsString(message)));
-        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
-                new Values(MAPPER.writeValueAsString(message))
-        );
+        List<Datapoint> datapoints = pollDatapoints(3);
 
-        completeTopologyParam.setMockedSources(sources);
-
-        //execute topology
-        Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
-            StormTopology stormTopology = topology.createTopology();
-
-            //verify results
-            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
-            ArrayList<FixedTuple> tuples =
-                    (ArrayList<FixedTuple>) result.get(StatsComponentType.METER_CFG_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(3));
-            tuples.stream()
-                    .map(this::readFromJson)
-                    .forEach(datapoint -> {
-                        assertThat(datapoint.getTags().get("switchid"),
-                                is(switchId.toOtsdFormat()));
-                        assertThat(datapoint.getTime(), is(timestamp));
-                        assertThat(datapoint.getMetric(), is("pen.switch.meters"));
-                    });
+        datapoints.forEach(datapoint -> {
+            assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
+            assertThat(datapoint.getTime(), is(timestamp));
+            assertThat(datapoint.getMetric(), is("pen.switch.meters"));
         });
     }
 
     @Test
-    public void meterDefaultRulesStatsTest() throws JsonProcessingException {
-        int defaultRuleMeterId = 2;
+    public void meterSystemRulesStatsTest() throws IOException {
+        long meterId = MeterId.createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue();
+        MeterStatsEntry meterStats = new MeterStatsEntry(meterId, 400L, 500L);
 
-        runMeterStatsTest(defaultRuleMeterId, switchId, datapoint -> {
-            assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
-            assertThat(datapoint.getTags().get("cookieHex"), is("0x8000000000000002"));
-            assertThat(datapoint.getTime(), is(timestamp));
-        }, "pen.switch.flow.system.meter");
+        sendStatsMessage(new MeterStatsData(switchId, Collections.singletonList(meterStats)));
+
+        List<Datapoint> datapoints = pollDatapoints(3);
+
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
+
+        assertEquals(meterStats.getPacketsInCount(),
+                datapointMap.get("pen.switch.flow.system.meter.packets").getValue().longValue());
+        assertEquals(meterStats.getByteInCount(),
+                datapointMap.get("pen.switch.flow.system.meter.bytes").getValue().longValue());
+        assertEquals(meterStats.getByteInCount() * 8,
+                datapointMap.get("pen.switch.flow.system.meter.bits").getValue().longValue());
+
+        datapoints.forEach(datapoint -> {
+            assertEquals(3, datapoint.getTags().size());
+            assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+            assertEquals(String.valueOf(meterId), datapoint.getTags().get("meterid"));
+            assertEquals(Cookie.toString(VERIFICATION_BROADCAST_RULE_COOKIE), datapoint.getTags().get("cookieHex"));
+            assertEquals(timestamp, datapoint.getTime().longValue());
+        });
     }
 
     @Test
-    public void meterFLowRulesStatsTest() throws JsonProcessingException {
-        SwitchId switchForMeters = new SwitchId(1234);
-        String flowWithMeters = "flowWithMeter";
-        createFlow(switchForMeters, flowWithMeters);
-        long meterId = 456L; // must be > 15 (IDs <= 15 are for default rule meters)
+    public void meterFlowRulesStatsTest() throws IOException {
 
-        runMeterStatsTest(meterId, switchForMeters, datapoint -> {
-            assertThat(datapoint.getTags().get("switchid"), is(switchForMeters.toOtsdFormat()));
-            assertThat(datapoint.getTags().get("flowid"), is(flowWithMeters));
-            assertThat(datapoint.getTags().get("cookie"), is(String.valueOf(cookie)));
-            assertThat(datapoint.getTime(), is(timestamp));
-        }, "pen.flow.meter");
-    }
+        Flow flow = createFlow(switchId, flowId);
+        sendInstallOneSwitchFlowCommand(flow);
 
-    private void runMeterStatsTest(long meterId, SwitchId switchId, Consumer<Datapoint> assertConsumer,
-                                   String metricsPrefix) throws JsonProcessingException {
-        int byteCount = 5;
-        int packetCount = 6;
-        MeterStatsEntry entry = new MeterStatsEntry(meterId, byteCount, packetCount);
-        MeterStatsData data = new MeterStatsData(switchId, Collections.singletonList(entry));
-        InfoMessage message = new InfoMessage(data, timestamp, CORRELATION_ID, Destination.WFM_STATS);
+        MeterStatsEntry meterStats = new MeterStatsEntry(flow.getMeterId(), 500L, 700L);
 
-        //mock kafka spout
-        MockedSources sources = new MockedSources();
-        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
-                new Values(MAPPER.writeValueAsString(message)));
-        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
-                new Values(MAPPER.writeValueAsString(message))
-        );
+        sendStatsMessage(new MeterStatsData(switchId, Collections.singletonList(meterStats)));
 
-        completeTopologyParam.setMockedSources(sources);
+        List<Datapoint> datapoints = pollDatapoints(3);
 
-        //execute topology
-        Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
-            StormTopology stormTopology = topology.createTopology();
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
 
-            //verify results
-            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
-            assertThat(result.containsKey(StatsComponentType.METER_STATS_METRIC_GEN.name()), is(true));
-            List<FixedTuple> tuples =
-                    (ArrayList<FixedTuple>) result.get(StatsComponentType.METER_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(3));
-            List<Datapoint> datapoints = tuples.stream()
-                    .map(this::readFromJson)
-                    .collect(toList());
-            datapoints.forEach(assertConsumer);
+        assertEquals(meterStats.getPacketsInCount(), datapointMap.get("pen.flow.meter.packets").getValue().longValue());
+        assertEquals(meterStats.getByteInCount(), datapointMap.get("pen.flow.meter.bytes").getValue().longValue());
+        assertEquals(meterStats.getByteInCount() * 8, datapointMap.get("pen.flow.meter.bits").getValue().longValue());
 
-            Map<String, Number> metrics = datapoints
-                    .stream()
-                    .collect(Collectors.toMap(Datapoint::getMetric, Datapoint::getValue));
 
-            assertThat(metrics, hasEntry(metricsPrefix + ".packets", packetCount));
-            assertThat(metrics, hasEntry(metricsPrefix + ".bytes", byteCount));
-            assertThat(metrics, hasEntry(metricsPrefix + ".bits", byteCount * 8));
+        datapoints.forEach(datapoint -> {
+            assertEquals(5, datapoint.getTags().size());
+            assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+            assertEquals(String.valueOf(flow.getMeterId()), datapoint.getTags().get("meterid"));
+            assertEquals("forward", datapoint.getTags().get("direction"));
+            assertEquals(flowId, datapoint.getTags().get("flowid"));
+            assertEquals(String.valueOf(flow.getCookie()), datapoint.getTags().get("cookie"));
+            assertEquals(timestamp, datapoint.getTime().longValue());
         });
     }
 
     @Test
     public void flowStatsTest() throws Exception {
-        //mock kafka spout
-        MockedSources sources = new MockedSources();
-        String flowId = "f253423454343";
-
-        createFlow(switchId, flowId);
+        Flow flow = createFlow(switchId, flowId);
+        sendInstallOneSwitchFlowCommand(flow);
 
         FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L);
-        FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L);
 
-        // Stats for system rule must NOT be processes by FlowMetricGenBolt
-        List<FlowStatsEntry> entries = Lists.newArrayList(flowStats, systemRuleStats);
-        InfoMessage message = new InfoMessage(new FlowStatsData(switchId, entries),
-                timestamp, CORRELATION_ID, Destination.WFM_STATS);
+        sendStatsMessage(new FlowStatsData(switchId, Collections.singletonList(flowStats)));
 
-        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
-                new Values(MAPPER.writeValueAsString(message)));
+        List<Datapoint> datapoints = pollDatapoints(9);
 
-        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
-                new Values("")
-        );
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
 
-        completeTopologyParam.setMockedSources(sources);
+        assertEquals(flowStats.getPacketCount(), datapointMap.get("pen.flow.raw.packets").getValue().longValue());
+        assertEquals(flowStats.getPacketCount(), datapointMap.get("pen.flow.ingress.packets").getValue().longValue());
+        assertEquals(flowStats.getPacketCount(), datapointMap.get("pen.flow.packets").getValue().longValue());
 
-        //execute topology
-        Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
-            StormTopology stormTopology = topology.createTopology();
+        assertEquals(flowStats.getByteCount(), datapointMap.get("pen.flow.raw.bytes").getValue().longValue());
+        assertEquals(flowStats.getByteCount(), datapointMap.get("pen.flow.ingress.bytes").getValue().longValue());
+        assertEquals(flowStats.getByteCount(), datapointMap.get("pen.flow.bytes").getValue().longValue());
 
-            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
+        assertEquals(flowStats.getByteCount() * 8, datapointMap.get("pen.flow.raw.bits").getValue().longValue());
+        assertEquals(flowStats.getByteCount() * 8, datapointMap.get("pen.flow.ingress.bits").getValue().longValue());
+        assertEquals(flowStats.getByteCount() * 8, datapointMap.get("pen.flow.bits").getValue().longValue());
 
-            Assert.assertTrue(result.containsKey(StatsComponentType.FLOW_STATS_METRIC_GEN.name()));
-            //verify results which were sent to Kafka bolt
-            ArrayList<FixedTuple> tuples =
-                    (ArrayList<FixedTuple>) result.get(StatsComponentType.FLOW_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(9)); // Stats for system rule must NOT be processes by FlowMetricGenBolt
-            tuples.stream()
-                    .map(this::readFromJson)
-                    .forEach(datapoint -> {
-                        switch (datapoint.getMetric()) {
-                            case "pen.flow.packets":
-                                assertThat(datapoint.getTags().get("direction"), is("forward"));
-                                assertThat(datapoint.getValue().longValue(), is(flowStats.getPacketCount()));
-                                break;
-                            case "pen.flow.raw.bytes":
-                                assertThat(datapoint.getValue().longValue(), is(flowStats.getByteCount()));
-                                break;
-                            case "pen.flow.raw.bits":
-                                assertThat(datapoint.getValue().longValue(), is(flowStats.getByteCount() * 8));
-                                break;
-                            default:
-                                break;
-                        }
-
-                        assertThat(datapoint.getTags().get("flowid"), is(flowId));
-                        assertThat(datapoint.getTime(), is(timestamp));
-                    });
+        datapoints.forEach(datapoint -> {
+            switch (datapoint.getMetric()) {
+                case "pen.flow.raw.packets":
+                case "pen.flow.raw.bytes":
+                case "pen.flow.raw.bits":
+                    assertEquals(5, datapoint.getTags().size());
+                    assertEquals(flowId, datapoint.getTags().get("flowid"));
+                    assertEquals("forward", datapoint.getTags().get("direction"));
+                    assertEquals(String.valueOf(flowStats.getTableId()), datapoint.getTags().get("tableid"));
+                    assertEquals(String.valueOf(cookie), datapoint.getTags().get("cookie"));
+                    assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+                    break;
+                case "pen.flow.ingress.packets":
+                case "pen.flow.ingress.bytes":
+                case "pen.flow.ingress.bits":
+                case "pen.flow.packets":
+                case "pen.flow.bytes":
+                case "pen.flow.bits":
+                    assertEquals(2, datapoint.getTags().size());
+                    assertEquals(flowId, datapoint.getTags().get("flowid"));
+                    assertEquals("forward", datapoint.getTags().get("direction"));
+                    break;
+                default:
+                    throw new AssertionError(String.format("Unknown metric: %s", datapoint.getMetric()));
+            }
         });
     }
 
     @Test
-    public void systemRuleStatsTest() throws Exception {
-        //mock kafka spout
-        MockedSources sources = new MockedSources();
-
-        FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L);
+    public void systemRulesStatsTest() throws Exception {
         FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L);
 
-        // Stats for flow must NOT be processes by SystemRuleMetricGenBolt
-        List<FlowStatsEntry> entries = Lists.newArrayList(flowStats, systemRuleStats);
-        InfoMessage message = new InfoMessage(new FlowStatsData(switchId, entries),
-                timestamp, CORRELATION_ID, Destination.WFM_STATS);
+        sendStatsMessage(new FlowStatsData(switchId, Collections.singletonList(systemRuleStats)));
 
-        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString(),
-                new Values(MAPPER.writeValueAsString(message)));
+        List<Datapoint> datapoints = pollDatapoints(3);
 
-        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(),
-                new Values("")
-        );
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
 
-        completeTopologyParam.setMockedSources(sources);
+        assertEquals(systemRuleStats.getPacketCount(),
+                datapointMap.get("pen.switch.flow.system.packets").getValue().longValue());
+        assertEquals(systemRuleStats.getByteCount(),
+                datapointMap.get("pen.switch.flow.system.bytes").getValue().longValue());
+        assertEquals(systemRuleStats.getByteCount() * 8,
+                datapointMap.get("pen.switch.flow.system.bits").getValue().longValue());
 
-        //execute topology
-        Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            StatsTopology topology = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
-            StormTopology stormTopology = topology.createTopology();
 
-            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
-
-            //verify results which were sent to Kafka bolt
-            ArrayList<FixedTuple> tuples =
-                    (ArrayList<FixedTuple>) result.get(StatsComponentType.SYSTEM_RULE_STATS_METRIC_GEN.name());
-            assertThat(tuples.size(), is(3)); // Stats for flow must NOT be processes by SystemRuleMetricGenBolt
-            tuples.stream()
-                    .map(this::readFromJson)
-                    .forEach(datapoint -> {
-                        switch (datapoint.getMetric()) {
-                            case "pen.switch.flow.system.packets":
-                                assertThat(datapoint.getValue().longValue(), is(systemRuleStats.getPacketCount()));
-                                break;
-                            case "pen.switch.flow.system.bytes":
-                                assertThat(datapoint.getValue().longValue(), is(systemRuleStats.getByteCount()));
-                                break;
-                            case "pen.switch.flow.system.bits":
-                                assertThat(datapoint.getValue().longValue(), is(systemRuleStats.getByteCount() * 8));
-                                break;
-                            default:
-                                break;
-                        }
-
-                        assertThat(datapoint.getTags().get("cookieHex"),
-                                is(Cookie.toString(systemRuleStats.getCookie())));
-                        assertThat(datapoint.getTime(), is(timestamp));
-                    });
+        datapoints.forEach(datapoint -> {
+            assertEquals(2, datapoint.getTags().size());
+            assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+            assertEquals(Cookie.toString(VERIFICATION_BROADCAST_RULE_COOKIE), datapoint.getTags().get("cookieHex"));
         });
     }
 
-    @Test
-    public void cacheSyncSingleSwitchFlowAdd() throws Exception {
-        final SwitchId switchId = new SwitchId(1L);
-        final String flowId = "sync-test-add-ssf";
-        final Long meterId = 42L;
-        final InstallOneSwitchFlow payload =
-                new InstallOneSwitchFlow(
-                        TRANSACTION_ID, flowId, 0xFFFF000000000001L, switchId, 8, 9, 127, 127,
-                        OutputVlanType.PUSH, 1000L, meterId);
-        final CommandMessage message = new CommandMessage(payload, timestamp, flowId, Destination.WFM_STATS);
-        final String json = MAPPER.writeValueAsString(message);
-
-        MockedSources sources = new MockedSources();
-        sources.addMockData(StatsComponentType.STATS_OFS_KAFKA_SPOUT.name());
-        sources.addMockData(StatsComponentType.STATS_KILDA_SPEAKER_SPOUT.name(), new Values(json));
-        completeTopologyParam.setMockedSources(sources);
-
-        Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            StatsTopology topologyManager = new TestingTargetTopology(launchEnvironment, new TestingKafkaBolt());
-            StormTopology topology = topologyManager.createTopology();
-
-            Map result = Testing.completeTopology(cluster, topology, completeTopologyParam);
-            List<FixedTuple> cacheSyncStream = (List<FixedTuple>) result.get(
-                    StatsComponentType.STATS_CACHE_FILTER_BOLT.name());
-
-            final HashSet<MeasurePoint> expectedEvents = new HashSet<>();
-            expectedEvents.add(MeasurePoint.INGRESS);
-            expectedEvents.add(MeasurePoint.EGRESS);
-
-            final HashSet<MeasurePoint> seenEvents = new HashSet<>();
-            cacheSyncStream.stream()
-                    .filter(item -> StatsStreamType.CACHE_UPDATE == StatsStreamType.valueOf(item.stream))
-                    .forEach(item -> {
-                        Assert.assertEquals(CacheFilterBolt.Commands.UPDATE, item.values.get(0));
-                        Assert.assertEquals(flowId, item.values.get(1));
-                        Assert.assertEquals(switchId, item.values.get(2));
-                        MeasurePoint affectedPoint = (MeasurePoint) item.values.get(5);
-
-                        if (affectedPoint == MeasurePoint.INGRESS) {
-                            Assert.assertEquals(meterId, item.values.get(4));
-                        }
-
-                        seenEvents.add(affectedPoint);
-                    });
-
-            Assert.assertEquals(expectedEvents, seenEvents);
-        });
-    }
-
-    private void createFlow(SwitchId switchId, String flowId) {
+    private Flow createFlow(SwitchId switchId, String flowId) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
         Switch sw = new Switch();
         sw.setSwitchId(switchId);
-        repositoryFactory.createSwitchRepository().createOrUpdate(sw);
+        switchRepository.createOrUpdate(sw);
 
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();
         Flow flow = new Flow();
@@ -490,38 +389,73 @@ public class StatsTopologyTest extends StableAbstractStormTest {
         flow.setTimeModify(Instant.EPOCH);
 
         flowRepository.createOrUpdate(flow);
+        return flow;
     }
 
-    private Datapoint readFromJson(FixedTuple tuple) {
-        try {
-            return Utils.MAPPER.readValue(tuple.values.get(0).toString(), Datapoint.class);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+    private void sendStatsMessage(InfoData infoData) throws IOException {
+        InfoMessage infoMessage = new InfoMessage(infoData, timestamp, UUID.randomUUID().toString(),
+                Destination.WFM_STATS);
+        sendMessage(infoMessage, statsTopologyConfig.getKafkaStatsTopic());
     }
 
-    /**
-     * We should create child with these overridden methods because we don't want to use real kafka instance.
-     */
-    private class TestingTargetTopology extends StatsTopology {
+    private void sendRemoveFlowCommand(Flow flow) throws IOException {
+        RemoveFlow removeFlow = new RemoveFlow(TRANSACTION_ID, flow.getFlowId(), flow.getCookie(),
+                flow.getSrcSwitch().getSwitchId(), flow.getMeterId().longValue(), null);
+        sendFlowCommand(removeFlow);
+    }
 
-        private KafkaBolt kafkaBolt;
+    private void sendInstallOneSwitchFlowCommand(Flow flow) throws IOException {
+        InstallOneSwitchFlow installOneSwitchFlow = new InstallOneSwitchFlow(
+                TRANSACTION_ID,
+                flow.getFlowId(),
+                flow.getCookie(),
+                flow.getSrcSwitch().getSwitchId(),
+                flow.getSrcPort(),
+                flow.getDestPort(),
+                flow.getSrcVlan(),
+                flow.getDestVlan(),
+                OutputVlanType.PUSH,
+                flow.getBandwidth(),
+                flow.getMeterId().longValue());
+        sendFlowCommand(installOneSwitchFlow);
+    }
 
-        TestingTargetTopology(LaunchEnvironment launchEnvironment, KafkaBolt kafkaBolt) {
-            super(launchEnvironment);
-            this.kafkaBolt = kafkaBolt;
+    private void sendFlowCommand(BaseFlow flowCommand) throws IOException {
+        CommandMessage commandMessage = new CommandMessage(flowCommand, timestamp, UUID.randomUUID().toString());
+        sendMessage(commandMessage, statsTopologyConfig.getKafkaSpeakerFlowTopic());
+    }
+
+    private void sendMessage(Object object, String topic) throws IOException {
+        String request = objectMapper.writeValueAsString(object);
+        kProducer.pushMessage(topic, request);
+    }
+
+    private List<Datapoint> pollDatapoints(int expectedDatapointCount) {
+        List<Datapoint> datapoints = new ArrayList<>();
+
+        for (int i = 0; i < expectedDatapointCount; i++) {
+            ConsumerRecord<String, String> record = null;
+            try {
+                record = otsdbConsumer.pollMessage(POLL_TIMEOUT);
+                if (record == null) {
+                    throw new AssertionError(String.format(POLL_DATAPOINT_ASSERT_MESSAGE,
+                            expectedDatapointCount, datapoints.size()));
+                }
+                Datapoint datapoint = objectMapper.readValue(record.value(), Datapoint.class);
+                datapoints.add(datapoint);
+            } catch (InterruptedException e) {
+                throw new AssertionError(String.format(POLL_DATAPOINT_ASSERT_MESSAGE,
+                        expectedDatapointCount, datapoints.size()));
+            } catch (IOException e) {
+                throw new AssertionError(String.format("Could not parse datapoint object: '%s'", record.value()));
+            }
         }
+        return datapoints;
+    }
 
-        @Override
-        public String getDefaultTopologyName() {
-            return StatsTopology.class.getSimpleName().toLowerCase();
-        }
-
-        @Override
-        protected KafkaBolt createKafkaBolt(String topic) {
-            return kafkaBolt;
-        }
-
+    private Map<String, Datapoint> createDatapointMap(List<Datapoint> datapoints) {
+        return datapoints
+                .stream()
+                .collect(Collectors.toMap(Datapoint::getMetric, Function.identity()));
     }
 }
