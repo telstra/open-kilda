@@ -49,9 +49,14 @@ class VirtualEnvCleanupExtension extends AbstractGlobalExtension implements Spri
                 database.revertIslBandwidth(it)
             }
 
-            log.info("Unset maintenance mode from all links")
+            log.info("Unset maintenance mode from all affected switches")
+            northbound.getAllSwitches().findAll { it.underMaintenance }.each {
+                northbound.setSwitchMaintenance(it.switchId, false, false)
+            }
+
+            log.info("Unset maintenance mode from all affected links")
             northbound.getAllLinks().findAll { it.underMaintenance }.each {
-                northbound.updateLinkUnderMaintenance(islUtils.getLinkUnderMaintenance(it, false, false))
+                northbound.setLinkMaintenance(islUtils.getLinkUnderMaintenance(it, false, false))
             }
 
             log.info("Deleting all link props")

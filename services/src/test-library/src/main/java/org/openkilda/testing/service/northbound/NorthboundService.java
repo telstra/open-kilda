@@ -43,6 +43,7 @@ import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.switches.SwitchDto;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -99,6 +100,8 @@ public interface NorthboundService {
 
     SwitchInfoData getSwitch(SwitchId switchId);
 
+    SwitchDto setSwitchMaintenance(SwitchId switchId, boolean maintenance, boolean evacuate);
+
     DeleteMeterResult deleteMeter(SwitchId switchId, Long meterId);
 
     SwitchMeterEntries getAllMeters(SwitchId switchId);
@@ -133,7 +136,7 @@ public interface NorthboundService {
 
     DeleteLinkResult deleteLink(LinkParametersDto linkParameters);
 
-    List<LinkDto> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link);
+    List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link);
 
     //feature toggles
 
