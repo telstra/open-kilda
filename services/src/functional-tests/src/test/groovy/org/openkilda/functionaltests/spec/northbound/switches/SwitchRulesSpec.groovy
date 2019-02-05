@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.northbound.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -453,13 +454,12 @@ class SwitchRulesSpec extends BaseSpecification {
     @Unroll
     def "Unable to #action rules on a non-existent switch"() {
         when: "Try to #action rules on a non-existent switch"
-        def switchId = new SwitchId("123456789")
-        northbound."$method"(switchId)
+        northbound."$method"(NON_EXISTENT_SWITCH_ID)
 
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $switchId was not found"
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID was not found"
 
         where:
         action        | method
