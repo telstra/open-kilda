@@ -23,7 +23,6 @@ import java.util.Optional;
 
 public abstract class AbstractFeature {
     protected static final String MANUFACTURER_NICIRA = "Nicira, Inc.";
-    protected static final String MANUFACTURER_NOVIFLOW = "NoviFlow Inc";
 
     public abstract Optional<Switch.Feature> discover(IOFSwitch sw);
 }
