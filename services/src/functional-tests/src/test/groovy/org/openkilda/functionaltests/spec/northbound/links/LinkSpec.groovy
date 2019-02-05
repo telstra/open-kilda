@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.links
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -120,11 +121,11 @@ class LinkSpec extends BaseSpecification {
                 "There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort."
 
         where:
-        srcSwId                   | srcSwPort        | dstSwId                   | dstSwPort        | item
-        new SwitchId("123456789") | getIsl().srcPort | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_switch"
-        getIsl().srcSwitch.dpId   | 4096             | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId   | getIsl().srcPort | new SwitchId("987654321") | getIsl().dstPort | "dst_switch"
-        getIsl().srcSwitch.dpId   | getIsl().srcPort | getIsl().dstSwitch.dpId   | 4096             | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
+        NON_EXISTENT_SWITCH_ID  | getIsl().srcPort | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_switch"
+        getIsl().srcSwitch.dpId | 4096             | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | NON_EXISTENT_SWITCH_ID  | getIsl().dstPort | "dst_switch"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
     @Unroll
@@ -292,11 +293,11 @@ class LinkSpec extends BaseSpecification {
                 "There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort."
 
         where:
-        srcSwId                   | srcSwPort        | dstSwId                   | dstSwPort        | item
-        new SwitchId("123456789") | getIsl().srcPort | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_switch"
-        getIsl().srcSwitch.dpId   | 4096             | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId   | getIsl().srcPort | new SwitchId("987654321") | getIsl().dstPort | "dst_switch"
-        getIsl().srcSwitch.dpId   | getIsl().srcPort | getIsl().dstSwitch.dpId   | 4096             | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
+        NON_EXISTENT_SWITCH_ID  | getIsl().srcPort | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_switch"
+        getIsl().srcSwitch.dpId | 4096             | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | NON_EXISTENT_SWITCH_ID  | getIsl().dstPort | "dst_switch"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
     @Unroll
@@ -360,11 +361,11 @@ class LinkSpec extends BaseSpecification {
         links.empty
 
         where:
-        srcSwId                   | srcSwPort        | dstSwId                   | dstSwPort        | item
-        new SwitchId("123456789") | getIsl().srcPort | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_switch"
-        getIsl().srcSwitch.dpId   | 4096             | getIsl().dstSwitch.dpId   | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId   | getIsl().srcPort | new SwitchId("987654321") | getIsl().dstPort | "dst_switch"
-        getIsl().srcSwitch.dpId   | getIsl().srcPort | getIsl().dstSwitch.dpId   | 4096             | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
+        NON_EXISTENT_SWITCH_ID  | getIsl().srcPort | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_switch"
+        getIsl().srcSwitch.dpId | 4096             | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | NON_EXISTENT_SWITCH_ID  | getIsl().dstPort | "dst_switch"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
     @Unroll

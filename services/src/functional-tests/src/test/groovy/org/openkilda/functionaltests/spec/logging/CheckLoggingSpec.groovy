@@ -1,9 +1,10 @@
 package org.openkilda.functionaltests.spec.logging
 
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.model.SwitchId
 import org.openkilda.testing.service.elastic.ElasticQueryBuilder
 import org.openkilda.testing.service.elastic.ElasticService
 import org.openkilda.testing.service.elastic.model.KildaTags
@@ -35,12 +36,11 @@ class CheckLoggingSpec extends BaseSpecification {
 
     def "Check Northbound and Storm logging"() {
         when: "A non-existent switch is requested"
-        def switchId = new SwitchId("123456789")
-        northbound.getSwitch(switchId)
+        northbound.getSwitch(NON_EXISTENT_SWITCH_ID)
 
         then: "An error is received (404 code)"
         def switchExc = thrown(HttpClientErrorException)
-        def switchErrorMsg = "Switch $switchId not found"
+        def switchErrorMsg = "Switch $NON_EXISTENT_SWITCH_ID not found"
 
         switchExc.rawStatusCode == 404
         switchExc.responseBodyAsString.to(MessageError).errorMessage.contains(switchErrorMsg)

@@ -16,6 +16,7 @@
 package org.openkilda.testing;
 
 import org.openkilda.model.Cookie;
+import org.openkilda.model.SwitchId;
 
 public final class Constants {
     public static final Integer DEFAULT_COST = 700;
@@ -26,6 +27,7 @@ public final class Constants {
     public static final Integer RULES_INSTALLATION_TIME = 5;
     public static final Integer HEARTBEAT_INTERVAL = 10;
     public static final Integer STATS_LOGGING_TIMEOUT = 70;
+    public static final SwitchId NON_EXISTENT_SWITCH_ID = new SwitchId("de:ad:be:ef:de:ad:be:ef");
 
     private Constants() {
         throw new UnsupportedOperationException();

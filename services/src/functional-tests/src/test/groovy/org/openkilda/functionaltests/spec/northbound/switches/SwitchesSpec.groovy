@@ -1,9 +1,10 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.model.SwitchId
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -29,12 +30,11 @@ class SwitchesSpec extends BaseSpecification {
 
     def "Informative error is returned when requesting switch info with non-existing id"() {
         when: "Request info about non-existing switch from Northbound"
-        def nonExistingId = new SwitchId("de:ad:be:ef:de:ad:be:ef")
-        northbound.getSwitch(nonExistingId)
+        northbound.getSwitch(NON_EXISTENT_SWITCH_ID)
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $nonExistingId not found."
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found."
     }
 }
