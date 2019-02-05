@@ -320,7 +320,8 @@ public class SwitchServiceImpl implements SwitchService {
         String correlationId = RequestCorrelationId.getId();
         logger.debug("Update under maintenance flag for switch request processing");
         UpdateSwitchUnderMaintenanceRequest data =
-                new UpdateSwitchUnderMaintenanceRequest(switchId, underMaintenanceDto.isUnderMaintenance());
+                new UpdateSwitchUnderMaintenanceRequest(switchId, underMaintenanceDto.isUnderMaintenance(),
+                        underMaintenanceDto.isEvacuate());
 
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 

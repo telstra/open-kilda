@@ -48,6 +48,8 @@ public class IslServiceTest extends Neo4jBasedTest {
     private static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     private static final int TEST_SWITCH_B_PORT = 1;
 
+    private static int islCostWhenUnderMaintenance = 10000;
+
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
@@ -58,7 +60,7 @@ public class IslServiceTest extends Neo4jBasedTest {
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
 
-        islService = new IslService(txManager, repositoryFactory);
+        islService = new IslService(txManager, repositoryFactory, islCostWhenUnderMaintenance);
     }
 
     @Test

@@ -21,6 +21,7 @@ import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 
 public interface FlowRepository extends Repository<Flow> {
     boolean exists(String flowId);
@@ -47,4 +48,6 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
                                                      SwitchId dstSwitchId, int dstPort);
+
+    Set<String> findFlowIdsBySwitch(SwitchId switchId);
 }
