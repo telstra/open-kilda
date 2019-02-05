@@ -14,7 +14,6 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
@@ -42,7 +41,15 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
         kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_PRODUCER)
         kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_CONSUMER)
 
-        then: "Topology state is unchanged"
+        then: "Floodlight emits heartbeat messages to notify about its availability"
+        def consumer = new KafkaConsumer<String, String>(consumerProps)
+        consumer.subscribe([topoDiscoTopic])
+        consumer.seekToEnd([])
+        Wrappers.wait(HEARTBEAT_INTERVAL, 0) {
+            assert consumer.poll(100).find { it.value().to(Message) instanceof HeartBeat }
+        }
+
+        and: "Topology state is unchanged"
         northbound.activeSwitches.size() == topology.activeSwitches.size()
         northbound.getAllLinks().findAll {
             it.state == IslChangeType.DISCOVERED
@@ -52,29 +59,10 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
         flowHelper.addFlow(flow)
 
-        and: "Remove flow"
+        and: "Cleanup: Remove flow"
         flowHelper.deleteFlow(flow.id)
-    }
-
-    @Unroll
-    def "Floodlight emits heartbeat messages to notify about its availability"() {
-        setup: "Create kafka consumer and seek to the end"
-        def consumer = new KafkaConsumer<String, String>(consumerProps)
-        consumer.subscribe([topoDiscoTopic]);
-        consumer.poll(0)
-        consumer.seekToEnd([]);
-        consumer.poll(0)
-
-        expect: "At least 1 heartbeat in #heartbeatInterval seconds"
-        Wrappers.wait(heartbeatInterval, 0) {
-            assert consumer.poll(100).find { it.value().to(Message) instanceof HeartBeat }
-        }
 
         cleanup:
         consumer?.close()
-
-        where:
-        //required to use the var in 'expect' block description
-        heartbeatInterval = HEARTBEAT_INTERVAL
     }
 }
