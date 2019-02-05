@@ -744,7 +744,7 @@ class RecordHandler implements Runnable {
 
             boolean deleted = context.getSwitchManager().dumpMeters(dpid)
                     .stream()
-                    .anyMatch(config -> config.getMeterId() == request.getMeterId());
+                    .noneMatch(config -> config.getMeterId() == request.getMeterId());
             DeleteMeterResponse response = new DeleteMeterResponse(deleted);
             InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), message.getCorrelationId());
             producerService.sendMessageAndTrack(replyToTopic, infoMessage);
