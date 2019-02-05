@@ -24,7 +24,7 @@ class IslCostSpec extends BaseSpecification {
 (ISL cost < isl.cost.when.port.down)"() {
         given: "An active ISL with created link props"
         int islCost = islUtils.getIslInfo(isl).get().cost
-        northbound.updateLinkProps([isl, isl.reversed].collect{ islUtils.toLinkProps(it, [cost: islCost.toString()]) })
+        northbound.updateLinkProps([isl, isl.reversed].collect { islUtils.toLinkProps(it, [cost: islCost.toString()]) })
 
         when: "Bring port down on the source switch"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
@@ -60,7 +60,7 @@ class IslCostSpec extends BaseSpecification {
         given: "An active ISL with created link props"
         //TODO(rtretiak): After #1954 is merged use only one-direction prop
         def linkProps = [data.isl, data.isl.reversed]
-                .collect{ islUtils.toLinkProps(it, ["cost": data.cost.toString()]) }
+                .collect { islUtils.toLinkProps(it, ["cost": data.cost.toString()]) }
         northbound.updateLinkProps(linkProps)
         int islCost = islUtils.getIslInfo(data.isl).get().cost
 
@@ -126,7 +126,7 @@ class IslCostSpec extends BaseSpecification {
         def isls = northbound.getAllLinks()
         int islCost = islUtils.getIslInfo(isls, isl).get().cost
         assert islUtils.getIslInfo(isls, isl.reversed).get().cost == islCost
-        northbound.updateLinkProps([isl, isl.reversed].collect{ islUtils.toLinkProps(it, [cost: islCost.toString()]) })
+        northbound.updateLinkProps([isl, isl.reversed].collect { islUtils.toLinkProps(it, [cost: islCost.toString()]) })
 
         when: "Remove a-switch rules to break link between switches"
         def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]
