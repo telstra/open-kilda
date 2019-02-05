@@ -254,7 +254,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         switchPorts.add(new SwitchPort(BFD_OFFSET + 3, SwitchPort.State.UP));
         Switch switchRecord = new Switch(switchId, ipAddress, new HashSet<>(), switchPorts);
         SwitchInfoData data = new SwitchInfoData(switchId, SwitchChangeType.ACTIVATED, null, null,
-                null, null, switchRecord);
+                null, null, false, switchRecord);
         InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);
