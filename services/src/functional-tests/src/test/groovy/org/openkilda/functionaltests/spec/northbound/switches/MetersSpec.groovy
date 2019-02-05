@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.northbound.switches
 
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.meter.SwitchMeterEntries
@@ -88,7 +90,7 @@ class MetersSpec extends BaseSpecification {
         meters.each {
             assert it.meterEntries.size() == 2
             assert it.meterEntries.every { Math.abs(it.rate - (DISCO_PKT_RATE * DISCO_PKT_SIZE) / 1024L) <= 1 }
-            assert it.meterEntries.every { it.meterId <= Constants.MAX_DEFAULT_METER_ID }
+            assert it.meterEntries.every { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
             assert it.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
             assert it.meterEntries.every { ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
             assert it.meterEntries.every { it.flags.size() == 3 }
@@ -116,7 +118,7 @@ class MetersSpec extends BaseSpecification {
                         (it.burstSize >= Math.floor(DISCO_PKT_RATE * NOVI_BURST_MIN)) &&
                                 (it.burstSize <= Math.ceil(DISCO_PKT_RATE * NOVI_BURST_MAX))
             }
-            assert it.meterEntries.every { it.meterId <= Constants.MAX_DEFAULT_METER_ID }
+            assert it.meterEntries.every { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
             assert it.meterEntries.every { ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
             assert it.meterEntries.every { it.flags.size() == 3 }
         }

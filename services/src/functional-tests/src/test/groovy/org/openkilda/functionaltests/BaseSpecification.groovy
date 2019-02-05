@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
@@ -10,7 +11,6 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
-import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightService
@@ -118,7 +118,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
 
             nonVirtualSwitches.findAll {
                 it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
-                    it.key > Constants.MAX_DEFAULT_METER_ID
+                    it.key > MAX_SYSTEM_RULE_METER_ID
                 }.isEmpty()
             }.empty
         }
