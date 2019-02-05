@@ -97,13 +97,15 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
                 assert northbound.activeSwitches.size() == topology.activeSwitches.size()
             }
             links.findAll { it.state == IslChangeType.FAILED }.empty
-            links.findAll {
-                it.state == IslChangeType.DISCOVERED
-            }.size() == topology.islsForActiveSwitches.size() * 2
+            def topoLinks = topology.islsForActiveSwitches.collectMany {
+                [islUtils.getIslInfo(links, it).get(), islUtils.getIslInfo(links, islUtils.reverseIsl(it)).get()]
+            }
+            def missingLinks = links - topoLinks
+            missingLinks.empty
             northbound.allFlows.empty
             northbound.allLinkProps.empty
         }
-
+        
         and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
         verifyAll {
             links.findAll { it.availableBandwidth != it.speed }.empty
