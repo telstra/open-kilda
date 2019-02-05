@@ -13,16 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.dao.repository;
+package org.openkilda.model;
 
-import org.openkilda.dao.entity.ApplicationSettingEntity;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-@Repository
-public interface ApplicationSettingRepository extends JpaRepository<ApplicationSettingEntity, Integer> {
-    
-    public ApplicationSettingEntity findBySettingTypeIgnoreCase(String settingType);
+@Data
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class SwitchNameStorageType {
 
+    @JsonProperty("type")
+    private String type;
 }

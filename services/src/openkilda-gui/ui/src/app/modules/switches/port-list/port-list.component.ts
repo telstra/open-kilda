@@ -129,64 +129,66 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
           if(this.switchPortDataSet[i].interfacetype === '' || this.switchPortDataSet[i].interfacetype === undefined){
               this.switchPortDataSet[i].interfacetype = '-';
           }
-          if(this.switchPortDataSet[i].stats != undefined){
-
-          if(this.switchPortDataSet[i].stats['tx-bytes'] === '' || this.switchPortDataSet[i].stats['tx-bytes'] === undefined){
-              this.switchPortDataSet[i].stats['tx-bytes'] = '-';
-          }
-          else{
-              this.switchPortDataSet[i].stats['tx-bytes'] =  this.commonService.convertBytesToMbps(this.switchPortDataSet[i].stats['tx-bytes']);;
-          }
-
-
-          if(this.switchPortDataSet[i].stats['rx-bytes'] === '' || this.switchPortDataSet[i].stats['rx-bytes'] === undefined){
-              this.switchPortDataSet[i].stats['rx-bytes'] = '-';
-          }
-          else{
-              this.switchPortDataSet[i].stats['rx-bytes'] =  this.commonService.convertBytesToMbps(this.switchPortDataSet[i].stats['rx-bytes']);
-          }
-
+          if(typeof(this.switchPortDataSet[i].stats) !=='undefined'){
+            if(this.switchPortDataSet[i].stats['tx-bytes'] === '' || this.switchPortDataSet[i].stats['tx-bytes'] === undefined){
+                this.switchPortDataSet[i].stats['tx-bytes'] = '-';
+            }
+            else{
+                this.switchPortDataSet[i].stats['tx-bytes'] =  this.commonService.convertBytesToMbps(this.switchPortDataSet[i].stats['tx-bytes']);;
+            }
+  
+  
+            if(this.switchPortDataSet[i].stats['rx-bytes'] === '' || this.switchPortDataSet[i].stats['rx-bytes'] === undefined){
+                this.switchPortDataSet[i].stats['rx-bytes'] = '-';
+            }
+            else{
+                this.switchPortDataSet[i].stats['rx-bytes'] =  this.commonService.convertBytesToMbps(this.switchPortDataSet[i].stats['rx-bytes']);
+            }
+  
             if(this.switchPortDataSet[i].stats['tx-packets'] === '' || this.switchPortDataSet[i].stats['tx-packets'] === undefined){
                 this.switchPortDataSet[i].stats['tx-packets']= '-';
             }
-
+  
             if(this.switchPortDataSet[i].stats['rx-packets'] === '' || this.switchPortDataSet[i].stats['rx-packets'] === undefined){
                 this.switchPortDataSet[i].stats['rx-packets']= '-';
             }
-
+  
             if(this.switchPortDataSet[i].stats['tx-dropped'] === '' || this.switchPortDataSet[i].stats['tx-dropped'] === undefined){
                 this.switchPortDataSet[i].stats['tx-dropped']= '-';
             }
-
+  
             if(this.switchPortDataSet[i].stats['rx-dropped'] === '' || this.switchPortDataSet[i].stats['rx-dropped'] === undefined){
                 this.switchPortDataSet[i].stats['rx-dropped']= '-';
             }
-
-
+  
+  
             if(this.switchPortDataSet[i].stats['tx-errors'] === '' || this.switchPortDataSet[i].stats['tx-errors'] === undefined){
                 this.switchPortDataSet[i].stats['tx-errors']= '-';
             }
-
+  
             if(this.switchPortDataSet[i].stats['rx-errors'] === '' || this.switchPortDataSet[i].stats['rx-errors'] === undefined){
                 this.switchPortDataSet[i].stats['rx-errors']= '-';
             }
-
+  
             if(this.switchPortDataSet[i].stats['collisions'] === '' || this.switchPortDataSet[i].stats['collisions'] === undefined){
                 this.switchPortDataSet[i].stats['collisions']= '-';
             }
-
-                if(this.switchPortDataSet[i].stats['rx-frame-error'] === '' || this.switchPortDataSet[i].stats['rx-frame-error'] === undefined){
+  
+              if(this.switchPortDataSet[i].stats['rx-frame-error'] === '' || this.switchPortDataSet[i].stats['rx-frame-error'] === undefined){
                 this.switchPortDataSet[i].stats['rx-frame-error']= '-';
             }
-
+  
             if(this.switchPortDataSet[i].stats['rx-over-error'] === '' || this.switchPortDataSet[i].stats['rx-over-error'] === undefined){
                 this.switchPortDataSet[i].stats['rx-over-error']= '-';
             }
-
+  
             if(this.switchPortDataSet[i].stats['rx-crc-error'] === '' || this.switchPortDataSet[i].stats['rx-crc-error'] === undefined){
                 this.switchPortDataSet[i].stats['rx-crc-error']= '-';
             }
-        }
+          }else{
+            this.switchPortDataSet[i]['stats'] = {};
+          }
+          
       }
 
      },error=>{

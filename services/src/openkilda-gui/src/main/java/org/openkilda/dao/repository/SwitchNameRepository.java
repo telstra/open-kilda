@@ -15,14 +15,14 @@
 
 package org.openkilda.dao.repository;
 
-import org.openkilda.dao.entity.ApplicationSettingEntity;
+import org.openkilda.dao.entity.SwitchNameEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ApplicationSettingRepository extends JpaRepository<ApplicationSettingEntity, Integer> {
+public interface SwitchNameRepository extends JpaRepository<SwitchNameEntity, Integer> {
     
-    public ApplicationSettingEntity findBySettingTypeIgnoreCase(String settingType);
+    public SwitchNameEntity findBySwitchDpid(String switchDpid);
 
 }

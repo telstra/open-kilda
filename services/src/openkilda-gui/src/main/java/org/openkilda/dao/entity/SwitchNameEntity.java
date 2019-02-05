@@ -30,9 +30,9 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 @Entity
-@Table(name = "application_setting")
+@Table(name = "switch_name")
 @Data
-public class ApplicationSettingEntity implements Serializable {
+public class SwitchNameEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -41,22 +41,13 @@ public class ApplicationSettingEntity implements Serializable {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
 
-    @Column(name = "setting_type", nullable = false)
-    private String settingType;
+    @Column(name = "switch_dpid", nullable = false)
+    private String switchDpid;
     
-    @Column(name = "setting_value", nullable = false)
-    private String value;
-    
-    @Column(name = "description")
-    private String description;
+    @Column(name = "switch_name", nullable = false)
+    private String switchName;
     
     @Column(name = "updated_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedDate;
-    
-    public ApplicationSettingEntity(){}
-    
-    public ApplicationSettingEntity(final String settingType) {
-        this.settingType = settingType;
-    }
 }
