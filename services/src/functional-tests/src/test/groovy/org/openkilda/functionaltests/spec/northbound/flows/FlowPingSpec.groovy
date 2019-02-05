@@ -101,7 +101,7 @@ class FlowPingSpec extends BaseSpecification {
     @Unroll("Flow ping can detect a broken #description")
     def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
-        def switches = nonCentecSwitches().findAll { it.ofVersion != "OF_12" }
+        def switches = topology.activeSwitches.findAll { !it.centec && it.ofVersion != "OF_12" }
         List<List<PathNode>> allPaths = []
         List<PathNode> aswitchPath
         //select src and dst switches that have an a-switch path
@@ -190,7 +190,7 @@ class FlowPingSpec extends BaseSpecification {
 
     def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
-        def sw = nonCentecSwitches().find{ it.ofVersion != "OF_12" }
+        def sw = topology.activeSwitches.find{ !it.centec && it.ofVersion != "OF_12" }
         assert sw
         def flow = flowHelper.singleSwitchFlow(sw)
         flowHelper.addFlow(flow)
@@ -230,30 +230,11 @@ class FlowPingSpec extends BaseSpecification {
      * combinations with Centec switches and OF_12 switches
      */
     def getOfSwitchCombinations() {
-        def nbSwitches = northbound.getActiveSwitches()
-        return [nbSwitches, nbSwitches].combinations()
-            .findAll { src, dst ->
-                //exclude single-switch flows
-                src != dst &&
-                //pings are disabled for OF version < 1.3
-                [toSwitch(src), toSwitch(dst)].every { it.ofVersion != "OF_12" } &&
-                //known issue: pings on Centects do not work
-                [src, dst].every { !it.description.contains("Centec") }
-            }
-            //pick all unique switch description-OfVersion pairs
-            .unique { [it*.description.sort(), it.collect{ toSwitch(it) }*.ofVersion.sort()] }
-            .collect { nbSrcSwitch, nbDstSwitch ->
-                [toSwitch(nbSrcSwitch), toSwitch(nbDstSwitch)]
-            }
-    }
-
-    def nonCentecSwitches() {
-        northbound.getActiveSwitches()
-                .findAll { !it.description.contains("Centec") }
-                .collect { toSwitch(it) }
-    }
-
-    Switch toSwitch(SwitchInfoData nbSwitch) {
-        topology.activeSwitches.find { it.dpId == nbSwitch.switchId }
+        def switches = topology.activeSwitches.findAll {
+            it.ofVersion != "OF_12" && !it.centec
+        }
+        [switches, switches].combinations().findAll { src, dst ->
+            src != dst
+        }.unique { [it*.description.sort(), it*.ofVersion.sort()] }
     }
 }
