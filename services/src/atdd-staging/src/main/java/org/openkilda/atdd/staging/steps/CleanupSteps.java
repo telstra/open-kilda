@@ -20,9 +20,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
-import org.openkilda.testing.Constants;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.northbound.NorthboundService;
@@ -64,7 +64,7 @@ public class CleanupSteps implements En {
                         floodlightService.getMeters(sw.getDpId()).values().forEach(
                                 meterEntry ->
                                         assertTrue(format("Switch %s has unexpected meters installed", sw),
-                                                meterEntry.getMeterId() <= Constants.MAX_DEFAULT_METER_ID)
+                                                meterEntry.getMeterId() <= MAX_SYSTEM_RULE_METER_ID)
 
                         );
                     } catch (UnsupportedOperationException ex) {

@@ -38,7 +38,7 @@ public abstract class SwitchMapper {
     public SwitchInfoData map(Switch sw) {
         return new SwitchInfoData(
                 sw.getSwitchId(), map(sw.getStatus()),
-                sw.getAddress(), sw.getHostname(), sw.getDescription(), sw.getController());
+                sw.getAddress(), sw.getHostname(), sw.getDescription(), sw.getController(), sw.isUnderMaintenance());
     }
 
     @Mapping(source = "state", target = "status")

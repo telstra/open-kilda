@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
@@ -10,7 +11,6 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
-import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightService
@@ -97,13 +97,15 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
                 assert northbound.activeSwitches.size() == topology.activeSwitches.size()
             }
             links.findAll { it.state == IslChangeType.FAILED }.empty
-            links.findAll {
-                it.state == IslChangeType.DISCOVERED
-            }.size() == topology.islsForActiveSwitches.size() * 2
+            def topoLinks = topology.islsForActiveSwitches.collectMany {
+                [islUtils.getIslInfo(links, it).get(), islUtils.getIslInfo(links, islUtils.reverseIsl(it)).get()]
+            }
+            def missingLinks = links - topoLinks
+            missingLinks.empty
             northbound.allFlows.empty
             northbound.allLinkProps.empty
         }
-
+        
         and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
         verifyAll {
             links.findAll { it.availableBandwidth != it.speed }.empty
@@ -112,13 +114,9 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
                 !rules.excessRules.empty || !rules.missingRules.empty
             }.empty
 
-            def nonVirtualSwitches = northbound.getActiveSwitches()
-                    .findAll { !it.description.contains("Nicira, Inc") }
-                    .collect { sw -> topology.getSwitches().find { it.dpId == sw.switchId } }
-
-            nonVirtualSwitches.findAll {
-                it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
-                    it.key > Constants.MAX_DEFAULT_METER_ID
+            topology.activeSwitches.findAll {
+                !it.virtual && it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
+                    it.key > MAX_SYSTEM_RULE_METER_ID
                 }.isEmpty()
             }.empty
         }

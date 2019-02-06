@@ -51,31 +51,31 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
 
     @Test
     public void metersCommon() {
-        discoveryCheck(makeSwitchMock("Common Inc", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("Common Inc", "Soft123", OFVersion.OF_13),
                        ImmutableSet.of(Feature.METERS));
     }
 
     @Test
     public void metersOf12() {
-        discoveryCheck(makeSwitchMock("Common Inc", OFVersion.OF_12),
+        discoveryCheck(makeSwitchMock("Common Inc", "Soft123", OFVersion.OF_12),
                        ImmutableSet.of());
     }
 
     @Test
     public void metersNicira() {
-        discoveryCheck(makeSwitchMock("Nicira, Inc.", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("Nicira, Inc.", "Soft123", OFVersion.OF_13),
                        ImmutableSet.of());
     }
 
     @Test
     public void bfdCommon() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", OFVersion.OF_13),
                        ImmutableSet.of(Feature.BFD, Feature.METERS));
     }
 
     @Test
     public void bfdReview() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", OFVersion.OF_14),
+        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", OFVersion.OF_14),
                        ImmutableSet.of(Feature.BFD, Feature.BFD_REVIEW, Feature.METERS));
     }
 
@@ -86,9 +86,10 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
         Assert.assertEquals(expectedFeatures, actualFeatures);
     }
 
-    private IOFSwitch makeSwitchMock(String manufacturer, OFVersion version) {
+    private IOFSwitch makeSwitchMock(String manufacturer, String softwareDescription, OFVersion version) {
         SwitchDescription description = createMock(SwitchDescription.class);
         expect(description.getManufacturerDescription()).andReturn(manufacturer).anyTimes();
+        expect(description.getSoftwareDescription()).andReturn(softwareDescription).anyTimes();
 
         OFFactory ofFactory = createMock(OFFactory.class);
         expect(ofFactory.getVersion()).andReturn(version).anyTimes();

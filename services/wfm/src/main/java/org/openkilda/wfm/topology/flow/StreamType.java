@@ -77,5 +77,10 @@ public enum StreamType {
     /**
      * Error messages.
      */
-    ERROR;
+    ERROR,
+
+    /**
+     * Meter mode.
+     */
+    METER_MODE;
 }

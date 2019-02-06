@@ -4,11 +4,28 @@
     <div id="switchdetails_div">
       <h5 class="modal-title mb-2">SWITCH DETAILS</h5>
       <div class="form-wrapper">
-        <div class="row">
-          <label class="col-sm-2 col-form-label">Name:</label>
-          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label" [contextMenu]="copySrcSwitchName">{{ switchDetail['common-name'] ? switchDetail['common-name'] : switchDetail['name'] }}</p>
-          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">UUID:</label>
-          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard col-form-label switchdetails_div_name">{{ switchDetail['uuid'] || '-'}}</p>
+        <div class="row mb-3" [formGroup]="switchNameForm">
+          <label class="col-sm-2 ">Name:</label>
+          <div class="col-sm-9" *ngIf="!isSwitchNameEdit">
+              <div class="row">
+                  <p  class=" col-sm-3 copy_to_clipBoard switchdetails_div_name"  [contextMenu]="copySrcSwitchName">{{ switchDetail['common-name'] ? switchDetail['common-name'] : switchDetail['name'] }}</p>
+                  <button *ngIf="!isSwitchNameEdit && isStorageDBType && commonService.hasPermission('sw_switch_update_name')" type="button" class="btn pull-left kilda_btn" style="padding: 0px 20px!important; margin: 0px 0px 8px 15px;" (click)="editSwitchName()">Edit</button> &nbsp;
+                </div>
+             </div>
+          <div class="col-sm-9" *ngIf="isSwitchNameEdit">
+            <div class="row">
+                <input type="text"  class="form-control col-sm-3" formControlName="name"  />  
+                <div class="col-sm-3 pull-left" *ngIf="isStorageDBType">
+                      <button *ngIf="isSwitchNameEdit" type="button" (click)="saveSwitchName()" class="btn kilda_btn">Save</button> &nbsp;
+                      <button *ngIf="isSwitchNameEdit" type="button" class="btn kilda_btn"  (click)="cancelSwitchName()">Cancel</button> &nbsp;
+                </div>
+            </div>
+              
+          </div>
+         <div class="clearfix"></div>
+         <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">UUID:</label>
+         <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard col-form-label switchdetails_div_name">{{ switchDetail['uuid'] || '-'}}</p>
+
         </div>
         <div class="row">
           <label class="col-sm-2 col-form-label">Switch ID:</label>

@@ -39,4 +39,7 @@ public class SwitchDto {
 
     @JsonProperty("state")
     private String state;
+
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
 }

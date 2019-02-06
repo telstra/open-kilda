@@ -55,4 +55,8 @@ export class SwitchService {
       return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/meters/${switchId}?_=${timestamp}`);
     }
 
+    saveSwitcName(name,switchid){
+      return this.httpClient.patch<any>(`${environment.apiEndPoint}/switch/name/${switchid}`,name);
+    }
+
 }

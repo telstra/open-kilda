@@ -53,4 +53,10 @@ public class ApplicationSettingEntity implements Serializable {
     @Column(name = "updated_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedDate;
+    
+    public ApplicationSettingEntity(){}
+    
+    public ApplicationSettingEntity(final String settingType) {
+        this.settingType = settingType;
+    }
 }

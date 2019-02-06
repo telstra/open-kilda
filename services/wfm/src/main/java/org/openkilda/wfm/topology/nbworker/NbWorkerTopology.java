@@ -19,6 +19,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.MessageEncoder;
@@ -53,6 +54,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String SWITCHES_BOLT_NAME = "switches-operations-bolt";
     private static final String LINKS_BOLT_NAME = "links-operations-bolt";
     private static final String FLOWS_BOLT_NAME = "flows-operations-bolt";
+    private static final String FEATURE_TOGGLES_BOLT_NAME = "feature-toggles-bolt";
     private static final String SWITCH_VALIDATIONS_BOLT_NAME = "switch-validations-bolt";
     private static final String MESSAGE_ENCODER_BOLT_NAME = "message-encoder-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
@@ -82,7 +84,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
 
-        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager);
+        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager,
+                topologyConfig.getIslCostWhenUnderMaintenance());
         tb.setBolt(SWITCHES_BOLT_NAME, switchesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.SWITCH.toString());
 
@@ -95,6 +98,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(FLOWS_BOLT_NAME, flowsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FLOW.toString());
 
+        FeatureTogglesBolt featureTogglesBolt = new FeatureTogglesBolt(persistenceManager);
+        tb.setBolt(FEATURE_TOGGLES_BOLT_NAME, featureTogglesBolt, parallelism)
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FEATURE_TOGGLES.toString());
+
         SwitchValidationsBolt validationBolt = new SwitchValidationsBolt(persistenceManager);
         tb.setBolt(SWITCH_VALIDATIONS_BOLT_NAME, validationBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.VALIDATION.toString());
@@ -104,6 +111,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(SWITCHES_BOLT_NAME)
                 .shuffleGrouping(LINKS_BOLT_NAME)
                 .shuffleGrouping(FLOWS_BOLT_NAME)
+                .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME)
                 .shuffleGrouping(SWITCH_VALIDATIONS_BOLT_NAME);
 
         MessageEncoder messageEncoder = new MessageEncoder();
@@ -111,9 +119,11 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
-                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString());
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString());
 
         KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)

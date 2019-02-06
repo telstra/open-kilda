@@ -90,11 +90,18 @@ export class CommonService {
     return (valInMbps < 1)?Math.ceil(valInMbps * 1000) / 1000:Math.ceil(valInMbps * 100) / 100
   }
 
-  getSessionTimeoutSetting(){
-    return this.httpClient.get<any>(`${environment.apiEndPoint}/settings/sessiontimeout`);
+  saveSessionTimeoutSetting(timeout){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/SESSION_TIMEOUT`,timeout);
   }
 
-  saveSessionTimeoutSetting(timeout){
-    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/sessiontimeout`,timeout);
+  getSwitchNameSourceTypes(){
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/settings/storagetypes`);
+  }
+ 
+  saveSwitchNameSourceSettings(value){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/SWITCH_NAME_STORAGE_TYPE`,value);
+  }
+  getAllSettings(){
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/settings`);
   }
 }

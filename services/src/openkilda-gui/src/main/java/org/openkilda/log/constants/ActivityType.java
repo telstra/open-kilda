@@ -50,7 +50,9 @@ public enum ActivityType {
     DELETE_CONTRACT(29L),
     UPDATE_SWITCH_STORE_CONFIG(30L),
     DELETE_SWITCH_STORE_CONFIG(31L),
-    CONFIG_SESSION_TIMEOUT(32L);
+    CONFIG_SESSION_TIMEOUT(32L),
+    CONFIG_SWITCH_NAME_STORAGE_TYPE(33L),
+    UPDATE_SWITCH_NAME(34L);
 
     private Long id;
     private ActivityTypeEntity activityTypeEntity;

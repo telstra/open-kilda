@@ -18,23 +18,33 @@ package org.openkilda.wfm.topology.nbworker.services;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchOperationsService {
 
     private SwitchRepository switchRepository;
+    private TransactionManager transactionManager;
+    private LinkOperationsService linkOperationsService;
 
-    public SwitchOperationsService(RepositoryFactory repositoryFactory) {
+    public SwitchOperationsService(RepositoryFactory repositoryFactory,
+                                   TransactionManager transactionManager,
+                                   int islCostWhenUnderMaintenance) {
         this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.transactionManager = transactionManager;
+        this.linkOperationsService
+                = new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
     }
 
     /**
@@ -56,4 +66,49 @@ public class SwitchOperationsService {
                 .map(SwitchMapper.INSTANCE::map)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Update the "Under maintenance" flag for the switch.
+     *
+     * @param switchId switch id.
+     * @param underMaintenance "Under maintenance" flag.
+     * @return updated switch.
+     * @throws SwitchNotFoundException if there is no switch with this switch id.
+     */
+    public Switch updateSwitchUnderMaintenanceFlag(SwitchId switchId, boolean underMaintenance)
+            throws SwitchNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            Optional<Switch> foundSwitch = switchRepository.findById(switchId);
+            if (!(foundSwitch.isPresent())) {
+                return Optional.<Switch>empty();
+            }
+
+            Switch sw = foundSwitch.get();
+
+            if (sw.isUnderMaintenance() == underMaintenance) {
+                return Optional.of(sw);
+            }
+
+            sw.setUnderMaintenance(underMaintenance);
+
+            switchRepository.createOrUpdate(sw);
+
+            linkOperationsService.getAllIsls(switchId, null, null, null)
+                    .forEach(isl -> {
+                        try {
+                            linkOperationsService.updateLinkUnderMaintenanceFlag(
+                                    isl.getSrcSwitch().getSwitchId(),
+                                    isl.getSrcPort(),
+                                    isl.getDestSwitch().getSwitchId(),
+                                    isl.getDestPort(),
+                                    underMaintenance);
+                        } catch (IslNotFoundException e) {
+                            //We get all ISLs on this switch, so all ISLs exist
+                        }
+                    });
+
+            return Optional.of(sw);
+        }).orElseThrow(() -> new SwitchNotFoundException(switchId));
+    }
+
 }
