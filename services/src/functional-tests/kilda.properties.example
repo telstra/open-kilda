@@ -7,18 +7,19 @@ floodlight.username=kilda
 floodlight.password=kilda
 floodlight.controller.uri=tcp:kilda:6653
 
-elasticsearch.endpoint = http://localhost:9200
-elasticsearch.username = kilda
-elasticsearch.password = kilda
-
-kafka.bootstrap.server = kafka.pendev:9092
-kafka.topic.topo.disco=kilda.topo.disco
-
-lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
 neo.user=
 neo.password=
+
+elasticsearch.endpoint=http://localhost:9200
+elasticsearch.username=kilda
+elasticsearch.password=kilda
+
+kafka.bootstrap.server=kafka.pendev:9092
+kafka.topic.topo.disco=kilda.topo.disco
+
 lab-api.endpoint=http://localhost:8288
+lockkeeper.endpoint=http://localhost:5001
 
 otsdb.endpoint=http://localhost:4242
 
@@ -26,12 +27,17 @@ spring.profiles.active=virtual
 
 reroute.delay=3
 reroute.hardtimeout=15
+
 discovery.interval=3
 discovery.timeout=15
+
 antiflap.min=1
 antiflap.warmup=5
 antiflap.cooldown=5
-burst.coef=1.05
-isl.cost.when.under.maintenance=10000
+
 isl.cost.when.port.down=10000
+isl.cost.when.under.maintenance=10000
+
+burst.coefficient=1.05
+
 bfd.offset=200

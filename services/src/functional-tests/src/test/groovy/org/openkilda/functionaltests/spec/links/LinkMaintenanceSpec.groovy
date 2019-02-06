@@ -19,21 +19,23 @@ class LinkMaintenanceSpec extends BaseSpecification {
     @Value('${isl.cost.when.under.maintenance}')
     int islCostWhenUnderMaintenance
 
+    def setupOnce() {
+        database.resetCosts()  // set default cost on all links before tests
+    }
+
     def "Maintenance mode can be set/unset for a particular link"() {
         given: "An active link"
         def isl = topology.islsForActiveSwitches.first()
 
         when: "Set maintenance mode for the link"
-        // Explicitly set default cost for all links due to implementation of database.getIslCost(isl) method.
-        database.resetCosts()
         def response = northbound.setLinkMaintenance(islUtils.getLinkUnderMaintenance(isl, true, false))
 
         then: "Maintenance flag for forward and reverse ISLs is really set"
         response.each { assert it.underMaintenance }
 
         and: "Cost for ISLs is changed respectively"
-        islUtils.getIslCost(isl) == islCostWhenUnderMaintenance + Constants.DEFAULT_COST
-        islUtils.getIslCost(islUtils.reverseIsl(isl)) == islCostWhenUnderMaintenance + Constants.DEFAULT_COST
+        database.getIslCost(isl) == islCostWhenUnderMaintenance + Constants.DEFAULT_COST
+        database.getIslCost(islUtils.reverseIsl(isl)) == islCostWhenUnderMaintenance + Constants.DEFAULT_COST
 
         when: "Unset maintenance mode from the link"
         response = northbound.setLinkMaintenance(islUtils.getLinkUnderMaintenance(isl, false, false))
@@ -42,8 +44,8 @@ class LinkMaintenanceSpec extends BaseSpecification {
         response.each { assert !it.underMaintenance }
 
         and: "Cost for ISLs is changed to the default value"
-        islUtils.getIslCost(isl) == Constants.DEFAULT_COST
-        islUtils.getIslCost(islUtils.reverseIsl(isl)) == Constants.DEFAULT_COST
+        database.getIslCost(isl) == Constants.DEFAULT_COST
+        database.getIslCost(islUtils.reverseIsl(isl)) == Constants.DEFAULT_COST
     }
 
     def "Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {
