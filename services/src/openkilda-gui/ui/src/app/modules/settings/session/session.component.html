@@ -21,5 +21,28 @@
                         </div>
                     </div>
                 </div>
+                <!--- switch name setting-->
+                <div class="col-md-12">
+                    <h6 class="card-title card-custom-title">SWITCH NAME SETTINGS</h6>
+                    <div _ngcontent-c14="" class="card">
+                        <div _ngcontent-c14="" class="card-body">
+                            <div class="col-sm-9">
+                            <form [formGroup]="switchNameSourceForm" class="form-horizontal">
+                                  <div class="form-group row">
+                                        <label for="session_timeout" class="col-sm-3 mt-2">Switch Name Source <span class="mandatory-text text-danger">*</span></label>
+                                        <select class="form-control col-sm-3 ml-3" formControlName="switch_name_source">
+                                            <option *ngFor="let item of switchNameSourceTypes" value="{{item}}">{{item}}</option>
+                                        </select> 
+                                        <div class="col-sm-3 ml-3">
+                                                 <button *ngIf="isSwitchNameSourcEdit" type="button" (click)="saveSwitchNameSource()" class="btn kilda_btn">Save</button> &nbsp;
+                                                <button *ngIf="isSwitchNameSourcEdit" type="button" class="btn kilda_btn" (click)="cancelSwitchNameSource()">Cancel</button> &nbsp;
+                                                <button *ngIf="!isSwitchNameSourcEdit" type="button" class="btn kilda_btn" (click)="editSwitchNameSource()">Edit</button> &nbsp;
+                                        </div>
+                                    </div>
+                             </form>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
             </div>
  </div>

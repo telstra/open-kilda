@@ -15,7 +15,7 @@
     <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="54" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="66" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="129" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWfmTopologyConfig.java" lines="25" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWfmTopologyConfig.java" lines="26" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="56" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="74" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/islstats/bolts/IslStatsBolt.java" lines="82" checks="JavadocMethod"/>

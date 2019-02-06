@@ -25,6 +25,7 @@ import org.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
@@ -56,6 +57,7 @@ public class InfoMessage extends Message {
      * @param destination   message destination
      */
     @JsonCreator
+    @Builder(toBuilder = true)
     public InfoMessage(@JsonProperty(PAYLOAD) final InfoData data,
                        @JsonProperty(TIMESTAMP) final long timestamp,
                        @JsonProperty(CORRELATION_ID) final String correlationId,

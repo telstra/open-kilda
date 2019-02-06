@@ -64,7 +64,11 @@ public final class CorrelationContext {
         if (fields.contains(AbstractBolt.FIELD_ID_CONTEXT)) {
             try {
                 CommandContext commandContext = (CommandContext) input.getValueByField(AbstractBolt.FIELD_ID_CONTEXT);
-                return Optional.of(new CorrelationContext(commandContext.getCorrelationId()));
+                if (commandContext != null) {
+                    return Optional.of(new CorrelationContext(commandContext.getCorrelationId()));
+                } else {
+                    return Optional.empty();
+                }
             } catch (ClassCastException e) {
                 // ignore invalid value into context field
             }

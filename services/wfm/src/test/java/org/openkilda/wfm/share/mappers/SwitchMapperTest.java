@@ -32,15 +32,12 @@ public class SwitchMapperTest {
     public void switchMapperTest() {
 
         SwitchInfoData switchInfoData = new SwitchInfoData(TEST_SWITCH_ID, SwitchChangeType.ACTIVATED, "address",
-                "hostname", "description", "controller");
+                "hostname", "description", "controller", false);
         Switch sw = SwitchMapper.INSTANCE.map(switchInfoData);
 
         Assert.assertEquals(SwitchStatus.ACTIVE, sw.getStatus());
 
         SwitchInfoData switchInfoDataMapping = SwitchMapper.INSTANCE.map(sw);
-        switchInfoDataMapping.setState(SwitchChangeType.ACTIVATED);
-
         Assert.assertEquals(switchInfoData, switchInfoDataMapping);
     }
-
 }

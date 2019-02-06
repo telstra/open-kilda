@@ -28,6 +28,7 @@ import org.projectfloodlight.openflow.protocol.OFMeterStats;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsReply;
 
 import java.util.List;
+import java.util.Objects;
 
 @Mapper
 @Slf4j
@@ -42,32 +43,44 @@ public abstract class OfMeterStatsMapper {
      * @return result of transformation {@link MeterStatsData}.
      */
     public MeterStatsData toMeterStatsData(List<OFMeterStatsReply> data, SwitchId switchId) {
-        List<MeterStatsEntry> stats = data.stream()
-                .flatMap(reply -> reply.getEntries().stream()
-                        .map(this::toMeterStatsEntry))
-                .collect(toList());
-        return new MeterStatsData(switchId, stats);
+        try {
+            List<MeterStatsEntry> stats = data.stream()
+                    .flatMap(reply -> reply.getEntries().stream())
+                    .map(this::toMeterStatsEntry)
+                    .filter(Objects::nonNull)
+                    .collect(toList());
+            return new MeterStatsData(switchId, stats);
+        } catch (NullPointerException | UnsupportedOperationException | IllegalArgumentException e) {
+            log.error(String.format("Could not convert meter stats data %s on switch %s", data, switchId), e);
+            return null;
+        }
     }
 
     /**
      * Convert {@link OFMeterStats} to {@link MeterStatsEntry}.
      * @param entry meter stats entry to be converted.
-     * @return result of transformation {@link MeterStatsEntry}.
+     * @return result of transformation {@link MeterStatsEntry} or null if object couldn't be parsed.
      */
     public MeterStatsEntry toMeterStatsEntry(OFMeterStats entry) {
-        if (entry.getBandStats().size() > 1) {
-            log.warn("Meter '{}' has more than one meter band. Only first band will be handled. "
-                    + "Several bands are not supported.", entry.getMeterId());
+        try {
+
+            if (entry.getBandStats().size() > 1) {
+                log.warn("Meter '{}' has more than one meter band. Only first band will be handled. "
+                        + "Several bands are not supported.", entry.getMeterId());
+            }
+
+            long byteBandCount = 0;
+            long packetBandCount = 0;
+
+            if (!entry.getBandStats().isEmpty()) {
+                byteBandCount = entry.getBandStats().get(0).getByteBandCount().getValue();
+                packetBandCount = entry.getBandStats().get(0).getPacketBandCount().getValue();
+            }
+
+            return new MeterStatsEntry(entry.getMeterId(), byteBandCount, packetBandCount);
+        } catch (NullPointerException | UnsupportedOperationException | IllegalArgumentException e) {
+            log.error(String.format("Could not convert OFMeterStats object %s", entry), e);
+            return null;
         }
-
-        long byteBandCount = 0;
-        long packetBandCount = 0;
-
-        if (!entry.getBandStats().isEmpty()) {
-            byteBandCount = entry.getBandStats().get(0).getByteBandCount().getValue();
-            packetBandCount = entry.getBandStats().get(0).getPacketBandCount().getValue();
-        }
-
-        return new MeterStatsEntry(entry.getMeterId(), byteBandCount, packetBandCount);
     }
 }

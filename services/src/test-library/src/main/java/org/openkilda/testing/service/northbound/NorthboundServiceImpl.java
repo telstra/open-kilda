@@ -23,12 +23,13 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -49,6 +50,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
@@ -86,16 +88,8 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public FlowPayload getFlow(String flowId) {
-        try {
-            return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
-                    new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
-        } catch (HttpClientErrorException ex) {
-            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
-                throw ex;
-            }
-
-            return null;
-        }
+        return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
     }
 
     @Override
@@ -265,6 +259,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public FlowMeterEntries resetMeters(String flowId) {
+        return restTemplate.exchange("/api/v1/flows/{flowId}/meters", HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowMeterEntries.class, flowId).getBody();
+    }
+
+    @Override
     public SwitchFlowEntries getSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchFlowEntries.class, switchId).getBody();
@@ -392,23 +392,23 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<LinkDto> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link) {
+    public List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link) {
         LinkDto[] updatedLink = restTemplate.exchange("api/v1/links/under-maintenance", HttpMethod.PATCH,
                 new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
         return Arrays.asList(updatedLink);
     }
 
     @Override
-    public FeatureTogglePayload getFeatureToggles() {
+    public FeatureTogglesDto getFeatureToggles() {
         return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglePayload.class).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglesDto.class).getBody();
     }
 
     @Override
-    public FeatureTogglePayload toggleFeature(FeatureTogglePayload request) {
-        HttpEntity<FeatureTogglePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v1/features", HttpMethod.POST, httpEntity,
-                FeatureTogglePayload.class).getBody();
+    public FeatureTogglesDto toggleFeature(FeatureTogglesDto request) {
+        HttpEntity<FeatureTogglesDto> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/features", HttpMethod.PATCH, httpEntity,
+                FeatureTogglesDto.class).getBody();
     }
 
     @Override
@@ -424,6 +424,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     public SwitchInfoData getSwitch(SwitchId switchId) {
         return convertToSwitchInfoData(restTemplate.exchange("/api/v1/switches/{switch_id}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto.class, switchId).getBody());
+    }
+
+    @Override
+    public SwitchDto setSwitchMaintenance(SwitchId switchId, boolean maintenance, boolean evacuate) {
+        return restTemplate.exchange("api/v1/switches/{switch_id}/under-maintenance", HttpMethod.POST,
+                new HttpEntity<>(new UnderMaintenanceDto(maintenance, evacuate), buildHeadersWithCorrelationId()),
+                SwitchDto.class, switchId).getBody();
     }
 
     @Override
@@ -495,6 +502,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 dto.getAddress(),
                 dto.getHostname(),
                 dto.getDescription(),
-                KILDA_CONTROLLER);
+                KILDA_CONTROLLER,
+                dto.isUnderMaintenance());
     }
 }

@@ -21,11 +21,13 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
+import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
@@ -37,6 +39,7 @@ import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
@@ -48,6 +51,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.model.Switch.Feature;
 import org.openkilda.model.OutputVlanType;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -100,15 +104,19 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -139,9 +147,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
+    public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
-
+    public static final int BDF_DEFAULT_PORT = 3784;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -150,6 +159,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private IOFSwitchService ofSwitchService;
     private IKafkaProducerService producerService;
     private SwitchTrackingService switchTracking;
+    private FeatureDetectorService featureDetectorService;
 
     private ConnectModeRequest.Mode connectMode;
     private SwitchManagerConfig config;
@@ -197,7 +207,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 IOFSwitchService.class,
                 IRestApiService.class,
                 KafkaUtilityService.class,
-                IKafkaProducerService.class);
+                IKafkaProducerService.class,
+                FeatureDetectorService.class);
     }
 
     /**
@@ -208,7 +219,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
         producerService = context.getServiceImpl(IKafkaProducerService.class);
         switchTracking = context.getServiceImpl(SwitchTrackingService.class);
-
+        featureDetectorService = context.getServiceImpl(FeatureDetectorService.class);
         FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(context, this);
         config = provider.getConfiguration(SwitchManagerConfig.class);
         String connectModeProperty = config.getConnectMode();
@@ -321,6 +332,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         installVerificationRule(dpid, true);
         installVerificationRule(dpid, false);
         installDropLoopRule(dpid);
+        installBfdCatchFlow(dpid);
     }
 
     /**
@@ -540,24 +552,87 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installMeter(DatapathId dpid, long bandwidth, final long meterId)
+    public OFMeterConfig dumpMeterById(final DatapathId dpid, final long meterId) throws SwitchOperationException {
+        OFMeterConfig meterConfig = null;
+        IOFSwitch sw = lookupSwitch(dpid);
+        if (sw == null) {
+            throw new IllegalArgumentException(format("Switch %s was not found", dpid));
+        }
+
+        verifySwitchSupportsMeters(sw);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFMeterConfigStatsRequest meterRequest = ofFactory.buildMeterConfigStatsRequest()
+                .setMeterId(meterId)
+                .build();
+
+        try {
+            ListenableFuture<List<OFMeterConfigStatsReply>> future = sw.writeStatsRequest(meterRequest);
+            List<OFMeterConfigStatsReply> values = future.get(10, TimeUnit.SECONDS);
+            if (values != null) {
+                List<OFMeterConfig> result = values.stream()
+                        .map(OFMeterConfigStatsReply::getEntries)
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList());
+                meterConfig = result.size() >= 1 ? result.get(0) : null;
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            logger.error("Could not get meter config stats for {}.", dpid, e);
+        }
+
+        return meterConfig;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void installMeterForFlow(DatapathId dpid, long bandwidth, final long meterId)
+            throws SwitchOperationException {
+        if (meterId >= MIN_FLOW_METER_ID) {
+            IOFSwitch sw = lookupSwitch(dpid);
+            verifySwitchSupportsMeters(sw);
+            long burstSize = calculateBurstSize(sw, bandwidth);
+
+            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
+            installMeter(sw, flags, bandwidth, burstSize, meterId);
+        } else {
+            throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void modifyMeterForFlow(DatapathId dpid, long meterId, long bandwidth)
             throws SwitchOperationException {
         if (meterId > 0L) {
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
-            long burstSize = Math.max(config.getFlowMeterMinBurstSizeInKbits(),
-                    (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
 
-            if (isCentecSwitch(sw)) {
-                // Burst size > 32 000 Kbit/s is not supported by Centec switches
-                burstSize = Math.min(burstSize, MAX_CENTEC_SWITCH_BURST_SIZE);
-            }
+            long burstSize = calculateBurstSize(sw, bandwidth);
 
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
-            buildAndInstallMeter(sw, flags, bandwidth, burstSize, meterId);
+
+            modifyMeter(sw, bandwidth, burstSize, meterId, flags);
         } else {
-            throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
+            String message = meterId <= 0
+                    ? "Meter id must be positive." : "Meter IDs from 1 to 31 inclusively are for default rules.";
+
+            throw new InvalidMeterIdException(dpid,
+                    format("Could not install meter '%d' onto switch '%s'. %s", meterId, dpid, message));
         }
+
+    }
+
+    private long calculateBurstSize(IOFSwitch sw, long bandwidth) {
+        if (isCentecSwitch(sw)) {
+            return Math.min(Math.max(config.getFlowMeterMinBurstSizeInKbits(),
+                    (long) (bandwidth * config.getFlowMeterBurstCoefficient())), MAX_CENTEC_SWITCH_BURST_SIZE);
+        }
+
+        return Math.max(config.getFlowMeterMinBurstSizeInKbits(),
+                (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
     }
 
     @Override
@@ -669,7 +744,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
         List<Long> deletedRules = deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE);
+                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE);
 
         try {
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
@@ -767,6 +842,39 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
     }
 
+    @Override
+    public void installBfdCatchFlow(DatapathId dpid) throws SwitchOperationException {
+
+        IOFSwitch sw = lookupSwitch(dpid);
+        Set<Feature> features = featureDetectorService.detectSwitch(sw);
+        if (!features.contains(Feature.BFD)) {
+            logger.debug("Skip installation of catch flow for switch {}", dpid);
+        } else {
+            OFFactory ofFactory = sw.getOFFactory();
+
+            Match match = catchRuleMatch(dpid, ofFactory);
+            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, CATCH_BFD_RULE_COOKIE, CATCH_BFD_RULE_PRIORITY)
+                    .setMatch(match)
+                    .setActions(ImmutableList.of(
+                            ofFactory.actions().buildOutput()
+                                    .setPort(OFPort.LOCAL)
+                                    .build()))
+                    .build();
+            String flowName = "--CatchBfdRule--" + dpid.toString();
+            pushFlow(sw, flowName, flowMod);
+        }
+
+    }
+
+    private Match catchRuleMatch(DatapathId dpid, OFFactory ofFactory) {
+        return ofFactory.buildMatch()
+            .setExact(MatchField.ETH_DST, dpIdToMac(dpid))
+            .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+            .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+            .setExact(MatchField.UDP_DST, TransportPort.of(BDF_DEFAULT_PORT))
+            .build();
+    }
+
     void installDropLoopRule(DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
@@ -811,13 +919,32 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), "Centec");
     }
 
-    private void buildAndInstallMeter(IOFSwitch sw, Set<OFMeterFlags> flags, long bandwidth, long burstSize,
-                                      long meterId) throws OfInstallException {
+    private void installMeter(IOFSwitch sw, Set<OFMeterFlags> flags, long bandwidth, long burstSize, long meterId)
+            throws OfInstallException {
         logger.info("Installing meter {} on switch {} with bandwidth {}", meterId, sw.getId(), bandwidth);
 
+        OFMeterMod meterMod = buildMeterMode(sw, OFMeterModCommand.ADD, bandwidth, burstSize, meterId, flags);
+
+        pushFlow(sw, "--InstallMeter--", meterMod);
+
+        // All cases when we're installing meters require that we wait until the command is processed and
+        // the meter is installed.
+        sendBarrierRequest(sw);
+    }
+
+    private void modifyMeter(IOFSwitch sw, long bandwidth, long burstSize, long meterId, Set<OFMeterFlags> flags)
+            throws OfInstallException {
+        logger.info("Updating meter {} on Switch {}", meterId, sw.getId());
+
+        OFMeterMod meterMod = buildMeterMode(sw, OFMeterModCommand.MODIFY, bandwidth, burstSize, meterId, flags);
+
+        pushFlow(sw, "--ModifyMeter--", meterMod);
+    }
+
+    private OFMeterMod buildMeterMode(IOFSwitch sw, OFMeterModCommand command, long bandwidth, long burstSize,
+                                      long meterId, Set<OFMeterFlags> flags) {
         OFFactory ofFactory = sw.getOFFactory();
 
-        // NB: some switches might replace 0 burst size value with some predefined value
         OFMeterBandDrop.Builder bandBuilder = ofFactory.meterBands()
                 .buildDrop()
                 .setRate(bandwidth)
@@ -825,7 +952,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFMeterMod.Builder meterModBuilder = ofFactory.buildMeterMod()
                 .setMeterId(meterId)
-                .setCommand(OFMeterModCommand.ADD)
+                .setCommand(command)
                 .setFlags(flags);
 
         if (sw.getOFFactory().getVersion().compareTo(OF_13) > 0) {
@@ -834,13 +961,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             meterModBuilder.setMeters(singletonList(bandBuilder.build()));
         }
 
-        OFMeterMod meterMod = meterModBuilder.build();
-
-        pushFlow(sw, "--InstallMeter--", meterMod);
-
-        // All cases when we're installing meters require that we wait until the command is processed and
-        // the meter is installed.
-        sendBarrierRequest(sw);
+        return meterModBuilder.build();
     }
 
     private void buildAndDeleteMeter(IOFSwitch sw, final DatapathId dpid, final long meterId)
@@ -1106,7 +1227,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Create an OFFlowMod builder and set required fields.
      *
      * @param ofFactory OF factory for the switch
-     * @param cookie   cookie for the flow
+     * @param cookie cookie for the flow
      * @param priority priority to set on the flow
      * @return {@link OFFlowMod}
      */
@@ -1191,8 +1312,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     /**
      * Pushes a single flow modification command to the switch with the given datapath ID.
      *
-     * @param sw      open flow switch descriptor
-     * @param flowId  flow name, for logging
+     * @param sw open flow switch descriptor
+     * @param flowId flow name, for logging
      * @param flowMod command to send
      * @return OF transaction Id (???)
      * @throws OfInstallException openflow install exception
@@ -1219,6 +1340,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return sw;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InetAddress getSwitchIpAddress(IOFSwitch sw) {
+        return ((InetSocketAddress) sw.getInetAddress()).getAddress();
+    }
+
     @Override
     public List<OFPortDesc> getEnabledPhysicalPorts(DatapathId dpId) throws SwitchNotFoundException {
         return getPhysicalPorts(dpId).stream()
@@ -1228,8 +1357,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<OFPortDesc> getPhysicalPorts(DatapathId dpId) throws SwitchNotFoundException {
-        IOFSwitch sw = lookupSwitch(dpId);
+        return this.getPhysicalPorts(lookupSwitch(dpId));
+    }
 
+    @Override
+    public List<OFPortDesc> getPhysicalPorts(IOFSwitch sw) {
         final Collection<OFPortDesc> ports = sw.getPorts();
         if (ports == null) {
             return ImmutableList.of();
@@ -1287,7 +1419,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 sendBarrierRequest(sw);
             }
 
-            buildAndInstallMeter(sw, flags, rate, burstSize, meterId);
+            installMeter(sw, flags, rate, burstSize, meterId);
         } catch (SwitchOperationException e) {
             logger.warn("Failed to (re)install meter {} on switch {}: {}", meterId, sw.getId(), e.getMessage());
             return null;

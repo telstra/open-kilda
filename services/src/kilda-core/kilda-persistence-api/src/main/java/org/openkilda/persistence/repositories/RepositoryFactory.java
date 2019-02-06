@@ -28,4 +28,6 @@ public interface RepositoryFactory {
     SwitchRepository createSwitchRepository();
 
     LinkPropsRepository createLinkPropsRepository();
+
+    FeatureTogglesRepository createFeatureTogglesRepository();
 }

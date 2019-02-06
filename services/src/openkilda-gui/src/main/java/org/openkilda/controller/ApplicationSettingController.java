@@ -17,24 +17,21 @@ package org.openkilda.controller;
 
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
-import org.openkilda.log.ActivityLogger;
-import org.openkilda.log.constants.ActivityType;
+import org.openkilda.constants.IConstants.ApplicationSetting;
+import org.openkilda.constants.IConstants.StorageType;
 import org.openkilda.service.ApplicationSettingService;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openkilda.validator.ApplicationSettingsValidator;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.usermanagement.controller.UserController;
-import org.usermanagement.exception.RequestValidationException;
-import org.usermanagement.util.MessageUtils;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -46,48 +43,56 @@ import javax.servlet.http.HttpServletRequest;
 @RestController
 @RequestMapping(value = "/api/settings")
 public class ApplicationSettingController extends BaseController {
-    
-    private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class);
-    
+
     @Autowired
     private ApplicationSettingService applicationSettingService;
-    
+
     @Autowired
-    private ActivityLogger activityLogger;
-    
-    @Autowired
-    private MessageUtils messageUtil;
-    
+    private ApplicationSettingsValidator applicationSettingsValidator;
+
     /**
-     * Gets the user settings.
+     * Gets the application settings.
      *
-     * @return the user settings
+     * @return the application settings
      */
     @ResponseStatus(HttpStatus.OK)
-    @RequestMapping(value = "/sessiontimeout", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.SESSION_TIMEOUT_SETTING })
-    public int getSessioTimeout() {
-        return applicationSettingService.getSessionTimeout();
+    @RequestMapping(method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.APPLICATION_SETTING })
+    public Map<String, String> getApplicationSettings() {
+        return applicationSettingService.getApplicationSettings();
     }
 
     /**
-     * Save or update settings.
+     * Gets the storage types.
      *
-     * @param sessionTimeoutInMinutes the sessionTimeoutInMinutes
-     * @return the string
+     * @return the storage types
      */
     @ResponseStatus(HttpStatus.OK)
-    @RequestMapping(value = "/sessiontimeout", method = RequestMethod.PATCH)
-    @Permissions(values = { IConstants.Permission.SESSION_TIMEOUT_SETTING })
-    public int saveOrUpdateSessioTimeout(@RequestBody final int sessionTimeoutInMinutes, HttpServletRequest request) {
-        LOGGER.info("[saveOrUpdateSessioTimeout] (sessionTimeoutInMinutes: " + sessionTimeoutInMinutes + ")");
-        if (sessionTimeoutInMinutes < 1) {
-            throw new RequestValidationException(
-                    messageUtil.getAttributeNotvalid(IConstants.ApplicationSetting.SESSION_TIMEOUT));
+    @RequestMapping(value = "/storagetypes", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.APPLICATION_SETTING })
+    public StorageType[] getStorageTypes() {
+        return IConstants.StorageType.values();
+    }
+
+    /**
+     * Save or update application setting.
+     *
+     * @param type the type
+     * @param value the value
+     * @param request the request
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @RequestMapping(value = "/{type}", method = RequestMethod.PATCH)
+    @Permissions(values = { IConstants.Permission.APPLICATION_SETTING })
+    public void saveOrUpdateApplicationSetting(@PathVariable("type") ApplicationSetting type, @RequestBody String value,
+            HttpServletRequest request) {
+
+        applicationSettingsValidator.validate(type, value);
+        value = value.trim().toUpperCase();
+        applicationSettingService.saveOrUpdateApplicationSetting(type, value);
+        
+        if (type == ApplicationSetting.SESSION_TIMEOUT) {
+            request.getSession().setMaxInactiveInterval(Integer.valueOf(value) * 60);
         }
-        activityLogger.log(ActivityType.CONFIG_SESSION_TIMEOUT, String.valueOf(sessionTimeoutInMinutes));
-        applicationSettingService.updateSessionTimeout(sessionTimeoutInMinutes);
-        request.getSession().setMaxInactiveInterval(sessionTimeoutInMinutes * 60);
-        return sessionTimeoutInMinutes;
     }
 }

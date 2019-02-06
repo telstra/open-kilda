@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.event.service;
 
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
@@ -41,13 +43,19 @@ public class IslService {
     private LinkPropsRepository linkPropsRepository;
     private SwitchRepository switchRepository;
     private FlowSegmentRepository flowSegmentRepository;
+    private FeatureTogglesRepository featureTogglesRepository;
 
-    public IslService(TransactionManager transactionManager, RepositoryFactory repositoryFactory) {
+    private int islCostWhenUnderMaintenance;
+
+    public IslService(TransactionManager transactionManager, RepositoryFactory repositoryFactory,
+                      int islCostWhenUnderMaintenance) {
+        this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
         this.transactionManager = transactionManager;
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     /**
@@ -59,10 +67,18 @@ public class IslService {
     public void createOrUpdateIsl(Isl isl, Sender sender) {
         createOrUpdateIsl(isl);
 
-        String reason = String.format("Create or update ISL: %s_%d-%s_%d. ISL status: %s",
-                isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
-                isl.getDestSwitch().getSwitchId(), isl.getDestPort(), isl.getStatus());
-        sender.sendRerouteInactiveFlowsMessage(reason);
+        Optional<FeatureToggles> featureToggles = featureTogglesRepository.find();
+        if (featureToggles.isPresent()
+                && featureToggles.get().getFlowsRerouteOnIslDiscoveryEnabled() != null
+                && featureToggles.get().getFlowsRerouteOnIslDiscoveryEnabled()) {
+
+            String reason = String.format("Create or update ISL: %s_%d-%s_%d. ISL status: %s",
+                    isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
+                    isl.getDestSwitch().getSwitchId(), isl.getDestPort(), isl.getStatus());
+            sender.sendRerouteInactiveFlowsMessage(reason);
+        } else {
+            log.warn("Feature toggle 'flows_reroute_on_isl_discovery' is disabled");
+        }
     }
 
     /**
@@ -111,6 +127,12 @@ public class IslService {
                 isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
                 isl.getDestSwitch().getSwitchId(), isl.getDestPort());
         daoIsl.setAvailableBandwidth(daoIsl.getMaxBandwidth() - usedBandwidth);
+
+        if ((daoIsl.getSrcSwitch().isUnderMaintenance() || daoIsl.getDestSwitch().isUnderMaintenance())
+                && !daoIsl.isUnderMaintenance()) {
+            daoIsl.setUnderMaintenance(true);
+            daoIsl.setCost(daoIsl.getCost() + islCostWhenUnderMaintenance);
+        }
 
         islRepository.createOrUpdate(daoIsl);
 

@@ -24,12 +24,12 @@ import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.METER_CACHE_FIELD
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.JsonEncodeException;
+import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
+import org.openkilda.wfm.topology.stats.MeterCacheKey;
 
-import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
 
@@ -40,25 +40,21 @@ import javax.annotation.Nullable;
 @Slf4j
 public class MeterStatsMetricGenBolt extends MetricGenBolt {
     @Override
-    public void execute(Tuple input) {
-        try {
-            MeterStatsData data = (MeterStatsData) input.getValueByField(STATS_FIELD);
+    protected void handleInput(Tuple input) throws AbstractException {
+        MeterStatsData data = (MeterStatsData) input.getValueByField(STATS_FIELD);
 
-            log.debug("Received meter statistics: {}.", data);
+        log.debug("Received meter statistics: {}.", data);
 
-            @SuppressWarnings("unchecked")
-            Map<Pair<SwitchId, Long>, CacheFlowEntry> flowCache =
-                    (Map<Pair<SwitchId, Long>, CacheFlowEntry>) input.getValueByField(METER_CACHE_FIELD);
+        @SuppressWarnings("unchecked")
+        Map<MeterCacheKey, CacheFlowEntry> meterCache =
+                (Map<MeterCacheKey, CacheFlowEntry>) input.getValueByField(METER_CACHE_FIELD);
 
-            long timestamp = input.getLongByField(TIMESTAMP);
+        long timestamp = input.getLongByField(TIMESTAMP);
 
-            SwitchId switchId = data.getSwitchId();
-            for (MeterStatsEntry entry : data.getStats()) {
-                @Nullable CacheFlowEntry flowEntry = flowCache.get(new Pair<>(switchId, entry.getMeterId()));
-                emit(entry, timestamp, switchId, flowEntry);
-            }
-        } finally {
-            collector.ack(input);
+        SwitchId switchId = data.getSwitchId();
+        for (MeterStatsEntry entry : data.getStats()) {
+            @Nullable CacheFlowEntry flowEntry = meterCache.get(new MeterCacheKey(switchId, entry.getMeterId()));
+            emit(entry, timestamp, switchId, flowEntry);
         }
     }
 
@@ -70,27 +66,23 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
             } else {
                 emitFlowMeterStats(meterStats, timestamp, switchId, cacheEntry);
             }
-        } catch (JsonEncodeException e) {
-            log.error("Error during serialization of datapoint", e);
         } catch (FlowCookieException e) {
             log.warn("Unknown flow direction for flow '{}' on switch '{}'. Message: {}",
                     cacheEntry.getFlowId(), switchId, e.getMessage());
         }
     }
 
-    private void emitDefaultRuleMeterStats(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId)
-            throws JsonEncodeException {
+    private void emitDefaultRuleMeterStats(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId) {
         Map<String, String> tags = createCommonTags(switchId, meterStats.getMeterId());
         tags.put("cookieHex", createCookieForDefaultRule(meterStats.getMeterId()).toString());
 
-        collector.emit(tuple("pen.switch.flow.system.meter.packets", timestamp, meterStats.getPacketsInCount(), tags));
-        collector.emit(tuple("pen.switch.flow.system.meter.bytes", timestamp, meterStats.getByteInCount(), tags));
-        collector.emit(tuple("pen.switch.flow.system.meter.bits", timestamp, meterStats.getByteInCount() * 8, tags));
+        emitMetric("pen.switch.flow.system.meter.packets", timestamp, meterStats.getPacketsInCount(), tags);
+        emitMetric("pen.switch.flow.system.meter.bytes", timestamp, meterStats.getByteInCount(), tags);
+        emitMetric("pen.switch.flow.system.meter.bits", timestamp, meterStats.getByteInCount() * 8, tags);
     }
 
     private void emitFlowMeterStats(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId,
-                                    @Nullable CacheFlowEntry cacheEntry)
-            throws JsonEncodeException, FlowCookieException {
+                                    @Nullable CacheFlowEntry cacheEntry) throws FlowCookieException {
         if (cacheEntry == null) {
             log.warn("Missed cache for switch '{}' meterId '{}'", switchId, meterStats.getMeterId());
             return;
@@ -104,9 +96,9 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
         tags.put("flowid", cacheEntry.getFlowId());
         tags.put("cookie", cacheEntry.getCookie().toString());
 
-        collector.emit(tuple("pen.flow.meter.packets", timestamp, meterStats.getPacketsInCount(), tags));
-        collector.emit(tuple("pen.flow.meter.bytes", timestamp, meterStats.getByteInCount(), tags));
-        collector.emit(tuple("pen.flow.meter.bits", timestamp, meterStats.getByteInCount() * 8, tags));
+        emitMetric("pen.flow.meter.packets", timestamp, meterStats.getPacketsInCount(), tags);
+        emitMetric("pen.flow.meter.bytes", timestamp, meterStats.getByteInCount(), tags);
+        emitMetric("pen.flow.meter.bits", timestamp, meterStats.getByteInCount() * 8, tags);
     }
 
     private Map<String, String> createCommonTags(SwitchId switchId, long meterId) {

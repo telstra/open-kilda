@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.messaging.model.Switch;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.OutputVlanType;
@@ -55,6 +56,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -86,9 +88,9 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     private static final String requester = "requester-id";
     private static final SwitchInfoData sw1 = new SwitchInfoData(new SwitchId("ff:01"),
-            SwitchChangeType.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda");
+            SwitchChangeType.ACTIVATED, "1.1.1.1", "ff:01", "switch-1", "kilda", false);
     private static final SwitchInfoData sw2 = new SwitchInfoData(new SwitchId("ff:02"),
-            SwitchChangeType.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda");
+            SwitchChangeType.ACTIVATED, "2.2.2.2", "ff:02", "switch-2", "kilda", false);
     private static final List<PathNode> nodes = Arrays.asList(
             new PathNode(new SwitchId("ff:01"), 1, 0, 0L),
             new PathNode(new SwitchId("ff:02"), 2, 1, 0L));
@@ -454,7 +456,10 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventSwitchInfoTest() throws IOException, ClassNotFoundException {
-        SwitchInfoData data = new SwitchInfoData(SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller");
+        Switch switchRecord = new Switch(SWITCH_ID, Inet4Address.getByName("127.0.2.2"),
+                                         Collections.emptySet(), Collections.emptyList());
+        SwitchInfoData data = new SwitchInfoData(
+                SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller", false, switchRecord);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

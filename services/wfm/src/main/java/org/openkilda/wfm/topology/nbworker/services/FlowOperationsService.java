@@ -25,6 +25,7 @@ import org.openkilda.wfm.error.IslNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.Set;
 
 @Slf4j
 public class FlowOperationsService {
@@ -56,5 +57,15 @@ public class FlowOperationsService {
         }
 
         return flowRepository.findAllFlowPairsWithSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
+    }
+
+    /**
+     * Return flows for a switch.
+     *
+     * @param switchId switch id.
+     * @return all flows for a switch.
+     */
+    public Set<String> getFlowIdsForSwitch(SwitchId switchId) {
+        return flowRepository.findFlowIdsBySwitch(switchId);
     }
 }

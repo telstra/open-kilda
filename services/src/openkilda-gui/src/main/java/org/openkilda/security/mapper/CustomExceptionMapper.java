@@ -30,12 +30,12 @@ import org.json.simple.parser.ParseException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Collections;
 
@@ -166,5 +166,20 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpStatus.NO_CONTENT, HttpError.NO_CONTENT.getCode(),
                 HttpError.NO_CONTENT.getAuxilaryMessage(), ex.toString());
+    }
+    
+    /**
+     * Method argument type mismatch exception handler.
+     *
+     * @param ex the ex
+     * @param request the request
+     * @return the response entity
+     */
+    @ExceptionHandler(value = { MethodArgumentTypeMismatchException.class })
+    protected ResponseEntity<Object> methodArgumentTypeMismatchExceptionHandler(
+            final MethodArgumentTypeMismatchException ex, final WebRequest request) {
+        _log.error("Exception: " + ex.getMessage(), ex);
+        return response(HttpStatus.BAD_REQUEST, HttpError.BAD_REQUEST.getCode(),
+                HttpError.BAD_REQUEST.getAuxilaryMessage(), ex.toString());
     }
 }
