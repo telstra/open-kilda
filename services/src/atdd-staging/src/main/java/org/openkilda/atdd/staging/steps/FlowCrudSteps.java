@@ -36,6 +36,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 
 import org.openkilda.atdd.staging.helpers.FlowSet;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
@@ -50,7 +51,6 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.testing.Constants;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.database.Database;
@@ -84,6 +84,7 @@ import org.apache.commons.collections4.ListValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -116,6 +117,7 @@ public class FlowCrudSteps implements En {
     private TopologyDefinition topologyDefinition;
 
     @Autowired
+    @Lazy
     private TraffExamService traffExam;
 
     @Autowired
@@ -401,7 +403,7 @@ public class FlowCrudSteps implements En {
             try {
                 List<Integer> actualMeters = floodlightService.getMeters(sw.getDpId()).values().stream()
                         .map(MeterEntry::getMeterId)
-                        .filter(meterId -> meterId > Constants.MAX_DEFAULT_METER_ID)
+                        .filter(meterId -> meterId > MAX_SYSTEM_RULE_METER_ID)
                         .collect(toList());
 
                 if (!expectedMeters.isEmpty() || !actualMeters.isEmpty()) {

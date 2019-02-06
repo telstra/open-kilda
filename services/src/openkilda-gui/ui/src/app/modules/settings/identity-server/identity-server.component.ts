@@ -73,7 +73,7 @@ export class IdentityServerComponent implements OnInit {
         "body":[""]
       })
     });
-    this.loaderService.show('Loading Identity Server Details..');
+    this.loaderService.show('Loading Identity Server Details');
     this.storesettingservice.getIdentityServerConfigurations().subscribe((jsonResponse)=>{
       if(jsonResponse && jsonResponse['oauth-generate-token-url'] && typeof(jsonResponse['oauth-generate-token-url']['url']) !== 'undefined' ){
         this.commonService.setIdentityServer(true);

@@ -1,5 +1,0 @@
-[template]
-src = "mininet/log.json.tmpl"
-dest = "services/mininet/app/log.json"
-keys = [ "/" ]
-mode = "0644"

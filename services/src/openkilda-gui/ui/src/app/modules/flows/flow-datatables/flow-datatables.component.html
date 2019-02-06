@@ -122,10 +122,10 @@
     <tbody>
       <tr *ngFor="let row of data; let i = index" (click)="showFlow(row)" class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" [class.down-status]="storeLinkSetting && row.hasOwnProperty('discrepancy') && ((row['discrepancy'].hasOwnProperty('bandwidth') && row['discrepancy']['bandwidth']) || (row['discrepancy'].hasOwnProperty('status') && row['discrepancy']['status']))">
         <td class="divTableCell" title="{{row.flowid }}"> {{row.flowid || "-"}} </td>
-        <td title="{{row.source_switch}}">{{row.source_switch || "-"}}</td>
+        <td title="{{row.source_switch_name}}">{{row.source_switch_name || "-"}}</td>
         <td title="{{row.src_port}}">{{row.src_port || "-"}}</td>
         <td>{{row.src_vlan || "-"}}</td>
-        <td title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
+        <td title="{{row.target_switch_name}}">{{row.target_switch_name || "-"}}</td>
         <td>{{row.dst_port || "-"}}</td>
         <td>{{row.dst_vlan || "-"}}</td>
         <td>{{row.maximum_bandwidth / 1000  || "-"}}</td>

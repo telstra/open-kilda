@@ -16,15 +16,21 @@
 package org.openkilda.service;
 
 import org.openkilda.constants.IConstants;
+import org.openkilda.constants.IConstants.ApplicationSetting;
+import org.openkilda.constants.IConstants.StorageType;
 import org.openkilda.dao.entity.ApplicationSettingEntity;
 import org.openkilda.dao.repository.ApplicationSettingRepository;
-import org.openkilda.utility.CollectionUtil;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service("applicationSettingService")
 public class ApplicationSettingService {
@@ -32,36 +38,59 @@ public class ApplicationSettingService {
     @Autowired
     private ApplicationSettingRepository applicationSettingRepository;
 
+    @Autowired
+    private ActivityLogger activityLogger;
+
     /**
-     * Update session timeout.
+     * Gets the application settings.
      *
-     * @param sessionTimeoutInMinutes the session timeout in minutes
+     * @return the application settings
      */
-    public void updateSessionTimeout(final int sessionTimeoutInMinutes) {
-        List<ApplicationSettingEntity> applicationSettings = applicationSettingRepository
-                .findBySettingType(IConstants.ApplicationSetting.SESSION_TIMEOUT);
-        ApplicationSettingEntity applicationSetting = new ApplicationSettingEntity();
-        if (!CollectionUtil.isEmpty(applicationSettings)) {
-            applicationSetting = applicationSettings.get(0);
-        }
-        applicationSetting.setSettingType(IConstants.ApplicationSetting.SESSION_TIMEOUT);
-        applicationSetting.setValue(String.valueOf(sessionTimeoutInMinutes));
-        applicationSetting.setUpdatedDate(new Date());
-        applicationSettingRepository.save(applicationSetting);
-        IConstants.SessionTimeout.TIME_IN_MINUTE = sessionTimeoutInMinutes;
+    public Map<String, String> getApplicationSettings() {
+        Map<String, String> settings = Arrays.asList(IConstants.ApplicationSetting.values()).stream()
+                .collect(Collectors.toMap(s -> s.name(), s -> s.getValue()));
+
+        List<ApplicationSettingEntity> applicationSettings = applicationSettingRepository.findAll();
+        settings.putAll(applicationSettings.stream().collect(Collectors.toMap(
+                setting -> setting.getSettingType().toUpperCase(), setting -> setting.getValue().toUpperCase())));
+        return settings;
     }
-    
+
     /**
-     * Gets the session timeout.
+     * Gets the application setting.
      *
-     * @return the session timeout
+     * @param applicationSetting
+     *            the application settings
+     * @return the application setting
      */
-    public int getSessionTimeout() {
-        List<ApplicationSettingEntity> applicationSettings = applicationSettingRepository
-                .findBySettingType(IConstants.ApplicationSetting.SESSION_TIMEOUT);
-        if (!CollectionUtil.isEmpty(applicationSettings)) {
-            return Integer.valueOf(applicationSettings.get(0).getValue());
+    public String getApplicationSetting(final ApplicationSetting applicationSetting) {
+        ApplicationSettingEntity applicationSettingEntity = applicationSettingRepository
+                .findBySettingTypeIgnoreCase(applicationSetting.name());
+        return applicationSettingEntity == null ? applicationSetting.getValue() : applicationSettingEntity.getValue();
+    }
+
+    /**
+     * Save or update application setting.
+     *
+     * @param applicationSetting the application setting
+     * @param value the value
+     */
+    public void saveOrUpdateApplicationSetting(final ApplicationSetting applicationSetting, final String value) {
+        ApplicationSettingEntity applicationSettingEntity = applicationSettingRepository
+                .findBySettingTypeIgnoreCase(applicationSetting.name());
+        if (applicationSettingEntity == null) {
+            applicationSettingEntity = new ApplicationSettingEntity(applicationSetting.name());
         }
-        return IConstants.SessionTimeout.DEFAULT_TIME_IN_MINUTE;
+
+        if (applicationSetting == ApplicationSetting.SESSION_TIMEOUT) {
+            IConstants.SessionTimeout.TIME_IN_MINUTE = Integer.valueOf(value);
+            activityLogger.log(ActivityType.CONFIG_SESSION_TIMEOUT, value);
+        } else if (applicationSetting == ApplicationSetting.SWITCH_NAME_STORAGE_TYPE) {
+            IConstants.STORAGE_TYPE_FOR_SWITCH_NAME = StorageType.get(value);
+            activityLogger.log(ActivityType.CONFIG_SWITCH_NAME_STORAGE_TYPE, value);
+        }
+        applicationSettingEntity.setValue(value);
+        applicationSettingEntity.setUpdatedDate(new Date());
+        applicationSettingRepository.save(applicationSettingEntity);
     }
 }

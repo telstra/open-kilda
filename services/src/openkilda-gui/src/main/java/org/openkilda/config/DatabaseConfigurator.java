@@ -68,6 +68,7 @@ public class DatabaseConfigurator {
         loadInitialData();
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     private void loadInitialData() {
         List<VersionEntity> versionEntities = versionRepository.findAll();
         long lastestScriptNumber = getLatestScriptVersion(versionEntities);
@@ -92,7 +93,6 @@ public class DatabaseConfigurator {
         return lastestVersion;
     }
 
-    @SuppressWarnings("resource")
     private Map<String, InputStream> getScriptFiles(final long scriptNumber) {
         long lastestScriptNumber = scriptNumber;
         Map<String, InputStream> filesByName = new LinkedHashMap<>();

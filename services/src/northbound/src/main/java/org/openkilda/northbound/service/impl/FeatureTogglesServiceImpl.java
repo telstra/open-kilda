@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,13 +15,11 @@
 
 package org.openkilda.northbound.service.impl;
 
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.system.FeatureToggleRequest;
-import org.openkilda.messaging.command.system.FeatureToggleStateRequest;
-import org.openkilda.messaging.info.system.FeatureTogglesResponse;
-import org.openkilda.messaging.payload.FeatureTogglePayload;
-import org.openkilda.northbound.converter.FeatureTogglesMapper;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
+import org.openkilda.messaging.nbtopology.request.CreateOrUpdateFeatureTogglesRequest;
+import org.openkilda.messaging.nbtopology.request.GetFeatureTogglesRequest;
+import org.openkilda.messaging.nbtopology.response.FeatureTogglesResponse;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FeatureTogglesService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -39,36 +37,33 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
 
     private final Logger logger = LoggerFactory.getLogger(FeatureTogglesServiceImpl.class);
 
-    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
-    private String topoEngTopic;
+    /**
+     * The kafka topic for the nb topology.
+     */
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
+    private String nbworkerTopic;
 
     @Autowired
     private MessagingChannel messagingChannel;
 
-    @Autowired
-    private FeatureTogglesMapper mapper;
-
     @Override
-    public void toggleFeatures(FeatureTogglePayload dto) {
+    public CompletableFuture<FeatureTogglesDto> toggleFeatures(FeatureTogglesDto dto) {
         String correlationId = RequestCorrelationId.getId();
         logger.debug("Processing request to toggle features, new properties are {}", dto);
-        FeatureToggleRequest request = mapper.toRequest(dto);
-        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId,
-                Destination.TOPOLOGY_ENGINE);
+        CreateOrUpdateFeatureTogglesRequest request = new CreateOrUpdateFeatureTogglesRequest(dto);
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
-        messagingChannel.send(topoEngTopic, message);
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(response -> ((FeatureTogglesResponse) response).getFeatureTogglesDto());
     }
 
     @Override
-    public CompletableFuture<FeatureTogglePayload> getFeatureTogglesState() {
+    public CompletableFuture<FeatureTogglesDto> getFeatureTogglesState() {
         String correlationId = RequestCorrelationId.getId();
-        FeatureToggleStateRequest teRequest = new FeatureToggleStateRequest();
-        CommandMessage requestMessage = new CommandMessage(teRequest, System.currentTimeMillis(),
-                correlationId, Destination.TOPOLOGY_ENGINE);
+        GetFeatureTogglesRequest request = new GetFeatureTogglesRequest();
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGet(topoEngTopic, requestMessage)
-                .thenApply(FeatureTogglesResponse.class::cast)
-                .thenApply(mapper::toDto);
-
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(response -> ((FeatureTogglesResponse) response).getFeatureTogglesDto());
     }
 }

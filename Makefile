@@ -37,7 +37,6 @@ run-test: up-log-mode
 
 clean-sources:
 	$(MAKE) -C services/src clean
-	$(MAKE) -C services/mininet clean
 	$(MAKE) -C services/lab-service/lab clean
 	mvn -f services/wfm/pom.xml clean
 
@@ -58,7 +57,6 @@ update: update-parent update-core update-msg update-pce
 compile:
 	$(MAKE) -C services/src
 	$(MAKE) -C services/wfm all-in-one
-	$(MAKE) -C services/mininet
 	$(MAKE) -C services/lab-service/lab test
 
 .PHONY: unit unit-java-common unit-java-storm
@@ -86,43 +84,17 @@ update-props:
 update-props-dryrun:
 	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only -noop
 
-# NB: To override the default (localhost) kilda location, you can make a call like this:
-#		cd services/src/atdd && \
-#		mvn "-Dtest=org.bitbucket.openkilda.atdd.*" \
-#			-DargLine="-Dkilda.host=127.0.0.1" \
-#			test
-
-#
-# NB: Adjust the default tags as ATDD tests are created and validated.
-# 		Regarding syntax .. @A,@B is logical OR .. --tags @A --tags @B is logical AND
-#
-# (crimi) - 2018.03.25 .. these tags seem to be the right tags for ATDD
-# tags := @TOPO,@FCRUD,@NB,@FPATH,@FREINSTALL,@PCE --tags @MVP1
-#
-tags := @TOPO,@FCRUD,@FREINSTALL --tags @MVP1
-kilda := 127.0.0.1
-
 # EXAMPLES:
-#  ( @NB OR @STATS ) AND @MVP1
-#   --tags @NB,@STATS --tags @MVP1
-#   make atdd kilda=127.0.0.1 tags=@
-#   mvn -f services/src/atdd/pom.xml -Patdd test -Dkilda.host="127.0.0.1" -Dcucumber.options="--tags @CRUD_UPDATE"
-#   mvn -f services/src/atdd/pom.xml -Patdd test -Dkilda.host="127.0.0.1" -Dsurefire.useFile=false -Dcucumber.options="--tags @CRUD_UPDATE"
+#   make func-tests  // run all tests
+#   make func-tests PARAMS='-Dtest=spec.links.**'  // run all tests from 'spec.links' package
+#   make func-tests PARAMS='-Dtest=LinkSpec'  // run all tests from 'LinkSpec' class
+#   make func-tests PARAMS='-Dtest="LinkSpec#Able to delete inactive link"'  // run a certain test from 'LinkSpec' class
 
-atdd: update
-	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)" -Dcucumber.options="--tags $(tags)"
+func-tests:
+	mvn -Pfunctional -f services/src/functional-tests/pom.xml test $(PARAMS)
 
-smoke: update
-	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
-
-perf: update
-	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
-
-sec: update
-	mvn -f services/src/atdd/pom.xml -P$@ test -Dkilda.host="$(kilda)"
-
-.PHONY: default run-dev build-latest build-base
-.PHONY: up-test-mode up-log-mode run-test clean-test
-.PHONY: atdd smoke perf sec
-.PHONY: clean-sources unit update
+.PHONY: default run-dev build-latest build-base	
+.PHONY: up-test-mode up-log-mode run-test clean-test	
+.PHONY: clean-sources unit update	
 .PHONY: clean
+.PHONY: func-tests

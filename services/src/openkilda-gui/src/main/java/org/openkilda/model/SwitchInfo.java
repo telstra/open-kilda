@@ -18,7 +18,8 @@ package org.openkilda.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+import lombok.Data;
 
 import java.io.Serializable;
 
@@ -28,80 +29,62 @@ import java.io.Serializable;
  * @author Gaurav Chugh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"switch_id", "address", "hostname", "description", "state"})
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Data
 public class SwitchInfo implements Serializable {
+    
+    private static final long serialVersionUID = 6763064864461521069L;
+    
     @JsonProperty("switch_id")
     private String switchId;
+    
     @JsonProperty("address")
     private String address;
+    
     @JsonProperty("hostname")
     private String hostname;
+    
     @JsonProperty("description")
     private String description;
+    
     @JsonProperty("name")
     private String name;
+    
+    @JsonProperty("common-name")
+    private String commonName;
 
     @JsonProperty("state")
     private String state;
 
-    /** The Constant serialVersionUID. */
-    private static final long serialVersionUID = 6763064864461521069L;
+    @JsonProperty("discrepancy")
+    private SwitchDiscrepancy discrepancy;
 
-    public String getSwitchId() {
-        return switchId;
-    }
+    @JsonProperty("uuid")
+    private String uuid;
 
-    public void setSwitchId(String switchId) {
-        this.switchId = switchId;
-    }
+    @JsonProperty("pop-location")
+    private PopLocation popLocation;
 
-    public String getAddress() {
-        return address;
-    }
+    @JsonProperty("model")
+    private String model;
 
-    public void setAddress(String address) {
-        this.address = address;
-    }
+    @JsonProperty("rack-location")
+    private String rackLocation;
 
-    public String getHostname() {
-        return hostname;
-    }
+    @JsonProperty("reference-url")
+    private String referenceUrl;
 
-    public void setHostname(String hostname) {
-        this.hostname = hostname;
-    }
+    @JsonProperty("serial-number")
+    private String serialNumber;
 
-    public String getDescription() {
-        return description;
-    }
+    @JsonProperty("rack-number")
+    private String rackNumber;
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    @JsonProperty("software-version")
+    private String softwareVersion;
 
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getState() {
-        return state;
-    }
-
-    public void setState(String state) {
-        this.state = state;
-    }
-
-    @Override
-    public String toString() {
-        return "SwitchInfo [switchId=" + switchId + ", address=" + address + ", hostname="
-                + hostname + ", description=" + description + ", name=" + name + ", state=" + state
-                + "]";
-    }
+    @JsonProperty("manufacturer")
+    private String manufacturer;
+    
 
 }

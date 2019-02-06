@@ -21,11 +21,13 @@ import static org.junit.Assert.assertThat;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.Node;
 
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
-import java.util.List;
+import java.util.Set;
 
 public class AvailableNetworkTest {
     private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:5a:04:87");
@@ -46,6 +48,41 @@ public class AvailableNetworkTest {
     }
 
     @Test
+    public void shouldReduceByWeight() {
+        int cost = 1;
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH, 1, 1, 20, 5);
+        addLink(network, SRC_SWITCH, DST_SWITCH, 5, 5, cost, 3);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 1, 20, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 5, 5, cost, 3);
+
+        network.reduceByWeight(edge -> (long) edge.getCost());
+
+        Node srcNode = network.getSwitch(SRC_SWITCH);
+        Node dstNode = network.getSwitch(DST_SWITCH);
+        assertThat(srcNode.getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(srcNode.getIncomingLinks(), Matchers.hasSize(1));
+        assertThat(dstNode.getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(dstNode.getIncomingLinks(), Matchers.hasSize(1));
+        assertEquals(cost, srcNode.getIncomingLinks().iterator().next().getCost());
+        assertEquals(cost, srcNode.getOutgoingLinks().iterator().next().getCost());
+    }
+
+    @Test
+    public void shouldKeepLinksWithOtherSwitchesAfterReducing() {
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, new SwitchId("00:00"), 1, 1, 20, 5);
+        addLink(network, SRC_SWITCH, DST_SWITCH, 2, 2, 10, 3);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 1, 20, 5);
+        addLink(network, new SwitchId("00:00"), SRC_SWITCH, 2, 2, 10, 3);
+
+        network.reduceByWeight(edge -> (long) edge.getCost());
+
+        assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(2));
+        assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(2));
+    }
+
+    @Test
     public void shouldSetEqualCostForPairedLinks() {
         AvailableNetwork network = new AvailableNetwork();
         addLink(network, SRC_SWITCH, DST_SWITCH,
@@ -53,20 +90,18 @@ public class AvailableNetworkTest {
         addLink(network, DST_SWITCH, SRC_SWITCH,
                 60, 7, 20, 3);
 
-        network.reduceByCost();
+        Node srcSwitch = network.getSwitch(SRC_SWITCH);
+        Node dstSwitch = network.getSwitch(DST_SWITCH);
 
-        Switch srcSwitch = network.getSwitch(SRC_SWITCH);
-        Switch dstSwitch = network.getSwitch(DST_SWITCH);
-
-        List<Isl> outgoingLinks = srcSwitch.getOutgoingLinks();
+        Set<Edge> outgoingLinks = srcSwitch.getOutgoingLinks();
         assertThat(outgoingLinks, Matchers.hasSize(1));
-        Isl outgoingIsl = outgoingLinks.get(0);
+        Edge outgoingIsl = outgoingLinks.iterator().next();
         assertEquals(outgoingIsl.getDestSwitch(), dstSwitch);
         assertEquals(10, outgoingIsl.getCost());
 
-        List<Isl> incomingLinks = srcSwitch.getIncomingLinks();
+        Set<Edge> incomingLinks = srcSwitch.getIncomingLinks();
         assertThat(incomingLinks, Matchers.hasSize(1));
-        Isl incomingIsl = incomingLinks.get(0);
+        Edge incomingIsl = incomingLinks.iterator().next();
         assertEquals(incomingIsl.getSrcSwitch(), dstSwitch);
         assertEquals(20, incomingIsl.getCost());
     }
@@ -77,17 +112,17 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
 
-        Switch srcSwitch = network.getSwitch(SRC_SWITCH);
-        Switch dstSwitch = network.getSwitch(DST_SWITCH);
+        Node srcSwitch = network.getSwitch(SRC_SWITCH);
+        Node dstSwitch = network.getSwitch(DST_SWITCH);
 
-        List<Isl> outgoingLinks = srcSwitch.getOutgoingLinks();
+        Set<Edge> outgoingLinks = srcSwitch.getOutgoingLinks();
         assertThat(outgoingLinks, Matchers.hasSize(1));
-        Isl outgoingIsl = outgoingLinks.get(0);
+        Edge outgoingIsl = outgoingLinks.iterator().next();
         assertEquals(dstSwitch, outgoingIsl.getDestSwitch());
 
-        List<Isl> incomingLinks = dstSwitch.getIncomingLinks();
+        Set<Edge> incomingLinks = dstSwitch.getIncomingLinks();
         assertThat(incomingLinks, Matchers.hasSize(1));
-        Isl incomingIsl = incomingLinks.get(0);
+        Edge incomingIsl = incomingLinks.iterator().next();
         assertEquals(srcSwitch, incomingIsl.getSrcSwitch());
     }
 

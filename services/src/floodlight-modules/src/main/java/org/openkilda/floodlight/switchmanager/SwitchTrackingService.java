@@ -18,6 +18,7 @@ package org.openkilda.floodlight.switchmanager;
 import org.openkilda.floodlight.converter.IofSwitchConverter;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
@@ -28,11 +29,12 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SwitchPort;
 import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -46,8 +48,11 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class SwitchTrackingService implements IOFSwitchListener, IService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchTrackingService.class);
@@ -56,13 +61,14 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
 
     private IKafkaProducerService producerService;
     private ISwitchManager switchManager;
+    private FeatureDetectorService featureDetector;
 
-    private String topoDiscoTopic;
+    private String discoveryTopic;
 
     /**
      * Send dump contain all connected at this moment switches.
      */
-    public void dumpAllSwitches(String correlationId) throws SwitchOperationException {
+    public void dumpAllSwitches(String correlationId) {
         discoveryLock.writeLock().lock();
         try {
             dumpAllSwitchesAction(correlationId);
@@ -74,13 +80,10 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     /**
      * Desired to be used on the end of switch activation to send discovery messages.
      */
-    public void completeSwitchActivation(DatapathId dpId) throws SwitchOperationException {
+    public void completeSwitchActivation(DatapathId dpId) {
         discoveryLock.readLock().lock();
         try {
             switchDiscoveryAction(dpId, SwitchChangeType.ACTIVATED);
-            for (OFPortDesc portDesc : switchManager.getEnabledPhysicalPorts(dpId)) {
-                portDiscoveryAction(dpId, portDesc.getPortNo(), PortChangeType.UP);
-            }
         } finally {
             discoveryLock.readLock().unlock();
         }
@@ -146,42 +149,31 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     public void setup(FloodlightModuleContext context) {
         producerService = context.getServiceImpl(IKafkaProducerService.class);
         switchManager = context.getServiceImpl(ISwitchManager.class);
+        featureDetector = context.getServiceImpl(FeatureDetectorService.class);
 
-        topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
+        discoveryTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
 
         context.getServiceImpl(IOFSwitchService.class).addOFSwitchListener(this);
     }
 
-    private void dumpAllSwitchesAction(String correlationId) throws SwitchOperationException {
-        producerService.enableGuaranteedOrder(topoDiscoTopic);
+    private void dumpAllSwitchesAction(String correlationId) {
+        producerService.enableGuaranteedOrder(discoveryTopic);
         try {
             producerService.sendMessageAndTrack(
-                    topoDiscoTopic,
+                    discoveryTopic,
                     new InfoMessage(new NetworkDumpBeginMarker(), System.currentTimeMillis(), correlationId));
 
             for (IOFSwitch sw : switchManager.getAllSwitchMap().values()) {
-                NetworkDumpSwitchData swData = new NetworkDumpSwitchData(new SwitchId(sw.getId().getLong()));
-                producerService.sendMessageAndTrack(topoDiscoTopic,
+                NetworkDumpSwitchData swData = new NetworkDumpSwitchData(buildSwitch(sw));
+                producerService.sendMessageAndTrack(discoveryTopic,
                                                     new InfoMessage(swData, System.currentTimeMillis(), correlationId));
-
-                dumpSwitchPorts(sw.getId(), correlationId);
             }
 
             producerService.sendMessageAndTrack(
-                    topoDiscoTopic,
+                    discoveryTopic,
                     new InfoMessage(new NetworkDumpEndMarker(), System.currentTimeMillis(), correlationId));
         } finally {
-            producerService.disableGuaranteedOrder(topoDiscoTopic);
-        }
-    }
-
-    private void dumpSwitchPorts(DatapathId dpId, String correlationId) throws SwitchOperationException {
-        for (OFPortDesc portDesc : switchManager.getEnabledPhysicalPorts(dpId)) {
-            NetworkDumpPortData portData = new NetworkDumpPortData(new SwitchId(dpId.getLong()),
-                                                                   portDesc.getPortNo().getPortNumber());
-
-            producerService.sendMessageAndTrack(topoDiscoTopic,
-                                                new InfoMessage(portData, System.currentTimeMillis(), correlationId));
+            producerService.disableGuaranteedOrder(discoveryTopic);
         }
     }
 
@@ -208,7 +200,9 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         Message message = null;
         if (SwitchChangeType.DEACTIVATED != event && SwitchChangeType.REMOVED != event) {
             try {
-                message = buildSwitchMessage(switchManager.lookupSwitch(dpId), event);
+                IOFSwitch sw = switchManager.lookupSwitch(dpId);
+                Switch switchRecord = buildSwitch(sw);
+                message = buildSwitchMessage(sw, switchRecord, event);
             } catch (SwitchNotFoundException e) {
                 logger.error(
                         "Switch {} is not in management state now({}), switch ISL discovery details will be degraded.",
@@ -219,13 +213,13 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
             message = buildSwitchMessage(dpId, event);
         }
 
-        producerService.sendMessageAndTrack(topoDiscoTopic, dpId.toString(), message);
+        producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
     private void portDiscoveryAction(DatapathId dpId, OFPort port, PortChangeType changeType) {
         logger.info("Send port discovery ({}-{} - {})", dpId, port, changeType);
         Message message = buildPortMessage(dpId, port, changeType);
-        producerService.sendMessageAndTrack(topoDiscoTopic, dpId.toString(), message);
+        producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
     private static org.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {
@@ -250,8 +244,8 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param eventType type of event
      * @return Message
      */
-    private static Message buildSwitchMessage(IOFSwitch sw, SwitchChangeType eventType) {
-        return buildMessage(IofSwitchConverter.buildSwitchInfoData(sw, eventType));
+    private static Message buildSwitchMessage(IOFSwitch sw, Switch switchRecord, SwitchChangeType eventType) {
+        return buildMessage(IofSwitchConverter.buildSwitchInfoData(sw, switchRecord, eventType));
     }
 
     /**
@@ -287,6 +281,15 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      */
     private static Message buildMessage(final InfoData data) {
         return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null);
+    }
+
+    private Switch buildSwitch(IOFSwitch sw) {
+        List<SwitchPort> ports = switchManager.getPhysicalPorts(sw).stream()
+                .map(port -> new SwitchPort(port.getPortNo().getPortNumber(),
+                                            port.isEnabled() ? SwitchPort.State.UP : SwitchPort.State.DOWN))
+                .collect(Collectors.toList());
+        Set<Switch.Feature> features = featureDetector.detectSwitch(sw);
+        return new Switch(new SwitchId(sw.getId().getLong()), switchManager.getSwitchIpAddress(sw), features, ports);
     }
 
     private void logSwitchEvent(DatapathId dpId, SwitchChangeType event) {

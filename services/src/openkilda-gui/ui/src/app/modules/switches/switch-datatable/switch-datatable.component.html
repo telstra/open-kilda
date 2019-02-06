@@ -16,13 +16,13 @@
 </div>
 
 <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
-  <table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+  <table id="flowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
     <thead>
       <tr>
         <th class="">
-        <span  title="Switch ID">Switch ID</span>
-            <i class="fa fa-search" (click)="toggleSearch($event,'switch_id')"></i>
-            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="switch_id" [hidden]="!switch_id" />
+          <span  title="Switch ID">Switch ID</span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'switch_id')"></i>
+          <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="switch_id" [hidden]="!switch_id" />
         </th>
         <th class="">
             <span title="Name">Name</span>
@@ -43,6 +43,11 @@
         
         </th>
         <th class="">
+          <span title="Pop Location">Pop Location</span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'poplocation')"></i>
+          <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="poplocation" [hidden]="!poplocation" />
+        </th>
+        <th class="">
             <span title="Name">Description</span>
             <i class="fa fa-search" (click)="toggleSearch($event,'description')"></i>
             <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="description" [hidden]="!description" />
@@ -59,18 +64,21 @@
 
     <tbody>
         <tr *ngFor="let row of data; let i = index" (click)="showSwitch(row)" class="flowDataRow"
-        [ngClass]="{'down-state': row.state == 'DEACTIVATED' , 'up-state': row.state == 'ACTIVATED'}">
+        [ngClass]="{'down-state': row.state == 'DEACTIVATED' , 'up-state': row.state == 'ACTIVATED'}" [class.down-status]="row.hasOwnProperty('discrepancy') && ((row['discrepancy'].hasOwnProperty('status') && row['discrepancy']['status']))">
             <td class="divTableCell" title="{{checkValue(row.switch_id)}}" >
               {{checkValue(row.switch_id)}}
             </td>
-            <td class="divTableCell" title="{{checkValue(row.name)}}" >
-              {{checkValue(row.name)}}
+            <td class="divTableCell" title="{{ row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}" >
+              {{ row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}
             </td>
             <td class="divTableCell" title="{{checkValue(row.address)}}" >
               {{checkValue(row.address)}}
             </td>
             <td class="divTableCell" title="{{checkValue(row.hostname)}}" >
               {{checkValue(row.hostname)}}
+            </td>
+            <td class="divTableCell" title="{{ row['pop-location'] && row['pop-location']['pop-code'] ? checkValue(row['pop-location']['pop-code']) : ''}}" >
+              {{ row['pop-location'] && row['pop-location']['pop-code'] ? checkValue(row['pop-location']['pop-code']) : '-'}}
             </td>
             <td class="divTableCell" title="{{checkValue(row.description)}}" >
               {{checkValue(row.description)}}

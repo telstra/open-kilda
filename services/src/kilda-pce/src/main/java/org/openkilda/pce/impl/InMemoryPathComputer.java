@@ -19,41 +19,52 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.Isl;
+import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.PathFinder;
-import org.openkilda.persistence.PersistenceException;
-import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.pce.model.Edge;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Implementation of {@link PathComputer} that builds and operates over in-memory {@link AvailableNetwork}.
+ * Implementation of {@link PathComputer} that operates over in-memory {@link AvailableNetwork}.
  * <p/>
  * The path finding algorithm is defined by provided {@link PathFinder}.
  */
 @Slf4j
 public class InMemoryPathComputer implements PathComputer {
-    protected final IslRepository islRepository;
+    private final AvailableNetworkFactory availableNetworkFactory;
     private final PathFinder pathFinder;
 
-    public InMemoryPathComputer(IslRepository islRepository, PathFinder pathFinder) {
-        this.islRepository = islRepository;
+    public InMemoryPathComputer(AvailableNetworkFactory availableNetworkFactory, PathFinder pathFinder) {
+        this.availableNetworkFactory = availableNetworkFactory;
         this.pathFinder = pathFinder;
     }
 
     @Override
     public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
             throws UnroutableFlowException, RecoverableException {
+        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth), flow);
+    }
+
+    @Override
+    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
+            throws UnroutableFlowException, RecoverableException {
+        return getPath(
+                availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth, buildStrategy), flow);
+    }
+
+    private PathPair getPath(AvailableNetwork network, Flow flow)
+            throws UnroutableFlowException {
 
         if (flow.getSrcSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
             log.info("No path computation for one-switch flow");
@@ -63,10 +74,10 @@ public class InMemoryPathComputer implements PathComputer {
                     .build();
         }
 
-        AvailableNetwork network = buildNetwork(flow, reuseAllocatedFlowBandwidth);
-
-        Pair<List<Isl>, List<Isl>> biPath;
+        Pair<List<Edge>, List<Edge>> biPath;
         try {
+            network.reduceByWeight(pathFinder.getWeightFunction());
+
             biPath = pathFinder.findPathInNetwork(network, flow.getSrcSwitch().getSwitchId(),
                     flow.getDestSwitch().getSwitchId());
         } catch (UnroutableFlowException e) {
@@ -78,66 +89,40 @@ public class InMemoryPathComputer implements PathComputer {
         return convertToPathPair(biPath);
     }
 
-    protected Collection<Isl> getAvailableIsls(Flow flow) {
-        return flow.isIgnoreBandwidth()
-                ? islRepository.findAllActive() : islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth());
-    }
-
-    private AvailableNetwork buildNetwork(Flow flow, boolean reuseAllocatedFlowBandwidth) throws RecoverableException {
-        AvailableNetwork network = new AvailableNetwork();
-        try {
-            // Reads all active links from the database and creates representation of the network.
-            Collection<Isl> links = getAvailableIsls(flow);
-            links.forEach(network::addLink);
-
-            if (reuseAllocatedFlowBandwidth && !flow.isIgnoreBandwidth()) {
-                // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
-                Collection<Isl> flowLinks = islRepository.findActiveAndOccupiedByFlowWithAvailableBandwidth(
-                        flow.getFlowId(), flow.getBandwidth());
-                flowLinks.forEach(network::addLink);
-            }
-        } catch (PersistenceException e) {
-            throw new RecoverableException("An error from neo4j", e);
-        }
-        network.reduceByCost();
-
-        return network;
-    }
-
-    private PathPair convertToPathPair(Pair<List<Isl>, List<Isl>> biPath) {
+    private PathPair convertToPathPair(Pair<List<Edge>, List<Edge>> biPath) {
         long latency = 0L;
         List<FlowPath.Node> forwardNodes = new LinkedList<>();
         List<FlowPath.Node> reverseNodes = new LinkedList<>();
 
         int seqId = 0;
-        List<Isl> forwardIsl = biPath.getLeft();
-        for (Isl isl : forwardIsl) {
-            latency += isl.getLatency();
+        List<Edge> forwardIsl = biPath.getLeft();
+        for (Edge edge : forwardIsl) {
+            latency += edge.getLatency();
             forwardNodes.add(FlowPath.Node.builder()
-                    .switchId(isl.getSrcSwitch().getSwitchId())
-                    .portNo(isl.getSrcPort())
+                    .switchId(edge.getSrcSwitch().getSwitchId())
+                    .portNo(edge.getSrcPort())
                     .seqId(seqId++)
-                    .segmentLatency((long) isl.getLatency())
+                    .segmentLatency(edge.getLatency())
                     .build());
             forwardNodes.add(FlowPath.Node.builder()
-                    .switchId(isl.getDestSwitch().getSwitchId())
-                    .portNo(isl.getDestPort())
+                    .switchId(edge.getDestSwitch().getSwitchId())
+                    .portNo(edge.getDestPort())
                     .seqId(seqId++)
                     .build());
         }
 
         seqId = 0;
-        List<Isl> reverseIsl = biPath.getRight();
-        for (Isl isl : reverseIsl) {
+        List<Edge> reverseIsl = biPath.getRight();
+        for (Edge edge : reverseIsl) {
             reverseNodes.add(FlowPath.Node.builder()
-                    .switchId(isl.getSrcSwitch().getSwitchId())
-                    .portNo(isl.getSrcPort())
+                    .switchId(edge.getSrcSwitch().getSwitchId())
+                    .portNo(edge.getSrcPort())
                     .seqId(seqId++)
-                    .segmentLatency((long) isl.getLatency())
+                    .segmentLatency(edge.getLatency())
                     .build());
             reverseNodes.add(FlowPath.Node.builder()
-                    .switchId(isl.getDestSwitch().getSwitchId())
-                    .portNo(isl.getDestPort())
+                    .switchId(edge.getDestSwitch().getSwitchId())
+                    .portNo(edge.getDestPort())
                     .seqId(seqId++)
                     .build());
         }

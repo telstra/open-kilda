@@ -19,7 +19,6 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.CommandWithReplyToMessage;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
@@ -33,6 +32,7 @@ import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
+import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -47,6 +47,7 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
@@ -56,6 +57,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -134,8 +136,8 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<SwitchFlowEntries> getRules(SwitchId switchId, Long cookie, String correlationId) {
         DumpRulesRequest request = new DumpRulesRequest(switchId);
-        CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
-                correlationId, Destination.CONTROLLER, northboundTopic);
+        CommandMessage commandMessage = new CommandMessage(request, System.currentTimeMillis(),
+                correlationId);
 
         return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
                 .thenApply(SwitchFlowEntries.class::cast)
@@ -153,8 +155,7 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Delete switch rules request received: switch={}, deleteAction={}", switchId, deleteAction);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, null);
-        CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
-                Destination.CONTROLLER, northboundTopic);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGet(floodlightTopic, request)
                 .thenApply(SwitchRulesResponse.class::cast)
@@ -167,8 +168,7 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Delete switch rules request received: switch={}, criteria={}", switchId, criteria);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, null, criteria);
-        CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
-                Destination.CONTROLLER, northboundTopic);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGet(floodlightTopic, request)
                 .thenApply(SwitchRulesResponse.class::cast)
@@ -184,8 +184,7 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Install switch rules request received: switch={}, action={}", switchId, installAction);
 
         SwitchRulesInstallRequest data = new SwitchRulesInstallRequest(switchId, installAction);
-        CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
-                Destination.CONTROLLER, northboundTopic);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGet(floodlightTopic, request)
                 .thenApply(SwitchRulesResponse.class::cast)
@@ -201,8 +200,7 @@ public class SwitchServiceImpl implements SwitchService {
         logger.debug("Set/Get switch connect mode request received: mode = {}", mode);
 
         ConnectModeRequest data = new ConnectModeRequest(mode);
-        CommandMessage request = new CommandWithReplyToMessage(data, System.currentTimeMillis(), correlationId,
-                Destination.CONTROLLER, northboundTopic);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGet(floodlightTopic, request)
                 .thenApply(ConnectModeResponse.class::cast)
@@ -213,9 +211,8 @@ public class SwitchServiceImpl implements SwitchService {
     public CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId) {
         final String correlationId = RequestCorrelationId.getId();
 
-        CommandWithReplyToMessage validateCommandMessage = new CommandWithReplyToMessage(
-                new DumpRulesRequest(switchId),
-                System.currentTimeMillis(), correlationId, Destination.CONTROLLER, nbworkerTopic);
+        CommandMessage validateCommandMessage = new CommandMessage(
+                new ValidateRulesRequest(switchId), System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGet(floodlightTopic, validateCommandMessage)
                 .thenApply(SyncRulesResponse.class::cast)
@@ -240,9 +237,9 @@ public class SwitchServiceImpl implements SwitchService {
         }
 
         String syncCorrelationId = format("%s-sync", RequestCorrelationId.getId());
-        CommandWithReplyToMessage syncCommandMessage = new CommandWithReplyToMessage(
+        CommandMessage syncCommandMessage = new CommandMessage(
                 new SwitchRulesSyncRequest(switchId, missingRules),
-                System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+                System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE);
 
         return messagingChannel.sendAndGet(topoEngTopic, syncCommandMessage);
     }
@@ -250,9 +247,8 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<SwitchMeterEntries> getMeters(SwitchId switchId) {
         String requestId = RequestCorrelationId.getId();
-        CommandWithReplyToMessage dumpCommand = new CommandWithReplyToMessage(
-                new DumpMetersRequest(switchId),
-                System.currentTimeMillis(), requestId, Destination.CONTROLLER, northboundTopic);
+        CommandMessage dumpCommand = new CommandMessage(
+                new DumpMetersRequest(switchId), System.currentTimeMillis(), requestId);
         return messagingChannel.sendAndGet(floodlightTopic, dumpCommand)
                 .thenApply(SwitchMeterEntries.class::cast);
     }
@@ -260,9 +256,8 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<DeleteMeterResult> deleteMeter(SwitchId switchId, long meterId) {
         String requestId = RequestCorrelationId.getId();
-        CommandWithReplyToMessage deleteCommand = new CommandWithReplyToMessage(
-                new DeleteMeterRequest(switchId, meterId),
-                System.currentTimeMillis(), requestId, Destination.TOPOLOGY_ENGINE, northboundTopic);
+        CommandMessage deleteCommand = new CommandMessage(
+                new DeleteMeterRequest(switchId, meterId), System.currentTimeMillis(), requestId);
 
         return messagingChannel.sendAndGet(floodlightTopic, deleteCommand)
                 .thenApply(DeleteMeterResponse.class::cast)
@@ -278,9 +273,9 @@ public class SwitchServiceImpl implements SwitchService {
 
         PortConfigurationRequest request = new PortConfigurationRequest(switchId, 
                 port, toPortAdminDown(config.getStatus()));
-        CommandWithReplyToMessage updateStatusCommand = new CommandWithReplyToMessage(
-                request, System.currentTimeMillis(), correlationId, 
-                Destination.CONTROLLER, northboundTopic);
+        CommandMessage updateStatusCommand = new CommandMessage(
+                request, System.currentTimeMillis(), correlationId,
+                Destination.CONTROLLER);
 
         return messagingChannel.sendAndGet(floodlightTopic, updateStatusCommand)
                 .thenApply(PortConfigurationResponse.class::cast)
@@ -294,8 +289,8 @@ public class SwitchServiceImpl implements SwitchService {
     public CompletableFuture<SwitchPortsDescription> getSwitchPortsDescription(SwitchId switchId) {
         String correlationId = RequestCorrelationId.getId();
         DumpSwitchPortsDescriptionRequest request = new DumpSwitchPortsDescriptionRequest(switchId);
-        CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
-                correlationId, Destination.CONTROLLER, northboundTopic);
+        CommandMessage commandMessage = new CommandMessage(request, System.currentTimeMillis(),
+                correlationId, Destination.CONTROLLER);
 
         return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
                 .thenApply(SwitchPortsDescription.class::cast);
@@ -308,11 +303,33 @@ public class SwitchServiceImpl implements SwitchService {
     public CompletableFuture<PortDescription> getPortDescription(SwitchId switchId, int port) {
         String correlationId = RequestCorrelationId.getId();
         DumpPortDescriptionRequest request = new DumpPortDescriptionRequest(switchId, port);
-        CommandWithReplyToMessage commandMessage = new CommandWithReplyToMessage(request, System.currentTimeMillis(),
-                correlationId, Destination.CONTROLLER, northboundTopic);
+        CommandMessage commandMessage = new CommandMessage(request, System.currentTimeMillis(),
+                correlationId, Destination.CONTROLLER);
 
         return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
                 .thenApply(PortDescription.class::cast);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<SwitchDto> updateSwitchUnderMaintenance(SwitchId switchId,
+            UnderMaintenanceDto underMaintenanceDto) {
+
+        String correlationId = RequestCorrelationId.getId();
+        logger.debug("Update under maintenance flag for switch request processing");
+        UpdateSwitchUnderMaintenanceRequest data =
+                new UpdateSwitchUnderMaintenanceRequest(switchId, underMaintenanceDto.isUnderMaintenance(),
+                        underMaintenanceDto.isEvacuate());
+
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(messages -> messages.stream()
+                        .map(SwitchInfoData.class::cast)
+                        .map(switchMapper::toSwitchDto)
+                        .collect(Collectors.toList()).get(0));
     }
 
     private SwitchFlowEntries findByCookie(Long cookie, SwitchFlowEntries entries) {

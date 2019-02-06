@@ -16,6 +16,8 @@
 package org.openkilda.controller;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.SwitchService;
@@ -31,12 +33,12 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.ArrayList;
 import java.util.List;
-
 
 @ExtendWith(MockitoExtension.class)
 @RunWith(MockitoJUnitRunner.class)
@@ -50,6 +52,7 @@ public class SwitchControllerTest {
     @InjectMocks
     private SwitchController switchController;
 
+    @SuppressWarnings("unused")
     private static final String switchUuid = "de:ad:be:ef:00:00:00:03";
 
     @Before
@@ -62,8 +65,8 @@ public class SwitchControllerTest {
     public void testGetAllSwitchesDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
-            Mockito.when(serviceSwitch.getSwitches()).thenReturn(switchesInfo);
-            // mockMvc.perform(get("/switch").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+            Mockito.when(serviceSwitch.getSwitches(false)).thenReturn(switchesInfo);
+            mockMvc.perform(get("/api/switch/list").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception exception) {
             assertTrue(false);
@@ -74,8 +77,9 @@ public class SwitchControllerTest {
     public void testGetSwichLinkDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
-            Mockito.when(serviceSwitch.getSwitches()).thenReturn(switchesInfo);
-            // mockMvc.perform(get("/switch/links").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+            Mockito.when(serviceSwitch.getSwitches(false)).thenReturn(switchesInfo);
+            mockMvc.perform(get("/api/switch/links").contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
             assertTrue(false);

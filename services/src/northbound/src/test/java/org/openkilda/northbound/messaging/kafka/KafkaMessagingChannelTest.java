@@ -88,7 +88,7 @@ public class KafkaMessagingChannelTest {
         String requestId = UUID.randomUUID().toString();
         long time = System.currentTimeMillis();
         SwitchInfoData data = new SwitchInfoData(new SwitchId("00:00:00:00:00:01"), SwitchChangeType.ACTIVATED, null,
-                "hostname", "description", "controller");
+                "hostname", "description", "controller", false);
         InfoMessage expected = new InfoMessage(data, time, requestId);
         RESPONSES.add(expected);
 
@@ -246,7 +246,8 @@ public class KafkaMessagingChannelTest {
      */
     private void prepareChunkedResponses(String requestId, long timestamp, int size) {
         for (int i = 0; i < size; i++) {
-            InfoData data = new SwitchInfoData(new SwitchId(i), SwitchChangeType.ACTIVATED, null, null, null, null);
+            InfoData data = new SwitchInfoData(new SwitchId(i), SwitchChangeType.ACTIVATED,
+                    null, null, null, null, false);
             ChunkedInfoMessage response = new ChunkedInfoMessage(data, timestamp, requestId, requestId + i, size);
             CHUNKED_RESPONSES.add(response);
         }

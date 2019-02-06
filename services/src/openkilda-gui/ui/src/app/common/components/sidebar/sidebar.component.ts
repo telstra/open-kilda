@@ -22,7 +22,7 @@ export class SidebarComponent implements OnInit {
         localStorage.removeItem('activeFlowStatusFilter');        
       }
             
-      if(this.currentUrl.includes('/topology') || this.currentUrl.includes('/flows') || this.currentUrl.includes('/home') || this.currentUrl.includes('/usermanagement') || this.currentUrl.includes('/useractivity') ){
+      if(this.currentUrl.includes('/topology') || this.currentUrl.includes('/flows') || this.currentUrl.includes('/home') || this.currentUrl.includes('/usermanagement') || this.currentUrl.includes('/useractivity') || this.currentUrl.includes('/storesetting')  ){
         localStorage.removeItem('SWITCHES_LIST');
         localStorage.removeItem('switchDetailsJSON');
         localStorage.removeItem('switchPortDetail');  

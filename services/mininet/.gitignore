@@ -1,5 +1,0 @@
-.eggs/
-.tox/
-build/
-dist/
-*.egg-info/

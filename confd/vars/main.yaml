@@ -3,7 +3,6 @@
 kilda_environment_naming_prefix: ""
 kilda_environment_role: "devel"
 kilda_test_profile: "virtual"
-kilda_test_topology_single: True
 
 kilda_neo4j_host: "neo4j.pendev"
 kilda_neo4j_bolt_port: "7687"
@@ -96,7 +95,10 @@ kilda_port_up_down_throttling_delay_seconds_min: 1
 kilda_port_up_down_throttling_delay_seconds_warm_up: 5
 kilda_port_up_down_throttling_delay_seconds_cool_down: 5
 
-kilda_pce_strategy: "SYMMETRIC_COST"
+kilda_bfd_port_offset: 200
+
+kilda_pce_strategy: "COST"
+kilda_pce_network_strategy: "SYMMETRIC_COST"
 
 kilda_logging_json_file: False
 kilda_logging_logstash: True
@@ -104,7 +106,7 @@ kilda_logging_logfile_path: "/var/log/"
 kilda_logging_logstash_host: "logstash.pendev"
 kilda_logging_elasticsearch_proto: "http"
 kilda_logging_elasticsearch_hosts: "elasticsearch.pendev:9200"
-kilda_logging_fl_loglevel: "INFO"
+kilda_logging_fl_loglevel: "DEBUG"
 kilda_logging_fl_logaccess: True
 kilda_logging_port_topology_engine: 5000
 kilda_logging_port_storm: 5001

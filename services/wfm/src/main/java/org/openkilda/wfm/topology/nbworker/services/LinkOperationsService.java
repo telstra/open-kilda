@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.SwitchId;
@@ -24,14 +23,13 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.error.IllegalIslStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
-import org.openkilda.wfm.share.mappers.IslMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class LinkOperationsService {
@@ -99,10 +97,9 @@ public class LinkOperationsService {
      *
      * @return List of ISLs
      */
-    public List<IslInfoData> getAllIsls() {
-        return islRepository.findAll().stream()
-                .map(IslMapper.INSTANCE::map)
-                .collect(Collectors.toList());
+    public Collection<Isl> getAllIsls(SwitchId srcSwitch, Integer srcPort,
+                                      SwitchId dstSwitch, Integer dstPort) {
+        return islRepository.findByPartialEndpoints(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
     /**

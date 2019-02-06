@@ -15,17 +15,15 @@
 
 package org.openkilda.messaging.info.discovery;
 
-import static java.util.Objects.requireNonNull;
-
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.model.Switch;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
 
 /**
@@ -33,14 +31,16 @@ import lombok.Value;
  */
 @Value
 @Builder
-@JsonNaming(SnakeCaseStrategy.class)
+@EqualsAndHashCode(callSuper = false)
 public class NetworkDumpSwitchData extends InfoData {
     private static final long serialVersionUID = 1L;
 
-    private SwitchId switchId;
+    @JsonProperty(value = "switch_record", required = true)
+    private Switch switchRecord;
 
     @JsonCreator
-    public NetworkDumpSwitchData(@JsonProperty("switch_id") SwitchId switchId) {
-        this.switchId = requireNonNull(switchId);
+    public NetworkDumpSwitchData(
+            @JsonProperty("switch_record") @NonNull Switch switchRecord) {
+        this.switchRecord = switchRecord;
     }
 }

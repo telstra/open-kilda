@@ -39,6 +39,24 @@ export class SwitchService {
   configurePort(switchId, portNumber, status): Observable<{}>{
         const url = `${environment.apiEndPoint}/switch/${switchId}/${portNumber}/config`; 
         return this.httpClient.put(url,{"status":status});
+  }
+
+  getSwitchPortFlows(switchId,portNumber): Observable<any[]>{
+    const url = `${environment.apiEndPoint}/switch/${switchId}/${portNumber}/flows`; 
+    return this.httpClient.get<any[]>(url);
+  }
+
+  getSwitchDetail(switchId): Observable<{}>{
+    return this.httpClient.get(`${environment.apiEndPoint}/switch/${switchId}`);
+  }
+
+    getSwitchMetersList(switchId) : Observable<any[]>{
+      let timestamp = new Date().getTime();
+      return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/meters/${switchId}?_=${timestamp}`);
+    }
+
+    saveSwitcName(name,switchid){
+      return this.httpClient.patch<any>(`${environment.apiEndPoint}/switch/name/${switchid}`,name);
     }
 
 }

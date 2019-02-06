@@ -28,6 +28,7 @@
         </div>
         <div class='row'>
           <label class='col-sm-4 col-form-label'>Name:</label>
+          <!-- <p class='col-sm-8 copy_to_clipBoard link_div_source_switch_name'>{{src_switch_name}}</p> -->
            <div class=" col-sm-4 col-form-label">
               <span [contextMenu]="copySrcSwitchName">{{src_switch_name }}</span>
             </div>
@@ -46,6 +47,7 @@
         </div>
         <div class='row'>
           <label class='col-sm-4 col-form-label'>Switch Id:</label>
+           <!--  <span class="link_div_destination_switch copy_to_clipBoard">{{dst_switch}}</span> -->
              <div class="col-form-label col-sm-4">
               <span [contextMenu]="copyTrgSwitch" >{{dst_switch }}</span>
             </div>
@@ -94,9 +96,11 @@
               </span>
             </div>
             <div class="update_isl_cost col-sm-8" id="isl_cost_update" [hidden]="!showCostEditing">
+              <!-- <div class="row col-sm-2"> -->
               <div class="row" style=" margin-bottom: 10px;">
                 <input formControlName="cost" type="number" name="cost" style="height: 35px; margin-left: 15px; width: 10%; padding: 10px;">
-                 <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1" data-toggle="modal" (click)="saveEditedCost()"><i class="icon icon-ok-sign"></i></span>
+                <!--  <input id="isl_cost_obj" type="hidden" /> -->
+                <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1" data-toggle="modal" (click)="saveEditedCost()"><i class="icon icon-ok-sign"></i></span>
                 <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_cost_update" class="btn kilda_btn ml-0.5" (click)="cancelEditedCost()"><i class="icon icon-remove-sign"></i></span>
               </div>
             </div>

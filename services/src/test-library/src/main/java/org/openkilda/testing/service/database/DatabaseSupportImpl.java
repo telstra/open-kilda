@@ -269,6 +269,14 @@ public class DatabaseSupportImpl implements Database {
                 .orElse(null);
     }
 
+    @Override
+    public void updateFlowBandwidth(String flowId, long newBw) {
+        FlowPair flowPair = flowRepository.findFlowPairById(flowId).get();
+        flowPair.getForward().setBandwidth(newBw);
+        flowPair.getReverse().setBandwidth(newBw);
+        flowRepository.createOrUpdate(flowPair);
+    }
+
     private FlowDto convert(Flow flow) {
         return flowMapper.map(flow);
     }

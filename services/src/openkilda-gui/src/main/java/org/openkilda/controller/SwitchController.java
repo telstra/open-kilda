@@ -25,7 +25,10 @@ import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchInfo;
+import org.openkilda.model.SwitchMeter;
 import org.openkilda.service.SwitchService;
+import org.openkilda.store.model.Customer;
+import org.openkilda.utility.StringUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -37,6 +40,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.usermanagement.exception.RequestValidationException;
+import org.usermanagement.util.MessageUtils;
 
 import java.util.List;
 
@@ -49,7 +54,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping(value = "/api/switch")
-public class SwitchController  {
+public class SwitchController {
 
     @Autowired
     private SwitchService serviceSwitch;
@@ -57,18 +62,52 @@ public class SwitchController  {
     @Autowired
     private ActivityLogger activityLogger;
 
+    @Autowired
+    private MessageUtils messageUtil;
+    /**
+     * Gets the switches detail.
+     *
+     * @return the switches detail
+     */
+    
+    @RequestMapping(value = "/list")
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody List<SwitchInfo> getSwitchesDetail(
+            @RequestParam(value = "storeConfigurationStatus", required = false) boolean storeConfigurationStatus) {
+        return serviceSwitch.getSwitches(storeConfigurationStatus);
+    }
 
     /**
      * Gets the switches detail.
      *
      * @return the switches detail
      */
-    @RequestMapping(value = "/list")
+    @RequestMapping(value = "/{switchId}")
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody List<SwitchInfo> getSwitchesDetail() {
-        return serviceSwitch.getSwitches();
+    public @ResponseBody SwitchInfo getSwitchDetail(@PathVariable final String switchId) {
+        return serviceSwitch.getSwitch(switchId);
     }
 
+    /**
+     * Save or update switch name.
+     *
+     * @param switchId
+     *            the switch id
+     * @param switchName
+     *            the switch name
+     * @return the SwitchInfo
+     */
+    @RequestMapping(value = "/name/{switchId}", method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.SW_SWITCH_UPDATE_NAME })
+    public @ResponseBody SwitchInfo saveOrUpdateSwitchName(@PathVariable final String switchId,
+            @RequestBody final String switchName) {
+        if (StringUtil.isNullOrEmpty(switchName)) {
+            throw new RequestValidationException(messageUtil.getAttributeNotNull("switch_name"));
+        }
+        activityLogger.log(ActivityType.UPDATE_SWITCH_NAME, switchId);
+        return serviceSwitch.saveOrUpdateSwitchName(switchId, switchName);
+    }
 
     /**
      * Gets the links detail.
@@ -84,10 +123,14 @@ public class SwitchController  {
     /**
      * Gets the link props.
      *
-     * @param srcSwitch the src switch
-     * @param srcPort the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort the dst port
+     * @param srcSwitch
+     *            the src switch
+     * @param srcPort
+     *            the src port
+     * @param dstSwitch
+     *            the dst switch
+     * @param dstPort
+     *            the dst port
      * @return the link props
      */
     @RequestMapping(path = "/link/props", method = RequestMethod.GET)
@@ -102,7 +145,8 @@ public class SwitchController  {
     /**
      * Get Link Props.
      *
-     * @param keys the link properties
+     * @param keys
+     *            the link properties
      * @return the link properties string
      */
     @RequestMapping(path = "/link/props", method = RequestMethod.PUT)
@@ -119,8 +163,9 @@ public class SwitchController  {
     /**
      * Get Switch Rules.
      *
-     * @param switchId the switch id
-     * @return  the switch rules
+     * @param switchId
+     *            the switch id
+     * @return the switch rules
      */
     @RequestMapping(path = "/{switchId}/rules", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
@@ -128,24 +173,43 @@ public class SwitchController  {
         activityLogger.log(ActivityType.SWITCH_RULES, switchId);
         return serviceSwitch.getSwitchRules(switchId);
     }
-    
+
     /**
      * Configure switch port.
      *
-     * @param configuration the configuration
-     * @param switchId the switch id
-     * @param port the port
+     * @param configuration
+     *            the configuration
+     * @param switchId
+     *            the switch id
+     * @param port
+     *            the port
      * @return the configuredPort
      */
     @RequestMapping(path = "/{switchId}/{port}/config", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.SW_PORT_CONFIG})
+    @Permissions(values = { IConstants.Permission.SW_PORT_CONFIG })
     public @ResponseBody ConfiguredPort configureSwitchPort(@RequestBody final PortConfiguration configuration,
             @PathVariable final String switchId, @PathVariable final String port) {
         activityLogger.log(ActivityType.CONFIGURE_SWITCH_PORT, "SW_" + switchId + ", P_" + port);
         return serviceSwitch.configurePort(switchId, port, configuration);
     }
-    
+
+    /**
+     * Gets Port flows.
+     *
+     * @param switchId
+     *            the switch id
+     * @param port
+     *            the port
+     * @return the customers detail
+     */
+    @RequestMapping(path = "/{switchId}/{port}/flows", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody List<Customer> getPortFlows(@PathVariable final String switchId,
+            @PathVariable final String port) {
+        return serviceSwitch.getPortFlows(switchId, port);
+    }
+
     /**
      * Gets Isl flows.
      *
@@ -168,4 +232,16 @@ public class SwitchController  {
             @RequestParam(name = "dst_port", required = true) String dstPort) {
         return serviceSwitch.getIslFlows(srcSwitch, srcPort, dstSwitch, dstPort);
     }
+
+    /**
+     * Gets the meters detail.
+     *
+     * @return the meters detail
+     */
+    @RequestMapping(value = "/meters/{switchId}")
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody SwitchMeter getSwitchMeters(@PathVariable final String switchId) {
+        return serviceSwitch.getMeters(switchId);
+    }
+
 }

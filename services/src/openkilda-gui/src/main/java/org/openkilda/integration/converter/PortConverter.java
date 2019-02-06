@@ -17,6 +17,8 @@ package org.openkilda.integration.converter;
 
 import org.openkilda.integration.model.PortDetail;
 import org.openkilda.integration.model.PortsDetail;
+import org.openkilda.integration.source.store.dto.Port;
+import org.openkilda.model.PortDiscrepancy;
 import org.openkilda.model.PortInfo;
 import org.openkilda.utility.JsonUtil;
 
@@ -25,16 +27,17 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class PortConverter.
  */
+@Component
 public final class PortConverter {
 
     /**
@@ -121,6 +124,58 @@ public final class PortConverter {
         if (portDetail.getState() != null && !portDetail.getState().isEmpty()) {
             portInfo.setStatus(portDetail.getState().get(0));
         }
+
+        return portInfo;
+    }
+    
+    /**
+     * To port info.
+     *
+     * @param portInfo the port info
+     * @param port the inventory port
+     * @return the port info
+     */
+    public PortInfo toPortInfo(final PortInfo portInfo, final Port port) {
+
+        PortDiscrepancy discrepancy = new PortDiscrepancy();
+        discrepancy.setControllerDiscrepancy(true);
+        discrepancy.setInventoryDiscrepancy(false);
+        discrepancy.setAssignmentType(true);
+        
+        discrepancy.setControllerAssignmentType(null);
+        discrepancy.setInventoryAssignmentType(port.getAssignmentType());
+        portInfo.setDiscrepancy(discrepancy);
+        
+        appendInventoryInfo(portInfo, port);
+        portInfo.setCustomeruuid(port.getCustomer().getCustomerUuid());
+        portInfo.setPortNumber(String.valueOf(port.getPortNumber()));
+        portInfo.setStatus(port.getStatus());
+        
+        return portInfo;
+    }
+    
+    /**
+     * Append inventory info.
+     *
+     * @param portInfo the port info
+     * @param port the port
+     * @return the port info
+     */
+    public PortInfo appendInventoryInfo(final PortInfo portInfo, final Port port) {
+
+        portInfo.setUuid(port.getUuid());
+        portInfo.setAssignmenttype(port.getAssignmentType());
+        portInfo.setAssignmentState(port.getAssignmentState());
+        portInfo.setAssignmentDate(port.getAssignmentDate());
+        portInfo.setCrossconnect(port.getCrossConnect());
+        portInfo.setPopLocation(port.getPopLocation());
+        portInfo.setOdfMdf(port.getOdfMdf());
+        portInfo.setNotes(port.getNotes());
+        portInfo.setMmr(port.getMmr());
+        portInfo.setIsActive(port.getIsActive());
+        portInfo.setInventoryPortUuid(port.getInventoryPortUuid());
+        portInfo.setCustomer(port.getCustomer());
+        portInfo.setInterfacetype(port.getInterfaceType());
 
         return portInfo;
     }

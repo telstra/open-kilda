@@ -35,4 +35,8 @@ public interface PathComputerConfig extends Serializable {
     @Key("strategy")
     @Default("COST")
     String getStrategy();
+
+    @Key("network.strategy")
+    @Default("COST")
+    String getNetworkStrategy();
 }

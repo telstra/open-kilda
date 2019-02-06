@@ -26,6 +26,6 @@ public final class Constants {
     public static final int outputVlanId = 200;
     public static final int inputVlanId = 300;
     public static final long bandwidth = 10000;
-    public static final long meterId = 1;
+    public static final long meterId = 40;
     public static final OutputVlanType outputVlanType = OutputVlanType.REPLACE;
 }

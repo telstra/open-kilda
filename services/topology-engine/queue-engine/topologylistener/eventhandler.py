@@ -28,27 +28,7 @@ from topologylistener import model
 
 logger = logging.getLogger(__name__)
 
-known_messages = ['org.openkilda.messaging.info.event.SwitchInfoData',
-                  'org.openkilda.messaging.info.event.IslInfoData',
-                  'org.openkilda.messaging.info.event.PortInfoData',
-                  'org.openkilda.messaging.info.flow.FlowInfoData',
-                  'org.openkilda.messaging.info.rule.SwitchFlowEntries',
-                  'org.openkilda.messaging.error.rule.DumpRulesErrorData']
-known_commands = ['org.openkilda.messaging.command.flow.FlowCreateRequest',
-                  'org.openkilda.messaging.command.flow.FlowDeleteRequest',
-                  'org.openkilda.messaging.command.flow.FlowUpdateRequest',
-                  'org.openkilda.messaging.command.flow.FlowPathRequest',
-                  'org.openkilda.messaging.command.flow.FlowGetRequest',
-                  'org.openkilda.messaging.command.flow.FlowsGetRequest',
-                  'org.openkilda.messaging.command.flow.FlowRerouteRequest',
-                  'org.openkilda.messaging.command.system.FeatureToggleRequest',
-                  'org.openkilda.messaging.command.system.FeatureToggleStateRequest',
-                  'org.openkilda.messaging.command.switches.SwitchRulesSyncRequest',
-                  'org.openkilda.messaging.command.switches.SwitchRulesValidateRequest',
-                  'org.openkilda.messaging.command.discovery.NetworkCommandData',
-                  'org.openkilda.messaging.command.FlowsSyncRequest',
-                  'org.openkilda.messaging.te.request.LinkPropsDrop',
-                  'org.openkilda.messaging.te.request.LinkPropsPut']
+known_commands = ['org.openkilda.messaging.command.switches.SwitchRulesSyncRequest']
 
 
 def main_loop():
@@ -70,8 +50,7 @@ def main_loop():
             logger.debug('READ MESSAGE %s', raw_event)
             event = MessageItem(json.loads(raw_event))
 
-            if event.get_message_type() in known_messages\
-                    or event.get_command() in known_commands:
+            if event.get_command() in known_commands:
                 pool.spawn(topology_event_handler, event)
             else:
                 logger.debug('Received unknown type or command %s', raw_event)

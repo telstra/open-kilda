@@ -1,0 +1,15 @@
+.dt-buttons {
+    float: right !important;
+}
+table.dataTable tbody td {
+    padding: 10px 20px 10px 18px;
+}
+
+table.dataTable tr th i.fa {
+    float: right;
+    font-size: 12px;
+}
+
+div.dt-buttons{
+    float:right;
+}

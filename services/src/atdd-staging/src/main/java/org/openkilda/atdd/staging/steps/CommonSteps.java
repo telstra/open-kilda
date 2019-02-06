@@ -15,11 +15,15 @@
 
 package org.openkilda.atdd.staging.steps;
 
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.labservice.LabService;
+
 import cucumber.api.Scenario;
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
 import cucumber.api.java.en.And;
 import org.junit.Assume;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.concurrent.TimeUnit;
 
@@ -29,11 +33,18 @@ public class CommonSteps {
     // there is no sense to run other scenarios because of a low percentage of their success. So this flag controls
     // other scenario executions after the first scenario failure.
     private static boolean skipScenario = false;
+    @Autowired
+    private LabService labService;
+    @Autowired
+    private TopologyDefinition topology;
 
     @Before
     public void beforeScenario() {
         if (skipScenario) {
             Assume.assumeTrue("The scenario is skipped due to a failure of one of the previous scenarios!", false);
+        }
+        if (labService.getLab() == null) {
+            labService.createHwLab(topology);
         }
     }
 

@@ -25,7 +25,9 @@ public enum RequestParams {
     ACCESS_TOKEN("<access-token>", "In place of access token."),
     LINK_ID("<link-id>", "In place of link id."),
     STATUS("<status>", "In place of status."),
-    CONTRACT_ID("<contract-id>", "In place of contract id.");
+    CONTRACT_ID("<contract-id>", "In place of contract id."),
+    SWITCH_ID("<switch-id>", "In place of switch id."),
+    PORT_NUMBER("<port-number>", "In place of port number.");
     
     private String name;
     

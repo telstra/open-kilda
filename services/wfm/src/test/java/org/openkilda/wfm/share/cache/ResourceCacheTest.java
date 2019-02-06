@@ -19,6 +19,8 @@ import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.model.MeterId.MAX_FLOW_METER_ID;
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.FlowDto;
@@ -113,7 +115,7 @@ public class ResourceCacheTest {
     @Test
     public void meterIdPool() {
         resourceCache.allocateMeterId(SWITCH_ID, 4);
-        int m1 = ResourceCache.MIN_METER_ID;
+        int m1 = MIN_FLOW_METER_ID;
 
         int first = resourceCache.allocateMeterId(SWITCH_ID);
         assertEquals(m1, first);
@@ -159,8 +161,8 @@ public class ResourceCacheTest {
     @Test(expected = MeterPoolIsFullException.class)
     public void meterIdPoolFullTest() {
         resourceCache.allocateMeterId(SWITCH_ID);
-        int i = ResourceCache.MIN_METER_ID;
-        while (i++ <= ResourceCache.MAX_METER_ID) {
+        int i = MIN_FLOW_METER_ID;
+        while (i++ <= MAX_FLOW_METER_ID) {
             resourceCache.allocateMeterId(SWITCH_ID);
         }
     }
@@ -188,19 +190,19 @@ public class ResourceCacheTest {
     @Test
     public void getAllMeterIds() {
         int first = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(ResourceCache.MIN_METER_ID, first);
+        assertEquals(MIN_FLOW_METER_ID, first);
 
         int second = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(ResourceCache.MIN_METER_ID + 1, second);
+        assertEquals(MIN_FLOW_METER_ID + 1, second);
 
         int third = resourceCache.allocateMeterId(SWITCH_ID);
-        assertEquals(ResourceCache.MIN_METER_ID + 2, third);
+        assertEquals(MIN_FLOW_METER_ID + 2, third);
 
         first = resourceCache.allocateMeterId(SWITCH_ID_2);
-        assertEquals(ResourceCache.MIN_METER_ID, first);
+        assertEquals(MIN_FLOW_METER_ID, first);
 
         second = resourceCache.allocateMeterId(SWITCH_ID_2);
-        assertEquals(ResourceCache.MIN_METER_ID + 1, second);
+        assertEquals(MIN_FLOW_METER_ID + 1, second);
 
         Map<SwitchId, Set<Integer>> allMeterIds = resourceCache.getAllMeterIds();
         assertEquals(2, allMeterIds.size());
@@ -213,7 +215,7 @@ public class ResourceCacheTest {
         /*
          * Test that we can add a meter id less than the minimum, assuming the minimum is > 1.
          */
-        int m1 = ResourceCache.MIN_METER_ID;
+        int m1 = MIN_FLOW_METER_ID;
         int first = resourceCache.allocateMeterId(SWITCH_ID);
         assertEquals(m1, first);
 

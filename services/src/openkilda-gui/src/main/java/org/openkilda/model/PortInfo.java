@@ -15,12 +15,17 @@
 
 package org.openkilda.model;
 
+import org.openkilda.integration.source.store.dto.Customer;
+import org.openkilda.integration.source.store.dto.PopLocation;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+import lombok.Data;
 
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.Map;
 
 /**
@@ -30,218 +35,70 @@ import java.util.Map;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"assignmenttype", "interfacetype", "status", "crossconnect", "customeruuid",
-        "switch_id", "port_name", "stats"})
+@Data
 public class PortInfo implements Serializable, Comparable<PortInfo> {
 
+    private static final long serialVersionUID = 6234209548424333879L;
     
     @JsonProperty("assignmenttype")
     private String assignmenttype;
-
     
+    @JsonProperty("assignment-state")
+    private String assignmentState;
+       
+    @JsonProperty("assignment-date")
+    private BigInteger assignmentDate;
+
     @JsonProperty("interfacetype")
     private String interfacetype;
 
-    
     @JsonProperty("status")
     private String status;
-
     
     @JsonProperty("crossconnect")
     private String crossconnect;
-
     
     @JsonProperty("customeruuid")
     private String customeruuid;
 
-    
     @JsonProperty("switch_id")
     private String switchName;
-
     
     @JsonProperty("port_name")
     private String portName;
 
-    
     @JsonProperty("port_number")
     private String portNumber;
     
     @JsonProperty("stats")
     private Map<String, Double> stats;
 
-    /** The Constant serialVersionUID. */
-    private static final long serialVersionUID = 6234209548424333879L;
+    @JsonProperty("unique-id")
+    private String uuid;
 
-    /**
-     * Gets the assignmenttype.
-     *
-     * @return the assignmenttype
-     */
-    
-    public String getAssignmenttype() {
-        return assignmenttype;
-    }
+    @JsonProperty("pop-location")
+    private PopLocation popLocation;
 
-    /**
-     * Sets the assignmenttype.
-     *
-     * @param assignmenttype the new assignmenttype
-     */
-    
-    public void setAssignmenttype(final String assignmenttype) {
-        this.assignmenttype = assignmenttype;
-    }
+    @JsonProperty("inventory-port-uuid")
+    private String inventoryPortUuid;
 
-    /**
-     * Gets the interfacetype.
-     *
-     * @return the interfacetype
-     */
-    
-    public String getInterfacetype() {
-        return interfacetype;
-    }
+    @JsonProperty("customer")
+    private Customer customer;
 
-    /**
-     * Sets the interfacetype.
-     *
-     * @param interfacetype the new interfacetype
-     */
-    
-    public void setInterfacetype(final String interfacetype) {
-        this.interfacetype = interfacetype;
-    }
+    @JsonProperty("notes")
+    private String notes;
 
-    /**
-     * Gets the status.
-     *
-     * @return the status
-     */
-    
-    public String getStatus() {
-        return status;
-    }
+    @JsonProperty("odfmdf")
+    private String odfMdf;
 
-    /**
-     * Sets the status.
-     *
-     * @param status the new status
-     */
-    
-    public void setStatus(final String status) {
-        this.status = status;
-    }
+    @JsonProperty("mmr")
+    private String mmr;
 
-    /**
-     * Gets the crossconnect.
-     *
-     * @return the crossconnect
-     */
+    @JsonProperty("is-active")
+    private String isActive;
     
-    public String getCrossconnect() {
-        return crossconnect;
-    }
-
-    /**
-     * Sets the crossconnect.
-     *
-     * @param crossconnect the new crossconnect
-     */
-    
-    public void setCrossconnect(final String crossconnect) {
-        this.crossconnect = crossconnect;
-    }
-
-    /**
-     * Gets the customeruuid.
-     *
-     * @return the customeruuid
-     */
-    
-    public String getCustomeruuid() {
-        return customeruuid;
-    }
-
-    /**
-     * Sets the customeruuid.
-     *
-     * @param customeruuid the new customeruuid
-     */
-    
-    public void setCustomeruuid(final String customeruuid) {
-        this.customeruuid = customeruuid;
-    }
-
-    /**
-     * Gets the switch name.
-     *
-     * @return the switch name
-     */
-    
-    public String getSwitchName() {
-        return switchName;
-    }
-
-    /**
-     * Sets the switch name.
-     *
-     * @param switchName the new switch name
-     */
-    
-    public void setSwitchName(final String switchName) {
-        this.switchName = switchName;
-    }
-
-    /**
-     * Gets the port name.
-     *
-     * @return the port name
-     */
-    
-    public String getPortName() {
-        return portName;
-    }
-
-    /**
-     * Sets the port name.
-     *
-     * @param portName the new port name
-     */
-    
-    public void setPortName(final String portName) {
-        this.portName = portName;
-    }
-
-    /**
-     * Gets the port number.
-     *
-     * @return the port number
-     */
-    
-    public String getPortNumber() {
-        return portNumber;
-    }
-
-    /**
-     * Sets the port number.
-     *
-     * @param portNumber the new port number
-     */
-    
-    public void setPortNumber(final String portNumber) {
-        this.portNumber = portNumber;
-    }
-
-    
-    public Map<String, Double> getStats() {
-        return stats;
-    }
-    
-
-    public void setStats(Map<String, Double> stats) {
-        this.stats = stats;
-    }
-    
+    @JsonProperty("discrepancy")
+    private PortDiscrepancy discrepancy;
 
     /*
      * (non-Javadoc)

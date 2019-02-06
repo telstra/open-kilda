@@ -1,4 +1,3 @@
 moduleName=Kilda functional-tests
 moduleVersion=1.0
-extensionClasses=org.openkilda.functionaltests.helpers.JacksonMixinExtension
-staticExtensionClasses=
+extensionClasses=org.openkilda.functionaltests.extension.JacksonMixinExtension, org.openkilda.functionaltests.helpers.SwitchHelper

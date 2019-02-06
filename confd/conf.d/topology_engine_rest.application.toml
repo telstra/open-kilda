@@ -1,5 +1,0 @@
-[template]
-src = "topology-engine-rest/topology_engine_rest.ini.tmpl"
-dest = "services/topology-engine-rest/app/topology_engine_rest.ini"
-keys = [ "/" ]
-mode = "0644"
