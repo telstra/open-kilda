@@ -107,4 +107,8 @@ public interface KafkaTopicsConfig {
     @Key("topo.reroute")
     @Default("kilda.topo.reroute")
     String getTopoRerouteTopic();
+
+    @Key("topo.switch.manager")
+    @Default("kilda.topo.switch.manager")
+    String getTopoSwitchManagerTopic();
 }
