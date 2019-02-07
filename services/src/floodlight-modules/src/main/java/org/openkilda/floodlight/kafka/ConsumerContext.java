@@ -73,4 +73,8 @@ public class ConsumerContext {
     public String getKafkaNbWorkerTopic() {
         return kafkaTopics.getTopoNbTopic();
     }
+
+    public String getKafkaSwitchManagerTopic() {
+        return kafkaTopics.getTopoSwitchManagerTopic();
+    }
 }

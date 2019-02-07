@@ -24,17 +24,12 @@ import org.openkilda.northbound.dto.switches.SwitchDto;
 
 import org.mapstruct.Mapper;
 
-import java.util.List;
-
 @Mapper(componentModel = "spring")
 public interface SwitchMapper {
 
     SwitchDto toSwitchDto(SwitchInfoData data);
 
-    default RulesSyncResult toRulesSyncResult(RulesValidationResult validationResult, List<Long> installedRules) {
-        return new RulesSyncResult(validationResult.getMissingRules(), validationResult.getProperRules(),
-                validationResult.getExcessRules(), installedRules);
-    }
+    RulesSyncResult toRulesSyncResult(SyncRulesResponse response);
 
     RulesValidationResult toRulesValidationResult(SyncRulesResponse response);
 

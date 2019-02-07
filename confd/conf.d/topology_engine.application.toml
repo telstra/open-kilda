@@ -1,5 +1,0 @@
-[template]
-src = "topology-engine/topology_engine.ini.tmpl"
-dest = "services/topology-engine/queue-engine/topology_engine.ini"
-keys = [ "/" ]
-mode = "0644"
