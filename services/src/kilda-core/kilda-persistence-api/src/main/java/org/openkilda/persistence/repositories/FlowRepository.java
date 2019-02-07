@@ -28,6 +28,8 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findById(String flowId);
 
+    Optional<Flow> findByIdAndCookie(String flowId, long cookie);
+
     Optional<FlowPair> findFlowPairById(String flowId);
 
     Collection<FlowPair> findAllFlowPairs();
