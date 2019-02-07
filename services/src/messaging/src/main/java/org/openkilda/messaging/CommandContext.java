@@ -13,23 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm;
+package org.openkilda.messaging;
 
-import org.openkilda.messaging.Message;
-
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 
 import java.io.Serializable;
 import java.util.UUID;
 
-/**
- * Class that contains command context information.
- * @deprecated {@link org.openkilda.messaging.CommandContext} should be used instead.
- */
-@Data
-@Deprecated
+@Value
 public class CommandContext implements Serializable {
+
+    @JsonProperty
     private final String correlationId;
+
+    @JsonProperty
     private final long createTime;
 
     public CommandContext() {
@@ -43,14 +41,6 @@ public class CommandContext implements Serializable {
     public CommandContext(String correlationId) {
         this(correlationId, System.currentTimeMillis());
     }
-
-    /**
-     * Merge data from other CommandContext object.
-     *
-     * <p>Become useful when part of processing is done in external "branch" and separate CommandContext was
-     * created.
-     */
-    public void merge(CommandContext other) { }
 
     protected CommandContext(String correlationId, long createTime) {
         this.correlationId = correlationId;
