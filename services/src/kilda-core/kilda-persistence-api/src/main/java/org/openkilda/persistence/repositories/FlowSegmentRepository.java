@@ -25,5 +25,7 @@ public interface FlowSegmentRepository extends Repository<FlowSegment> {
 
     Collection<FlowSegment> findByDestSwitchId(SwitchId switchId);
 
+    Collection<FlowSegment> findBySrcSwitchId(SwitchId switchId);
+
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 }
