@@ -35,10 +35,21 @@ Ensure that log messages are appropriate in content and severity:
 * Endpoint (switch ID and port) must be logged using underscore as a separator, e.g.: ``` 00:00:00:00:00:00:00:01_2 ```
 * Always override toString() to give a good representation of the object.
 
+### Logging of system errors and exceptions
+* Logging of exceptions with severity WARN, ERROR or higher must be supplied with the exception stacktrace,
+e.g.```log.error("Unable to read a configuration", ex);```
+
 ### Best practices
 * Avoid multi-line log messages.
 * Supply logging context or message with correlationId or other unique identifiers (IDs), this is tremendously helpful 
     when debugging or performing root cause analysis.
+
+### Antipatterns
+* Avoid the log and throw practice. As this results in multiple log messages for a single problem in the code. 
+Either log the exception, or throw it, but never do both. e.g. ```catch (SomeException ex) { log.error("some message", ex); throw ex; }```
+
+* Destructive Wrapping. Losing the stacktrace by wrapping the original exception is always wrong.
+e.g. ```catch (SomeException ex) { throw new AnotherException("some message: " + ex.getMessage()); }```
 
 ### References
 * https://wiki.opendaylight.org/view/BestPractices/Logging_Best_Practices
