@@ -66,14 +66,14 @@ public abstract class HubBolt extends CoordinatedBolt {
      * Handler for income request. Define the main steps and functionality for current hub.
      * @param input income message.
      */
-    protected abstract void onRequest(Tuple input);
+    protected abstract void onRequest(Tuple input) throws AbstractException;
 
     /**
      * Handler for all hub-related workers. Since hub might has unlimited number of workers this method handles all
      * responses from all workers.
      * @param input response from worker.
      */
-    protected abstract void onWorkerResponse(Tuple input);
+    protected abstract void onWorkerResponse(Tuple input) throws AbstractException;
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

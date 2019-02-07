@@ -15,15 +15,18 @@
 
 package org.openkilda.wfm.share.hubandspoke;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 import org.openkilda.wfm.error.AbstractException;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -45,7 +48,7 @@ import java.util.Map;
  */
 public abstract class WorkerBolt extends CoordinatedBolt {
     public static final String ID = "worker.bolt";
-    private Map<String, Tuple> pendingTasks = new HashMap<>();
+    private Map<String, Integer> pendingTasks = new HashMap<>();
     private Config workerConfig;
 
     public WorkerBolt(Config config) {
@@ -63,26 +66,41 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         String sender = input.getSourceComponent();
 
         if (workerConfig.getHubComponent().equals(sender)) {
-            pendingTasks.put(key, input);
+            pendingTasks.put(key, input.getSourceTask());
             registerCallback(key, input);
 
             onHubRequest(input);
-        } else if (pendingTasks.remove(key) != null && workerConfig.getWorkerSpoutComponent().equals(sender)) {
-            cancelCallback(key, input);
+        } else if (pendingTasks.containsKey(key) && workerConfig.getWorkerSpoutComponent().equals(sender)) {
             onAsyncResponse(input);
         } else {
             unhandledInput(input);
         }
     }
 
-    protected abstract void onHubRequest(Tuple input);
+    /**
+     * Send response to hub bolt once all required responses are received.
+     * @param input received tuple.
+     * @param values response to be sent to the hub.
+     */
+    protected void emitResponseToHub(Tuple input, Values values) throws PipelineException {
+        String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+        cancelCallback(key, input);
 
-    protected abstract void onAsyncResponse(Tuple input);
+        Integer taskId = pendingTasks.remove(key);
+        if (taskId == null) {
+            throw new IllegalStateException(format("Attempt to send response for non pending task with id %s", key));
+        }
+        getOutput().emitDirect(taskId, workerConfig.getStreamToHub(), values);
+    }
+
+    protected abstract void onHubRequest(Tuple input) throws AbstractException;
+
+    protected abstract void onAsyncResponse(Tuple input) throws AbstractException;
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(workerConfig.getStreamToHub(), true, MessageTranslator.FIELDS);
+        declarer.declareStream(workerConfig.getStreamToHub(), true, MessageTranslator.STREAM_FIELDS);
     }
 
     @Builder
