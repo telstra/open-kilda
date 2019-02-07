@@ -381,7 +381,7 @@ public class StatsService {
                     if (switchIdInfo.equals(switchid)) {
                         for (int i = 0; i < portInfos.size(); i++) {
                             if (portInfos.get(i).getPortNumber().equals(islPath.getPortNo().toString())) {
-                                portInfos.get(i).setInterfacetype("ISL");
+                                portInfos.get(i).setAssignmenttype("ISL");
                             }
                         }
                     }
