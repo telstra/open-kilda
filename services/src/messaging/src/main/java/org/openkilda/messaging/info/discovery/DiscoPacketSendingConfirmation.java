@@ -29,8 +29,16 @@ public class DiscoPacketSendingConfirmation extends InfoData {
     @JsonProperty("endpoint")
     private NetworkEndpoint endpoint;
 
+    /**
+     * Packet id.
+     */
+    @JsonProperty("packetId")
+    private long packetId;
+
     @JsonCreator
-    public DiscoPacketSendingConfirmation(@JsonProperty("endpoint") NetworkEndpoint endpoint) {
+    public DiscoPacketSendingConfirmation(@JsonProperty("endpoint") NetworkEndpoint endpoint,
+                                          @JsonProperty("packetId") final long packetId) {
         this.endpoint = endpoint;
+        this.packetId = packetId;
     }
 }
