@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,22 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.wfm.topology.switchmanager;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
 
-@Value
-public class SwitchRulesSyncRequest extends CommandData {
+    default String getKafkaSwitchManagerTopic() {
+        return getKafkaTopics().getTopoSwitchManagerTopic();
+    }
 
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
+    default String getKafkaNorthboundTopic() {
+        return getKafkaTopics().getNorthboundTopic();
+    }
 
-    public SwitchRulesSyncRequest(@JsonProperty("switch_id") SwitchId switchId) {
-        this.switchId = switchId;
+    default String getKafkaSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
     }
 }
-

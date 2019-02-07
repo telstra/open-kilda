@@ -83,6 +83,6 @@ final class ErrorMessageBuilder {
     void sendVia(IKafkaProducerService producerService) {
         ErrorData errorData = new ErrorData(errorType, message, description);
         ErrorMessage error = new ErrorMessage(errorData, System.currentTimeMillis(), correlationId);
-        producerService.sendMessageAndTrack(topic, error);
+        producerService.sendMessageAndTrack(topic, correlationId, error);
     }
 }

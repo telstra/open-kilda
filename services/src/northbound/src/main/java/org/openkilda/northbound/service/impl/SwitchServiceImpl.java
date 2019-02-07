@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.service.impl;
 
-import static java.lang.String.format;
-
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
@@ -33,7 +31,6 @@ import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.ValidateRulesRequest;
-import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -71,7 +68,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -81,9 +77,6 @@ import java.util.stream.Collectors;
 public class SwitchServiceImpl implements SwitchService {
 
     private static final Logger logger = LoggerFactory.getLogger(SwitchServiceImpl.class);
-
-    @Value("#{kafkaTopicsConfig.getTopoEngTopic()}")
-    private String topoEngTopic;
 
     @Autowired
     private MessagingChannel messagingChannel;
@@ -99,6 +92,9 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
+
+    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerTopic()}")
+    private String switchManagerTopic;
 
     /**
      * {@inheritDoc}
@@ -224,27 +220,14 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Override
     public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId) {
-        CompletableFuture<RulesValidationResult> validationStage = validateRules(switchId);
         logger.info("Sync rules request for switch {}", switchId);
 
-        return validationStage
-                .thenCompose(validationResult -> syncRules(switchId, validationResult.getMissingRules())
-                        .thenApply(SyncRulesResponse.class::cast))
-                .thenCombine(validationStage, (synchronization, validation) ->
-                        switchMapper.toRulesSyncResult(validation, synchronization.getInstalledRules()));
-    }
-
-    private CompletableFuture<InfoData> syncRules(SwitchId switchId, List<Long> missingRules) {
-        if (CollectionUtils.isEmpty(missingRules)) {
-            return CompletableFuture.completedFuture(new SyncRulesResponse());
-        }
-
-        String syncCorrelationId = format("%s-sync", RequestCorrelationId.getId());
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchRulesSyncRequest(switchId, missingRules),
-                System.currentTimeMillis(), syncCorrelationId, Destination.TOPOLOGY_ENGINE);
+                new SwitchRulesSyncRequest(switchId), System.currentTimeMillis(), RequestCorrelationId.getId());
 
-        return messagingChannel.sendAndGet(topoEngTopic, syncCommandMessage);
+        return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
+                .thenApply(SyncRulesResponse.class::cast)
+                .thenApply(switchMapper::toRulesSyncResult);
     }
 
     @Override
