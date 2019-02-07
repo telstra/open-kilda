@@ -1,0 +1,11 @@
+environment.naming.prefix =
+
+service.name=@project.name@
+service.version=@project.version@
+service.description=@project.description@
+
+kafka.hosts=kafka.pendev:9092
+
+northbound.messages.expiration.minutes=15
+northbound.kafka.listener.threads=10
+northbound.kafka.session.timeout=30000
