@@ -492,7 +492,8 @@ public class NorthboundServiceImpl implements NorthboundService {
                         pathDto.getSegLatency()))
                 .collect(Collectors.toList());
         return new IslInfoData(0, path.get(0), path.get(1), dto.getSpeed(),
-                IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth(), dto.isUnderMaintenance());
+                IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth(), dto.isUnderMaintenance(),
+                null);
     }
 
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {

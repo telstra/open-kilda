@@ -77,6 +77,14 @@ public class IslInfoData extends CacheTimeTag {
     private PathNode source;
     private PathNode destination;
 
+
+    /**
+     * Packet id.
+     */
+    @JsonProperty("packetId")
+    private Long packetId;
+
+
     /**
      * Copy constructor.
      *
@@ -92,19 +100,25 @@ public class IslInfoData extends CacheTimeTag {
                 that.getState(),
                 that.getTimeCreateMillis(),
                 that.getTimeModifyMillis(),
-                that.isUnderMaintenance());
+                that.isUnderMaintenance(),
+                that.getPacketId());
     }
 
     /**
      * Simple constructor for an ISL with only source/destination and state.
      */
     public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
-        this(-1, source, destination, 0, 0, state, null, null, underMaintenance);
+        this(-1, source, destination, 0, 0, state, null, null, underMaintenance, null);
     }
 
     public IslInfoData(long latency, PathNode source, PathNode destination, long speed,
                        IslChangeType state, long availableBandwidth, boolean underMaintenance) {
-        this(latency, source, destination, speed, availableBandwidth, state, null, null, underMaintenance);
+        this(latency, source, destination, speed, availableBandwidth, state, null, null, underMaintenance, null);
+    }
+
+    public IslInfoData(long latency, PathNode source, PathNode destination, long speed,
+                       IslChangeType state, long availableBandwidth, boolean underMaintenance, Long packetId) {
+        this(latency, source, destination, speed, availableBandwidth, state, null, null, underMaintenance, packetId);
     }
 
     @JsonCreator
@@ -116,7 +130,8 @@ public class IslInfoData extends CacheTimeTag {
                        @JsonProperty("state") IslChangeType state,
                        @JsonProperty("time_create") Long timeCreateMillis,
                        @JsonProperty("time_modify") Long timeModifyMillis,
-                       @JsonProperty("under_maintenance") boolean underMaintenance) {
+                       @JsonProperty("under_maintenance") boolean underMaintenance,
+                       @JsonProperty("packetId") final Long packetId) {
         this.latency = latency;
         this.source = source;
         this.destination = destination;
@@ -127,6 +142,7 @@ public class IslInfoData extends CacheTimeTag {
         this.timeModifyMillis = timeModifyMillis;
         this.id = String.format("%s_%d", source.getSwitchId(), source.getPortNo());
         this.underMaintenance = underMaintenance;
+        this.packetId = packetId;
     }
 
     /**

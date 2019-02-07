@@ -37,9 +37,11 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator.Builder;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -202,36 +204,38 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     }
 
     @Override
-    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port) {
-        return sendDiscoveryMessage(srcSwId, port, null);
+    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, Long packetId) {
+        return sendDiscoveryMessage(srcSwId, port, null, packetId);
     }
 
     @Override
-    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId) {
+    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId, Long packetId) {
         boolean result = false;
 
         try {
             IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
             if (srcSwitch != null && srcSwitch.getPort(port) != null) {
                 IOFSwitch dstSwitch = (dstSwId == null) ? null : switchService.getSwitch(dstSwId);
-                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true);
+                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true, packetId);
 
                 if (ofPacketOut != null) {
-                    logger.debug("==> Sending verification packet out {}/{}: {}", srcSwitch.getId().toString(),
+                    logger.debug("==> Sending verification packet out {}/{} id {}: {}", srcSwitch.getId().toString(),
                             port.getPortNumber(),
+                            packetId,
                             Hex.encodeHexString(ofPacketOut.getData()));
                     result = srcSwitch.write(ofPacketOut);
                 } else {
                     logger.error("<== Received null from generateVerificationPacket, inputs where: "
-                            + "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
+                            + "srcSwitch: {}, port: {} id: {}, dstSwitch: {}", srcSwitch, port, packetId, dstSwitch);
                 }
 
                 if (result) {
-                    logIsl.info("push discovery package via: {}-{}", srcSwitch.getId(), port.getPortNumber());
+                    logIsl.info("push discovery package via: {}-{} id:{}", srcSwitch.getId(), port.getPortNumber(),
+                            packetId);
                 } else {
                     logger.error(
-                            "Failed to send PACKET_OUT(ISL discovery packet) via {}-{}",
-                            srcSwitch.getId(), port.getPortNumber());
+                            "Failed to send PACKET_OUT(ISL discovery packet) via {}-{} id: {}",
+                            srcSwitch.getId(), port.getPortNumber(), packetId);
                 }
             }
         } catch (Exception exception) {
@@ -241,8 +245,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return result;
     }
 
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port) {
-        return generateVerificationPacket(srcSw, port, null, true);
+    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, Long packetId) {
+        return generateVerificationPacket(srcSw, port, null, true, packetId);
     }
 
     /**
@@ -255,7 +259,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
      * @return verification packet.
      */
     public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
-                                                  boolean sign) {
+                                                  boolean sign, Long packetId) {
         try {
             byte[] dpidArray = new byte[8];
             ByteBuffer dpidBb = ByteBuffer.wrap(dpidArray);
@@ -317,10 +321,13 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             vp.getOptionalTlvList().add(typeTlv);
 
             if (sign) {
-                String token = JWT.create()
+                Builder builder = JWT.create()
                         .withClaim("dpid", dpid.getLong())
-                        .withClaim("ts", time + swLatency)
-                        .sign(algorithm);
+                        .withClaim("ts", time + swLatency);
+                if (packetId != null) {
+                    builder.withClaim("id", packetId);
+                }
+                String token = builder.sign(algorithm);
 
                 byte[] tokenBytes = token.getBytes(Charset.forName("UTF-8"));
 
@@ -415,6 +422,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             int pathOrdinal = 10;
             IOFSwitch remoteSwitch = null;
             DatapathId remoteSwitchId = null;
+            Long packetId = null;
             boolean signed = false;
             for (LLDPTLV lldptlv : verificationPacket.getOptionalTlvList()) {
                 if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
@@ -453,6 +461,10 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
                     try {
                         DecodedJWT jwt = verifier.verify(token);
+                        Claim idClaim = jwt.getClaim("id");
+                        if (!idClaim.isNull()) {
+                            packetId = idClaim.asLong();
+                        }
                         signed = true;
                     } catch (JWTVerificationException e) {
                         logger.error("Packet verification failed", e);
@@ -490,7 +502,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
             long speed = getSwitchPortSpeed(input.getDpId(), inPort);
             IslInfoData path = new IslInfoData(latency, source, destination, speed, IslChangeType.DISCOVERED,
-                    getAvailableBandwidth(speed), false);
+                    getAvailableBandwidth(speed), false, packetId);
 
             Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
 

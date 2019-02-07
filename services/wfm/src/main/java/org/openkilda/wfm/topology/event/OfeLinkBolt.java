@@ -135,6 +135,8 @@ public class OfeLinkBolt
     @VisibleForTesting
     State state = State.NEED_SYNC;
 
+    private long packetId = 0;
+
     /**
      * Default constructor .. default health check frequency
      */
@@ -283,7 +285,8 @@ public class OfeLinkBolt
      * Helper method for sending an ISL Discovery Message.
      */
     private void sendDiscoveryMessage(Tuple tuple, NetworkEndpoint node, String correlationId) throws IOException {
-        DiscoverIslCommandData data = new DiscoverIslCommandData(node.getDatapath(), node.getPortNumber());
+        DiscoverIslCommandData data = new DiscoverIslCommandData(node.getDatapath(), node.getPortNumber(), packetId);
+        packetId += 1;
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER);
         logger.debug("LINK: Send ISL discovery command: {}", message);

@@ -246,7 +246,7 @@ public class OfEventWfmTest extends AbstractStormTest {
         InfoData data = new IslInfoData(10L,
                 new PathNode(new SwitchId("ff:01"), 1, 0, 10L),
                 new PathNode(new SwitchId("ff:02"), 2, 1, 10L),
-                10000L, IslChangeType.DISCOVERED, 9000L, false);
+                10000L, IslChangeType.DISCOVERED, 9000L, false, null);
         String islDiscovered = MAPPER.writeValueAsString(data);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(islDiscovered), 3, topoInputTopic);
         linkBolt.execute(tuple);

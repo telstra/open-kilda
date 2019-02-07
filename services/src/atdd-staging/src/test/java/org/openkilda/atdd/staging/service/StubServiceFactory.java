@@ -213,13 +213,13 @@ public class StubServiceFactory {
                                                 link.getSrcPort(), 0),
                                         new PathNode(link.getDstSwitch().getDpId(),
                                                 link.getDstPort(), 1),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0, false),
+                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0, false, null),
                                 new IslInfoData(0,
                                         new PathNode(link.getDstSwitch().getDpId(),
                                                 link.getDstPort(), 0),
                                         new PathNode(link.getSrcSwitch().getDpId(),
                                                 link.getSrcPort(), 1),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0, false)
+                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0, false, null)
                         ))
                         .collect(toList()));
 
