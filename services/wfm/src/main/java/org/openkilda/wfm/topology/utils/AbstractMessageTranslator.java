@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,27 +17,26 @@ package org.openkilda.wfm.topology.utils;
 
 import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 
-import org.openkilda.messaging.Message;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.wfm.CommandContext;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
 
-@Slf4j
-public class MessageTranslator extends KafkaRecordTranslator<String, Message> {
+public class AbstractMessageTranslator extends KafkaRecordTranslator<String, AbstractMessage> {
+
     public static final String KEY_FIELD = "key";
     public static final Fields STREAM_FIELDS = new Fields(KEY_FIELD, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     @Override
-    public List<Object> apply(ConsumerRecord<String, Message> record) {
-        Message message = record.value();
-        CommandContext commandContext = new CommandContext(message);
+    public List<Object> apply(ConsumerRecord<String, AbstractMessage> record) {
+        AbstractMessage message = record.value();
 
-        return new Values(record.key(), message, commandContext);
+        //fixme: should be replaced by new command context
+        return new Values(record.key(), message, new CommandContext(message.getCommandContext().getCorrelationId()));
     }
 
     @Override

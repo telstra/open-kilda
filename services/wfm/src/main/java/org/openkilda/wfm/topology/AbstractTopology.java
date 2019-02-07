@@ -16,9 +16,11 @@
 package org.openkilda.wfm.topology;
 
 import static java.lang.String.format;
+import static org.openkilda.wfm.topology.utils.MessageTranslator.KEY_FIELD;
 
 import org.openkilda.config.KafkaConfig;
 import org.openkilda.config.naming.KafkaNamingStrategy;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -28,9 +30,11 @@ import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.error.StreamNameCollisionException;
+import org.openkilda.wfm.kafka.AbstractMessageDeserializer;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
+import org.openkilda.wfm.topology.utils.AbstractMessageTranslator;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -46,6 +50,8 @@ import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
+import org.apache.storm.kafka.spout.KafkaSpoutRetryExponentialBackoff;
+import org.apache.storm.kafka.spout.KafkaSpoutRetryExponentialBackoff.TimeInterval;
 import org.apache.storm.thrift.TException;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
@@ -70,6 +76,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
     public static final String MESSAGE_FIELD = "message";
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
+    public static final Fields FIELDS_KEY = new Fields(KEY_FIELD);
 
     protected final String topologyName;
 
@@ -108,7 +115,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         if (topologyConfig.getUseLocalCluster()) {
             setupLocal();
         } else {
-            setupRemote();
+            setupLocal();
         }
     }
 
@@ -222,7 +229,20 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * @return {@link KafkaSpout}
      */
     protected KafkaSpout<String, Message> buildKafkaSpout(String topic, String spoutId) {
-        return new KafkaSpout<>(getKafkaSpoutConfigBuilder(topic, spoutId).build());
+        // fixme(ncherevko): max retries should be not null
+        return new KafkaSpout<>(getKafkaSpoutConfigBuilder(topic, spoutId)
+                .setRetry(new KafkaSpoutRetryExponentialBackoff(TimeInterval.seconds(0), TimeInterval.milliSeconds(2),
+                        0, TimeInterval.seconds(10))).build());
+    }
+
+    /**
+     * Creates Kafka spout. Transforms received value to {@link Message}.
+     *
+     * @param topic Kafka topic
+     * @return {@link KafkaSpout}
+     */
+    protected KafkaSpout<String, AbstractMessage> buildKafkaSpoutForAbstractMessage(String topic, String spoutId) {
+        return new KafkaSpout<>(getKafkaSpoutAbstractMessageSupport(topic, spoutId).build());
     }
 
     /**
@@ -246,11 +266,11 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * @param topic Kafka topic
      * @return {@link KafkaBolt}
      */
-    protected KafkaBolt<String, Message> buildKafkaBolt(final String topic) {
+    protected KafkaBolt<String, T> buildKafkaBolt(final String topic) {
         Properties properties = getKafkaProducerProperties();
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MessageSerializer.class.getName());
 
-        return new KafkaBolt<String, Message>()
+        return new KafkaBolt<String, T>()
                 .withProducerProperties(properties)
                 .withTopicSelector(new DefaultTopicSelector(topic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
@@ -308,6 +328,19 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
         config.setGroupId(makeKafkaGroupName(spoutId))
                 .setRecordTranslator(new MessageTranslator())
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
+
+        return config;
+    }
+
+    protected KafkaSpoutConfig.Builder<String, AbstractMessage> getKafkaSpoutAbstractMessageSupport(String topic,
+                                                                                                    String spoutId) {
+        KafkaSpoutConfig.Builder<String, AbstractMessage> config = new KafkaSpoutConfig.Builder<>(
+                kafkaConfig.getHosts(), StringDeserializer.class, AbstractMessageDeserializer.class,
+                new CustomNamedSubscription(topic));
+
+        config.setGroupId(makeKafkaGroupName(spoutId))
+                .setRecordTranslator(new AbstractMessageTranslator())
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
 
         return config;

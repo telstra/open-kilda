@@ -56,6 +56,18 @@ public class FloodlightModuleConfigurationProvider extends ValidatingConfigurati
         Map<String, String> configData = moduleContext.getConfigParams(module);
         FloodlightModuleConfigurationProvider provider = new FloodlightModuleConfigurationProvider(configData);
 
+        dumpConfigData(module.getClass(), configData);
+        return provider;
+    }
+
+    /**
+     * Build ConfigurationProvider instance for specified floodlight module.
+     */
+    public static FloodlightModuleConfigurationProvider of(FloodlightModuleContext moduleContext,
+                                                           Class<? extends IFloodlightModule> module) {
+        Map<String, String> configData = moduleContext.getConfigParams(module);
+        FloodlightModuleConfigurationProvider provider = new FloodlightModuleConfigurationProvider(configData);
+
         dumpConfigData(module, configData);
         return provider;
     }
@@ -73,13 +85,13 @@ public class FloodlightModuleConfigurationProvider extends ValidatingConfigurati
                 singletonList(new KafkaNamingForConfigurationValueProcessor(namingStrategy)));
     }
 
-    private static void dumpConfigData(IFloodlightModule module, Map<String, String> configData) {
+    private static void dumpConfigData(Class<? extends IFloodlightModule> module, Map<String, String> configData) {
         String delimiter = "\n      ";
         String dump = configData.entrySet().stream()
                 .map(entry -> String.format("%s = %s", entry.getKey(), entry.getValue()))
                 .collect(Collectors.joining(delimiter));
         log.debug(
                 "Dump config properties for {} (raw values, before filter and validation):{}{}",
-                module.getClass().getName(), delimiter, dump);
+                module.getName(), delimiter, dump);
     }
 }
