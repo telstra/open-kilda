@@ -111,10 +111,6 @@ public class KafkaChannel implements IFloodlightModule {
         return topics.getTopoNbTopic();
     }
 
-    public String getTopoEngTopic() {
-        return formatTopicWithRegion(topics.getTopoEngTopic());
-    }
-
     public String  getPingTopic() {
         return topics.getPingTopic();
     }
@@ -129,5 +125,9 @@ public class KafkaChannel implements IFloodlightModule {
 
     public String getTopoNbTopic() {
         return topics.getTopoNbTopic();
+    }
+
+    public String getTopoSwitchManagerTopic() {
+        return topics.getTopoSwitchManagerTopic();
     }
 }
