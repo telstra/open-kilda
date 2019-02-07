@@ -52,6 +52,7 @@ import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.BatchInstallForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
@@ -64,6 +65,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
@@ -79,6 +81,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.rule.BatchInstallResponse;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
@@ -183,8 +186,12 @@ class RecordHandler implements Runnable {
             doValidateRulesRequest(message);
         } else if (data instanceof DumpRulesRequest) {
             doDumpRulesRequest(message);
+        } else if (data instanceof DumpRulesForSwitchManagerRequest) {
+            doDumpRulesForSwitchManagerRequest(message);
         } else if (data instanceof BatchInstallRequest) {
             doBatchInstall(message);
+        } else if (data instanceof BatchInstallForSwitchManagerRequest) {
+            doBatchInstallForSwitchManager(message);
         } else if (data instanceof PortsCommandData) {
             doPortsCommandDataRequest(message);
         } else if (data instanceof DeleteMeterRequest) {
@@ -624,6 +631,11 @@ class RecordHandler implements Runnable {
                 context.getKafkaNorthboundTopic(), message.getCorrelationId(), message.getTimestamp());
     }
 
+    private void doDumpRulesForSwitchManagerRequest(final CommandMessage message) {
+        processDumpRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
+                context.getKafkaSwitchManagerTopic(), message.getCorrelationId(), message.getTimestamp());
+    }
+
     private void doValidateRulesRequest(final CommandMessage message) {
         processDumpRulesRequest(((ValidateRulesRequest) message.getData()).getSwitchId(),
                 context.getKafkaNbWorkerTopic(), message.getCorrelationId(), message.getTimestamp());
@@ -647,7 +659,7 @@ class RecordHandler implements Runnable {
                     .flowEntries(flows)
                     .build();
             InfoMessage infoMessage = new InfoMessage(response, timestamp, correlationId);
-            producerService.sendMessageAndTrack(replyToTopic, infoMessage);
+            producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
         } catch (SwitchOperationException e) {
             logger.error("Dumping of rules on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
             anError(ErrorType.NOT_FOUND)
@@ -688,6 +700,58 @@ class RecordHandler implements Runnable {
                 logger.error("Error during flow installation", e);
             }
         }
+    }
+
+    /**
+     * Batch install of flows on the switch from SwitchManager topology.
+     *
+     * @param message with list of flows.
+     */
+    private void doBatchInstallForSwitchManager(final CommandMessage message) {
+        BatchInstallForSwitchManagerRequest request = (BatchInstallForSwitchManagerRequest) message.getData();
+        final SwitchId switchId = request.getSwitchId();
+        logger.info("Do batch install flow rules on switch '{}'", switchId);
+
+        String replyToTopic = context.getKafkaSwitchManagerTopic();
+
+        for (BaseInstallFlow command : request.getFlowCommands()) {
+            logger.debug("Processing command for switch {} {}", switchId, command);
+            try {
+                if (command instanceof InstallIngressFlow) {
+                    installIngressFlow((InstallIngressFlow) command);
+                } else if (command instanceof InstallEgressFlow) {
+                    installEgressFlow((InstallEgressFlow) command);
+                } else if (command instanceof InstallTransitFlow) {
+                    installTransitFlow((InstallTransitFlow) command);
+                } else if (command instanceof InstallOneSwitchFlow) {
+                    installOneSwitchFlow((InstallOneSwitchFlow) command);
+                } else {
+                    throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                            ErrorType.REQUEST_INVALID, "Unsupported command for batch install.");
+                }
+
+            } catch (SwitchOperationException e) {
+                logger.error("Error during flow installation", e);
+                ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, "Error during flow installation",
+                        "Switch operation error");
+                ErrorMessage error = new ErrorMessage(errorData, System.currentTimeMillis(),
+                        message.getCorrelationId());
+                getKafkaProducer().sendMessageAndTrack(replyToTopic, message.getCorrelationId(), error);
+
+            } catch (FlowCommandException e) {
+                String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                logger.error("Failed to handle message {}: {}", message, errorMessage);
+                ErrorData errorData = new FlowCommandErrorData(e.getFlowId(), e.getCookie(), e.getTransactionId(),
+                        e.getErrorType(), errorMessage, e.getMessage());
+                ErrorMessage error = new ErrorMessage(errorData, System.currentTimeMillis(),
+                        message.getCorrelationId());
+                getKafkaProducer().sendMessageAndTrack(replyToTopic, message.getCorrelationId(), error);
+            }
+        }
+
+        InfoMessage infoMessage = new InfoMessage(new BatchInstallResponse(), System.currentTimeMillis(),
+                message.getCorrelationId());
+        getKafkaProducer().sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
     }
 
     private void doPortsCommandDataRequest(CommandMessage message) {

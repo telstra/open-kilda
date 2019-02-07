@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.hubandspoke;
 import static java.util.Objects.requireNonNull;
 
 import org.openkilda.wfm.error.AbstractException;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.commons.lang3.StringUtils;
@@ -66,7 +67,7 @@ public abstract class HubBolt extends CoordinatedBolt {
      * Handler for income request. Define the main steps and functionality for current hub.
      * @param input income message.
      */
-    protected abstract void onRequest(Tuple input);
+    protected abstract void onRequest(Tuple input) throws PipelineException;
 
     /**
      * Handler for all hub-related workers. Since hub might has unlimited number of workers this method handles all

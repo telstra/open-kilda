@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
  */
 public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements FlowRepository {
     private static final String FLOW_ID_PROPERTY_NAME = "flowid";
+    private static final String COOKIE_PROPERTY_NAME = "cookie";
     private static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
 
     private final FlowStatusConverter flowStatusConverter = new FlowStatusConverter();
@@ -66,6 +67,16 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
 
         return getSession().loadAll(getEntityType(), flowIdFilter, DEPTH_LOAD_ENTITY);
+    }
+
+    @Override
+    public Optional<Flow> findByIdAndCookie(String flowId, long cookie) {
+        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
+        Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, cookie);
+
+        Collection<Flow> flows =
+                getSession().loadAll(getEntityType(), flowIdFilter.and(cookieFilter), DEPTH_LOAD_ENTITY);
+        return flows.isEmpty() ? Optional.empty() : Optional.of(flows.iterator().next());
     }
 
     @Override
