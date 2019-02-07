@@ -210,36 +210,18 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private LinkPropsResponse dropLinkProps(LinkPropsDrop request) {
-        LinkPropsRepository linkPropsRepository = repositoryFactory.createLinkPropsRepository();
-        IslRepository islRepository = repositoryFactory.createIslRepository();
+
+        LinkProps linkPropsToDrop = LinkProps.builder()
+                .srcSwitchId(request.getPropsMask().getSource().getDatapath())
+                .srcPort(request.getPropsMask().getSource().getPortNumber())
+                .dstSwitchId(request.getPropsMask().getDest().getDatapath())
+                .dstPort(request.getPropsMask().getDest().getPortNumber())
+                .build();
+        LinkProps reverseLinkPropsToDrop = swapLinkProps(linkPropsToDrop);
 
         try {
-            int srcPort = request.getPropsMask().getSource().getPortNumber();
-            SwitchId srcSwitch = request.getPropsMask().getSource().getDatapath();
-            int dstPort = request.getPropsMask().getDest().getPortNumber();
-            SwitchId dstSwitch = request.getPropsMask().getDest().getDatapath();
-
-            LinkProps result = transactionManager.doInTransaction(() -> {
-                Collection<LinkProps> existingLinkProps = linkPropsRepository.findByEndpoints(
-                        srcSwitch, srcPort, dstSwitch, dstPort);
-
-                LinkProps linkProps = null;
-                if (!existingLinkProps.isEmpty()) {
-                    linkProps = existingLinkProps.iterator().next();
-                    linkPropsRepository.delete(linkProps);
-                }
-
-                Optional<Isl> existingIsl = islRepository.findByEndpoints(
-                        srcSwitch, srcPort, dstSwitch, dstPort);
-                existingIsl.ifPresent(link -> {
-                    link.setCost(0);
-                    link.setMaxBandwidth(link.getDefaultMaxBandwidth());
-
-                    islRepository.createOrUpdate(link);
-                });
-
-                return linkProps;
-            });
+            LinkProps result = deleteLinkProps(linkPropsToDrop);
+            deleteLinkProps(reverseLinkPropsToDrop);
 
             return new LinkPropsResponse(request, LinkPropsMapper.INSTANCE.map(result), null);
         } catch (Exception e) {
@@ -248,6 +230,36 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
             return new LinkPropsResponse(request, null, e.getMessage());
         }
     }
+
+    private LinkProps deleteLinkProps(LinkProps linkPropsToDrop) {
+        LinkPropsRepository linkPropsRepository = repositoryFactory.createLinkPropsRepository();
+        IslRepository islRepository = repositoryFactory.createIslRepository();
+
+        return transactionManager.doInTransaction(() -> {
+            Collection<LinkProps> existingLinkProps = linkPropsRepository.findByEndpoints(
+                    linkPropsToDrop.getSrcSwitchId(), linkPropsToDrop.getSrcPort(),
+                    linkPropsToDrop.getDstSwitchId(), linkPropsToDrop.getDstPort());
+
+            LinkProps linkProps = null;
+            if (!existingLinkProps.isEmpty()) {
+                linkProps = existingLinkProps.iterator().next();
+                linkPropsRepository.delete(linkProps);
+            }
+
+            Optional<Isl> existingIsl = islRepository.findByEndpoints(
+                    linkPropsToDrop.getSrcSwitchId(), linkPropsToDrop.getSrcPort(),
+                    linkPropsToDrop.getDstSwitchId(), linkPropsToDrop.getDstPort());
+            existingIsl.ifPresent(link -> {
+                link.setCost(0);
+                link.setMaxBandwidth(link.getDefaultMaxBandwidth());
+
+                islRepository.createOrUpdate(link);
+            });
+
+            return linkProps;
+        });
+    }
+
 
     private DeleteIslResponse deleteLink(DeleteLinkRequest request) {
         boolean deleted;
