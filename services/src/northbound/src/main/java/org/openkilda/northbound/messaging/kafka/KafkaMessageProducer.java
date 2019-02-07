@@ -55,7 +55,8 @@ public class KafkaMessageProducer implements MessageProducer {
      */
     @Override
     public ListenableFuture<SendResult<String, Message>> send(final String topic, final Message message) {
-        ListenableFuture<SendResult<String, Message>> future = kafkaTemplate.send(topic, message);
+        ListenableFuture<SendResult<String, Message>> future =
+                kafkaTemplate.send(topic, message.getCorrelationId(), message);
         future.addCallback(
                 success -> {
                     healthCheckService.updateKafkaStatus(HEALTH_CHECK_OPERATIONAL_STATUS);

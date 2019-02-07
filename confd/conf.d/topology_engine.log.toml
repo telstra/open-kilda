@@ -1,5 +1,0 @@
-[template]
-src = "topology-engine/log.json.tmpl"
-dest = "services/topology-engine/queue-engine/log.json"
-keys = [ "/" ]
-mode = "0644"

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,22 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.wfm.topology.switchmanager;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.persistence.PersistenceManager;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+public interface SwitchCommandCarrier {
+    void sendCommand(String key, CommandMessage command);
 
-@Value
-public class SwitchRulesSyncRequest extends CommandData {
+    void response(String key, Message message);
 
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
-
-    public SwitchRulesSyncRequest(@JsonProperty("switch_id") SwitchId switchId) {
-        this.switchId = switchId;
-    }
+    PersistenceManager getPersistenceManager();
 }
-

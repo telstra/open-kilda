@@ -13,22 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.messaging.command.switches;
 
-import org.openkilda.model.FlowSegment;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
-import java.util.Collection;
-import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Value;
 
-public interface FlowSegmentRepository extends Repository<FlowSegment> {
-    Collection<FlowSegment> findByFlowIdAndCookie(String flowId, long flowCookie);
+@Value
+@Builder
+public class DumpRulesForSwitchManagerRequest extends CommandData {
 
-    Optional<FlowSegment> findBySrcSwitchIdAndCookie(SwitchId switchId, long flowCookie);
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
-    Collection<FlowSegment> findByDestSwitchId(SwitchId switchId);
-
-    Collection<FlowSegment> findBySrcSwitchId(SwitchId switchId);
-
-    long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
+    @JsonCreator
+    public DumpRulesForSwitchManagerRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
+    }
 }
