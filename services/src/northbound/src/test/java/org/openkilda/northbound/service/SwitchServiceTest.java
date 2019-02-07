@@ -31,7 +31,6 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.impl.SwitchServiceImpl;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,15 +68,10 @@ public class SwitchServiceTest {
         Long properRule = 10L;
         SwitchId switchId = new SwitchId(1L);
 
-        // the switch has 1 excess, 1 proper and 1 missing rules
-        InfoData validationResult = new SyncRulesResponse(Collections.singletonList(missingRule),
-                Collections.singletonList(properRule), Collections.singletonList(excessRule), Collections.emptyList());
-        messageExchanger.mockResponse(correlationId, validationResult);
-
-        SyncRulesResponse rules = new SyncRulesResponse(
-                Collections.emptyList(), ImmutableList.of(properRule, missingRule),
-                Collections.singletonList(excessRule), Collections.singletonList(missingRule));
-        messageExchanger.mockResponse(String.format("%s-sync", correlationId), rules);
+        SyncRulesResponse rules = new SyncRulesResponse(Collections.singletonList(missingRule),
+                Collections.singletonList(properRule), Collections.singletonList(excessRule),
+                Collections.singletonList(missingRule));
+        messageExchanger.mockResponse(correlationId, rules);
 
         RulesSyncResult result = switchService.syncRules(switchId).get();
         assertThat(result.getMissingRules(), is(Collections.singletonList(missingRule)));

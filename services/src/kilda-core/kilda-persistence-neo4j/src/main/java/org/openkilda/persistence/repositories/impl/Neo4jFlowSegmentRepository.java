@@ -47,6 +47,17 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
     }
 
     @Override
+    public Optional<FlowSegment> findBySrcSwitchIdAndCookie(SwitchId switchId, long flowCookie) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, flowCookie);
+
+        Collection<FlowSegment> flowSegments =
+                getSession().loadAll(getEntityType(), srcSwitchFilter.and(cookieFilter), DEPTH_LOAD_ENTITY);
+
+        return flowSegments.isEmpty() ? Optional.empty() : Optional.of(flowSegments.iterator().next());
+    }
+
+    @Override
     public Collection<FlowSegment> findByDestSwitchId(SwitchId switchId) {
         Filter destSwitchIdFilter = createDstSwitchFilter(switchId);
         return getSession().loadAll(getEntityType(), destSwitchIdFilter, DEPTH_LOAD_ENTITY);
