@@ -23,7 +23,6 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.testing.model.topology.TopologyDefinition;
-import org.openkilda.testing.model.topology.TopologyDefinition.ASwitch;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.lockkeeper.LockKeeperService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
@@ -79,7 +78,7 @@ public class IslSteps {
         topologyUnderTest.getFlowIsls().forEach((flow, isls) -> {
             TopologyDefinition.Isl islToRemove = isls.stream().filter(isl -> isl.getAswitch() != null)
                     .findFirst().get();
-            TopologyDefinition.ASwitch aswitch = islToRemove.getAswitch();
+            ASwitchFlow aswitch = islToRemove.getAswitch();
             ASwitchFlow aswFlowForward = new ASwitchFlow(aswitch.getInPort(), aswitch.getOutPort());
             ASwitchFlow aswFlowReverse = new ASwitchFlow(aswitch.getOutPort(), aswitch.getInPort());
             lockKeeperService.removeFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
@@ -93,7 +92,7 @@ public class IslSteps {
     @When("Changed ISLs? restores? connectivity")
     public void transitIslUp() {
         changedIsls.forEach(isl -> {
-            TopologyDefinition.ASwitch aswitch = isl.getAswitch();
+            ASwitchFlow aswitch = isl.getAswitch();
             ASwitchFlow aswFlowForward = new ASwitchFlow(aswitch.getInPort(), aswitch.getOutPort());
             ASwitchFlow aswFlowReverse = new ASwitchFlow(aswitch.getOutPort(), aswitch.getInPort());
             lockKeeperService.addFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
@@ -199,7 +198,7 @@ public class IslSteps {
     @When("^(source|destination) port for ISL '(.*)' goes down$")
     public void portsDown(String isSourceStr, String islAlias) {
         boolean isSourcePort = "source".equals(isSourceStr);
-        ASwitch aswitch = ((Isl) topologyUnderTest.getAliasedObject(islAlias)).getAswitch();
+        ASwitchFlow aswitch = ((Isl) topologyUnderTest.getAliasedObject(islAlias)).getAswitch();
         List<Integer> portsToBringDown = Collections.singletonList(
                 isSourcePort ? aswitch.getInPort() : aswitch.getOutPort());
         lockKeeperService.portsDown(portsToBringDown);
@@ -208,7 +207,7 @@ public class IslSteps {
     @When("^(source|destination) port for ISL '(.*)' goes up")
     public void portsUp(String isSourceStr, String islAlias) {
         boolean isSourcePort = "source".equals(isSourceStr);
-        ASwitch aswitch = ((Isl) topologyUnderTest.getAliasedObject(islAlias)).getAswitch();
+        ASwitchFlow aswitch = ((Isl) topologyUnderTest.getAliasedObject(islAlias)).getAswitch();
         List<Integer> portsToBringUp = Collections.singletonList(
                 isSourcePort ? aswitch.getInPort() : aswitch.getOutPort());
         lockKeeperService.portsUp(portsToBringUp);
@@ -266,10 +265,10 @@ public class IslSteps {
                 dstIsSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch(),
                 dstIsSource ? dstIsl.getSrcPort() : dstIsl.getDstPort(),
                 0,
-                new ASwitch(
+                new ASwitchFlow(
                         srcIsSource ? srcIsl.getAswitch().getInPort() : srcIsl.getAswitch().getOutPort(),
                         dstIsSource ? dstIsl.getAswitch().getInPort() : dstIsl.getAswitch().getOutPort()
-                ));
+                ), srcIsl.isBfd());
         topologyUnderTest.addAlias(newAlias, newIsl);
     }
 

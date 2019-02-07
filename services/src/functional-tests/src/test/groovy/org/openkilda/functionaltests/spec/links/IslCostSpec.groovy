@@ -7,7 +7,6 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.northbound.dto.links.LinkPropsDto
-import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Shared
@@ -100,9 +99,9 @@ class IslCostSpec extends BaseSpecification {
     }
 
     def "ISL cost is NOT increased due to failing connection between switches (not port down)"() {
-        given: "Active ISL going through a-switch"
+        given: "ISL going through a-switch"
         def isl = topology.islsForActiveSwitches.find {
-            it.aswitch
+            it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
         } ?: assumeTrue("Wasn't able to find suitable ISL", false)
         def reverseIsl = islUtils.reverseIsl(isl)
 
@@ -110,8 +109,7 @@ class IslCostSpec extends BaseSpecification {
         assert islUtils.getIslCost(reverseIsl) == islCost
 
         when: "Remove a-switch rules to break link between switches"
-        def rulesToRemove = [new ASwitchFlow(isl.aswitch.inPort, isl.aswitch.outPort),
-                             new ASwitchFlow(isl.aswitch.outPort, isl.aswitch.inPort)]
+        def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]
         lockKeeper.removeFlows(rulesToRemove)
 
         then: "Status of forward and reverse ISLs becomes 'FAILED'"
