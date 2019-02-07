@@ -488,7 +488,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             PathNode source = new PathNode(new SwitchId(remoteSwitch.getId().getLong()), remotePort.getPortNumber(), 0,
                             latency);
             PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
-            long speed = getSwitchPortSpeed(input.getDpId(), inPort);
+            long speed = Math.min(getSwitchPortSpeed(input.getDpId(), inPort),
+                    getSwitchPortSpeed(remoteSwitch.getId(), remotePort));
             IslInfoData path = new IslInfoData(latency, source, destination, speed, IslChangeType.DISCOVERED,
                     getAvailableBandwidth(speed), false);
 
