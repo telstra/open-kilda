@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.Objects;
@@ -56,11 +57,20 @@ public class IslInfoData extends CacheTimeTag {
     @JsonProperty("available_bandwidth")
     private long availableBandwidth;
 
+    @JsonProperty("max_bandwidth")
+    private long maxBandwidth;
+
+    @JsonProperty("default_max_bandwidth")
+    private long defaultMaxBandwidth;
+
     /**
      * Isl state.
      */
     @JsonProperty("state")
     protected IslChangeType state;
+
+    @JsonProperty("actual_state")
+    private IslChangeType actualState;
 
     @JsonProperty("time_create")
     private final Long timeCreateMillis;
@@ -70,6 +80,9 @@ public class IslInfoData extends CacheTimeTag {
 
     @JsonProperty("latency_ns")
     protected long latency;
+
+    @JsonProperty("cost")
+    private int cost;
 
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
@@ -89,7 +102,11 @@ public class IslInfoData extends CacheTimeTag {
                 that.getDestination(),
                 that.getSpeed(),
                 that.getAvailableBandwidth(),
+                that.getMaxBandwidth(),
+                that.getDefaultMaxBandwidth(),
                 that.getState(),
+                that.getActualState(),
+                that.getCost(),
                 that.getTimeCreateMillis(),
                 that.getTimeModifyMillis(),
                 that.isUnderMaintenance());
@@ -99,21 +116,21 @@ public class IslInfoData extends CacheTimeTag {
      * Simple constructor for an ISL with only source/destination and state.
      */
     public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
-        this(-1, source, destination, 0, 0, state, null, null, underMaintenance);
+        this(-1, source, destination, 0, 0, 0, 0, state, null, 0, null, null, underMaintenance);
     }
 
-    public IslInfoData(long latency, PathNode source, PathNode destination, long speed,
-                       IslChangeType state, long availableBandwidth, boolean underMaintenance) {
-        this(latency, source, destination, speed, availableBandwidth, state, null, null, underMaintenance);
-    }
-
+    @Builder(toBuilder = true)
     @JsonCreator
     public IslInfoData(@JsonProperty("latency_ns") long latency,
                        @JsonProperty("source") PathNode source,
                        @JsonProperty("destination") PathNode destination,
                        @JsonProperty("speed") long speed,
                        @JsonProperty("available_bandwidth") long availableBandwidth,
+                       @JsonProperty("max_bandwidth")  long maxBandwidth,
+                       @JsonProperty("default_max_bandwidth") long defaultMaxBandwidth,
                        @JsonProperty("state") IslChangeType state,
+                       @JsonProperty("actual_state")  IslChangeType actualState,
+                       @JsonProperty("cost") int cost,
                        @JsonProperty("time_create") Long timeCreateMillis,
                        @JsonProperty("time_modify") Long timeModifyMillis,
                        @JsonProperty("under_maintenance") boolean underMaintenance) {
@@ -122,7 +139,11 @@ public class IslInfoData extends CacheTimeTag {
         this.destination = destination;
         this.speed = speed;
         this.availableBandwidth = availableBandwidth;
+        this.maxBandwidth = maxBandwidth;
+        this.defaultMaxBandwidth = defaultMaxBandwidth;
         this.state = state;
+        this.actualState = actualState;
+        this.cost = cost;
         this.timeCreateMillis = timeCreateMillis;
         this.timeModifyMillis = timeModifyMillis;
         this.id = String.format("%s_%d", source.getSwitchId(), source.getPortNo());
@@ -161,7 +182,8 @@ public class IslInfoData extends CacheTimeTag {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, source, destination, speed, availableBandwidth, state, underMaintenance);
+        return Objects.hash(latency, source, destination, speed, availableBandwidth, maxBandwidth, defaultMaxBandwidth,
+                state, actualState, cost, underMaintenance);
     }
 
     /**
@@ -182,7 +204,11 @@ public class IslInfoData extends CacheTimeTag {
                 && Objects.equals(getDestination(), that.getDestination())
                 && Objects.equals(getSpeed(), that.getSpeed())
                 && Objects.equals(getAvailableBandwidth(), that.getAvailableBandwidth())
+                && Objects.equals(getMaxBandwidth(), that.getMaxBandwidth())
+                && Objects.equals(getDefaultMaxBandwidth(), that.getDefaultMaxBandwidth())
                 && Objects.equals(getState(), that.getState())
+                && Objects.equals(getActualState(), that.getActualState())
+                && Objects.equals(getCost(), that.getCost())
                 && Objects.equals(isUnderMaintenance(), that.isUnderMaintenance());
     }
 }

@@ -574,7 +574,11 @@ public class OfeLinkBolt
     //          - services/src/pce .. NetworkCache .. FlowCache ..
     private void sendDiscoveryFailed(SwitchId switchId, int portId, Tuple tuple, String correlationId) {
         PathNode node = new PathNode(switchId, portId, 0, 0L);
-        InfoData data = new IslInfoData(0L, node, null, 0L, IslChangeType.FAILED, 0L, false);
+        InfoData data = IslInfoData.builder()
+                .source(node)
+                .state(IslChangeType.FAILED)
+                .build();
+
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
 
         passToNetworkTopologyBolt(tuple, message);

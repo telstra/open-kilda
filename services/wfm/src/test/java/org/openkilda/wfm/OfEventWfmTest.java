@@ -243,10 +243,15 @@ public class OfEventWfmTest extends AbstractStormTest {
         Tuple tickTuple = new TupleImpl(topologyContext, Collections.emptyList(), 2, Constants.SYSTEM_TICK_STREAM_ID);
         linkBolt.execute(tickTuple);
 
-        InfoData data = new IslInfoData(10L,
-                new PathNode(new SwitchId("ff:01"), 1, 0, 10L),
-                new PathNode(new SwitchId("ff:02"), 2, 1, 10L),
-                10000L, IslChangeType.DISCOVERED, 9000L, false);
+        InfoData data = IslInfoData.builder()
+                .latency(10L)
+                .source(new PathNode(new SwitchId("ff:01"), 1, 0, 10L))
+                .destination(new PathNode(new SwitchId("ff:02"), 2, 1, 10L))
+                .speed(10000L)
+                .state(IslChangeType.DISCOVERED)
+                .availableBandwidth(9000L)
+                .underMaintenance(false)
+                .build();
         String islDiscovered = MAPPER.writeValueAsString(data);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(islDiscovered), 3, topoInputTopic);
         linkBolt.execute(tuple);

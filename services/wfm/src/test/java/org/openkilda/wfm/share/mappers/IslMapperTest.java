@@ -32,9 +32,16 @@ public class IslMapperTest {
 
     @Test
     public void islMapperTest() {
-        IslInfoData islInfoData = new IslInfoData(1, new PathNode(TEST_SWITCH_A_ID, 1, 0),
-                new PathNode(TEST_SWITCH_B_ID, 1, 1),
-                2, IslChangeType.DISCOVERED, 4, false);
+        IslInfoData islInfoData = IslInfoData.builder()
+                .latency(1L)
+                .source(new PathNode(TEST_SWITCH_A_ID, 1, 0))
+                .destination(new PathNode(TEST_SWITCH_B_ID, 1, 1))
+                .speed(2L)
+                .state(IslChangeType.DISCOVERED)
+                .cost(700)
+                .availableBandwidth(4L)
+                .underMaintenance(false)
+                .build();
 
         Isl isl = IslMapper.INSTANCE.map(islInfoData);
 
