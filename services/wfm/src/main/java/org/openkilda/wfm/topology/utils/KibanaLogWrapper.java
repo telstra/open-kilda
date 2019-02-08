@@ -19,8 +19,10 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.model.SwitchId;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.Value;
+import org.slf4j.Logger;
 import org.slf4j.MDC;
+import org.slf4j.event.Level;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +30,7 @@ import java.util.Map;
 /**
  * The KIBANA dashboard log wrapper.
  */
-@Slf4j
+@Value
 public class KibanaLogWrapper {
 
     private static final String SWITCH_ID = "switch_id";
@@ -43,83 +45,114 @@ public class KibanaLogWrapper {
      */
     private static final String TAG = "KIBANA_DASHBOARD_TAG";
 
+    private final Logger logger;
+
     /**
      * Log a switch discovery event with dashboard tags.
      *
+     * @param level a log level.
+     * @param message a message text.
      * @param switchId a switch id.
      * @param state a state of switch.
      */
-    public void onSwitchDiscovery(SwitchId switchId, SwitchChangeType state) {
+    public void onSwitchDiscovery(Level level, String message, SwitchId switchId, SwitchChangeType state) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "DISCO: Switch Event");
         data.put(SWITCH_ID, switchId.toString());
         data.put(STATE, state.toString());
-        proceed("Switch event", data);
+        proceed(level, message, data);
     }
 
     /**
      * Log a port discovery event with dashboard tags.
      *
+     * @param level a log level.
+     * @param message a message text.
      * @param switchId a switch id.
      * @param portId a port id.
      * @param state a port state.
      */
-    public void onPortDiscovery(SwitchId switchId, int portId, String state) {
+    public void onPortDiscovery(Level level, String message, SwitchId switchId, int portId, String state) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "DISCO: Port Event");
         data.put(SWITCH_ID, switchId.toString());
         data.put(PORT, String.valueOf(portId));
         data.put(STATE, state);
-        proceed("Port discovery", data);
+        proceed(level, message, data);
     }
 
     /**
      * Log an ISL Discovery when loop detected event, with dashboard tags.
      *
+     * @param level a log level.
+     * @param message a message text.
      * @param srcSwitch a source switch id.
      * @param srcPort a source port id.
      * @param dstPort a destination port id.
      * @param state an ISL state.
      */
-    public void onIslDiscoveryLoop(SwitchId srcSwitch, int srcPort, int dstPort, IslChangeType state) {
+    public void onIslDiscoveryLoop(Level level, String message, SwitchId srcSwitch, int srcPort, int dstPort,
+                                   IslChangeType state) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "DISCO: ISL Event");
         data.put(SRC_SWITCH, srcSwitch.toString());
         data.put(SRC_PORT, String.valueOf(srcPort));
         data.put(DST_PORT, String.valueOf(dstPort));
         data.put(STATE, state.toString());
-        proceed("Loop detected", data);
+        proceed(level, message, data);
     }
 
     /**
      * Log an ISL Discovery when state changed event, with dashboard tags.
      *
+     * @param level a log level.
+     * @param message a message text.
      * @param srcSwitch a source switch id.
      * @param srcPort a source port id.
      * @param dstPort a destination port id.
      * @param state an ISL state.
      */
-    public void onIslDiscovery(SwitchId srcSwitch, int srcPort, int dstPort, IslChangeType state) {
+    public void onIslDiscovery(Level level, String message, SwitchId srcSwitch, int srcPort, int dstPort,
+                               IslChangeType state) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "DISCO: ISL Event");
         data.put(SRC_SWITCH, srcSwitch.toString());
         data.put(STATE, state.toString());
         data.put(SRC_PORT, String.valueOf(srcPort));
         data.put(DST_PORT, String.valueOf(dstPort));
-        proceed("State changed", data);
+        proceed(level, message, data);
     }
 
     /**
      * Build and write log message and MDC custom fields.
      *
+     * @param level a log level.
      * @param message a message text.
      * @param logData a data for MDC custom fields.
      */
-    private void proceed(String message, Map<String, String> logData) {
+    private void proceed(Level level, String message, Map<String, String> logData) {
         Map<String, String> oldValues = MDC.getCopyOfContextMap();
         logData.forEach(MDC::put);
         try {
-            log.info(message);
+            switch (level) {
+                case INFO:
+                    logger.info(message);
+                    break;
+                case WARN:
+                    logger.warn(message);
+                    break;
+                case ERROR:
+                    logger.error(message);
+                    break;
+                case DEBUG:
+                    logger.debug(message);
+                    break;
+                case TRACE:
+                    logger.trace(message);
+                    break;
+                default:
+                    throw new IllegalArgumentException(String.format("Unhandled log level %s", level));
+            }
         } finally {
             logData.forEach((key, value) -> MDC.remove(key));
             oldValues.forEach(MDC::put);

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -72,6 +72,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -102,7 +103,7 @@ public class OfeLinkBolt
         extends AbstractTickStatefulBolt<KeyValueState<String, Object>>
         implements ICtrlBolt {
     private static final Logger logger = LoggerFactory.getLogger(OfeLinkBolt.class);
-    private static final KibanaLogWrapper logWrapper = new KibanaLogWrapper();
+    private static final KibanaLogWrapper logWrapper = new KibanaLogWrapper(logger);
     private static final int BOLT_TICK_INTERVAL = 1;
 
     private static final String STREAM_ID_CTRL = "ctrl";
@@ -467,8 +468,8 @@ public class OfeLinkBolt
         SwitchId switchId = switchData.getSwitchId();
         SwitchChangeType switchState = switchData.getState();
 
-        logger.info("DISCO: Switch Event: switch={} state={}", switchId, switchState);
-        logWrapper.onSwitchDiscovery(switchId, switchState);
+        String logMessage = format("DISCO: Switch Event: switch=%s state=%s", switchId, switchState);
+        logWrapper.onSwitchDiscovery(Level.INFO, logMessage, switchId, switchState);
 
         if (switchState == SwitchChangeType.DEACTIVATED) {
             passToNetworkTopologyBolt(tuple, infoMessage);
@@ -500,8 +501,8 @@ public class OfeLinkBolt
         final SwitchId switchId = portData.getSwitchId();
         final int portId = portData.getPortNo();
         String updown = portData.getState().toString();
-        logger.info("DISCO: Port Event: switch={} port={} state={}", switchId, portId, updown);
-        logWrapper.onPortDiscovery(switchId, portId, updown);
+        String logMessage = format("DISCO: Port Event: switch=%s port=%d state=%s", switchId, portId, updown);
+        logWrapper.onPortDiscovery(Level.INFO, logMessage, switchId, portId, updown);
 
         if (isPortUpOrCached(updown)) {
             discovery.handlePortUp(switchId, portId);
@@ -535,9 +536,9 @@ public class OfeLinkBolt
          */
         if (IslChangeType.DISCOVERED.equals(islState)) {
             if (discoveredIsl.isSelfLooped()) {
-                logger.info("DISCO: ISL Event: loop detected: switch={} srcPort={} dstPort={}",
+                String logMessage = format("DISCO: ISL Event: loop detected: switch=%s srcPort=%d dstPort=%d",
                         srcSwitch, srcPort, dstPort);
-                logWrapper.onIslDiscoveryLoop(srcSwitch, srcPort, dstPort, islState);
+                logWrapper.onIslDiscoveryLoop(Level.INFO, logMessage, srcSwitch, srcPort, dstPort, islState);
                 return;
             }
             if (discovery.isIslMoved(srcSwitch, srcPort, dstSwitch, dstPort)) {
@@ -556,8 +557,8 @@ public class OfeLinkBolt
 
         if (stateChanged) {
             // If the state changed, notify the TE.
-            logger.info("DISCO: ISL Event: switch={} port={} state={}", srcSwitch, srcPort, islState);
-            logWrapper.onIslDiscovery(srcSwitch, srcPort, dstPort, islState);
+            String logMessage = format("DISCO: ISL Event: switch=%s port=%d state=%s", srcSwitch, srcPort, islState);
+            logWrapper.onIslDiscovery(Level.INFO, logMessage, srcSwitch, srcPort, dstPort, islState);
             passToNetworkTopologyBolt(tuple, infoMessage);
         }
     }
