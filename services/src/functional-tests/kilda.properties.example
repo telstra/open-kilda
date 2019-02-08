@@ -1,35 +1,28 @@
 northbound.endpoint=http://localhost:8080
-northbound.username=username
-northbound.password=password
-
-topology-engine-rest.endpoint=http://localhost
-topology-engine-rest.username=username
-topology-engine-rest.password=password
+northbound.username=kilda
+northbound.password=kilda
 
 floodlight.endpoint=http://localhost:8081
-floodlight.username=username
-floodlight.password=password
+floodlight.username=kilda
+floodlight.password=kilda
 floodlight.controller.uri=tcp:kilda:6653
+
+elasticsearch.endpoint = http://localhost:9200
+elasticsearch.username = kilda
+elasticsearch.password = kilda
+
+kafka.bootstrap.server = kafka.pendev:9092
+kafka.topic.topo.disco=kilda.topo.disco
 
 lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
-neo.user=user
-neo.password=password
+neo.user=
+neo.password=
 lab-api.endpoint=http://localhost:8288
+
 otsdb.endpoint=http://localhost:4242
 
-elasticsearch.endpoint=http://localhost:9200
-elasticsearch.username=username
-elasticsearch.password=password
-
-environment.naming.prefix=
-kafka.bootstrap.server=kafka.pendev:9092
-kafka.topic.topo.disco=kilda.topo.disco
-
 spring.profiles.active=virtual
-# not delete topology after test runs
-# for now in case of hardware profile it must be set to True if topology already exists
-mode.topology.single=true
 
 reroute.delay=3
 reroute.hardtimeout=15
@@ -38,6 +31,7 @@ discovery.timeout=15
 antiflap.min=1
 antiflap.warmup=5
 antiflap.cooldown=5
-isl.cost.when.port.down=10000
+burst.coef=1.05
 isl.cost.when.under.maintenance=10000
+isl.cost.when.port.down=10000
 bfd.offset=200

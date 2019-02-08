@@ -35,42 +35,34 @@ state after analysing the test failure (usually not an issue for virtual topolog
 recreated at the start of the test run).  
 
 # How to run
-Ensure that `topology.yaml` and
-`kilda.properties` files are present in the root of the functional-tests module.  
-If run from IDE: mark `groovy` subdirectory in the `functional-tests` module as a test sources root.
-
 ### Virtual (local Kilda)
-- Spawn your Kilda env locally by running
-```
-make build-latest
-make up-test-mode
-```
-- Create the `kilda.properties` file in the `functional-tests` directory.
-- Copy all properties from `kilda.properties.example` to the `kilda.properties` file. Please note that this is just an
-example file and some values may diverge from the actual ones. All properties should represent the actual properties
-your Kilda is deployed with. The casual `make up-test-mode` will use properties from `open-kilda/confd/vars/main.yaml`
-during deployment.
-- Change endpoint properties (url, user and password) if needed. It should point
-to your localhost environment. `spring.profiles.active` should be set to `virtual`.
-- Check your `topology.yaml`. This is a file which will be used to spawn a virtual
-topology used by all the tests.  
-The default `topology.yaml` file for the virtual topology is located in the `src/test/resources/` directory.  
-In order to use it for test runs copy this file to the root of the functional-tests module or specify the file path via  
-`-Dtopology.definition.file=src/test/resources/topology.yaml` in the run command.
+- Build Kilda `make build-latest`
+- Deploy Kilda locally `make up-test-mode`
+- Run tests `make func-tests`
+> Note that the above command will overwrite any existing kilda.properties and topology.yaml 
+files with default ones
+
+### Hardware (remote Kilda, Staging)
+- Ensure that `topology.yaml` and
+`kilda.properties` files are present in the root of the functional-tests module.
+- Check your `kilda.properties`. It should point to your staging environment.  
+`spring.profiles.active` should be set to `hardware`.  
+Note that other properties should 
+correspond to actual Kilda properties that were used for deployment of the target env.
+- Check your `topology.yaml`. It should represent your actual hardware topology.
 - Now you can run tests by executing the following command in the terminal:  
+`mvn clean test -Pfunctional -f services/src/functional-tests`.
+
+### General info
+- Framework requires `topology.yaml` and `kilda.properties` files. Custom locations can be specified via
+`-Dtopology.definition.file=custom/topology.yaml` and `-Dkilda.config.file=custom/kilda.properties`
+- Tests can be run via maven (given we in the `functional-tests` dir) 
 `mvn clean test -Pfunctional`.  
 If you want to run a single test, you can use the following command:  
 `mvn clean test -Pfunctional -Dtest="<path_to_test_file>#<test_name>"`.
 For example:  
 `mvn clean test -Pfunctional -Dtest="spec.northbound.flows.FlowsSpec#Able to create a single-switch flow"`
-Or just run tests from your IDE as regular JUnit tests.
-
-### Hardware (Staging)
-- Check your `kilda.properties`. It should point to your staging environment.  
-`spring.profiles.active` should be set to `hardware`.
-- Check your `topology.yaml`. It should represent your actual hardware topology.
-- Now you can run tests by executing the following command in the terminal:  
-`mvn clean test -Pfunctional`.
+- Tests can be run as regular JUnit tests from your IDE
 
 ## Artifacts
 * Logs - ```target/logs```
