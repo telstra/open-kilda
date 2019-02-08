@@ -431,7 +431,7 @@ public class FlowServiceImpl implements FlowService {
         private int outPort;
         private int inVlan;
         private int outVlan;
-        private int meterId;
+        private Integer meterId;
         private long pktCount;   // only set from switch rules, not flow rules
         private long byteCount;  // only set from switch rules, not flow rules
         private String version;
@@ -550,7 +550,7 @@ public class FlowServiceImpl implements FlowService {
 
                     rule.meterId = Optional.ofNullable(switchRule.getInstructions().getGoToMeter())
                             .map(Long::intValue)
-                            .orElse(NumberUtils.INTEGER_ZERO);
+                            .orElse(null);
                 }
                 rule.pktCount = switchRule.getPacketCount();
                 rule.byteCount = switchRule.getByteCount();
