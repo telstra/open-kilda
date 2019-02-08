@@ -76,7 +76,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
         searchPlaceholder: "Search"
         },
     columnDefs:[
-        { targets: [1,2], visible: this.hasStoreSetting},
+        { targets: [1], visible: this.hasStoreSetting},
         ]
     }
     this.portListData();
@@ -87,9 +87,9 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
       var value = e.target.value;
         this.dtElement.dtInstance.then((dtInstance: DataTables.Api) => {
             if(this.hasStoreSetting){
-                dtInstance.columns( [1,2] ).visible( true );
+                dtInstance.columns( [1] ).visible( true );
             }else{
-                dtInstance.columns( [1,2] ).visible( false );
+                dtInstance.columns( [1] ).visible( false );
             }
             
             dtInstance.search(value)
@@ -233,9 +233,9 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
     var interval = setInterval(()=>{
         this.dtElement.dtInstance.then((dtInstance: DataTables.Api) => {
             if(this.hasStoreSetting){
-                dtInstance.columns( [1,2,3] ).visible( true );
+                dtInstance.columns( [1] ).visible( true );
             }else{
-                dtInstance.columns( [1,2,3] ).visible( false );
+                dtInstance.columns( [1] ).visible( false );
             }
             clearInterval(interval);
         });
