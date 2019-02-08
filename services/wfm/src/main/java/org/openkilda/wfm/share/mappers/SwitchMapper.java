@@ -42,6 +42,12 @@ public abstract class SwitchMapper {
     }
 
     @Mapping(source = "state", target = "status")
+    @Mapping(source = "switchView.ofVersion", target = "ofVersion")
+    @Mapping(source = "switchView.description.manufacturer", target = "ofDescriptionManufacturer")
+    @Mapping(source = "switchView.description.hardware", target = "ofDescriptionHardware")
+    @Mapping(source = "switchView.description.software", target = "ofDescriptionSoftware")
+    @Mapping(source = "switchView.description.serialNumber", target = "ofDescriptionSerialNumber")
+    @Mapping(source = "switchView.description.datapath", target = "ofDescriptionDatapath")
     public abstract Switch map(SwitchInfoData sw);
 
     /**

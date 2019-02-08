@@ -53,7 +53,16 @@ public class SwitchService {
         daoSwitch.setHostname(sw.getHostname());
         daoSwitch.setDescription(sw.getDescription());
         daoSwitch.setController(sw.getController());
+
+        daoSwitch.setOfVersion(sw.getOfVersion());
+        daoSwitch.setOfDescriptionManufacturer(sw.getOfDescriptionManufacturer());
+        daoSwitch.setOfDescriptionHardware(sw.getOfDescriptionHardware());
+        daoSwitch.setOfDescriptionSoftware(sw.getOfDescriptionSoftware());
+        daoSwitch.setOfDescriptionSerialNumber(sw.getOfDescriptionSerialNumber());
+        daoSwitch.setOfDescriptionDatapath(sw.getOfDescriptionDatapath());
+
         daoSwitch.setStatus(SwitchStatus.ACTIVE);
+
         switchRepository.createOrUpdate(daoSwitch);
     }
 
