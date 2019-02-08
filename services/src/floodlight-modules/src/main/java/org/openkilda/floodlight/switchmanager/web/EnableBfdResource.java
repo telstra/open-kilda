@@ -128,7 +128,7 @@ public class EnableBfdResource extends ServerResource {
                 .setDestinationPort(udpPort);
 
         InetAddress sourceIpAddress = switchManager.getSwitchIpAddress(sw);
-        InetAddress destIpAddress = bfdSession.getRemote().getIpAddress();
+        InetAddress destIpAddress = bfdSession.getRemote().getInetAddress();
         IPacket l3 = new IPv4()
                 .setSourceAddress(IPv4Address.of(sourceIpAddress.getAddress()))
                 .setDestinationAddress(IPv4Address.of(destIpAddress.getAddress()))

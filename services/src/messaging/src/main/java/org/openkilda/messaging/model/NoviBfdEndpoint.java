@@ -24,10 +24,10 @@ import java.io.Serializable;
 @Data
 public abstract class NoviBfdEndpoint implements Serializable {
     @JsonProperty("target")
-    protected final SpeakerSwitchView target;
+    protected final SwitchReference target;
 
     @JsonProperty("remote")
-    protected final SpeakerSwitchView remote;
+    protected final SwitchReference remote;
 
     @JsonProperty("physical-port-number")
     protected final int physicalPortNumber;
@@ -40,8 +40,8 @@ public abstract class NoviBfdEndpoint implements Serializable {
 
     @JsonCreator
     protected NoviBfdEndpoint(
-            @JsonProperty("target") SpeakerSwitchView target,
-            @JsonProperty("remote") SpeakerSwitchView remote,
+            @JsonProperty("target") SwitchReference target,
+            @JsonProperty("remote") SwitchReference remote,
             @JsonProperty("physical-port-number") int physicalPortNumber,
             @JsonProperty("udp-port-number") int udpPortNumber,
             @JsonProperty("discriminator") int discriminator) {
