@@ -23,7 +23,6 @@ class MultiRerouteSpec extends BaseSpecification {
             allPaths = database.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 2
         }
-        def currentPath = allPaths.min { pathHelper.getCost(it) }
         List<FlowPayload> flows = []
         2.times {
             def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -31,7 +30,9 @@ class MultiRerouteSpec extends BaseSpecification {
             flowHelper.addFlow(flow)
             flows << flow
         }
-        flows.each { assert pathHelper.convert(northbound.getFlowPath(it.id)) == currentPath }
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].id))
+        //ensure both flows are on the same path
+        assert pathHelper.convert(northbound.getFlowPath(flows[1].id)) == currentPath
 
         when: "Make another path more preferable"
         def newPath = allPaths.find { it != currentPath }
