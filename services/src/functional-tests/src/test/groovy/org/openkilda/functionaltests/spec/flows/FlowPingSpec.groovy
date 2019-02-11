@@ -16,6 +16,7 @@ import org.openkilda.northbound.dto.flows.UniFlowPingOutput
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Issue
 import spock.lang.Narrative
@@ -27,6 +28,9 @@ Flow ping feature sends a 'ping' packet at the one end of the flow, expecting th
 be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
 """)
 class FlowPingSpec extends BaseSpecification {
+
+    @Value('${opentsdb.metric.prefix}')
+    String metricPrefix
 
     @Unroll("Able to ping a flow with vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
@@ -53,7 +57,7 @@ class FlowPingSpec extends BaseSpecification {
         and: "Unicast rule packet count is increased and logged to otsdb"
         def statsData = null
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            statsData = otsdb.query(beforePingTime, "pen.switch.flow.system.bytes",
+            statsData = otsdb.query(beforePingTime, metricPrefix + "switch.flow.system.bytes",
                     [switchid : srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.VERIFICATION_UNICAST_RULE.toHexString()]).dps
             assert statsData && !statsData.empty
