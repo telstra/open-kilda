@@ -73,7 +73,7 @@ public abstract class BaseController implements ErrorController {
 
             modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
         } else {
-            LOGGER.error("[validateAndRedirect] User in not logged in, redirected to login page. Requested view name: "
+            LOGGER.warn("[validateAndRedirect] User in not logged in, redirected to login page. Requested view name: "
                     + viewName);
             modelAndView = new ModelAndView("login");
         }
@@ -121,7 +121,7 @@ public abstract class BaseController implements ErrorController {
         try {
             userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
         } catch (IllegalStateException ex) {
-            LOGGER.error("[getLoggedInUser] Exception while retrieving user information from session. Exception: "
+            LOGGER.warn("[getLoggedInUser] Exception while retrieving user information from session. Exception: "
                     + ex.getLocalizedMessage(), ex);
         } finally {
             if (userInfo == null) {

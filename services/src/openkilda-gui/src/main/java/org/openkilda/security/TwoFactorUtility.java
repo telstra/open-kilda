@@ -81,7 +81,7 @@ public final class TwoFactorUtility {
             byte[] key = Base64.encodeBase64(rsaString.getBytes());
             generatedKey = new String(key);
         } catch (Exception e) {
-            logger.error("[generateEncryptedKey] Exception :" + e);
+            logger.error("Error occurred while generating encrypted key", e);
 
         }
 
@@ -141,7 +141,7 @@ public final class TwoFactorUtility {
                 otpVal = generateOtp(seed, steps, codelength, "HmacSHA1");
             }
         } catch (Exception e) {
-            logger.error("[validateOtp] Exception :" + e);
+            logger.error("Error occurred while vaildating OTP", e);
         }
 
         if (otp.equals(otpVal)) {
@@ -253,7 +253,7 @@ public final class TwoFactorUtility {
 
             return hmac.doFinal(text);
         } catch (GeneralSecurityException gse) {
-            logger.error("[hmac_sha] Exception :" + gse);
+            logger.error("Error occurred while generating otp", gse);
             throw new UndeclaredThrowableException(gse);
         }
     }

@@ -54,6 +54,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
@@ -122,7 +123,6 @@ public class SwitchIntegrationService {
      */
     private List<SwitchInfo> getSwitchInfoSetName(List<SwitchInfo> switches) {
 
-        LOGGER.info("Inside getSwitchInfoSetName : Start");
         if (switches != null && !StringUtils.isEmpty(switches)) {
 
             Map<String, String> csNames = new HashMap<String, String>();
@@ -234,8 +234,8 @@ public class SwitchIntegrationService {
                     return linkPropsResponses;
                 }
             }
-        } catch (InvalidResponseException exception) {
-            LOGGER.error("Exception in getIslLinkProps " + exception.getMessage(), exception);
+        } catch (InvalidResponseException e) {
+            LOGGER.warn("Error occurred while getting isl link props ", e);
             return null;
         }
         return null;
@@ -261,8 +261,8 @@ public class SwitchIntegrationService {
                     csNames = JsonUtil.toObject(data, HashMap.class);
                 }
             }
-        } catch (Exception ex) {
-            LOGGER.error("Inside getCustomSwitchNameFromFile unable to find switch file path Exception :", ex);
+        } catch (IOException e) {
+            LOGGER.warn("Error occurred while getting switch name from file", e);
         }
         return csNames;
 
@@ -295,8 +295,8 @@ public class SwitchIntegrationService {
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS, HttpMethod.PUT,
                     objectMapper.writeValueAsString(keys), "application/json", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
-        } catch (Exception e) {
-            LOGGER.error("Inside updateIslLinkProps  Exception :", e);
+        } catch (IOException e) {
+            LOGGER.warn("Error occurred while updating isl link props", e);
             throw new IntegrationException(e);
         }
     }
@@ -347,8 +347,8 @@ public class SwitchIntegrationService {
                             + IConstants.NorthBoundUrl.GET_SWITCH_RULES.replace("{switch_id}", switchId),
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
-        } catch (Exception e) {
-            LOGGER.error("Inside updateIslLinkProps  Exception :", e);
+        } catch (IOException e) {
+            LOGGER.error("Error occurred while retrivig switch rules by switch id:" + switchId, e);
             throw new IntegrationException(e);
         }
     }
@@ -375,10 +375,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, ConfiguredPort.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Inside configurePort  Exception :", e);
+            LOGGER.error("Error occurred while configuring port. Switch Id:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while converting configration to string. Exception: " + e.getMessage(), e);
+            LOGGER.error("Error occurred while converting configration to string. Switch Id:" + switchId, e);
             throw new IntegrationException(e);
         }
         return null;
@@ -430,11 +430,8 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponseList(response, Flow.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Inside getIslFlowList  Exception :", e);
+            LOGGER.error("Error occurred while getting isl flow list", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getIslFlowList " + exception.getMessage());
-            throw new IntegrationException(exception);
         }
         return null;
     }

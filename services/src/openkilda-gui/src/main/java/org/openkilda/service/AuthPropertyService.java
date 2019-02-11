@@ -44,7 +44,6 @@ public class AuthPropertyService {
      * @return error message and code.
      */
     public Error getError(final String errorMsg) {
-        LOGGER.error("[getError] Error message: " + errorMsg);
         String errorMessageCode = authMessages.getProperty(errorMsg + CODE);
         String errorMessage = authMessages.getProperty(errorMsg + MESSAGE);
         return new Error(Integer.valueOf(errorMessageCode), errorMessage);

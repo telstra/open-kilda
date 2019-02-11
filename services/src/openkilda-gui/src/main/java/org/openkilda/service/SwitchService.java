@@ -83,8 +83,7 @@ public class SwitchService {
                 inventorySwitches = switchStoreService.getSwitches();
                 processInventorySwitch(switchInfo, inventorySwitches);
             } catch (Exception ex) {
-                LOGGER.error("[getSwitches] Exception while retrieving switches from store. Exception: "
-                        + ex.getLocalizedMessage(), ex);
+                LOGGER.error("Error occurred while retrieving switches from store", ex);
             }
         }
         return switchInfo;
@@ -124,8 +123,7 @@ public class SwitchService {
                     switchInfo.setDiscrepancy(discrepancy);
                 }
             } catch (Exception ex) {
-                LOGGER.error("[getSwitches] Exception while retrieving switches from store. Exception: "
-                        + ex.getLocalizedMessage(), ex);
+                LOGGER.error("Error occurred while retrieving switches from store", ex);
             }
         }
         return switchInfo;
