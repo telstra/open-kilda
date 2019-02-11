@@ -23,6 +23,8 @@ lockkeeper.endpoint={{ getv "/kilda_aswitch_endpoint" }}:{{ getv "/kilda_aswitch
 
 otsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 
+opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
+
 spring.profiles.active={{ getv "/kilda_test_profile" }}
 
 reroute.delay={{ getv "/kilda_reroute_throttling_delay_min" }}

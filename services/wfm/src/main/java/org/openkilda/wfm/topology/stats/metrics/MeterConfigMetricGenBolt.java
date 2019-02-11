@@ -30,6 +30,10 @@ import java.util.Map;
 
 public class MeterConfigMetricGenBolt extends MetricGenBolt {
 
+    public MeterConfigMetricGenBolt(String metricPrefix) {
+        super(metricPrefix);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
@@ -49,6 +53,6 @@ public class MeterConfigMetricGenBolt extends MetricGenBolt {
                 "switchid", switchId.toOtsdFormat(),
                 "meterId", meterId.toString()
         );
-        emitMetric("pen.switch.meters", timestamp, meterId, tags);
+        emitMetric("switch.meters", timestamp, meterId, tags);
     }
 }
