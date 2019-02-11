@@ -45,11 +45,13 @@ import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
@@ -184,7 +186,7 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> createFlow(final FlowPayload input) {
+    public CompletableFuture<FlowPayload> createFlow(final FlowCreatePayload input) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Create flow: {}", input);
 
@@ -214,7 +216,7 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> updateFlow(final FlowPayload input) {
+    public CompletableFuture<FlowPayload> updateFlow(final FlowUpdatePayload input) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Update flow request for flow {}", input.getId());
 

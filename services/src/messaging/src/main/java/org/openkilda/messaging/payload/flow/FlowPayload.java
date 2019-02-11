@@ -64,10 +64,6 @@ public class FlowPayload implements Serializable {
     @JsonProperty("last-updated")
     private String lastUpdated;
 
-    // request only
-    @JsonProperty("diverse-flowid")
-    private String diverseFlowId;
-
     @JsonProperty("status")
     private String status;
 
@@ -79,8 +75,10 @@ public class FlowPayload implements Serializable {
      * @param destination      flow destination
      * @param maximumBandwidth flow maximum bandwidth
      * @param ignoreBandwidth  should ignore bandwidth in path computation
+     * @param periodicPings    enable periodic flow pings
      * @param description      flow description
      * @param lastUpdated      flow last updated timestamp
+     * @param status           flow status
      */
     @Builder
     @JsonCreator
@@ -92,7 +90,6 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("periodic-pings") Boolean periodicPings,
                        @JsonProperty("description") String description,
                        @JsonProperty("last-updated") String lastUpdated,
-                       @JsonProperty("diverse-flowid") String diverseFlowId,
                        @JsonProperty("status") String status) {
         setId(id);
         setSource(source);
@@ -108,7 +105,6 @@ public class FlowPayload implements Serializable {
 
         this.description = description;
         this.lastUpdated = lastUpdated;
-        this.diverseFlowId = diverseFlowId;
         this.status = status;
     }
 
