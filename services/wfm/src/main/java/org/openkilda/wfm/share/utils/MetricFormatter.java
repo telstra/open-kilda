@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,24 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.islstats;
+package org.openkilda.wfm.share.utils;
 
-import org.openkilda.wfm.topology.AbstractTopologyConfig;
+import java.io.Serializable;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Key;
+public class MetricFormatter implements Serializable {
+    private String prefix;
 
-@Configuration
-public interface IslStatsTopologyConfig extends AbstractTopologyConfig {
-
-    default String getKafkaTopoDiscoTopic() {
-        return getKafkaTopics().getTopoDiscoTopic();
+    public MetricFormatter(String prefix) {
+        this.prefix = prefix;
     }
 
-    default String getKafkaOtsdbTopic() {
-        return getKafkaTopics().getOtsdbTopic();
+    public String format(String metric) {
+        return String.format("%s%s", prefix, metric);
     }
-
-    @Key("opentsdb.metric.prefix")
-    String getMetricPrefix();
 }

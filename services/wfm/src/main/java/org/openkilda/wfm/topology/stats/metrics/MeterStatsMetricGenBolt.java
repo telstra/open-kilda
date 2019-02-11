@@ -39,6 +39,11 @@ import javax.annotation.Nullable;
 
 @Slf4j
 public class MeterStatsMetricGenBolt extends MetricGenBolt {
+
+    public MeterStatsMetricGenBolt(String metricPrefix) {
+        super(metricPrefix);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         MeterStatsData data = (MeterStatsData) input.getValueByField(STATS_FIELD);
@@ -76,9 +81,9 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
         Map<String, String> tags = createCommonTags(switchId, meterStats.getMeterId());
         tags.put("cookieHex", createCookieForDefaultRule(meterStats.getMeterId()).toString());
 
-        emitMetric("pen.switch.flow.system.meter.packets", timestamp, meterStats.getPacketsInCount(), tags);
-        emitMetric("pen.switch.flow.system.meter.bytes", timestamp, meterStats.getByteInCount(), tags);
-        emitMetric("pen.switch.flow.system.meter.bits", timestamp, meterStats.getByteInCount() * 8, tags);
+        emitMetric("switch.flow.system.meter.packets", timestamp, meterStats.getPacketsInCount(), tags);
+        emitMetric("switch.flow.system.meter.bytes", timestamp, meterStats.getByteInCount(), tags);
+        emitMetric("switch.flow.system.meter.bits", timestamp, meterStats.getByteInCount() * 8, tags);
     }
 
     private void emitFlowMeterStats(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId,
@@ -96,9 +101,9 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
         tags.put("flowid", cacheEntry.getFlowId());
         tags.put("cookie", cacheEntry.getCookie().toString());
 
-        emitMetric("pen.flow.meter.packets", timestamp, meterStats.getPacketsInCount(), tags);
-        emitMetric("pen.flow.meter.bytes", timestamp, meterStats.getByteInCount(), tags);
-        emitMetric("pen.flow.meter.bits", timestamp, meterStats.getByteInCount() * 8, tags);
+        emitMetric("flow.meter.packets", timestamp, meterStats.getPacketsInCount(), tags);
+        emitMetric("flow.meter.bytes", timestamp, meterStats.getByteInCount(), tags);
+        emitMetric("flow.meter.bits", timestamp, meterStats.getByteInCount() * 8, tags);
     }
 
     private Map<String, String> createCommonTags(SwitchId switchId, long meterId) {
