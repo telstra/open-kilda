@@ -9,11 +9,15 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.Unroll
 
 @Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
 class SwitchPortConfigSpec extends BaseSpecification {
+
+    @Value('${opentsdb.metric.prefix}')
+    String metricPrefix
 
     def otsdbPortUp = 1
     def otsdbPortDown = 0
@@ -33,7 +37,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
         and: "Port failure is logged in OpenTSDB"
         def statsData = [:]
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            statsData = otsdb.query(portDownTime, "pen.switch.state",
+            statsData = otsdb.query(portDownTime, metricPrefix + "switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
             assert statsData.size() == 1
         }
@@ -51,7 +55,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
 
         and: "Port UP event is logged in OpenTSDB"
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            statsData = otsdb.query(portUpTime, "pen.switch.state",
+            statsData = otsdb.query(portUpTime, metricPrefix + "switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
             assert statsData.size() == 1
         }

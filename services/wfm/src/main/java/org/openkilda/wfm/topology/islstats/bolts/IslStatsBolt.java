@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.task.OutputCollector;
@@ -38,9 +39,14 @@ import java.util.List;
 import java.util.Map;
 
 public class IslStatsBolt extends BaseRichBolt {
-
-    private OutputCollector collector;
     private static final Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
+
+    private transient OutputCollector collector;
+    private MetricFormatter metricFormatter;
+
+    public IslStatsBolt(String metricPrefix) {
+        this.metricFormatter = new MetricFormatter(metricPrefix);
+    }
 
     private static List<Object> tsdbTuple(String metric, long timestamp, Number value, Map<String, String> tag)
             throws IOException {
@@ -53,17 +59,17 @@ public class IslStatsBolt extends BaseRichBolt {
         this.collector = collector;
     }
 
-    public List<Object> buildTsdbTuple(IslInfoData data, long timestamp) throws IOException {
+    List<Object> buildTsdbTuple(IslInfoData data, long timestamp) throws IOException {
         Map<String, String> tags = new HashMap<>();
         tags.put("src_switch", data.getSource().getSwitchId().toOtsdFormat());
         tags.put("src_port", String.valueOf(data.getSource().getPortNo()));
         tags.put("dst_switch", data.getDestination().getSwitchId().toOtsdFormat());
         tags.put("dst_port", String.valueOf(data.getDestination().getPortNo()));
 
-        return tsdbTuple("pen.isl.latency", timestamp, data.getLatency(), tags);
+        return tsdbTuple(metricFormatter.format("isl.latency"), timestamp, data.getLatency(), tags);
     }
 
-    public String getJson(Tuple tuple) {
+    private String getJson(Tuple tuple) {
         return tuple.getString(0);
     }
 
@@ -71,30 +77,29 @@ public class IslStatsBolt extends BaseRichBolt {
         return Utils.MAPPER.readValue(json, Message.class);
     }
 
-    public InfoData getInfoData(Message message) throws Exception {
+    InfoData getInfoData(Message message) {
         if (!(message instanceof InfoMessage)) {
-            throw new Exception(message.getClass().getName() + " is not an InfoMessage");
+            throw new IllegalArgumentException(message.getClass().getName() + " is not an InfoMessage");
         }
-        InfoData data = ((InfoMessage) message).getData();
-        return data;
+        return ((InfoMessage) message).getData();
     }
 
-    public IslInfoData getIslInfoData(InfoData data) throws Exception {
+    IslInfoData getIslInfoData(InfoData data) {
         if (!(data instanceof IslInfoData)) {
-            throw new Exception(data.getClass().getName() + " is not an IslInfoData");
+            throw new IllegalArgumentException(data.getClass().getName() + " is not an IslInfoData");
         }
         return (IslInfoData) data;
     }
 
     @Override
     public void execute(Tuple tuple) {
-        logger.debug("tuple: " + tuple);
+        logger.debug("tuple: {}", tuple);
         String json = getJson(tuple);
         try {
             Message message = getMessage(json);
             IslInfoData data = getIslInfoData(getInfoData(message));
             List<Object> results = buildTsdbTuple(data, message.getTimestamp());
-            logger.debug("emit: " + results);
+            logger.debug("emit: {}", results);
             collector.emit(results);
         } catch (IOException e) {
             logger.error("Could not deserialize message={}", json, e);

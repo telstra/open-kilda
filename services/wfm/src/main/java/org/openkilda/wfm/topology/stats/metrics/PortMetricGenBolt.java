@@ -30,6 +30,10 @@ import java.util.Map;
 
 public class PortMetricGenBolt extends MetricGenBolt {
 
+    public PortMetricGenBolt(String metricPrefix) {
+        super(metricPrefix);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
@@ -47,19 +51,19 @@ public class PortMetricGenBolt extends MetricGenBolt {
                 "port", String.valueOf(entry.getPortNo())
         );
 
-        emitMetric("pen.switch.rx-packets", timestamp, entry.getRxPackets(), tags);
-        emitMetric("pen.switch.tx-packets", timestamp, entry.getTxPackets(), tags);
-        emitMetric("pen.switch.rx-bytes", timestamp, entry.getRxBytes(), tags);
-        emitMetric("pen.switch.rx-bits", timestamp, entry.getRxBytes() * 8, tags);
-        emitMetric("pen.switch.tx-bytes", timestamp, entry.getTxBytes(), tags);
-        emitMetric("pen.switch.tx-bits", timestamp, entry.getTxBytes() * 8, tags);
-        emitMetric("pen.switch.rx-dropped", timestamp, entry.getRxDropped(), tags);
-        emitMetric("pen.switch.tx-dropped", timestamp, entry.getTxDropped(), tags);
-        emitMetric("pen.switch.rx-errors", timestamp, entry.getRxErrors(), tags);
-        emitMetric("pen.switch.tx-errors", timestamp, entry.getTxErrors(), tags);
-        emitMetric("pen.switch.rx-frame-error", timestamp, entry.getRxFrameErr(), tags);
-        emitMetric("pen.switch.rx-over-error", timestamp, entry.getRxOverErr(), tags);
-        emitMetric("pen.switch.rx-crc-error", timestamp, entry.getRxCrcErr(), tags);
-        emitMetric("pen.switch.collisions", timestamp, entry.getCollisions(), tags);
+        emitMetric("switch.rx-packets", timestamp, entry.getRxPackets(), tags);
+        emitMetric("switch.tx-packets", timestamp, entry.getTxPackets(), tags);
+        emitMetric("switch.rx-bytes", timestamp, entry.getRxBytes(), tags);
+        emitMetric("switch.rx-bits", timestamp, entry.getRxBytes() * 8, tags);
+        emitMetric("switch.tx-bytes", timestamp, entry.getTxBytes(), tags);
+        emitMetric("switch.tx-bits", timestamp, entry.getTxBytes() * 8, tags);
+        emitMetric("switch.rx-dropped", timestamp, entry.getRxDropped(), tags);
+        emitMetric("switch.tx-dropped", timestamp, entry.getTxDropped(), tags);
+        emitMetric("switch.rx-errors", timestamp, entry.getRxErrors(), tags);
+        emitMetric("switch.tx-errors", timestamp, entry.getTxErrors(), tags);
+        emitMetric("switch.rx-frame-error", timestamp, entry.getRxFrameErr(), tags);
+        emitMetric("switch.rx-over-error", timestamp, entry.getRxOverErr(), tags);
+        emitMetric("switch.rx-crc-error", timestamp, entry.getRxCrcErr(), tags);
+        emitMetric("switch.collisions", timestamp, entry.getCollisions(), tags);
     }
 }

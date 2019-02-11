@@ -19,6 +19,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.JsonEncodeException;
+import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -29,6 +30,12 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class MetricGenBolt extends AbstractBolt {
+
+    private MetricFormatter metricFormatter;
+
+    public MetricGenBolt(String metricPrefix) {
+        this.metricFormatter = new MetricFormatter(metricPrefix);
+    }
 
     protected static List<Object> tuple(String metric, long timestamp, Number value, Map<String, String> tag)
             throws JsonEncodeException {
@@ -44,7 +51,7 @@ public abstract class MetricGenBolt extends AbstractBolt {
 
     void emitMetric(String metric, long timestamp, Number value, Map<String, String> tag) {
         try {
-            getOutput().emit(tuple(metric, timestamp, value, tag));
+            getOutput().emit(tuple(metricFormatter.format(metric), timestamp, value, tag));
         } catch (JsonEncodeException e) {
             log.error("Error during serialization of datapoint", e);
         }

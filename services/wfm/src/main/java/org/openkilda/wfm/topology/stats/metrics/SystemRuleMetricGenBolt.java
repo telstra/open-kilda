@@ -33,6 +33,10 @@ import java.util.Map;
 @Slf4j
 public class SystemRuleMetricGenBolt extends MetricGenBolt {
 
+    public SystemRuleMetricGenBolt(String metricPrefix) {
+        super(metricPrefix);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         FlowStatsData data = (FlowStatsData) input.getValueByField(STATS_FIELD);
@@ -50,8 +54,8 @@ public class SystemRuleMetricGenBolt extends MetricGenBolt {
         tags.put("switchid", switchId.toOtsdFormat());
         tags.put("cookieHex", Cookie.toString(entry.getCookie()));
 
-        emitMetric("pen.switch.flow.system.packets", timestamp, entry.getPacketCount(), tags);
-        emitMetric("pen.switch.flow.system.bytes", timestamp, entry.getByteCount(), tags);
-        emitMetric("pen.switch.flow.system.bits", timestamp, entry.getByteCount() * 8, tags);
+        emitMetric("switch.flow.system.packets", timestamp, entry.getPacketCount(), tags);
+        emitMetric("switch.flow.system.bytes", timestamp, entry.getByteCount(), tags);
+        emitMetric("switch.flow.system.bits", timestamp, entry.getByteCount() * 8, tags);
     }
 }
