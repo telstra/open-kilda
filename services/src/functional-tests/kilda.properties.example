@@ -41,3 +41,5 @@ antiflap.cooldown=5
 isl.cost.when.port.down=10000
 isl.cost.when.under.maintenance=10000
 bfd.offset=200
+
+metric.prefix=kilda

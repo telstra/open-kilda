@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.stats;
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface StatsTopologyConfig extends AbstractTopologyConfig {
@@ -33,4 +34,7 @@ public interface StatsTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaSpeakerFlowTopic() {
         return getKafkaTopics().getSpeakerFlowTopic();
     }
+
+    @Key("metric.prefix")
+    String getMetricPrefix();
 }

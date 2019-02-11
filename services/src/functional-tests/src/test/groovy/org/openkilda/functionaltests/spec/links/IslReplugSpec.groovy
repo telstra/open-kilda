@@ -14,12 +14,16 @@ import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 class IslReplugSpec extends BaseSpecification {
+
+    @Value('${metric.prefix}')
+    String metricPrefix
 
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
         given: "A connected a-switch link"
@@ -114,7 +118,7 @@ class IslReplugSpec extends BaseSpecification {
         and: "Self-loop rule packet counter is incremented and logged in otsdb"
         def statsData = null
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            statsData = otsdb.query(beforeReplugTime, "pen.switch.flow.system.packets",
+            statsData = otsdb.query(beforeReplugTime, metricPrefix + ".switch.flow.system.packets",
                     [switchid : expectedIsl.srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.DROP_LOOP_RULE.toHexString()]).dps
             assert statsData && !statsData.empty
