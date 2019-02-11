@@ -5,6 +5,8 @@ KILDA CONTROLLER
 
 ## Introduction
 
+Note that the build process will install additional packages. It is recommended that you build on a virtual machine.
+
 ### Prerequisites
 
 The followings are required for building Kilda controller:
@@ -15,7 +17,15 @@ The followings are required for building Kilda controller:
  - Docker Compose 1.20.0+
  - GNU Make 4.1+
 
-You need to rise maven RAM limit at least up to 1G.
+On Ubuntu 16.04, you can install those dependancies like this:
+
+```
+apt-get install maven openjdk-8-jdk python python3 docker.io docker-compose virtualenv make
+```
+
+Note that your build user needs to be a member of the docker group for the build to work. Do that by adding the user to /etc/groups and logging out and back in again.
+
+You also need to increase the maven RAM limit at least up to 1G.
 
 ```export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=128m"```
 
@@ -24,6 +34,7 @@ Some build steps require Python2. If Python3 is default in your system please us
 ```
 virtualenv --python=python2 .venv
 . .venv/bin/activate
+pip install -U pip
 pip install tox
 ```
 
@@ -41,6 +52,8 @@ From the base directory run the following command:
 ```
 make build-latest
 ```
+
+Note that additional Ubuntu packages will be installed as part of the build process.
 
 ### How to clean Kilda Controller
 
