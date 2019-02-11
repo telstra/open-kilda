@@ -29,7 +29,6 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -68,7 +67,6 @@ public class DatabaseConfigurator {
         loadInitialData();
     }
 
-    @SuppressWarnings("unlikely-arg-type")
     private void loadInitialData() {
         List<VersionEntity> versionEntities = versionRepository.findAll();
         long lastestScriptNumber = getLatestScriptVersion(versionEntities);
@@ -108,8 +106,6 @@ public class DatabaseConfigurator {
                     break;
                 }
             }
-        } catch (FileNotFoundException e) {
-            // Do Nothing
         } catch (IOException e) {
             LOGGER.error("Failed to load db scripts", e);
         }
@@ -121,7 +117,7 @@ public class DatabaseConfigurator {
             ScriptRunner sr = new ScriptRunner(con, false, false);
             sr.runScript(new InputStreamReader(inputStream));
         } catch (Exception e) {
-            LOGGER.error("Error while executing script.", e);
+            LOGGER.error("Error occurred while executing script", e);
         }
     }
 }

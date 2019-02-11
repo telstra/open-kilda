@@ -55,7 +55,7 @@ public final class MessageUtil {
             localProperties.load(MessageUtil.class.getClassLoader().getResourceAsStream(
                     fileName));
         } catch (Exception e) {
-            LOGGER.error("[loadPropertiesFile] Exception : ", e);
+            LOGGER.warn("[loadPropertiesFile] Exception : ", e);
         }
         return localProperties;
     }

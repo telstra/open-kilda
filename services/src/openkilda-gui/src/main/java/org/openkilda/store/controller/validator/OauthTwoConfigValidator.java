@@ -45,28 +45,28 @@ public class OauthTwoConfigValidator {
      */
     public void validate(final OauthTwoConfigDto oauthTwoConfigDto) {
         if (ValidatorUtil.isNull(oauthTwoConfigDto.getUsername())) {
-            LOGGER.error("Validation fail for oauth two configuration. Error: "
+            LOGGER.warn("Validation fail for oauth two configuration. Error: "
                     + messageUtil.getAttributeNotNull("username"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("username"));
         } else if (ValidatorUtil.isNull(oauthTwoConfigDto.getPassword())) {
-            LOGGER.error("Validation fail for oauth two configuration. Error: "
+            LOGGER.warn("Validation fail for oauth two configuration. Error: "
                     + messageUtil.getAttributeNotNull("password"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("password"));
         } else if (ValidatorUtil.isNull(oauthTwoConfigDto.getOauthGenerateTokenUrl().getUrl())) {
-            LOGGER.error("Validation fail for oauth two configuration. Error: "
+            LOGGER.warn("Validation fail for oauth two configuration. Error: "
                     + messageUtil.getAttributeNotNull("oauth-generate-token-url"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("oauth-generate-token-url"));
         } else if (ValidatorUtil.isNull(oauthTwoConfigDto.getOauthRefreshTokenUrl().getUrl())) {
-            LOGGER.error("Validation fail for oauth two configuration. Error: "
+            LOGGER.warn("Validation fail for oauth two configuration. Error: "
                     + messageUtil.getAttributeNotNull("oauth-refresh-token-url"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("oauth-refresh-token-url"));
         } else if (ValidatorUtil.isNull(oauthTwoConfigDto.getOauthGenerateTokenUrl().getMethodType())) {
-            LOGGER.error("Validation fail for oauth two configuration. Error: "
+            LOGGER.warn("Validation fail for oauth two configuration. Error: "
                     + messageUtil.getAttributeNotNull("method-type of oauth-generate-token-url"));
             throw new RequestValidationException(
                     messageUtil.getAttributeNotNull("method-type of oauth-generate-token-url"));
         } else if (ValidatorUtil.isNull(oauthTwoConfigDto.getOauthRefreshTokenUrl().getMethodType())) {
-            LOGGER.error("Validation fail for oauth two configuration. Error: "
+            LOGGER.warn("Validation fail for oauth two configuration. Error: "
                     + messageUtil.getAttributeNotNull("method-type of oauth-refresh-token-url"));
             throw new RequestValidationException(
                     messageUtil.getAttributeNotNull("method-type of oauth-refresh-token-url"));

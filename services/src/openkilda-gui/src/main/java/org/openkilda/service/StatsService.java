@@ -243,7 +243,7 @@ public class StatsService {
             switchPortStats = mapper.readValue(result,
                     TypeFactory.defaultInstance().constructCollectionLikeType(List.class, SwitchPortStats.class));
         } catch (Exception e) {
-            LOGGER.error("Inside getSwitchPortsStats Exception is: " + e.getMessage());
+            LOGGER.error("Error occurred while retriving switch port stats", e);
         }
         List<PortInfo> portStats = getSwitchPortStatsReport(switchPortStats, switchId);
         if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
@@ -253,8 +253,7 @@ public class StatsService {
                             .getSwitchPort(IoUtil.switchCodeToSwitchId(switchIds.get(0)));
                     processInventoryPorts(portStats, inventoryPorts);
                 } catch (Exception ex) {
-                    LOGGER.error("[getSwitchPortsStats] Exception while retrieving ports from store. Exception: "
-                            + ex.getLocalizedMessage(), ex);
+                    LOGGER.error("Error occurred while retriving switch ports stats for inventory", ex);
                 }
             }
         }

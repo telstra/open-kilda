@@ -116,8 +116,7 @@ public class FlowService {
                 inventoryFlows = flowStoreService.getFlowsWithParams(status);
                 processInventoryFlow(flows, inventoryFlows);
             } catch (Exception ex) {
-                LOGGER.error("[getAllFlows] Exception while retrieving flows from store. Exception: "
-                        + ex.getLocalizedMessage(), ex);
+                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
         }
         return flows;
@@ -218,8 +217,7 @@ public class FlowService {
         try {
             flow = flowsIntegrationService.getFlowById(flowId);
         } catch (Exception ex) {
-            LOGGER.error("[getFlowById] Exception while retrieving flows from controller. Exception: "
-                    + ex.getLocalizedMessage(), ex);
+            LOGGER.error("Error occurred while retrieving flows from controller", ex);
         }
         Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
         if (flow != null) {
@@ -275,8 +273,7 @@ public class FlowService {
                     flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                 }
             } catch (Exception ex) {
-                LOGGER.error("[getFlowById] Exception while retrieving flows from store. Exception: "
-                        + ex.getLocalizedMessage(), ex);
+                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
         }
         return flowInfo;
