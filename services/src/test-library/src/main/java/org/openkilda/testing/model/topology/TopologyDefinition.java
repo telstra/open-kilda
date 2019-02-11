@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
+import org.openkilda.testing.tools.IslUtils;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -163,13 +164,20 @@ public class TopologyDefinition {
     }
 
     /**
-     * Get list of ISLs that are related to certain switch.
-     * Returns only one-way ISLs. The caller will have to mirror them in order to get full list of actual ISLs
+     * Get list of ISLs that are related to a certain switch.
+     * Returns only outgoing from the switch ISLs. The caller will have to mirror them in order to get full list of
+     * actual ISLs.
      */
     public List<Isl> getRelatedIsls(Switch sw) {
-        return getIslsForActiveSwitches().stream().filter(isl ->
+        List<Isl> isls = getIslsForActiveSwitches().stream().filter(isl ->
                 isl.getSrcSwitch().getDpId().equals(sw.getDpId()) || isl.getDstSwitch().getDpId().equals(sw.getDpId()))
                 .collect(Collectors.toList());
+        for (Isl isl : isls) {
+            if (isl.getDstSwitch().getDpId().equals(sw.getDpId())) {
+                isls.set(isls.indexOf(isl), IslUtils.reverseIsl(isl));
+            }
+        }
+        return isls;
     }
 
     @Value
