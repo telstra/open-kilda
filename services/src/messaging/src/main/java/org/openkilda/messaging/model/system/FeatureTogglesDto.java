@@ -42,6 +42,9 @@ public class FeatureTogglesDto {
     @JsonProperty("unpush_flow")
     private Boolean unpushFlowEnabled;
 
+    @JsonProperty("bfd_events")
+    private Boolean bfdEventsEnabled;
+
     public FeatureTogglesDto() {
     }
 
@@ -50,12 +53,14 @@ public class FeatureTogglesDto {
                              @JsonProperty("update_flow") Boolean updateFlowEnabled,
                              @JsonProperty("delete_flow") Boolean deleteFlowEnabled,
                              @JsonProperty("push_flow") Boolean pushFlowEnabled,
-                             @JsonProperty("unpush_flow") Boolean unpushFlowEnabled) {
+                             @JsonProperty("unpush_flow") Boolean unpushFlowEnabled,
+                             @JsonProperty("bfd_events") Boolean bfdEventsEnabled) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
         this.deleteFlowEnabled = deleteFlowEnabled;
         this.pushFlowEnabled = pushFlowEnabled;
         this.unpushFlowEnabled = unpushFlowEnabled;
+        this.bfdEventsEnabled = bfdEventsEnabled;
     }
 }

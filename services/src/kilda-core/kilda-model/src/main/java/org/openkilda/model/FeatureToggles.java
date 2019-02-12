@@ -58,17 +58,22 @@ public class FeatureToggles {
     @Property(name = "unpush_flow")
     private Boolean unpushFlowEnabled;
 
+    @Property(name = "bfd_events")
+    private Boolean bfdEventsEnabled;
+
     /**
      * Constructor used by the builder only.
      */
     @Builder(toBuilder = true)
     FeatureToggles(Boolean flowsRerouteOnIslDiscoveryEnabled, Boolean createFlowEnabled, Boolean updateFlowEnabled,
-                   Boolean deleteFlowEnabled, Boolean pushFlowEnabled, Boolean unpushFlowEnabled) {
+                   Boolean deleteFlowEnabled, Boolean pushFlowEnabled, Boolean unpushFlowEnabled,
+                   Boolean bfdEventsEnabled) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
         this.deleteFlowEnabled = deleteFlowEnabled;
         this.pushFlowEnabled = pushFlowEnabled;
         this.unpushFlowEnabled = unpushFlowEnabled;
+        this.bfdEventsEnabled = bfdEventsEnabled;
     }
 }
