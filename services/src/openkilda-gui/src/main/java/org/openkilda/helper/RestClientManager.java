@@ -150,7 +150,6 @@ public class RestClientManager {
             LOGGER.error("Error occurred while trying to communicate third party service provider", e);
             throw new RestCallFailedException(e);
         }
-        LOGGER.info("[invoke] - End");
         return httpResponse;
     }
     
@@ -231,7 +230,6 @@ public class RestClientManager {
             LOGGER.error("Error occurred while trying to communicate third party service provider", e);
             throw new RestCallFailedException(e);
         }
-        LOGGER.info("[invoke] - End");
         return httpResponse;
     }
 
@@ -364,11 +362,11 @@ public class RestClientManager {
         } else {
             try {
                 String content = IoUtil.toString(response.getEntity().getContent());
-                LOGGER.error("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
+                LOGGER.warn("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
                         + ", content: " + content);
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             } catch (IOException exception) {
-                LOGGER.error("Error occurred while vaildating response", exception);
+                LOGGER.warn("Error occurred while vaildating response", exception);
                 throw new InvalidResponseException(HttpError.INTERNAL_ERROR.getCode(),
                         HttpError.INTERNAL_ERROR.getMessage());
             }

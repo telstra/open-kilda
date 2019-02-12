@@ -222,14 +222,16 @@ public class SwitchService {
     private void appendInventoryInfo(final SwitchInfo switchInfo, final InventorySwitch inventorySwitch) {
         switchInfo.setUuid(inventorySwitch.getUuid());
         switchInfo.setCommonName(inventorySwitch.getCommonName());
-        PopLocation popLocation = new PopLocation();
-        popLocation.setStateCode(inventorySwitch.getPopLocation().getStateCode());
-        popLocation.setCountryCode(inventorySwitch.getPopLocation().getCountryCode());
-        popLocation.setPopUuid(inventorySwitch.getPopLocation().getPopUuid());
-        popLocation.setPopName(inventorySwitch.getPopLocation().getPopName());
-        popLocation.setPopCode(inventorySwitch.getPopLocation().getPopCode());
+        if (inventorySwitch.getPopLocation() != null) {
+            PopLocation popLocation = new PopLocation();
+            popLocation.setStateCode(inventorySwitch.getPopLocation().getStateCode());
+            popLocation.setCountryCode(inventorySwitch.getPopLocation().getCountryCode());
+            popLocation.setPopUuid(inventorySwitch.getPopLocation().getPopUuid());
+            popLocation.setPopName(inventorySwitch.getPopLocation().getPopName());
+            popLocation.setPopCode(inventorySwitch.getPopLocation().getPopCode());
 
-        switchInfo.setPopLocation(popLocation);
+            switchInfo.setPopLocation(popLocation);
+        }
         switchInfo.setModel(inventorySwitch.getModel());
         switchInfo.setRackLocation(inventorySwitch.getRackLocation());
         switchInfo.setReferenceUrl(inventorySwitch.getReferenceUrl());
