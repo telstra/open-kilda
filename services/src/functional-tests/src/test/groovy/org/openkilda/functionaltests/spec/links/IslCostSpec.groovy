@@ -23,8 +23,8 @@ class IslCostSpec extends BaseSpecification {
         def isl = topology.islsForActiveSwitches.first()
         def reverseIsl = islUtils.reverseIsl(isl)
 
-        int islCost = islUtils.getIslCost(isl)
-        assert islUtils.getIslCost(reverseIsl) == islCost
+        int islCost = database.getIslCost(isl)
+        assert database.getIslCost(reverseIsl) == islCost
 
         when: "Bring port down on the source switch"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
@@ -37,17 +37,17 @@ class IslCostSpec extends BaseSpecification {
         }
 
         and: "Cost of forward and reverse ISLs after bringing port down is increased"
-        islUtils.getIslCost(isl) == islCostWhenPortDown + islCost
-        islUtils.getIslCost(reverseIsl) == islCostWhenPortDown + islCost
+        database.getIslCost(isl) == islCostWhenPortDown + islCost
+        database.getIslCost(reverseIsl) == islCostWhenPortDown + islCost
 
         and: "Bring port up on the source switch and reset costs"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        database.resetCosts()
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
     }
 
     @Unroll
@@ -62,8 +62,8 @@ class IslCostSpec extends BaseSpecification {
                 isl.dstPort, ["cost": cost.toString()])]
         northbound.updateLinkProps(linkProps)
 
-        int islCost = islUtils.getIslCost(isl)
-        int reverseIslCost = islUtils.getIslCost(reverseIsl)
+        int islCost = database.getIslCost(isl)
+        int reverseIslCost = database.getIslCost(reverseIsl)
         assert islCost != reverseIslCost
 
         when: "Bring port down on the source switch"
@@ -77,20 +77,20 @@ class IslCostSpec extends BaseSpecification {
         }
 
         and: "Cost of forward ISL after bringing port down is NOT increased"
-        islUtils.getIslCost(isl) == islCost
+        database.getIslCost(isl) == islCost
 
         and: "Cost of reverse ISL after bringing port down is increased"
-        islUtils.getIslCost(reverseIsl) == islCostWhenPortDown + reverseIslCost
+        database.getIslCost(reverseIsl) == islCostWhenPortDown + reverseIslCost
 
         and: "Bring port up on the source switch, delete link props and reset costs"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
 
         where:
         cost                    | condition
@@ -105,8 +105,8 @@ class IslCostSpec extends BaseSpecification {
         } ?: assumeTrue("Wasn't able to find suitable ISL", false)
         def reverseIsl = islUtils.reverseIsl(isl)
 
-        int islCost = islUtils.getIslCost(isl)
-        assert islUtils.getIslCost(reverseIsl) == islCost
+        int islCost = database.getIslCost(isl)
+        assert database.getIslCost(reverseIsl) == islCost
 
         when: "Remove a-switch rules to break link between switches"
         def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]
@@ -120,8 +120,8 @@ class IslCostSpec extends BaseSpecification {
         }
 
         and: "Cost of forward and reverse ISLs after failing connection is not increased"
-        islUtils.getIslCost(isl) == islCost
-        islUtils.getIslCost(reverseIsl) == islCost
+        database.getIslCost(isl) == islCost
+        database.getIslCost(reverseIsl) == islCost
 
         and: "Add a-switch rules to restore connection"
         lockKeeper.addFlows(rulesToRemove)

@@ -6,6 +6,7 @@ import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
@@ -19,7 +20,7 @@ import org.springframework.stereotype.Component
 @Component
 @Slf4j
 class PathHelper {
-    static final String UNPREFERABLE_COST = "99999999"
+    static final String NOT_PREFERABLE_COST = "99999999"
 
     @Autowired
     TopologyDefinition topology
@@ -27,6 +28,8 @@ class PathHelper {
     NorthboundService northbound
     @Autowired
     IslUtils islUtils
+    @Autowired
+    Database database
 
     /**
      * Selects ISL that is present only in less preferable path and is not present in more preferable one. Then
@@ -46,9 +49,9 @@ class PathHelper {
         }
         northbound.updateLinkProps([
                 new LinkPropsDto(islToAvoid.srcSwitch.dpId.toString(), islToAvoid.srcPort,
-                        islToAvoid.dstSwitch.dpId.toString(), islToAvoid.dstPort, ["cost": UNPREFERABLE_COST]),
+                        islToAvoid.dstSwitch.dpId.toString(), islToAvoid.dstPort, ["cost": NOT_PREFERABLE_COST]),
                 new LinkPropsDto(islToAvoid.dstSwitch.dpId.toString(), islToAvoid.dstPort,
-                        islToAvoid.srcSwitch.dpId.toString(), islToAvoid.srcPort, ["cost": UNPREFERABLE_COST])])
+                        islToAvoid.srcSwitch.dpId.toString(), islToAvoid.srcPort, ["cost": NOT_PREFERABLE_COST])])
     }
 
     /**
@@ -126,6 +129,6 @@ class PathHelper {
      * @return ISLs cost
      */
     int getCost(List<PathNode> path) {
-        return getInvolvedIsls(path).sum { islUtils.getIslCost(it) } as int
+        return getInvolvedIsls(path).sum { database.getIslCost(it) } as int
     }
 }
