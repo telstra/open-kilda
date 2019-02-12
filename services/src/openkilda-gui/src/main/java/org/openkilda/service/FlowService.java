@@ -132,7 +132,7 @@ public class FlowService {
     public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
         LOGGER.info("Inside ServiceFlowImpl method getFlowsCount");
         Map<FlowCount, FlowCount> infoByFlowInfo = new HashMap<>();
-        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+        Map<String, String> csNames = switchIntegrationService.getSwitchNames();
 
         if (!CollectionUtil.isEmpty(flows)) {
             flows.forEach((flow) -> {
@@ -219,7 +219,7 @@ public class FlowService {
         } catch (Exception ex) {
             LOGGER.error("Error occurred while retrieving flows from controller", ex);
         }
-        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+        Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         if (flow != null) {
             flowInfo = flowConverter.toFlowInfo(flow, csNames);
         }
@@ -231,7 +231,8 @@ public class FlowService {
                     flowInfo.setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
                     FlowDiscrepancy discrepancy = new FlowDiscrepancy();
                     discrepancy.setControllerDiscrepancy(false);
-                    if (flowInfo.getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
+                    if (flowInfo.getMaximumBandwidth() != (inventoryFlow.getMaximumBandwidth() == null ? 0
+                            : inventoryFlow.getMaximumBandwidth())) {
                         discrepancy.setBandwidth(true);
 
                         FlowBandwidth flowBandwidth = new FlowBandwidth();
@@ -396,7 +397,7 @@ public class FlowService {
                 flows.get(index).setState(inventoryFlow.getState());
                 flows.get(index).setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
             } else {
-                final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+                final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
                 FlowInfo flowObj = new FlowInfo();
                 flowConverter.toFlowInfo(flowObj, inventoryFlow, csNames);
                 discrepancyFlow.add(flowObj);

@@ -52,7 +52,7 @@ public class FlowConverter {
     public List<FlowInfo> toFlowsInfo(final List<Flow> flows) {
         if (!CollectionUtil.isEmpty(flows)) {
             final List<FlowInfo> flowsInfo = new ArrayList<>();
-            final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+            final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
             flows.forEach(flow -> {
                 flowsInfo.add(toFlowInfo(flow, csNames));
             });
@@ -163,7 +163,7 @@ public class FlowConverter {
      * @return the flow
      */
     public Flow toFlowWithSwitchNames(final Flow flow) {
-        final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+        final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         FlowEndpoint source = flow.getSource();
         if (source != null) {
             String switchName = switchIntegrationService.customSwitchName(csNames, source.getSwitchId());

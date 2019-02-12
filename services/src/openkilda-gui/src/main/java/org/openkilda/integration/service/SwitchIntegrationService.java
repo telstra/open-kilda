@@ -145,6 +145,26 @@ public class SwitchIntegrationService {
     }
 
     /**
+     * Gets the switch names.
+     *
+     * @return the switch names
+     */
+    public Map<String, String> getSwitchNames() {
+        Map<String, String> csNames = new HashMap<String, String>();
+        if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == null) {
+            String value = applicationSettingService.getApplicationSetting(ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
+            IConstants.STORAGE_TYPE_FOR_SWITCH_NAME = StorageType.get(value);
+        }
+
+        if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.FILE_STORAGE) {
+            csNames = getCustomSwitchNameFromFile();
+        } else if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.DATABASE_STORAGE) {
+            csNames = getCustomSwitchNameFromDatabase();
+        }
+        return csNames;
+    }
+    
+    /**
      * Custom switch name.
      *
      * @param csNames
