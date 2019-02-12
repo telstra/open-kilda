@@ -172,9 +172,9 @@ class LinkMaintenanceSpec extends BaseSpecification {
         broughtDownPorts.each { northbound.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         northbound.setLinkMaintenance(islUtils.getLinkUnderMaintenance(islUnderMaintenance, false, false))
-        database.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
     }
 }

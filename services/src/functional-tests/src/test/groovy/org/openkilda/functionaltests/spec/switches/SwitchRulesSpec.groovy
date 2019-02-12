@@ -22,7 +22,6 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
-import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.flows.PingInput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -508,10 +507,10 @@ class SwitchRulesSpec extends BaseSpecification {
         and: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
         northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
-        database.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
     }
 
     void compareRules(actualRules, expectedRules) {
