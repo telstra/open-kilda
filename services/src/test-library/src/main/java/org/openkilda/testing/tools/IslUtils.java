@@ -26,7 +26,6 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
-import org.openkilda.testing.model.topology.TopologyDefinition.ASwitch;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.database.Database;
 import org.openkilda.testing.service.lockkeeper.LockKeeperService;
@@ -116,12 +115,12 @@ public class IslUtils {
         if (isl.getDstSwitch() == null) {
             return isl; //don't reverse not connected ISL
         }
-        ASwitch reversedAsw = null;
+        ASwitchFlow reversedAsw = null;
         if (isl.getAswitch() != null) {
-            reversedAsw = ASwitch.factory(isl.getAswitch().getOutPort(), isl.getAswitch().getInPort());
+            reversedAsw = isl.getAswitch().getReversed();
         }
         return Isl.factory(isl.getDstSwitch(), isl.getDstPort(), isl.getSrcSwitch(),
-                isl.getSrcPort(), isl.getMaxBandwidth(), reversedAsw);
+                isl.getSrcPort(), isl.getMaxBandwidth(), reversedAsw, isl.isBfd());
     }
 
     /**
@@ -167,8 +166,8 @@ public class IslUtils {
      */
     public TopologyDefinition.Isl replug(TopologyDefinition.Isl srcIsl, boolean replugSource,
                                          TopologyDefinition.Isl dstIsl, boolean plugIntoSource) {
-        ASwitch srcASwitch = srcIsl.getAswitch();
-        ASwitch dstASwitch = dstIsl.getAswitch();
+        ASwitchFlow srcASwitch = srcIsl.getAswitch();
+        ASwitchFlow dstASwitch = dstIsl.getAswitch();
         //unplug
         List<Integer> portsToUnplug = Collections.singletonList(
                 replugSource ? srcASwitch.getInPort() : srcASwitch.getOutPort());
@@ -177,15 +176,12 @@ public class IslUtils {
         //change flow on aSwitch
         //delete old flow
         if (srcASwitch.getInPort() != null && srcASwitch.getOutPort() != null) {
-            lockKeeper.removeFlows(Arrays.asList(
-                    new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
-                    new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
+            lockKeeper.removeFlows(Arrays.asList(srcASwitch, srcASwitch.getReversed()));
         }
         //create new flow
         ASwitchFlow aswFlowForward = new ASwitchFlow(srcASwitch.getInPort(),
                 plugIntoSource ? dstASwitch.getInPort() : dstASwitch.getOutPort());
-        ASwitchFlow aswFlowReverse = new ASwitchFlow(aswFlowForward.getOutPort(), aswFlowForward.getInPort());
-        lockKeeper.addFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
+        lockKeeper.addFlows(Arrays.asList(aswFlowForward, aswFlowForward.getReversed()));
 
         //plug back
         lockKeeper.portsUp(portsToUnplug);
@@ -195,8 +191,7 @@ public class IslUtils {
                 replugSource ? (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()) : srcIsl.getSrcPort(),
                 replugSource ? srcIsl.getDstSwitch() : (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()),
                 replugSource ? srcIsl.getDstPort() : (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()),
-                0,
-                new TopologyDefinition.ASwitch(aswFlowForward.getInPort(), aswFlowForward.getOutPort()));
+                0, aswFlowForward, srcIsl.isBfd());
     }
 
     /**

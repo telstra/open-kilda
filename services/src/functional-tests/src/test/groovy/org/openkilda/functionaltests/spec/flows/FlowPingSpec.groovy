@@ -16,7 +16,6 @@ import org.openkilda.northbound.dto.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow
 
 import spock.lang.Ignore
 import spock.lang.Issue
@@ -122,8 +121,8 @@ class FlowPingSpec extends BaseSpecification {
         when: "Break the flow by removing rules from a-switch"
         def islToBreak = pathHelper.getInvolvedIsls(aswitchPath).find { it.aswitch }
         def rulesToRemove = []
-        data.breakForward && rulesToRemove << new ASwitchFlow(islToBreak.aswitch.inPort, islToBreak.aswitch.outPort)
-        data.breakReverse && rulesToRemove << new ASwitchFlow(islToBreak.aswitch.outPort, islToBreak.aswitch.inPort)
+        data.breakForward && rulesToRemove << islToBreak.aswitch
+        data.breakReverse && rulesToRemove << islToBreak.aswitch.reversed
         lockKeeper.removeFlows(rulesToRemove)
 
         and: "Ping the flow"

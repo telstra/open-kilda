@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -64,6 +65,7 @@ public class TopologyDefinition {
     private TraffGenConfig traffGenConfig;
     @SuppressWarnings("squid:S1450")
     private String controller;
+    private Integer bfdOffset;
 
     /**
      * Creates TopologyDefinition instance.
@@ -93,6 +95,10 @@ public class TopologyDefinition {
 
     public void setController(String controller) {
         this.controller = controller;
+    }
+
+    public void setBfdOffset(Integer bfdOffset) {
+        this.bfdOffset = bfdOffset;
     }
 
     /**
@@ -272,7 +278,8 @@ public class TopologyDefinition {
         private Switch dstSwitch;
         private int dstPort;
         private long maxBandwidth;
-        private ASwitch aswitch;
+        private ASwitchFlow aswitch;
+        private boolean isBfd;
 
         @JsonCreator
         public static Isl factory(
@@ -281,31 +288,16 @@ public class TopologyDefinition {
                 @JsonProperty("dst_switch") Switch dstSwitch,
                 @JsonProperty("dst_port") int dstPort,
                 @JsonProperty("max_bandwidth") long maxBandwidth,
-                @JsonProperty("a_switch") ASwitch aswitch) {
-            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch);
+                @JsonProperty("a_switch") ASwitchFlow aswitch,
+                //we only assume bi-directional bfd sessions for ISLs
+                @JsonProperty("bfd") boolean isBfd) {
+            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch, isBfd);
         }
 
         @Override
         public String toString() {
             return String.format("%s-%s -> %s-%s", srcSwitch.dpId.toString(), srcPort,
                     dstSwitch != null ? dstSwitch.dpId.toString() : "null", dstSwitch != null ? dstPort : "null");
-        }
-    }
-
-    @Value
-    @NonFinal
-    @JsonNaming(SnakeCaseStrategy.class)
-    public static class ASwitch {
-
-        @NonNull
-        private Integer inPort;
-        private Integer outPort;
-
-        @JsonCreator
-        public static ASwitch factory(
-                @JsonProperty("in_port") Integer inPort,
-                @JsonProperty("out_port") Integer outPort) {
-            return new ASwitch(inPort, outPort);
         }
     }
 

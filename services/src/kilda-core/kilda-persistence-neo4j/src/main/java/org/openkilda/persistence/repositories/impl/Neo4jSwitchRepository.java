@@ -24,6 +24,7 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import com.google.common.collect.ImmutableMap;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Neo4jSession;
@@ -79,6 +80,12 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
 
         return findById(session, entity.getSwitchId(), 0)
                 .orElseThrow(() -> new PersistenceException(format("Switch not found: %s", entity.getSwitchId())));
+    }
+
+    @Override
+    public void forceDelete(SwitchId switchId) {
+        getSession().query("MATCH (sw:switch {name: $name}) DETACH DELETE sw",
+                ImmutableMap.of("name", switchId.toString()));
     }
 
     @Override

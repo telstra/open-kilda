@@ -36,6 +36,9 @@ public class TopologyConfig {
     @Value("${floodlight.controller.uri}")
     private String controllerHost;
 
+    @Value("${bfd.offset}")
+    private Integer bfdOffset;
+
     @Bean
     public TopologyDefinition topologyDefinition() throws IOException {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -44,6 +47,7 @@ public class TopologyConfig {
         TopologyDefinition topologyDefinition =
                 mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
         topologyDefinition.setController(controllerHost);
+        topologyDefinition.setBfdOffset(bfdOffset);
         return topologyDefinition;
     }
 }

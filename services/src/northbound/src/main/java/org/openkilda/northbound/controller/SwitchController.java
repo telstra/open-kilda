@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.switches.DeleteSwitchResult;
 import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
@@ -208,8 +209,7 @@ public class SwitchController {
     public CompletableFuture<List<Long>> installSwitchRules(
             @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
-                    + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DEFAULTS",
-                    required = false)
+                    + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_BFD_CATCH,INSTALL_DEFAULTS")
             @RequestParam(value = "install-action", required = false) Optional<InstallRulesAction> installAction) {
         return switchService.installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS));
     }
@@ -347,5 +347,25 @@ public class SwitchController {
     public CompletableFuture<SwitchDto> updateLinkUnderMaintenance(@PathVariable("switch-id") SwitchId switchId,
             @RequestBody UnderMaintenanceDto underMaintenanceDto) {
         return switchService.updateSwitchUnderMaintenance(switchId, underMaintenanceDto);
+    }
+
+    /**
+     * Delete switch.
+     *
+     * @param switchId id of switch to delete
+     * @param force True value means that all switch checks (switch is deactivated, there is no flow with this switch,
+     *              switch has no ISLs) will be ignored.
+     * @return result of the operation wrapped into {@link DeleteSwitchResult}. True means no errors is occurred.
+     */
+    @ApiOperation(value = "Delete switch. Requires special authorization.", response = DeleteSwitchResult.class)
+    @DeleteMapping(value = "/{switch-id}")
+    @ResponseStatus(HttpStatus.OK)
+    @ExtraAuthRequired
+    public CompletableFuture<DeleteSwitchResult> deleteSwitch(
+            @PathVariable("switch-id") SwitchId switchId,
+            @ApiParam(value = "default: false. True value means that all switch checks (switch is deactivated, "
+                    + "there is no flow with this switch, switch has no ISLs) will be ignored.")
+            @RequestParam(name = "force", required = false, defaultValue = "false") boolean force) {
+        return switchService.deleteSwitch(switchId, force);
     }
 }
