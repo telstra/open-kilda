@@ -56,11 +56,6 @@
       		<script>
 		$(document).ready(function(){
 			focusNextInput();
-			var key= $('#secretKey').text();
-			var username= $('#uname').text();
-			$('#qr_code_text').text(key);
-		    $('#qrCode').attr('src', 'https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=200x200&chld=M|0&cht=qr&' 
-		    		+ 'chl=' + encodeURIComponent('otpauth://totp/' + encodeURIComponent('Open Kilda') + ":" + username + '?secret=' + key + '&issuer=' + encodeURIComponent('Open Kilda')));
 		});
 
 		function focusNextInput(){

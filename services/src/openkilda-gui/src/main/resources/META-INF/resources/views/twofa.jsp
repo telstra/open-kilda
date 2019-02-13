@@ -4,7 +4,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<title>Insert title here</title>
+<title>OPEN KILDA </title>
 <script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.2.1.min.js"></script>
 <script src="<%=request.getContextPath()%>/lib/javascript/bootstrap.min.js"></script>
 <link href="<%=request.getContextPath()%>/lib/css/bootstrap.min.css" rel="stylesheet"></link>
@@ -27,12 +27,12 @@
 		                        <li>Select Next on login screen. You'll see a field requesting an authentication code.</li>
 		                        <li>Enter authentication code from your mobile app and select Verify.</li>
 		                    </ul>
-		                    <p>Find more information on 2FA <a href="https://www.telstra.com.au/content/dam/tcom/business-enterprise/campaigns/cloud-sight/cloud-sight-faqs.pdf" target="blank">here</a>.</p>
-		                </div>
+		           </div>
 		                <div class="col-md-6">
 		                	<div class="QRcode-container change-password">
 		                        <h2 class="center">Two-Factor Authentication</h2>
-		                        <span id="secretKey" style="visibility:hidden;">${key}</span>   
+								<span id="secretKey" style="visibility:hidden;">${key}</span>  
+								<span id="appName" style="visibility:hidden;">${twofaApplicationName}</span> 
 		                        <span id="uname" style="visibility:hidden;">${username}</span>      
 		                        <p>Scan below code with the authenticator app on your mobile device and follow instructions to verify your identity.</p>
 		                      	 <div class="qr_scan_img">             
@@ -77,9 +77,10 @@
 			focusNextInput();
 			var key= $('#secretKey').text();
 			var username= $('#uname').text();
+			var appName = $('#appName').text();
 			$('#qr_code_text').text(key);
 		    $('#qrCode').attr('src', 'https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=200x200&chld=M|0&cht=qr&' 
-		    		+ 'chl=' + encodeURIComponent('otpauth://totp/' + encodeURIComponent('Open Kilda') + ":" + username + '?secret=' + key + '&issuer=' + encodeURIComponent('Open Kilda')));
+		    		+ 'chl=' + encodeURIComponent('otpauth://totp/' + encodeURIComponent(appName) + ":" + username + '?secret=' + key + '&issuer=' + encodeURIComponent(appName)));
 		});
 
 		function focusNextInput(){
