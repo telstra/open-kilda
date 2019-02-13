@@ -451,6 +451,9 @@ public class OfeLinkBolt
             handleIslEvent(tuple, infoMessage);
         } else if (data instanceof DiscoPacketSendingConfirmation) {
             handleSentDiscoPacket((DiscoPacketSendingConfirmation) data);
+        } else if (data instanceof DeactivateIslInfoData) {
+            DeactivateIslInfoData deactivateIslInfoData = (DeactivateIslInfoData) data;
+            discovery.handleFailed(deactivateIslInfoData.getSrcSwitchId(), deactivateIslInfoData.getSrcPort());
         } else {
             reportInvalidEvent(data);
         }
