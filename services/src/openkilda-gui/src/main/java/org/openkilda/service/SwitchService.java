@@ -374,7 +374,7 @@ public class SwitchService {
             try {
                 customers = switchStoreService.getPortFlows(switchId, port);
             } catch (Exception ex) {
-                LOGGER.info("[getPortFlows] : Exception : " + ex);
+                LOGGER.warn("Get port flows.", ex);
             }
         }
         return customers;
@@ -391,8 +391,6 @@ public class SwitchService {
      */
     public List<FlowInfo> getIslFlows(String srcSwitch, String srcPort, String dstSwitch,
             String dstPort) {
-        
-        LOGGER.info("Inside SwitchService method getIslFlows");
         return switchIntegrationService.getIslFlows(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 

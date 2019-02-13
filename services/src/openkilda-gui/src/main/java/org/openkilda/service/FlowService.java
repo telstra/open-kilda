@@ -93,7 +93,6 @@ public class FlowService {
      * @return SwitchRelationData
      */
     public List<FlowInfo> getAllFlows(List<String> statuses) {
-        LOGGER.info("Inside ServiceFlowImpl method getAllFlows");
         List<FlowInfo> flows = new ArrayList<FlowInfo>();
         if (!CollectionUtil.isEmpty(statuses)) {
             statuses = statuses.stream().map((status) -> status.toLowerCase()).collect(Collectors.toList());
@@ -130,7 +129,6 @@ public class FlowService {
      * @return the flow count
      */
     public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
-        LOGGER.info("Inside ServiceFlowImpl method getFlowsCount");
         Map<FlowCount, FlowCount> infoByFlowInfo = new HashMap<>();
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
 
@@ -158,7 +156,6 @@ public class FlowService {
                 }
             });
         }
-        LOGGER.info("exit ServiceSwitchImpl method getFlowsCount");
         return infoByFlowInfo.values();
     }
 

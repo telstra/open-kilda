@@ -56,7 +56,7 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
      * Instantiates a new custom exception mapper.
      */
     public CustomExceptionMapper() {
-        _log.info("[CustomExceptionMapper] Initializing {}...", CustomExceptionMapper.class.getName());
+        _log.info("Custom exception mapper. Initializing {}...", CustomExceptionMapper.class.getName());
     }
 
     /**
