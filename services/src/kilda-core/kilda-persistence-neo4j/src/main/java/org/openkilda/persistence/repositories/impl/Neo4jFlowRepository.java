@@ -19,8 +19,6 @@ import static java.lang.String.format;
 import static java.util.Collections.singleton;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowPair.FlowPairBuilder;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
@@ -34,12 +32,10 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Neo4J OGM implementation of {@link FlowRepository}.
@@ -62,52 +58,26 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public Collection<Flow> findById(String flowId) {
+    public Optional<Flow> findById(String flowId) {
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
 
-        return getSession().loadAll(getEntityType(), flowIdFilter, DEPTH_LOAD_ENTITY);
-    }
-
-    @Override
-    public Optional<FlowPair> findFlowPairById(String flowId) {
-        Collection<FlowPair> flowPairs = buildFlowPairs(findById(flowId));
-        if (flowPairs.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 FlowPair entity by %s as flowId", flowId));
+        Collection<Flow> flows = loadAll(flowIdFilter);
+        if (flows.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 Flow entity by %s as flowId", flowId));
         }
-        return flowPairs.isEmpty() ? Optional.empty() : Optional.of(flowPairs.iterator().next());
+        return flows.isEmpty() ? Optional.empty() : Optional.of(flows.iterator().next());
     }
 
     @Override
-    public Collection<FlowPair> findAllFlowPairs() {
-        return buildFlowPairs(findAll());
-    }
-
-    @Override
-    public Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled() {
+    public Collection<Flow> findWithPeriodicPingsEnabled() {
         Filter periodicPingsFilter = new Filter(PERIODIC_PINGS_PROPERTY_NAME, ComparisonOperator.EQUALS, true);
 
-        Collection<Flow> flows = getSession().loadAll(getEntityType(), periodicPingsFilter, DEPTH_LOAD_ENTITY);
-        return buildFlowPairs(flows);
+        return loadAll(periodicPingsFilter);
     }
 
-
-    private Collection<FlowPair> buildFlowPairs(Iterable<Flow> flows) {
-        Map<String, FlowPair.FlowPairBuilder> flowPairsMap = new HashMap<>();
-
-        flows.forEach(flow -> {
-            FlowPair.FlowPairBuilder builder = flowPairsMap.computeIfAbsent(flow.getFlowId(), k -> FlowPair.builder());
-            if (flow.isForward()) {
-                builder.forward(flow);
-            } else {
-                builder.reverse(flow);
-            }
-        });
-
-        return flowPairsMap.values().stream().map(FlowPairBuilder::build).collect(Collectors.toList());
-    }
 
     @Override
-    public Collection<Flow> findFlowIdsByEndpoint(SwitchId switchId, int port) {
+    public Collection<Flow> findByEndpoint(SwitchId switchId, int port) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "switch_id", switchId.toString(),
                 "port", port);
@@ -135,12 +105,12 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 + " AND (f.status=$flow_status OR f.status IS NULL)"
                 + "RETURN f.flowid", parameters).forEach(flowIds::add);
 
-        getSession().query(String.class, "MATCH (src:switch)-[fs:flow_segment]->(dst:switch) "
-                + "WHERE (src.name=$switch_id AND fs.src_port=$port "
-                + " OR dst.name=$switch_id AND fs.dst_port=$port) "
-                + "WITH fs "
-                + "MATCH ()-[f:flow]->() "
-                + "WHERE fs.flowid = f.flowid AND (f.status=$flow_status OR f.status IS NULL)"
+        getSession().query(String.class, "MATCH (src:switch)-[ps:path_segment]->(dst:switch) "
+                + "WHERE (src.name=$switch_id AND ps.src_port=$port "
+                + " OR dst.name=$switch_id AND ps.dst_port=$port) "
+                + "MATCH () - [fp:flow_path { path_id: ps.path_id }] - () "
+                + "MATCH () - [f:flow] -> () "
+                + "WHERE fp.flow_id = f.flowid AND (f.status=$flow_status OR f.status IS NULL)"
                 + "RETURN f.flowid", parameters).forEach(flowIds::add);
         return flowIds;
     }
@@ -152,14 +122,14 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
         Set<String> flowIds = new HashSet<>();
         getSession().query(String.class,
-                "MATCH ()-[f:flow{status: {flow_status}}]->() RETURN f.flowid", parameters).forEach(flowIds::add);
+                "MATCH () - [f:flow{status: {flow_status}}] -> () RETURN f.flowid", parameters).forEach(flowIds::add);
         return flowIds;
     }
 
     @Override
     public Collection<Flow> findBySrcSwitchId(SwitchId switchId) {
         Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
-        return getSession().loadAll(getEntityType(), srcSwitchFilter, DEPTH_LOAD_ENTITY);
+        return loadAll(srcSwitchFilter);
     }
 
     @Override
@@ -171,40 +141,25 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public void createOrUpdate(FlowPair flowPair) {
-        transactionManager.doInTransaction(() -> {
-            createOrUpdate(flowPair.getForward());
-            createOrUpdate(flowPair.getReverse());
-        });
-    }
-
-    @Override
-    public void delete(FlowPair flowPair) {
-        transactionManager.doInTransaction(() -> {
-            delete(flowPair.getForward());
-            delete(flowPair.getReverse());
-        });
-    }
-
-    @Override
-    public Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
-                                                            SwitchId dstSwitchId, int dstPort) {
+    public Collection<Flow> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
+                                                SwitchId dstSwitchId, int dstPort) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "src_switch", srcSwitchId,
                 "src_port", srcPort,
                 "dst_switch", dstSwitchId,
                 "dst_port", dstPort);
 
-        Iterable<Flow> flows = getSession().query(Flow.class, "MATCH (:switch)-[fc:flow_segment]->(:switch) "
-                + "WHERE fc.src_switch=$src_switch "
-                + "AND fc.src_port=$src_port  "
-                + "AND fc.dst_switch=$dst_switch "
-                + "AND fc.dst_port=$dst_port  "
-                + "MATCH (src:switch)-[f:flow]->(dst:switch) "
-                + "WHERE fc.flowid=f.flowid  "
-                + "RETURN src, f, dst", parameters);
-
-        return buildFlowPairs(flows);
+        Set<Flow> flows = new HashSet<>();
+        getSession().query(Flow.class, "MATCH (src:switch)-[ps:path_segment]->(dst:switch) "
+                + "WHERE src.name=$src_switch "
+                + "AND ps.src_port=$src_port  "
+                + "AND dst.name=$dst_switch "
+                + "AND ps.dst_port=$dst_port  "
+                + "MATCH () - [fp:flow_path { path_id: ps.path_id }] - () "
+                + "MATCH (f_src:switch) - [f:flow] -> (f_dst:switch) "
+                + "WHERE fp.flow_id=f.flowid  "
+                + "RETURN f_src, f, f_dst", parameters).forEach(flows::add);
+        return flows;
     }
 
     @Override

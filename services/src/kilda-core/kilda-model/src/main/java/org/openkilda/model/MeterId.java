@@ -17,9 +17,14 @@ package org.openkilda.model;
 
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-public final class MeterId {
-    /** Mask is being used to get meter id for corresponding system rule.
+public final class MeterId implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Mask is being used to get meter id for corresponding system rule.
      * E.g. for 0x8000000000000002L & METER_ID_DEFAULT_RULE_MASK we will get meter id 2.
      */
     public static final long METER_ID_DEFAULT_RULE_MASK = 0x000000000000001FL;

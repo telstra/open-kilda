@@ -17,17 +17,24 @@ package org.openkilda.model;
 
 import lombok.Value;
 
+import java.io.Serializable;
+
 /**
  * Represents information about a cookie.
  */
 @Value
-public class Cookie {
+public class Cookie implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public static final long DROP_RULE_COOKIE = 0x8000000000000001L;
     public static final long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
     public static final long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
     public static final long DROP_VERIFICATION_LOOP_RULE_COOKIE = 0x8000000000000004L;
     public static final long CATCH_BFD_RULE_COOKIE = 0x8000000000000005L;
     public static final long DEFAULT_RULES_MASK = 0x8000000000000000L;
+
+    public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
+    public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
 
     private final long value;
 
@@ -62,5 +69,32 @@ public class Cookie {
         }
 
         return new Cookie(meterId | DEFAULT_RULES_MASK);
+    }
+
+    /**
+     * Checks whether the cookie corresponds to the forward flow mask.
+     */
+    public boolean isMarkedAsForward() {
+        boolean isMatch;
+        if ((value & 0xE000000000000000L) != 0) {
+            isMatch = (value & FORWARD_FLOW_COOKIE_MASK) != 0;
+        } else {
+            isMatch = (value & 0x0080000000000000L) == 0;
+        }
+        return isMatch;
+
+    }
+
+    /**
+     * Checks whether the cookie corresponds to the reverse flow mask.
+     */
+    public boolean isMarkedAsReversed() {
+        boolean isMatch;
+        if ((value & 0xE000000000000000L) != 0) {
+            isMatch = (value & REVERSE_FLOW_COOKIE_MASK) != 0;
+        } else {
+            isMatch = (value & 0x0080000000000000L) != 0;
+        }
+        return isMatch;
     }
 }

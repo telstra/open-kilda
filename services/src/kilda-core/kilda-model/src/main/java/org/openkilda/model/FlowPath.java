@@ -15,88 +15,141 @@
 
 package org.openkilda.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import lombok.Setter;
+import org.neo4j.ogm.annotation.EndNode;
+import org.neo4j.ogm.annotation.GeneratedValue;
+import org.neo4j.ogm.annotation.Id;
+import org.neo4j.ogm.annotation.Index;
+import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.RelationshipEntity;
+import org.neo4j.ogm.annotation.StartNode;
+import org.neo4j.ogm.annotation.Transient;
+import org.neo4j.ogm.annotation.typeconversion.Convert;
+import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.List;
 
 /**
- * Representation of a flow path. As opposed to flow segment entity which serves as a mark for ISLs used by the flow,
- * this is switch-based and keeps the list of switch-port pairs the flow path goes through.
+ * Represents a flow path.
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(exclude = {"latency"})
-@Builder
+@EqualsAndHashCode(exclude = {"entityId", "segments"})
+@RelationshipEntity(type = "flow_path")
 public class FlowPath implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Latency value in nseconds.
-     */
-    @JsonProperty("latency_ns")
-    private long latency;
+    // Hidden as needed for OGM only.
+    @Id
+    @GeneratedValue
+    @Setter(AccessLevel.NONE)
+    @Getter(AccessLevel.NONE)
+    private Long entityId;
 
     @NonNull
-    @JsonProperty("path")
-    private List<Node> nodes;
+    @Property(name = "path_id")
+    @Index(unique = true)
+    @Convert(graphPropertyType = String.class)
+    private PathId pathId;
+
+    @NonNull
+    @StartNode
+    private Switch srcSwitch;
+
+    @NonNull
+    @EndNode
+    private Switch destSwitch;
+
+    @NonNull
+    @Property(name = "flow_id")
+    @Index
+    private String flowId;
+
+    @NonNull
+    @Convert(graphPropertyType = Long.class)
+    private Cookie cookie;
+
+    @Property(name = "meter_id")
+    @Convert(graphPropertyType = Long.class)
+    private MeterId meterId;
+
+    private long bandwidth;
+
+    @Property(name = "ignore_bandwidth")
+    private boolean ignoreBandwidth;
+
+    @NonNull
+    @Property(name = "time_create")
+    @Convert(InstantStringConverter.class)
+    private Instant timeCreate;
+
+    @NonNull
+    @Property(name = "time_modify")
+    @Convert(InstantStringConverter.class)
+    private Instant timeModify;
+
+    @NonNull
+    @Property(name = "status")
+    // Enforce usage of custom converters.
+    @Convert(graphPropertyType = String.class)
+    private FlowPathStatus status;
+
+    @NonNull
+    @Transient
+    private List<PathSegment> segments;
+
+    @Builder(toBuilder = true)
+    public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
+                    @NonNull String flowId, @NonNull Cookie cookie, MeterId meterId,
+                    long bandwidth, boolean ignoreBandwidth,
+                    @NonNull Instant timeCreate, @NonNull Instant timeModify,
+                    @NonNull FlowPathStatus status, @NonNull List<PathSegment> segments) {
+        this.pathId = pathId;
+        this.srcSwitch = srcSwitch;
+        this.destSwitch = destSwitch;
+        this.flowId = flowId;
+        this.cookie = cookie;
+        this.meterId = meterId;
+        this.bandwidth = bandwidth;
+        this.ignoreBandwidth = ignoreBandwidth;
+        this.timeCreate = timeCreate;
+        this.timeModify = timeModify;
+        this.status = status;
+        this.segments = segments;
+    }
 
     /**
-     * Needed to support old storage schema.
+     * Checks whether a flow is forward.
      *
-     * @deprecated Must be removed along with {@link Flow#flowPath}.
+     * @return boolean flag
      */
-    @Deprecated
-    @JsonInclude(Include.NON_NULL)
-    private Long timestamp;
+    public boolean isForward() {
+        boolean isForward = cookie.isMarkedAsForward();
+        boolean isReversed = cookie.isMarkedAsReversed();
+
+        if (isForward && isReversed) {
+            throw new IllegalArgumentException(
+                    "Invalid cookie flags combinations - it mark as forward and reverse flow at same time.");
+        }
+
+        return isForward;
+    }
 
     /**
-     * A node of a flow path ({@link FlowPath}).
+     * Checks whether a flow is reverse.
+     *
+     * @return boolean flag
      */
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode(exclude = {"segmentLatency", "cookie"})
-    @Builder
-    public static class Node implements Serializable {
-        private static final long serialVersionUID = 1L;
-
-        @JsonProperty("switch_id")
-        private SwitchId switchId;
-
-        @JsonProperty("port_no")
-        private int portNo;
-
-        /**
-         * Needed to support old storage schema.
-         *
-         * @deprecated Must be removed along with {@link Flow#flowPath}.
-         */
-        @Deprecated
-        @JsonProperty("seq_id")
-        private int seqId;
-
-        @JsonProperty("segment_latency")
-        @JsonInclude(Include.NON_NULL)
-        private Long segmentLatency;
-
-        /**
-         * Needed to support old storage schema.
-         *
-         * @deprecated Must be removed along with {@link Flow#flowPath}.
-         */
-        @Deprecated
-        @JsonProperty("cookie")
-        @JsonInclude(Include.NON_DEFAULT) // Needed to exclude when not set
-        private Long cookie;
+    public boolean isReverse() {
+        return !isForward();
     }
 }

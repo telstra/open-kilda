@@ -23,7 +23,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import com.google.common.collect.ImmutableList;
@@ -50,7 +50,7 @@ public class ValidationService {
         SwitchId switchId = request.getSwitchId();
         log.debug("Validating rules on switch {}", switchId);
 
-        FlowSegmentRepository flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        FlowPathRepository flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
         Set<Long> expectedCookies = flowSegmentRepository.findByDestSwitchId(switchId).stream()
                 .map(FlowSegment::getCookie)
                 .collect(Collectors.toSet());
