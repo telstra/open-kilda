@@ -34,6 +34,7 @@ import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.DeactivateIslInfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -323,6 +324,7 @@ public class OfeLinkBolt
 
         try {
             if (message instanceof InfoMessage) {
+                preHandleMessage((InfoMessage) message);
                 dispatch(tuple, (InfoMessage) message);
             } else if (message instanceof HeartBeat) {
                 logger.debug("Got speaker's heart beat");
@@ -332,6 +334,14 @@ public class OfeLinkBolt
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             collector.ack(tuple);
+        }
+    }
+
+    private void preHandleMessage(InfoMessage message) {
+        InfoData data = message.getData();
+        if (data instanceof DeactivateIslInfoData) {
+            DeactivateIslInfoData deactivateIslInfoData = (DeactivateIslInfoData) data;
+            discovery.handleFailed(deactivateIslInfoData.getSrcSwitchId(), deactivateIslInfoData.getSrcPort());
         }
     }
 

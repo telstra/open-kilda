@@ -22,5 +22,6 @@ public enum StreamType {
     REROUTE,
     FEATURE_TOGGLES,
     VALIDATION,
+    DISCO,
     ERROR
 }
