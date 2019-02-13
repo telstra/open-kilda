@@ -87,6 +87,12 @@ public class IslInfoData extends CacheTimeTag {
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
 
+    @JsonProperty("enable_bfd")
+    private boolean enableBfd;
+
+    @JsonProperty("bfd_session_status")
+    private String bfdSessionStatus;
+
     private PathNode source;
     private PathNode destination;
 
@@ -109,14 +115,16 @@ public class IslInfoData extends CacheTimeTag {
                 that.getCost(),
                 that.getTimeCreateMillis(),
                 that.getTimeModifyMillis(),
-                that.isUnderMaintenance());
+                that.isUnderMaintenance(),
+                that.isEnableBfd(),
+                that.getBfdSessionStatus());
     }
 
     /**
      * Simple constructor for an ISL with only source/destination and state.
      */
     public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
-        this(-1, source, destination, 0, 0, 0, 0, state, null, 0, null, null, underMaintenance);
+        this(-1, source, destination, 0, 0, 0, 0, state, null, 0, null, null, underMaintenance, false, null);
     }
 
     @Builder(toBuilder = true)
@@ -133,7 +141,9 @@ public class IslInfoData extends CacheTimeTag {
                        @JsonProperty("cost") int cost,
                        @JsonProperty("time_create") Long timeCreateMillis,
                        @JsonProperty("time_modify") Long timeModifyMillis,
-                       @JsonProperty("under_maintenance") boolean underMaintenance) {
+                       @JsonProperty("under_maintenance") boolean underMaintenance,
+                       @JsonProperty("enable_bfd") boolean enableBfd,
+                       @JsonProperty("bfd_session_status") String bfdSessionStatus) {
         this.latency = latency;
         this.source = source;
         this.destination = destination;
@@ -148,6 +158,8 @@ public class IslInfoData extends CacheTimeTag {
         this.timeModifyMillis = timeModifyMillis;
         this.id = String.format("%s_%d", source.getSwitchId(), source.getPortNo());
         this.underMaintenance = underMaintenance;
+        this.enableBfd = enableBfd;
+        this.bfdSessionStatus = bfdSessionStatus;
     }
 
     /**
@@ -183,7 +195,7 @@ public class IslInfoData extends CacheTimeTag {
     @Override
     public int hashCode() {
         return Objects.hash(latency, source, destination, speed, availableBandwidth, maxBandwidth, defaultMaxBandwidth,
-                state, actualState, cost, underMaintenance);
+                state, actualState, cost, underMaintenance, enableBfd, bfdSessionStatus);
     }
 
     /**
@@ -209,6 +221,8 @@ public class IslInfoData extends CacheTimeTag {
                 && Objects.equals(getState(), that.getState())
                 && Objects.equals(getActualState(), that.getActualState())
                 && Objects.equals(getCost(), that.getCost())
-                && Objects.equals(isUnderMaintenance(), that.isUnderMaintenance());
+                && Objects.equals(isUnderMaintenance(), that.isUnderMaintenance())
+                && Objects.equals(isEnableBfd(), that.isEnableBfd())
+                && Objects.equals(getBfdSessionStatus(), that.getBfdSessionStatus());
     }
 }
