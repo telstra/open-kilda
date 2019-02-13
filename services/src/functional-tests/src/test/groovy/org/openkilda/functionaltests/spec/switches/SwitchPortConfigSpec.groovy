@@ -24,10 +24,11 @@ class SwitchPortConfigSpec extends BaseSpecification {
         def portDownTime = new Date()
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
 
-        then: "ISL between switches becomes 'FAILED'"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
+        then: "Forward and reverse ISLs between switches becomes 'FAILED'"
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
         }
 
         and: "Port failure is logged in OpenTSDB"
@@ -43,10 +44,11 @@ class SwitchPortConfigSpec extends BaseSpecification {
         def portUpTime = new Date()
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
-        then: "ISL between switches becomes 'DISCOVERED'"
+        then: "Forward and reverse ISLs between switches becomes 'DISCOVERED'"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
         }
 
         and: "Port UP event is logged in OpenTSDB"
@@ -56,6 +58,9 @@ class SwitchPortConfigSpec extends BaseSpecification {
             assert statsData.size() == 1
         }
         statsData.values().first() == otsdbPortUp
+
+        and: "Cleanup: reset costs"
+        database.resetCosts()
 
         where:
         isl << uniqueIsls

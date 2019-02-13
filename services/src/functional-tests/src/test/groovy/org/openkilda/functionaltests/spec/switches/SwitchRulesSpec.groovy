@@ -577,10 +577,10 @@ class SwitchRulesSpec extends BaseSpecification {
         and: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
         northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
-        database.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
     }
 
     void compareRules(actualRules, expectedRules) {
