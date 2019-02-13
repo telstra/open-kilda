@@ -26,7 +26,6 @@ import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Required;
 import org.neo4j.ogm.annotation.Transient;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
@@ -52,7 +51,6 @@ public class Switch implements Serializable {
 
     @Property(name = "name")
     @Convert(graphPropertyType = String.class)
-    @Required
     private SwitchId switchId;
 
     @Property(name = "state")

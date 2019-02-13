@@ -17,9 +17,12 @@ package org.openkilda.wfm.topology.discovery.controller;
 
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.messaging.model.SwitchReference;
+import org.openkilda.model.BfdPort;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.BfdPortRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.error.SwitchReferenceLookupException;
@@ -36,6 +39,7 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Optional;
+import java.util.Random;
 
 @Slf4j
 public final class BfdPortFsm extends
@@ -205,7 +209,11 @@ public final class BfdPortFsm extends
 
     private void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                   BfdPortFsmContext context) {
-        // TODO release BFD-discriminator
+        BfdPortRepository repository = persistenceManager.getRepositoryFactory()
+                .createBfdPortRepository();
+        repository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
+                .ifPresent(repository::delete);
+        discriminator = null;
     }
 
     private void handleCleaning(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -255,8 +263,32 @@ public final class BfdPortFsm extends
     // -- private/service methods --
 
     private void allocateDiscriminator() {
-        // TODO: sync with nmarchenko
-        this.discriminator = 1;
+
+        BfdPortRepository bfdPortRepository = persistenceManager.getRepositoryFactory()
+                .createBfdPortRepository();
+
+        Optional<BfdPort> foundPort = bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(),
+                logicalEndpoint.getPortNumber());
+
+        if (foundPort.isPresent()) {
+            this.discriminator = foundPort.get().getDiscriminator();
+        } else {
+            Random random = new Random();
+            BfdPort bfdPort = new BfdPort();
+            bfdPort.setSwitchId(logicalEndpoint.getDatapath());
+            bfdPort.setPort(logicalEndpoint.getPortNumber());
+            boolean success = false;
+            while (!success) {
+                try {
+                    bfdPort.setDiscriminator(random.nextInt());
+                    bfdPortRepository.createOrUpdate(bfdPort);
+                    success = true;
+                } catch (ConstraintViolationException ex) {
+                    log.warn("ConstraintViolationException on allocate bfd discriminator");
+                }
+            }
+            this.discriminator = bfdPort.getDiscriminator();
+        }
     }
 
     private Endpoint locateRemoteEndpoint(IslReference islReference) {

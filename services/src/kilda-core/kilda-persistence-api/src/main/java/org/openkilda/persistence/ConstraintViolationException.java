@@ -13,23 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.persistence;
 
-/**
- * Factory to create {@link Repository} instances.
- */
-public interface RepositoryFactory {
-    FlowRepository createFlowRepository();
+public class ConstraintViolationException extends PersistenceException {
+    public ConstraintViolationException(String message) {
+        super(message);
+    }
 
-    FlowSegmentRepository createFlowSegmentRepository();
-
-    IslRepository createIslRepository();
-
-    SwitchRepository createSwitchRepository();
-
-    LinkPropsRepository createLinkPropsRepository();
-
-    FeatureTogglesRepository createFeatureTogglesRepository();
-
-    BfdPortRepository createBfdPortRepository();
+    public ConstraintViolationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

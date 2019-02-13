@@ -15,21 +15,14 @@
 
 package org.openkilda.persistence.repositories;
 
-/**
- * Factory to create {@link Repository} instances.
- */
-public interface RepositoryFactory {
-    FlowRepository createFlowRepository();
+import org.openkilda.model.BfdPort;
+import org.openkilda.model.SwitchId;
 
-    FlowSegmentRepository createFlowSegmentRepository();
+import java.util.Optional;
 
-    IslRepository createIslRepository();
+public interface BfdPortRepository extends Repository<BfdPort> {
 
-    SwitchRepository createSwitchRepository();
+    boolean exists(SwitchId switchId, Integer port);
 
-    LinkPropsRepository createLinkPropsRepository();
-
-    FeatureTogglesRepository createFeatureTogglesRepository();
-
-    BfdPortRepository createBfdPortRepository();
+    Optional<BfdPort> findBySwitchIdAndPort(SwitchId switchId, Integer port);
 }

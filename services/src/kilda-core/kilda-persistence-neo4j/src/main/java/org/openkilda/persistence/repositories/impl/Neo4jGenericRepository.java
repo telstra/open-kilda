@@ -20,11 +20,13 @@ import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.Repository;
 
 import com.google.common.collect.ImmutableMap;
+import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
@@ -71,7 +73,13 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
 
     @Override
     public void createOrUpdate(T entity) {
-        getSession().save(entity, DEPTH_CREATE_UPDATE_ENTITY);
+        try {
+            getSession().save(entity, DEPTH_CREATE_UPDATE_ENTITY);
+        } catch (ClientException ex) {
+            if (ex.code().endsWith("ConstraintValidationFailed")) {
+                throw new ConstraintViolationException(ex.getMessage(), ex);
+            }
+        }
     }
 
     abstract Class<T> getEntityType();
