@@ -56,6 +56,12 @@ public class LinkDto {
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
 
+    @JsonProperty("enable_bfd")
+    private boolean enableBfd;
+
+    @JsonProperty("bfd_session_status")
+    private String bfdSessionStatus;
+
     @JsonProperty("path")
     private List<PathDto> path;
 }

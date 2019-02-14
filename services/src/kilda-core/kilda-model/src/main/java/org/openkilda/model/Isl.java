@@ -128,6 +128,12 @@ public class Isl implements Serializable {
     @Property(name = "under_maintenance")
     private boolean underMaintenance;
 
+    @Property(name = "enable_bfd")
+    private boolean enableBfd;
+
+    @Property(name = "bfd_session_status")
+    private String bfdSessionStatus;
+
     /**
      * Constructor used by the builder only and needed to copy srcSwitch to srcSwitchId, destSwitch to destSwitchId.
      */
@@ -135,7 +141,8 @@ public class Isl implements Serializable {
     Isl(Switch srcSwitch, Switch destSwitch, int srcPort, int destPort, //NOSONAR
             int latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth,
             long availableBandwidth, IslStatus status, IslStatus actualStatus,
-            Instant timeCreate, Instant timeModify, boolean underMaintenance) {
+            Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
+            String bfdSessionStatus) {
         setSrcSwitch(srcSwitch);
         setDestSwitch(destSwitch);
         this.srcPort = srcPort;
@@ -151,6 +158,8 @@ public class Isl implements Serializable {
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         this.underMaintenance = underMaintenance;
+        this.enableBfd = enableBfd;
+        this.bfdSessionStatus = bfdSessionStatus;
     }
 
     public final void setSrcSwitch(Switch srcSwitch) {
