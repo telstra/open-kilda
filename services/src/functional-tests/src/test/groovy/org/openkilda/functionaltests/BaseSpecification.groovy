@@ -105,7 +105,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
             northbound.allFlows.empty
             northbound.allLinkProps.empty
         }
-        
+
         and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
         verifyAll {
             links.findAll { it.availableBandwidth != it.speed }.empty
