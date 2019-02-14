@@ -15,22 +15,15 @@
 
 package org.openkilda.grpc.speaker.model;
 
+import org.openkilda.messaging.model.grpc.OnOffState;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
-public class LogicalPortDto {
-
+public class LogMessagesDto {
     @NonNull
-    private List<Integer> portNumbers;
-
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
+    private OnOffState state;
 }

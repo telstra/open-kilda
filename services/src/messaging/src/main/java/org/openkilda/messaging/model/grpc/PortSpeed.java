@@ -13,24 +13,30 @@
  *   limitations under the License.
  */
 
-package org.openkilda.grpc.speaker.model;
+package org.openkilda.messaging.model.grpc;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
+public enum PortSpeed {
+    PORT_SPEED_RESERVED(0),
 
-import java.util.List;
+    PORT_SPEED_10MBFD(1),
 
-@Data
-@NoArgsConstructor
-public class LogicalPortDto {
+    PORT_SPEED_100MBFD(2),
 
-    @NonNull
-    private List<Integer> portNumbers;
+    PORT_SPEED_1GBFD(3),
 
-    @NonNull
-    private Integer logicalPortNumber;
+    PORT_SPEED_10GBFD(4),
 
-    @NonNull
-    private String logicalPortName;
+    PORT_SPEED_40GBFD(5),
+
+    PORT_SPEED_100GBFD(6);
+
+    private final int value;
+
+    PortSpeed(int value) {
+        this.value = value;
+    }
+
+    public int getNumber() {
+        return value;
+    }
 }

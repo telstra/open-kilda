@@ -17,7 +17,22 @@ package org.openkilda.grpc.speaker.exception;
 
 public class GrpcRequestFailureException extends GrpcException {
 
-    public GrpcRequestFailureException(String message) {
+    private final String message;
+
+    private final Integer code;
+
+    public GrpcRequestFailureException(Integer code, String message) {
         super(message);
+        this.message = message;
+        this.code = code;
+    }
+
+    @Override
+    public String getMessage() {
+        return message;
+    }
+
+    public Integer getCode() {
+        return code;
     }
 }

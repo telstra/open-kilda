@@ -13,24 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.grpc.speaker.model;
+package org.openkilda.messaging.model.grpc;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-
-import java.util.List;
 
 @Data
-@NoArgsConstructor
-public class LogicalPortDto {
+public class RemoteLogServer {
+    @JsonProperty("ip_address")
+    private String ipAddress;
 
-    @NonNull
-    private List<Integer> portNumbers;
-
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
+    @JsonProperty("port")
+    private Integer port;
 }

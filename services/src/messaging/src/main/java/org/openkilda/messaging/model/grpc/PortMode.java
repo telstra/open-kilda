@@ -13,24 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.grpc.speaker.model;
+package org.openkilda.messaging.model.grpc;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
+public enum PortMode {
+    PORT_MODE_RESERVED(0),
 
-import java.util.List;
+    PORT_MODE_SGMII(1),
 
-@Data
-@NoArgsConstructor
-public class LogicalPortDto {
+    PORT_MODE_XFI(2);
 
-    @NonNull
-    private List<Integer> portNumbers;
+    private final int value;
 
-    @NonNull
-    private Integer logicalPortNumber;
+    PortMode(int value) {
+        this.value = value;
+    }
 
-    @NonNull
-    private String logicalPortName;
+    public int getNumber() {
+        return value;
+    }
 }

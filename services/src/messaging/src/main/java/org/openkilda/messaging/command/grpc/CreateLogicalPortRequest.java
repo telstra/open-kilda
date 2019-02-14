@@ -21,24 +21,26 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class CreateLogicalPortRequest extends CommandData {
 
     @JsonProperty("address")
     private String address;
 
-    @JsonProperty("port_number")
-    private int portNumber;
+    @JsonProperty("port_numbers")
+    private List<Integer> portNumbers;
 
     @JsonProperty("logical_port_number")
-    private int logicalPortNumber;
+    private Integer logicalPortNumber;
 
     @JsonCreator
     public CreateLogicalPortRequest(@JsonProperty("address") String address,
-                                    @JsonProperty("port_number") int portNumber,
+                                    @JsonProperty("port_numbers") List<Integer> portNumbers,
                                     @JsonProperty("logical_port_number") int logicalPortNumber) {
         this.address = address;
-        this.portNumber = portNumber;
+        this.portNumbers = portNumbers;
         this.logicalPortNumber = logicalPortNumber;
     }
 }

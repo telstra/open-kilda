@@ -13,24 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.grpc.speaker.model;
+package org.openkilda.messaging.model.grpc;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
+public enum OnOffState {
+    ON(2),
+    OFF(1),
+    ONOFF_RESERVED(0);
 
-import java.util.List;
+    private final int value;
 
-@Data
-@NoArgsConstructor
-public class LogicalPortDto {
+    OnOffState(int value) {
+        this.value = value;
+    }
 
-    @NonNull
-    private List<Integer> portNumbers;
-
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
+    public final int getNumber() {
+        return value;
+    }
 }

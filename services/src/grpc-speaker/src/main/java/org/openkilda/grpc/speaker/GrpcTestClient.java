@@ -16,8 +16,13 @@
 package org.openkilda.grpc.speaker;
 
 import org.openkilda.grpc.speaker.client.GrpcSession;
+import org.openkilda.messaging.model.grpc.OnOffState;
 
+import io.grpc.noviflow.OnOff;
+import io.grpc.noviflow.StatusSwitch;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Optional;
 
 @Slf4j
 public final class GrpcTestClient {
@@ -25,15 +30,24 @@ public final class GrpcTestClient {
     private GrpcTestClient() {
     }
 
+    /**
+     * A main method.
+     *
+     * @param args an arguments.
+     * @throws Exception an exception.
+     */
     public static void main(String[] args) throws Exception {
-        String address = "test";
-        String name = "test";
+        String address = "localhost";
+        String name = "username";
         GrpcSession sender = new GrpcSession(address);
 
         sender.login(name, name).get();
 
         log.warn(sender.dumpLogicalPorts().toString());
         log.warn(sender.showSwitchStatus().toString());
+        Optional<StatusSwitch> status = sender.showSwitchStatus().get();
+
+        System.out.println(status.get());
 
         Thread.sleep(1000000);
     }
