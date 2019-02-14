@@ -15,22 +15,13 @@
 
 package org.openkilda.grpc.speaker.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-
-import java.util.List;
 
 @Data
-@NoArgsConstructor
-public class LogicalPortDto {
-
-    @NonNull
-    private List<Integer> portNumbers;
-
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
+@AllArgsConstructor
+public class GrpcDeleteOperationResponse {
+    @JsonProperty("deleted")
+    private Boolean deleted;
 }

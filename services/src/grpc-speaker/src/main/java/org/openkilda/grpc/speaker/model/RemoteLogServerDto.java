@@ -19,18 +19,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
-public class LogicalPortDto {
+public class RemoteLogServerDto {
+    @NonNull
+    private String ipAddress;
 
     @NonNull
-    private List<Integer> portNumbers;
+    private Integer port;
 
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
 }
