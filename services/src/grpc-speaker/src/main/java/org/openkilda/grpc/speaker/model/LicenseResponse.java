@@ -15,22 +15,14 @@
 
 package org.openkilda.grpc.speaker.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-
-import java.util.List;
 
 @Data
-@NoArgsConstructor
-public class LogicalPortDto {
+@AllArgsConstructor
+public class LicenseResponse {
 
-    @NonNull
-    private List<Integer> portNumbers;
-
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
+    @JsonProperty("success")
+    private Boolean success;
 }

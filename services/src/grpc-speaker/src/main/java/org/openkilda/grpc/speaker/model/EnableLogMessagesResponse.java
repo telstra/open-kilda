@@ -15,22 +15,15 @@
 
 package org.openkilda.grpc.speaker.model;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
+import org.openkilda.messaging.model.grpc.OnOffState;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 @Data
-@NoArgsConstructor
-public class LogicalPortDto {
-
-    @NonNull
-    private List<Integer> portNumbers;
-
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
+@AllArgsConstructor
+public class EnableLogMessagesResponse {
+    @JsonProperty("enabled")
+    private OnOffState enabled;
 }

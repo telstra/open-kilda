@@ -16,9 +16,14 @@
 package org.openkilda.grpc.speaker.mapper;
 
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
+import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchBuildInfoStatus;
+import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchEthLinkInfoStatus;
 
 import io.grpc.noviflow.LogicalPort;
+import io.grpc.noviflow.RemoteLogServer;
 import io.grpc.noviflow.StatusSwitch;
+import io.grpc.noviflow.StatusSwitchBuild;
+import io.grpc.noviflow.StatusSwitchEthLink;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -27,10 +32,16 @@ public interface NoviflowResponseMapper {
 
     @Mapping(source = "logicalportno", target = "logicalPortNumber")
     @Mapping(source = "portnoList", target = "portNumbers")
-    @Mapping(source = "name", target = "name")
     org.openkilda.messaging.model.grpc.LogicalPort toLogicalPort(LogicalPort port);
 
-    @Mapping(source = "serialNumber", target = "serialNumber")
-    @Mapping(source = "uptime", target = "uptime")
+    @Mapping(source = "ethLinksList", target = "ethLinks")
+    @Mapping(source = "buildsList", target = "builds")
     SwitchInfoStatus toSwitchInfo(StatusSwitch statusSwitch);
+
+    @Mapping(source = "ipaddr", target = "ipAddress")
+    org.openkilda.messaging.model.grpc.RemoteLogServer toRemoteLogServer(RemoteLogServer remoteLogServer);
+
+    SwitchEthLinkInfoStatus toSwithcEthLink(StatusSwitchEthLink statusSwitchEthLink);
+
+    SwitchBuildInfoStatus toSwitchBuildInfo(StatusSwitchBuild statusSwitchBuild);
 }

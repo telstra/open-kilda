@@ -16,21 +16,11 @@
 package org.openkilda.grpc.speaker.model;
 
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-
-import java.util.List;
 
 @Data
-@NoArgsConstructor
-public class LogicalPortDto {
+public class LicenseDto {
 
-    @NonNull
-    private List<Integer> portNumbers;
+    private String licenseFileName;
 
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
+    private String licenseData;
 }
