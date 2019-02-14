@@ -13,24 +13,37 @@
  *   limitations under the License.
  */
 
-package org.openkilda.grpc.speaker.model;
+package org.openkilda.messaging.model.grpc;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
+public enum PortPause {
+    /**
+     * <code>PORT_PAUSE_RESERVED = 0;</code>
+     */
+    PORT_PAUSE_RESERVED(0),
+    /**
+     * <code>PORT_PAUSE_OFF = 1;</code>
+     */
+    PORT_PAUSE_OFF(1),
+    /**
+     * <code>PORT_PAUSE_ON = 2;</code>
+     */
+    PORT_PAUSE_ON(2),
+    /**
+     * <code>PORT_PAUSE_RX = 3;</code>
+     */
+    PORT_PAUSE_RX(3),
+    /**
+     * <code>PORT_PAUSE_TX = 4;</code>
+     */
+    PORT_PAUSE_TX(4);
 
-import java.util.List;
+    private final int value;
 
-@Data
-@NoArgsConstructor
-public class LogicalPortDto {
+    PortPause(int value) {
+        this.value = value;
+    }
 
-    @NonNull
-    private List<Integer> portNumbers;
-
-    @NonNull
-    private Integer logicalPortNumber;
-
-    @NonNull
-    private String logicalPortName;
+    public int getNumber() {
+        return value;
+    }
 }

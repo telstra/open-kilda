@@ -15,8 +15,9 @@
 
 package org.openkilda.grpc.speaker;
 
-import org.openkilda.grpc.speaker.client.GrpcSession;
+import org.openkilda.messaging.model.grpc.OnOffState;
 
+import io.grpc.noviflow.OnOff;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -26,15 +27,20 @@ public final class GrpcTestClient {
     }
 
     public static void main(String[] args) throws Exception {
-        String address = "test";
-        String name = "test";
-        GrpcSession sender = new GrpcSession(address);
-
-        sender.login(name, name).get();
-
-        log.warn(sender.dumpLogicalPorts().toString());
-        log.warn(sender.showSwitchStatus().toString());
-
-        Thread.sleep(1000000);
+//        String address = "localhost";
+//        String name = "kilda";
+//        GrpcSession sender = new GrpcSession(address);
+//
+//        sender.login(name, name).get();
+//
+////        log.warn(sender.dumpLogicalPorts().toString());
+////        log.warn(sender.showSwitchStatus().toString());
+//        Optional<StatusSwitch> status = sender.showSwitchStatus().get();
+//
+//        System.out.println(status.get());
+//
+//        Thread.sleep(1000000);
+        OnOff onOff = OnOff.forNumber(OnOffState.OFF.getNumber());
+        System.out.println(onOff);
     }
 }

@@ -45,13 +45,13 @@ public class MessageProcessor {
     public void processRequest(CommandData command) {
         if (command instanceof CreateLogicalPortRequest) {
             CreateLogicalPortRequest req = (CreateLogicalPortRequest) command;
-            service.createLogicalPort(requestMapper.toLogicalPort(req))
-                .thenAccept(e -> sendResponse(new CreateLogicalPortResponse(req.getAddress(), e, true)));
+            service.createLogicalPort(req.getAddress(), requestMapper.toLogicalPort(req))
+                    .thenAccept(e -> sendResponse(new CreateLogicalPortResponse(req.getAddress(), e, true)));
 
         } else if (command instanceof DumpLogicalPortsRequest) {
             DumpLogicalPortsRequest req = (DumpLogicalPortsRequest) command;
             service.dumpLogicalPorts(req.getAddress())
-                .thenAccept(e -> sendResponse(new DumpLogicalPortsResponse(req.getAddress(), e)));
+                    .thenAccept(e -> sendResponse(new DumpLogicalPortsResponse(req.getAddress(), e)));
 
         } else if (command instanceof GetSwitchInfoRequest) {
             GetSwitchInfoRequest req = (GetSwitchInfoRequest) command;

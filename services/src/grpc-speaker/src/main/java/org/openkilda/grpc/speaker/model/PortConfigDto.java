@@ -15,22 +15,39 @@
 
 package org.openkilda.grpc.speaker.model;
 
+import org.openkilda.messaging.model.grpc.OnOffState;
+import org.openkilda.messaging.model.grpc.PortMode;
+import org.openkilda.messaging.model.grpc.PortPause;
+import org.openkilda.messaging.model.grpc.PortSpeed;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.NonNull;
-
-import java.util.List;
 
 @Data
 @NoArgsConstructor
-public class LogicalPortDto {
+public class PortConfigDto {
 
-    @NonNull
-    private List<Integer> portNumbers;
+    private PortSpeed speed;
 
-    @NonNull
-    private Integer logicalPortNumber;
+    private OnOffState autoneg;
 
-    @NonNull
-    private String logicalPortName;
+    private OnOffState noPacketIn;
+
+    private OnOffState portDown;
+
+    private OnOffState trunk;
+
+    private PortMode mode;
+
+    private PortPause pause;
+
+    private Integer queueId;
+
+    private Integer minRate;
+
+    private Integer maxRate;
+
+    private Integer weight;
+
+    private Integer nativeVId;
 }

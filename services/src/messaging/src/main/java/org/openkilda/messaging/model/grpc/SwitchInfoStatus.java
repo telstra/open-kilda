@@ -18,12 +18,53 @@ package org.openkilda.messaging.model.grpc;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class SwitchInfoStatus {
 
     @JsonProperty("serial_number")
-    String serialNumber;
+    private String serialNumber;
 
     @JsonProperty("uptime")
-    String uptime;
+    private String uptime;
+
+    @JsonProperty("kernel")
+    private String kernel;
+
+    @JsonProperty("mem_usage")
+    private Long memUsage;
+
+    @JsonProperty("ssd_usage")
+    private Long ssdUsage;
+
+    @JsonProperty("eth_links")
+    private List<SwitchEthLinkInfoStatus> ethLinks;
+
+    @JsonProperty("builds")
+    private List<SwitchBuildInfoStatus> builds;
+
+    @Data
+    public static class SwitchEthLinkInfoStatus {
+        @JsonProperty("name")
+        private String name;
+
+        @JsonProperty("status")
+        private String status;
+    }
+
+    @Data
+    public static class SwitchBuildInfoStatus {
+        @JsonProperty("name")
+        private String name;
+
+        @JsonProperty("ope_version_hash")
+        private String opeVersionHash;
+
+        @JsonProperty("ppe_version_hash")
+        private String ppeVersionHash;
+
+        @JsonProperty("ez_driver_version")
+        private String ezDriverVersion;
+    }
 }

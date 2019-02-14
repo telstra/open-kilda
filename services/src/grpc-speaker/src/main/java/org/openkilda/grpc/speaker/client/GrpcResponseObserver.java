@@ -15,9 +15,15 @@
 
 package org.openkilda.grpc.speaker.client;
 
+import static java.lang.String.format;
+
+import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
+
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -39,6 +45,20 @@ public class GrpcResponseObserver<V> implements StreamObserver<V> {
     }
 
     public boolean validateResponse(V reply) {
+        try {
+            Method replyStatusMethod = reply.getClass().getMethod("getReplyStatus");
+            Integer replyStatus = (Integer) replyStatusMethod.invoke(reply);
+
+            if (replyStatus != 0) {
+                log.warn("Response code of gRPC request is {}", replyStatus);
+
+                future.completeExceptionally(new GrpcRequestFailureException(
+                        format("Error response code: %s", replyStatus)));
+            }
+            return replyStatus == 0;
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            log.warn("Method getReplyStatus() was not found in reply message");
+        }
         return true;
     }
 
