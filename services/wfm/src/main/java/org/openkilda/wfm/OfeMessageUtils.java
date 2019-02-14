@@ -197,7 +197,11 @@ public final class OfeMessageUtils {
      */
     public static String createIslFail(SwitchId switchId, int portId, String correlationId) throws IOException {
         PathNode node = new PathNode(switchId, portId, 0, 0L);
-        InfoData data = new IslInfoData(0L, node, null, 0L, IslChangeType.FAILED, 0L, false);
+        InfoData data = IslInfoData.builder()
+                .source(node)
+                .state(IslChangeType.FAILED)
+                .build();
+
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
         return MAPPER.writeValueAsString(message);
     }

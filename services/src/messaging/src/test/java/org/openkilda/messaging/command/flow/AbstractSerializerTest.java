@@ -94,8 +94,16 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final List<PathNode> nodes = Arrays.asList(
             new PathNode(new SwitchId("ff:01"), 1, 0, 0L),
             new PathNode(new SwitchId("ff:02"), 2, 1, 0L));
-    private static final IslInfoData isl = new IslInfoData(0L, nodes.get(0), nodes.get(1), 1000L,
-            IslChangeType.DISCOVERED, 900L, false);
+    private static final IslInfoData isl = IslInfoData.builder()
+            .latency(0L)
+            .source(nodes.get(0))
+            .destination(nodes.get(1))
+            .speed(1000L)
+            .state(IslChangeType.DISCOVERED)
+            .availableBandwidth(900L)
+            .underMaintenance(false)
+            .build();
+
     private static final PathInfoData path = new PathInfoData(0L, nodes);
     private static final FlowDto flowModel = FlowDto.builder()
             .flowId(FLOW_NAME)
@@ -393,8 +401,16 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void eventIslInfoTest() throws IOException, ClassNotFoundException {
         PathNode payload = new PathNode(SWITCH_ID, INPUT_PORT, 0);
-        IslInfoData data = new IslInfoData(0L, payload, payload,
-                1000000L, IslChangeType.DISCOVERED, 900000L, false);
+        IslInfoData data = IslInfoData.builder()
+                .latency(0L)
+                .source(payload)
+                .destination(payload)
+                .speed(1000000L)
+                .state(IslChangeType.DISCOVERED)
+                .availableBandwidth(900000L)
+                .underMaintenance(false)
+                .build();
+
         assertEquals(SWITCH_ID + "_" + String.valueOf(INPUT_PORT), data.getId());
         System.out.println(data);
 
