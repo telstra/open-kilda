@@ -107,7 +107,7 @@ public class IslUtils {
      *
      * @param isl ISL to reverse
      */
-    public Isl reverseIsl(Isl isl) {
+    public static Isl reverseIsl(Isl isl) {
         if (isl.getDstSwitch() == null) {
             return isl; //don't reverse not connected ISL
         }

@@ -160,30 +160,6 @@ public interface NorthboundService {
     }
 
     /**
-     * Get links by source/destination switches and ports.
-     */
-    default List<IslInfoData> getLinksByParameters(
-            SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
-        return getAllLinks().stream()
-                .filter(link -> link.getSource().getSwitchId().equals(srcSwitch)
-                        && link.getSource().getPortNo() == srcPort
-                        && link.getDestination().getSwitchId().equals(dstSwitch)
-                        && link.getDestination().getPortNo() == dstPort)
-                .collect(Collectors.toList());
-    }
-
-
-    /**
-     * Get all links for switch.
-     */
-    default List<IslInfoData> getAllSwitchLinks(SwitchId switchId) {
-        return getAllLinks().stream()
-                .filter(link -> link.getSource().getSwitchId().equals(switchId)
-                             || link.getDestination().getSwitchId().equals(switchId))
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Returns all active switches.
      */
     default List<SwitchInfoData> getActiveSwitches() {
