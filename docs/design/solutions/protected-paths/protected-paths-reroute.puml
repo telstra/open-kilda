@@ -1,0 +1,64 @@
+@startuml
+title Reroute flow with protected path
+
+control kilda.topo.reroute
+box "Reroute Topology" #LightBlue
+    participant RerouteBolt
+    participant FlowThrottlingBolt
+    participant RerouteService
+end box
+database FlowPathRepository
+control kilda.flow
+box "Flow Topology" #LightGreen
+    participant FlowService
+    participant TransactionBolt
+end box
+
+kilda.topo.reroute ->> RerouteBolt: RerouteAffectedFlows
+activate RerouteBolt
+RerouteBolt -> RerouteService: processRerouteAffectedFlows
+activate RerouteService
+
+==Find affected FlowPaths==
+RerouteService -> FlowPathRepository: getActiveAffectedPrimaryPathsWithProtectedAvailable
+FlowPathRepository --> RerouteService: List(FlowPath)
+loop foreach FlowPath in received list
+    note right of RerouteService: swap affected primary path if protected path available
+    RerouteService -> kilda.flow: emit FlowSwapPath(FlowId, PathId)
+end
+
+group Swapping Flow Path
+    kilda.flow ->> FlowService: FlowSwapPath
+    activate FlowService
+    FlowService -> FlowRepository: swap primary path
+    FlowService ->> TransactionBolt: install new ingress\nand remove old ingress
+    deactivate FlowService
+end
+
+
+RerouteService -> FlowPathRepository: getActiveAffectedFlowsPaths
+FlowPathRepository --> RerouteService: List(FlowPath)
+loop foreach FlowPath in received list
+    RerouteService -> RerouteService: add (FlowId, PathId) to reroute list
+end
+
+==Emit reroute commands==
+RerouteService --> RerouteBolt: List(FlowId,PathId)
+deactivate RerouteService
+
+loop foreach (FlowId, Optional<PathId>) pair
+    RerouteBolt ->> FlowThrottlingBolt: emit flow reroutes
+    deactivate RerouteBolt
+    activate FlowThrottlingBolt
+end
+FlowThrottlingBolt ->> kilda.flow: emit FlowRerouteRequests
+deactivate FlowThrottlingBolt
+
+==Path rerouting==
+kilda.flow ->> FlowService: FlowRerouteRequest
+activate FlowService
+FlowService -> FlowService: Performs specified flow path rerouting
+FlowService ->> TransactionBolt: install and remove rules
+deactivate FlowService
+
+@enduml
