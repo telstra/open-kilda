@@ -13,16 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.northbound.service;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR
+import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.network.PathsDto;
+
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Service to handle network requests.
+ */
+public interface NetworkService {
+
+    /**
+     * Gets pathes between two switches.
+     */
+    CompletableFuture<PathsDto> getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
 }
