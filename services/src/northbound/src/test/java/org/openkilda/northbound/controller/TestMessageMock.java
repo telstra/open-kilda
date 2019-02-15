@@ -16,6 +16,7 @@
 package org.openkilda.northbound.controller;
 
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
 import org.openkilda.messaging.Destination;
@@ -24,6 +25,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
+import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
@@ -34,8 +36,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.event.SwitchChangeType;
-import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
@@ -46,6 +47,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -80,20 +82,20 @@ public class TestMessageMock implements MessagingChannel {
             .build();
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.UP);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
-    static final List<PathNodePayload> pathPayloadsList =
-            Collections.singletonList(new PathNodePayload(SWITCH_ID, 1, 1));
-    static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList);
+    static final List<PathNodePayload> pathPayloadsList = singletonList(new PathNodePayload(SWITCH_ID, 1, 1));
+    static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList, null);
     static final FlowDto flowModel = new FlowDto(FLOW_ID, 10000, false, false, 0L, FLOW_ID, null, SWITCH_ID,
             SWITCH_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP);
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
     static final FlowReadResponse FLOW_RESPONSE =
             new FlowReadResponse(new BidirectionalFlowDto(flowModel, flowModel));
+    static final FlowPathResponse FLOW_PATH_RESPONSE =
+            new FlowPathResponse(
+                    new GroupFlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList, null));
     private static final SwitchRulesResponse switchRulesResponse =
             new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
-    static final SwitchInfoData SWITCH_INFO_DATA =
-            new SwitchInfoData(SWITCH_ID, SwitchChangeType.ACTIVATED, "", "", "", "", false);
 
     /**
      * Chooses response by request.
@@ -112,7 +114,7 @@ public class TestMessageMock implements MessagingChannel {
         } else if (data instanceof FlowReadRequest) {
             result = getReadFlowResponse(((FlowReadRequest) data).getFlowId(), correlationId);
         } else if (data instanceof SwitchRulesDeleteRequest) {
-            result = CompletableFuture.completedFuture(switchRulesResponse);
+            result = completedFuture(switchRulesResponse);
         } else {
             return null;
         }
@@ -132,8 +134,11 @@ public class TestMessageMock implements MessagingChannel {
 
     @Override
     public CompletableFuture<List<InfoData>> sendAndGetChunked(String topic, Message message) {
-        if (((CommandMessage) message).getData() instanceof FlowsDumpRequest) {
-            return CompletableFuture.completedFuture(Collections.singletonList(FLOW_RESPONSE));
+        CommandData commandData = ((CommandMessage) message).getData();
+        if (commandData instanceof FlowsDumpRequest) {
+            return completedFuture(singletonList(FLOW_RESPONSE));
+        } else if (commandData instanceof FlowPathRequest) {
+            return completedFuture(singletonList(FLOW_PATH_RESPONSE));
         } else {
             return null;
         }
@@ -153,7 +158,7 @@ public class TestMessageMock implements MessagingChannel {
                     0, correlationId, Destination.NORTHBOUND);
             throw new MessageException(error);
         } else {
-            return CompletableFuture.completedFuture(FLOW_RESPONSE);
+            return completedFuture(FLOW_RESPONSE);
         }
     }
 }

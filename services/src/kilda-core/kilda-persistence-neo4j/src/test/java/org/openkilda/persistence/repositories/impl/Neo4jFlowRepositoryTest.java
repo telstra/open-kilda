@@ -228,6 +228,21 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindFlowByGroupId() {
+        Flow flow = Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .groupId(TEST_FLOW_ID)
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .build();
+
+        flowRepository.createOrUpdate(flow);
+
+        List<Flow> foundFlow = Lists.newArrayList(flowRepository.findByGroupId(TEST_FLOW_ID));
+        assertThat(foundFlow, Matchers.hasSize(1));
+    }
+
+    @Test
     public void shouldFindAllFlowPairs() {
         Flow forwardFlow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
