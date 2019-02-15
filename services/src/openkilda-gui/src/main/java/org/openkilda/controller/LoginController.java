@@ -72,8 +72,8 @@ public class LoginController extends BaseController {
     @Autowired
     private PermissionRepository permissionRepository;
     
-    @Value("${twofa.application.name}")
-    private String twofaApplicationName;
+    @Value("${application.name}")
+    private String applicationName;
 
     /**
      * Login.
@@ -137,20 +137,20 @@ public class LoginController extends BaseController {
             String secretKey = TwoFactorUtility.getBase32EncryptedKey();
             modelAndView.addObject("key", secretKey);
             userService.updateUser2FaKey(username, secretKey);
-            modelAndView.addObject("twofaApplicationName", twofaApplicationName);
+            modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.TWO_FA_GENERATOR);
         } catch (OtpRequiredException e) {
             LOGGER.error("OTP required for user: '" + username + "'.");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
-            modelAndView.addObject("twofaApplicationName", twofaApplicationName);
+            modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.OTP);
         } catch (InvalidOtpException e) {
             LOGGER.error("Authentication code is invalid for user: '" + username + "'.");
             error = "Authentication code is invalid";
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
-            modelAndView.addObject("twofaApplicationName", twofaApplicationName);
+            modelAndView.addObject("applicationName", applicationName);
             if (customWebAuthenticationDetails.isConfigure2Fa()) {
                 UserEntity userInfo = userService.getUserByUsername(username);
                 modelAndView.addObject("key", userInfo.getTwoFaKey());
