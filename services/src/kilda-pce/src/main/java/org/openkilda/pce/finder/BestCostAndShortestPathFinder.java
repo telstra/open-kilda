@@ -105,6 +105,97 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     }
 
     /**
+     * Find N (or less) best paths. To find N paths Yen's algorithm is used.
+     *
+     * @return an list of N (or less) best paths.
+     */
+    @Override
+    public List<List<Edge>> findNPathsBetweenSwitches(
+            AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count)
+            throws UnroutableFlowException {
+
+        Node start = network.getSwitch(startSwitchId);
+        Node end = network.getSwitch(endSwitchId);
+        if (start == null || end == null) {
+            throw new UnroutableFlowException(format("Switch %s doesn't have links with enough bandwidth",
+                    start == null ? startSwitchId : endSwitchId));
+        }
+
+        List<List<Edge>> bestPaths = new ArrayList<>();
+
+        List<Edge> lastBestPath = getPath(start, end);
+        bestPaths.add(lastBestPath);
+
+        for (int i = 0; i < count - 1; i++) {
+            List<Edge> bestPath = null;
+            Edge removedEdge = null;
+            long bestAvailableBandwidth = Long.MIN_VALUE;
+            long bestCost = Long.MAX_VALUE;
+
+            for (Edge edge : lastBestPath) {
+                removeEdge(edge);
+
+                List<Edge> path = getPath(start, end);
+                if (path.isEmpty()) {
+                    continue;
+                }
+
+                long currentAvailableBandwidth = getMinAvailableBandwidth(path);
+                long currentCost = getTotalCost(path);
+
+                if (currentAvailableBandwidth > bestAvailableBandwidth
+                        || (currentAvailableBandwidth == bestAvailableBandwidth && currentCost < bestCost)) {
+                    bestAvailableBandwidth = currentAvailableBandwidth;
+                    bestCost = currentCost;
+                    bestPath = path;
+                    removedEdge = edge;
+                }
+
+                restoreEdge(edge);
+            }
+
+            if (bestPath == null || bestPath.isEmpty()) {
+                break;
+            }
+            bestPaths.add(bestPath);
+            lastBestPath = bestPath;
+            removeEdge(removedEdge);
+        }
+
+
+        return bestPaths;
+    }
+
+    private long getMinAvailableBandwidth(List<Edge> path) {
+        return path.stream().mapToLong(Edge::getAvailableBandwidth).min().orElse(Long.MIN_VALUE);
+    }
+
+    private long getTotalCost(List<Edge> path) {
+        if (path.isEmpty()) {
+            return Long.MAX_VALUE;
+        }
+        return path.stream().mapToLong(Edge::getCost).sum();
+    }
+
+    private void removeEdge(Edge edge) {
+        edge.getSrcSwitch().getOutgoingLinks().remove(edge);
+        edge.getDestSwitch().getIncomingLinks().remove(edge);
+
+        Edge reverseEdge = edge.swap();
+        reverseEdge.getSrcSwitch().getOutgoingLinks().remove(reverseEdge);
+        reverseEdge.getDestSwitch().getIncomingLinks().remove(reverseEdge);
+    }
+
+    private void restoreEdge(Edge edge) {
+        edge.getSrcSwitch().getOutgoingLinks().add(edge);
+        edge.getDestSwitch().getIncomingLinks().add(edge);
+
+        Edge reverseEdge = edge.swap();
+        reverseEdge.getSrcSwitch().getOutgoingLinks().add(reverseEdge);
+        reverseEdge.getDestSwitch().getIncomingLinks().add(reverseEdge);
+    }
+
+    /**
      * Call this method to find a path from start to end (srcDpid to dstDpid), particularly if you have no idea if the
      * path exists or what the best path is.
      *

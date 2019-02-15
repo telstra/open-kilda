@@ -31,7 +31,7 @@ public class FlowPathConverterTest {
     public void shouldConvertPathToString() throws IOException {
         // given
         FlowPath.Node node = new FlowPath.Node(new SwitchId(1), 2, 3, null, (long) 0x123);
-        FlowPath entity = new FlowPath(0, singletonList(node), null);
+        FlowPath entity = new FlowPath(0, 0L, singletonList(node), null);
 
         // when
         String graphObject = new FlowPathConverter().toGraphProperty(entity);
@@ -45,7 +45,7 @@ public class FlowPathConverterTest {
     public void shouldConvertStringToPath() throws IOException {
         // given
         FlowPath.Node node = new FlowPath.Node(new SwitchId(1), 2, 3, null, (long) 0x123);
-        FlowPath entity = new FlowPath(0, singletonList(node), null);
+        FlowPath entity = new FlowPath(0, 0L, singletonList(node), null);
         String graphObject = new ObjectMapper().writeValueAsString(entity);
 
         // when
