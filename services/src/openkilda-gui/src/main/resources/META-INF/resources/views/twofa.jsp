@@ -32,7 +32,7 @@
 		                	<div class="QRcode-container change-password">
 		                        <h2 class="center">Two-Factor Authentication</h2>
 								<span id="secretKey" style="visibility:hidden;">${key}</span>  
-								<span id="appName" style="visibility:hidden;">${twofaApplicationName}</span> 
+								<span id="appName" style="visibility:hidden;">${applicationName}</span> 
 		                        <span id="uname" style="visibility:hidden;">${username}</span>      
 		                        <p>Scan below code with the authenticator app on your mobile device and follow instructions to verify your identity.</p>
 		                      	 <div class="qr_scan_img">             
