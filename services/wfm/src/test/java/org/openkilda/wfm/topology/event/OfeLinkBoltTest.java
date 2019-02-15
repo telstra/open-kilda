@@ -36,6 +36,8 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
@@ -247,7 +249,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.discovery = Mockito.mock(DiscoveryManager.class);
         ArgumentCaptor<SpeakerSwitchView> switchCaptor = ArgumentCaptor.forClass(SpeakerSwitchView.class);
-        bolt.dispatchSyncInProgress(tuple, inputMessage);
+        bolt.dispatch(tuple, inputMessage);
         Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
 
         assertEquals(2, switchCaptor.getValue().getPorts().size());
@@ -267,7 +269,13 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         switchPorts.add(new SpeakerSwitchPortView(BFD_OFFSET + 1, SpeakerSwitchPortView.State.UP));
         switchPorts.add(new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP));
         switchPorts.add(new SpeakerSwitchPortView(BFD_OFFSET + 3, SpeakerSwitchPortView.State.UP));
-        SpeakerSwitchView switchRecord = new SpeakerSwitchView(switchId, ipAddress, new HashSet<>(), switchPorts);
+        SpeakerSwitchView switchRecord = SpeakerSwitchView.builder()
+                .datapath(switchId)
+                .switchSocketAddress(InetSocketAddress.createUnresolved(ipAddress, 1000))
+                .speakerSocketAddress(InetSocketAddress.createUnresolved(ipAddress, 1000))
+                .ports(switchPorts)
+                .ofVersion("OF_13")
+                .build();
         SwitchInfoData data = new SwitchInfoData(switchId, SwitchChangeType.ACTIVATED, null, null,
                 null, null, false, switchRecord);
         InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
@@ -275,7 +283,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.discovery = Mockito.mock(DiscoveryManager.class);
         ArgumentCaptor<SpeakerSwitchView> switchCaptor = ArgumentCaptor.forClass(SpeakerSwitchView.class);
-        bolt.dispatchSyncInProgress(tuple, inputMessage);
+        bolt.dispatch(tuple, inputMessage);
         Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
 
         assertEquals(2, switchCaptor.getValue().getPorts().size());

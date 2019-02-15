@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -120,6 +121,15 @@ public class DiscoverySwitchService {
             SwitchFsm fsm = locateControllerCreateIfAbsent(payload.getSwitchId());
             controllerExecutor.fire(fsm, event, fsmContextBuilder.build());
         }
+    }
+
+    /**
+     * .
+     */
+    public void switchEvent(ISwitchCarrier carrier, UnmanagedSwitchNotification payload) {
+        SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
+        SwitchFsm fsm = locateControllerCreateIfAbsent(payload.getSwitchId());
+        controllerExecutor.fire(fsm, SwitchFsmEvent.OFFLINE, fsmContextBuilder.build());
     }
 
     /**

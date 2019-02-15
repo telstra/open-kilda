@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.sw;
 
-import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
@@ -23,7 +22,6 @@ import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.model.SpeakerSharedSync;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoverySwitchService;
@@ -92,10 +90,6 @@ public class SwitchHandler extends AbstractBolt {
 
         if (Utils.DEFAULT_STREAM_ID.equals(stream)) {
             handleSpeakerMainStream(input);
-        } else if (SpeakerMonitor.STREAM_REFRESH_ID.equals(stream)) {
-            handleSpeakerRefreshStream(input);
-        } else if (SpeakerMonitor.STREAM_SYNC_ID.equals(stream)) {
-            handleSpeakerSyncStream(input);
         } else {
             unhandledInput(input);
         }
@@ -111,15 +105,6 @@ public class SwitchHandler extends AbstractBolt {
         command.apply(service, new OutputAdapter(this, input));
     }
 
-    private void handleSpeakerRefreshStream(Tuple input) throws PipelineException {
-        SpeakerSwitchView switchView = pullValue(input, SpeakerMonitor.FIELD_ID_REFRESH, SpeakerSwitchView.class);
-        service.switchRestoreManagement(new OutputAdapter(this, input), switchView);
-    }
-
-    private void handleSpeakerSyncStream(Tuple input) throws PipelineException {
-        SpeakerSharedSync sharedSync = pullValue(input, SpeakerMonitor.FIELD_ID_SYNC, SpeakerSharedSync.class);
-        service.switchSharedSync(new OutputAdapter(this, input), sharedSync);
-    }
 
     @Override
     protected void init() {

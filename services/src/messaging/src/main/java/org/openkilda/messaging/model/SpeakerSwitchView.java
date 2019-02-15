@@ -26,7 +26,9 @@ import lombok.Value;
 
 import java.io.Serializable;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Value
@@ -40,6 +42,7 @@ public class SpeakerSwitchView implements Serializable {
     @JsonProperty(value = "speaker-socket", required = true)
     private InetSocketAddress speakerSocketAddress;
 
+    // TODO: move to enum
     @JsonProperty(value = "OF-version")
     private String ofVersion;
 
@@ -67,7 +70,8 @@ public class SpeakerSwitchView implements Serializable {
         this.speakerSocketAddress = speakerSocketAddress;
         this.ofVersion = ofVersion;
         this.description = description;
-        this.features = ImmutableSet.copyOf(features);
+
+        this.features = ImmutableSet.copyOf(Optional.ofNullable(features).orElse(Collections.emptySet()));
         this.ports = ImmutableList.copyOf(ports);
     }
 

@@ -226,11 +226,11 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         IOFSwitch sw = createMock(IOFSwitch.class);
         expect(sw.getId()).andReturn(dpId).anyTimes();
         expect(sw.getInetAddress())
-                .andReturn(new InetSocketAddress(InetAddress.getByName("127.0.1.1"), 32768)).times(2);
+                .andReturn(new InetSocketAddress("127.0.1.1", 32768)).times(2);
 
         OFConnection connect = createMock(OFConnection.class);
         expect(connect.getRemoteInetAddress())
-                .andReturn(new InetSocketAddress(InetAddress.getByName("127.0.1.254"), 6653)).times(2);
+                .andReturn(new InetSocketAddress("127.0.1.254", 6653)).times(2);
         expect(sw.getConnectionByCategory(eq(LogicalOFMessageCategory.MAIN))).andReturn(connect).times(2);
 
         SwitchDescription description = createMock(SwitchDescription.class);
@@ -340,9 +340,6 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                 makePhysicalPortMock(5, false)
         ));
 
-        expect(switchManager.getSwitchIpAddress(iofSwitch1)).andReturn("127.0.2.1");
-        expect(switchManager.getSwitchIpAddress(iofSwitch2)).andReturn("127.0.2.2");
-
         expect(featureDetector.detectSwitch(iofSwitch1))
                 .andReturn(ImmutableSet.of(SpeakerSwitchView.Feature.METERS));
         expect(featureDetector.detectSwitch(iofSwitch2))
@@ -373,27 +370,36 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
         ArrayList<Message> expectedMessages = new ArrayList<>();
         expectedMessages.add(new ChunkedInfoMessage(
-                new NetworkDumpSwitchData(new SpeakerSwitchView(
-                        new SwitchId(swAid.getLong()), "127.0.2.1",
-                        ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
-                        ImmutableList.of(
-                                new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
-                                new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP)))), 0, correlationId, 0, 2, "1"));
+                        new NetworkDumpSwitchData(new SpeakerSwitchView(
+                                new SwitchId(swAid.getLong()),
+                                new InetSocketAddress(Inet4Address.getByName("127.0.1.1"), 32768),
+                                new InetSocketAddress(Inet4Address.getByName("127.0.1.254"), 6653),
+                                "OF_13",
+                                switchDescription,
+                                ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
+                                ImmutableList.of(
+                                        new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
+                                        new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP)))),
+                0, correlationId, 0, 2, "1"));
         expectedMessages.add(new ChunkedInfoMessage(
                 new NetworkDumpSwitchData(new SpeakerSwitchView(
-                        new SwitchId(swBid.getLong()), "127.0.2.2",
+                        new SwitchId(swBid.getLong()),
+                        new InetSocketAddress(Inet4Address.getByName("127.0.1.2"), 32768),
+                        new InetSocketAddress(Inet4Address.getByName("127.0.1.254"), 6653),
+                        "OF_13",
+                        switchDescription,
                         ImmutableSet.of(SpeakerSwitchView.Feature.METERS, SpeakerSwitchView.Feature.BFD),
                         ImmutableList.of(
                                 new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP),
                                 new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP),
-                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN)))), 0, correlationId, 1, 2, "1"));
+                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN)))),
+                0, correlationId, 1, 2, "1"));
 
         assertEquals(expectedMessages, producedMessages);
     }
 
-
-    private SpeakerSwitchView makeSwitchRecord(DatapathId datapath, String ipAddress, Set<SpeakerSwitchView.Feature> features,
-                                    boolean... portState) {
+    private SpeakerSwitchView makeSwitchRecord(DatapathId datapath, Set<SpeakerSwitchView.Feature> features,
+                                               boolean... portState) {
         List<SpeakerSwitchPortView> ports = new ArrayList<>(portState.length);
         for (int idx = 0; idx < portState.length; idx++) {
             ports.add(new SpeakerSwitchPortView(idx + 1,

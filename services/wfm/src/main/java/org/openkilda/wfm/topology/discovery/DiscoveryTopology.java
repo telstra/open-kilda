@@ -25,7 +25,6 @@ import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
-import org.openkilda.wfm.topology.discovery.storm.bolt.MonotonicTick;
 import org.openkilda.wfm.topology.discovery.storm.bolt.RerouteEncoder;
 import org.openkilda.wfm.topology.discovery.storm.bolt.SpeakerEncoder;
 import org.openkilda.wfm.topology.discovery.storm.bolt.SpeakerMonitor;
@@ -69,12 +68,11 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
 
         TopologyBuilder topology = new TopologyBuilder();
 
-        monotonicTick(topology);
         inputSpeaker(topology, scaleFactor);
 
         coordinator(topology);
 
-        speakerMonitor(topology);
+        speakerMonitor(topology, scaleFactor);
 
         networkHistory(topology);
 
@@ -94,10 +92,6 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         return topology.createTopology();
     }
 
-    private void monotonicTick(TopologyBuilder topology) {
-        topology.setBolt(MonotonicTick.BOLT_ID, new MonotonicTick(topologyConfig.getDiscoveryInterval()));
-    }
-
     private void inputSpeaker(TopologyBuilder topology, int scaleFactor) {
         KafkaSpout<String, Message> spout = buildKafkaSpout(
                 topologyConfig.getTopoDiscoTopic(), ComponentId.INPUT_SPEAKER.toString());
@@ -110,11 +104,9 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
                 .allGrouping(CoordinatorSpout.ID);
     }
 
-    private void speakerMonitor(TopologyBuilder topology) {
-        SpeakerMonitor bolt = new SpeakerMonitor(topologyConfig.getSpeakerFailureTimeoutSeconds(),
-                                                 topologyConfig.getDumpRequestTimeoutSeconds());
-        topology.setBolt(SpeakerMonitor.BOLT_ID, bolt, 1)
-                .allGrouping(MonotonicTick.BOLT_ID)
+    private void speakerMonitor(TopologyBuilder topology, int scaleFactor) {
+        SpeakerMonitor bolt = new SpeakerMonitor();
+        topology.setBolt(SpeakerMonitor.BOLT_ID, bolt, scaleFactor)
                 .allGrouping(ComponentId.INPUT_SPEAKER.toString());
     }
 
@@ -154,9 +146,7 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         Fields grouping = new Fields(SpeakerMonitor.FIELD_ID_DATAPATH);
         topology.setBolt(SwitchHandler.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(NetworkHistory.SPOUT_ID, grouping)
-                .fieldsGrouping(SpeakerMonitor.BOLT_ID, grouping)
-                .fieldsGrouping(SpeakerMonitor.BOLT_ID, SpeakerMonitor.STREAM_REFRESH_ID, grouping)
-                .allGrouping(SpeakerMonitor.BOLT_ID, SpeakerMonitor.STREAM_SYNC_ID);
+                .fieldsGrouping(SpeakerMonitor.BOLT_ID, grouping);
     }
 
     private void portHandler(TopologyBuilder topology, int scaleFactor) {
@@ -209,7 +199,6 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     private void speakerOutput(TopologyBuilder topology, int scaleFactor) {
         SpeakerEncoder bolt = new SpeakerEncoder();
         topology.setBolt(SpeakerEncoder.BOLT_ID, bolt, scaleFactor)
-                .shuffleGrouping(SpeakerMonitor.BOLT_ID, SpeakerMonitor.STREAM_SPEAKER_ID)
                 .shuffleGrouping(WatcherHandler.BOLT_ID, WatcherHandler.STREAM_SPEAKER_ID);
 
         KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic());

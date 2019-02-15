@@ -191,7 +191,7 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
                     logger.debug("Received outdated message {}", json);
                     return;
                 }
-                switchId = ((NetworkDumpSwitchData) infoData).getSwitchRecord().getDatapath();
+                switchId = ((NetworkDumpSwitchData) infoData).getSwitchView().getDatapath();
                 floodlightTracker.updateSwitchRegion(switchId, region);
             } else if (infoData instanceof SwitchInfoData) {
                 switchId = ((SwitchInfoData) infoData).getSwitchId();
