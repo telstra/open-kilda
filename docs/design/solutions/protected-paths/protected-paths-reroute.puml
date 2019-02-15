@@ -1,0 +1,69 @@
+@startuml
+title Reroute flow with protected path
+
+control kilda.topo.reroute
+box "Reroute Topology" #LightBlue
+    participant RerouteBolt
+    participant FlowThrottlingBolt
+    participant RerouteService
+end box
+database FlowPathRepository
+control kilda.flow
+box "Flow Topology" #LightGreen
+    participant FlowService
+    participant TransactionBolt
+end box
+
+kilda.topo.reroute ->> RerouteBolt: RerouteAffectedFlows
+activate RerouteBolt
+
+==Find affected FlowPaths==
+RerouteBolt -> RerouteService: getAffectedFlowPaths
+activate RerouteService
+RerouteService -> FlowPathRepository: getAffectedFlowPaths
+FlowPathRepository --> RerouteService: List(FlowPath)
+RerouteService --> RerouteBolt: List(Pair(FlowPath, Flow))
+deactivate RerouteService
+
+==Emit path swap for available protected flows==
+RerouteBolt -> RerouteService: getPathsForSwapping
+activate RerouteService
+RerouteService --> RerouteBolt: List(FlowPath)
+deactivate RerouteService
+
+RerouteBolt -> RerouteBolt: emitPathSwapCommands
+loop foreach FlowPath in path for swapping list
+    note right of RerouteBolt: swap affected primary path if protected path available
+    RerouteBolt -> kilda.flow: emit FlowSwapPath(FlowId, PathId)
+end
+
+group Swapping Flow Path
+    kilda.flow ->> FlowService: FlowSwapPath
+    activate FlowService
+    FlowService -> FlowRepository: swap primary path
+    FlowService ->> TransactionBolt: install new ingress\nand remove old ingress
+    deactivate FlowService
+end
+
+==Emit reroute commands==
+RerouteBolt -> RerouteService: groupFlowsForRerouting
+activate RerouteService
+RerouteService --> RerouteBolt: Map<Flow, Set<PathId>>
+deactivate RerouteService
+
+loop foreach entry in received map
+    RerouteBolt ->> FlowThrottlingBolt: emit flow reroute
+    deactivate RerouteBolt
+    activate FlowThrottlingBolt
+end
+FlowThrottlingBolt ->> kilda.flow: emit FlowRerouteRequests
+deactivate FlowThrottlingBolt
+
+==Path rerouting==
+kilda.flow ->> FlowService: FlowRerouteRequest
+activate FlowService
+FlowService -> FlowService: Performs specified flow path rerouting
+FlowService ->> TransactionBolt: install and remove rules
+deactivate FlowService
+
+@enduml
