@@ -1,10 +1,11 @@
 @startuml
-title Create flow with backup path
+title Create flow with protected path
 
 participant Client
 participant FlowService
 participant PathComputerFactory
 participant PathComputer
+participant IntersectionComputer
 database Neo4J
 participant TransactionBolt
 
@@ -16,25 +17,38 @@ create PathComputer
 PathComputerFactory -> PathComputer: create
 PathComputer --> FlowService
 
-== Main path creation ==
+== Primary path creation ==
 FlowService -> PathComputer: getPath
 activate PathComputer
 PathComputer -> PathComputer: compute path as usual
 PathComputer --> FlowService: computed pathPair
 deactivate PathComputer
 
+alt Path no found
+    FlowService -->x Client: Path not found error
+end
+
+FlowService -> Neo4J: transaction start
 FlowService -> Neo4J: save new flow
 FlowService -> Neo4J: create flow segments
-FlowService ->> TransactionBolt: send install rules commands
 
-== Backup path creation ==
+== Protected path creation ==
 FlowService -> PathComputer: getPath, diversed with\njust created new flow
 activate PathComputer
 PathComputer -> PathComputer: compute diversed path
 PathComputer --> FlowService: computed pathPair
 deactivate PathComputer
 
-FlowService -> Neo4J: create backup path flow segments
+FlowService -> Neo4J: create protected path flow segments
+
+FlowService -> IntersectionComputer: isProtectedPathOverlaps
+alt Intersections exist
+    FlowService -> Neo4J: transaction rollback
+    FlowService -->x Client: Protected path creation error
+end
+FlowService -> Neo4J: transaction commit
+
+== Send install rule commands ==
 FlowService ->> TransactionBolt: send install rules commands
 
 FlowService --> Client: created flow

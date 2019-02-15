@@ -1,15 +1,15 @@
 @startuml
-title Reroute flow with backup path
+title Reroute flow with protected path
 
 control kilda.topo.reroute
-box "Reroute Topology" #LightGreen
+box "Reroute Topology" #LightBlue
     participant RerouteBolt
     participant FlowThrottlingBolt
     participant RerouteService
 end box
 database FlowRepository
 control kilda.flow
-box "Flow Topology" #Yellow
+box "Flow Topology" #LightGreen
     participant FlowService
     participant TransactionBolt
 end box
@@ -19,37 +19,31 @@ activate RerouteBolt
 RerouteBolt -> RerouteService: processRerouteAffectedFlows
 activate RerouteService
 
-==Backuped flow rerouting==
-RerouteService -> FlowRepository: getActiveBackupedFlowsWithAffectedMainPath
+==Protected flow rerouting==
+RerouteService -> FlowRepository: getActiveBackupedFlowsWithAffectedPrimaryPath
 FlowRepository --> RerouteService: Set(FlowId, PathId)
-RerouteService -> FlowRepository: getActiveBackupedFlowsWithAffectedBackupPath
-FlowRepository --> RerouteService: Set(FlowId, PathId)
-
-loop foreach FlowId in (AffectedMainPathSet intersect AffectedBackupPathSet)
-    note right of RerouteService: reroute entire flow
-    RerouteService -> RerouteService: add (FlowId, None) to reroute list
-end
-
-loop foreach FlowId in (AffectedMainPathSet minus AffectedBackupPathSet)
-    note right of RerouteService: reroute affected main path
+loop foreach FlowId in AffectedPrimaryPathSet
+    note right of RerouteService: reroute affected primary path
     RerouteService -> RerouteService: add (FlowId, PathId) to reroute list
     RerouteService -> kilda.flow: emit FlowSwapPath(FlowId, PathId)
 end
 
-alt Swapping Flow Path
+group Swapping Flow Path
     kilda.flow ->> FlowService: FlowSwapPath
     activate FlowService
-    FlowService -> FlowRepository: swap main path
+    FlowService -> FlowRepository: swap primary path
     FlowService ->> TransactionBolt: install new ingress\nand remove old ingress
     deactivate FlowService
 end
 
-loop foreach FlowId in (AffectedBackupPathSet minus AffectedMainPathSet)
-    note right of RerouteService: reroute backup path
+RerouteService -> FlowRepository: getActiveBackupedFlowsWithAffectedProtectedPath
+FlowRepository --> RerouteService: Set(FlowId, PathId)
+loop foreach FlowId in AffectedProtectedPathSet
+    note right of RerouteService: reroute protected path
     RerouteService -> RerouteService: add (FlowId, PathId) to reroute list
 end
 
-==Regular(without backup) flow rerouting==
+==Regular(without protected) flow rerouting==
 RerouteService -> FlowRepository: getActiveAffectedRegularFlows
 FlowRepository --> RerouteService: List(FlowId)
 loop foreach in retrieved list
