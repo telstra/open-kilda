@@ -24,6 +24,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
+import org.openkilda.messaging.command.flow.FlowPathRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -33,6 +34,7 @@ import org.openkilda.messaging.command.flow.MeterModifyRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
+import org.openkilda.messaging.info.flow.FlowPathResponse;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
@@ -45,6 +47,7 @@ import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -52,6 +55,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
+import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
@@ -322,8 +326,37 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowPathPayload> pathFlow(final String id) {
         logger.debug("Flow path request for flow {}", id);
-        return getBidirectionalFlow(id, RequestCorrelationId.getId())
-                .thenApply(flowMapper::toFlowPathPayload);
+        final String correlationId = RequestCorrelationId.getId();
+
+        FlowPathRequest data = new FlowPathRequest(id);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGetChunked(topic, request)
+                .thenApply(result -> result.stream()
+                        .map(FlowPathResponse.class::cast)
+                        .map(FlowPathResponse::getPayload)
+                        .collect(Collectors.toList()))
+                .thenApply(respList -> buildFlowPathPayload(respList, id));
+    }
+
+    private FlowPathPayload buildFlowPathPayload(List<GroupFlowPathPayload> paths, String flowId) {
+        GroupFlowPathPayload flowPathPayload = paths.stream().filter(e -> e.getId().equals(flowId)).findAny().get();
+        // fill main flow path
+        FlowPathPayload payload = new FlowPathPayload();
+        payload.setId(flowPathPayload.getId());
+        payload.setForwardPath(flowPathPayload.getForwardPath());
+        payload.setReversePath(flowPathPayload.getReversePath());
+
+        // fill group paths
+        if (paths.size() > 1) {
+            DiverseGroupPayload groupPayload = new DiverseGroupPayload();
+            groupPayload.setOverlappingSegments(flowPathPayload.getSegmentsStats());
+            groupPayload.setOtherFlows(
+                    paths.stream().filter(e -> !e.getId().equals(flowId)).collect(Collectors.toList()));
+
+            payload.setDiverseGroupPayload(groupPayload);
+        }
+        return payload;
     }
 
     /**
