@@ -13,17 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.cache;
+package org.openkilda.wfm.share.flow.resources;
 
-import static org.junit.Assert.assertEquals;
+public class MeterPoolTest {
 
-import org.junit.Test;
-
-public class ResourcePoolTest {
-    private static final ResourcePool pool = new ResourcePool(1, 5);
-
+    /*
     @Test
-    public void resourcePoolTest() {
+    public void meterPoolTest() {
+        org.openkilda.wfm.share.cache.MeterPool pool = new org.openkilda.wfm.share.cache.MeterPool(1, 4);
         int first = pool.allocate();
         assertEquals(1, first);
 
@@ -33,39 +30,39 @@ public class ResourcePoolTest {
         int third = pool.allocate();
         assertEquals(3, third);
 
+        pool.deallocate(third);
         pool.deallocate(second);
 
         int fourth = pool.allocate();
         assertEquals(4, fourth);
 
         int fifth = pool.allocate();
-        assertEquals(5, fifth);
+        assertEquals(3, fifth);
 
         int sixth = pool.allocate();
         assertEquals(2, sixth);
 
-        assertEquals(5, pool.dumpPool().size());
+        assertEquals(4, pool.dumpPool().size());
     }
 
+    @Test(expected = MeterPoolIsFullException.class)
+    public void meterPoolFullTest() {
+        org.openkilda.wfm.share.cache.MeterPool pool = new org.openkilda.wfm.share.cache.MeterPool(1, 1);
+        pool.allocate();
+        pool.allocate();
+    }
 
     @Test
-    public void testRollover() {
-        ResourcePool mypool = new ResourcePool(1, 5);
+    public void meterPoolOutOfRangeTest() {
+        org.openkilda.wfm.share.cache.MeterPool pool = new MeterPool(5, 10);
+        int first = pool.allocate(3);
+        int second = pool.allocate(17);
 
-        int first = mypool.allocate(5);
-        assertEquals(5, first);
+        Set<Integer> dumpPool = pool.dumpPool();
 
-        int second = mypool.allocate();
-        assertEquals(1, second);
-
-        assertEquals(2, mypool.dumpPool().size());
+        assertEquals(2, dumpPool.size());
+        assertTrue(dumpPool.contains(first));
+        assertTrue(dumpPool.contains(second));
     }
-
-
-    @Test(expected = ResourcePoolIsFullException.class)
-    public void resourcePoolFullTest() {
-        ResourcePool pool = new ResourcePool(1, 1);
-        pool.allocate();
-        pool.allocate();
-    }
+    */
 }

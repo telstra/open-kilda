@@ -110,8 +110,8 @@ public class Isl implements Serializable {
     @Builder(toBuilder = true)
     public Isl(@NonNull Switch srcSwitch, @NonNull Switch destSwitch, int srcPort, int destPort,
                int latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
-               @NonNull IslStatus status, @NonNull IslStatus actualStatus,
-               @NonNull Instant timeCreate, @NonNull Instant timeModify, boolean underMaintenance) {
+               IslStatus status, IslStatus actualStatus,
+               Instant timeCreate, Instant timeModify, boolean underMaintenance) {
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
         this.srcPort = srcPort;

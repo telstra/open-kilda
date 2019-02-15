@@ -784,9 +784,7 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         if (!switchRepository.exists(switchIdObj)) {
-            Switch sw = new Switch();
-            sw.setSwitchId(switchIdObj);
-            sw.setStatus(SwitchStatus.ACTIVE);
+            Switch sw = Switch.builder().switchId(switchIdObj).status(SwitchStatus.ACTIVE).build();
             switchRepository.createOrUpdate(sw);
         }
     }

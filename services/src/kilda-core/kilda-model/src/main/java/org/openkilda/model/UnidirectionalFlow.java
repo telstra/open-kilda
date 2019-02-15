@@ -15,147 +15,263 @@
 
 package org.openkilda.model;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.Setter;
-import org.neo4j.ogm.annotation.EndNode;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.RelationshipEntity;
-import org.neo4j.ogm.annotation.StartNode;
-import org.neo4j.ogm.annotation.Transient;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import static java.lang.String.format;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Objects;
+import java.util.Optional;
 
 /**
- * Represents a bi-directional flow. This includes the source and destination, flow status,
- * bandwidth and description, active paths, encapsulation type.
+ * Represents a unidirectional flow.
+ *
+ * @deprecated Must be replaced with new model entities: {@link org.openkilda.model.Flow},
+ * {@link org.openkilda.model.FlowPath}
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = "entityId")
-@RelationshipEntity(type = "flow")
+@Deprecated
 public class UnidirectionalFlow implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    private final Flow flow;
+    private final FlowPath flowPath;
+    private final TransitVlan transitVlan;
+    private final boolean forward;
 
-    @NonNull
-    @Property(name = "flowid")
-    @Index(unique = true)
-    private String flowId;
+    public UnidirectionalFlow(Flow flow, FlowPath flowPath, TransitVlan transitVlan, boolean forward) {
+        this.flow = flow;
+        this.flowPath = flowPath;
+        this.transitVlan = transitVlan;
+        this.forward = forward;
+    }
 
-    @NonNull
-    @StartNode
-    private Switch srcSwitch;
+    public String getFlowId() {
+        return flow.getFlowId();
+    }
 
-    @NonNull
-    @EndNode
-    private Switch destSwitch;
+    /**
+     * Set the flowId (propagate to wrapped flow, flowPath and transitVlan).
+     */
+    public void setFlowId(String flowId) {
+        flow.setFlowId(flowId);
+        flowPath.setFlowId(flowId);
+        if (transitVlan != null) {
+            transitVlan.setFlowId(flowId);
+        }
+    }
 
-    @Property(name = "src_port")
-    private int srcPort;
+    public long getCookie() {
+        return flowPath.getCookie().getValue();
+    }
 
-    @Property(name = "src_vlan")
-    private int srcVlan;
+    public void setCookie(long cookie) {
+        flowPath.setCookie(new Cookie(cookie));
+    }
 
-    @Property(name = "dst_port")
-    private int destPort;
+    public Switch getSrcSwitch() {
+        return forward ? flow.getSrcSwitch() : flow.getDestSwitch();
+    }
 
-    @Property(name = "dst_vlan")
-    private int destVlan;
+    /**
+     * Set the srcSwitch (propagate to wrapped flow and flowPath).
+     */
+    public void setSrcSwitch(Switch srcSwitch) {
+        flowPath.setSrcSwitch(srcSwitch);
 
-    // No setter as forwardPath must be used for this.
-    @Property(name = "forward_path_id")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    private PathId forwardPathId;
+        if (forward) {
+            flow.setSrcSwitch(srcSwitch);
+        } else {
+            flow.setDestSwitch(srcSwitch);
+        }
+    }
 
-    // No setter as reversePath must be used for this.
-    @Property(name = "reverse_path_id")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    private PathId reversePathId;
+    public Switch getDestSwitch() {
+        return forward ? flowPath.getDestSwitch() : flow.getSrcSwitch();
+    }
 
-    @Transient
-    private FlowPath forwardPath;
+    /**
+     * Set the destSwitch (propagate to wrapped flow and flowPath).
+     */
+    public void setDestSwitch(Switch destSwitch) {
+        flowPath.setDestSwitch(destSwitch);
 
-    @Transient
-    private FlowPath reversePath;
+        if (forward) {
+            flow.setDestSwitch(destSwitch);
+        } else {
+            flow.setSrcSwitch(destSwitch);
+        }
+    }
 
-    private long bandwidth;
+    public int getSrcPort() {
+        return forward ? flow.getSrcPort() : flow.getDestPort();
+    }
 
-    @Property(name = "ignore_bandwidth")
-    private boolean ignoreBandwidth;
+    /**
+     * Set the srcPort (propagate to wrapped flow).
+     */
+    public void setSrcPort(int srcPort) {
+        if (forward) {
+            flow.setSrcPort(srcPort);
+        } else {
+            flow.setDestPort(srcPort);
+        }
+    }
 
-    private String description;
+    public int getSrcVlan() {
+        return forward ? flow.getSrcVlan() : flow.getDestVlan();
+    }
 
-    @Property(name = "periodic_pings")
-    private boolean periodicPings;
+    /**
+     * Set the srcVlan (propagate to wrapped flow).
+     */
+    public void setSrcVlan(int srcVlan) {
+        if (forward) {
+            flow.setSrcVlan(srcVlan);
+        } else {
+            flow.setDestVlan(srcVlan);
+        }
+    }
 
-    @NonNull
-    @Property(name = "status")
-    // Enforce usage of custom converters.
-    @Convert(graphPropertyType = String.class)
-    private FlowStatus status;
+    public int getDestPort() {
+        return forward ? flow.getDestPort() : flow.getSrcPort();
+    }
 
-    @NonNull
-    @Property(name = "encapsulation_type")
-    @Convert(graphPropertyType = String.class)
-    private FlowEncapsulationType encapsulationType;
+    /**
+     * Set the destPort (propagate to wrapped flow).
+     */
+    public void setDestPort(int destPort) {
+        if (forward) {
+            flow.setDestPort(destPort);
+        } else {
+            flow.setSrcPort(destPort);
+        }
+    }
 
-    @NonNull
-    @Property(name = "time_create")
-    @Convert(InstantStringConverter.class)
-    private Instant timeCreate;
+    public int getDestVlan() {
+        return forward ? flow.getDestVlan() : flow.getSrcVlan();
+    }
 
-    @NonNull
-    @Property(name = "time_modify")
-    @Convert(InstantStringConverter.class)
-    private Instant timeModify;
+    /**
+     * Set the destVlan (propagate to wrapped flow).
+     */
+    public void setDestVlan(int destVlan) {
+        if (forward) {
+            flow.setDestVlan(destVlan);
+        } else {
+            flow.setSrcVlan(destVlan);
+        }
+    }
 
-    @Builder(toBuilder = true)
-    public UnidirectionalFlow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                              int srcPort, int srcVlan, int destPort, int destVlan,
-                              @NonNull FlowPath forwardPath, @NonNull FlowPath reversePath,
-                              long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
-                              @NonNull FlowStatus status, @NonNull FlowEncapsulationType encapsulationType,
-                              @NonNull Instant timeCreate, @NonNull Instant timeModify) {
-        this.flowId = flowId;
-        this.srcSwitch = srcSwitch;
-        this.destSwitch = destSwitch;
-        this.srcPort = srcPort;
-        this.srcVlan = srcVlan;
-        this.destPort = destPort;
-        this.destVlan = destVlan;
-        setForwardPath(forwardPath);
-        setReversePath(reversePath);
-        this.bandwidth = bandwidth;
-        this.ignoreBandwidth = ignoreBandwidth;
-        this.description = description;
-        this.periodicPings = periodicPings;
-        this.status = status;
-        this.encapsulationType = encapsulationType;
-        this.timeCreate = timeCreate;
-        this.timeModify = timeModify;
+    public long getBandwidth() {
+        return flow.getBandwidth();
+    }
+
+    public void setBandwidth(long bandwidth) {
+        flow.setBandwidth(bandwidth);
+    }
+
+    public String getDescription() {
+        return flow.getDescription();
+    }
+
+    public void setDescription(String description) {
+        flow.setDescription(description);
+    }
+
+    public int getTransitVlan() {
+        return transitVlan != null ? transitVlan.getVlan() : 0;
+    }
+
+    /**
+     * Set the transit vlan. Allowed only if the flow has been initialized with TransitVlan.
+     */
+    public void setTransitVlan(int vlan) {
+        if (transitVlan == null) {
+            throw new IllegalStateException("Transit Vlan entity hasn't been initialized.");
+        }
+
+        transitVlan.setVlan(vlan);
+    }
+
+    public Long getMeterId() {
+        return Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
+    }
+
+    public void setMeterId(Long meterId) {
+        flowPath.setMeterId(meterId != null ? new MeterId(meterId) : null);
+    }
+
+    public boolean isIgnoreBandwidth() {
+        return flow.isIgnoreBandwidth();
+    }
+
+    public void setIgnoreBandwidth(boolean ignoreBandwidth) {
+        flow.setIgnoreBandwidth(ignoreBandwidth);
+    }
+
+    public boolean isPeriodicPings() {
+        return flow.isPeriodicPings();
+    }
+
+    public void setPeriodicPings(boolean periodicPings) {
+        flow.setPeriodicPings(periodicPings);
+    }
+
+    public FlowStatus getStatus() {
+        return flow.getStatus();
+    }
+
+    /**
+     * Set the status (propagate to wrapped flow and flowPath).
+     */
+    public void setStatus(FlowStatus status) {
+        flow.setStatus(status);
+
+        switch (status) {
+            case UP:
+                flowPath.setStatus(FlowPathStatus.ACTIVE);
+                break;
+            case DOWN:
+                flowPath.setStatus(FlowPathStatus.INACTIVE);
+                break;
+            case IN_PROGRESS:
+                flowPath.setStatus(FlowPathStatus.IN_PROGRESS);
+                break;
+            default:
+                throw new IllegalArgumentException(format("Unsupported status value: %s", status));
+        }
+    }
+
+    public Instant getTimeModify() {
+        return flow.getTimeModify();
+    }
+
+    public void setTimeModify(Instant timeModify) {
+        flow.setTimeModify(timeModify);
+    }
+
+    /**
+     * Checks whether a flow is forward.
+     *
+     * @return boolean flag
+     */
+    public boolean isForward() {
+        boolean isForward = flowPath.getCookie().isMarkedAsForward();
+        boolean isReversed = flowPath.getCookie().isMarkedAsReversed();
+
+        if (isForward && isReversed) {
+            throw new IllegalArgumentException(
+                    "Invalid cookie flags combinations - it mark as forward and reverse flow at same time.");
+        }
+
+        return isForward;
+    }
+
+    /**
+     * Checks whether a flow is reverse.
+     *
+     * @return boolean flag
+     */
+    public boolean isReverse() {
+        return !isForward();
     }
 
     /**
@@ -164,64 +280,22 @@ public class UnidirectionalFlow implements Serializable {
      * @return true if source and destination switches are the same, otherwise false
      */
     public boolean isOneSwitchFlow() {
-        return srcSwitch.getSwitchId().equals(destSwitch.getSwitchId());
+        return getSrcSwitch().getSwitchId().equals(getDestSwitch().getSwitchId());
     }
-
 
     public boolean isActive() {
-        return status == FlowStatus.UP;
+        return getStatus() == FlowStatus.UP;
     }
 
-    public final void setForwardPath(@NonNull FlowPath forwardPath) {
-        this.forwardPath = validateForwardPath(forwardPath);
-        this.forwardPathId = forwardPath.getPathId();
+    public Flow getFlowEntity() {
+        return flow;
     }
 
-    private FlowPath validateForwardPath(FlowPath path) {
-        validatePath(path);
-
-        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId()),
-                "Forward path %s and the flow have different source switch, but expected the same.",
-                path.getPathId());
-
-        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
-                "Forward path %s and the flow have different destination switch, but expected the same.",
-                path.getPathId());
-
-        return path;
+    public FlowPath getFlowPath() {
+        return flowPath;
     }
 
-    public final void setReversePath(@NonNull FlowPath reversePath) {
-        this.reversePath = validateReversePath(reversePath);
-        this.reversePathId = reversePath.getPathId();
-    }
-
-    private FlowPath validateReversePath(FlowPath path) {
-        validatePath(path);
-
-        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
-                "Reverse path %s source and the flow destination are different, but expected the same.",
-                path.getPathId());
-
-        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId()),
-                "Reverse path %s destination and the flow source are different, but expected the same.",
-                path.getPathId());
-
-        return forwardPath;
-    }
-
-    private FlowPath validatePath(FlowPath path) {
-        checkArgument(Objects.equals(path.getFlowId(), getFlowId()),
-                "Path %s belongs to another flow, but expected the same.", path.getPathId());
-
-        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
-                        || Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
-                "Path %s source doesn't correspond to any of flow endpoints.", path.getSrcSwitch());
-
-        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
-                        || Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
-                "Path %s destination doesn't correspond to any of flow endpoints.", path.getSrcSwitch());
-
-        return path;
+    public TransitVlan getTransitVlanEntity() {
+        return transitVlan;
     }
 }

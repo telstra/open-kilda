@@ -32,8 +32,8 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,12 +87,6 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         return Optional.of(flowPath);
     }
 
-    private List<PathSegment> findPathSegmentsByPathId(PathId pathId) {
-        Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
-
-        return new ArrayList<>(getSession().loadAll(PathSegment.class, pathIdFilter, getDepthLoadEntity()));
-    }
-
     @Override
     public Collection<FlowPath> findAll() {
         Collection<FlowPath> paths = super.findAll();
@@ -111,6 +105,21 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         return paths;
     }
 
+    private List<PathSegment> findPathSegmentsByPathId(PathId pathId) {
+        Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
+
+        return getSession().loadAll(PathSegment.class, pathIdFilter, getDepthLoadEntity()).stream()
+                .sorted(Comparator.comparingInt(PathSegment::getSeqId))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Collection<PathSegment> findPathSegmentsBySrcSwitchId(SwitchId switchId) {
+        Filter srcSwitchIdFilter = createSrcSwitchFilter(switchId);
+
+        return getSession().loadAll(PathSegment.class, srcSwitchIdFilter, getDepthLoadEntity());
+    }
+
     @Override
     public Collection<PathSegment> findPathSegmentsByDestSwitchId(SwitchId switchId) {
         Filter destSwitchIdFilter = createDstSwitchFilter(switchId);
@@ -119,20 +128,15 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
-    public Collection<PathSegment> findAllPathSegments() {
-        return getSession().loadAll(PathSegment.class, getDepthLoadEntity());
-    }
-
-    @Override
-    public void createOrUpdate(FlowPath entity) {
+    public void createOrUpdate(FlowPath flowPath) {
         transactionManager.doInTransaction(() -> {
-            createOrUpdate(entity.getPathId(), entity.getSegments());
+            createOrUpdate(flowPath.getPathId(), flowPath.getSegments());
 
-            super.createOrUpdate(entity);
+            super.createOrUpdate(flowPath);
         });
     }
 
-    private void createOrUpdate(PathId pathId, Collection<PathSegment> segments) {
+    private void createOrUpdate(PathId pathId, List<PathSegment> segments) {
         List<PathSegment> currentSegments = findPathSegmentsByPathId(pathId);
         Switch[] switches = Stream.concat(currentSegments.stream(), segments.stream())
                 .flatMap(segment -> Stream.of(segment.getSrcSwitch(), segment.getDestSwitch()))
@@ -152,27 +156,30 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
             }
         });
 
-        segments.forEach(segment -> {
+        for (int idx = 0; idx < segments.size(); idx++) {
+            PathSegment segment = segments.get(idx);
+            segment.setSeqId(idx);
             session.save(segment, getDepthCreateUpdateEntity());
-        });
-    }
-
-    @Override
-    public void createOrUpdate(PathSegment segment) {
-        transactionManager.doInTransaction(() -> {
-            lockSwitches(requireManagedEntity(segment.getSrcSwitch()), requireManagedEntity(segment.getDestSwitch()));
-
-            getSession().save(segment, getDepthCreateUpdateEntity());
-        });
-    }
-
-    @Override
-    public void delete(PathSegment segment) {
-        Session session = getSession();
-        if (session.resolveGraphIdFor(segment) == null) {
-            throw new PersistenceException("Required GraphId wasn't set: " + segment.toString());
         }
-        session.delete(segment);
+    }
+
+    @Override
+    public void delete(FlowPath flowPath) {
+        transactionManager.doInTransaction(() -> {
+            Session session = getSession();
+            List<PathSegment> currentSegments = findPathSegmentsByPathId(flowPath.getPathId());
+            Switch[] switches = Stream.concat(currentSegments.stream(), flowPath.getSegments().stream())
+                    .flatMap(segment -> Stream.of(segment.getSrcSwitch(), segment.getDestSwitch()))
+                    .map(this::requireManagedEntity)
+                    .toArray(Switch[]::new);
+            lockSwitches(switches);
+
+            //TODO: this is slow and requires optimization
+            findPathSegmentsByPathId(flowPath.getPathId())
+                    .forEach(session::delete);
+
+            super.delete(flowPath);
+        });
     }
 
     @Override
@@ -184,12 +191,11 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
                 "dst_port", dstPort);
 
         String query = "MATCH (src:switch {name: $src_switch}), (dst:switch {name: $dst_switch}) "
-                + "WITH src, dst "
-                + "MATCH (src) - [ps:path_segment { "
+                + "MATCH (src)-[ps:path_segment { "
                 + " src_port: $src_port, "
                 + " dst_port: $dst_port "
-                + "}] -> (dst) "
-                + "MATCH () - [fp:flow_path { path_id: ps.path_id, ignore_bandwidth: false }] - () "
+                + "}]->(dst) "
+                + "MATCH ()-[fp:flow_path { path_id: ps.path_id, ignore_bandwidth: false }]->() "
                 + "WITH sum(fp.bandwidth) AS used_bandwidth RETURN used_bandwidth";
 
         return Optional.ofNullable(getSession().queryForObject(Long.class, query, parameters))

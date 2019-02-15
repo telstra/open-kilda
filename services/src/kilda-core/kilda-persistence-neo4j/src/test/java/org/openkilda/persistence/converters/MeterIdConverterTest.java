@@ -25,7 +25,7 @@ public class MeterIdConverterTest {
     @Test
     public void shouldConvertIdToString() {
         // given
-        MeterId meterId = new MeterId((long) 0x123);
+        MeterId meterId = new MeterId(0x123);
 
         // when
         Long graphObject = new MeterIdConverter().toGraphProperty(meterId);
@@ -37,10 +37,10 @@ public class MeterIdConverterTest {
     @Test
     public void shouldConvertStringToId() {
         // given
-        MeterId meterId = new MeterId((long) 0x123);
+        MeterId meterId = new MeterId(0x123);
 
         // when
-        MeterId actualEntity = new MeterIdConverter().toEntityAttribute(meterId.getValue());
+        MeterId actualEntity = new MeterIdConverter().toEntityAttribute((long) meterId.getValue());
 
         // then
         assertEquals(meterId, actualEntity);

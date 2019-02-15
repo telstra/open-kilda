@@ -16,11 +16,13 @@
 package org.openkilda.pce.impl;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
+import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
@@ -31,7 +33,6 @@ import org.openkilda.pce.model.Edge;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -63,14 +64,13 @@ public class InMemoryPathComputer implements PathComputer {
                 availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth, buildStrategy), flow);
     }
 
-    private PathPair getPath(AvailableNetwork network, Flow flow)
-            throws UnroutableFlowException {
-
+    private PathPair getPath(AvailableNetwork network, Flow flow) throws UnroutableFlowException {
         if (flow.getSrcSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
             log.info("No path computation for one-switch flow");
+            SwitchId singleSwitchId = flow.getSrcSwitch().getSwitchId();
             return PathPair.builder()
-                    .forward(new FlowPath(0, Collections.emptyList(), null))
-                    .reverse(new FlowPath(0, Collections.emptyList(), null))
+                    .forward(convertToPath(singleSwitchId, singleSwitchId, emptyList()))
+                    .reverse(convertToPath(singleSwitchId, singleSwitchId, emptyList()))
                     .build();
         }
 
@@ -86,50 +86,42 @@ public class InMemoryPathComputer implements PathComputer {
             throw new UnroutableFlowException(message, flow.getFlowId());
         }
 
-        return convertToPathPair(biPath);
+        return convertToPathPair(flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId(), biPath);
     }
 
-    private PathPair convertToPathPair(Pair<List<Edge>, List<Edge>> biPath) {
-        long latency = 0L;
-        List<FlowPath.Node> forwardNodes = new LinkedList<>();
-        List<FlowPath.Node> reverseNodes = new LinkedList<>();
-
-        int seqId = 0;
-        List<Edge> forwardIsl = biPath.getLeft();
-        for (Edge edge : forwardIsl) {
-            latency += edge.getLatency();
-            forwardNodes.add(FlowPath.Node.builder()
-                    .switchId(edge.getSrcSwitch().getSwitchId())
-                    .portNo(edge.getSrcPort())
-                    .seqId(seqId++)
-                    .segmentLatency(edge.getLatency())
-                    .build());
-            forwardNodes.add(FlowPath.Node.builder()
-                    .switchId(edge.getDestSwitch().getSwitchId())
-                    .portNo(edge.getDestPort())
-                    .seqId(seqId++)
-                    .build());
-        }
-
-        seqId = 0;
-        List<Edge> reverseIsl = biPath.getRight();
-        for (Edge edge : reverseIsl) {
-            reverseNodes.add(FlowPath.Node.builder()
-                    .switchId(edge.getSrcSwitch().getSwitchId())
-                    .portNo(edge.getSrcPort())
-                    .seqId(seqId++)
-                    .segmentLatency(edge.getLatency())
-                    .build());
-            reverseNodes.add(FlowPath.Node.builder()
-                    .switchId(edge.getDestSwitch().getSwitchId())
-                    .portNo(edge.getDestPort())
-                    .seqId(seqId++)
-                    .build());
-        }
-
+    private PathPair convertToPathPair(SwitchId srcSwitch, SwitchId dstSwitch, Pair<List<Edge>, List<Edge>> biPath) {
         return PathPair.builder()
-                .forward(new FlowPath(latency, forwardNodes, null))
-                .reverse(new FlowPath(latency, reverseNodes, null))
+                .forward(convertToPath(srcSwitch, dstSwitch, biPath.getLeft()))
+                .reverse(convertToPath(dstSwitch, srcSwitch, biPath.getRight()))
+                .build();
+    }
+
+    private Path convertToPath(SwitchId srcSwitchId, SwitchId dstSwitchId, List<Edge> edges) {
+        List<Path.Segment> segments = new LinkedList<>();
+
+        long latency = 0L;
+        long minAvailableBandwidth = Long.MAX_VALUE;
+        for (Edge edge : edges) {
+            latency += edge.getLatency();
+            segments.add(convertToSegment(edge));
+        }
+
+        return Path.builder()
+                .srcSwitchId(srcSwitchId)
+                .destSwitchId(dstSwitchId)
+                .segments(segments)
+                .latency(latency)
+                .minAvailableBandwidth(minAvailableBandwidth)
+                .build();
+    }
+
+    private Path.Segment convertToSegment(Edge edge) {
+        return Path.Segment.builder()
+                .srcSwitchId(edge.getSrcSwitch().getSwitchId())
+                .srcPort(edge.getSrcPort())
+                .destSwitchId(edge.getDestSwitch().getSwitchId())
+                .destPort(edge.getDestPort())
+                .latency(edge.getLatency())
                 .build();
     }
 }

@@ -17,7 +17,6 @@ package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowCookie;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceException;
@@ -29,35 +28,17 @@ import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Optional;
 
 /**
  * Neo4J OGM implementation of {@link FlowCookieRepository}.
  */
 public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie> implements FlowCookieRepository {
-    static final String COOKIE_PROPERTY_NAME = "cookie";
     static final String PATH_ID_PROPERTY_NAME = "path_id";
 
     public Neo4jFlowCookieRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
-    }
-
-    @Override
-    public boolean exists(Cookie cookie) {
-        Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, cookie);
-
-        return getSession().count(getEntityType(), Collections.singleton(cookieFilter)) > 0;
-    }
-
-    @Override
-    public Optional<FlowCookie> findById(Cookie cookie) {
-        Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, cookie);
-
-        Collection<FlowCookie> cookies = loadAll(cookieFilter);
-        if (cookies.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 Cookie entity by (%s)", cookie));
-        }
-        return cookies.isEmpty() ? Optional.empty() : Optional.of(cookies.iterator().next());
     }
 
     @Override
@@ -69,6 +50,19 @@ public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie
             throw new PersistenceException(format("Found more that 1 Cookie entity by (%s)", pathId));
         }
         return cookies.isEmpty() ? Optional.empty() : Optional.of(cookies.iterator().next());
+    }
+
+    @Override
+    public Optional<Long> findAvailableUnmaskedCookie() {
+        String query = "MATCH (n:flow_cookie) "
+                + "OPTIONAL MATCH (n1:flow_cookie) "
+                + "WHERE (n.unmasked_cookie + 1) = n1.unmasked_cookie "
+                + "WITH n, n1 "
+                + "WHERE n1 IS NULL "
+                + "RETURN n.unmasked_cookie + 1";
+
+        Iterator<Long> results = getSession().query(Long.class, query, Collections.emptyMap()).iterator();
+        return results.hasNext() ? Optional.of(results.next()) : Optional.empty();
     }
 
     @Override

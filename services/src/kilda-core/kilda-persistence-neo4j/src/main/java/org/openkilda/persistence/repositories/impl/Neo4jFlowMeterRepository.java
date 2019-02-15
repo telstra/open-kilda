@@ -25,18 +25,19 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 
+import com.google.common.collect.ImmutableMap;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 
 /**
  * Neo4J OGM implementation of {@link FlowMeterRepository}.
  */
 public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> implements FlowMeterRepository {
-    static final String SWITCH_ID_PROPERTY_NAME = "switch_id";
-    static final String METER_ID_PROPERTY_NAME = "meter_id";
     static final String PATH_ID_PROPERTY_NAME = "path_id";
 
     public Neo4jFlowMeterRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
@@ -49,26 +50,6 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
     }
 
     @Override
-    public boolean exists(SwitchId switchId, MeterId meterId) {
-        Filter switchIdFilter = new Filter(SWITCH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
-        Filter meterIdFilter = new Filter(METER_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, meterId);
-
-        return getSession().count(getEntityType(), switchIdFilter.and(meterIdFilter)) > 0;
-    }
-
-    @Override
-    public Optional<FlowMeter> findById(SwitchId switchId, MeterId meterId) {
-        Filter switchIdFilter = new Filter(SWITCH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
-        Filter meterIdFilter = new Filter(METER_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, meterId);
-
-        Collection<FlowMeter> meters = loadAll(switchIdFilter.and(meterIdFilter));
-        if (meters.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 Meter entity by (%s, %s)", switchId, meterId));
-        }
-        return meters.isEmpty() ? Optional.empty() : Optional.of(meters.iterator().next());
-    }
-
-    @Override
     public Optional<FlowMeter> findByPathId(PathId pathId) {
         Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
 
@@ -77,6 +58,22 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
             throw new PersistenceException(format("Found more that 1 Meter entity by (%s)", pathId));
         }
         return meters.isEmpty() ? Optional.empty() : Optional.of(meters.iterator().next());
+    }
+
+    @Override
+    public Optional<MeterId> findAvailableMeterId(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchId.toString());
+
+        String query = "MATCH (n:flow_meter {switch_id: $switch_id}) "
+                + "OPTIONAL MATCH (n1:flow_meter {switch_id: $switch_id}) "
+                + "WHERE (n.meter_id + 1) = n1.meter_id "
+                + "WITH n, n1 "
+                + "WHERE n1 IS NULL "
+                + "RETURN n.meter_id + 1";
+
+        Iterator<Long> results = getSession().query(Long.class, query, parameters).iterator();
+        return results.hasNext() ? Optional.of(results.next()).map(MeterId::new) : Optional.empty();
     }
 
     @Override
