@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 package org.openkilda.messaging.payload.flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -25,13 +25,11 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Flow path representation class.
+ * Represents flow path in diverse flow group.
  */
-// TODO move into api module
 @Data
 @NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class FlowPathPayload implements Serializable {
+public class GroupFlowPathPayload implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -52,20 +50,18 @@ public class FlowPathPayload implements Serializable {
     @JsonProperty("flowpath_reverse")
     protected List<PathNodePayload> reversePath;
 
-    /**
-     * The information about other flows in diversity group.
-     */
-    @JsonProperty("diverse_group")
-    protected DiverseGroupPayload diverseGroupPayload;
+    @JsonProperty("overlapping_segments")
+    protected OverlappingSegmentsStats segmentsStats;
 
+    @Builder
     @JsonCreator
-    public FlowPathPayload(@JsonProperty("flowid") String id,
-                           @JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
-                           @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath,
-                           @JsonProperty("diverse_group")  DiverseGroupPayload diverseGroupPayload) {
+    public GroupFlowPathPayload(@JsonProperty("flowid") String id,
+                                @JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
+                                @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath,
+                                @JsonProperty("overlapping_segments") OverlappingSegmentsStats segmentsStats) {
         this.id = id;
         this.forwardPath = forwardPath;
         this.reversePath = reversePath;
-        this.diverseGroupPayload = diverseGroupPayload;
+        this.segmentsStats = segmentsStats;
     }
 }

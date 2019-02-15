@@ -95,7 +95,6 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         CrudBolt crudBolt = new CrudBolt(persistenceManager, pathComputerConfig);
         BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
-                // TODO: this READ is used for single and for all flows. But all flows shouldn't be fieldsGrouping.
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DUMP.toString())
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)

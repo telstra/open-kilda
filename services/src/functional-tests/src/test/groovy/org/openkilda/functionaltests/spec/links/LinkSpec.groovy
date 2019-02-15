@@ -319,11 +319,16 @@ when connection is lost(not port down)"() {
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.id)
 
-        def flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
-        def flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
+        def flow1PathUpdated
+        def flow2PathUpdated
 
-        flow1PathUpdated != flow1Path
-        flow2PathUpdated != flow2Path
+        Wrappers.wait(WAIT_OFFSET) {
+            flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
+            flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
+
+            assert flow1PathUpdated != flow1Path
+            assert flow2PathUpdated != flow2Path
+        }
 
         and: "Requested link is not involved in new flow paths"
         !(isl in pathHelper.getInvolvedIsls(flow1PathUpdated))
