@@ -20,7 +20,7 @@ import lombok.Value;
 import java.io.Serializable;
 
 @Value
-public final class MeterId implements Serializable {
+public final class MeterId implements Comparable<MeterId>, Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -69,6 +69,11 @@ public final class MeterId implements Serializable {
             throw new IllegalArgumentException(String.format("Cookie '%s' is not a cookie of default rule", cookie));
         }
 
-        return new MeterId(cookie & METER_ID_DEFAULT_RULE_MASK);
+        return new MeterId((int) (cookie & METER_ID_DEFAULT_RULE_MASK));
+    }
+
+    @Override
+    public int compareTo(MeterId compareWith) {
+        return Long.compare(value, compareWith.value);
     }
 }

@@ -61,13 +61,10 @@ public class Switch implements Serializable {
     @Convert(graphPropertyType = String.class)
     private SwitchStatus status;
 
-    @NonNull
     private String address;
 
-    @NonNull
     private String hostname;
 
-    @NonNull
     private String controller;
 
     private String description;
@@ -75,20 +72,18 @@ public class Switch implements Serializable {
     @Property(name = "under_maintenance")
     private boolean underMaintenance;
 
-    @NonNull
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)
     private Instant timeCreate;
 
-    @NonNull
     @Property(name = "time_modify")
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
 
     @Builder(toBuilder = true)
-    public Switch(@NonNull SwitchId switchId, @NonNull SwitchStatus status, @NonNull String address,
-                  @NonNull String hostname, @NonNull String controller, String description, boolean underMaintenance,
-                  @NonNull Instant timeCreate, @NonNull Instant timeModify) {
+    public Switch(@NonNull SwitchId switchId, SwitchStatus status, String address,
+                  String hostname, String controller, String description, boolean underMaintenance,
+                  Instant timeCreate, Instant timeModify) {
         this.switchId = switchId;
         this.status = status;
         this.address = address;

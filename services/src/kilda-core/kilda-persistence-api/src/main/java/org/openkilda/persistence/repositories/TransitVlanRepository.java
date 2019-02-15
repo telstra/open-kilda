@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,9 +21,7 @@ import org.openkilda.model.TransitVlan;
 import java.util.Optional;
 
 public interface TransitVlanRepository extends Repository<TransitVlan> {
-    boolean exists(int vlan);
-
-    Optional<TransitVlan> findById(int vlan);
-
     Optional<TransitVlan> findByPathId(PathId pathId);
+
+    Optional<Integer> findAvailableVlan();
 }

@@ -29,7 +29,7 @@ import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 public class CacheBolt extends AbstractBolt {
 
@@ -78,10 +79,11 @@ public class CacheBolt extends AbstractBolt {
         this.persistenceManager = persistenceManager;
     }
 
-    private void initFlowCache(FlowRepository flowRepository) {
+    private void initFlowCache(FlowPairRepository flowPairRepository) {
         try {
-            flowRepository.findAll().forEach(
-                    flow -> {
+            flowPairRepository.findAll().stream()
+                    .flatMap(flowPair -> Stream.of(flowPair.getForward(), flowPair.getReverse()))
+                    .forEach(flow -> {
                         CacheFlowEntry entry = new CacheFlowEntry(
                                 flow.getFlowId(),
                                 flow.getSrcSwitch().getSwitchId().toOtsdFormat(),
@@ -96,8 +98,7 @@ public class CacheBolt extends AbstractBolt {
                         } else {
                             log.warn("Flow {} has no meter ID", flow.getFlowId());
                         }
-                    }
-            );
+                    });
             logger.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
             logger.info("Stats Cache: Initialized");
         } catch (Exception ex) {
@@ -111,7 +112,7 @@ public class CacheBolt extends AbstractBolt {
     @Override
     public void init() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        initFlowCache(repositoryFactory.createFlowRepository());
+        initFlowCache(repositoryFactory.createFlowPairRepository());
     }
 
     /**

@@ -60,15 +60,14 @@ public class FlowCookie implements Serializable {
     private String flowId;
 
     @NonNull
-    @Property(name = "cookie")
-    @Index(unique = true)
-    @Convert(graphPropertyType = Long.class)
-    private Cookie cookie;
+    @Property(name = "unmasked_cookie")
+    @Index
+    private long unmaskedCookie;
 
     @Builder(toBuilder = true)
-    public FlowCookie(@NonNull PathId pathId, @NonNull String flowId, Cookie cookie) {
+    public FlowCookie(@NonNull PathId pathId, @NonNull String flowId, long unmaskedCookie) {
         this.pathId = pathId;
         this.flowId = flowId;
-        this.cookie = cookie;
+        this.unmaskedCookie = unmaskedCookie;
     }
 }

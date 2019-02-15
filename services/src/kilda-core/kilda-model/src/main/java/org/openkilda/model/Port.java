@@ -54,7 +54,6 @@ public class Port implements Serializable {
     // Hidden as set by the theSwitch field setter.
     @Property(name = "switch_id")
     @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
     @Convert(graphPropertyType = String.class)
     private SwitchId switchId;
 

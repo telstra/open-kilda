@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,12 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.cache;
+package org.openkilda.wfm.share.flow.resources;
 
-public class MeterPoolIsFullException extends RuntimeException {
-    private static final long serialVersionUID = 1L;
+import org.openkilda.model.FlowMeter;
+import org.openkilda.model.PathId;
+import org.openkilda.model.TransitVlan;
 
-    public MeterPoolIsFullException(String message) {
-        super(message);
-    }
+import lombok.Builder;
+import lombok.Value;
+
+@Value
+@Builder
+public class FlowResources {
+    private PathId forwardPathId;
+    private PathId reversePathId;
+    private long unmaskedCookie;
+    private FlowMeter forwardMeter;
+    private FlowMeter reverseMeter;
+    private TransitVlan forwardTransitVlan;
+    private TransitVlan reverseTransitVlan;
 }

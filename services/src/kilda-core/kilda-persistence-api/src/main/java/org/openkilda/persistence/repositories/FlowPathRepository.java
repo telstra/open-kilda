@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -32,12 +32,6 @@ public interface FlowPathRepository extends Repository<FlowPath> {
     Collection<FlowPath> findByFlowId(String flowId);
 
     Collection<PathSegment> findPathSegmentsByDestSwitchId(SwitchId switchId);
-
-    Collection<PathSegment> findAllPathSegments();
-
-    void createOrUpdate(PathSegment segment);
-
-    void delete(PathSegment segment);
 
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 }
