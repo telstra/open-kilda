@@ -177,8 +177,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
 
         Flow flow = buildTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 100, switchB);
         flowRepository.createOrUpdate(flow);
-        flowPathRepository.createOrUpdate(flow.getForwardPath());
-        flowPathRepository.createOrUpdate(flow.getReversePath());
 
         Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_C_ID, 100);
         assertThat(foundFlowIds, Matchers.hasSize(1));
@@ -189,7 +187,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setStatus(FlowStatus.DOWN);
 
-        flowPathRepository.createOrUpdate(flow.getForwardPath());
         flowRepository.createOrUpdate(flow);
 
         Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_A_ID, 1);
@@ -201,7 +198,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setStatus(FlowStatus.DOWN);
 
-        flowPathRepository.createOrUpdate(flow.getForwardPath());
         flowRepository.createOrUpdate(flow);
 
         Collection<String> foundFlowIds = flowRepository.findDownFlowIds();
@@ -212,8 +208,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     public void shouldFindFlowForIsl() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
 
-        flowPathRepository.createOrUpdate(flow.getForwardPath());
-        flowPathRepository.createOrUpdate(flow.getReversePath());
         flowRepository.createOrUpdate(flow);
 
         Collection<Flow> foundFlow = flowRepository.findWithPathSegment(switchA.getSwitchId(), 1,

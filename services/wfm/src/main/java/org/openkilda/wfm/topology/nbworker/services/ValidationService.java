@@ -15,21 +15,17 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.model.Cookie;
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,12 +40,14 @@ public class ValidationService {
 
     /**
      * Runs validating process.
+     *
      * @return validation result as RulesResponse
      */
     public SyncRulesResponse validate(SwitchFlowEntries request) {
         SwitchId switchId = request.getSwitchId();
         log.debug("Validating rules on switch {}", switchId);
 
+        /*TODO: need to rewrite / adapt to wrappers
         FlowPathRepository flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
         Set<Long> expectedCookies = flowSegmentRepository.findByDestSwitchId(switchId).stream()
                 .map(FlowSegment::getCookie)
@@ -71,6 +69,8 @@ public class ValidationService {
         presentCookies.removeIf(Cookie::isDefaultRule);
 
         return makeRulesResponse(expectedCookies, presentCookies, switchId);
+        */
+        return makeRulesResponse(Collections.emptySet(), Collections.emptySet(), switchId);
     }
 
     private SyncRulesResponse makeRulesResponse(Set<Long> expectedCookies,

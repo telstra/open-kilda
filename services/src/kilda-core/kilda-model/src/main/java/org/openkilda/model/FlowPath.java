@@ -69,12 +69,17 @@ public class FlowPath implements Serializable {
     @EndNode
     private Switch destSwitch;
 
+    @Property(name = "src_port")
+    private int srcPort;
+
+    @Property(name = "dst_port")
+    private int destPort;
+
     @NonNull
     @Property(name = "flow_id")
     @Index
     private String flowId;
 
-    @NonNull
     @Convert(graphPropertyType = Long.class)
     private Cookie cookie;
 
@@ -87,12 +92,10 @@ public class FlowPath implements Serializable {
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
 
-    @NonNull
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)
     private Instant timeCreate;
 
-    @NonNull
     @Property(name = "time_modify")
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
@@ -103,19 +106,24 @@ public class FlowPath implements Serializable {
     @Convert(graphPropertyType = String.class)
     private FlowPathStatus status;
 
+    private long latency;
+
     @NonNull
     @Transient
     private List<PathSegment> segments;
 
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                    @NonNull String flowId, @NonNull Cookie cookie, MeterId meterId,
+                    int srcPort, int destPort,
+                    @NonNull String flowId, Cookie cookie, MeterId meterId,
                     long bandwidth, boolean ignoreBandwidth,
-                    @NonNull Instant timeCreate, @NonNull Instant timeModify,
-                    @NonNull FlowPathStatus status, @NonNull List<PathSegment> segments) {
+                    Instant timeCreate, Instant timeModify,
+                    FlowPathStatus status, long latency, @NonNull List<PathSegment> segments) {
         this.pathId = pathId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
+        this.srcPort = srcPort;
+        this.destPort = destPort;
         this.flowId = flowId;
         this.cookie = cookie;
         this.meterId = meterId;
@@ -124,7 +132,30 @@ public class FlowPath implements Serializable {
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         this.status = status;
+        this.latency = latency;
+        setSegments(segments);
+    }
+
+    /**
+     * Set the pathId and propagate it to segments.
+     */
+    public void setPathId(@NonNull PathId pathId) {
+        this.pathId = pathId;
+
+        if (segments != null) {
+            segments.forEach(pathSegment -> pathSegment.setPathId(pathId));
+        }
+    }
+
+    /**
+     * Set the segments and update the pathId in each.
+     */
+    public final void setSegments(@NonNull List<PathSegment> segments) {
         this.segments = segments;
+
+        if (pathId != null) {
+            segments.forEach(pathSegment -> pathSegment.setPathId(pathId));
+        }
     }
 
     /**
@@ -151,5 +182,14 @@ public class FlowPath implements Serializable {
      */
     public boolean isReverse() {
         return !isForward();
+    }
+
+    /**
+     * Checks whether the flow path goes through a single switch.
+     *
+     * @return true if source and destination switches are the same, otherwise false
+     */
+    public boolean isOneSwitchFlow() {
+        return srcSwitch.getSwitchId().equals(destSwitch.getSwitchId());
     }
 }

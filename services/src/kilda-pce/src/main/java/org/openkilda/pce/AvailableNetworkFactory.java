@@ -54,7 +54,8 @@ public class AvailableNetworkFactory {
      * @return {@link AvailableNetwork} instance
      */
     public AvailableNetwork getAvailableNetwork(
-            Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy) throws RecoverableException {
+            Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
+            throws RecoverableException {
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.

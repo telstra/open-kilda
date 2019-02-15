@@ -23,7 +23,6 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jBasedTest;
@@ -68,17 +67,6 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldCreateFlowSegment() {
-        flowPathRepository.createOrUpdate(buildTestPathSegment(TEST_FLOW_ID, switchA, switchB));
-
-        Collection<PathSegment> allSegments = flowPathRepository.findAllPathSegments();
-        PathSegment foundSegment = allSegments.iterator().next();
-
-        assertEquals(switchA.getSwitchId(), foundSegment.getSrcSwitch().getSwitchId());
-        assertEquals(switchB.getSwitchId(), foundSegment.getDestSwitch().getSwitchId());
-    }
-
-    @Test
     public void shouldCreateFlowPath() {
         FlowPath flowPath = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
         flowPathRepository.createOrUpdate(flowPath);
@@ -88,16 +76,6 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
 
         assertEquals(switchA.getSwitchId(), foundPath.getSrcSwitch().getSwitchId());
         assertEquals(switchB.getSwitchId(), foundPath.getDestSwitch().getSwitchId());
-    }
-
-    @Test
-    public void shouldDeleteFlowSegment() {
-        PathSegment segment = buildTestPathSegment(TEST_FLOW_ID, switchA, switchB);
-        flowPathRepository.createOrUpdate(segment);
-
-        flowPathRepository.delete(segment);
-
-        assertEquals(0, flowPathRepository.findAll().size());
     }
 
     @Test
@@ -111,13 +89,13 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldDeleteFoundFlowSegment() {
-        PathSegment segment = buildTestPathSegment(TEST_FLOW_ID, switchA, switchB);
-        flowPathRepository.createOrUpdate(segment);
+    public void shouldDeleteFoundFlowPath() {
+        FlowPath flowPath = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
+        flowPathRepository.createOrUpdate(flowPath);
 
-        Collection<PathSegment> allSegments = flowPathRepository.findAllPathSegments();
-        PathSegment foundSegment = allSegments.iterator().next();
-        flowPathRepository.delete(foundSegment);
+        Collection<FlowPath> allPaths = flowPathRepository.findAll();
+        FlowPath foundPath = allPaths.iterator().next();
+        flowPathRepository.delete(foundPath);
 
         assertEquals(0, flowPathRepository.findAll().size());
     }
@@ -129,16 +107,6 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
 
         Optional<FlowPath> foundPath = flowPathRepository.findByFlowIdAndCookie(TEST_FLOW_ID, flowPath.getCookie());
         assertTrue(foundPath.isPresent());
-    }
-
-    private PathSegment buildTestPathSegment(String flowId, Switch srcSwitch, Switch destSwitch) {
-        return PathSegment.builder()
-                .srcSwitch(srcSwitch)
-                .srcPort(1)
-                .destSwitch(destSwitch)
-                .destPort(2)
-                .pathId(new PathId(flowId + "_path"))
-                .build();
     }
 
     private FlowPath buildTestFlowPath(String flowId, Switch srcSwitch, Switch destSwitch) {

@@ -30,6 +30,8 @@ import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
+import java.io.Serializable;
+
 /**
  * Represents a transit vlan allocated for a flow path.
  */
@@ -37,7 +39,9 @@ import org.neo4j.ogm.annotation.typeconversion.Convert;
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"entityId"})
 @NodeEntity(label = "transit_vlan")
-public class TransitVlan {
+public class TransitVlan implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     // Hidden as needed for OGM only.
     @Id
     @GeneratedValue

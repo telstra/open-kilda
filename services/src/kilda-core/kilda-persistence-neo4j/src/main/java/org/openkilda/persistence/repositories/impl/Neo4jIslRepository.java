@@ -110,9 +110,9 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
                 "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
-        String query = "MATCH () - [fp:flow_path {flow_id: $flow_id}] -> () "
-                + "MATCH (src:switch) - [ps:path_segment {path_id: fp.path_id}] -> (dst:switch) "
-                + "MATCH (src) - [link:isl] -> (dst) "
+        String query = "MATCH ()-[fp:flow_path {flow_id: $flow_id}]->() "
+                + "MATCH (src:switch)-[ps:path_segment {path_id: fp.path_id}]->(dst:switch) "
+                + "MATCH (src)-[link:isl]->(dst) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + " AND link.src_port = ps.src_port AND link.dst_port = ps.dst_port "
                 + " AND link.available_bandwidth + fp.bandwidth >= $requested_bandwidth "
@@ -134,7 +134,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
                 "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
-        String query = "MATCH (src:switch) - [link:isl] -> (dst:switch) "
+        String query = "MATCH (src:switch)-[link:isl]->(dst:switch) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + " AND link.available_bandwidth >= $requested_bandwidth "
                 + "RETURN src, link, dst";
@@ -149,8 +149,8 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 "active_switch", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
                 "active_isl", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
-        String query = "MATCH (source:switch) - [link:isl] -> (dest:switch) "
-                + "MATCH (dest) - [reverse:isl {src_port: link.dst_port, dst_port: link.src_port}] -> (source) "
+        String query = "MATCH (source:switch)-[link:isl]->(dest:switch) "
+                + "MATCH (dest)-[reverse:isl {src_port: link.dst_port, dst_port: link.src_port}]->(source) "
                 + "WHERE source.state = $active_switch AND dest.state = $active_switch AND link.status = $active_isl "
                 + " AND link.available_bandwidth >= $required_bandwidth "
                 + " AND reverse.available_bandwidth >= $required_bandwidth "

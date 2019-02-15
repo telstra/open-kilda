@@ -71,6 +71,10 @@ public class PathSegment implements Serializable {
     @Property(name = "dst_port")
     private int destPort;
 
+    @Deprecated
+    @Property(name = "seq_id")
+    private int seqId;
+
     @Property(name = "segment_latency")
     private Long latency;
 

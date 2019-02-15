@@ -15,20 +15,21 @@
 
 package org.openkilda.testing.service.database;
 
+import static java.lang.String.format;
 import static org.openkilda.testing.Constants.DEFAULT_COST;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -38,9 +39,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
-import org.neo4j.ogm.model.Property;
 import org.neo4j.ogm.model.Result;
-import org.neo4j.ogm.response.model.RelationshipModel;
 import org.neo4j.ogm.session.Session;
 import org.springframework.stereotype.Component;
 
@@ -59,21 +58,21 @@ public class DatabaseSupportImpl implements Database {
     private final TransactionManager transactionManager;
     private final IslRepository islRepository;
     private final SwitchRepository switchRepository;
-    private final FlowRepository flowRepository;
+    private final FlowPairRepository flowPairRepository;
 
     public DatabaseSupportImpl(PersistenceManager persistenceManager) {
         this.transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
-        flowRepository = repositoryFactory.createFlowRepository();
+        flowPairRepository = repositoryFactory.createFlowPairRepository();
     }
 
     /**
      * Updates max_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value max bandwidth to set
+     * @param value       max bandwidth to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
@@ -95,7 +94,7 @@ public class DatabaseSupportImpl implements Database {
      * Updates available_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value max bandwidth to set
+     * @param value       max bandwidth to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
@@ -117,7 +116,7 @@ public class DatabaseSupportImpl implements Database {
      * Updates cost property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value cost to set
+     * @param value       cost to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
@@ -215,22 +214,22 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public int countFlows() {
         //TODO(siakovenko): non optimal and a dedicated method for counting must be introduced.
-        return flowRepository.findAll().size();
+        return flowPairRepository.findAll().size();
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public List<PathInfoData> getPaths(SwitchId src, SwitchId dst) {
-        //TODO(siakovenko): need to revise the tests that require path information as persistence implementaion
+        //TODO(siakovenko): need to revise the tests that require path information as persistence implementation
         // may not provide an ability to find a path.
         Session session = ((Neo4jSessionFactory) transactionManager).getSession();
 
         String query = "match p=(:switch {name: {src_switch}})-[:isl*.." + DEFAULT_DEPTH + "]->"
                 + "(:switch {name: {dst_switch}}) "
                 + "WHERE ALL(x IN NODES(p) WHERE SINGLE(y IN NODES(p) WHERE y = x)) "
-                + "WITH RELATIONSHIPS(p) as links "
+                + "WITH RELATIONSHIPS(p) as links, NODES(p) as nodes "
                 + "WHERE ALL(l IN links WHERE l.status = 'active') "
-                + "return links";
+                + "return links, nodes";
         Map<String, Object> params = new HashMap<>(2);
         params.put("src_switch", src.toString());
         params.put("dst_switch", dst.toString());
@@ -240,30 +239,22 @@ public class DatabaseSupportImpl implements Database {
         for (Map<String, Object> record : result.queryResults()) {
             List<PathNode> path = new ArrayList<>();
             int seqId = 0;
-            for (RelationshipModel link : (List<RelationshipModel>) record.get("links")) {
-                path.add(new PathNode(new SwitchId((String) getProperty(link, "src_switch")),
-                        ((Number) getProperty(link, "src_port")).intValue(), seqId++,
-                        ((Number) getProperty(link, "latency")).longValue()));
-                path.add(new PathNode(new SwitchId((String) getProperty(link, "dst_switch")),
-                        ((Number) getProperty(link, "dst_port")).intValue(), seqId++,
-                        ((Number) getProperty(link, "latency")).longValue()));
+            for (org.openkilda.model.Isl link : (List<org.openkilda.model.Isl>) record.get("links")) {
+                path.add(new PathNode(link.getSrcSwitch().getSwitchId(),
+                        link.getSrcPort(), seqId++,
+                        (long) link.getLatency()));
+                path.add(new PathNode(link.getDestSwitch().getSwitchId(),
+                        link.getDestPort(), seqId++,
+                        (long) link.getLatency()));
             }
             deserializedResults.add(new PathInfoData(0, path));
         }
         return deserializedResults;
     }
 
-    private Object getProperty(RelationshipModel rel, String propertyName) {
-        return rel.getPropertyList().stream()
-                .filter(prop -> prop.getKey().equals(propertyName))
-                .map(Property::getValue)
-                .findAny()
-                .orElse(null);
-    }
-
     @Override
     public FlowPairDto<FlowDto, FlowDto> getFlow(String flowId) {
-        Optional<FlowPair> flowPair = flowRepository.findFlowPairById(flowId);
+        Optional<FlowPair> flowPair = flowPairRepository.findFlowPairById(flowId);
         return flowPair
                 .map(flow -> new FlowPairDto<>(convert(flow.getForward()), convert(flow.getReverse())))
                 .orElse(null);
@@ -271,13 +262,14 @@ public class DatabaseSupportImpl implements Database {
 
     @Override
     public void updateFlowBandwidth(String flowId, long newBw) {
-        FlowPair flowPair = flowRepository.findFlowPairById(flowId).get();
+        FlowPair flowPair = flowPairRepository.findFlowPairById(flowId)
+                .orElseThrow(() -> new RuntimeException(format("Unable to find Flow for %s", flowId)));
         flowPair.getForward().setBandwidth(newBw);
         flowPair.getReverse().setBandwidth(newBw);
-        flowRepository.createOrUpdate(flowPair);
+        flowPairRepository.createOrUpdate(flowPair);
     }
 
-    private FlowDto convert(Flow flow) {
+    private FlowDto convert(UnidirectionalFlow flow) {
         return flowMapper.map(flow);
     }
 
@@ -292,6 +284,6 @@ public class DatabaseSupportImpl implements Database {
         @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
         @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
         @Mapping(source = "status", target = "state")
-        FlowDto map(Flow flow);
+        FlowDto map(UnidirectionalFlow flow);
     }
 }

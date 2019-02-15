@@ -23,7 +23,7 @@ import java.io.Serializable;
  * Represents information about a cookie.
  */
 @Value
-public class Cookie implements Serializable {
+public class Cookie implements Comparable<Cookie>, Serializable {
     private static final long serialVersionUID = 1L;
 
     public static final long DROP_RULE_COOKIE = 0x8000000000000001L;
@@ -36,7 +36,17 @@ public class Cookie implements Serializable {
     public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
     public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
 
+    public static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
+
     private final long value;
+
+    public static Cookie buildForwardCookie(long unmaskedCookie) {
+        return new Cookie(unmaskedCookie | Cookie.FORWARD_FLOW_COOKIE_MASK);
+    }
+
+    public static Cookie buildReverseCookie(long unmaskedCookie) {
+        return new Cookie(unmaskedCookie | Cookie.REVERSE_FLOW_COOKIE_MASK);
+    }
 
     public boolean isDefaultRule() {
         return isDefaultRule(value);
@@ -96,5 +106,10 @@ public class Cookie implements Serializable {
             isMatch = (value & 0x0080000000000000L) != 0;
         }
         return isMatch;
+    }
+
+    @Override
+    public int compareTo(Cookie compareWith) {
+        return Long.compare(value, compareWith.value);
     }
 }

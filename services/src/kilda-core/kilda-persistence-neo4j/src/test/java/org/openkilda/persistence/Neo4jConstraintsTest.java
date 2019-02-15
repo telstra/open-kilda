@@ -15,7 +15,6 @@
 
 package org.openkilda.persistence;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowCookie;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -28,8 +27,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class Neo4jConstraintsTest extends Neo4jBasedTest {
-    static final Cookie TEST_COOKIE = new Cookie(1);
-    static final Cookie TEST_COOKIE_2 = new Cookie(2);
+    static final long TEST_COOKIE = 1;
+    static final long TEST_COOKIE_2 = 2;
     static final String TEST_FLOW_1_ID = "test_flow_1";
     static final String TEST_FLOW_2_ID = "test_flow_2";
 
@@ -51,7 +50,7 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
         switchRepository.createOrUpdate(dstSwitch);
 
         FlowCookie flowCookie1 = FlowCookie.builder()
-                .cookie(TEST_COOKIE)
+                .unmaskedCookie(TEST_COOKIE)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
@@ -59,9 +58,9 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
 
         // when
         FlowCookie flowCookie2 = FlowCookie.builder()
-                .cookie(TEST_COOKIE)
+                .unmaskedCookie(TEST_COOKIE_2)
                 .flowId(TEST_FLOW_2_ID)
-                .pathId(new PathId(TEST_FLOW_2_ID + "_path"))
+                .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
         flowCookieRepository.createOrUpdate(flowCookie2);
     }
@@ -75,7 +74,7 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
         switchRepository.createOrUpdate(dstSwitch);
 
         FlowCookie flowCookie1 = FlowCookie.builder()
-                .cookie(TEST_COOKIE)
+                .unmaskedCookie(TEST_COOKIE)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
@@ -83,7 +82,7 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
 
         // when
         FlowCookie flowCookie2 = FlowCookie.builder()
-                .cookie(TEST_COOKIE_2)
+                .unmaskedCookie(TEST_COOKIE_2)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
@@ -99,7 +98,7 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
         switchRepository.createOrUpdate(dstSwitch);
 
         FlowCookie flowCookie1 = FlowCookie.builder()
-                .cookie(TEST_COOKIE)
+                .unmaskedCookie(TEST_COOKIE)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
@@ -107,7 +106,7 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
 
         // when
         FlowCookie flowCookie2 = FlowCookie.builder()
-                .cookie(TEST_COOKIE)
+                .unmaskedCookie(TEST_COOKIE)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();

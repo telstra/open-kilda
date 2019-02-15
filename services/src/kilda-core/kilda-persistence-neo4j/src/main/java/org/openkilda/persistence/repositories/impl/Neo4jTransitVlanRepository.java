@@ -29,35 +29,17 @@ import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Optional;
 
 /**
  * Neo4J OGM implementation of {@link FlowMeterRepository}.
  */
 public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVlan> implements TransitVlanRepository {
-    static final String VLAN_PROPERTY_NAME = "vlan";
     static final String PATH_ID_PROPERTY_NAME = "path_id";
 
     public Neo4jTransitVlanRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
-    }
-
-    @Override
-    public boolean exists(int vlan) {
-        Filter vlanFilter = new Filter(VLAN_PROPERTY_NAME, ComparisonOperator.EQUALS, vlan);
-
-        return getSession().count(getEntityType(), Collections.singleton(vlanFilter)) > 0;
-    }
-
-    @Override
-    public Optional<TransitVlan> findById(int vlan) {
-        Filter vlanFilter = new Filter(VLAN_PROPERTY_NAME, ComparisonOperator.EQUALS, vlan);
-
-        Collection<TransitVlan> vlans = loadAll(vlanFilter);
-        if (vlans.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 Vlan entity by (%d)", vlan));
-        }
-        return vlans.isEmpty() ? Optional.empty() : Optional.of(vlans.iterator().next());
     }
 
     @Override
@@ -69,6 +51,19 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
             throw new PersistenceException(format("Found more that 1 Vlan entity by (%s)", pathId));
         }
         return vlans.isEmpty() ? Optional.empty() : Optional.of(vlans.iterator().next());
+    }
+
+    @Override
+    public Optional<Integer> findAvailableVlan() {
+        String query = "MATCH (n:transit_vlan) "
+                + "OPTIONAL MATCH (n1:transit_vlan) "
+                + "WHERE (n.vlan + 1) = n1.vlan "
+                + "WITH n, n1 "
+                + "WHERE n1 IS NULL "
+                + "RETURN n.vlan + 1";
+
+        Iterator<Integer> results = getSession().query(Integer.class, query, Collections.emptyMap()).iterator();
+        return results.hasNext() ? Optional.of(results.next()) : Optional.empty();
     }
 
     @Override

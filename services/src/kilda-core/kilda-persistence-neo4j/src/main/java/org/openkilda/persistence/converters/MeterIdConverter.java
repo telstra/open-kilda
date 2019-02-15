@@ -29,7 +29,7 @@ public class MeterIdConverter implements AttributeConverter<MeterId, Long> {
         if (value == null) {
             return null;
         }
-        return value.getValue();
+        return (long) value.getValue();
     }
 
     @Override
@@ -37,6 +37,6 @@ public class MeterIdConverter implements AttributeConverter<MeterId, Long> {
         if (value == null) {
             return null;
         }
-        return new MeterId(value);
+        return new MeterId(value.intValue());
     }
 }
