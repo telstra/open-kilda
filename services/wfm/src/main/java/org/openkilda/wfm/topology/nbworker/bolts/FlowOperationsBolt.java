@@ -22,14 +22,17 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
+import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
+import org.openkilda.wfm.topology.flow.service.FlowNotFoundException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 
@@ -65,6 +68,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);
         } else if (request instanceof RerouteFlowsForIslRequest) {
             result = processRerouteFlowsForLinkRequest((RerouteFlowsForIslRequest) request, tuple);
+        } else if (request instanceof GetFlowPathRequest) {
+            result = processGetFlowPathRequest((GetFlowPathRequest) request, correlationId);
         } else {
             unhandledInput(tuple);
         }
@@ -112,6 +117,23 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         });
 
         return Collections.singletonList(new FlowsResponse(flowIds));
+    }
+
+    private List<GetFlowPathResponse> processGetFlowPathRequest(GetFlowPathRequest request, String correlationId) {
+        final String errorType = "Could not get flow path";
+
+        try {
+            return flowOperationsService.getFlowPath(request.getFlowId())
+                    .stream()
+                    .map(GetFlowPathResponse::new)
+                    .collect(Collectors.toList());
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(correlationId, System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (Exception e) {
+            throw new MessageException(correlationId, System.currentTimeMillis(),
+                    ErrorType.INTERNAL_ERROR, errorType, e.getMessage());
+        }
     }
 
     @Override
