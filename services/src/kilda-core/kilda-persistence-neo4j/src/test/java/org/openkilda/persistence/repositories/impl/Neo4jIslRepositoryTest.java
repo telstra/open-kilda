@@ -249,10 +249,21 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         PathSegment segment = PathSegment.builder()
                 .srcSwitch(switchA)
                 .destSwitch(switchB)
-                .pathId(new PathId(TEST_FLOW_ID))
+                .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .build();
-
-        flowPathRepository.createOrUpdate(segment);
+        FlowPath path = FlowPath.builder()
+                .pathId(new PathId(TEST_FLOW_ID + "_path"))
+                .flowId(TEST_FLOW_ID)
+                .cookie(new Cookie(1))
+                .meterId(new MeterId(1))
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .status(FlowPathStatus.ACTIVE)
+                .segments(Collections.singletonList(segment))
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flowPathRepository.createOrUpdate(path);
 
         List<Isl> foundIsls = Lists.newArrayList(
                 islRepository.findActiveAndOccupiedByFlowWithAvailableBandwidth(TEST_FLOW_ID, 100));

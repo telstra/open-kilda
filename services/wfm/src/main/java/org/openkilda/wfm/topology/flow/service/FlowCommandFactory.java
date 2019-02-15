@@ -24,19 +24,17 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class FlowCommandFactory {
     // The default timeBasedGenerator() utilizes SecureRandom for the location part and time+sequence for the time part.
@@ -49,33 +47,31 @@ public class FlowCommandFactory {
      * @param segments flow segments to be used for building of install rules.
      * @return list of commands
      */
-    public List<InstallTransitFlow> createInstallTransitAndEgressRulesForFlow(Flow flow, List<FlowSegment> segments) {
+    public List<InstallTransitFlow> createInstallTransitAndEgressRulesForFlow(UnidirectionalFlow flow,
+                                                                              List<PathSegment> segments) {
         if (flow.isOneSwitchFlow()) {
             return Collections.emptyList();
         }
         requireSegments(segments);
 
-        List<FlowSegment> orderedSegments = segments.stream()
-                .sorted(Comparator.comparingInt(FlowSegment::getSeqId))
-                .collect(Collectors.toList());
 
         List<InstallTransitFlow> commands = new ArrayList<>();
 
-        for (int i = 1; i < orderedSegments.size(); i++) {
-            FlowSegment src = orderedSegments.get(i - 1);
-            FlowSegment dst = orderedSegments.get(i);
+        for (int i = 1; i < segments.size(); i++) {
+            PathSegment src = segments.get(i - 1);
+            PathSegment dst = segments.get(i);
 
             commands.add(buildInstallTransitFlow(flow, src.getDestSwitch().getSwitchId(), src.getDestPort(),
-                    dst.getSrcPort(), src.getCookie()));
+                    dst.getSrcPort(), flow.getCookie()));
         }
 
-        FlowSegment egressSegment = orderedSegments.get(orderedSegments.size() - 1);
+        PathSegment egressSegment = segments.get(segments.size() - 1);
         if (!egressSegment.getDestSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
             throw new IllegalStateException(
                     format("FlowSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
         OutputVlanType outputVlanType = getOutputVlanType(flow);
-        commands.add(buildInstallEgressFlow(flow, egressSegment.getDestPort(), egressSegment.getCookie(),
+        commands.add(buildInstallEgressFlow(flow, egressSegment.getDestPort(), flow.getCookie(),
                 outputVlanType));
         return commands;
     }
@@ -87,19 +83,19 @@ public class FlowCommandFactory {
      * @param segments flow segments to be used for building of install rules.
      * @return list of commands
      */
-    public BaseInstallFlow createInstallIngressRulesForFlow(Flow flow, List<FlowSegment> segments) {
+    public BaseInstallFlow createInstallIngressRulesForFlow(UnidirectionalFlow flow, List<PathSegment> segments) {
         OutputVlanType outputVlanType = getOutputVlanType(flow);
         if (flow.isOneSwitchFlow()) {
             return makeOneSwitchRule(flow, outputVlanType);
         }
         requireSegments(segments);
 
-        FlowSegment ingressSegment = segments.stream()
+        PathSegment ingressSegment = segments.stream()
                 .filter(segment -> segment.getSrcSwitch().getSwitchId().equals(flow.getSrcSwitch().getSwitchId()))
                 .findAny()
                 .orElseThrow(() -> new IllegalStateException(
                         format("FlowSegment was not found for ingress flow rule, flowId: %s", flow.getFlowId())));
-        return buildInstallIngressFlow(flow, ingressSegment.getSrcPort(), ingressSegment.getCookie(),
+        return buildInstallIngressFlow(flow, ingressSegment.getSrcPort(), flow.getCookie(),
                 outputVlanType);
     }
 
@@ -110,33 +106,30 @@ public class FlowCommandFactory {
      * @param segments flow segments to be used for building of install rules.
      * @return list of commands
      */
-    public List<RemoveFlow> createRemoveTransitAndEgressRulesForFlow(Flow flow, List<FlowSegment> segments) {
+    public List<RemoveFlow> createRemoveTransitAndEgressRulesForFlow(UnidirectionalFlow flow,
+                                                                     List<PathSegment> segments) {
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
             return Collections.emptyList();
         }
         requireSegments(segments);
 
-        List<FlowSegment> orderedSegments = segments.stream()
-                .sorted(Comparator.comparingInt(FlowSegment::getSeqId))
-                .collect(Collectors.toList());
-
         List<RemoveFlow> commands = new ArrayList<>();
 
-        for (int i = 1; i < orderedSegments.size(); i++) {
-            FlowSegment src = orderedSegments.get(i - 1);
-            FlowSegment dst = orderedSegments.get(i);
+        for (int i = 1; i < segments.size(); i++) {
+            PathSegment src = segments.get(i - 1);
+            PathSegment dst = segments.get(i);
 
             commands.add(buildRemoveTransitFlow(flow, src.getDestSwitch().getSwitchId(), src.getDestPort(),
-                    dst.getSrcPort(), src.getCookie()));
+                    dst.getSrcPort(), flow.getCookie()));
         }
 
-        FlowSegment egressSegment = orderedSegments.get(orderedSegments.size() - 1);
+        PathSegment egressSegment = segments.get(segments.size() - 1);
         if (!egressSegment.getDestSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
             throw new IllegalStateException(
                     format("FlowSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
-        commands.add(buildRemoveEgressFlow(flow, egressSegment.getDestPort(), egressSegment.getCookie()));
+        commands.add(buildRemoveEgressFlow(flow, egressSegment.getDestPort(), flow.getCookie()));
         return commands;
     }
 
@@ -147,28 +140,28 @@ public class FlowCommandFactory {
      * @param segments flow segments to be used for building of install rules.
      * @return list of commands
      */
-    public RemoveFlow createRemoveIngressRulesForFlow(Flow flow, List<FlowSegment> segments) {
+    public RemoveFlow createRemoveIngressRulesForFlow(UnidirectionalFlow flow, List<PathSegment> segments) {
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
             return buildRemoveIngressFlow(flow, null, flow.getCookie());
         }
         requireSegments(segments);
 
-        FlowSegment ingressSegment = segments.stream()
+        PathSegment ingressSegment = segments.stream()
                 .filter(segment -> segment.getSrcSwitch().getSwitchId().equals(flow.getSrcSwitch().getSwitchId()))
                 .findAny()
                 .orElseThrow(() -> new IllegalStateException(
                         format("FlowSegment was not found for ingress flow rule, flowId: %s", flow.getFlowId())));
-        return buildRemoveIngressFlow(flow, ingressSegment.getSrcPort(), ingressSegment.getCookie());
+        return buildRemoveIngressFlow(flow, ingressSegment.getSrcPort(), flow.getCookie());
     }
 
-    private void requireSegments(List<FlowSegment> segments) {
+    private void requireSegments(List<PathSegment> segments) {
         if (segments.isEmpty()) {
             throw new IllegalArgumentException("Neither one switch flow nor flow segments provided");
         }
     }
 
-    private InstallEgressFlow buildInstallEgressFlow(Flow flow, int inputPortNo, long segmentCookie,
+    private InstallEgressFlow buildInstallEgressFlow(UnidirectionalFlow flow, int inputPortNo, long segmentCookie,
                                                      OutputVlanType outputVlanType) {
         if (segmentCookie == 0) {
             segmentCookie = flow.getCookie();
@@ -178,7 +171,7 @@ public class FlowCommandFactory {
                 flow.getTransitVlan(), flow.getDestVlan(), outputVlanType);
     }
 
-    private RemoveFlow buildRemoveEgressFlow(Flow flow, int inputPortNo, long segmentCookie) {
+    private RemoveFlow buildRemoveEgressFlow(UnidirectionalFlow flow, int inputPortNo, long segmentCookie) {
         if (segmentCookie == 0) {
             segmentCookie = flow.getCookie();
         }
@@ -188,7 +181,8 @@ public class FlowCommandFactory {
                 flow.getDestSwitch().getSwitchId(), null, criteria);
     }
 
-    private InstallTransitFlow buildInstallTransitFlow(Flow flow, SwitchId switchId, int inputPortNo, int outputPortNo,
+    private InstallTransitFlow buildInstallTransitFlow(UnidirectionalFlow flow, SwitchId switchId,
+                                                       int inputPortNo, int outputPortNo,
                                                        long segmentCookie) {
         if (segmentCookie == 0) {
             segmentCookie = flow.getCookie();
@@ -197,7 +191,8 @@ public class FlowCommandFactory {
                 switchId, inputPortNo, outputPortNo, flow.getTransitVlan());
     }
 
-    private RemoveFlow buildRemoveTransitFlow(Flow flow, SwitchId switchId, int inputPortNo, int outputPortNo,
+    private RemoveFlow buildRemoveTransitFlow(UnidirectionalFlow flow, SwitchId switchId,
+                                              int inputPortNo, int outputPortNo,
                                               long segmentCookie) {
         if (segmentCookie == 0) {
             segmentCookie = flow.getCookie();
@@ -208,7 +203,7 @@ public class FlowCommandFactory {
                 switchId, null, criteria);
     }
 
-    private BaseInstallFlow buildInstallIngressFlow(Flow flow, int outputPortNo, long segmentCookie,
+    private BaseInstallFlow buildInstallIngressFlow(UnidirectionalFlow flow, int outputPortNo, long segmentCookie,
                                                     OutputVlanType outputVlanType) {
         if (segmentCookie == 0) {
             segmentCookie = flow.getCookie();
@@ -216,27 +211,27 @@ public class FlowCommandFactory {
         return new InstallIngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
                 segmentCookie, flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
                 outputPortNo, flow.getSrcVlan(), flow.getTransitVlan(), outputVlanType,
-                flow.getBandwidth(), flow.getMeterLongValue());
+                flow.getBandwidth(), flow.getMeterId());
     }
 
-    private RemoveFlow buildRemoveIngressFlow(Flow flow, Integer outputPortNo, long segmentCookie) {
+    private RemoveFlow buildRemoveIngressFlow(UnidirectionalFlow flow, Integer outputPortNo, long segmentCookie) {
         if (segmentCookie == 0) {
             segmentCookie = flow.getCookie();
         }
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(segmentCookie, flow.getSrcPort(),
                 flow.getSrcVlan(), 0, outputPortNo);
         return new RemoveFlow(transactionIdGenerator.generate(), flow.getFlowId(),
-                segmentCookie, flow.getSrcSwitch().getSwitchId(), flow.getMeterLongValue(), ingressCriteria);
+                segmentCookie, flow.getSrcSwitch().getSwitchId(), flow.getMeterId(), ingressCriteria);
     }
 
-    private BaseInstallFlow makeOneSwitchRule(Flow flow, OutputVlanType outputVlanType) {
+    private BaseInstallFlow makeOneSwitchRule(UnidirectionalFlow flow, OutputVlanType outputVlanType) {
         return new InstallOneSwitchFlow(transactionIdGenerator.generate(),
                 flow.getFlowId(), flow.getCookie(), flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
                 flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan(),
-                outputVlanType, flow.getBandwidth(), flow.getMeterLongValue());
+                outputVlanType, flow.getBandwidth(), flow.getMeterId());
     }
 
-    private OutputVlanType getOutputVlanType(Flow flow) {
+    private OutputVlanType getOutputVlanType(UnidirectionalFlow flow) {
         int sourceVlan = flow.getSrcVlan();
         int dstVlan = flow.getDestVlan();
         if (sourceVlan == 0) {

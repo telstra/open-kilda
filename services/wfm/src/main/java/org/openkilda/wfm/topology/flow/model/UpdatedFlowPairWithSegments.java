@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flow.model;
 
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.PathSegment;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -26,14 +26,14 @@ import java.util.List;
 @Getter
 public class UpdatedFlowPairWithSegments extends FlowPairWithSegments {
     FlowPair oldFlowPair;
-    List<FlowSegment> oldForwardSegments;
-    List<FlowSegment> oldReverseSegments;
+    List<PathSegment> oldForwardSegments;
+    List<PathSegment> oldReverseSegments;
 
     @Builder
     public UpdatedFlowPairWithSegments(FlowPair flowPair,
-                                       List<FlowSegment> forwardSegments, List<FlowSegment> reverseSegments,
+                                       List<PathSegment> forwardSegments, List<PathSegment> reverseSegments,
                                        FlowPair oldFlowPair,
-                                       List<FlowSegment> oldForwardSegments, List<FlowSegment> oldReverseSegments) {
+                                       List<PathSegment> oldForwardSegments, List<PathSegment> oldReverseSegments) {
         super(flowPair, forwardSegments, reverseSegments);
         this.oldFlowPair = oldFlowPair;
         this.oldForwardSegments = oldForwardSegments;

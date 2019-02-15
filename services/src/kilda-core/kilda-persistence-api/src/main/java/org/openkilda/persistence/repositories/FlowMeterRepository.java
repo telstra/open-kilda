@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,9 +23,7 @@ import org.openkilda.model.SwitchId;
 import java.util.Optional;
 
 public interface FlowMeterRepository extends Repository<FlowMeter> {
-    boolean exists(SwitchId switchId, MeterId meterId);
-
-    Optional<FlowMeter> findById(SwitchId switchId, MeterId meterId);
-
     Optional<FlowMeter> findByPathId(PathId pathId);
+
+    Optional<MeterId> findAvailableMeterId(SwitchId switchId);
 }

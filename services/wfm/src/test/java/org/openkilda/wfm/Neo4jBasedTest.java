@@ -34,6 +34,7 @@ public abstract class Neo4jBasedTest {
     private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
     protected static TransactionManager txManager;
     protected static PersistenceManager persistenceManager;
+    protected static PropertiesBasedConfigurationProvider configurationProvider;
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();
@@ -44,8 +45,7 @@ public abstract class Neo4jBasedTest {
 
         Properties configProps = new Properties();
         configProps.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
-        PropertiesBasedConfigurationProvider configurationProvider =
-                new PropertiesBasedConfigurationProvider(configProps);
+        configurationProvider = new PropertiesBasedConfigurationProvider(configProps);
 
         persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);

@@ -75,12 +75,7 @@ public class SwitchServiceTest extends Neo4jBasedTest {
     }
 
     private Switch createSwitch(SwitchId switchId, String description, SwitchStatus switchStatus) {
-        Switch sw = new Switch();
-        sw.setSwitchId(switchId);
-        sw.setAddress("address");
-        sw.setHostname("hostname");
-        sw.setDescription(description);
-        sw.setStatus(switchStatus);
-        return sw;
+        return Switch.builder().switchId(switchId)
+                .address("address").hostname("hostname").description(description).status(switchStatus).build();
     }
 }

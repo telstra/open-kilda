@@ -17,7 +17,6 @@ package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowCookie;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.Neo4jBasedTest;
@@ -30,7 +29,7 @@ import java.util.Collection;
 
 public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
-    static final Cookie TEST_COOKIE = new Cookie(1);
+    static final long TEST_COOKIE = 1L;
 
     static FlowCookieRepository flowCookieRepository;
 
@@ -42,7 +41,7 @@ public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
     @Test
     public void shouldCreateFlowCookie() {
         FlowCookie cookie = FlowCookie.builder()
-                .cookie(TEST_COOKIE)
+                .unmaskedCookie(TEST_COOKIE)
                 .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)
                 .build();
@@ -51,14 +50,14 @@ public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
         Collection<FlowCookie> allCookies = flowCookieRepository.findAll();
         FlowCookie foundCookie = allCookies.iterator().next();
 
-        assertEquals(TEST_COOKIE, foundCookie.getCookie());
+        assertEquals(TEST_COOKIE, foundCookie.getUnmaskedCookie());
         assertEquals(TEST_FLOW_ID, foundCookie.getFlowId());
     }
 
     @Test
     public void shouldDeleteFlowCookie() {
         FlowCookie cookie = FlowCookie.builder()
-                .cookie(TEST_COOKIE)
+                .unmaskedCookie(TEST_COOKIE)
                 .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)
                 .build();
@@ -72,7 +71,7 @@ public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
     @Test
     public void shouldDeleteFoundFlowCookie() {
         FlowCookie cookie = FlowCookie.builder()
-                .cookie(TEST_COOKIE)
+                .unmaskedCookie(TEST_COOKIE)
                 .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)
                 .build();

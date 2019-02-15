@@ -27,7 +27,7 @@ public interface RepositoryFactory {
 
     FlowRepository createFlowRepository();
 
-    FlowSegmentRepository createFlowSegmentRepository();
+    FlowPairRepository createFlowPairRepository();
 
     IslRepository createIslRepository();
 

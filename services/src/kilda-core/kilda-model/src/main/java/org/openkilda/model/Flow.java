@@ -122,12 +122,10 @@ public class Flow implements Serializable {
     @Convert(graphPropertyType = String.class)
     private FlowEncapsulationType encapsulationType;
 
-    @NonNull
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)
     private Instant timeCreate;
 
-    @NonNull
     @Property(name = "time_modify")
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
@@ -135,10 +133,10 @@ public class Flow implements Serializable {
     @Builder(toBuilder = true)
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                 int srcPort, int srcVlan, int destPort, int destVlan,
-                @NonNull FlowPath forwardPath, @NonNull FlowPath reversePath,
+                FlowPath forwardPath, FlowPath reversePath,
                 long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
-                @NonNull FlowStatus status, @NonNull FlowEncapsulationType encapsulationType,
-                @NonNull Instant timeCreate, @NonNull Instant timeModify) {
+                FlowStatus status, FlowEncapsulationType encapsulationType,
+                Instant timeCreate, Instant timeModify) {
         this.flowId = flowId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
@@ -172,9 +170,17 @@ public class Flow implements Serializable {
         return status == FlowStatus.UP;
     }
 
-    public final void setForwardPath(@NonNull FlowPath forwardPath) {
-        this.forwardPath = validateForwardPath(forwardPath);
-        this.forwardPathId = forwardPath.getPathId();
+    /**
+     * Set the forward path.
+     */
+    public final void setForwardPath(FlowPath forwardPath) {
+        if (forwardPath != null) {
+            this.forwardPath = validateForwardPath(forwardPath);
+            this.forwardPathId = forwardPath.getPathId();
+        } else {
+            this.forwardPath = null;
+            this.forwardPathId = null;
+        }
     }
 
     private FlowPath validateForwardPath(FlowPath path) {
@@ -191,9 +197,17 @@ public class Flow implements Serializable {
         return path;
     }
 
-    public final void setReversePath(@NonNull FlowPath reversePath) {
-        this.reversePath = validateReversePath(reversePath);
-        this.reversePathId = reversePath.getPathId();
+    /**
+     * Set the reverse path.
+     */
+    public final void setReversePath(FlowPath reversePath) {
+        if (reversePath != null) {
+            this.reversePath = validateReversePath(reversePath);
+            this.reversePathId = reversePath.getPathId();
+        } else {
+            this.reversePath = null;
+            this.reversePathId = null;
+        }
     }
 
     private FlowPath validateReversePath(FlowPath path) {
@@ -207,7 +221,7 @@ public class Flow implements Serializable {
                 "Reverse path %s destination and the flow source are different, but expected the same.",
                 path.getPathId());
 
-        return forwardPath;
+        return path;
     }
 
     private FlowPath validatePath(FlowPath path) {

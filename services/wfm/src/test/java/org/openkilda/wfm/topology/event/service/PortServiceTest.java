@@ -67,7 +67,7 @@ public class PortServiceTest extends Neo4jBasedTest {
         createIsl(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, cost);
 
         Port port = new Port();
-        port.setSwitchId(TEST_SWITCH_B_ID);
+        port.setTheSwitch(Switch.builder().switchId(TEST_SWITCH_B_ID).build());
         port.setPortNo(TEST_SWITCH_A_PORT);
 
         portService.processWhenPortIsDown(port);
@@ -105,9 +105,7 @@ public class PortServiceTest extends Neo4jBasedTest {
 
     private Switch createSwitchIfNotExist(SwitchId switchId) {
         return switchRepository.findById(switchId).orElseGet(() -> {
-            Switch sw = new Switch();
-            sw.setSwitchId(switchId);
-            sw.setStatus(SwitchStatus.ACTIVE);
+            Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE).build();
             switchRepository.createOrUpdate(sw);
             return sw;
         });
