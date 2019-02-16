@@ -15,11 +15,10 @@
 
 package org.openkilda.grpc.speaker.client;
 
-import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
-import org.openkilda.grpc.speaker.model.ErrorCode;
-
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
+import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
+import org.openkilda.grpc.speaker.model.ErrorCode;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
