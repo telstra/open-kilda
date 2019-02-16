@@ -16,9 +16,7 @@
 package org.openkilda.grpc.speaker;
 
 import org.openkilda.grpc.speaker.client.GrpcSession;
-import org.openkilda.messaging.model.grpc.OnOffState;
 
-import io.grpc.noviflow.OnOff;
 import io.grpc.noviflow.StatusSwitch;
 import lombok.extern.slf4j.Slf4j;
 
