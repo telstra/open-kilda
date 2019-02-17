@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.discovery.service;
 
+import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.controller.IslFsm;
@@ -75,5 +76,9 @@ public class DiscoveryIslService {
 
     private IslFsm locateControllerCreateIfAbsent(IslReference reference) {
         return controller.computeIfAbsent(reference, key -> IslFsm.create(persistenceManager, reference));
+    }
+
+    public void bfdEvent(IIslCarrier carrier, IslBfdFlagUpdated payload) {
+        // TODO: reaction on bfd_enable from NB
     }
 }

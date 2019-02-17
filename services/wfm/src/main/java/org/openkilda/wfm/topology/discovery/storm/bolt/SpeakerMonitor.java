@@ -19,6 +19,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -27,11 +28,15 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
+import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslBfdFlagUpdatedCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherDiscoverySendConfirmationCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
@@ -58,6 +63,8 @@ public class SpeakerMonitor extends AbstractBolt {
     public static final Fields STREAM_WATCHER_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
             FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
+    public static final String STREAM_ISL_ID = "isl";
+    public static final Fields STREAM_ISL_FIELDS = UniIslHandler.STREAM_FIELDS;
 
     public SpeakerMonitor() {
     }
@@ -88,17 +95,23 @@ public class SpeakerMonitor extends AbstractBolt {
     private void proxySpeaker(Tuple input, InfoData payload) {
         try {
             if (payload instanceof IslInfoData) {
-                emit(input, makeWatcherTuple(input, new WatcherSpeakerDiscoveryCommand((IslInfoData) payload)));
+                emit(STREAM_WATCHER_ID, input,
+                        makeWatcherTuple(input, new WatcherSpeakerDiscoveryCommand((IslInfoData) payload)));
             } else if (payload instanceof DiscoPacketSendingConfirmation) {
-                emit(input, makeWatcherTuple(input,
-                        new WatcherDiscoverySendConfirmationCommand((DiscoPacketSendingConfirmation) payload)));
+                emit(STREAM_WATCHER_ID, input,
+                        makeWatcherTuple(input,
+                                new WatcherDiscoverySendConfirmationCommand((DiscoPacketSendingConfirmation) payload)));
             } else if (payload instanceof SwitchInfoData) {
                 emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
             } else if (payload instanceof PortInfoData) {
                 emit(input, makeDefaultTuple(input, new PortEventCommand((PortInfoData) payload)));
             } else if (payload instanceof UnmanagedSwitchNotification) {
-                emit(input, makeDefaultTuple(input,
-                        new SwitchUnmanagedEventCommand((UnmanagedSwitchNotification) payload)));
+                emit(input,
+                        makeDefaultTuple(input,
+                                new SwitchUnmanagedEventCommand((UnmanagedSwitchNotification) payload)));
+            } else if (payload instanceof IslBfdFlagUpdated) {
+                emit(STREAM_ISL_ID, input,
+                        makeIslTuple(input, new IslBfdFlagUpdatedCommand((IslBfdFlagUpdated) payload)));
             } else {
                 log.error("Do not proxy speaker message - unexpected message payload \"{}\"", payload.getClass());
             }
@@ -112,6 +125,7 @@ public class SpeakerMonitor extends AbstractBolt {
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
         streamManager.declareStream(STREAM_WATCHER_ID, STREAM_WATCHER_FIELDS);
+        streamManager.declareStream(STREAM_ISL_ID, STREAM_ISL_FIELDS);
     }
 
 
@@ -122,5 +136,10 @@ public class SpeakerMonitor extends AbstractBolt {
     private Values makeWatcherTuple(Tuple input, WatcherCommand command) throws PipelineException {
         Endpoint endpoint = command.getEndpoint();
         return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, pullContext(input));
+    }
+
+    private Values makeIslTuple(Tuple input, IslCommand command) throws PipelineException {
+        IslReference reference = command.getReference();
+        return new Values(reference.getSource(), reference.getDest(), command, pullContext(input));
     }
 }

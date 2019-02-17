@@ -37,16 +37,24 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class PersistenceOperationsBolt extends AbstractBolt {
+    public static final String FIELD_ID_CORELLATION_ID = "correlationId";
+    public static final String FIELD_ID_REQUEST = "request";
     private final PersistenceManager persistenceManager;
     protected transient RepositoryFactory repositoryFactory;
     protected transient TransactionManager transactionManager;
-
-    public static final String FIELD_ID_CORELLATION_ID = "correlationId";
-
-    public static final String FIELD_ID_REQUEST = "request";
+    private String correlationId;
+    private Tuple tuple;
 
     PersistenceOperationsBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public Tuple getTuple() {
+        return tuple;
     }
 
     @Override
@@ -58,7 +66,8 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
 
     protected void handleInput(Tuple input) throws AbstractException {
         BaseRequest request = pullValue(input, FIELD_ID_REQUEST, BaseRequest.class);
-        final String correlationId = pullValue(input, FIELD_ID_CORELLATION_ID, String.class);
+        correlationId = pullValue(input, FIELD_ID_CORELLATION_ID, String.class);
+        tuple = input;
         log.debug("Received operation request");
 
         try {

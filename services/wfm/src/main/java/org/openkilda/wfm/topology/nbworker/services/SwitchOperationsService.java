@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
-public class SwitchOperationsService {
+public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
     private SwitchRepository switchRepository;
     private TransactionManager transactionManager;
@@ -58,7 +58,7 @@ public class SwitchOperationsService {
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.transactionManager = transactionManager;
         this.linkOperationsService
-                = new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
+                = new LinkOperationsService(this, repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();

@@ -19,6 +19,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkEnableBfdDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
@@ -103,4 +104,12 @@ public interface LinkService {
      * @return result of the operation wrapped into {@link DeleteLinkResult}. True means no errors is occurred.
      */
     CompletableFuture<DeleteLinkResult> deleteLink(LinkParametersDto linkParameters);
+
+    /**
+     * Update "Enable BFD" flag.
+     *
+     * @param link link parameters.
+     * @return updated link.
+     */
+    CompletableFuture<List<LinkDto>> updateLinkEnableBfd(LinkEnableBfdDto link);
 }

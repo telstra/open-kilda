@@ -193,7 +193,8 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         IslHandler bolt = new IslHandler(persistenceManager);
         Fields islGrouping = new Fields(UniIslHandler.FIELD_ID_ISL_SOURCE, UniIslHandler.FIELD_ID_ISL_DEST);
         topology.setBolt(IslHandler.BOLT_ID, bolt, scaleFactor)
-                .fieldsGrouping(UniIslHandler.BOLT_ID, islGrouping);
+                .fieldsGrouping(UniIslHandler.BOLT_ID, islGrouping)
+                .fieldsGrouping(SpeakerMonitor.BOLT_ID, SpeakerMonitor.STREAM_ISL_ID, islGrouping);
     }
 
     private void speakerOutput(TopologyBuilder topology, int scaleFactor) {
