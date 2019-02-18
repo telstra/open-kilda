@@ -43,3 +43,5 @@ burst.coefficient=1.05
 bfd.offset=200
 
 opentsdb.metric.prefix=kilda.
+
+diversity.isl.weight=1000

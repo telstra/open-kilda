@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.messaging.model.FlowPairDto
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
@@ -40,24 +41,24 @@ class FlowHelper {
     def allowedVlans = 101..4095
 
     /**
-     * Creates a FlowPayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
+     * Creates a FlowCreatePayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
      * random port otherwise.
      */
-    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
-            List<FlowPayload> existingFlows = []) {
+    FlowCreatePayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
+                                 List<FlowCreatePayload> existingFlows = []) {
         Wrappers.retry(3, 0) {
-            def newFlow = FlowPayload.builder()
-                .id(generateFlowName())
-                .source(getFlowEndpoint(srcSwitch, useTraffgenPorts))
-                .destination(getFlowEndpoint(dstSwitch, useTraffgenPorts))
-                .maximumBandwidth(500)
-                .description("autotest flow")
-                .build()
+            def newFlow = FlowCreatePayload.builder()
+                    .id(generateFlowId())
+                    .source(getFlowEndpoint(srcSwitch, useTraffgenPorts))
+                    .destination(getFlowEndpoint(dstSwitch, useTraffgenPorts))
+                    .maximumBandwidth(500)
+                    .description("autotest flow")
+                    .build()
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
             return newFlow
-        } as FlowPayload
+        } as FlowCreatePayload
     }
 
     /**
@@ -72,7 +73,7 @@ class FlowHelper {
         allowedPorts = allowedPorts - srcEndpoint.portNumber //do not pick the same port as in src
         def dstEndpoint = getFlowEndpoint(sw, allowedPorts)
         return FlowPayload.builder()
-                .id(generateFlowName())
+                .id(generateFlowId())
                 .source(srcEndpoint)
                 .destination(dstEndpoint)
                 .maximumBandwidth(500)
@@ -92,7 +93,7 @@ class FlowHelper {
             dstEndpoint.vlanId--
         }
         return FlowPayload.builder()
-                .id(generateFlowName())
+                .id(generateFlowId())
                 .source(srcEndpoint)
                 .destination(dstEndpoint)
                 .maximumBandwidth(500)
@@ -193,7 +194,7 @@ class FlowHelper {
      * in 'allowedPorts'
      */
     private FlowEndpointPayload getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
-            boolean useTraffgenPorts = true) {
+                                                boolean useTraffgenPorts = true) {
         def port = allowedPorts[random.nextInt(allowedPorts.size())]
         if (useTraffgenPorts) {
             def connectedTraffgens = topology.activeTraffGens.findAll { it.switchConnected == sw }
@@ -207,7 +208,7 @@ class FlowHelper {
     /**
      * Generates a unique name for all auto-tests flows.
      */
-    private String generateFlowName() {
+    private String generateFlowId() {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
     }
