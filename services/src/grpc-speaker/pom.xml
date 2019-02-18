@@ -12,10 +12,8 @@
     <artifactId>grpc-speaker</artifactId>
 
     <version>1.0-SNAPSHOT</version>
-    <modules>
-        <module>noviflow-grpc</module>
-    </modules>
-    <packaging>pom</packaging>
+
+    <packaging>jar</packaging>
 
     <name>GRPC speaker</name>
     <description>The GRPC speaker fasade</description>
@@ -26,7 +24,6 @@
         <spring.boot.version>1.5.6.RELEASE</spring.boot.version>
         <jetty.version>9.2.22.v20170606</jetty.version>
         <start-class>org.openkilda.grpc.speaker.Application</start-class>
-
         <grpc.version>1.18.0</grpc.version>
         <protobuf.version>3.6.1</protobuf.version>
         <protoc.version>3.6.1</protoc.version>
@@ -132,7 +129,7 @@
             <artifactId>junit</artifactId>
         </dependency>
 
-        <!-- GRPC libraries -->
+         <!--GRPC libraries-->
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
@@ -226,11 +223,14 @@
             <version>${swagger.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.openkilda</groupId>
-            <artifactId>noviflow-grpc</artifactId>
+            <groupId>io.grpc.noviflow</groupId>
+            <artifactId>noviflow-grpc-lib</artifactId>
             <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/noviflow-grpc-lib-1.0.jar</systemPath>
         </dependency>
     </dependencies>
+
 
     <build>
         <finalName>grpc-speaker</finalName>
@@ -241,10 +241,10 @@
             </resource>
         </resources>
         <plugins>
-            <!--<plugin>-->
-                <!--<groupId>org.apache.maven.plugins</groupId>-->
-                <!--<artifactId>maven-checkstyle-plugin</artifactId>-->
-            <!--</plugin>-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -261,6 +261,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring.boot.version}</version>
+                <configuration>
+                    <includeSystemScope>true</includeSystemScope>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -270,32 +273,6 @@
                 </executions>
             </plugin>
 
-            <!--<plugin>-->
-                <!--<groupId>org.xolstice.maven.plugins</groupId>-->
-                <!--<artifactId>protobuf-maven-plugin</artifactId>-->
-                <!--<version>0.6.1</version>-->
-                <!--<configuration>-->
-                    <!--<protocArtifact>com.google.protobuf:protoc:${protoc.version}:exe:${os.detected.classifier}</protocArtifact>-->
-                    <!--<pluginId>grpc-java</pluginId>-->
-                    <!--<pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>-->
-                <!--</configuration>-->
-                <!--<executions>-->
-                    <!--<execution>-->
-                        <!--<goals>-->
-                            <!--<goal>compile</goal>-->
-                            <!--<goal>compile-custom</goal>-->
-                        <!--</goals>-->
-                    <!--</execution>-->
-                <!--</executions>-->
-            <!--</plugin>-->
         </plugins>
-
-        <extensions>
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.6.1</version>
-            </extension>
-        </extensions>
     </build>
 </project>
