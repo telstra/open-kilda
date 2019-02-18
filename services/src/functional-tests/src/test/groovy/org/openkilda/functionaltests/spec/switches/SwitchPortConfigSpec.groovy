@@ -19,7 +19,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
     def otsdbPortDown = 0
 
     @Unroll
-    def "Able to bring ISL-busy port down/up on switch(#isl.srcSwitch.dpId)"() {
+    def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch(#isl.srcSwitch.dpId)"() {
         when: "Bring port down on the switch"
         def portDownTime = new Date()
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
@@ -67,7 +67,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Able to bring ISL-free port down/up on switch(#sw.dpId)"() {
+    def "Able to bring ISL-free port down/up on an #sw.ofVersion switch(#sw.dpId)"() {
         requireProfiles("hardware")
         // Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.
 
@@ -76,13 +76,13 @@ class SwitchPortConfigSpec extends BaseSpecification {
         northbound.portDown(sw.dpId, port)
 
         then: "Port is really DOWN"
-        "PORT_DOWN" in northbound.getPort(sw.dpId, port).config
+        Wrappers.wait(WAIT_OFFSET) { assert "PORT_DOWN" in northbound.getPort(sw.dpId, port).config }
 
         when: "Bring port up on the switch"
         northbound.portUp(sw.dpId, port)
 
         then: "Port is really UP"
-        !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config)
+        Wrappers.wait(WAIT_OFFSET) { assert !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config) }
 
         where:
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.
