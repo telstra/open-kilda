@@ -71,10 +71,9 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         inputSpeaker(topology, scaleFactor);
 
         coordinator(topology);
+        networkHistory(topology);
 
         speakerMonitor(topology, scaleFactor);
-
-        networkHistory(topology);
 
         watchList(topology, scaleFactor);
         watcher(topology, scaleFactor);
@@ -107,7 +106,7 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     private void speakerMonitor(TopologyBuilder topology, int scaleFactor) {
         SpeakerMonitor bolt = new SpeakerMonitor();
         topology.setBolt(SpeakerMonitor.BOLT_ID, bolt, scaleFactor)
-                .allGrouping(ComponentId.INPUT_SPEAKER.toString());
+                .shuffleGrouping(ComponentId.INPUT_SPEAKER.toString());
     }
 
     private void networkHistory(TopologyBuilder topology) {

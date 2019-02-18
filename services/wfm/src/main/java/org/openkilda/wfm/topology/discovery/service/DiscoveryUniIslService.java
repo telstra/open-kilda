@@ -24,16 +24,23 @@ import org.openkilda.wfm.topology.discovery.controller.UniIslFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.UniIslFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 public class DiscoveryUniIslService {
     private final Map<Endpoint, UniIslFsm> controller = new HashMap<>();
 
     private final FsmExecutor<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> controllerExecutor
             = UniIslFsm.makeExecutor();
 
+    /**
+     * .
+     */
     public void uniIslSetup(Endpoint endpoint, Isl history) {
+        log.debug("Setup uni-ISL on {}", endpoint);
         UniIslFsm uniIslFsm = UniIslFsm.create(endpoint, history);
         controller.put(endpoint, uniIslFsm);
     }
@@ -42,12 +49,17 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslDiscovery(IUniIslCarrier carrier, Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
+        log.debug("ISL on {} become discovered (uni-ISL view)", endpoint);
         UniIslFsmContext context = new UniIslFsmContext(carrier);
         context.setDiscoveryEvent(speakerDiscoveryEvent);
         controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.DISCOVERY, context);
     }
 
+    /**
+     * .
+     */
     public void uniIslFail(IUniIslCarrier carrier, Endpoint endpoint) {
+        log.debug("ISL on {} become failed (uni-ISL view)", endpoint);
         UniIslFsmContext context = new UniIslFsmContext(carrier);
         controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.FAIL, context);
     }
@@ -56,6 +68,7 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslPhysicalDown(IUniIslCarrier carrier, Endpoint endpoint) {
+        log.debug("ISL on {} become failed (link DOWN) (uni-ISL view)", endpoint);
         UniIslFsmContext context = new UniIslFsmContext(carrier);
         controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.PHYSICAL_DOWN, context);
     }
@@ -66,6 +79,7 @@ public class DiscoveryUniIslService {
     public void uniIslBfdUpDown(IUniIslCarrier carrier, Endpoint endpoint, boolean isUp) {
         UniIslFsmContext context = new UniIslFsmContext(carrier);
         UniIslFsmEvent event = isUp ? UniIslFsmEvent.BFD_UP : UniIslFsmEvent.BFD_DOWN;
+        log.debug("Receive BFD link update {} on {} (uni-ISL view)", event, endpoint);
         controllerExecutor.fire(locateController(endpoint), event, context);
     }
 

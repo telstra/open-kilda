@@ -24,7 +24,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
@@ -44,12 +43,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
 public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> {
-    private final PersistenceManager persistenceManager;
+    private final TransactionManager transactionManager;
+    private final SwitchRepository switchRepository;
+
     private final SwitchId switchId;
     private final Integer bfdLocalPortOffset;
 
@@ -105,7 +105,9 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
     }
 
     private SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, Integer bfdLocalPortOffset) {
-        this.persistenceManager = persistenceManager;
+        this.transactionManager = persistenceManager.getTransactionManager();
+        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+
         this.switchId = switchId;
         this.bfdLocalPortOffset = bfdLocalPortOffset;
     }
@@ -169,15 +171,12 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
     }
 
     private void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
-        TransactionManager transaction = persistenceManager.getTransactionManager();
-        transaction.doInTransaction(() -> persistSwitchData(context));
-
+        transactionManager.doInTransaction(() -> persistSwitchData(context));
         initialSwitchSetup(context);
     }
 
     private void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
-        TransactionManager transaction = persistenceManager.getTransactionManager();
-        transaction.doInTransaction(() -> updatePersistentStatus(SwitchStatus.INACTIVE));
+        transactionManager.doInTransaction(() -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
         ISwitchCarrier output = context.getOutput();
         for (PortFacts port : portByNumber.values()) {
@@ -267,46 +266,35 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
     }
 
     private void persistSwitchData(SwitchFsmContext context) {
-        Switch.SwitchBuilder sw = locatePersistentEntry()
-                .map(Switch::toBuilder)
-                .orElseGet(() -> Switch.builder().switchId(switchId));
+        Switch sw = switchRepository.findById(switchId)
+                .orElseGet(() -> Switch.builder().switchId(switchId).build());
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
-        sw.address(speakerData.getSwitchSocketAddress().toString());
-        sw.hostname(speakerData.getSwitchSocketAddress().getHostName());
+        sw.setAddress(speakerData.getSwitchSocketAddress().toString());
+        sw.setHostname(speakerData.getSwitchSocketAddress().getHostName());
 
         SpeakerSwitchDescription description = speakerData.getDescription();
-        sw.description(String.format("%s %s %s",
-                                          description.getManufacturer(),
-                                          speakerData.getOfVersion(),
-                                          description.getSoftware()));
+        sw.setDescription(String.format("%s %s %s",
+                                     description.getManufacturer(),
+                                     speakerData.getOfVersion(),
+                                     description.getSoftware()));
+        // TODO(surabujin): grab changes from PR2039
 
-        sw.status(SwitchStatus.ACTIVE);
+        sw.setStatus(SwitchStatus.ACTIVE);
 
-        updatePersistentEntry(sw.build());
+        switchRepository.createOrUpdate(sw);
     }
 
     private void updatePersistentStatus(SwitchStatus status) {
-        locatePersistentEntry()
+        switchRepository.findById(switchId)
                 .ifPresent(entry -> {
                     entry.setStatus(status);
-                    updatePersistentEntry(entry);
+                    switchRepository.createOrUpdate(entry);
                 });
     }
 
     private void initialSwitchSetup(SwitchFsmContext context) {
         // FIXME(surabujin): move initial switch setup here (from FL)
-    }
-
-    private Optional<Switch> locatePersistentEntry() {
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
-        return switchRepository.findById(switchId);
-    }
-
-    private void updatePersistentEntry(Switch entry) {
-        SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        switchRepository.createOrUpdate(entry);
     }
 
     private boolean isBfdLogicalPort(int portNumber) {

@@ -54,7 +54,7 @@ public class WatcherHandler extends AbstractBolt {
 
     public static final String STREAM_SPEAKER_ID = "speaker";
     public static final Fields STREAM_SPEAKER_FIELDS = new Fields(
-            KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD);
+            KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final DiscoveryOptions options;
 
@@ -134,7 +134,7 @@ public class WatcherHandler extends AbstractBolt {
         }
 
         private Values makeSpeakerTuple(String key, CommandData payload) {
-            return new Values(key, payload);
+            return new Values(key, payload, getContext());
         }
     }
 }

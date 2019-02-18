@@ -24,9 +24,12 @@ import org.openkilda.wfm.topology.discovery.controller.PortFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 public class DiscoveryPortService {
     private final Map<Endpoint, PortFsm> controller = new HashMap<>();
     private final FsmExecutor<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> controllerExecutor
@@ -36,6 +39,7 @@ public class DiscoveryPortService {
      * .
      */
     public void setup(PortFacts portFacts, Isl history) {
+        log.debug("Setup port {}", portFacts.getEndpoint());
         Endpoint endpoint = portFacts.getEndpoint();
         PortFsm portFsm = PortFsm.create(endpoint, history);
         controller.put(endpoint, portFsm);
@@ -45,6 +49,7 @@ public class DiscoveryPortService {
      * .
      */
     public void remove(IPortCarrier carrier, Endpoint endpoint) {
+        log.debug("Remove port {}", endpoint);
         PortFsm portFsm = controller.remove(endpoint);
         if (portFsm == null) {
             throw new IllegalStateException(String.format("Port FSM not found (%s).", endpoint));
@@ -66,6 +71,7 @@ public class DiscoveryPortService {
         } else {
             event = PortFsmEvent.OFFLINE;
         }
+        log.debug("Set port {} online mode to {}", endpoint, event);
         controllerExecutor.fire(portFsm, event, new PortFsmContext(carrier));
     }
 
@@ -86,6 +92,7 @@ public class DiscoveryPortService {
                 throw new IllegalArgumentException(
                         String.format("Unsupported %s value %s", PortFacts.LinkStatus.class.getName(), status));
         }
+        log.debug("Link on {} become {}", endpoint, event);
         controllerExecutor.fire(portFsm, event, new PortFsmContext(carrier));
     }
 

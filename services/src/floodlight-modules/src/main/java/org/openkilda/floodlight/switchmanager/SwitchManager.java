@@ -847,7 +847,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpid);
         Set<Feature> features = featureDetectorService.detectSwitch(sw);
         if (!features.contains(Feature.BFD)) {
-            logger.debug("Skip installation of catch flow for switch {}", dpid);
+            logger.debug("Skip installation of universal BFD catch flow for switch {}", dpid);
         } else {
             OFFactory ofFactory = sw.getOFFactory();
 

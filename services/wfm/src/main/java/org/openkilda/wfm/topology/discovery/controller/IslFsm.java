@@ -229,25 +229,24 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private void updatePersisted(Endpoint source, Endpoint dest, Instant timeNow, DiscoveryEndpointStatus status) {
-        IslBuilder islBuilder = loadOrCreatePersistedIsl(source, dest, timeNow);
-        updateCommonIslFields(islBuilder, timeNow);
+        Isl link = loadOrCreatePersistedIsl(source, dest, timeNow);
+        updateCommonIslFields(link, timeNow);
 
-        updateAvailableBandwidth(islBuilder, source, dest);
+        updateAvailableBandwidth(link, source, dest);
 
-        islBuilder.actualStatus(mapStatus(status));
-        islBuilder.status(mapStatus(getAggregatedStatus()));
+        link.setActualStatus(mapStatus(status));
+        link.setStatus(mapStatus(getAggregatedStatus()));
 
-        islRepository.createOrUpdate(islBuilder.build());
+        islRepository.createOrUpdate(link);
     }
 
-    private IslBuilder loadOrCreatePersistedIsl(Endpoint source, Endpoint dest, Instant timeNow) {
+    private Isl loadOrCreatePersistedIsl(Endpoint source, Endpoint dest, Instant timeNow) {
         return islRepository.findByEndpoints(
                 source.getDatapath(), source.getPortNumber(), dest.getDatapath(), dest.getPortNumber())
-                .map(Isl::toBuilder)
                 .orElseGet(() -> createPersistentIsl(source, dest, timeNow));
     }
 
-    private IslBuilder createPersistentIsl(Endpoint source, Endpoint dest, Instant timeNow) {
+    private Isl createPersistentIsl(Endpoint source, Endpoint dest, Instant timeNow) {
         IslBuilder islBuilder = Isl.builder()
                 .timeModify(timeNow)
                 .srcSwitch(makeSwitchRecord(source))
@@ -255,7 +254,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
                 .destSwitch(makeSwitchRecord(dest))
                 .destPort(dest.getPortNumber());
         applyLinkProps(source, dest, islBuilder);
-        return islBuilder;
+        return islBuilder.build();
     }
 
     private Switch makeSwitchRecord(Endpoint endpoint) {
@@ -264,19 +263,19 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
                 .build();
     }
 
-    private void updateCommonIslFields(IslBuilder isl, Instant timeNow) {
-        isl.timeModify(timeNow);
-        isl.latency(discoveryFacts.getLatency().intValue());
-        isl.speed(discoveryFacts.getSpeed());
-        isl.maxBandwidth(discoveryFacts.getAvailableBandwidth());
-        isl.defaultMaxBandwidth(discoveryFacts.getAvailableBandwidth());
+    private void updateCommonIslFields(Isl link, Instant timeNow) {
+        link.setTimeModify(timeNow);
+        link.setLatency(discoveryFacts.getLatency().intValue());
+        link.setSpeed(discoveryFacts.getSpeed());
+        link.setMaxBandwidth(discoveryFacts.getAvailableBandwidth());
+        link.setDefaultMaxBandwidth(discoveryFacts.getAvailableBandwidth());
     }
 
-    private void updateAvailableBandwidth(IslBuilder isl, Endpoint source, Endpoint dest) {
+    private void updateAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
         long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
                 source.getDatapath(), source.getPortNumber(),
                 dest.getDatapath(), dest.getPortNumber());
-        isl.availableBandwidth(discoveryFacts.getAvailableBandwidth() - usedBandwidth);
+        link.setAvailableBandwidth(discoveryFacts.getAvailableBandwidth() - usedBandwidth);
     }
 
     private void applyLinkProps(Endpoint source, Endpoint dest, IslBuilder isl) {

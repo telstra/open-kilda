@@ -46,7 +46,7 @@ public final class CoordinatorSpout extends BaseRichSpout {
     @Override
     public void nextTuple() {
         collector.emit(new Values(System.currentTimeMillis(), new CommandContext()));
-        org.apache.storm.utils.Utils.sleep(1L);
+        org.apache.storm.utils.Utils.sleep(100L);
     }
 
     @Override

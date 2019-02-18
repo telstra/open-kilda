@@ -53,6 +53,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void setup(IBfdPortCarrier carrier, BfdPortFacts portFacts) {
+        log.debug("Setup BFD-port {}", portFacts.getEndpoint());
         BfdPortFsm controller = BfdPortFsm.create(persistenceManager, portFacts);
 
         // TODO load exising discrimanator for this port/session from persistent storage if any
@@ -69,6 +70,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void remove(IBfdPortCarrier carrier, Endpoint logicalEndpoint) {
+        log.debug("Remove BFD-port {}", logicalEndpoint);
         BfdPortFsmContext context = BfdPortFsmContext.builder(carrier).build();
 
         BfdPortFsm controller = controllerByLogicalPort.remove(logicalEndpoint);
@@ -84,6 +86,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void updateLinkStatus(IBfdPortCarrier carrier, PortFacts logicalPortFacts) {
+        log.debug("BFD status on {} become {}", logicalPortFacts.getEndpoint(), logicalPortFacts.getLinkStatus());
         BfdPortFsm controller = controllerByLogicalPort.get(logicalPortFacts.getEndpoint());
         if (controller != null) {
             BfdPortFsmContext context = BfdPortFsmContext.builder(carrier).build();
@@ -111,6 +114,7 @@ public class DiscoveryBfdPortService {
     }
 
     public void updateOnlineMode(IBfdPortCarrier carrier, Endpoint endpoint, boolean mode) {
+        log.debug("BFD port {} become {} (due to switch availability change)", endpoint, mode ? "ONLINE" : "OFFLINE");
         // current implementation do take account of switch(port) online status
     }
 
@@ -120,6 +124,8 @@ public class DiscoveryBfdPortService {
     public void biIslBecomeUp(IBfdPortCarrier carrier, Endpoint physicalEndpoint, IslReference reference) {
         BfdPortFsm controller = controllerByPhysicalPort.get(physicalEndpoint);
         if (controller != null) {
+            log.debug("BFD port {} => {} receive ISL discovery confirmation",
+                      controller.getLogicalEndpoint(), controller.getPhysicalEndpoint().getPortNumber());
             BfdPortFsmContext context = BfdPortFsmContext.builder(carrier)
                     .requestKeyFactory(new RequestTracer(this, requestKeyFactory, physicalEndpoint))
                     .islReference(reference)

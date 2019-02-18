@@ -25,6 +25,7 @@ import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryUniIslService;
 import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
+import org.openkilda.wfm.topology.discovery.storm.bolt.SpeakerMonitor;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslDownCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslMoveCommand;
@@ -40,12 +41,11 @@ import org.apache.storm.tuple.Values;
 public class UniIslHandler extends AbstractBolt {
     public static final String BOLT_ID = ComponentId.UNI_ISL_HANDLER.toString();
 
-    public static final String FIELD_ID_ISL_SOURCE = "isl-source";
-    public static final String FIELD_ID_ISL_DEST = "isl-dest";
-    public static final String FIELD_ID_COMMAND = "command";
+    public static final String FIELD_ID_ISL_SOURCE = SpeakerMonitor.FIELD_ID_ISL_SOURCE;
+    public static final String FIELD_ID_ISL_DEST = SpeakerMonitor.FIELD_ID_ISL_DEST;
+    public static final String FIELD_ID_COMMAND = SpeakerMonitor.FIELD_ID_COMMAND;
 
-    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_ISL_SOURCE, FIELD_ID_ISL_DEST,
-                                                           FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+    public static final Fields STREAM_FIELDS = SpeakerMonitor.STREAM_ISL_FIELDS;
 
     private transient DiscoveryUniIslService service;
 

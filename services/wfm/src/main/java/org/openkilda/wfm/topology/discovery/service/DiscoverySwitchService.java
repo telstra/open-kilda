@@ -56,6 +56,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchAddWithHistory(ISwitchCarrier carrier, HistoryFacts history) {
+        log.debug("Switch ADD with history (sw: {})", history.getSwitchId());
         SwitchFsm switchFsm = SwitchFsm.create(persistenceManager, history.getSwitchId(), bfdLocalPortOffset);
 
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
@@ -100,6 +101,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchEvent(ISwitchCarrier carrier, SwitchInfoData payload) {
+        log.debug("Switch event (sw: {}, become: {})", payload.getSwitchId(), payload.getState());
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
         SwitchFsmEvent event = null;
 
@@ -127,6 +129,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchEvent(ISwitchCarrier carrier, UnmanagedSwitchNotification payload) {
+        log.debug("Switch become unmanaged (sw: {})", payload.getSwitchId());
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
         SwitchFsm fsm = locateControllerCreateIfAbsent(payload.getSwitchId());
         controllerExecutor.fire(fsm, SwitchFsmEvent.OFFLINE, fsmContextBuilder.build());
@@ -136,6 +139,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchPortEvent(ISwitchCarrier carrier, PortInfoData payload) {
+        log.debug("Port event (sw: {}, port: {})", payload.getSwitchId(), payload.getPortNo());
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
                 .portNumber(payload.getPortNo())
                 .build();

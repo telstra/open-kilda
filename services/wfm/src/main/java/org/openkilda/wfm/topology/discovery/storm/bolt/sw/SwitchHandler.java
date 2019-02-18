@@ -45,7 +45,6 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.apache.storm.utils.Utils;
 
 public class SwitchHandler extends AbstractBolt {
     public static final String BOLT_ID = ComponentId.SWITCH_HANDLER.toString();
@@ -79,32 +78,21 @@ public class SwitchHandler extends AbstractBolt {
         if (SpeakerMonitor.BOLT_ID.equals(source)) {
             handleSpeakerInput(input);
         } else if (NetworkHistory.SPOUT_ID.equals(source)) {
-            handlePreloaderInput(input);
+            handleHistoryInput(input);
         } else {
             unhandledInput(input);
         }
     }
 
-    private void handleSpeakerInput(Tuple input) throws PipelineException {
-        String stream = input.getSourceStreamId();
-
-        if (Utils.DEFAULT_STREAM_ID.equals(stream)) {
-            handleSpeakerMainStream(input);
-        } else {
-            unhandledInput(input);
-        }
-    }
-
-    private void handlePreloaderInput(Tuple input) throws PipelineException {
+    private void handleHistoryInput(Tuple input) throws PipelineException {
         SwitchCommand command = pullValue(input, NetworkHistory.FIELD_ID_PAYLOAD, SwitchCommand.class);
         command.apply(service, new OutputAdapter(this, input));
     }
 
-    private void handleSpeakerMainStream(Tuple input) throws PipelineException {
+    private void handleSpeakerInput(Tuple input) throws PipelineException {
         SwitchCommand command = pullValue(input, SpeakerMonitor.FIELD_ID_COMMAND, SwitchCommand.class);
         command.apply(service, new OutputAdapter(this, input));
     }
-
 
     @Override
     protected void init() {

@@ -42,7 +42,8 @@ public class DecisionMakerHandler extends AbstractBolt {
     public static final String FIELD_ID_PORT_NUMBER = WatcherHandler.FIELD_ID_PORT_NUMBER;
     public static final String FIELD_ID_COMMAND = WatcherHandler.FIELD_ID_COMMAND;
 
-    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER, FIELD_ID_COMMAND);
+    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER, FIELD_ID_COMMAND,
+                                                          FIELD_ID_CONTEXT);
 
     private final DiscoveryOptions options;
 

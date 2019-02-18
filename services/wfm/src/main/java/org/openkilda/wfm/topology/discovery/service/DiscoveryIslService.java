@@ -26,9 +26,12 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 public class DiscoveryIslService {
     private final Map<IslReference, IslFsm> controller = new HashMap<>();
 
@@ -45,6 +48,7 @@ public class DiscoveryIslService {
      * .
      */
     public void islUp(IIslCarrier carrier, Endpoint endpoint, DiscoveryFacts discoveryFacts) {
+        log.debug("ISL discovery {} (on {})", discoveryFacts.getReference(), endpoint);
         IslFsm islFsm = locateControllerCreateIfAbsent(discoveryFacts.getReference());
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
                 .discoveryFacts(discoveryFacts)
@@ -56,6 +60,7 @@ public class DiscoveryIslService {
      * .
      */
     public void islDown(IIslCarrier carrier, Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
+        log.debug("ISL fail {} (on {})", reference, endpoint);
         IslFsm islFsm = locateControllerCreateIfAbsent(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
                 .physicalLinkDown(isPhysicalDown)
@@ -67,6 +72,7 @@ public class DiscoveryIslService {
      * .
      */
     public void islMove(IIslCarrier carrier, Endpoint endpoint, IslReference reference) {
+        log.debug("ISL fail(moved) {} (on {})", reference, endpoint);
         IslFsm islFsm = locateControllerCreateIfAbsent(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MOVE, context);

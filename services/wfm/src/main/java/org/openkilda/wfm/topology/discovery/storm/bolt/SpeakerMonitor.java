@@ -36,7 +36,6 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortEventCom
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherDiscoverySendConfirmationCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
@@ -55,6 +54,8 @@ public class SpeakerMonitor extends AbstractBolt {
     public static final String FIELD_ID_INPUT = MessageTranslator.FIELD_ID_PAYLOAD;
     public static final String FIELD_ID_DATAPATH = "switch";
     public static final String FIELD_ID_PORT_NUMBER = "port-number";
+    public static final String FIELD_ID_ISL_SOURCE = "isl-source";
+    public static final String FIELD_ID_ISL_DEST = "isl-dest";
     public static final String FIELD_ID_COMMAND = "command";
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
@@ -64,10 +65,8 @@ public class SpeakerMonitor extends AbstractBolt {
             FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     public static final String STREAM_ISL_ID = "isl";
-    public static final Fields STREAM_ISL_FIELDS = UniIslHandler.STREAM_FIELDS;
-
-    public SpeakerMonitor() {
-    }
+    public static final Fields STREAM_ISL_FIELDS = new Fields(FIELD_ID_ISL_SOURCE, FIELD_ID_ISL_DEST,
+                                                              FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
@@ -80,7 +79,7 @@ public class SpeakerMonitor extends AbstractBolt {
         }
     }
 
-    public void speakerMessage(Tuple input, Message message) {
+    private void speakerMessage(Tuple input, Message message) {
         proxySpeaker(input, message);
     }
 
@@ -110,6 +109,7 @@ public class SpeakerMonitor extends AbstractBolt {
                         makeDefaultTuple(input,
                                 new SwitchUnmanagedEventCommand((UnmanagedSwitchNotification) payload)));
             } else if (payload instanceof IslBfdFlagUpdated) {
+                // FIXME(surabujin): is it ok to consume this "event" from speaker stream?
                 emit(STREAM_ISL_ID, input,
                         makeIslTuple(input, new IslBfdFlagUpdatedCommand((IslBfdFlagUpdated) payload)));
             } else {
