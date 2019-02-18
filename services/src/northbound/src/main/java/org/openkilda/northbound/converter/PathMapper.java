@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.northbound.converter;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR
+import org.openkilda.messaging.info.network.Path;
+import org.openkilda.northbound.dto.network.PathDto;
+
+import org.mapstruct.Mapper;
+
+@Mapper(componentModel = "spring")
+public interface PathMapper {
+
+    default PathDto mapToPath(Path data) {
+        return new PathDto(data.getBandwidth(), data.getLatency(), data.getEdges());
+    }
 }

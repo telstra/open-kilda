@@ -35,7 +35,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"latency"})
+@EqualsAndHashCode(exclude = {"latency", "minAvailableBandwidth"})
 @Builder
 public class FlowPath implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -45,6 +45,9 @@ public class FlowPath implements Serializable {
      */
     @JsonProperty("latency_ns")
     private long latency;
+
+    @JsonProperty("min_available_bandwidth")
+    private Long minAvailableBandwidth;
 
     @NonNull
     @JsonProperty("path")
