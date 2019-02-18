@@ -17,9 +17,11 @@ package org.openkilda.wfm.topology.discovery.model.facts;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 public class BfdPortFacts extends PortFacts {
     private final int physicalPortNumber;
 

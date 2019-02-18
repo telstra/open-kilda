@@ -45,17 +45,22 @@ public abstract class AbstractBolt extends BaseRichBolt {
     @Getter(AccessLevel.PROTECTED)
     private transient Integer taskId;
 
+    @Getter(AccessLevel.PROTECTED)
+    private transient Tuple currentTuple;
+
     @Override
     public void execute(Tuple input) {
         log.debug(
                 "{} input tuple from {}:{} size {}",
                 getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), input.size());
         try {
+            currentTuple = input;
             handleInput(input);
         } catch (Exception e) {
             log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             ack(input);
+            currentTuple = null;
         }
     }
 
@@ -134,6 +139,18 @@ public abstract class AbstractBolt extends BaseRichBolt {
             throw new PipelineException(this, input, FIELD_ID_CONTEXT, e.toString());
         }
         return value;
+    }
+
+    protected CommandContext pullContext() throws PipelineException {
+        return pullContext(currentTuple);
+    }
+
+    protected CommandContext safePullContext() {
+        try {
+            return pullContext(currentTuple);
+        } catch (PipelineException e) {
+            return null;
+        }
     }
 
     protected <T> T pullValue(Tuple input, String field, Class<T> klass) throws PipelineException {

@@ -32,7 +32,7 @@ import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslBfdFlagUpdatedCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortEventCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.PortEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchUnmanagedEventCommand;

@@ -13,12 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
+package org.openkilda.wfm.topology.discovery.storm.bolt.sw.command;
 
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.wfm.topology.discovery.service.DiscoverySwitchService;
 import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
-import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 
 public class PortEventCommand extends SwitchCommand {
     private final PortInfoData payload;
@@ -30,6 +29,6 @@ public class PortEventCommand extends SwitchCommand {
 
     @Override
     public void apply(DiscoverySwitchService service, ISwitchCarrier carrier) {
-        service.switchPortEvent(carrier, payload);
+        service.switchPortEvent(payload);
     }
 }

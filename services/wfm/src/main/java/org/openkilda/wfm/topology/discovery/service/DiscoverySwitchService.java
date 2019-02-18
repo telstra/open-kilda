@@ -47,7 +47,11 @@ public class DiscoverySwitchService {
 
     private final int bfdLocalPortOffset;
 
-    public DiscoverySwitchService(PersistenceManager persistenceManager, Integer bfdLocalPortOffset) {
+    ISwitchCarrier carrier;
+
+    public DiscoverySwitchService(ISwitchCarrier carrier, PersistenceManager persistenceManager,
+                                  Integer bfdLocalPortOffset) {
+        this.carrier = carrier;
         this.persistenceManager = persistenceManager;
         this.bfdLocalPortOffset = bfdLocalPortOffset;
     }
@@ -55,7 +59,7 @@ public class DiscoverySwitchService {
     /**
      * .
      */
-    public void switchAddWithHistory(ISwitchCarrier carrier, HistoryFacts history) {
+    public void switchAddWithHistory(HistoryFacts history) {
         log.debug("Switch ADD with history (sw: {})", history.getSwitchId());
         SwitchFsm switchFsm = SwitchFsm.create(persistenceManager, history.getSwitchId(), bfdLocalPortOffset);
 
@@ -69,7 +73,7 @@ public class DiscoverySwitchService {
     /**
      * .
      */
-    public void switchRestoreManagement(ISwitchCarrier carrier, SpeakerSwitchView switchView) {
+    public void switchRestoreManagement(SpeakerSwitchView switchView) {
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
                 .speakerData(switchView)
                 .build();
@@ -80,7 +84,7 @@ public class DiscoverySwitchService {
     /**
      * .
      */
-    public void switchSharedSync(ISwitchCarrier carrier, SpeakerSharedSync sharedSync) {
+    public void switchSharedSync(SpeakerSharedSync sharedSync) {
         // FIXME(surabujin): invalid in multi-FL environment
         switch (sharedSync.getMode()) {
             case MANAGED_MODE:
@@ -89,7 +93,7 @@ public class DiscoverySwitchService {
                 detectOfflineSwitches(sharedSync.getKnownSwitches());
                 break;
             case UNMANAGED_MODE:
-                setAllSwitchesUnmanaged(carrier);
+                setAllSwitchesUnmanaged();
                 break;
             default:
                 throw new IllegalArgumentException(
@@ -100,7 +104,7 @@ public class DiscoverySwitchService {
     /**
      * .
      */
-    public void switchEvent(ISwitchCarrier carrier, SwitchInfoData payload) {
+    public void switchEvent(SwitchInfoData payload) {
         log.debug("Switch event (sw: {}, become: {})", payload.getSwitchId(), payload.getState());
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
         SwitchFsmEvent event = null;
@@ -115,7 +119,8 @@ public class DiscoverySwitchService {
                 break;
 
             default:
-                log.info("Ignore switch event {} (no need to handle it)", payload.getSwitchId());
+                log.info("Ignore switch event {} on {} (no need to handle it)", payload.getState(),
+                        payload.getSwitchId());
                 break;
         }
 
@@ -128,7 +133,7 @@ public class DiscoverySwitchService {
     /**
      * .
      */
-    public void switchEvent(ISwitchCarrier carrier, UnmanagedSwitchNotification payload) {
+    public void switchEvent(UnmanagedSwitchNotification payload) {
         log.debug("Switch become unmanaged (sw: {})", payload.getSwitchId());
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
         SwitchFsm fsm = locateControllerCreateIfAbsent(payload.getSwitchId());
@@ -138,7 +143,7 @@ public class DiscoverySwitchService {
     /**
      * .
      */
-    public void switchPortEvent(ISwitchCarrier carrier, PortInfoData payload) {
+    public void switchPortEvent(PortInfoData payload) {
         log.debug("Port event (sw: {}, port: {})", payload.getSwitchId(), payload.getPortNo());
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
                 .portNumber(payload.getPortNo())
@@ -185,7 +190,7 @@ public class DiscoverySwitchService {
         }
     }
 
-    private void setAllSwitchesUnmanaged(ISwitchCarrier carrier) {
+    private void setAllSwitchesUnmanaged() {
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier).build();
         for (SwitchFsm switchFsm : controller.values()) {
             controllerExecutor.fire(switchFsm, SwitchFsmEvent.OFFLINE, fsmContext);

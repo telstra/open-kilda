@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.sw;
 import org.openkilda.model.Isl;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
@@ -46,7 +45,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class SwitchHandler extends AbstractBolt {
+public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     public static final String BOLT_ID = ComponentId.SWITCH_HANDLER.toString();
 
     public static final String FIELD_ID_DATAPATH = SpeakerMonitor.FIELD_ID_DATAPATH;
@@ -55,11 +54,11 @@ public class SwitchHandler extends AbstractBolt {
 
     public static final String STREAM_PORT_ID = "port";
     public static final Fields STREAM_PORT_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
-                                                               FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+            FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     public static final String STREAM_BFD_PORT_ID = "bfd-port";
     public static final Fields STREAM_BFD_PORT_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_COMMAND,
-                                                                   FIELD_ID_CONTEXT);
+            FIELD_ID_CONTEXT);
 
     private final DiscoveryOptions options;
     private final PersistenceManager persistenceManager;
@@ -86,17 +85,17 @@ public class SwitchHandler extends AbstractBolt {
 
     private void handleHistoryInput(Tuple input) throws PipelineException {
         SwitchCommand command = pullValue(input, NetworkHistory.FIELD_ID_PAYLOAD, SwitchCommand.class);
-        command.apply(service, new OutputAdapter(this, input));
+        command.apply(service, this);
     }
 
     private void handleSpeakerInput(Tuple input) throws PipelineException {
         SwitchCommand command = pullValue(input, SpeakerMonitor.FIELD_ID_COMMAND, SwitchCommand.class);
-        command.apply(service, new OutputAdapter(this, input));
+        command.apply(service, this);
     }
 
     @Override
     protected void init() {
-        service = new DiscoverySwitchService(persistenceManager, options.getBfdLocalPortOffset());
+        service = new DiscoverySwitchService(this, persistenceManager, options.getBfdLocalPortOffset());
     }
 
     @Override
@@ -105,59 +104,54 @@ public class SwitchHandler extends AbstractBolt {
         streamManager.declareStream(STREAM_BFD_PORT_ID, STREAM_BFD_PORT_FIELDS);
     }
 
-    private static class OutputAdapter extends AbstractOutputAdapter implements ISwitchCarrier {
-        OutputAdapter(AbstractBolt owner, Tuple tuple) {
-            super(owner, tuple);
-        }
-
-        @Override
-        public void setupPortHandler(PortFacts portFacts, Isl history) {
-            emit(STREAM_PORT_ID, makePortTuple(new PortSetupCommand(portFacts, history)));
-        }
-
-        @Override
-        public void removePortHandler(Endpoint endpoint) {
-            emit(STREAM_PORT_ID, makePortTuple(new PortRemoveCommand(endpoint)));
-        }
-
-        @Override
-        public void setOnlineMode(Endpoint endpoint, boolean mode) {
-            emit(STREAM_PORT_ID, makePortTuple(new PortOnlineModeCommand(endpoint, mode)));
-        }
-
-        @Override
-        public void setPortLinkMode(PortFacts port) {
-            emit(STREAM_PORT_ID, makePortTuple(new PortLinkStatusCommand(port)));
-        }
-
-        @Override
-        public void setupBfdPortHandler(BfdPortFacts portFacts) {
-            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortSetupCommand(portFacts)));
-        }
-
-        @Override
-        public void removeBfdPortHandler(Endpoint logicalEndpoint) {
-            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortRemoveCommand(logicalEndpoint)));
-        }
-
-        @Override
-        public void setBfdPortLinkMode(PortFacts portFacts) {
-            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortLinkStatusCommand(portFacts)));
-        }
-
-        @Override
-        public void setBfdPortOnlineMode(Endpoint endpoint, boolean mode) {
-            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortOnlineModeCommand(endpoint, mode)));
-        }
-
-        private Values makePortTuple(PortCommand command) {
-            Endpoint endpoint = command.getEndpoint();
-            return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getContext());
-        }
-
-        private Values makeBfdPortTuple(BfdPortCommand command) {
-            Endpoint endpoint = command.getEndpoint();
-            return new Values(endpoint.getDatapath(), command, getContext());
-        }
+    @Override
+    public void setupPortHandler(PortFacts portFacts, Isl history) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortSetupCommand(portFacts, history)));
     }
+
+    @Override
+    public void removePortHandler(Endpoint endpoint) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortRemoveCommand(endpoint)));
+    }
+
+    @Override
+    public void setOnlineMode(Endpoint endpoint, boolean mode) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortOnlineModeCommand(endpoint, mode)));
+    }
+
+    @Override
+    public void setPortLinkMode(PortFacts port) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortLinkStatusCommand(port)));
+    }
+
+    @Override
+    public void setupBfdPortHandler(BfdPortFacts portFacts) {
+        emit(STREAM_BFD_PORT_ID, getCurrentTuple(), makeBfdPortTuple(new BfdPortSetupCommand(portFacts)));
+    }
+
+    @Override
+    public void removeBfdPortHandler(Endpoint logicalEndpoint) {
+        emit(STREAM_BFD_PORT_ID, getCurrentTuple(), makeBfdPortTuple(new BfdPortRemoveCommand(logicalEndpoint)));
+    }
+
+    @Override
+    public void setBfdPortLinkMode(PortFacts portFacts) {
+        emit(STREAM_BFD_PORT_ID, getCurrentTuple(), makeBfdPortTuple(new BfdPortLinkStatusCommand(portFacts)));
+    }
+
+    @Override
+    public void setBfdPortOnlineMode(Endpoint endpoint, boolean mode) {
+        emit(STREAM_BFD_PORT_ID, getCurrentTuple(), makeBfdPortTuple(new BfdPortOnlineModeCommand(endpoint, mode)));
+    }
+
+    private Values makePortTuple(PortCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
+    }
+
+    private Values makeBfdPortTuple(BfdPortCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), command, safePullContext());
+    }
+
 }

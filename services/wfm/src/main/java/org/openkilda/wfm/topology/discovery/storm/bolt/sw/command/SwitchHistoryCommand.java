@@ -29,6 +29,6 @@ public class SwitchHistoryCommand extends SwitchCommand {
 
     @Override
     public void apply(DiscoverySwitchService service, ISwitchCarrier carrier) {
-        service.switchAddWithHistory(carrier, history);
+        service.switchAddWithHistory(history);
     }
 }

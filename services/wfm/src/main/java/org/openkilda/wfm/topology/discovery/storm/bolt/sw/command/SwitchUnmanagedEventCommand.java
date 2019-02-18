@@ -29,6 +29,6 @@ public class SwitchUnmanagedEventCommand extends SwitchCommand {
 
     @Override
     public void apply(DiscoverySwitchService service, ISwitchCarrier carrier) {
-        service.switchEvent(carrier, payload);
+        service.switchEvent(payload);
     }
 }
