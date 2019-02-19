@@ -21,6 +21,6 @@ package org.openkilda.persistence;
  * @param <T> The return type of the callback.
  */
 @FunctionalInterface
-public interface TransactionCallback<T> {
-    T doInTransaction();
+public interface TransactionCallback<T, E extends Exception> {
+    T doInTransaction() throws E;
 }

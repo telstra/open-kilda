@@ -18,6 +18,7 @@ package org.openkilda.persistence;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
@@ -49,8 +50,9 @@ final class Neo4jTransactionManager implements TransactionManager, Neo4jSessionF
         return Optional.ofNullable(SESSION_HOLDER.get()).orElseGet(sessionFactory::openSession);
     }
 
+    @SneakyThrows
     @Override
-    public <T> T doInTransaction(TransactionCallback<T> action) {
+    public <T, E extends Exception> T doInTransaction(TransactionCallback<T, E> action) {
         begin();
 
         try {
@@ -63,8 +65,9 @@ final class Neo4jTransactionManager implements TransactionManager, Neo4jSessionF
         }
     }
 
+    @SneakyThrows
     @Override
-    public void doInTransaction(TransactionCallbackWithoutResult action) {
+    public <E extends Exception> void doInTransaction(TransactionCallbackWithoutResult<E> action) {
         begin();
 
         try {
