@@ -15,21 +15,30 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import org.openkilda.config.utils.MeterConfig;
+import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.switches.MeterInfoEntry;
+import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowSegment;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
 import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,7 +53,7 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     @Override
-    public ValidateRulesResult validate(SwitchId switchId, Set<Long> presentCookies) {
+    public ValidateRulesResult validateRules(SwitchId switchId, Set<Long> presentCookies) {
         log.debug("Validating rules on switch {}", switchId);
 
         Set<Long> expectedCookies = flowSegmentRepository.findByDestSwitchId(switchId).stream()
@@ -89,5 +98,87 @@ public class ValidationServiceImpl implements ValidationService {
 
     private static String cookiesIntoLogRepresentation(Collection<Long> rules) {
         return rules.stream().map(Cookie::toString).collect(Collectors.joining(", ", "[", "]"));
+    }
+
+    @Override
+    public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
+                                               long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+        presentMeters.removeIf(meterEntry -> MeterId.isMeterIdOfDefaultRule(meterEntry.getMeterId()));
+        log.debug("Validating meters on switch {}", switchId);
+        List<Long> presentMeterIds = presentMeters.stream()
+                .map(MeterEntry::getMeterId)
+                .collect(Collectors.toList());
+
+        List<MeterInfoEntry> missingMeters = new ArrayList<>();
+        List<MeterInfoEntry> misconfiguredMeters = new ArrayList<>();
+        List<MeterInfoEntry> properMeters = new ArrayList<>();
+
+        Collection<Flow> flows = flowRepository.findBySrcSwitchId(switchId);
+
+        for (Flow flow: flows) {
+            if (!presentMeterIds.contains(flow.getMeterLongValue())) {
+                missingMeters.add(MeterInfoEntry.builder()
+                        .meterId(flow.getMeterLongValue())
+                        .cookie(flow.getCookie())
+                        .flowId(flow.getFlowId())
+                        .build());
+            }
+
+            long calculatedBurstSize = MeterConfig.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
+                    flowMeterBurstCoefficient, flow.getSrcSwitch().getDescription());
+            for (MeterEntry meter: presentMeters) {
+                if (meter.getMeterId() == flow.getMeterLongValue()) {
+                    if (meter.getRate() == flow.getBandwidth()
+                            && meter.getBurstSize() == calculatedBurstSize
+                            && Arrays.equals(meter.getFlags(), MeterConfig.getMeterFlagsAsStringArray())) {
+                        properMeters.add(MeterInfoEntry.builder()
+                                .meterId(meter.getMeterId())
+                                .cookie(flow.getCookie())
+                                .flowId(flow.getFlowId())
+                                .rate(meter.getRate())
+                                .burstSize(meter.getBurstSize())
+                                .flags(meter.getFlags())
+                                .build());
+                    } else {
+                        MeterMisconfiguredInfoEntry actual = new MeterMisconfiguredInfoEntry();
+                        MeterMisconfiguredInfoEntry expected = new MeterMisconfiguredInfoEntry();
+
+                        if (meter.getRate() != flow.getBandwidth()) {
+                            actual.setRate(meter.getRate());
+                            expected.setRate(flow.getBandwidth());
+                        }
+                        if (meter.getBurstSize() != calculatedBurstSize) {
+                            actual.setBurstSize(meter.getBurstSize());
+                            expected.setBurstSize(calculatedBurstSize);
+                        }
+                        if (!Arrays.equals(meter.getFlags(), MeterConfig.getMeterFlagsAsStringArray())) {
+                            actual.setFlags(meter.getFlags());
+                            expected.setFlags(MeterConfig.getMeterFlagsAsStringArray());
+                        }
+
+                        misconfiguredMeters.add(MeterInfoEntry.builder()
+                                .meterId(meter.getMeterId())
+                                .cookie(flow.getCookie())
+                                .flowId(flow.getFlowId())
+                                .rate(meter.getRate())
+                                .burstSize(meter.getBurstSize())
+                                .flags(meter.getFlags())
+                                .actual(actual)
+                                .expected(expected)
+                                .build());
+                    }
+                }
+
+            }
+        }
+
+        List<Long> expectedMeterIds = flows.stream()
+                .map(Flow::getMeterLongValue)
+                .collect(Collectors.toList());
+
+        List<Long> excessMeters = new ArrayList<>(presentMeterIds);
+        excessMeters.removeAll(expectedMeterIds);
+
+        return new ValidateMetersResult(missingMeters, misconfiguredMeters, properMeters, excessMeters);
     }
 }

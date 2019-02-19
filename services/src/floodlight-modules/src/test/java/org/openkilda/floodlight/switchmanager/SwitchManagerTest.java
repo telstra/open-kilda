@@ -43,7 +43,6 @@ import static org.openkilda.floodlight.Constants.outputPort;
 import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.OVS_MANUFACTURER;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.MAX_CENTEC_SWITCH_BURST_SIZE;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
@@ -122,8 +121,9 @@ public class SwitchManagerTest {
     private static final String cookieHex = "7B";
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static final DatapathId defaultDpid = DatapathId.of(1);
-    public static final String CENTEC_SWITCH_DESCRIPTION = "Centec";
-    public static final int hugeBandwidth = 400000;
+    private static final String CENTEC_SWITCH_DESCRIPTION = "Centec";
+    private static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
+    private static final int hugeBandwidth = 400000;
     private static final long unicastMeterId = createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue();
     private static final long broadcastMeterId =
             createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue();
