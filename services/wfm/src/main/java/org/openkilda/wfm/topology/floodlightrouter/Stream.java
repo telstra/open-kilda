@@ -17,12 +17,16 @@ package org.openkilda.wfm.topology.floodlightrouter;
 
 public final class Stream {
 
+    public static String formatWithRegion(String stream, String region) {
+        return String.format("%s_%s", stream, region);
+    }
+
     public static final String TOPO_DISCO = "TOPO_DISCO";
     public static final String SPEAKER = "SPEAKER";
     public static final String SPEAKER_FLOW = "SPEAKER_FLOW";
     public static final String KILDA_FLOW = "KILDA_FLOW";
     public static final String SPEAKER_PING = "SPEAKER_PING";
-    public static final String KILDA_PING = "KILDA_PINGs";
+    public static final String KILDA_PING = "KILDA_PING";
     public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
 

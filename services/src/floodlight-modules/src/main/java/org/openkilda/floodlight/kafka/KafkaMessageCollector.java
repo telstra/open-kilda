@@ -88,7 +88,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
         logger.info("Kafka Consumer: general executor threads = {}", consumerConfig.getGeneralExecutorCount());
 
         KafkaChannel kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
-        logger.error("region = {}", kafkaChannel.getRegion());
+        logger.debug("region = {}", kafkaChannel.getRegion());
         ConsumerLauncher launcher = new ConsumerLauncher(moduleContext, consumerConfig);
         launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerTopic()));
         launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerFlowTopic()));

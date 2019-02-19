@@ -18,28 +18,28 @@ package org.openkilda.wfm.topology.floodlightrouter.service;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.RouterBolt.RouterMessageSender;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class FloodlightTracker {
     @VisibleForTesting
-    protected ConcurrentMap<SwitchId, String> switchRegionMap = new ConcurrentHashMap<>();
+    protected Map<SwitchId, String> switchRegionMap = new HashMap<>();
     @VisibleForTesting
-    protected ConcurrentMap<String, FloodlightInstance> floodlightStatus = new ConcurrentHashMap<>();
+    protected Map<String, FloodlightInstance> floodlightStatus = new HashMap<>();
     private long aliveTimeout;
 
     public FloodlightTracker(Set<String> floodlights, long aliveTimeout) {
@@ -155,7 +155,7 @@ public class FloodlightTracker {
             UnmanagedSwitchNotification notification = new UnmanagedSwitchNotification(sw);
             InfoMessage message = new InfoMessage(notification, System.currentTimeMillis(), UUID.randomUUID()
                     .toString());
-            messageSender.send(message);
+            messageSender.send(message, Stream.TOPO_DISCO);
         }
     }
 }

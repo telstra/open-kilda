@@ -129,6 +129,6 @@ public class FloodlightTrackerTest {
         floodlightTracker.switchRegionMap.put(SWITCH_ID_TWO, REGION_TWO);
         RouterBolt.RouterMessageSender sender = mock(RouterBolt.RouterMessageSender.class);
         floodlightTracker.handleUnmanagedSwitches(sender);
-        verify(sender, times(2)).send((Message) any());
+        verify(sender, times(2)).send((Message) any(), (String) any());
     }
 }

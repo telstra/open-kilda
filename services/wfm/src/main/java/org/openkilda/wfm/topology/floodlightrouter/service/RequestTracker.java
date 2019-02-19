@@ -23,16 +23,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class RequestTracker {
     @VisibleForTesting
-    protected ConcurrentMap<String, TrackedMessage> trackedRequests = new ConcurrentHashMap<>();
+    protected Map<String, TrackedMessage> trackedRequests = new HashMap<>();
     @VisibleForTesting
-    protected ConcurrentMap<String, TrackedMessage> blackList = new ConcurrentHashMap<>();
+    protected Map<String, TrackedMessage> blackList = new HashMap<>();
     private long requestTimeout;
     private long blacklistTimeout;
 
