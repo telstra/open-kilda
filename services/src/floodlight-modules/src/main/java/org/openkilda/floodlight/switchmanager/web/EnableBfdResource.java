@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
@@ -129,8 +130,8 @@ public class EnableBfdResource extends ServerResource {
                 .setSourcePort(udpPort)
                 .setDestinationPort(udpPort);
 
-        InetAddress sourceIpAddress = InetAddress.getByName(switchManager.getSwitchIpAddress(sw));
-        InetAddress destIpAddress = InetAddress.getByName(bfdSession.getRemote().getIpAddress());
+        InetAddress sourceIpAddress = ((InetSocketAddress) sw.getInetAddress()).getAddress();
+        InetAddress destIpAddress = bfdSession.getRemote().getInetAddress();
         IPacket l3 = new IPv4()
                 .setSourceAddress(IPv4Address.of(sourceIpAddress.getAddress()))
                 .setDestinationAddress(IPv4Address.of(destIpAddress.getAddress()))

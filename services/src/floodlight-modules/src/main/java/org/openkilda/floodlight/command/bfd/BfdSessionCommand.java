@@ -41,7 +41,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.InetSocketAddress;
 
 abstract class BfdSessionCommand extends BfdCommand {
     private final NoviBfdSession bfdSession;
@@ -73,7 +73,7 @@ abstract class BfdSessionCommand extends BfdCommand {
         }
     }
 
-    protected OFPacketOut makeSessionConfigMessage(IOFSwitch sw) throws UnknownHostException {
+    protected OFPacketOut makeSessionConfigMessage(IOFSwitch sw) {
         OFFactory ofFactory = sw.getOFFactory();
 
         OFActionNoviflowBfdStart bfdStartAction = ofFactory.actions().buildNoviflowBfdStart()
@@ -133,14 +133,14 @@ abstract class BfdSessionCommand extends BfdCommand {
         return errorCode;
     }
 
-    private IPacket makeSessionConfigPayload(IOFSwitch sw) throws UnknownHostException {
+    private IPacket makeSessionConfigPayload(IOFSwitch sw) {
         final TransportPort udpPort = TransportPort.of(bfdSession.getUdpPortNumber());
         UDP l4 = new UDP()
                 .setSourcePort(udpPort)
                 .setDestinationPort(udpPort);
 
-        InetAddress sourceIpAddress = InetAddress.getByName(switchManager.getSwitchIpAddress(sw));
-        InetAddress destIpAddress = InetAddress.getByName(bfdSession.getRemote().getInetAddress());
+        InetAddress sourceIpAddress = ((InetSocketAddress) sw.getInetAddress()).getAddress();
+        InetAddress destIpAddress = bfdSession.getRemote().getInetAddress();
         IPacket l3 = new IPv4()
                 .setSourceAddress(IPv4Address.of(sourceIpAddress.getAddress()))
                 .setDestinationAddress(IPv4Address.of(destIpAddress.getAddress()))

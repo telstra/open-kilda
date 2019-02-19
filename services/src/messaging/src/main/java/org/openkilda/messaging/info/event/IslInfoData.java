@@ -46,13 +46,6 @@ public class IslInfoData extends CacheTimeTag {
     protected final String id;
 
     /**
-     * Unique packet number transferred thought discovery mechanism. Required to match send and
-     * received packages.
-     */
-    @JsonProperty("packet_number")
-    private final long packetNumber;
-
-    /**
      * Port speed.
      */
     @JsonProperty("speed")
