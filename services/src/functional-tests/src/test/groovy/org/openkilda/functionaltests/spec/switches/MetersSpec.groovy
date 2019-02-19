@@ -27,13 +27,13 @@ class MetersSpec extends BaseSpecification {
 
     static DISCO_PKT_RATE = 200 // Number of packets per second for the default flows
     static DISCO_PKT_SIZE = 250 // Default size of the discovery packet
-    static NOVI_BURST_COEF = 1.005 //driven by the Noviflow specification
+    static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
     static DISCO_PKT_BURST = 4096 // Default desired packet burst rate for the default flows (ignored by Noviflow)
-    static CENTEC_MIN_BURST = 1024 //driven by the Centec specification
-    static CENTEC_MAX_BURST = 32000 //driven by the Centec specification
+    static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
+    static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
 
-    @Value('${burst.coef}')
-    double burstCoef
+    @Value('${burst.coefficient}')
+    double burstCoefficient
 
     def setupOnce() {
         //TODO: remove as soon as OVS 2.10 + kernel 4.18+ get wired in and meters support will be available
@@ -262,11 +262,13 @@ class MetersSpec extends BaseSpecification {
 
         where:
         flowRate << [
-            //flowRate below min
-            ((CENTEC_MIN_BURST - 1) / getBurstCoef()).toBigDecimal().setScale(0, RoundingMode.CEILING).toLong(),
-            1000, //casual middle value
-            //flowRate above max
-            ((CENTEC_MAX_BURST + 1) / getBurstCoef()).toBigDecimal().setScale(0, RoundingMode.CEILING).toLong()
+                //flowRate below min
+                ((CENTEC_MIN_BURST - 1) / getBurstCoefficient())
+                        .toBigDecimal().setScale(0, RoundingMode.CEILING).toLong(),
+                1000, //casual middle value
+                //flowRate above max
+                ((CENTEC_MAX_BURST + 1) / getBurstCoefficient())
+                        .toBigDecimal().setScale(0, RoundingMode.CEILING).toLong()
         ]
     }
 
@@ -336,21 +338,22 @@ class MetersSpec extends BaseSpecification {
         and: "Cleanup: delete flow"
         flowHelper.deleteFlow(flow.id)
 
-        where: data << [
+        where:
+        data << [
                 [
                         description: "nonCentec-nonCentec",
-                        srcSwitch: nonCentecSwitches[0],
-                        dstSwitch: nonCentecSwitches[1]
+                        srcSwitch  : nonCentecSwitches[0],
+                        dstSwitch  : nonCentecSwitches[1]
                 ],
                 [
                         description: "centec-centec",
-                        srcSwitch: centecSwitches[0],
-                        dstSwitch: centecSwitches[1]
+                        srcSwitch  : centecSwitches[0],
+                        dstSwitch  : centecSwitches[1]
                 ],
                 [
                         description: "centec-nonCentec",
-                        srcSwitch: centecSwitches[0],
-                        dstSwitch: nonCentecSwitches[0]
+                        srcSwitch  : centecSwitches[0],
+                        dstSwitch  : nonCentecSwitches[0]
                 ]
         ]
     }
@@ -358,10 +361,11 @@ class MetersSpec extends BaseSpecification {
     /**
      * This method calculates expected burst for different types of switches. The common burst equals to
      * `rate * burstCoefficient`. There are couple exceptions though:<br>
-     * <b>Noviflow</b>: Does not use our common burst coef and overrides it with its own coefficient (see static variables
-     * at the top of the class).<br>
-     * <b>Centec</b>: Follows our burst coef policy, except for restrictions for the minimum and maximum burst. In cases when
-     * calculated burst is higher or lower of the Centec max/min - the max/min burst value will be used instead.
+     * <b>Noviflow</b>: Does not use our common burst coefficient and overrides it with its own coefficient (see static
+     * variables at the top of the class).<br>
+     * <b>Centec</b>: Follows our burst coefficient policy, except for restrictions for the minimum and maximum burst.
+     * In cases when calculated burst is higher or lower of the Centec max/min - the max/min burst value will be used
+     * instead.
      *
      * @param sw switchId where burst is being calculated. Needed to get the switch manufacturer and apply special
      * calculations if required
@@ -371,10 +375,10 @@ class MetersSpec extends BaseSpecification {
     def getExpectedBurst(SwitchId sw, long rate) {
         def descr = getSwitchDescription(sw).toLowerCase()
         if (descr.contains("noviflow")) {
-            return (rate * NOVI_BURST_COEF - 1).setScale(0, RoundingMode.CEILING)
+            return (rate * NOVIFLOW_BURST_COEFFICIENT - 1).setScale(0, RoundingMode.CEILING)
         } else if (descr.contains("centec")) {
-            def burst = (rate * burstCoef).toBigDecimal().setScale(0, RoundingMode.FLOOR)
-            if(burst <= CENTEC_MIN_BURST) {
+            def burst = (rate * burstCoefficient).toBigDecimal().setScale(0, RoundingMode.FLOOR)
+            if (burst <= CENTEC_MIN_BURST) {
                 return CENTEC_MIN_BURST
             } else if (burst > CENTEC_MIN_BURST && burst <= CENTEC_MAX_BURST) {
                 return burst
@@ -382,7 +386,7 @@ class MetersSpec extends BaseSpecification {
                 return CENTEC_MAX_BURST
             }
         } else {
-            return (rate * burstCoef).round(0)
+            return (rate * burstCoefficient).round(0)
         }
     }
 

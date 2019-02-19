@@ -226,6 +226,24 @@ class FlowCrudSpec extends BaseSpecification {
         flow << getSingleSwitchSinglePortFlows()
     }
 
+    def "Able to validate flow with zero bandwidth"() {
+        given: "A flow with zero bandwidth"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = 0
+
+        when: "Create a flow with zero bandwidth"
+        flowHelper.addFlow(flow)
+
+        then: "Validation of flow with zero bandwidth must be succeed"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+        }
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
         def flow = flowHelper.singleSwitchSinglePortFlow(topology.activeSwitches.first())
@@ -282,30 +300,18 @@ class FlowCrudSpec extends BaseSpecification {
         given: "Two potential flows"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
+        def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1])
 
-        // TODO(ylobankov): Delete this code once we add such a functionality to flow helper.
-        // It is a kind of dirty workaround to not get a conflict at the point of the second flow creation.
-        def random = new Random()
-        def srcSwitchAllowedPorts = topology.getAllowedPortsForSwitch(srcSwitch)
-        def dstSwitchAllowedPorts = topology.getAllowedPortsForSwitch(dstSwitch)
-        while (!(flow1.source.portNumber != flow2.source.portNumber &&
-                flow1.destination.portNumber != flow2.destination.portNumber)) {
-            flow1.source.portNumber = srcSwitchAllowedPorts[random.nextInt(srcSwitchAllowedPorts.size())]
-            flow1.destination.portNumber = dstSwitchAllowedPorts[random.nextInt(dstSwitchAllowedPorts.size())]
-            flow2.source.portNumber = srcSwitchAllowedPorts[random.nextInt(srcSwitchAllowedPorts.size())]
-            flow2.destination.portNumber = dstSwitchAllowedPorts[random.nextInt(dstSwitchAllowedPorts.size())]
-        }
-
-        def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        data.makeFlowsConflicting(flow1, conflictingFlow.tap { it.id = flow2.id })
+        data.makeFlowsConflicting(flow1, conflictingFlow)
 
         when: "Create two flows"
         flowHelper.addFlow(flow1)
+
+        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1])
         flowHelper.addFlow(flow2)
 
         and: "Try updating the second flow which should conflict with the first one"
-        northbound.updateFlow(flow2.id, conflictingFlow)
+        northbound.updateFlow(flow2.id, conflictingFlow.tap { it.id = flow2.id })
 
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)

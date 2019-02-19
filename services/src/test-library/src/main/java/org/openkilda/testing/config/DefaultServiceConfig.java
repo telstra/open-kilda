@@ -53,14 +53,6 @@ public class DefaultServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
-    @Bean(name = "topologyEngineRestTemplate")
-    public RestTemplate topologyEngineRestTemplate(
-            @Value("${topology-engine-rest.endpoint}") String endpoint,
-            @Value("${topology-engine-rest.username}") String username,
-            @Value("${topology-engine-rest.password}") String password) {
-        return buildRestTemplateWithAuth(endpoint, username, password);
-    }
-
     @Bean(name = "elasticSearchRestTemplate")
     public RestTemplate elasticSearchRestTemplate(
             @Value("${elasticsearch.endpoint}") String endpoint,

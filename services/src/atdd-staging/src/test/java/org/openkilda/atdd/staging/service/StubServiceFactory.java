@@ -208,18 +208,23 @@ public class StubServiceFactory {
         when(serviceMock.getActiveLinks())
                 .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
                         .flatMap(link -> Stream.of(
-                                new IslInfoData(0,
-                                        new PathNode(link.getSrcSwitch().getDpId(),
-                                                link.getSrcPort(), 0),
-                                        new PathNode(link.getDstSwitch().getDpId(),
-                                                link.getDstPort(), 1),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0, false),
-                                new IslInfoData(0,
-                                        new PathNode(link.getDstSwitch().getDpId(),
-                                                link.getDstPort(), 0),
-                                        new PathNode(link.getSrcSwitch().getDpId(),
-                                                link.getSrcPort(), 1),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0, false)
+                                IslInfoData.builder()
+                                        .latency(0)
+                                        .source(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0))
+                                        .destination(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1))
+                                        .speed(link.getMaxBandwidth())
+                                        .state(IslChangeType.DISCOVERED)
+                                        .availableBandwidth(0)
+                                        .build(),
+
+                                IslInfoData.builder()
+                                        .latency(0)
+                                        .source(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0))
+                                        .destination(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1))
+                                        .speed(link.getMaxBandwidth())
+                                        .state(IslChangeType.DISCOVERED)
+                                        .availableBandwidth(0)
+                                        .build()
                         ))
                         .collect(toList()));
 

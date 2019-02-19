@@ -43,6 +43,7 @@ public class Neo4jFeatureTogglesRepositoryTest extends Neo4jBasedTest {
                 .deleteFlowEnabled(false)
                 .pushFlowEnabled(false)
                 .unpushFlowEnabled(false)
+                .bfdEventsEnabled(false)
                 .build();
 
         featureTogglesRepository.createOrUpdate(featureTogglesA);
@@ -67,6 +68,7 @@ public class Neo4jFeatureTogglesRepositoryTest extends Neo4jBasedTest {
                 .deleteFlowEnabled(false)
                 .pushFlowEnabled(true)
                 .unpushFlowEnabled(false)
+                .bfdEventsEnabled(false)
                 .build();
 
         assertEquals(featureTogglesC, featureTogglesCollection.iterator().next());

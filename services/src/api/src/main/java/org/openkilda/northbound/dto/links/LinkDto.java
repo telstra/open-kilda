@@ -29,17 +29,38 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class LinkDto {
 
+    @JsonProperty("latency_ns")
+    protected long latency;
+
     @JsonProperty("speed")
     private long speed;
 
     @JsonProperty("available_bandwidth")
     private long availableBandwidth;
 
+    @JsonProperty("max_bandwidth")
+    private long maxBandwidth;
+
+    @JsonProperty("default_max_bandwidth")
+    private long defaultMaxBandwidth;
+
     @JsonProperty("state")
     protected LinkStatus state;
 
+    @JsonProperty("actual_state")
+    private LinkStatus actualState;
+
+    @JsonProperty("cost")
+    private int cost;
+
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
+
+    @JsonProperty("enable_bfd")
+    private boolean enableBfd;
+
+    @JsonProperty("bfd_session_status")
+    private String bfdSessionStatus;
 
     @JsonProperty("path")
     private List<PathDto> path;

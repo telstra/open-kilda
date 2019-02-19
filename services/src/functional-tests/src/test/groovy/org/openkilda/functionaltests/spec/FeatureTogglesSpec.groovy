@@ -21,7 +21,7 @@ class FeatureTogglesSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Set create_flow toggle to false"
-        northbound.toggleFeature(new FeatureTogglesDto(null, false, null, null, null, null))
+        northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(false).build())
 
         and: "Try to create a new flow"
         northbound.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
@@ -40,7 +40,7 @@ class FeatureTogglesSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
 
         and: "Cleanup: set create_flow toggle back to true"
-        northbound.toggleFeature(new FeatureTogglesDto(null, true, null, null, null, null))
+        northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(true).build())
     }
 
     def "System forbids updating flows when 'update_flow' toggle is set to false"() {
@@ -49,7 +49,7 @@ class FeatureTogglesSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Set update_flow toggle to false"
-        northbound.toggleFeature(new FeatureTogglesDto(null, null, false, null, null, null))
+        northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(false).build())
 
         and: "Try to update the flow"
         northbound.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
@@ -69,7 +69,7 @@ class FeatureTogglesSpec extends BaseSpecification {
         [newFlow, flow].each { flowHelper.deleteFlow(it.id) }
 
         and: "Cleanup: set update_flow toggle back to true"
-        northbound.toggleFeature(new FeatureTogglesDto(null, null, true, null, null, null))
+        northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(true).build())
     }
 
     def "System forbids deleting flows when 'delete_flow' toggle is set to false"() {
@@ -78,7 +78,7 @@ class FeatureTogglesSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Set delete_flow toggle to false"
-        northbound.toggleFeature(new FeatureTogglesDto(null, null, null, false, null, null))
+        northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(false).build())
 
         and: "Try to delete the flow"
         northbound.deleteFlow(flow.id)
@@ -98,7 +98,7 @@ class FeatureTogglesSpec extends BaseSpecification {
         flowHelper.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
 
         when: "Set delete_flow toggle back to true"
-        northbound.toggleFeature(new FeatureTogglesDto(null, null, null, true, null, null))
+        northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())
 
         then: "Able to delete flows"
         [flow, newFlow].each { flowHelper.deleteFlow(it.id) }

@@ -1,281 +1,217 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.IslInfoData
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.links.LinkParametersDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Unroll
+
+import java.util.concurrent.TimeUnit
 
 class SwitchDeleteSpec extends BaseSpecification {
-    def "Cannot delete nonexistent switch"() {
-        given: "Nonexistent switch ID"
-        def switchId = new SwitchId("de:ad:be:ef:99:99:99:99")
 
-        when: "Try to delete nonexistent switch"
-        northbound.deleteSwitch(switchId, false)
+    def "Unable to delete a nonexistent switch"() {
+        when: "Try to delete a nonexistent switch"
+        northbound.deleteSwitch(NON_EXISTENT_SWITCH_ID, false)
 
-        then: "Got 404 NotFound"
+        then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
     }
 
-    def "Cannot delete active switch"() {
+    def "Unable to delete an active switch"() {
         given: "An active switch"
         def switchId = topology.getActiveSwitches()[0].dpId
 
-        when: "Try to delete active switch"
+        when: "Try to delete the switch"
         northbound.deleteSwitch(switchId, false)
 
-        then: "Got 400 BadRequest because switch must be deactivated"
+        then: "Get 400 BadRequest error because the switch must be deactivated first"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.contains("Switch '$switchId' is in 'Active' state")
     }
 
-    def "Cannot delete inactive switch with active ISL"() {
+    def "Unable to delete an inactive switch with active ISLs"() {
         requireProfiles("virtual")
 
-        given: "An inactive switch with active ISL"
-        def isl = northbound.activeLinks[0]
-        def switchId = isl.source.switchId
-        lockKeeper.knockoutSwitch(switchId)
-        Wrappers.wait(WAIT_OFFSET) {
-            !northbound.activeSwitches.any { it.switchId == switchId}
-        }
+        given: "An inactive switch with ISLs"
+        def sw = topology.getActiveSwitches()[0]
+        def swIsls = topology.getRelatedIsls(sw)
 
-        when: "Try to delete inactive switch with active ISL"
-        northbound.deleteSwitch(switchId, false)
+        // deactivate switch
+        lockKeeper.knockoutSwitch(sw.dpId)
+        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
-        then: "Got 400 BadRequest because switch has active ISL"
+        when: "Try to delete the switch"
+        northbound.deleteSwitch(sw.dpId, false)
+
+        then: "Get 400 BadRequest error because the switch has ISLs"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '$switchId' has \\d+ active links\\. Unplug and remove them first.*")
+        exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} active links\\. " +
+                "Unplug and remove them first.*")
 
-        and: "Cleanup: Activate the switch back"
-        lockKeeper.reviveSwitch(switchId)
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.activeSwitches.any { it.switchId == switchId }
+        and: "Cleanup: activate the switch back"
+        lockKeeper.reviveSwitch(sw.dpId)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.activeSwitches.any { it.switchId == sw.dpId }
+
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
     }
 
-    def "Cannot delete inactive switch with inactive ISLs"() {
+    def "Unable to delete an inactive switch with inactive ISLs (ISL ports are down)"() {
         requireProfiles("virtual")
 
-        given: "An inactive switch with inactive ISLs"
-        def switchId = topology.getActiveSwitches()[0].dpId
-        // get all active ISLs on switch
-        def activeSwitchLinks = northbound
-                .getAllSwitchLinks(switchId)
-                .findAll { it.state == IslChangeType.DISCOVERED }
+        given: "An inactive switch with ISLs"
+        def sw = topology.getActiveSwitches()[0]
+        def swIsls = topology.getRelatedIsls(sw)
+
         // deactivate all active ISLs on switch
-        downLinkPorts(activeSwitchLinks)
+        swIsls.each { northbound.portDown(sw.dpId, it.srcPort) }
         Wrappers.wait(WAIT_OFFSET) {
-            northbound.getAllSwitchLinks(switchId).every { it.state != IslChangeType.DISCOVERED }
+            swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
 
         // deactivate switch
-        lockKeeper.knockoutSwitch(switchId)
-        Wrappers.wait(WAIT_OFFSET) {
-            !northbound.activeSwitches.any { it.switchId == switchId }
-        }
-
-        when: "Try to delete inactive switch with inactive ISLs"
-        northbound.deleteSwitch(switchId, false)
-
-        then: "Got 400 BadRequest because switch has inactive ISLs"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '$switchId' has \\d+ inactive links\\. Remove them first.*")
-
-        and: "Cleanup: Activate the switch back"
-        lockKeeper.reviveSwitch(switchId)
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.activeSwitches.any { it.switchId == switchId }
-        }
-        upLinkPorts(activeSwitchLinks)
-        Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
-            northbound
-                    .getAllSwitchLinks(switchId)
-                    .findAll { isl -> activeSwitchLinks.any {
-                it.source == isl.source && it.destination == isl.destination } }
-                    .every{ it.state == IslChangeType.DISCOVERED }
-        }
-    }
-
-    def "Cannot delete inactive switch with single flow"() {
-        requireProfiles("virtual")
-
-        given: "An active switch with flow"
-        def sw = topology.getActiveSwitches()[0]
-        def flow = flowHelper.singleSwitchFlow(sw)
-        northbound.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
-
-        when: "Deactivate this switch"
         lockKeeper.knockoutSwitch(sw.dpId)
-        Wrappers.wait(WAIT_OFFSET) {
-            !northbound.activeSwitches.any { it.switchId == sw.dpId}
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
-        and: "Try to delete inactive switch with flow"
+        when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)
 
-        then: "Got 400 BadRequest because switch has flow"
+        then: "Get 400 BadRequest error because the switch has ISLs"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has \\d+ assigned flows.*")
+        exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} inactive links\\. " +
+                "Remove them first.*")
 
-        and: "Cleanup: Activate the switch back and remove flow"
+        and: "Cleanup: activate the switch back"
         lockKeeper.reviveSwitch(sw.dpId)
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.activeSwitches.any { it.switchId == sw.dpId }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
+
+        swIsls.each { northbound.portUp(sw.dpId, it.srcPort) }
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
-        northbound.deleteFlow(flow.id)
     }
 
-    def "Cannot delete inactive switch with flow"() {
+    @Unroll
+    def "Unable to delete an inactive switch with a #flowType flow assigned"() {
         requireProfiles("virtual")
 
-        given: "An active switch with flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.getActiveSwitches()[0..1]
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        northbound.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        given: "A flow going through a switch"
+        flowHelper.addFlow(flow)
 
-        when: "Deactivate this switch"
-        lockKeeper.knockoutSwitch(srcSwitch.getDpId())
-        Wrappers.wait(WAIT_OFFSET) {
-            !northbound.activeSwitches.any { it.switchId == srcSwitch.dpId}
-        }
+        when: "Deactivate the switch"
+        lockKeeper.knockoutSwitch(flow.source.datapath)
+        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == flow.source.datapath } }
 
-        and: "Try to delete inactive switch with flow"
-        northbound.deleteSwitch(srcSwitch.getDpId(), false)
+        and: "Try to delete the switch"
+        northbound.deleteSwitch(flow.source.datapath, false)
 
-        then: "Got 400 BadRequest because switch has flow"
+        then: "Got 400 BadRequest error because the switch has the flow assigned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '$srcSwitch.dpId' has \\d+ assigned flows.*")
+        //TODO(ylobankov): Verify the certain number of flows assigned once the issue #2045 is resolved.
+        exc.responseBodyAsString.matches(".*Switch '${flow.source.datapath}' has \\d+ assigned flows.*")
 
-        and: "Cleanup: Activate the switch back and remove flow"
-        lockKeeper.reviveSwitch(srcSwitch.getDpId())
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.activeSwitches.any { it.switchId == srcSwitch.dpId }
-        }
-        northbound.deleteFlow(flow.id)
+        and: "Cleanup: activate the switch back and remove the flow"
+        lockKeeper.reviveSwitch(flow.source.datapath)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == flow.source.datapath } }
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        flowType        | flow
+        "single-switch" | getFlowHelper().singleSwitchFlow(getTopology().getActiveSwitches()[0])
+        "casual"        | getFlowHelper().randomFlow(*getTopology().getActiveSwitches()[0..1])
     }
 
-    def "Can delete inactive switch without any ISLs"() {
+    def "Able to delete an inactive switch without any ISLs"() {
         requireProfiles("virtual")
 
-        given: "An inactive switch without ISLs"
-        def switchId = topology.getActiveSwitches()[0].dpId
-        // get all active ISLs on switch
-        def expectedSwitchLinks = northbound
-                .getAllSwitchLinks(switchId)
-                .findAll { it.state == IslChangeType.DISCOVERED }
+        given: "An inactive switch without any ISLs"
+        def sw = topology.getActiveSwitches()[0]
+        def swIsls = topology.getRelatedIsls(sw)
+
         // deactivate all active ISLs on switch
-        downLinkPorts(expectedSwitchLinks)
+        swIsls.each { northbound.portDown(sw.dpId, it.srcPort) }
         Wrappers.wait(WAIT_OFFSET) {
-            northbound.getAllSwitchLinks(switchId).every { it.state != IslChangeType.DISCOVERED }
+            swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
 
         // delete all ISLs on switch
-        northbound.getAllSwitchLinks(switchId).each {
-            northbound.deleteLink(new LinkParametersDto(
-                    it.source.switchId.toString(), it.source.portNo,
-                    it.destination.switchId.toString(), it.destination.portNo))
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.getAllSwitchLinks(switchId).empty
+        swIsls.collectMany { [it, islUtils.reverseIsl(it)] }.each {
+            northbound.deleteLink(islUtils.getLinkParameters(it))
         }
 
         // deactivate switch
-        lockKeeper.knockoutSwitch(switchId)
-        Wrappers.wait(WAIT_OFFSET) {
-            !northbound.activeSwitches.any { it.switchId == switchId }
-        }
+        lockKeeper.knockoutSwitch(sw.dpId)
+        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
-        when: "Try to delete inactive switch with inactive ISLs"
-        def res = northbound.deleteSwitch(switchId, false)
+        when: "Try to delete the switch"
+        def response = northbound.deleteSwitch(sw.dpId, false)
 
-        then: "Check that switch is actually deleted"
-        res.deleted
-        Wrappers.wait(WAIT_OFFSET) {
-            !northbound.allSwitches.any { it.switchId == switchId }
-        }
+        then: "The switch is actually deleted"
+        response.deleted
+        Wrappers.wait(WAIT_OFFSET) { assert !northbound.allSwitches.any { it.switchId == sw.dpId } }
 
-        and: "Cleanup: Activate the switch back and restore ISLs"
+        and: "Cleanup: activate the switch back and restore ISLs"
         // restore switch
-        lockKeeper.reviveSwitch(switchId)
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.activeSwitches.any { it.switchId == switchId }
-        }
+        lockKeeper.reviveSwitch(sw.dpId)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs
-        upLinkPorts(expectedSwitchLinks)
-        Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET * 2) {
-            areLinksWereRestored(switchId, expectedSwitchLinks)
+        swIsls.each { northbound.portUp(sw.dpId, it.srcPort) }
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
     }
 
-    def "Can delete active switch if using force delete"() {
+    def "Able to delete an active switch with active ISLs if using force delete"() {
         requireProfiles("virtual")
 
-        given: "An active switch"
-        def switchId = topology.getActiveSwitches()[0].dpId
-        def expectedSwitchLinks = northbound
-                .getAllSwitchLinks(switchId)
-                .findAll { it.state == IslChangeType.DISCOVERED }
+        given: "An active switch with active ISLs"
+        def sw = topology.getActiveSwitches()[0]
+        def swIsls = topology.getRelatedIsls(sw)
 
-        when: "Try to force delete active switch with ISLs"
-        def response = northbound.deleteSwitch(switchId, true)
+        when: "Try to force delete the switch"
+        def response = northbound.deleteSwitch(sw.dpId, true)
 
-        then: "Check that switch is actually deleted"
+        then: "The switch is actually deleted"
         response.deleted
         Wrappers.wait(WAIT_OFFSET) {
-            !northbound.allSwitches.any { it.switchId == switchId }
-        }
+            assert !northbound.allSwitches.any { it.switchId == sw.dpId }
 
-        and: "Cleanup: Restore the switch"
-        lockKeeper.knockoutSwitch(switchId)
-        lockKeeper.reviveSwitch(switchId)
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.activeSwitches.any { it.switchId == switchId }
-        }
-
-        downLinkPorts(expectedSwitchLinks)
-        upLinkPorts(expectedSwitchLinks)
-        Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET * 2) {
-            areLinksWereRestored(switchId, expectedSwitchLinks)
-        }
-    }
-
-    def downLinkPorts(List<IslInfoData> links) {
-        links.collectMany { link -> [link.source, link.destination] }
-                .each { northbound.portDown(it.switchId, it.portNo) }
-    }
-
-    def upLinkPorts(List<IslInfoData> links) {
-        links.collectMany { link -> [link.source, link.destination] }
-                .each { northbound.portUp(it.switchId, it.portNo) }
-    }
-
-    boolean areLinksWereRestored(SwitchId switchId, List<IslInfoData> expectedSwitchLinks) {
-        def actualSwitchLinks = northbound.getAllSwitchLinks(switchId)
-
-        return expectedSwitchLinks.every {
-            def expectedIsl = it
-            def actualIsl = actualSwitchLinks.findAll {
-                it.source == expectedIsl.source && it.destination == expectedIsl.destination
+            def links = northbound.getAllLinks()
+            swIsls.each {
+                assert !islUtils.getIslInfo(links, it)
+                assert !islUtils.getIslInfo(links, islUtils.reverseIsl(it))
             }
+        }
 
-            actualIsl.size() == 1 && actualIsl.every { it.state == IslChangeType.DISCOVERED }
+        and: "Cleanup: restore the switch and ISLs"
+        // restore switch
+        lockKeeper.knockoutSwitch(sw.dpId)
+        lockKeeper.reviveSwitch(sw.dpId)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
+
+        // restore ISLs
+        def allSwIsls = swIsls.collectMany { [it, islUtils.reverseIsl(it)] }
+        allSwIsls.each { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
+        TimeUnit.SECONDS.sleep(antiflapCooldown)
+        allSwIsls.each { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
     }
 }

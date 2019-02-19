@@ -163,65 +163,51 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
-    def "Unable to delete nonexistent link"() {
+    def "Unable to delete a nonexistent link"() {
         given: "Parameters of nonexistent link"
         def parameters = new LinkParametersDto(new SwitchId(1).toString(), 100, new SwitchId(2).toString(), 100)
 
         when: "Try to delete nonexistent link"
         northbound.deleteLink(parameters)
 
-        then: "Got 404 NotFound"
+        then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         exc.responseBodyAsString.contains("ISL was not found")
     }
 
-    def "Unable to delete active link"() {
-        given: "Parameters for active link"
-        def link = northbound.getActiveLinks()[0]
-        def parameters = new LinkParametersDto(link.source.switchId.toString(), link.source.portNo,
-                link.destination.switchId.toString(), link.destination.portNo)
+    def "Unable to delete an active link"() {
+        given: "An active link"
+        def isl = topology.getIslsForActiveSwitches()[0]
 
-        when: "Try to delete active link"
-        northbound.deleteLink(parameters)
+        when: "Try to delete the link"
+        northbound.deleteLink(islUtils.getLinkParameters(isl))
 
-        then: "Got 400 BadRequest because link is active"
+        then: "Get 400 BadRequest error because the link is active"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
-    def "Able to delete inactive link"() {
-        given: "Parameters for inactive link"
-        def link = northbound.getActiveLinks()[0]
-        def srcSwitch = link.source.switchId
-        def srcPort = link.source.portNo
-        def dstSwitch = link.destination.switchId
-        def dstPort = link.destination.portNo
+    def "Able to delete an inactive link"() {
+        given: "An inactive link"
+        def isl = topology.getIslsForActiveSwitches()[0]
+        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
-        northbound.portDown(srcSwitch, srcPort)
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).each {
-                assert it.state == IslChangeType.FAILED
-            }
-        }
+        when: "Try to delete the link"
+        def response = northbound.deleteLink(islUtils.getLinkParameters(isl))
 
-        when: "Try to delete inactive link"
-        def parameters = new LinkParametersDto(srcSwitch.toString(), srcPort, dstSwitch.toString(), dstPort)
-        def res = northbound.deleteLink(parameters)
+        then: "The link is actually deleted"
+        response.deleted
+        !islUtils.getIslInfo(isl)
+        // TODO(ylobankov): Uncomment the check when the issue #1977 is resolved.
+        //!islUtils.getIslInfo(islUtils.reverseIsl(isl))
 
-        then: "Check that link is actually deleted"
-        res.deleted
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).empty
-        }
-
-        and: "Cleanup: restore link"
-        northbound.portUp(srcSwitch, srcPort)
+        and: "Cleanup: restore the link"
+        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getLinksByParameters(srcSwitch, srcPort, dstSwitch, dstPort).each {
-                assert it.state == IslChangeType.DISCOVERED
-            }
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
     }
 
