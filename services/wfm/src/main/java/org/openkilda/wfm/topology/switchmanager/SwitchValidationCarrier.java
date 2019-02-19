@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.switches;
+package org.openkilda.wfm.topology.switchmanager;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandMessage;
 
-import java.util.List;
+public interface SwitchValidationCarrier {
+    void sendCommand(String key, CommandMessage command);
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class RulesValidationResult {
+    void response(String key, Message message);
 
-    @JsonProperty("missing")
-    private List<Long> missingRules;
+    void endProcessing(String key);
 
-    @JsonProperty("proper")
-    private List<Long> properRules;
+    long getFlowMeterMinBurstSizeInKbits();
 
-    @JsonProperty("excess")
-    private List<Long> excessRules;
+    double getFlowMeterBurstCoefficient();
 }

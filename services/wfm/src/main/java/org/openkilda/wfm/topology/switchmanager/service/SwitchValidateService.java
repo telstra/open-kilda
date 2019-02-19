@@ -15,17 +15,20 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 
-import java.util.List;
-import java.util.Set;
+public interface SwitchValidateService {
 
-public interface ValidationService {
-    ValidateRulesResult validateRules(SwitchId switchId, Set<Long> presentCookies);
+    void handleSwitchValidateRequest(String key, SwitchValidateRequest data);
 
-    ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                        long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient);
+    void handleFlowEntriesResponse(String key, SwitchFlowEntries data);
+
+    void handleMeterEntriesResponse(String key, SwitchMeterEntries data);
+
+    void handleTaskTimeout(String key);
+
+    void handleTaskError(String key, ErrorMessage message);
 }

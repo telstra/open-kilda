@@ -18,11 +18,11 @@ package org.openkilda.wfm.topology.switchmanager.bolt;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.rule.BatchInstallResponse;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
@@ -30,10 +30,10 @@ import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
-import org.openkilda.wfm.topology.switchmanager.SwitchSyncRulesCarrier;
+import org.openkilda.wfm.topology.switchmanager.SwitchValidationCarrier;
 import org.openkilda.wfm.topology.switchmanager.command.RemoveKeyRouterBolt;
-import org.openkilda.wfm.topology.switchmanager.service.SyncRulesService;
-import org.openkilda.wfm.topology.switchmanager.service.impl.SyncRulesServiceImpl;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
+import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchValidateServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.task.OutputCollector;
@@ -45,24 +45,29 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Map;
 
-public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCarrier {
-    public static final String ID = "switch.sync.rules";
-    public static final String INCOME_STREAM = "sync.rules.command";
+public class SwitchValidateManager extends HubBolt implements SwitchValidationCarrier {
+    public static final String ID = "switch.validate";
+    public static final String INCOME_STREAM = "validate.command";
     private static final int TIMEOUT_MS = 10000;
     private static final boolean AUTO_ACK = true;
 
     private final PersistenceManager persistenceManager;
-    private transient SyncRulesService service;
+    private transient SwitchValidateService service;
+    private long flowMeterMinBurstSizeInKbits;
+    private double flowMeterBurstCoefficient;
 
-    public SwitchSyncRulesManager(String requestSenderComponent, PersistenceManager persistenceManager) {
+    public SwitchValidateManager(String requestSenderComponent, PersistenceManager persistenceManager,
+                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         super(requestSenderComponent, TIMEOUT_MS, AUTO_ACK);
         this.persistenceManager = persistenceManager;
+        this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
+        this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        service = new SyncRulesServiceImpl(this, persistenceManager);
+        service = new SwitchValidateServiceImpl(this, persistenceManager);
     }
 
     @Override
@@ -72,16 +77,16 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
 
         if (message instanceof CommandMessage) {
             CommandData data = ((CommandMessage) message).getData();
-            if (data instanceof SwitchRulesSyncRequest) {
-                service.handleSyncRulesRequest(key, (SwitchRulesSyncRequest) data);
+            if (data instanceof SwitchValidateRequest) {
+                service.handleSwitchValidateRequest(key, (SwitchValidateRequest) data);
             }
 
         } else if (message instanceof InfoMessage) {
             InfoData data = ((InfoMessage) message).getData();
             if (data instanceof SwitchFlowEntries) {
                 service.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
-            } else if (data instanceof BatchInstallResponse) {
-                service.handleInstallRulesResponse(key);
+            } else if (data instanceof SwitchMeterEntries) {
+                service.handleMeterEntriesResponse(key, (SwitchMeterEntries) data);
             }
 
         } else if (message instanceof ErrorMessage) {
@@ -126,6 +131,16 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
     }
 
     @Override
+    public long getFlowMeterMinBurstSizeInKbits() {
+        return flowMeterMinBurstSizeInKbits;
+    }
+
+    @Override
+    public double getFlowMeterBurstCoefficient() {
+        return flowMeterBurstCoefficient;
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
 
@@ -133,5 +148,6 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
         declarer.declareStream(StreamType.TO_NORTHBOUND.toString(), fields);
         declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), fields);
         declarer.declareStream(RouterBolt.INCOME_STREAM, fields);
+
     }
 }

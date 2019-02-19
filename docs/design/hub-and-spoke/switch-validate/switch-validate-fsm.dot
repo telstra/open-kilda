@@ -1,0 +1,25 @@
+digraph {
+    compound=true;
+    subgraph cluster_StateMachine {
+    label="org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm";
+    RECEIVE_METERS [label="RECEIVE_METERS"];
+    VALIDATE_RULES [label="VALIDATE_RULES"];
+    FINISHED_WITH_ERROR [label="FINISHED_WITH_ERROR"];
+    INITIALIZED [label="INITIALIZED"];
+    VALIDATE_METERS [label="VALIDATE_METERS"];
+    RECEIVE_RULES [label="RECEIVE_RULES"];
+    FINISHED [label="FINISHED"];
+
+    RECEIVE_METERS -> RECEIVE_METERS [ label="METERS_RECEIVED"];
+    RECEIVE_METERS -> FINISHED_WITH_ERROR [ label="TIMEOUT"];
+    RECEIVE_METERS -> FINISHED_WITH_ERROR [ label="ERROR"];
+    RECEIVE_METERS -> VALIDATE_METERS [ label="NEXT"];
+    VALIDATE_RULES -> FINISHED_WITH_ERROR [ label="ERROR"];
+    VALIDATE_RULES -> RECEIVE_METERS [ label="NEXT"];
+    INITIALIZED -> RECEIVE_RULES [ label="NEXT"];
+    VALIDATE_METERS -> FINISHED_WITH_ERROR [ label="ERROR"];
+    VALIDATE_METERS -> FINISHED [ label="NEXT"];
+    RECEIVE_RULES -> RECEIVE_RULES [ label="RULES_RECEIVED"];
+    RECEIVE_RULES -> FINISHED_WITH_ERROR [ label="TIMEOUT"];
+    RECEIVE_RULES -> FINISHED_WITH_ERROR [ label="ERROR"];
+    RECEIVE_RULES -> VALIDATE_RULES [ label="NEXT"];}}

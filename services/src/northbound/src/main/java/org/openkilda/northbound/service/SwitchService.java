@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 
 import java.util.List;
@@ -113,6 +114,14 @@ public interface SwitchService {
      * @return the validation details.
      */
     CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId);
+
+    /**
+     * Validate the rules and the meters installed on the switch against the flows in Neo4J.
+     *
+     * @param switchId switch to validate rules on.
+     * @return the validation details.
+     */
+    CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId);
 
     /**
      * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.

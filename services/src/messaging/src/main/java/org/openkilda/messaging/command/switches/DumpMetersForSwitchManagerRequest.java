@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.switches;
+package org.openkilda.messaging.command.switches;
+
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
 
-import java.util.List;
+@Value
+public class DumpMetersForSwitchManagerRequest extends CommandData {
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class RulesValidationResult {
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
-    @JsonProperty("missing")
-    private List<Long> missingRules;
-
-    @JsonProperty("proper")
-    private List<Long> properRules;
-
-    @JsonProperty("excess")
-    private List<Long> excessRules;
+    public DumpMetersForSwitchManagerRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
+    }
 }
