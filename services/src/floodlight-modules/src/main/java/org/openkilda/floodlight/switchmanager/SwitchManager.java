@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
+import org.openkilda.config.utils.MeterConfig;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.OfInstallException;
@@ -149,7 +150,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
-    public static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
     public static final int BDF_DEFAULT_PORT = 3784;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
@@ -591,9 +591,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (meterId >= MIN_FLOW_METER_ID) {
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
-            long burstSize = calculateBurstSize(sw, bandwidth);
+            long burstSize = MeterConfig.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
+                    config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription());
 
-            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
+            Set<OFMeterFlags> flags = MeterConfig.getMeterFlags();
             installMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
             throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
@@ -610,9 +611,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
 
-            long burstSize = calculateBurstSize(sw, bandwidth);
+            long burstSize = MeterConfig.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
+                    config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription());
 
-            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
+            Set<OFMeterFlags> flags = MeterConfig.getMeterFlags();
 
             modifyMeter(sw, bandwidth, burstSize, meterId, flags);
         } else {
@@ -623,16 +625,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     format("Could not install meter '%d' onto switch '%s'. %s", meterId, dpid, message));
         }
 
-    }
-
-    private long calculateBurstSize(IOFSwitch sw, long bandwidth) {
-        if (isCentecSwitch(sw)) {
-            return Math.min(Math.max(config.getFlowMeterMinBurstSizeInKbits(),
-                    (long) (bandwidth * config.getFlowMeterBurstCoefficient())), MAX_CENTEC_SWITCH_BURST_SIZE);
-        }
-
-        return Math.max(config.getFlowMeterMinBurstSizeInKbits(),
-                (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
     }
 
     @Override

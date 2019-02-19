@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.switches;
+package org.openkilda.wfm.topology.switchmanager.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.openkilda.messaging.info.switches.MeterInfoEntry;
+
+import lombok.Value;
 
 import java.util.List;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class RulesValidationResult {
+@Value
+public class ValidateMetersResult {
 
-    @JsonProperty("missing")
-    private List<Long> missingRules;
+    private List<MeterInfoEntry> missingMeters;
 
-    @JsonProperty("proper")
-    private List<Long> properRules;
+    private List<MeterInfoEntry> misconfiguredMeters;
 
-    @JsonProperty("excess")
-    private List<Long> excessRules;
+    private List<MeterInfoEntry> properMeters;
+
+    private List<Long> excessMeters;
 }
