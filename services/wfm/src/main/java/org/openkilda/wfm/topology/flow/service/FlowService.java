@@ -51,7 +51,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -228,33 +227,24 @@ public class FlowService extends BaseFlowService {
             SwitchValidationException {
         flowValidator.validate(updatingFlow);
 
-        if (diverseFlowId != null && !doesFlowExist(diverseFlowId)) {
-            throw new FlowNotFoundException(diverseFlowId);
-        }
-
-        // TODO: the strategy is defined either per flow or system-wide.
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(updatingFlow, true);
-
         updatingFlow.setStatus(FlowStatus.IN_PROGRESS);
 
         UpdatedFlowPairWithSegments result = transactionManager.doInTransaction(() -> {
-            Optional<FlowPair> foundFlowPair = getFlowPair(updatingFlow.getFlowId());
-            if (!foundFlowPair.isPresent()) {
-                return Optional.<UpdatedFlowPairWithSegments>empty();
+            FlowPair currentFlow = getFlowPair(updatingFlow.getFlowId())
+                    .orElseThrow(() -> new FlowNotFoundException(updatingFlow.getFlowId()));
+
+            if (diverseFlowId != null && !doesFlowExist(diverseFlowId)) {
+                throw new FlowNotFoundException(diverseFlowId);
             }
 
-            FlowPair currentFlow = foundFlowPair.get();
-
-            // group id update
-            updatingFlow.setGroupId(currentFlow.getForward().getGroupId());
-            if (diverseFlowId != null) {
-                if (Objects.equals(updatingFlow.getFlowId(), diverseFlowId)) {
-                    updatingFlow.setGroupId(null);
-                } else {
-                    updatingFlow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
-                }
+            if (diverseFlowId == null) {
+                updatingFlow.setGroupId(null);
+            } else {
+                updatingFlow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
             }
+
+            PathComputer pathComputer = pathComputerFactory.getPathComputer();
+            PathPair pathPair = pathComputer.getPath(updatingFlow, true);
 
             List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
             List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());
@@ -278,11 +268,11 @@ public class FlowService extends BaseFlowService {
 
             flowResourcesManager.deallocateFlow(currentFlow);
 
-            return Optional.of(UpdatedFlowPairWithSegments.builder()
+            return UpdatedFlowPairWithSegments.builder()
                     .oldFlowPair(currentFlow).oldForwardSegments(forwardSegments).oldReverseSegments(reverseSegments)
                     .flowPair(newFlowWithResources).forwardSegments(newForwardSegments)
-                    .reverseSegments(newReverseSegments).build());
-        }).orElseThrow(() -> new FlowNotFoundException(updatingFlow.getFlowId()));
+                    .reverseSegments(newReverseSegments).build();
+        });
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendUpdateRulesCommand(result);
