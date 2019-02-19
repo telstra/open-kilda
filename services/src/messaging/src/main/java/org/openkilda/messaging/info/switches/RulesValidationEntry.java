@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,35 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.switches;
+package org.openkilda.messaging.info.switches;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class RulesValidationResult {
+@Builder
+public class RulesValidationEntry implements Serializable {
 
     @JsonProperty("missing")
-    private List<Long> missingRules;
+    private List<Long> missing;
 
     @JsonProperty("proper")
-    private List<Long> properRules;
+    private List<Long> proper;
 
     @JsonProperty("excess")
-    private List<Long> excessRules;
+    private List<Long> excess;
+
+    @JsonCreator
+    public RulesValidationEntry(@JsonProperty("missing") List<Long> missing,
+                                @JsonProperty("proper") List<Long> proper,
+                                @JsonProperty("excess") List<Long> excess) {
+        this.missing = missing;
+        this.proper = proper;
+        this.excess = excess;
+    }
 }

@@ -21,7 +21,10 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.switchmanager.bolt.RouterBolt;
 import org.openkilda.wfm.topology.switchmanager.bolt.SwitchSyncRulesManager;
+import org.openkilda.wfm.topology.switchmanager.bolt.SwitchValidateManager;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
@@ -33,7 +36,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
     private static final String NB_KAFKA_BOLT = "nb.bolt";
     private static final String SPEAKER_KAFKA_BOLT = "speaker.bolt";
 
-    private static final Fields FIELDS_KEY = new Fields("key");
+    private static final Fields FIELDS_KEY = new Fields(MessageTranslator.KEY_FIELD);
 
     public SwitchManagerTopology(LaunchEnvironment env) {
         super(env, SwitchManagerTopologyConfig.class);
@@ -48,21 +51,34 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
         builder.setSpout(CoordinatorSpout.ID, new CoordinatorSpout());
         builder.setBolt(CoordinatorBolt.ID, new CoordinatorBolt())
                 .allGrouping(CoordinatorSpout.ID)
-                .fieldsGrouping(SwitchSyncRulesManager.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
+                .fieldsGrouping(SwitchSyncRulesManager.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(SwitchValidateManager.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
 
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
 
         builder.setSpout(HUB_SPOUT, buildKafkaSpout(topologyConfig.getKafkaSwitchManagerTopic(), HUB_SPOUT));
-        builder.setBolt(SwitchSyncRulesManager.ID, new SwitchSyncRulesManager(HUB_SPOUT, persistenceManager))
+        builder.setBolt(RouterBolt.ID, new RouterBolt())
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)
+                .fieldsGrouping(SwitchSyncRulesManager.ID, RouterBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(SwitchValidateManager.ID, RouterBolt.INCOME_STREAM, FIELDS_KEY);
+
+        builder.setBolt(SwitchSyncRulesManager.ID, new SwitchSyncRulesManager(RouterBolt.ID, persistenceManager))
+                .fieldsGrouping(RouterBolt.ID, SwitchSyncRulesManager.INCOME_STREAM, FIELDS_KEY)
+                .directGrouping(CoordinatorBolt.ID);
+
+        builder.setBolt(SwitchValidateManager.ID, new SwitchValidateManager(RouterBolt.ID, persistenceManager,
+                topologyConfig.getFlowMeterMinBurstSizeInKbits(), topologyConfig.getFlowMeterBurstCoefficient()))
+                .fieldsGrouping(RouterBolt.ID, SwitchValidateManager.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
 
         builder.setBolt(NB_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic()))
-                .shuffleGrouping(SwitchSyncRulesManager.ID, StreamType.TO_NORTHBOUND.toString());
+                .shuffleGrouping(SwitchSyncRulesManager.ID, StreamType.TO_NORTHBOUND.toString())
+                .shuffleGrouping(SwitchValidateManager.ID, StreamType.TO_NORTHBOUND.toString());
 
         builder.setBolt(SPEAKER_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()))
-                .shuffleGrouping(SwitchSyncRulesManager.ID, StreamType.TO_FLOODLIGHT.toString());
+                .shuffleGrouping(SwitchSyncRulesManager.ID, StreamType.TO_FLOODLIGHT.toString())
+                .shuffleGrouping(SwitchValidateManager.ID, StreamType.TO_FLOODLIGHT.toString());
 
         return builder.createTopology();
     }

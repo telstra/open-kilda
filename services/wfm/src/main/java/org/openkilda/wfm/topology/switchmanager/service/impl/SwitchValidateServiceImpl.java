@@ -15,18 +15,19 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
-import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.switchmanager.SwitchSyncRulesCarrier;
-import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm;
-import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent;
-import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState;
-import org.openkilda.wfm.topology.switchmanager.service.SyncRulesService;
+import org.openkilda.wfm.topology.switchmanager.SwitchValidationCarrier;
+import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm;
+import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
+import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -39,31 +40,31 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class SyncRulesServiceImpl implements SyncRulesService {
+public class SwitchValidateServiceImpl implements SwitchValidateService {
 
-    private Map<String, SwitchSyncRulesFsm> fsms = new HashMap<>();
+    private Map<String, SwitchValidateFsm> fsms = new HashMap<>();
 
     private PersistenceManager persistenceManager;
-    private SwitchSyncRulesCarrier carrier;
-    private StateMachineBuilder<SwitchSyncRulesFsm, SwitchSyncRulesState, SwitchSyncRulesEvent, Object> builder;
+    private SwitchValidationCarrier carrier;
+    private StateMachineBuilder<SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, Object> builder;
 
-    public SyncRulesServiceImpl(SwitchSyncRulesCarrier carrier, PersistenceManager persistenceManager) {
+    public SwitchValidateServiceImpl(SwitchValidationCarrier carrier, PersistenceManager persistenceManager) {
         this.carrier = carrier;
+        this.builder = SwitchValidateFsm.builder();
         this.persistenceManager = persistenceManager;
-        this.builder = SwitchSyncRulesFsm.builder();
     }
 
     @Override
-    public void handleSyncRulesRequest(String key, SwitchRulesSyncRequest request) {
-        SwitchSyncRulesFsm fsm =
-                builder.newStateMachine(SwitchSyncRulesState.INITIALIZED, carrier, key, request, persistenceManager);
+    public void handleSwitchValidateRequest(String key, SwitchValidateRequest request) {
+        SwitchValidateFsm fsm =
+                builder.newStateMachine(SwitchValidateState.INITIALIZED, carrier, key, request, persistenceManager);
 
         process(fsm);
     }
 
     @Override
     public void handleFlowEntriesResponse(String key, SwitchFlowEntries data) {
-        SwitchSyncRulesFsm fsm = fsms.get(key);
+        SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {
             sendFsmNotFound(key);
             return;
@@ -73,46 +74,46 @@ public class SyncRulesServiceImpl implements SyncRulesService {
                 .map(FlowEntry::getCookie)
                 .collect(Collectors.toSet());
 
-        fsm.fire(SwitchSyncRulesEvent.RULES_RECEIVED, presentCookies);
+        fsm.fire(SwitchValidateEvent.RULES_RECEIVED, presentCookies);
         process(fsm);
     }
 
     @Override
-    public void handleInstallRulesResponse(String key) {
-        SwitchSyncRulesFsm fsm = fsms.get(key);
+    public void handleMeterEntriesResponse(String key, SwitchMeterEntries data) {
+        SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {
             sendFsmNotFound(key);
             return;
         }
 
-        fsm.fire(SwitchSyncRulesEvent.RULES_INSTALLED);
+        fsm.fire(SwitchValidateEvent.METERS_RECEIVED, data.getMeterEntries());
         process(fsm);
     }
 
     @Override
     public void handleTaskTimeout(String key) {
-        SwitchSyncRulesFsm fsm = fsms.get(key);
+        SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {
             sendFsmNotFound(key);
             return;
         }
 
-        fsm.fire(SwitchSyncRulesEvent.TIMEOUT);
+        fsm.fire(SwitchValidateEvent.TIMEOUT);
     }
 
     @Override
     public void handleTaskError(String key, ErrorMessage message) {
-        SwitchSyncRulesFsm fsm = fsms.get(key);
+        SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {
             sendFsmNotFound(key);
             return;
         }
 
-        fsm.fire(SwitchSyncRulesEvent.ERROR, message);
+        fsm.fire(SwitchValidateEvent.ERROR, message);
     }
 
     private void sendFsmNotFound(String key) {
-        String message = String.format("Sync rules FSM with key %s not found", key);
+        String message = String.format("Switch validate FSM with key %s not found", key);
         log.error(message);
         ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, message,
                 "FSM not found");
@@ -120,22 +121,22 @@ public class SyncRulesServiceImpl implements SyncRulesService {
         carrier.response(key, errorMessage);
     }
 
-    void process(SwitchSyncRulesFsm fsm) {
-        final List<SwitchSyncRulesState> stopStates = Arrays.asList(
-                SwitchSyncRulesState.RECEIVE_RULES,
-                SwitchSyncRulesState.INSTALL_RULES,
-                SwitchSyncRulesState.FINISHED,
-                SwitchSyncRulesState.FINISHED_WITH_ERROR
+    void process(SwitchValidateFsm fsm) {
+        final List<SwitchValidateState> stopStates = Arrays.asList(
+                SwitchValidateState.RECEIVE_RULES,
+                SwitchValidateState.RECEIVE_METERS,
+                SwitchValidateState.FINISHED,
+                SwitchValidateState.FINISHED_WITH_ERROR
         );
 
         while (!stopStates.contains(fsm.getCurrentState())) {
             fsms.put(fsm.getKey(), fsm);
-            fsm.fire(SwitchSyncRulesEvent.NEXT);
+            fsm.fire(SwitchValidateEvent.NEXT);
         }
 
-        final List<SwitchSyncRulesState> exitStates = Arrays.asList(
-                SwitchSyncRulesState.FINISHED,
-                SwitchSyncRulesState.FINISHED_WITH_ERROR
+        final List<SwitchValidateState> exitStates = Arrays.asList(
+                SwitchValidateState.FINISHED,
+                SwitchValidateState.FINISHED_WITH_ERROR
         );
 
         if (exitStates.contains(fsm.getCurrentState())) {

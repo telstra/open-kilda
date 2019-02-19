@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.switches;
+package org.openkilda.wfm.topology.switchmanager.command;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.openkilda.messaging.command.CommandData;
 
-import java.util.List;
+import lombok.Value;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class RulesValidationResult {
+@Value
+public class RemoveKeyRouterBolt extends CommandData {
 
-    @JsonProperty("missing")
-    private List<Long> missingRules;
+    private String key;
 
-    @JsonProperty("proper")
-    private List<Long> properRules;
-
-    @JsonProperty("excess")
-    private List<Long> excessRules;
+    public RemoveKeyRouterBolt(String key) {
+        this.key = key;
+    }
 }
