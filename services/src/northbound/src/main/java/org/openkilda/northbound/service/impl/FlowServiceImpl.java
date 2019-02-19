@@ -83,6 +83,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -616,7 +617,7 @@ public class FlowServiceImpl implements FlowService {
 
             //TODO: dumping of meters on OF_12 switches (and earlier) is not implemented yet, so skip them.
             if ((matched.version == null || matched.version.compareTo("OF_12") > 0)
-                    && matched.meterId != expected.meterId) {
+                    && !Objects.equals(matched.meterId, expected.meterId)) {
                 result.add(new PathDiscrepancyDto(expected.toString(), "meterId",
                         String.valueOf(expected.meterId), String.valueOf(matched.meterId)));
             }
