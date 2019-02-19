@@ -40,9 +40,9 @@ public class DiscoveryHistoryService {
     /**
      * .
      */
-    public void applyHistory(ISwitchPrepopulateCarrier reply) {
+    public void applyHistory(ISwitchPrepopulateCarrier carrier) {
         for (HistoryFacts history : loadNetworkHistory()) {
-            reply.switchAddWithHistory(history);
+            carrier.switchAddWithHistory(history);
         }
     }
 

@@ -510,6 +510,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     .speed(speed)
                     .state(IslChangeType.DISCOVERED)
                     .availableBandwidth(getAvailableBandwidth(speed))
+                    .packetId(packetId)
                     .build();
 
             Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null,

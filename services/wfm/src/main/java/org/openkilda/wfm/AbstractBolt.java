@@ -23,7 +23,6 @@ import lombok.Getter;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseRichBolt;
-import org.apache.storm.tuple.MessageId;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
@@ -50,9 +49,12 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple input) {
-        log.debug(
-                "{} input tuple from {}:{} size {}",
-                getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), input.size());
+        if (log.isDebugEnabled()) {
+            log.debug("{} input tuple from {}:{} [{}]",
+                      getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
+                      formatTuplePayload(input));
+        }
+
         try {
             currentTuple = input;
             handleInput(input);
@@ -65,14 +67,12 @@ public abstract class AbstractBolt extends BaseRichBolt {
     }
 
     protected void emit(Tuple anchor, List<Object> payload) {
-        if (log.isDebugEnabled()) {
-            log.debug("emit tuple into default stream: {}", payload);
-        }
+        log.debug("emit tuple into default stream: {}", payload);
         output.emit(anchor, payload);
     }
 
     protected void emit(String stream, Tuple anchor, List<Object> payload) {
-        log.debug("emit tuple into {} stream: {}", stream, payload);
+        log.debug("emit tuple into \"{}\" stream: {}", stream, payload);
         output.emit(stream, anchor, payload);
     }
 
@@ -85,35 +85,15 @@ public abstract class AbstractBolt extends BaseRichBolt {
     protected abstract void handleInput(Tuple input) throws AbstractException;
 
     protected void ack(Tuple input) {
-        final MessageId messageId = input.getMessageId();
-        if (messageId != null) {
-            log.debug("ACK tuple id {}", messageId);
-        }
+        log.debug("ACK tuple id {}", input.getMessageId());
         output.ack(input);
     }
 
     protected void unhandledInput(Tuple input) {
-        Iterator<String> fields = input.getFields().iterator();
-        Iterator<Object> values = input.getValues().iterator();
-        StringBuilder payload = new StringBuilder();
-        boolean isFirst = true;
-        while (fields.hasNext() || values.hasNext()) {
-            if (!isFirst) {
-                payload.append(", ");
-            }
-            isFirst = false;
-
-            String name = fields.next();
-            payload.append(name != null ? name : "(unknown)");
-            payload.append(": ");
-            Object v = values.next();
-            payload.append(v != null ? v.getClass().getName() : "null");
-        }
-
         log.error(
                 "{} is unable to handle input tuple from \"{}\" stream \"{}\" [{}] - have topology being build"
                 + " correctly?",
-                getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), payload);
+                getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), formatTuplePayload(input));
     }
 
     @Override
@@ -171,5 +151,26 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     private Logger makeLog() {
         return LoggerFactory.getLogger(getClass());
+    }
+
+    private static String formatTuplePayload(Tuple input) {
+        Iterator<String> fields = input.getFields().iterator();
+        Iterator<Object> values = input.getValues().iterator();
+        StringBuilder payload = new StringBuilder();
+        boolean isFirst = true;
+        while (fields.hasNext() || values.hasNext()) {
+            if (!isFirst) {
+                payload.append(", ");
+            }
+            isFirst = false;
+
+            String name = fields.next();
+            payload.append(name != null ? name : "(unknown)");
+            payload.append(": ");
+            Object v = values.next();
+            payload.append(v != null ? v.getClass().getName() : "null");
+        }
+
+        return payload.toString();
     }
 }

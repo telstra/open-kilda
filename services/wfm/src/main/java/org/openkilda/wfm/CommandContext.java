@@ -48,7 +48,7 @@ public class CommandContext implements Serializable {
      * Create new {@link CommandContext} object using data from current one. Produced object receive extended/nested
      * correlation ID i.e. it contain original correlation ID plus part passed in argument.
      */
-    public CommandContext makeNested(String correlationIdExtension) {
+    public CommandContext fork(String correlationIdExtension) {
         CommandContext nested = new CommandContext(correlationIdExtension + " : " + correlationId);
         nested.merge(this);
         return nested;

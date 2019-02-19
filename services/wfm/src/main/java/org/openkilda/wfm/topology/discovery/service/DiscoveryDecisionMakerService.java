@@ -18,8 +18,11 @@ package org.openkilda.wfm.topology.discovery.service;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.HashMap;
 
+@Slf4j
 public class DiscoveryDecisionMakerService {
 
     private final long failTimeout;
@@ -31,8 +34,12 @@ public class DiscoveryDecisionMakerService {
         this.awaitTime = awaitTime;
     }
 
+    /**
+     * .
+     */
     public void discovered(IDecisionMakerCarrier carrier, Endpoint endpoint, IslInfoData discoveryEvent,
                            long currentTime) {
+        log.debug("Discovery poll DISCOVERED notification on {}", endpoint);
         carrier.linkDiscovered(discoveryEvent);
         lastDiscovery.put(endpoint, currentTime);
     }
@@ -41,6 +48,7 @@ public class DiscoveryDecisionMakerService {
      * Process "failed" event from {@link DiscoveryWatcherService}.
      */
     public void failed(IDecisionMakerCarrier carrier, Endpoint endpoint, long currentTime) {
+        log.debug("Discovery poll FAIL notification on {}", endpoint);
         if (!lastDiscovery.containsKey(endpoint)) {
             lastDiscovery.put(endpoint, currentTime - awaitTime);
         }

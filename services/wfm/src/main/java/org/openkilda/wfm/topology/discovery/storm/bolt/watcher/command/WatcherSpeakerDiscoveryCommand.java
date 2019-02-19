@@ -30,6 +30,6 @@ public class WatcherSpeakerDiscoveryCommand extends WatcherCommand {
 
     @Override
     public void apply(DiscoveryWatcherService service, IWatcherCarrier carrier) {
-        // TODO
+        service.discovery(carrier, payload);
     }
 }

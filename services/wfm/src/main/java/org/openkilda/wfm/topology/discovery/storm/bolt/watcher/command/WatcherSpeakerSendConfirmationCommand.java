@@ -20,10 +20,10 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
 import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
 
-public class WatcherDiscoverySendConfirmationCommand extends WatcherCommand {
+public class WatcherSpeakerSendConfirmationCommand extends WatcherCommand {
     private final DiscoPacketSendingConfirmation confirmation;
 
-    public WatcherDiscoverySendConfirmationCommand(DiscoPacketSendingConfirmation confirmation) {
+    public WatcherSpeakerSendConfirmationCommand(DiscoPacketSendingConfirmation confirmation) {
         super(new Endpoint(confirmation.getEndpoint()));
         this.confirmation = confirmation;
     }

@@ -22,12 +22,14 @@ import org.openkilda.wfm.topology.discovery.model.TickClock;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+@Slf4j
 public class DiscoveryWatcherService {
     private final long awaitTime;
 
@@ -45,6 +47,7 @@ public class DiscoveryWatcherService {
      * Add new endpoint for send discovery process.
      */
     public void addWatch(IWatcherCarrier carrier, Endpoint endpoint, long currentTime) {
+        log.debug("Add discovery poll endpoint {}", endpoint);
         Packet packet = Packet.of(endpoint, packetNo);
         timeouts.computeIfAbsent(currentTime + awaitTime, mappingFunction -> new HashSet<>())
                 .add(packet);
@@ -56,6 +59,7 @@ public class DiscoveryWatcherService {
     }
 
     public void removeWatch(Endpoint endpoint) {
+        log.debug("Remove (dummy) discovery poll endpoint {}", endpoint);
         // No action required (at least we can't imagine them now).
     }
 
@@ -78,7 +82,11 @@ public class DiscoveryWatcherService {
         }
     }
 
+    /**
+     * .
+     */
     public void confirmation(Endpoint endpoint, long packetNo) {
+        log.debug("Receive discovery send confirmation for {} (packet #{})", endpoint, packetNo);
         Packet packet = Packet.of(endpoint, packetNo);
         confirmations.add(packet);
     }
@@ -88,9 +96,19 @@ public class DiscoveryWatcherService {
      */
     public void discovery(IWatcherCarrier carrier, IslInfoData discoveryEvent) {
         Endpoint destination = new Endpoint(discoveryEvent.getDestination());
-        Packet packet = Packet.of(destination, discoveryEvent.getPacketId());
+        Long packetId = discoveryEvent.getPacketId();
+        if (packetId == null) {
+            log.error("Got corrupted discovery packet into {} - packetId field is empty", destination);
+        } else {
+            discovery(carrier, discoveryEvent, Packet.of(destination, packetId));
+        }
+    }
+
+    private void discovery(IWatcherCarrier carrier, IslInfoData discoveryEvent, Packet packet) {
+        log.debug("Receive ISL discovery event for {} (packet #{})", packet.endpoint, packet.packetNo);
+
         confirmations.remove(packet);
-        carrier.discoveryReceived(destination, discoveryEvent, clock.getCurrentTimeMs());
+        carrier.discoveryReceived(packet.endpoint, discoveryEvent, clock.getCurrentTimeMs());
     }
 
     @VisibleForTesting

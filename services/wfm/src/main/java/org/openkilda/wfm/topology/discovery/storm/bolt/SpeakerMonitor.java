@@ -37,8 +37,8 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherDiscoverySendConfirmationCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherSpeakerSendConfirmationCommand;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import lombok.extern.slf4j.Slf4j;
@@ -99,7 +99,7 @@ public class SpeakerMonitor extends AbstractBolt {
             } else if (payload instanceof DiscoPacketSendingConfirmation) {
                 emit(STREAM_WATCHER_ID, input,
                         makeWatcherTuple(input,
-                                new WatcherDiscoverySendConfirmationCommand((DiscoPacketSendingConfirmation) payload)));
+                                new WatcherSpeakerSendConfirmationCommand((DiscoPacketSendingConfirmation) payload)));
             } else if (payload instanceof SwitchInfoData) {
                 emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
             } else if (payload instanceof PortInfoData) {

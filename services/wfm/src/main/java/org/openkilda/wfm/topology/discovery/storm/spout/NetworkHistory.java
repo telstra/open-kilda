@@ -89,7 +89,7 @@ public class NetworkHistory extends BaseRichSpout {
         public void switchAddWithHistory(HistoryFacts historyFacts) {
             SwitchHistoryCommand command = new SwitchHistoryCommand(historyFacts);
             SwitchId switchId = command.getDatapath();
-            CommandContext context = rootContext.makeNested(switchId.toOtsdFormat());
+            CommandContext context = rootContext.fork(switchId.toOtsdFormat());
             output.emit(new Values(switchId, command, context));
         }
     }
