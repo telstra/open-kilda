@@ -490,8 +490,8 @@ public class InMemoryPathComputerTest {
                 .flowId("new-flow")
                 .groupId("diverse")
                 .bandwidth(10)
-                .srcSwitch(Switch.builder().switchId(new SwitchId("00:0A")).build())
-                .destSwitch(Switch.builder().switchId(new SwitchId("00:0D")).build())
+                .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
+                .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair diversePath = pathComputer.getPath(flow);
