@@ -89,6 +89,9 @@ kilda_production_fileserver: "http://127.0.0.1"
 kilda_reroute_throttling_delay_min: 3
 kilda_reroute_throttling_delay_max: 15
 
+kilda_diversity_isl_weight: 1000
+kilda_diversity_switch_weight: 100
+
 kilda_isl_cost_when_port_down: 10000
 kilda_isl_cost_when_under_maintenance: 10000
 
