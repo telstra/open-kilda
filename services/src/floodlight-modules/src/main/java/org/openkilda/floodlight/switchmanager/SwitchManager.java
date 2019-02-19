@@ -115,7 +115,6 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1344,8 +1343,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public InetAddress getSwitchIpAddress(IOFSwitch sw) {
-        return ((InetSocketAddress) sw.getInetAddress()).getAddress();
+    public String getSwitchIpAddress(IOFSwitch sw) {
+        return ((InetSocketAddress) sw.getInetAddress()).getAddress().toString();
     }
 
     @Override

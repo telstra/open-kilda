@@ -28,6 +28,7 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -368,7 +369,7 @@ public class DiscoveryManagerTest {
                 switchAddress,
                 speakerAddress,
                 "OF_13", switchDescription,
-                Collections.emptySet(),
+                ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
                 affectedEndpoints.stream()
                         .map(entry -> new SpeakerSwitchPortView(entry.getPortNumber(), SpeakerSwitchPortView.State.UP))
                         .collect(Collectors.toList()));

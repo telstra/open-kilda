@@ -36,6 +36,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.UnknownHostException;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -72,7 +73,7 @@ abstract class BfdCommand extends Command {
             try (Session session = sessionService.open(sw)) {
                 handle(session);
             }
-        } catch (SwitchOperationException e) {
+        } catch (SwitchOperationException | UnknownHostException e) {
             handleError(e);
 
             // early error response
@@ -86,14 +87,14 @@ abstract class BfdCommand extends Command {
         checkSwitchCapabilities(sw);
     }
 
-    protected abstract void handle(Session session) throws SwitchWriteException;
+    protected abstract void handle(Session session) throws SwitchWriteException, UnknownHostException;
 
     protected abstract InfoData assembleResponse();
 
     protected void sendResponse() {
         CommandContext context = getContext();
         InfoMessage response = context.makeInfoMessage(assembleResponse());
-        kafkaProducer.sendMessageAndTrack(kafkaUtility.getTopics().getTopoDiscoTopic(), response);
+        kafkaProducer.sendMessageAndTrack(kafkaUtility.getKafkaChannel().getTopoDiscoTopic(), response);
     }
 
     protected void handleError(Throwable error) {

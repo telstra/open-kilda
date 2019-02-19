@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 // FIXME(tdurakov): this REST-endpoint is temporal solution and should be deleted once BFD will be introduced as a part
@@ -103,7 +104,7 @@ public class EnableBfdResource extends ServerResource {
     }
 
     private OFPacketOut makeSessionConfigMessage(NoviBfdSession bfdSession, IOFSwitch sw,
-                                                   ISwitchManager switchManager) {
+                                                   ISwitchManager switchManager) throws UnknownHostException {
         OFFactory ofFactory = sw.getOFFactory();
 
         OFActionNoviflowBfdStart bfdStartAction = ofFactory.actions().buildNoviflowBfdStart()
@@ -121,14 +122,15 @@ public class EnableBfdResource extends ServerResource {
                 .build();
     }
 
-    private IPacket makeSessionConfigPayload(IOFSwitch sw, ISwitchManager switchManager, NoviBfdSession bfdSession) {
+    private IPacket makeSessionConfigPayload(IOFSwitch sw, ISwitchManager switchManager,
+                                             NoviBfdSession bfdSession) throws UnknownHostException {
         final TransportPort udpPort = TransportPort.of(bfdSession.getUdpPortNumber());
         UDP l4 = new UDP()
                 .setSourcePort(udpPort)
                 .setDestinationPort(udpPort);
 
-        InetAddress sourceIpAddress = switchManager.getSwitchIpAddress(sw);
-        InetAddress destIpAddress = bfdSession.getRemote().getInetAddress();
+        InetAddress sourceIpAddress = InetAddress.getByName(switchManager.getSwitchIpAddress(sw));
+        InetAddress destIpAddress = InetAddress.getByName(bfdSession.getRemote().getIpAddress());
         IPacket l3 = new IPv4()
                 .setSourceAddress(IPv4Address.of(sourceIpAddress.getAddress()))
                 .setDestinationAddress(IPv4Address.of(destIpAddress.getAddress()))

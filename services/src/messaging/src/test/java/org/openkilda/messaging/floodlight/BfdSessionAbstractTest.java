@@ -17,8 +17,12 @@ package org.openkilda.messaging.floodlight;
 
 import org.openkilda.messaging.JsonSerializeAbstractTest;
 import org.openkilda.messaging.model.NoviBfdSession;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.SwitchReference;
 import org.openkilda.model.SwitchId;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
@@ -28,10 +32,12 @@ public abstract class BfdSessionAbstractTest extends JsonSerializeAbstractTest {
         return new NoviBfdSession(
                 new SwitchReference(
                         new SwitchId("ff:fe:00:00:00:00:00:01"),
-                        Inet4Address.getByName("127.0.2.1")),
+                        Inet4Address.getByName("127.0.2.1"),
+                        ImmutableSet.of(SpeakerSwitchView.Feature.BFD), ImmutableList.of()),
                 new SwitchReference(
                         new SwitchId("ff:fd:00:00:00:00:00:02"),
-                        Inet4Address.getByName("127.0.2.2")),
+                        Inet4Address.getByName("127.0.2.2"),
+                        ImmutableSet.of(SpeakerSwitchView.Feature.BFD), ImmutableList.of()),
                 5, 65001, 1, 1005, 500, (short) 3, true);
     }
 }

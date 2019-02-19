@@ -28,16 +28,15 @@ import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -70,7 +69,6 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -81,6 +79,7 @@ import java.util.Set;
 public class SwitchTrackingServiceTest extends EasyMockSupport {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
     private static final DatapathId dpId = DatapathId.of(0x7fff);
+    private static String switchIpAddress;
     private static final Set<SpeakerSwitchView.Feature> switchFeatures = Collections.singleton(
             SpeakerSwitchView.Feature.METERS);
 
@@ -122,11 +121,11 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         iofSwitchService.addOFSwitchListener(eq(service));
         moduleContext.addService(IOFSwitchService.class, iofSwitchService);
 
-        KafkaTopicsConfig topics = createMock(KafkaTopicsConfig.class);
+        KafkaChannel topics = createMock(KafkaChannel.class);
         expect(topics.getTopoDiscoTopic()).andReturn(KAFKA_ISL_DISCOVERY_TOPIC);
-
+        expect(topics.getRegion()).andReturn("1");
         KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
-        expect(kafkaUtility.getTopics()).andReturn(topics);
+        expect(kafkaUtility.getKafkaChannel()).andReturn(topics);
         moduleContext.addService(KafkaUtilityService.class, kafkaUtility);
 
         replay(kafkaUtility, topics, iofSwitchService);
@@ -341,6 +340,9 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                 makePhysicalPortMock(5, false)
         ));
 
+        expect(switchManager.getSwitchIpAddress(iofSwitch1)).andReturn("127.0.2.1");
+        expect(switchManager.getSwitchIpAddress(iofSwitch2)).andReturn("127.0.2.2");
+
         expect(featureDetector.detectSwitch(iofSwitch1))
                 .andReturn(ImmutableSet.of(SpeakerSwitchView.Feature.METERS));
         expect(featureDetector.detectSwitch(iofSwitch2))
@@ -370,37 +372,28 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         verify(producerService);
 
         ArrayList<Message> expectedMessages = new ArrayList<>();
-        expectedMessages.add(new InfoMessage(new NetworkDumpBeginMarker(), 0, correlationId));
-        expectedMessages.add(new InfoMessage(
+        expectedMessages.add(new ChunkedInfoMessage(
                 new NetworkDumpSwitchData(new SpeakerSwitchView(
-                        new SwitchId(swAid.getLong()),
-                        new InetSocketAddress(Inet4Address.getByName("127.0.1.1"), 32768),
-                        new InetSocketAddress(Inet4Address.getByName("127.0.1.254"), 6653),
-                        "OF_13",
-                        switchDescription,
+                        new SwitchId(swAid.getLong()), "127.0.2.1",
                         ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
                         ImmutableList.of(
                                 new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
-                                new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP)))), 0, correlationId));
-        expectedMessages.add(new InfoMessage(
+                                new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP)))), 0, correlationId, 0, 2, "1"));
+        expectedMessages.add(new ChunkedInfoMessage(
                 new NetworkDumpSwitchData(new SpeakerSwitchView(
-                        new SwitchId(swBid.getLong()),
-                        new InetSocketAddress(Inet4Address.getByName("127.0.1.2"), 32768),
-                        new InetSocketAddress(Inet4Address.getByName("127.0.1.254"), 6653),
-                        "OF_13",
-                        switchDescription,
+                        new SwitchId(swBid.getLong()), "127.0.2.2",
                         ImmutableSet.of(SpeakerSwitchView.Feature.METERS, SpeakerSwitchView.Feature.BFD),
                         ImmutableList.of(
                                 new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP),
                                 new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP),
-                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN)))), 0, correlationId));
-        expectedMessages.add(new InfoMessage(new NetworkDumpEndMarker(), 0, correlationId));
+                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN)))), 0, correlationId, 1, 2, "1"));
 
         assertEquals(expectedMessages, producedMessages);
     }
 
-    private SpeakerSwitchView makeSwitchRecord(DatapathId datapath, Set<SpeakerSwitchView.Feature> features,
-                                               boolean... portState) {
+
+    private SpeakerSwitchView makeSwitchRecord(DatapathId datapath, String ipAddress, Set<SpeakerSwitchView.Feature> features,
+                                    boolean... portState) {
         List<SpeakerSwitchPortView> ports = new ArrayList<>(portState.length);
         for (int idx = 0; idx < portState.length; idx++) {
             ports.add(new SpeakerSwitchPortView(idx + 1,

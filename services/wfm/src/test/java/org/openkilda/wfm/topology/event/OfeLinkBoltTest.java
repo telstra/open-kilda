@@ -156,7 +156,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
 
         // when
         PortInfoData dumpPortData = new PortInfoData(new SwitchId("ff:01"), 2, PortChangeType.UP);
-        InfoMessage dumpBeginMessage = new InfoMessage(dumpPortData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage dumpBeginMessage = new InfoMessage(dumpPortData, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(dumpBeginMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.doWork(tuple);
@@ -193,7 +193,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         PathNode source = new PathNode(switchId, port, 0);
         PathNode destination = new PathNode(switchId, port, 1);
         IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED, false);
-        InfoMessage inputMessage = new InfoMessage(isl, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage inputMessage = new InfoMessage(isl, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.doWork(tuple);
@@ -210,14 +210,16 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         bolt.state = State.MAIN;
 
         PortInfoData portInfoData = new PortInfoData(switchId, port, PortChangeType.DOWN);
-        InfoMessage inputMessage = new InfoMessage(portInfoData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage inputMessage = new InfoMessage(portInfoData, 0, DEFAULT_CORRELATION_ID, Destination.WFM,
+                null);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.doWork(tuple);
 
 
         PortInfoData updatedData = new PortInfoData(switchId, port - config.getBfdPortOffset(), PortChangeType.DOWN);
-        InfoMessage outputMessage = new InfoMessage(updatedData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage outputMessage = new InfoMessage(updatedData, 0, DEFAULT_CORRELATION_ID, Destination.WFM,
+                null);
 
         Mockito.verify(outputDelegate).ack(tuple);
         Mockito.verify(outputDelegate).emit(eq(NETWORK_TOPOLOGY_CHANGE_STREAM),
@@ -240,7 +242,35 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         SpeakerSwitchView switchRecord = new SpeakerSwitchView(
                 switchId, swAddress, speakerAddress, "OF_13", switchDescription, new HashSet<>(), switchPorts);
         NetworkDumpSwitchData data = new NetworkDumpSwitchData(switchRecord);
-        InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.discovery = Mockito.mock(DiscoveryManager.class);
+        ArgumentCaptor<SpeakerSwitchView> switchCaptor = ArgumentCaptor.forClass(SpeakerSwitchView.class);
+        bolt.dispatchSyncInProgress(tuple, inputMessage);
+        Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
+
+        assertEquals(2, switchCaptor.getValue().getPorts().size());
+        assertEquals(0, switchCaptor.getValue().getPorts().stream()
+                .filter(switchPort -> (switchPort.getNumber() > BFD_OFFSET)).count());
+    }
+
+    @Test
+    public void testDispatchMainMaskLogicalPortsSwitchActivated() throws JsonProcessingException, UnknownHostException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final String ipAddress = "127.0.0.1";
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
+        bolt.state = State.SYNC_IN_PROGRESS;
+        List<SpeakerSwitchPortView> switchPorts = new ArrayList<>();
+        switchPorts.add(new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(BFD_OFFSET + 1, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(BFD_OFFSET + 3, SpeakerSwitchPortView.State.UP));
+        SpeakerSwitchView switchRecord = new SpeakerSwitchView(switchId, ipAddress, new HashSet<>(), switchPorts);
+        SwitchInfoData data = new SwitchInfoData(switchId, SwitchChangeType.ACTIVATED, null, null,
+                null, null, false, switchRecord);
+        InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.discovery = Mockito.mock(DiscoveryManager.class);
