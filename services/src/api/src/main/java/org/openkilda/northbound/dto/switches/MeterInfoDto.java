@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,24 +15,39 @@
 
 package org.openkilda.northbound.dto.switches;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RulesValidationResult {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class MeterInfoDto {
 
-    @JsonProperty("missing")
-    private List<Long> missingRules;
+    @JsonProperty("meter_id")
+    private Long meterId;
 
-    @JsonProperty("proper")
-    private List<Long> properRules;
+    @JsonProperty("cookie")
+    private Long cookie;
 
-    @JsonProperty("excess")
-    private List<Long> excessRules;
+    @JsonProperty("flow_id")
+    private String flowId;
+
+    @JsonProperty("rate")
+    private Long rate;
+
+    @JsonProperty("burst_size")
+    private Long burstSize;
+
+    @JsonProperty("flags")
+    private String[] flags;
+
+    @JsonProperty("actual")
+    private MeterMisconfiguredInfoDto actual;
+
+    @JsonProperty("expected")
+    private MeterMisconfiguredInfoDto expected;
 }
