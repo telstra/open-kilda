@@ -69,6 +69,9 @@ public class Neo4jFeatureTogglesRepository extends Neo4jGenericRepository<Featur
                 if (featureToggles.getUnpushFlowEnabled() != null) {
                     updatedFeatureToggles.setUnpushFlowEnabled(featureToggles.getUnpushFlowEnabled());
                 }
+                if (featureToggles.getBfdEventsEnabled() != null) {
+                    updatedFeatureToggles.setBfdEventsEnabled(featureToggles.getBfdEventsEnabled());
+                }
 
                 super.createOrUpdate(updatedFeatureToggles);
             }
