@@ -47,13 +47,9 @@ class FlowHelper {
     FlowCreatePayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
                                  List<FlowCreatePayload> existingFlows = []) {
         Wrappers.retry(3, 0) {
-            def newFlow = FlowCreatePayload.builder()
-                    .id(generateFlowId())
-                    .source(getFlowEndpoint(srcSwitch, useTraffgenPorts))
-                    .destination(getFlowEndpoint(dstSwitch, useTraffgenPorts))
-                    .maximumBandwidth(500)
-                    .description("autotest flow")
-                    .build()
+            def newFlow = new FlowCreatePayload(generateFlowId(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
+                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null, null,
+                    null, null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
@@ -62,23 +58,24 @@ class FlowHelper {
     }
 
     /**
-     * Creates a FlowPayload instance with random vlan and flow id suitable for a single-switch flow.
+     * Creates a FlowCreatePayload instance with random vlan and flow id suitable for a single-switch flow.
      * The flow will be on DIFFERENT PORTS. Will try to look for both ports to be traffgen ports.
      * But if such port is not available, will pick a random one. So in order to run a correct traffic
      * examination certain switch should have at least 2 traffgens connected to different ports.
      */
-    FlowPayload singleSwitchFlow(Switch sw) {
+    FlowCreatePayload singleSwitchFlow(Switch sw, boolean useTraffgenPorts = true,
+                                       List<FlowCreatePayload> existingFlows = []) {
         def allowedPorts = topology.getAllowedPortsForSwitch(sw)
-        def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
-        allowedPorts = allowedPorts - srcEndpoint.portNumber //do not pick the same port as in src
-        def dstEndpoint = getFlowEndpoint(sw, allowedPorts)
-        return FlowPayload.builder()
-                .id(generateFlowId())
-                .source(srcEndpoint)
-                .destination(dstEndpoint)
-                .maximumBandwidth(500)
-                .description("autotest flow")
-                .build()
+        Wrappers.retry(3, 0) {
+            def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
+            def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
+            def newFlow = new FlowCreatePayload(generateFlowId(), srcEndpoint, dstEndpoint, 500, false, false,
+                    "autotest flow", null, null, null, null, null)
+            if (flowConflicts(newFlow, existingFlows)) {
+                throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
+            }
+            return newFlow
+        } as FlowCreatePayload
     }
 
     /**

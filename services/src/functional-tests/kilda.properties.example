@@ -45,3 +45,4 @@ bfd.offset=200
 opentsdb.metric.prefix=kilda.
 
 diversity.isl.weight=1000
+diversity.switch.weight=100

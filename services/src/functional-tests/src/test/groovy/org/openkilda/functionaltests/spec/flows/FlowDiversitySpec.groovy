@@ -8,26 +8,39 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
+import spock.lang.Issue
+import spock.lang.Narrative
 
+@Narrative("""
+This test suite verifies the ability to create diverse flows in the system. Diverse flows are flows that should not 
+overlap at all or the overlapping should be minimal. Such flows form a so-called diversity group. Ideally, the diversity 
+group should not have flows with overlapping paths. But it depends on the cost of paths. The paths of flows from 
+the same diversity group may overlap if the cost of each non-overlapping path is more than the cost of the overlapping 
+path. The cost of paths for diverse flows is calculated in real time and consists of the following parameters: 
+
+1. The cost of ISL involved in the flow path (taken from DB);
+2. (diversity.switch.weight) * (the number of diverse flows going through this switch);
+3. (diversity.isl.weight) * (the number of diverse flows going through this ISL). 
+
+Refer to https://github.com/telstra/open-kilda/issues/1231 for more details.
+""")
 class FlowDiversitySpec extends BaseSpecification {
 
     @Value('${diversity.isl.weight}')
     int diversityIslWeight
 
+    @Value('${diversity.switch.weight}')
+    int diversitySwitchWeight
+
     def "Able to create diverse flows"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            database.getPaths(src.dpId, dst.dpId)*.path.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-
-        } ?: assumeTrue("No suiting switches found", false)
+        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
 
         when: "Create three flows with diversity enabled"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
@@ -38,9 +51,9 @@ class FlowDiversitySpec extends BaseSpecification {
         [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
 
         then: "All flows have different paths"
-        def allInvolvedIsls = [flow1, flow2, flow3].collect {
+        def allInvolvedIsls = [flow1, flow2, flow3].collectMany {
             pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.id)))
-        }.flatten()
+        }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Delete flows"
@@ -49,14 +62,7 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Able to update flows to become diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            database.getPaths(src.dpId, dst.dpId)*.path.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-
-        } ?: assumeTrue("No suiting switches found", false)
+        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
 
         and: "Create three flows"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
@@ -83,9 +89,9 @@ class FlowDiversitySpec extends BaseSpecification {
         def flow3PathUpdated = PathHelper.convert(northbound.getFlowPath(flow3.id))
         [flow1Path, flow2PathUpdated, flow3PathUpdated].toSet().size() == 3
 
-        def allInvolvedIsls = [flow1Path, flow2PathUpdated, flow3PathUpdated].collect {
+        def allInvolvedIsls = [flow1Path, flow2PathUpdated, flow3PathUpdated].collectMany {
             pathHelper.getInvolvedIsls(it)
-        }.flatten()
+        }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Delete flows"
@@ -94,14 +100,7 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Able to update flows to become not diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            database.getPaths(src.dpId, dst.dpId)*.path.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-
-        } ?: assumeTrue("No suiting switches found", false)
+        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
 
         and: "Create three flows with diversity enabled"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
@@ -114,7 +113,7 @@ class FlowDiversitySpec extends BaseSpecification {
         def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {
             PathHelper.convert(northbound.getFlowPath(it.id))
         }
-        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collect { pathHelper.getInvolvedIsls(it) }.flatten()
+        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { pathHelper.getInvolvedIsls(it) }
         assert allInvolvedIsls.unique(false) == allInvolvedIsls
 
         when: "Update the second flow to become not diverse"
@@ -139,16 +138,7 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Diverse flows are built through the same path if there are no alternative paths available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allFlowPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
-            allFlowPaths.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-
-        } ?: assumeTrue("No suiting switches found", false)
+        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(2)
 
         and: "Create a flow going through these switches"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -157,8 +147,8 @@ class FlowDiversitySpec extends BaseSpecification {
 
         and: "Make all alternative paths unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
-        allFlowPaths.findAll { it != flow1Path }.unique { it.first() }.findAll {
-            it.first().portNo != flow1Path.first().portNo
+        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll { it != flow1Path }.unique {
+            it.first()
         }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
@@ -187,31 +177,37 @@ class FlowDiversitySpec extends BaseSpecification {
         database.resetCosts()
     }
 
-    def "Cost of link from a diversity group is increased when calculating diverse flow paths"() {
-        given: "Two active neighboring switches with two not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allFlowPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
-            allFlowPaths.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-
-        } ?: assumeTrue("No suiting switches found", false)
+    def "Links and switches get extra cost that is considered while calculating diverse flow paths"() {
+        given: "Two active neighboring switches with three not overlapping paths at least"
+        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
 
         and: "Create a flow going through these switches"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        and: "Make all alternative paths less preferable by 1 for diverse flows"
-        allFlowPaths.findAll { it != flow1Path }.unique { it.first() }.findAll {
-            it.first().portNo != flow1Path.first().portNo
-        }.each {
-            def isl = pathHelper.getInvolvedIsls(it)[0]
+        and: "Make cost of the first flow path and min alternative paths equal to each other (if it is needed)"
+        def altPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        altPaths.remove(flow1Path)
+
+        def flow1PathCost = pathHelper.getCost(flow1Path) + diversityIslWeight + diversitySwitchWeight * 2
+        def minAltPathCost = pathHelper.getCost(altPaths.min { it.size() }) + diversitySwitchWeight * 2
+        int difference = flow1PathCost - minAltPathCost
+
+        if (difference < 0) {
+            def isl = pathHelper.getInvolvedIsls(flow1Path)[0]
             northbound.updateLinkProps([new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort,
-                    isl.dstSwitch.dpId.toString(), isl.dstPort, ["cost": (diversityIslWeight + 1).toString()])])
+                    isl.dstSwitch.dpId.toString(), isl.dstPort, ["cost": (flow1PathCost - difference).toString()])])
+        }
+
+        if (difference > 0) {
+            int minAltPathNodeCount = altPaths.min { it.size() }.size()
+            altPaths.findAll { it.size() == minAltPathNodeCount }.each {
+                def isl = pathHelper.getInvolvedIsls(it)[0]
+                int islCost = database.getIslCost(isl)
+                northbound.updateLinkProps([new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort,
+                        isl.dstSwitch.dpId.toString(), isl.dstPort, ["cost": (islCost + difference).toString()])])
+            }
         }
 
         when: "Create the second flow with diversity enabled"
@@ -222,20 +218,225 @@ class FlowDiversitySpec extends BaseSpecification {
         then: "The flow is built through the most preferable path (path of the first flow)"
         flow2Path == flow1Path
 
-        when: "Create the third flow with diversity enabled"
+        when: "Make the first flow path less preferable by 1 than min alternative paths (if it is needed)"
+        flow1PathCost = pathHelper.getCost(flow1Path) + (diversityIslWeight + diversitySwitchWeight * 2) * 2
+        difference = flow1PathCost - minAltPathCost
+        if (difference <= 0) {
+            def isl = pathHelper.getInvolvedIsls(flow1Path)[0]
+            northbound.updateLinkProps([new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort,
+                    isl.dstSwitch.dpId.toString(), isl.dstPort, ["cost": (flow1PathCost - difference + 1).toString()])])
+        }
+
+        and: "Create the third flow with diversity enabled"
         def flow3 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2]).tap {
             it.diverseFlowId = flow2.id
         }
         flowHelper.addFlow(flow3)
         def flow3Path = PathHelper.convert(northbound.getFlowPath(flow3.id))
 
-        then: "The flow is built through one of the alternative paths because they are preferable already"
-        def involvedIsls = [flow2Path, flow3Path].collect { pathHelper.getInvolvedIsls(it) }.flatten()
+        then: "The flow is built through one of min alternative paths because they are preferable already"
+        def involvedIsls = [flow2Path, flow3Path].collectMany { pathHelper.getInvolvedIsls(it) }
         flow3Path != flow2Path
         involvedIsls.unique(false) == involvedIsls
 
         and: "Delete flows and link props"
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+    }
+
+    def "Able to get flow paths with correct overlapping segments stats (casual flows)"() {
+        given: "Two active neighboring switches with three not overlapping paths at least"
+        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
+
+        and: "Create three flows with diversity enabled"
+        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
+        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        def flow3 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2]).tap {
+            it.diverseFlowId = flow2.id
+        }
+        [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
+
+        when: "Get flow path for all flows"
+        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect { northbound.getFlowPath(it.id) }
+
+        then: "Flow path response for all flows has correct overlapping segments stats"
+        def flow2SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(flow2Path)).size()
+        def flow3SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(flow3Path)).size()
+        def expectedValuesMap = [
+                diverseGroup: [
+                        (flow1.id): [islCount: 0, switchCount: 2, islPercent: 0, switchPercent: 100],
+                        (flow2.id): [islCount     : 0, switchCount: 2, islPercent: 0,
+                                     switchPercent: (2 * 100 / flow2SwitchCount).toInteger()],
+                        (flow3.id): [islCount     : 0, switchCount: 2, islPercent: 0,
+                                     switchPercent: (2 * 100 / flow3SwitchCount).toInteger()]
+                ],
+                otherFlows  : [
+                        (flow1.id): [
+                                (flow2.id): [islCount: 0, switchCount: 2, islPercent: 0, switchPercent: 100],
+                                (flow3.id): [islCount: 0, switchCount: 2, islPercent: 0, switchPercent: 100]
+                        ],
+                        (flow2.id): [
+                                (flow1.id): [islCount     : 0, switchCount: 2, islPercent: 0,
+                                             switchPercent: (2 * 100 / flow2SwitchCount).toInteger()],
+                                (flow3.id): [islCount     : 0, switchCount: 2, islPercent: 0,
+                                             switchPercent: (2 * 100 / flow2SwitchCount).toInteger()]
+                        ],
+                        (flow3.id): [
+                                (flow1.id): [islCount     : 0, switchCount: 2, islPercent: 0,
+                                             switchPercent: (2 * 100 / flow3SwitchCount).toInteger()],
+                                (flow2.id): [islCount     : 0, switchCount: 2, islPercent: 0,
+                                             switchPercent: (2 * 100 / flow3SwitchCount).toInteger()]
+                        ]
+                ]
+        ]
+        verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
+
+        and: "Delete flows"
+        [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
+    }
+
+    @Issue("https://github.com/telstra/open-kilda/issues/2072")
+    @Ignore("Functionality is currently not supported yet")
+    def "Able to get flow paths with correct overlapping segments stats (single-switch flows)"() {
+        given: "Two active switches"
+        def (Switch sw1, Switch sw2) = topology.getActiveSwitches()[0..1]
+
+        and: "Create two single-switch flows with diversity enabled on the first switch"
+        def flow1 = flowHelper.singleSwitchFlow(sw1, false)
+        def flow2 = flowHelper.singleSwitchFlow(sw1, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        [flow1, flow2].each { flowHelper.addFlow(it) }
+
+        and: "Create the third single-switch flow with diversity enabled on the second switch"
+        def flow3 = flowHelper.singleSwitchFlow(sw2, false).tap { it.diverseFlowId = flow2.id }
+        flowHelper.addFlow(flow3)
+
+        when: "Get flow path for all flows"
+        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect { northbound.getFlowPath(it.id) }
+
+        then: "Flow path response for all flows has correct overlapping segments stats"
+        def expectedValuesMap = [
+                diverseGroup: [
+                        (flow1.id): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
+                        (flow2.id): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
+                        (flow3.id): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
+                ],
+                otherFlows  : [
+                        (flow1.id): [
+                                (flow2.id): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
+                                (flow3.id): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
+                        ],
+                        (flow2.id): [
+                                (flow1.id): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
+                                (flow3.id): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
+                        ],
+                        (flow3.id): [
+                                (flow1.id): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0],
+                                (flow2.id): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
+                        ]
+                ]
+        ]
+        verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
+
+        and: "Delete flows"
+        [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
+    }
+
+    @Issue("https://github.com/telstra/open-kilda/issues/2072")
+    @Ignore("Functionality is currently not supported yet")
+    def "Able to get flow paths with correct overlapping segments stats (casual + single-switch flows)"() {
+        given: "Two active not neighboring switches"
+        def switches = topology.getActiveSwitches()
+        def allLinks = northbound.getAllLinks()
+        def (Switch sw1, Switch sw2) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Create a casual flow going through these switches"
+        def flow1 = flowHelper.randomFlow(sw1, sw2, false)
+        flowHelper.addFlow(flow1)
+
+        and: "Create a single-switch with diversity enabled on the source switch of the first flow"
+        def flow2 = flowHelper.singleSwitchFlow(sw1, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        flow2 = flowHelper.addFlow(flow2)
+
+        and: "Create a single-switch with diversity enabled on the destination switch of the first flow"
+        def flow3 = flowHelper.singleSwitchFlow(sw2, false, [flow1]).tap { it.diverseFlowId = flow2.id }
+        flowHelper.addFlow(flow3)
+
+        when: "Get flow path for all flows"
+        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect { northbound.getFlowPath(it.id) }
+
+        then: "Flow path response for all flows has correct overlapping segments stats"
+        def flow1SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(flow1Path)).size()
+        def expectedValuesMap = [
+                diverseGroup: [
+                        (flow1.id): [islCount     : 0, switchCount: 2, islPercent: 0,
+                                     switchPercent: (2 * 100 / flow1SwitchCount).toInteger()],
+                        (flow2.id): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
+                        (flow3.id): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100]
+                ],
+                otherFlows  : [
+                        (flow1.id): [
+                                (flow2.id): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
+                                (flow3.id): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100]
+                        ],
+                        (flow2.id): [
+                                (flow1.id): [islCount     : 0, switchCount: 1, islPercent: 0,
+                                             switchPercent: (2 * 100 / flow1SwitchCount).toInteger()],
+                                (flow3.id): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
+                        ],
+                        (flow3.id): [
+                                (flow1.id): [islCount     : 0, switchCount: 1, islPercent: 0,
+                                             switchPercent: (2 * 100 / flow1SwitchCount).toInteger()],
+                                (flow2.id): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
+                        ]
+                ]
+        ]
+        verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
+
+        and: "Delete flows"
+        [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
+    }
+
+    List<Switch> getSwitchPair(minOverlappingPaths) {
+        def switches = topology.getActiveSwitches()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            database.getPaths(src.dpId, dst.dpId)*.path.collect {
+                pathHelper.getInvolvedIsls(it)
+            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= minOverlappingPaths
+
+        } ?: assumeTrue("No suiting switches found", false)
+
+        return [srcSwitch, dstSwitch]
+    }
+
+    void verifySegmentsStats(List<FlowPathPayload> flowPaths, Map expectedValuesMap) {
+        flowPaths.each { flow ->
+            with(flow.diverseGroupPayload) { diverseGroup ->
+                with(diverseGroup.overlappingSegments) {
+                    verifyAll {
+                        islCount == expectedValuesMap["diverseGroup"][flow.id]["islCount"]
+                        switchCount == expectedValuesMap["diverseGroup"][flow.id]["switchCount"]
+                        islPercent == expectedValuesMap["diverseGroup"][flow.id]["islPercent"]
+                        switchPercent == expectedValuesMap["diverseGroup"][flow.id]["switchPercent"]
+                    }
+                }
+                with(diverseGroup.otherFlows) { otherFlows ->
+                    assert (flowPaths*.id - flow.id).containsAll(otherFlows*.id)
+                    otherFlows.each { otherFlow ->
+                        with(otherFlow.segmentsStats) {
+                            verifyAll {
+                                islCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islCount"]
+                                switchCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchCount"]
+                                islPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islPercent"]
+                                switchPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchPercent"]
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
