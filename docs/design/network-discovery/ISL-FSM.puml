@@ -10,13 +10,17 @@ Input signals:
 * isl-move
 
 Output signals:
-* bisl-up
+* bisl-up (notify BFD-port, notify reroute)
+* bisl-down (notify reroute)
 * isl-move
 
 @startuml
 title ISL FSM
 
-[*] --> DOWN
+[*] --> DOWN : history [history-down]
+[*] --> DOWN : isl-up
+[*] --> UP : history [history-up]
+[*] --> MOVED : history [history-moved]
 
 state upAttempt <<choice>>
 
@@ -33,6 +37,7 @@ UP --> MOVED : isl-move
 UP : enter / persist DB state
 UP : enter / emit bisl-up
 UP : enter / [bfd-up && global-bfd-up] emit bisl-bfd-up
+UP : exit / emit bisl-down
 UP : bfd-update / [bfd-up] emit bisl-bfd-up
 UP : bfd-update / [bfd-down] emit bisl-bfd-down
 

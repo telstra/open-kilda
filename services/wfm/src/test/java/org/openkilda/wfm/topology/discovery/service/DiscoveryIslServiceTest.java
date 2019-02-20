@@ -35,6 +35,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 
 import org.junit.Before;
@@ -93,16 +94,28 @@ public class DiscoveryIslServiceTest {
     }
 
     @Test
+    public void initialUp() {
+        emulateEmptyPersistentDb();
+
+        IslReference ref = new IslReference(endpointAlpha1, endpointBeta2);
+        IslDataHolder islData = new IslDataHolder(1000, 50, 1000);
+        service.islUp(carrier, ref.getSource(), ref, islData);
+
+        System.out.println(mockingDetails(carrier).printInvocations());
+        System.out.println(mockingDetails(islRepository).printInvocations());
+    }
+
+    @Test
+    public void initialMoveOnIncompleteISL() {
+        IslReference ref = IslReference.of(endpointAlpha1);
+        service.islMove(carrier, ref.getSource(), ref);
+
+        verifyNoMoreInteractions(carrier, islRepository);
+    }
+
+    @Test
     public void initialMoveEvent() {
-        when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                                           endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
-                .thenReturn(Optional.empty());
-        when(linkPropsRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                                                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
-                .thenReturn(Collections.emptyList());
-        when(flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
-                endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                endpointBeta2.getDatapath(), endpointBeta2.getPortNumber())).thenReturn(0L);
+        emulateEmptyPersistentDb();
 
         IslReference ref = new IslReference(endpointAlpha1, endpointBeta2);
         service.islMove(carrier, ref.getSource(), ref);
@@ -110,7 +123,7 @@ public class DiscoveryIslServiceTest {
         // System.out.println(mockingDetails(carrier).printInvocations());
         verify(carrier, times(2)).triggerReroute(any(RerouteAffectedFlows.class));
 
-        System.out.println(mockingDetails(islRepository).printInvocations());
+        // System.out.println(mockingDetails(islRepository).printInvocations());
         verify(islRepository).createOrUpdate(argThat(
                 link ->
                         link.getSrcSwitch().getSwitchId().equals(endpointAlpha1.getDatapath())
@@ -129,5 +142,17 @@ public class DiscoveryIslServiceTest {
                                 && link.getStatus() == IslStatus.INACTIVE));
 
         verifyNoMoreInteractions(carrier);
+    }
+
+    private void emulateEmptyPersistentDb() {
+        when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
+                                           endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
+                .thenReturn(Optional.empty());
+        when(linkPropsRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
+                                                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
+                .thenReturn(Collections.emptyList());
+        when(flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
+                endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
+                endpointBeta2.getDatapath(), endpointBeta2.getPortNumber())).thenReturn(0L);
     }
 }

@@ -26,6 +26,7 @@ state moveChoice <<choice>>
 UNKNOWN --> moveChoice : discovery
 UNKNOWN --> DOWN : fail
 UNKNOWN --> DOWN : physical-down
+UNKNOWN : enter [has-history] / emit isl-setup-with-history
 
 UP --> moveChoice : discovery
 UP --> DOWN : fail

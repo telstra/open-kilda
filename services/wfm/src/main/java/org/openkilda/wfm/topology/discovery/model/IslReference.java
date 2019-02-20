@@ -45,8 +45,8 @@ public class IslReference {
         return new IslReference(source, dest);
     }
 
-    public IslReference(Endpoint endpoint) {
-        this(endpoint, null);
+    public static IslReference of(Endpoint endpoint) {
+        return new IslReference(endpoint, null);
     }
 
     public IslReference(Endpoint source, Endpoint dest) {

@@ -29,7 +29,7 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> {
     private final Endpoint endpoint;
     private IslReference islReference;
-    private IslDataHolder islData;
+    private IslDataHolder islData = null;
 
     private static final StateMachineBuilder<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> builder;
 
@@ -96,8 +96,12 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
     public UniIslFsm(Endpoint endpoint, Isl history) {
         this.endpoint = endpoint;
 
-        islReference = IslReference.of(history);
-        this.islData = new IslDataHolder(history);
+        if (history != null) {
+            islReference = IslReference.of(history);
+            islData = new IslDataHolder(history);
+        } else {
+            islReference = IslReference.of(endpoint);
+        }
     }
 
     // -- FSM actions --

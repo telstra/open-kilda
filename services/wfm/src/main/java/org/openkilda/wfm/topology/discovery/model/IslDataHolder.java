@@ -18,9 +18,11 @@ package org.openkilda.wfm.topology.discovery.model;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 
+import lombok.AllArgsConstructor;
 import lombok.Value;
 
 @Value
+@AllArgsConstructor
 public class IslDataHolder {
     private long speed;
     private int latency;
