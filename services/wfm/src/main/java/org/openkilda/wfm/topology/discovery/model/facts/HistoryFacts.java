@@ -34,7 +34,14 @@ public class HistoryFacts implements Serializable {
         this.switchId = switchId;
     }
 
+    /**
+     * Add link to history object. Src of link must be equals to switchId.
+     * @param entry Isl
+     */
     public void addLink(Isl entry) {
+        if (!entry.getSrcSwitch().getSwitchId().equals(switchId)) {
+            throw new IllegalArgumentException("Invalid Isl for history");
+        }
         outgoingLinks.add(entry);
     }
 }

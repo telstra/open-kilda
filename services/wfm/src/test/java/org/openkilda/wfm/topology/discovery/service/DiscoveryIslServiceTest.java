@@ -29,7 +29,6 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -77,7 +76,7 @@ public class DiscoveryIslServiceTest {
     }
 
     /*@Test*/
-    public void islMove() {
+    private void islMove() {
         when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
                                            endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
              .thenReturn(Optional.empty());

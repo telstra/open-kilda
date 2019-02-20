@@ -187,6 +187,7 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
     private void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         PortFacts port = new PortFacts(Endpoint.of(switchId, context.getPortNumber()));
         portAdd(context, port);
+        updateOnlineStatus(context, port.getEndpoint(), true);
     }
 
     private void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
