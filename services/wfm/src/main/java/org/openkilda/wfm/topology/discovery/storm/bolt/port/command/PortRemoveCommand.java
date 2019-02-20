@@ -26,6 +26,6 @@ public class PortRemoveCommand extends PortCommand {
 
     @Override
     public void apply(DiscoveryPortService service, IPortCarrier carrier) {
-        service.remove(carrier, getEndpoint());
+        service.remove(getEndpoint());
     }
 }

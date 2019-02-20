@@ -127,7 +127,7 @@ public class DiscoveryIntegrationTest {
     @Before
     public void setUp() throws Exception {
         switchService = new DiscoverySwitchService(null, persistenceManager, bfdLocalPortOffset);
-        portService = new DiscoveryPortService();
+        portService = new DiscoveryPortService(null);
         bfdPortService = new DiscoveryBfdPortService(persistenceManager, new TaskIdBasedKeyFactory(0));
         uniIslService = new DiscoveryUniIslService();
         islService = new DiscoveryIslService(persistenceManager);

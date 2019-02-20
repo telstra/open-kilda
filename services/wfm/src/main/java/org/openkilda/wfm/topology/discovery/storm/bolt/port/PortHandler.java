@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.port;
 
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
@@ -38,7 +37,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class PortHandler extends AbstractBolt {
+public class PortHandler extends AbstractBolt implements IPortCarrier {
     public static final String BOLT_ID = ComponentId.PORT_HANDLER.toString();
 
     public static final String FIELD_ID_DATAPATH = SwitchHandler.FIELD_ID_DATAPATH;
@@ -66,13 +65,12 @@ public class PortHandler extends AbstractBolt {
 
     private void handleSwitchCommand(Tuple input) throws PipelineException {
         PortCommand command = pullValue(input, SwitchHandler.FIELD_ID_COMMAND, PortCommand.class);
-        OutputAdapter outputAdapter = new OutputAdapter(this, input);
-        command.apply(service, outputAdapter);
+        command.apply(service, this);
     }
 
     @Override
     protected void init() {
-        service = new DiscoveryPortService();
+        service = new DiscoveryPortService(this);
     }
 
     @Override
@@ -81,44 +79,38 @@ public class PortHandler extends AbstractBolt {
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
     }
 
-    private static class OutputAdapter extends AbstractOutputAdapter implements IPortCarrier {
-        OutputAdapter(AbstractBolt owner, Tuple tuple) {
-            super(owner, tuple);
-        }
+    @Override
+    public void setupUniIslHandler(Endpoint endpoint, Isl history) {
+        emit(getCurrentTuple(), makeDefaultTuple(new UniIslSetupCommand(endpoint, history)));
+    }
 
-        @Override
-        public void setupUniIslHandler(Endpoint endpoint, Isl history) {
-            emit(makeDefaultTuple(new UniIslSetupCommand(endpoint, history)));
-        }
+    @Override
+    public void enableDiscoveryPoll(Endpoint endpoint) {
+        emit(STREAM_POLL_ID, getCurrentTuple(), makePollTuple(new WatchListPollCommand(endpoint, true)));
+    }
 
-        @Override
-        public void enableDiscoveryPoll(Endpoint endpoint) {
-            emit(STREAM_POLL_ID, makePollTuple(new WatchListPollCommand(endpoint, true)));
-        }
+    @Override
+    public void disableDiscoveryPoll(Endpoint endpoint) {
+        emit(STREAM_POLL_ID, getCurrentTuple(), makePollTuple(new WatchListPollCommand(endpoint, false)));
+    }
 
-        @Override
-        public void disableDiscoveryPoll(Endpoint endpoint) {
-            emit(STREAM_POLL_ID, makePollTuple(new WatchListPollCommand(endpoint, false)));
-        }
+    @Override
+    public void notifyPortPhysicalDown(Endpoint endpoint) {
+        emit(getCurrentTuple(), makeDefaultTuple(new UniIslPhysicalDownCommand(endpoint)));
+    }
 
-        @Override
-        public void notifyPortPhysicalDown(Endpoint endpoint) {
-            emit(makeDefaultTuple(new UniIslPhysicalDownCommand(endpoint)));
-        }
+    @Override
+    public void removeUniIslHandler(Endpoint endpoint) {
+        emit(getCurrentTuple(), makeDefaultTuple(new UniIslRemoveCommand(endpoint)));
+    }
 
-        @Override
-        public void removeUniIslHandler(Endpoint endpoint) {
-            emit(makeDefaultTuple(new UniIslRemoveCommand(endpoint)));
-        }
+    private Values makeDefaultTuple(UniIslCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
+    }
 
-        private Values makeDefaultTuple(UniIslCommand command) {
-            Endpoint endpoint = command.getEndpoint();
-            return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getContext());
-        }
-
-        private Values makePollTuple(WatchListCommand command) {
-            Endpoint endpoint = command.getEndpoint();
-            return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getContext());
-        }
+    private Values makePollTuple(WatchListCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
     }
 }

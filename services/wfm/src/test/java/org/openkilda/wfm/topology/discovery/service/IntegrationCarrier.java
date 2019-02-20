@@ -97,17 +97,17 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
 
     @Override
     public void removePortHandler(Endpoint endpoint) {
-        portService.remove(portCarrier, endpoint);
+        portService.remove(endpoint);
     }
 
     @Override
     public void setOnlineMode(Endpoint endpoint, boolean mode) {
-        portService.updateOnlineMode(portCarrier, endpoint, mode);
+        portService.updateOnlineMode(endpoint, mode);
     }
 
     @Override
     public void setPortLinkMode(PortFacts portFacts) {
-        portService.updateLinkStatus(portCarrier, portFacts.getEndpoint(), portFacts.getLinkStatus());
+        portService.updateLinkStatus(portFacts.getEndpoint(), portFacts.getLinkStatus());
     }
 
     @Override

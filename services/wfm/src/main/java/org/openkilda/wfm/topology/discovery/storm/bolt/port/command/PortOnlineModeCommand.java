@@ -29,6 +29,6 @@ public class PortOnlineModeCommand extends PortCommand {
 
     @Override
     public void apply(DiscoveryPortService service, IPortCarrier carrier) {
-        service.updateOnlineMode(carrier, getEndpoint(), online);
+        service.updateOnlineMode(getEndpoint(), online);
     }
 }

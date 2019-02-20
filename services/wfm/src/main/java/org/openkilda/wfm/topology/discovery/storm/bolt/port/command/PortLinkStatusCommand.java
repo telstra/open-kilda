@@ -29,6 +29,6 @@ public class PortLinkStatusCommand extends PortCommand {
 
     @Override
     public void apply(DiscoveryPortService service, IPortCarrier carrier) {
-        service.updateLinkStatus(carrier, getEndpoint(), facts.getLinkStatus());
+        service.updateLinkStatus(getEndpoint(), facts.getLinkStatus());
     }
 }

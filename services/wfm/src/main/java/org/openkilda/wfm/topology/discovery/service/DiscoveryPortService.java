@@ -35,6 +35,12 @@ public class DiscoveryPortService {
     private final FsmExecutor<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> controllerExecutor
             = PortFsm.makeExecutor();
 
+    private final IPortCarrier carrier;
+
+    public DiscoveryPortService(IPortCarrier carrier) {
+        this.carrier = carrier;
+    }
+
     /**
      * .
      */
@@ -48,7 +54,7 @@ public class DiscoveryPortService {
     /**
      * .
      */
-    public void remove(IPortCarrier carrier, Endpoint endpoint) {
+    public void remove(Endpoint endpoint) {
         log.debug("Remove port {}", endpoint);
         PortFsm portFsm = controller.remove(endpoint);
         if (portFsm == null) {
@@ -61,7 +67,7 @@ public class DiscoveryPortService {
     /**
      * .
      */
-    public void updateOnlineMode(IPortCarrier carrier, Endpoint endpoint, boolean online) {
+    public void updateOnlineMode(Endpoint endpoint, boolean online) {
         PortFsm portFsm = locateController(endpoint);
         PortFsmEvent event;
         if (online) {
@@ -76,7 +82,7 @@ public class DiscoveryPortService {
     /**
      * .
      */
-    public void updateLinkStatus(IPortCarrier carrier, Endpoint endpoint, PortFacts.LinkStatus status) {
+    public void updateLinkStatus(Endpoint endpoint, PortFacts.LinkStatus status) {
         PortFsm portFsm = locateController(endpoint);
         PortFsmEvent event;
         switch (status) {
