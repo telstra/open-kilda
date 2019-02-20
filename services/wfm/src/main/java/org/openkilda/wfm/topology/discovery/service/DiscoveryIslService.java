@@ -23,8 +23,8 @@ import org.openkilda.wfm.topology.discovery.controller.IslFsmContext;
 import org.openkilda.wfm.topology.discovery.controller.IslFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.IslFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -47,11 +47,11 @@ public class DiscoveryIslService {
     /**
      * .
      */
-    public void islUp(IIslCarrier carrier, Endpoint endpoint, DiscoveryFacts discoveryFacts) {
-        log.debug("ISL discovery {} (on {})", discoveryFacts.getReference(), endpoint);
-        IslFsm islFsm = locateControllerCreateIfAbsent(discoveryFacts.getReference());
+    public void islUp(IIslCarrier carrier, Endpoint endpoint, IslReference reference, IslDataHolder islData) {
+        log.debug("ISL discovery {} (on {})", reference, endpoint);
+        IslFsm islFsm = locateControllerCreateIfAbsent(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
-                .discoveryFacts(discoveryFacts)
+                .islData(islData)
                 .build();
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_UP, context);
     }

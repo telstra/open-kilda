@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.discovery.controller;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
 
 import lombok.Builder;
@@ -29,7 +29,7 @@ public class IslFsmContext {
 
     private final Endpoint endpoint;
 
-    private DiscoveryFacts discoveryFacts;
+    private IslDataHolder islData;
 
     private Boolean physicalLinkDown;
 

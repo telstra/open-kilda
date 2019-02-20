@@ -19,9 +19,9 @@ import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
-import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
 import lombok.Data;
@@ -126,8 +126,8 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     }
 
     @Override
-    public void notifyIslUp(Endpoint endpoint, DiscoveryFacts discoveryFacts) {
-        islService.islUp(islCarrier, endpoint, discoveryFacts);
+    public void notifyIslUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
+        islService.islUp(islCarrier, endpoint, reference, islData);
     }
 
     @Override

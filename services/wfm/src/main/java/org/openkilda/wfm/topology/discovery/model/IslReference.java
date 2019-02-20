@@ -69,6 +69,10 @@ public class IslReference {
         }
     }
 
+    public boolean isIncomplete() {
+        return source == null || dest == null;
+    }
+
     @Override
     public String toString() {
         return String.format("%s <===> %s", source, dest);

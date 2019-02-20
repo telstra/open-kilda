@@ -16,11 +16,12 @@
 package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 
 public interface IUniIslCarrier {
-    void notifyIslUp(Endpoint endpoint, DiscoveryFacts discoveryFacts);
+    void notifyIslUp(Endpoint endpoint, IslReference reference,
+                     IslDataHolder islData);
 
     void notifyIslDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown);
 

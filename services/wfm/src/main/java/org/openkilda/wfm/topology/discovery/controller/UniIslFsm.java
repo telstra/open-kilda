@@ -15,11 +15,12 @@
 
 package org.openkilda.wfm.topology.discovery.controller;
 
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
@@ -27,8 +28,8 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> {
     private final Endpoint endpoint;
-
-    private DiscoveryFacts discoveryFacts;
+    private IslReference islReference;
+    private IslDataHolder islData;
 
     private static final StateMachineBuilder<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> builder;
 
@@ -94,11 +95,9 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
 
     public UniIslFsm(Endpoint endpoint, Isl history) {
         this.endpoint = endpoint;
-        if (history != null) {
-            discoveryFacts = new DiscoveryFacts(history);
-        } else {
-            discoveryFacts = new DiscoveryFacts(new IslReference(endpoint));
-        }
+
+        islReference = IslReference.of(history);
+        this.islData = new IslDataHolder(history);
     }
 
     // -- FSM actions --
@@ -106,7 +105,7 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
     private void makeDiscoveryChoice(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
                                      UniIslFsmContext context) {
         IslReference actualReference = IslReference.of(context.getDiscoveryEvent());
-        if (discoveryFacts.getReference().equals(actualReference)) {
+        if (islReference.equals(actualReference)) {
             fire(UniIslFsmEvent._DISCOVERY_CHOICE_SAME, context);
         } else {
             fire(UniIslFsmEvent._DISCOVERY_CHOICE_MOVED, context);
@@ -118,7 +117,10 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
     }
 
     private void upEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
-        discoveryFacts = new DiscoveryFacts(context.getDiscoveryEvent());
+        IslInfoData discovery = context.getDiscoveryEvent();
+        islReference = IslReference.of(discovery);
+        islData = new IslDataHolder(discovery);
+
         emitIslUp(context);
     }
 
@@ -133,14 +135,14 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
     // -- private/service methods --
 
     private void emitIslUp(UniIslFsmContext context) {
-        context.getOutput().notifyIslUp(endpoint, discoveryFacts);
+        context.getOutput().notifyIslUp(endpoint, islReference, islData);
     }
 
     private void emitIslDown(UniIslFsmContext context, boolean isPhysicalDown) {
-        context.getOutput().notifyIslDown(endpoint, discoveryFacts.getReference(), isPhysicalDown);
+        context.getOutput().notifyIslDown(endpoint, islReference, isPhysicalDown);
     }
 
     private void emitIslMove(UniIslFsmContext context) {
-        context.getOutput().notifyIslMove(endpoint, discoveryFacts.getReference());
+        context.getOutput().notifyIslMove(endpoint, islReference);
     }
 }

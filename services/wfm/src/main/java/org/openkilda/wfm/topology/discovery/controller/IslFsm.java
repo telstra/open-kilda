@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.discovery.controller;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
-import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Isl;
@@ -35,6 +34,7 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 
+import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
@@ -42,14 +42,17 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 import java.time.Instant;
 import java.util.Collection;
 
+@Slf4j
 public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> {
     private final IslRepository islRepository;
     private final LinkPropsRepository linkPropsRepository;
     private final TransactionManager transactionManager;
     private final FlowSegmentRepository flowSegmentRepository;
 
-    private DiscoveryEndpointStatus sourceStatus = DiscoveryEndpointStatus.DOWN;
-    private DiscoveryEndpointStatus destStatus = DiscoveryEndpointStatus.DOWN;
+    private DiscoveryEndpointStatus forwardStatus = DiscoveryEndpointStatus.DOWN;
+    private DiscoveryEndpointStatus reverseStatus = DiscoveryEndpointStatus.DOWN;
+
+    private String statusChangeReason = null;
 
     private final DiscoveryFacts discoveryFacts;
 
@@ -141,10 +144,12 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        updatePersisted();
+        handleDownState(context);
     }
 
     private void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        discoveryFacts.renew(context.getEndpoint(), context.getIslData());
+
         IslFsmEvent route;
         if (getAggregatedStatus() == DiscoveryEndpointStatus.UP) {
             route = IslFsmEvent._UP_ATTEMPT_SUCCESS;
@@ -155,7 +160,12 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        if (checkAndReportIncompleteMode()) {
+            return;
+        }
+
         updatePersisted();
+        triggerDownFlowReroute(context);
 
         IslReference reference = discoveryFacts.getReference();
         context.getOutput().notifyBiIslUp(reference.getSource(), reference);
@@ -164,11 +174,19 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
 
     private void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         updateStatus(context, DiscoveryEndpointStatus.MOVED);
-        updatePersisted();
-        // emit isl-move
+        handleDownState(context);
     }
 
     // -- private/service methods --
+
+    private void handleDownState(IslFsmContext context) {
+        if (checkAndReportIncompleteMode()) {
+            return;
+        }
+
+        updatePersistedStatus();
+        triggerAffectedFlowReroute(context);
+    }
 
     private void updateStatus(IslFsmContext context, DiscoveryEndpointStatus status) {
         updateStatus(context, status, null);
@@ -181,61 +199,79 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         DiscoveryEndpointStatus after = getAggregatedStatus();
 
         if (before != after) {
-            String reportReason = compileStatusChangeReason(endpoint, after, reason);
-            triggerReroute(context, after, reportReason);
+            statusChangeReason = compileStatusChangeReason(endpoint, after, reason);
         }
     }
 
     private void updateSourceDestUpStatus(Endpoint endpoint, DiscoveryEndpointStatus status) {
         IslReference reference = discoveryFacts.getReference();
         if (reference.getSource().equals(endpoint)) {
-            sourceStatus = status;
+            forwardStatus = status;
         } else if (reference.getDest().equals(endpoint)) {
-            destStatus = status;
+            reverseStatus = status;
         } else {
             throw new IllegalArgumentException(String.format("Endpoint %s is not part of ISL %s", endpoint, reference));
         }
     }
 
-    private void triggerReroute(IslFsmContext context, DiscoveryEndpointStatus become, String reason) {
-        RerouteFlows trigger;
-        switch (become) {
-            case UP:
-                trigger = new RerouteInactiveFlows(reason);
-                break;
-            case DOWN:
-            case MOVED:
-                Endpoint source = discoveryFacts.getReference().getSource();
-                PathNode pathNode = new PathNode(source.getDatapath(), source.getPortNumber(), 0);
-                // FIXME (surabujin): why do we send only one ISL endpoint here?
-                trigger = new RerouteAffectedFlows(pathNode, reason);
-                break;
-            default:
-                throw new IllegalArgumentException(String.format(
-                        "Unsupported value %s of %s", become, DiscoveryEndpointStatus.class.getName()));
+    private boolean checkAndReportIncompleteMode() {
+        if (discoveryFacts.getReference().isIncomplete()) {
+            log.debug("Do not update persistent storage and to not emit reroute requests, because link is incomplete "
+                              + "(one endpoint is missing)");
+            return true;
         }
+        return false;
+    }
 
+    private void triggerAffectedFlowReroute(IslFsmContext context) {
+        Endpoint source = discoveryFacts.getReference().getSource();
+        PathNode pathNode = new PathNode(source.getDatapath(), source.getPortNumber(), 0);
+
+        // FIXME (surabujin): why do we send only one ISL endpoint here?
+        RerouteAffectedFlows trigger = new RerouteAffectedFlows(pathNode, pullStatusChangeReason());
+        context.getOutput().triggerReroute(trigger);
+    }
+
+    private void triggerDownFlowReroute(IslFsmContext context) {
+        RerouteInactiveFlows trigger = new RerouteInactiveFlows(pullStatusChangeReason());
         context.getOutput().triggerReroute(trigger);
     }
 
     private void updatePersisted() {
         transactionManager.doInTransaction(() -> {
             Instant timeNow = Instant.now();
-            IslReference islReference = discoveryFacts.getReference();
+            IslReference reference = discoveryFacts.getReference();
 
-            updatePersisted(islReference.getSource(), islReference.getDest(), timeNow, destStatus);
-            updatePersisted(islReference.getDest(), islReference.getSource(), timeNow, sourceStatus);
+            updatePersisted(reference.getSource(), reference.getDest(), timeNow, reverseStatus);
+            updatePersisted(reference.getDest(), reference.getSource(), timeNow, forwardStatus);
         });
     }
 
-    private void updatePersisted(Endpoint source, Endpoint dest, Instant timeNow, DiscoveryEndpointStatus status) {
+    private void updatePersisted(Endpoint source, Endpoint dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
         Isl link = loadOrCreatePersistedIsl(source, dest, timeNow);
-        updateCommonIslFields(link, timeNow);
 
-        updateAvailableBandwidth(link, source, dest);
+        discoveryFacts.fillIslEntity(link);
+        updateLinkAvailableBandwidth(link, source, dest);
+        updateLinkStatus(link, uniStatus);
 
-        link.setActualStatus(mapStatus(status));
-        link.setStatus(mapStatus(getAggregatedStatus()));
+        islRepository.createOrUpdate(link);
+    }
+
+    private void updatePersistedStatus() {
+        transactionManager.doInTransaction(() -> {
+            Instant timeNow = Instant.now();
+            IslReference reference = discoveryFacts.getReference();
+
+            updatePersistedStatus(reference.getSource(), reference.getDest(), timeNow, reverseStatus);
+            updatePersistedStatus(reference.getDest(), reference.getSource(), timeNow, forwardStatus);
+        });
+    }
+
+    private void updatePersistedStatus(Endpoint source, Endpoint dest, Instant timeNow,
+                                       DiscoveryEndpointStatus uniStatus) {
+        Isl link = loadOrCreatePersistedIsl(source, dest, timeNow);
+
+        updateLinkStatus(link, uniStatus);
 
         islRepository.createOrUpdate(link);
     }
@@ -243,6 +279,10 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     private Isl loadOrCreatePersistedIsl(Endpoint source, Endpoint dest, Instant timeNow) {
         return islRepository.findByEndpoints(
                 source.getDatapath(), source.getPortNumber(), dest.getDatapath(), dest.getPortNumber())
+                .map(isl -> {
+                    isl.setTimeModify(timeNow);
+                    return isl;
+                })
                 .orElseGet(() -> createPersistentIsl(source, dest, timeNow));
     }
 
@@ -263,19 +303,16 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
                 .build();
     }
 
-    private void updateCommonIslFields(Isl link, Instant timeNow) {
-        link.setTimeModify(timeNow);
-        link.setLatency(discoveryFacts.getLatency().intValue());
-        link.setSpeed(discoveryFacts.getSpeed());
-        link.setMaxBandwidth(discoveryFacts.getAvailableBandwidth());
-        link.setDefaultMaxBandwidth(discoveryFacts.getAvailableBandwidth());
+    private void updateLinkStatus(Isl link, DiscoveryEndpointStatus uniStatus) {
+        link.setActualStatus(mapStatus(uniStatus));
+        link.setStatus(mapStatus(getAggregatedStatus()));
     }
 
-    private void updateAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
+    private void updateLinkAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
         long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
                 source.getDatapath(), source.getPortNumber(),
                 dest.getDatapath(), dest.getPortNumber());
-        link.setAvailableBandwidth(discoveryFacts.getAvailableBandwidth() - usedBandwidth);
+        link.setAvailableBandwidth(discoveryFacts.getAvailableBandwidth(usedBandwidth));
     }
 
     private void applyLinkProps(Endpoint source, Endpoint dest, IslBuilder isl) {
@@ -299,11 +336,11 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private DiscoveryEndpointStatus getAggregatedStatus() {
-        if (sourceStatus == destStatus) {
-            return sourceStatus;
+        if (forwardStatus == reverseStatus) {
+            return forwardStatus;
         }
 
-        if (sourceStatus == DiscoveryEndpointStatus.MOVED || destStatus == DiscoveryEndpointStatus.MOVED) {
+        if (forwardStatus == DiscoveryEndpointStatus.MOVED || reverseStatus == DiscoveryEndpointStatus.MOVED) {
             return DiscoveryEndpointStatus.MOVED;
         }
 
@@ -325,32 +362,42 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         }
     }
 
-    private String compileStatusChangeReason(Endpoint endpoint, DiscoveryEndpointStatus become,
-                                                    StatusChangeReason declaredReason) {
-        if (declaredReason != null) {
-            return compileStatusChangeReason(endpoint, declaredReason);
+    private String pullStatusChangeReason() {
+        String reason = statusChangeReason;
+        if (reason == null) {
+            reason = String.format("ISL %s is in %s state", discoveryFacts.getReference(), getAggregatedStatus());
         }
-        return compileStatusChangeReason(endpoint, become);
+        statusChangeReason = null;
+
+        return reason;
     }
 
-    private String compileStatusChangeReason(Endpoint endpoint, StatusChangeReason declaredReason) {
+    private String compileStatusChangeReason(Endpoint endpoint, DiscoveryEndpointStatus status,
+                                             StatusChangeReason declaredReason) {
+        if (declaredReason != null) {
+            return compileStatusChangeReasonByDeclaredReason(endpoint, status, declaredReason);
+        }
+        return compileStatusChangeReasonByInternalData(endpoint, status);
+    }
+
+    private String compileStatusChangeReasonByDeclaredReason(Endpoint endpoint, DiscoveryEndpointStatus status,
+                                                             StatusChangeReason declaredReason) {
         String reason;
         IslReference reference = discoveryFacts.getReference();
-
         switch (declaredReason) {
             case ENDPOINT_PHYSICAL_DOWN:
-
-                reason = String.format("ISL %s become FAILED due to physical link DOWN event from %s",
-                                       reference, endpoint);
+                reason = String.format("ISL %s become %s due to physical link DOWN event from %s",
+                                       reference, status, endpoint);
                 break;
             default:
-                reason = String.format("ISL %s status change due to %s", reference, declaredReason);
+                reason = String.format("ISL %s status become %s due to %s", reference, status, declaredReason);
         }
         return reason;
     }
 
-    private String compileStatusChangeReason(Endpoint endpoint, DiscoveryEndpointStatus become) {
-        return String.format("ISL %s become %s (changed endpoint %s)", discoveryFacts.getReference(), become, endpoint);
+    private String compileStatusChangeReasonByInternalData(Endpoint endpoint, DiscoveryEndpointStatus status) {
+        IslReference reference = discoveryFacts.getReference();
+        return String.format("ISL %s become %s (changed endpoint %s)", reference, status, endpoint);
     }
 
     private enum DiscoveryEndpointStatus {

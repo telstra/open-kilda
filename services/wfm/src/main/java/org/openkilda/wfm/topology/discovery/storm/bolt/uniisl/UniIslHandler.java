@@ -20,8 +20,8 @@ import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryUniIslService;
 import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
@@ -92,8 +92,8 @@ public class UniIslHandler extends AbstractBolt {
         }
 
         @Override
-        public void notifyIslUp(Endpoint endpoint, DiscoveryFacts discoveryFacts) {
-            emit(makeDefaultTuple(new IslUpCommand(endpoint, discoveryFacts)));
+        public void notifyIslUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
+            emit(makeDefaultTuple(new IslUpCommand(endpoint, reference, islData)));
         }
 
         @Override
