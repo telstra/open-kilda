@@ -14,10 +14,10 @@ Output signals:
 @startuml
 title Port FSM
 
-[*] --> INIT
+[*] -right-> INIT
 
-INIT --> UNOPERATIONAL : offline
-INIT --> OPERATIONAL : online
+INIT -r-> UNOPERATIONAL : offline
+INIT -r-> OPERATIONAL : online
 INIT : exit / emit uni-isl-setup
 
 state OPERATIONAL {
@@ -28,13 +28,19 @@ state OPERATIONAL {
 
     DOWN --> UP : port-up
     DOWN : enter / emit physical-down
-    DOWN : enter / issue delWatch
 
     UP --> DOWN : port-down
     UP : enter / issue addWatch
+    UP : exit / issue delWatch
 }
 
 OPERATIONAL --> UNOPERATIONAL : offline
+OPERATIONAL -r-> FINISH : port-del
 
 UNOPERATIONAL --> OPERATIONAL : online
+UNOPERATIONAL --> FINISH : port-del
+
+FINISH: enter / emit uni-isl-del
+FINISH -d-> [*]
+
 @enduml

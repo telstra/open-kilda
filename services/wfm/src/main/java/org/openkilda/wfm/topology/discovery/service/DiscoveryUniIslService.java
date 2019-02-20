@@ -83,6 +83,13 @@ public class DiscoveryUniIslService {
         controllerExecutor.fire(locateController(endpoint), event, context);
     }
 
+    /**
+     * .
+     */
+    public void uniIslRemove(Endpoint endpoint) {
+        //TODO: remove uniIsl from service
+    }
+
     // -- private --
 
     private UniIslFsm locateController(Endpoint endpoint) {

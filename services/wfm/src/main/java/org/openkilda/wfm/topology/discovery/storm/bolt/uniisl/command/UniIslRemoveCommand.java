@@ -13,19 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.service;
+package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command;
 
-import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.service.DiscoveryUniIslService;
+import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
 
-public interface IPortCarrier {
-    void setupUniIslHandler(Endpoint endpoint, Isl history);
+public class UniIslRemoveCommand extends UniIslCommand {
 
-    void enableDiscoveryPoll(Endpoint endpoint);
+    public UniIslRemoveCommand(Endpoint endpoint) {
+        super(endpoint);
+    }
 
-    void disableDiscoveryPoll(Endpoint endpoint);
-
-    void notifyPortPhysicalDown(Endpoint endpoint);
-
-    void removeUniIslHandler(Endpoint endpoint);
+    @Override
+    public void apply(DiscoveryUniIslService service, IUniIslCarrier carrier) {
+        service.uniIslRemove(getEndpoint());
+    }
 }

@@ -54,10 +54,8 @@ public class DiscoveryPortService {
         if (portFsm == null) {
             throw new IllegalStateException(String.format("Port FSM not found (%s).", endpoint));
         }
-
         PortFsmContext context = new PortFsmContext(carrier);
-        controllerExecutor.fire(portFsm, PortFsmEvent.PORT_DOWN, context);
-        controllerExecutor.fire(portFsm, PortFsmEvent.OFFLINE, context);
+        controllerExecutor.fire(portFsm, PortFsmEvent.PORT_DEL, context);
     }
 
     /**

@@ -21,5 +21,5 @@ public enum PortFsmState {
     OPERATIONAL,
     UNKNOWN, UP, DOWN,
 
-    UNOPERATIONAL
+    FINISH, UNOPERATIONAL
 }

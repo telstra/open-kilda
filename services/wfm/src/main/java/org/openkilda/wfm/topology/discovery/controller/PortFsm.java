@@ -41,18 +41,22 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsmState, P
                 .from(PortFsmState.INIT).to(PortFsmState.OPERATIONAL).on(PortFsmEvent.ONLINE);
         builder.transition()
                 .from(PortFsmState.INIT).to(PortFsmState.UNOPERATIONAL).on(PortFsmEvent.OFFLINE);
-        builder.onExit(PortFsmState.INIT)
+        builder.onEntry(PortFsmState.INIT)
                 .callMethod("setupUniIsl");
 
         // OPERATIONAL
         builder.transition()
                 .from(PortFsmState.OPERATIONAL).to(PortFsmState.UNOPERATIONAL).on(PortFsmEvent.OFFLINE);
+        builder.transition()
+                .from(PortFsmState.OPERATIONAL).to(PortFsmState.FINISH).on(PortFsmEvent.PORT_DEL);
         builder.defineSequentialStatesOn(PortFsmState.OPERATIONAL,
                                          PortFsmState.UNKNOWN, PortFsmState.UP, PortFsmState.DOWN);
 
         // UNOPERATIONAL
         builder.transition()
                 .from(PortFsmState.UNOPERATIONAL).to(PortFsmState.OPERATIONAL).on(PortFsmEvent.ONLINE);
+        builder.transition()
+                .from(PortFsmState.UNOPERATIONAL).to(PortFsmState.FINISH).on(PortFsmEvent.PORT_DEL);
 
         // UNKNOWN
         builder.transition()
@@ -65,12 +69,19 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsmState, P
                 .from(PortFsmState.UP).to(PortFsmState.DOWN).on(PortFsmEvent.PORT_DOWN);
         builder.onEntry(PortFsmState.UP)
                 .callMethod("enableDiscoveryPoll");
+        builder.onExit(PortFsmState.UP)
+                .callMethod("disableDiscoveryPoll");
 
         // DOWN
         builder.transition()
                 .from(PortFsmState.DOWN).to(PortFsmState.UP).on(PortFsmEvent.PORT_UP);
         builder.onEntry(PortFsmState.DOWN)
                 .callMethod("downEnter");
+
+        // FINISH
+        builder.onEntry(PortFsmState.FINISH)
+                .callMethod("finish");
+
     }
 
     public static FsmExecutor<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> makeExecutor() {
@@ -96,10 +107,18 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsmState, P
         context.getOutput().enableDiscoveryPoll(endpoint);
     }
 
+    private void disableDiscoveryPoll(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+        context.getOutput().disableDiscoveryPoll(endpoint);
+    }
+
     private void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
-        output.disableDiscoveryPoll(endpoint);
         output.notifyPortPhysicalDown(endpoint);
+    }
+
+    private void finish(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+        IPortCarrier output = context.getOutput();
+        output.removeUniIslHandler(endpoint);
     }
 
     // -- private/service methods --

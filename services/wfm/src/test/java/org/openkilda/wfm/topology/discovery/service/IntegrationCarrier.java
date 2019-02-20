@@ -81,6 +81,11 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
         uniIslService.uniIslPhysicalDown(uniIslCarrier, endpoint);
     }
 
+    @Override
+    public void removeUniIslHandler(Endpoint endpoint) {
+        uniIslService.uniIslRemove(endpoint);
+    }
+
     public void setupBfdSession(String requestKey, NoviBfdSession bfdSession) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }

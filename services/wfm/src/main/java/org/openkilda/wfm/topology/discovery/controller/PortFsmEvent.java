@@ -19,5 +19,5 @@ public enum PortFsmEvent {
     NEXT,
 
     ONLINE, OFFLINE,
-    PORT_UP, PORT_DOWN
+    PORT_UP, PORT_DOWN, PORT_DEL
 }

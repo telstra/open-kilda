@@ -28,6 +28,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslPhysicalDownCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslRemoveCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslSetupCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command.WatchListCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command.WatchListPollCommand;
@@ -103,6 +104,11 @@ public class PortHandler extends AbstractBolt {
         @Override
         public void notifyPortPhysicalDown(Endpoint endpoint) {
             emit(makeDefaultTuple(new UniIslPhysicalDownCommand(endpoint)));
+        }
+
+        @Override
+        public void removeUniIslHandler(Endpoint endpoint) {
+            emit(makeDefaultTuple(new UniIslRemoveCommand(endpoint)));
         }
 
         private Values makeDefaultTuple(UniIslCommand command) {
