@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.messaging.info.network;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR
+import org.openkilda.messaging.info.InfoData;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+@Data
+@EqualsAndHashCode(callSuper = false)
+@Builder
+public class PathsInfoData extends InfoData {
+    @JsonProperty("path")
+    private Path path;
+
+    public PathsInfoData(@JsonProperty("path") Path path) {
+        this.path = path;
+    }
+
 }

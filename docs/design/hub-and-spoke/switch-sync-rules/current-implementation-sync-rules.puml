@@ -1,0 +1,44 @@
+@startuml
+title Current implementation switch sync rules
+
+actor User
+boundary Northbound as NB
+control kilda.northbound
+control kilda.speaker
+participant Floodlight as FL
+control kilda.topo.nb
+participant Nbworker as NBW
+control kilda.topo.eng
+participant "Topology engine" as TE
+database DAO
+
+User -> NB : switch sync rules
+activate NB
+NB -> kilda.speaker : DumpRulesRequest
+kilda.speaker -> FL : DumpRulesRequest
+FL -> kilda.topo.nb : InfoMessage\nSwitchFlowEntries
+kilda.topo.nb -> NBW : InfoMessage\nSwitchFlowEntries
+NBW -> kilda.northbound : RulesValidationResult
+kilda.northbound -> NB : RulesValidationResult
+
+NB -> kilda.topo.eng : SwitchRulesSyncRequest
+kilda.topo.eng -> TE : SwitchRulesSyncRequest
+activate TE
+TE -> DAO : get flow segments\nby dst switch
+activate DAO
+DAO -> TE : flow segments
+deactivate DAO
+TE -> TE : build egress and\nintermediate flows
+TE -> DAO : get flows by src switch
+activate DAO
+DAO -> TE : flows
+deactivate DAO
+TE -> TE : build ingress flows
+TE -> kilda.speaker : BatchInstallRequest
+TE -> kilda.northbound : SyncRulesResponse
+deactivate TE
+kilda.northbound -> NB : SyncRulesResponse
+NB -> User : RulesSyncResult
+deactivate NB
+
+@enduml

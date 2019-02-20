@@ -25,6 +25,7 @@ import org.openkilda.security.TwoFactorUtility;
 
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -70,6 +71,9 @@ public class LoginController extends BaseController {
 
     @Autowired
     private PermissionRepository permissionRepository;
+    
+    @Value("${application.name}")
+    private String applicationName;
 
     /**
      * Login.
@@ -133,18 +137,20 @@ public class LoginController extends BaseController {
             String secretKey = TwoFactorUtility.getBase32EncryptedKey();
             modelAndView.addObject("key", secretKey);
             userService.updateUser2FaKey(username, secretKey);
-
+            modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.TWO_FA_GENERATOR);
         } catch (OtpRequiredException e) {
             LOGGER.error("OTP required for user: '" + username + "'.");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
+            modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.OTP);
         } catch (InvalidOtpException e) {
             LOGGER.error("Authentication code is invalid for user: '" + username + "'.");
             error = "Authentication code is invalid";
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
+            modelAndView.addObject("applicationName", applicationName);
             if (customWebAuthenticationDetails.isConfigure2Fa()) {
                 UserEntity userInfo = userService.getUserByUsername(username);
                 modelAndView.addObject("key", userInfo.getTwoFaKey());

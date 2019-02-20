@@ -16,9 +16,13 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+
+import java.util.List;
 
 /**
  * Represents computation operations on flow path.
@@ -58,4 +62,15 @@ public interface PathComputer {
      */
     PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
             throws UnroutableFlowException, RecoverableException;
+
+    /**
+     * Gets N best paths.
+     *
+     * @param srcSwitch source switchId
+     * @param dstSwitch destination switchId
+     *
+     * @return an list of N (or less) best paths ordered from best to worst.
+     */
+    List<FlowPath> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count)
+            throws RecoverableException, UnroutableFlowException;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.share.hubandspoke;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR
+import org.junit.Assert;
+import org.junit.Test;
+
+public class WorkerBoltTest {
+    @Test
+    public void ensureConfigDefaultValues() {
+        WorkerBolt.Config config = WorkerBolt.Config.builder()
+                .streamToHub("hub-stream")
+                .hubComponent("hub")
+                .workerSpoutComponent("spout")
+                .build();
+
+        Assert.assertTrue(config.isAutoAck());
+        Assert.assertEquals(config.getDefaultTimeout(), 100);
+    }
 }

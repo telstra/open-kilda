@@ -226,6 +226,24 @@ class FlowCrudSpec extends BaseSpecification {
         flow << getSingleSwitchSinglePortFlows()
     }
 
+    def "Able to validate flow with zero bandwidth"() {
+        given: "A flow with zero bandwidth"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = 0
+
+        when: "Create a flow with zero bandwidth"
+        flowHelper.addFlow(flow)
+
+        then: "Validation of flow with zero bandwidth must be succeed"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+        }
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
         def flow = flowHelper.singleSwitchSinglePortFlow(topology.activeSwitches.first())
