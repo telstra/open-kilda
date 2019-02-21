@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl;
 
+import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
@@ -30,6 +31,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMak
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslDownCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslMoveCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslSetupFromHistoryCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslUpCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslCommand;
@@ -89,6 +91,11 @@ public class UniIslHandler extends AbstractBolt {
     private static class OutputAdapter extends AbstractOutputAdapter implements IUniIslCarrier {
         OutputAdapter(AbstractBolt owner, Tuple tuple) {
             super(owner, tuple);
+        }
+
+        @Override
+        public void setupIslFromHistory(Endpoint endpoint, IslReference islReference, Isl history) {
+            emit(makeDefaultTuple(new IslSetupFromHistoryCommand(endpoint, islReference, history)));
         }
 
         @Override

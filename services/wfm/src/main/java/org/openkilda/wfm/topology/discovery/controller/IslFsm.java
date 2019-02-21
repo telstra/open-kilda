@@ -216,8 +216,8 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
 
     private boolean checkAndReportIncompleteMode() {
         if (discoveryFacts.getReference().isIncomplete()) {
-            log.debug("{} Do not update persistent storage and do not emit reroute requests, because link is incomplete "
-                              + "(one endpoint is missing)", getCurrentState());
+            log.debug("{} Do not update persistent storage and do not emit reroute requests, because link is "
+                              + "incomplete (one endpoint is missing)", getCurrentState());
             return true;
         }
         return false;

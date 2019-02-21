@@ -106,7 +106,7 @@ public class DiscoveryIslServiceTest {
     }
 
     @Test
-    public void initialMoveOnIncompleteISL() {
+    public void initialMoveOnIncompleteIsl() {
         IslReference ref = IslReference.of(endpointAlpha1);
         service.islMove(carrier, ref.getSource(), ref);
 

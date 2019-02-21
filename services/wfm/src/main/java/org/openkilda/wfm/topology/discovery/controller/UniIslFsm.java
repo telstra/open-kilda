@@ -22,10 +22,12 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 
+import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
+@Slf4j
 public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> {
     private final Endpoint endpoint;
     private IslReference islReference;
@@ -37,7 +39,12 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
         builder = StateMachineBuilderFactory.create(
                 UniIslFsm.class, UniIslFsmState.class, UniIslFsmEvent.class, UniIslFsmContext.class,
                 // extra parameters
-                Endpoint.class, Isl.class);
+                Endpoint.class);
+
+        // INIT
+        builder.transition()
+                .from(UniIslFsmState.INIT).to(UniIslFsmState.UNKNOWN).on(UniIslFsmEvent.ACTIVATE)
+                .callMethod("handleActivate");
 
         // UNKNOWN
         builder.transition()
@@ -89,22 +96,26 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
         return new FsmExecutor<>(UniIslFsmEvent.NEXT);
     }
 
-    public static UniIslFsm create(Endpoint endpoint, Isl history) {
-        return builder.newStateMachine(UniIslFsmState.UNKNOWN, endpoint, history);
+    public static UniIslFsm create(Endpoint endpoint) {
+        return builder.newStateMachine(UniIslFsmState.INIT, endpoint);
     }
 
-    public UniIslFsm(Endpoint endpoint, Isl history) {
+    public UniIslFsm(Endpoint endpoint) {
         this.endpoint = endpoint;
 
-        if (history != null) {
-            islReference = IslReference.of(history);
-            islData = new IslDataHolder(history);
-        } else {
-            islReference = IslReference.of(endpoint);
-        }
+        islReference = IslReference.of(endpoint);
     }
 
     // -- FSM actions --
+
+    private void handleActivate(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
+                                UniIslFsmContext contest) {
+        Isl history = contest.getHistory();
+        if (history != null) {
+            islReference = IslReference.of(history);
+            contest.getOutput().setupIslFromHistory(endpoint, islReference, history);
+        }
+    }
 
     private void makeDiscoveryChoice(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
                                      UniIslFsmContext context) {
@@ -117,7 +128,11 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
     }
 
     private void handleMoved(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
-        emitIslMove(context);
+        if (!islReference.isIncomplete()) {
+            emitIslMove(context);
+        } else {
+            log.debug("Do not emit ISL move for incomplete ISL reference {}", islReference);
+        }
     }
 
     private void upEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {

@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
+import org.openkilda.model.Isl;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.controller.IslFsm;
@@ -42,6 +43,10 @@ public class DiscoveryIslService {
 
     public DiscoveryIslService(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
+    }
+
+    public void islSetupFromHistory(IIslCarrier carrier, Endpoint endpoint, IslReference reference, Isl history) {
+        // TODO
     }
 
     /**

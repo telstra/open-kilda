@@ -30,6 +30,6 @@ public class UniIslSetupCommand extends UniIslCommand {
 
     @Override
     public void apply(DiscoveryUniIslService service, IUniIslCarrier carrier) {
-        service.uniIslSetup(getEndpoint(), history);
+        service.uniIslSetup(carrier, getEndpoint(), history);
     }
 }

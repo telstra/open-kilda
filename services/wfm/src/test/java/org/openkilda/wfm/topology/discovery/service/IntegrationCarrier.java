@@ -63,7 +63,7 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
 
     @Override
     public void setupUniIslHandler(Endpoint endpoint, Isl history) {
-        uniIslService.uniIslSetup(endpoint, history);
+        uniIslService.uniIslSetup(uniIslCarrier, endpoint, history);
     }
 
     @Override
@@ -128,6 +128,11 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     @Override
     public void setBfdPortOnlineMode(Endpoint endpoint, boolean mode) {
         bfdPortService.updateOnlineMode(bfdPortCarrier, endpoint, mode);
+    }
+
+    @Override
+    public void setupIslFromHistory(Endpoint endpoint, IslReference islReference, Isl history) {
+        islService.islSetupFromHistory(islCarrier, endpoint, islReference, history);
     }
 
     @Override

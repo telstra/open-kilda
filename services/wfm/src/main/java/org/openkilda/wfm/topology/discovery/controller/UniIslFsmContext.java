@@ -16,17 +16,22 @@
 package org.openkilda.wfm.topology.discovery.controller;
 
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
-@Data
+@Value
+@Builder
 public class UniIslFsmContext {
     private final IUniIslCarrier output;
 
+    private Isl history;
     private IslInfoData discoveryEvent;
 
-    public UniIslFsmContext(IUniIslCarrier output) {
-        this.output = output;
+    public static UniIslFsmContextBuilder builder(IUniIslCarrier carrier) {
+        return new UniIslFsmContextBuilder()
+                .output(carrier);
     }
 }

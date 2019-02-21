@@ -3,6 +3,7 @@ Internal state
 * remote
 
 Input signals
+* activate
 * discovery
 * fail
 * physical-down
@@ -14,19 +15,22 @@ Ouput signals
 * isl-move
 * isl-up
 * isl-down
+* isl-history
 * physical-down
 
 @startuml
 title UniISL FSM
 
-[*] --> UNKNOWN
+[*] --> INIT
+
+INIT --> UNKNOWN : activate
+INIT : activate [have-history] / set remote, emit emit isl-history
 
 state moveChoice <<choice>>
 
 UNKNOWN --> moveChoice : discovery
 UNKNOWN --> DOWN : fail
 UNKNOWN --> DOWN : physical-down
-UNKNOWN : enter [has-history] / emit isl-setup-with-history
 
 UP --> moveChoice : discovery
 UP --> DOWN : fail

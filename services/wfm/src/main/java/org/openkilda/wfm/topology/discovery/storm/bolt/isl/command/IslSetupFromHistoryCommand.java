@@ -13,21 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.service;
+package org.openkilda.wfm.topology.discovery.storm.bolt.isl.command;
 
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
+import org.openkilda.wfm.topology.discovery.service.DiscoveryIslService;
+import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
 
-public interface IUniIslCarrier {
-    void setupIslFromHistory(Endpoint endpoint, IslReference islReference, Isl history);
+public class IslSetupFromHistoryCommand extends IslCommand {
+    private final Isl history;
 
-    void notifyIslUp(Endpoint endpoint, IslReference reference,
-                     IslDataHolder islData);
+    public IslSetupFromHistoryCommand(Endpoint endpoint,
+                                      IslReference reference, Isl history) {
+        super(endpoint, reference);
+        this.history = history;
+    }
 
-    void notifyIslDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown);
-
-    void notifyIslMove(Endpoint endpoint, IslReference reference);
-
+    @Override
+    public void apply(DiscoveryIslService service, IIslCarrier carrier) {
+        service.islSetupFromHistory(carrier, getEndpoint(), getReference(), history);
+    }
 }

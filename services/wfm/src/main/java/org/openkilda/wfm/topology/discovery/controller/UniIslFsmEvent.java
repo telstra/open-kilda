@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.discovery.controller;
 
 public enum UniIslFsmEvent {
-    NEXT,
+    NEXT, ACTIVATE,
 
     PHYSICAL_DOWN,
     DISCOVERY, FAIL,

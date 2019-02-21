@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.discovery.controller;
 
 public enum UniIslFsmState {
+    INIT,
     UNKNOWN,
 
     DISCOVERY_CHOICE,
