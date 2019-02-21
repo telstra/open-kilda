@@ -464,7 +464,8 @@ class SwitchRulesSpec extends BaseSpecification {
         ]
     }
 
-    def "Able to synchronize rules on a switch (install missing rules)"() {
+    @Unroll
+    def "Able to synchronize rules for #description on a switch (install missing rules)"() {
         given: "Two active not neighboring switches"
         def switches = topology.getActiveSwitches()
         def allLinks = northbound.getAllLinks()
@@ -475,6 +476,8 @@ class SwitchRulesSpec extends BaseSpecification {
 
         and: "Create a transit-switch flow going through these switches"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = maximumBandwidth
+        flow.ignoreBandwidth = maximumBandwidth ? false : true
         flowHelper.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
@@ -516,6 +519,11 @@ class SwitchRulesSpec extends BaseSpecification {
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
+
+        where:
+        description         | maximumBandwidth
+        "a flow"            | 1000
+        "an unmetered flow" | 0
     }
 
     @Unroll
