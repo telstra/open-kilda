@@ -15,10 +15,24 @@
 
 package org.openkilda.floodlight.error;
 
+import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class SessionCloseException extends SwitchOperationException {
-    public SessionCloseException(DatapathId dpId) {
-        super(dpId, String.format("Unable to close session with %s (failed to write final barrier message)", dpId));
+public class SwitchWriteException extends SwitchOperationException {
+    private final transient OFMessage ofMessage;
+
+    public SwitchWriteException(DatapathId dpId, OFMessage message) {
+        this(dpId, message, null);
+    }
+
+    public SwitchWriteException(DatapathId dpId, OFMessage message, Throwable cause) {
+        super(dpId, String.format(
+                "Unable't to writeTo message %s.%s:%s into %s",
+                message.getType(), message.getVersion(), message.getXid(), dpId), cause);
+        this.ofMessage = message;
+    }
+
+    public OFMessage getOfMessage() {
+        return ofMessage;
     }
 }
