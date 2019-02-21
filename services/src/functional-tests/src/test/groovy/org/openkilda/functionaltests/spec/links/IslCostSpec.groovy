@@ -87,6 +87,20 @@ class IslCostSpec extends BaseSpecification {
                             it.aswitch?.inPort && it.aswitch?.outPort
                         },
                         description: "an a-switch",
+                        cost       : getIslCostWhenPortDown(),
+                        condition  : "="
+                ],
+                [
+                        isl        : getTopology().islsForActiveSwitches.find { !it.aswitch },
+                        description: "a direct",
+                        cost       : getIslCostWhenPortDown() + 1,
+                        condition  : ">"
+                ],
+                [
+                        isl        : getTopology().islsForActiveSwitches.find {
+                            it.aswitch?.inPort && it.aswitch?.outPort
+                        },
+                        description: "an a-switch",
                         cost       : getIslCostWhenPortDown() + 1,
                         condition  : ">"
                 ]
@@ -124,60 +138,6 @@ class IslCostSpec extends BaseSpecification {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
-        }
-    }
-
-    def "ISL(not BFD) is NOT FAILED earlier than discoveryTimeout is exceeded when connection is lost(not port down)"() {
-        given: "ISL going through a-switch"
-        def isl = topology.islsForActiveSwitches.find {
-            it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
-        } ?: assumeTrue("Wasn't able to find suitable ISL", false)
-
-        assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
-
-        double waitTime = discoveryTimeout - (discoveryTimeout * 0.2)
-        double interval = discoveryTimeout * 0.2
-        def ruleToRemove = [isl.aswitch]
-        def reverseIsl = islUtils.reverseIsl(isl)
-
-        when: "Remove a one-way flow on an a-switch for simulating lost connection(not port down)"
-        lockKeeper.removeFlows(ruleToRemove)
-
-        then: "Status of ISL is not changed to FAILED until discoveryTimeout is exceeded"
-        Wrappers.timedLoop(waitTime) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
-            sleep((interval * 1000).toLong())
-        }
-
-        and: "Status of ISL is changed to FAILED when discoveryTimeout is exceeded"
-        /**
-         * actualState shows real state of ISL and this value is taken from DB
-         * also it allows to understand direction where issue has appeared
-         * e.g. in our case we've removed a one-way flow(A->B)
-         * the other one(B->A) still exists
-         * afterward the actualState of ISL on A side is equal to FAILED
-         * and on B side is equal to DISCOVERED
-         * */
-        Wrappers.wait(WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, reverseIsl).get().actualState == IslChangeType.DISCOVERED
-        }
-
-        when: "Add the removed one-way flow rule for restoring topology"
-        lockKeeper.addFlows(ruleToRemove)
-
-        then: "ISL is discovered back"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().actualState == IslChangeType.DISCOVERED
         }
     }
 }

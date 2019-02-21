@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.toggles
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.messaging.error.MessageError

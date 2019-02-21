@@ -59,24 +59,28 @@ isls:
       dst_switch: ofsw1
       dst_port: 2
       max_bandwidth: 40000000
+
     - src_switch: ofsw1
       src_port: 1
       dst_switch: ofsw2
       dst_port: 1
+      max_bandwidth: 36000000
       a_switch:
         in_port: 49
         out_port: 50
-      max_bandwidth: 36000000
+
     - src_switch: ofsw3
       src_port: 1
       dst_switch: ofsw2
       dst_port: 3
       max_bandwidth: 36000000
+
     - src_switch: ofsw7
       src_port: 19
       dst_switch: ofsw2
       dst_port: 6
       max_bandwidth: 900000
+
     - src_switch: ofsw7
       src_port: 50
       dst_switch: ofsw3
@@ -85,11 +89,13 @@ isls:
       a_switch:
         in_port: 2
         out_port: 1
+
     - src_switch: ofsw3
       src_port: 5
       dst_switch: ofsw9
       dst_port: 32
       max_bandwidth: 9000000
+
     - src_switch: ofsw7
       src_port: 49
       dst_switch: ofsw9
@@ -98,16 +104,19 @@ isls:
       a_switch:
         in_port: 7
         out_port: 8
+
     - src_switch: ofsw7
       src_port: 51
       dst_switch: ofsw8
       dst_port: 47
       max_bandwidth: 9000000
+
     - src_switch: ofsw3
       src_port: 6
       dst_switch: ofsw8
       dst_port: 16
       max_bandwidth: 9000000
+
     - src_switch: ofsw8
       src_port: 49
       dst_switch: ofsw9
@@ -116,31 +125,37 @@ isls:
       a_switch:
         in_port: 51
         out_port: 52
+
     - src_switch: ofsw1
       src_port: 27
       max_bandwidth: 36000000
       a_switch:
         in_port: 17
+
     - src_switch: ofsw8
       src_port: 40
       max_bandwidth: 36000000
       a_switch:
         in_port: 40
+
     - src_switch: ofsw9
       src_port: 47
       max_bandwidth: 36000000
       a_switch:
         in_port: 47
+
     - src_switch: ofsw9
       src_port: 38
       max_bandwidth: 36000000
       a_switch:
         in_port: 34
+
     - src_switch: ofsw9
       src_port: 37
       max_bandwidth: 36000000
       a_switch:
         in_port: 33
+
     - src_switch: ofsw9
       src_port: 10
       max_bandwidth: 36000000
@@ -154,12 +169,14 @@ traffgens:
     switch: ofsw3
     switch_port: 10
     status: active
+
   - name: tg2
     iface: eth0
     control_endpoint: http://0.0.0.0:4042
     switch: ofsw8
     switch_port: 10
     status: active
+
   - name: tg3
     iface: eth0
     control_endpoint: http://0.0.0.0:4043

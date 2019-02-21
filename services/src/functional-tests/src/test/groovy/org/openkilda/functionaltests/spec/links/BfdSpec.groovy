@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec
+package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -17,20 +17,26 @@ class BfdSpec extends BaseSpecification {
         lockKeeper.removeFlows([isl.aswitch])
 
         then: "ISL immediately gets FAILED"
+        def reverseIsl = islUtils.reverseIsl(isl)
         Wrappers.wait(WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, reverseIsl).get().actualState == IslChangeType.FAILED
         }
 
         when: "Restore connection"
         lockKeeper.addFlows([isl.aswitch])
 
         then: "ISL is rediscovered"
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, reverseIsl).get().actualState == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
     }
 }
