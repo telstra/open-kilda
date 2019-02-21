@@ -16,7 +16,7 @@
         <module>configuration</module>
         <module>grpc-speaker</module>
         <module>test-library</module>
-        <module>floodlight-modules</module>
+        <module>floodlight-service</module>
         <module>northbound-service</module>
         <module>functional-tests</module>
         <module>performance-tests</module>
