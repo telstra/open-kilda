@@ -146,7 +146,7 @@ public class DiscoveryBfdPortService {
     }
 
     private void logMissingController(String endpoint, String operation) {
-        log.error("There is no BFD handler associated with %s - unable to %s", endpoint, operation);
+        log.error("There is no BFD handler associated with {} - unable to {}", endpoint, operation);
     }
 
     private void traceSpeakerRequest(String key, Endpoint endpoint) {

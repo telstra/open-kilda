@@ -32,11 +32,13 @@ DOWN : isl-down / set endpoint-(A|B)-up = false
 upAttempt --> UP : [endpoint-A-up && endpoint-B-up]
 upAttempt --> DOWN : [!endpoint-A-up || !endpoint-B-up]
 
-UP --> DOWN : isl-down / set endpoint-(A|B)-up = true
+UP --> DOWN : isl-down
 UP --> MOVED : isl-move
 UP : enter / persist DB state
 UP : enter / emit bisl-up
 UP : enter / [bfd-up && global-bfd-up] emit bisl-bfd-up
+UP : exit / set endpoint-(A|B)-up = true
+UP : exit / persist DB state
 UP : exit / emit bisl-down
 UP : bfd-update / [bfd-up] emit bisl-bfd-up
 UP : bfd-update / [bfd-down] emit bisl-bfd-down

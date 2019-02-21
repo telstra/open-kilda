@@ -50,7 +50,7 @@ public class IslHandler extends AbstractBolt {
 
     public static final String STREAM_REROUTE_ID = "reroute";
     public static final Fields STREAM_REROUTE_FIELDS = new Fields(
-            KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD);
+            KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final PersistenceManager persistenceManager;
 
@@ -107,7 +107,7 @@ public class IslHandler extends AbstractBolt {
         }
 
         private Values makeRerouteTuple(CommandData payload) {
-            return new Values(null, payload);
+            return new Values(null, payload, getContext());
         }
     }
 }

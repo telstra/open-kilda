@@ -132,7 +132,7 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
 
     @Override
     public void setupIslFromHistory(Endpoint endpoint, IslReference islReference, Isl history) {
-        islService.islSetupFromHistory(islCarrier, endpoint, islReference, history);
+        islService.islSetupFromHistory(endpoint, islReference, history);
     }
 
     @Override

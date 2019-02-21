@@ -23,14 +23,18 @@ import org.openkilda.model.Isl.IslBuilder;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.model.BiIslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 
@@ -41,18 +45,17 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Optional;
 
 @Slf4j
 public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> {
     private final IslRepository islRepository;
     private final LinkPropsRepository linkPropsRepository;
-    private final TransactionManager transactionManager;
     private final FlowSegmentRepository flowSegmentRepository;
+    private final SwitchRepository switchRepository;
+    private final TransactionManager transactionManager;
 
-    private DiscoveryEndpointStatus forwardStatus = DiscoveryEndpointStatus.DOWN;
-    private DiscoveryEndpointStatus reverseStatus = DiscoveryEndpointStatus.DOWN;
-
-    private String statusChangeReason = null;
+    private final BiIslDataHolder<DiscoveryEndpointStatus> endpointStatus;
 
     private final DiscoveryFacts discoveryFacts;
 
@@ -64,14 +67,17 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
                 // extra parameters
                 PersistenceManager.class, IslReference.class);
 
+        String updateEndpointStatusMethod = "updateEndpointStatus";
+
         // DOWN
         builder.transition()
                 .from(IslFsmState.DOWN).to(IslFsmState.UP_ATTEMPT).on(IslFsmEvent.ISL_UP)
-                .callMethod("handleSourceDestUpState");
+                .callMethod(updateEndpointStatusMethod);
         builder.transition()
-                .from(IslFsmState.DOWN).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE);
+                .from(IslFsmState.DOWN).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE)
+                .callMethod(updateEndpointStatusMethod);
         builder.internalTransition().within(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
-                .callMethod("handleSourceDestUpState");
+                .callMethod(updateEndpointStatusMethod);
         builder.onEntry(IslFsmState.DOWN)
                 .callMethod("downEnter");
 
@@ -85,26 +91,52 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
 
         // UP
         builder.transition()
-                .from(IslFsmState.UP).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
-                .callMethod("handleSourceDestUpState");
+                .from(IslFsmState.UP).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN);
         builder.transition()
                 .from(IslFsmState.UP).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE);
         builder.onEntry(IslFsmState.UP)
                 .callMethod("upEnter");
+        builder.onExit(IslFsmState.UP)
+                .callMethod("upExit");
 
         // MOVED
         builder.transition()
                 .from(IslFsmState.MOVED).to(IslFsmState.UP_ATTEMPT).on(IslFsmEvent.ISL_UP)
-                .callMethod("handleSourceDestUpState");
+                .callMethod(updateEndpointStatusMethod);
         builder.internalTransition()
                 .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_DOWN)
-                .callMethod("handleSourceDestUpState");
+                .callMethod(updateEndpointStatusMethod);
         builder.onEntry(IslFsmState.MOVED)
                 .callMethod("movedEnter");
     }
 
     public static FsmExecutor<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> makeExecutor() {
         return new FsmExecutor<>(IslFsmEvent.NEXT);
+    }
+
+    /**
+     * Use "history" data to determine initial FSM state and to pre-fill internal ISL representation.
+     */
+    public static IslFsm createFromHistory(PersistenceManager persistenceManager, IslReference reference, Isl history) {
+        IslFsmState initialState;
+        switch (history.getStatus()) {
+            case ACTIVE:
+                initialState = IslFsmState.UP;
+                break;
+            case INACTIVE:
+                initialState = IslFsmState.DOWN;
+                break;
+            case MOVED:
+                initialState = IslFsmState.MOVED;
+                break;
+            default:
+                throw new IllegalArgumentException(makeInvalidMappingMessage(
+                        history.getStatus().getClass(), IslFsmState.class, history.getStatus()));
+        }
+
+        IslFsm fsm = builder.newStateMachine(initialState, persistenceManager, reference);
+        fsm.applyHistory(history);
+        return fsm;
     }
 
     public static IslFsm create(PersistenceManager persistenceManager, IslReference reference) {
@@ -116,39 +148,27 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        switchRepository = repositoryFactory.createSwitchRepository();
 
         transactionManager = persistenceManager.getTransactionManager();
+
+        endpointStatus = new BiIslDataHolder<>(reference);
+        endpointStatus.putBoth(DiscoveryEndpointStatus.DOWN);
 
         discoveryFacts = new DiscoveryFacts(reference);
     }
 
     // -- FSM actions --
-    private void handleSourceDestUpState(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        DiscoveryEndpointStatus status;
-        StatusChangeReason reason = null;
-        switch (event) {
-            case ISL_UP:
-                status = DiscoveryEndpointStatus.UP;
-                break;
-            case ISL_DOWN:
-                status = DiscoveryEndpointStatus.DOWN;
-                if (context.getPhysicalLinkDown()) {
-                    reason = StatusChangeReason.ENDPOINT_PHYSICAL_DOWN;
-                }
-                break;
-            default:
-                throw new IllegalStateException(String.format("Unexpected event %s for %s.handleSourceDestUpState",
-                                                              event, getClass().getName()));
-        }
-        updateStatus(context, status, reason);
+    private void updateEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        updateEndpointStatusByEvent(event, context);
     }
 
     private void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        handleDownState(context);
+        updatePersistedStatus();
     }
 
     private void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        discoveryFacts.renew(context.getEndpoint(), context.getIslData());
+        discoveryFacts.put(context.getEndpoint(), context.getIslData());
 
         IslFsmEvent route;
         if (getAggregatedStatus() == DiscoveryEndpointStatus.UP) {
@@ -160,10 +180,6 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        if (checkAndReportIncompleteMode()) {
-            return;
-        }
-
         updatePersisted();
         triggerDownFlowReroute(context);
 
@@ -172,68 +188,83 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         context.getOutput().notifyBiIslUp(reference.getDest(), reference);
     }
 
-    private void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        updateStatus(context, DiscoveryEndpointStatus.MOVED);
-        handleDownState(context);
-    }
-
-    // -- private/service methods --
-
-    private void handleDownState(IslFsmContext context) {
-        if (checkAndReportIncompleteMode()) {
-            return;
-        }
-
+    private void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        updateEndpointStatusByEvent(event, context);
         updatePersistedStatus();
         triggerAffectedFlowReroute(context);
     }
 
-    private void updateStatus(IslFsmContext context, DiscoveryEndpointStatus status) {
-        updateStatus(context, status, null);
+    private void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        updatePersistedStatus();
     }
 
-    private void updateStatus(IslFsmContext context, DiscoveryEndpointStatus status, StatusChangeReason reason) {
-        DiscoveryEndpointStatus before = getAggregatedStatus();
-        Endpoint endpoint = context.getEndpoint();
-        updateSourceDestUpStatus(endpoint, status);
-        DiscoveryEndpointStatus after = getAggregatedStatus();
+    // -- private/service methods --
 
-        if (before != after) {
-            statusChangeReason = compileStatusChangeReason(endpoint, after, reason);
+    private void applyHistory(Isl history) {
+        Endpoint source = Endpoint.of(history.getSrcSwitch().getSwitchId(), history.getSrcPort());
+        Endpoint dest = Endpoint.of(history.getDestSwitch().getSwitchId(), history.getDestPort());
+        transactionManager.doInTransaction(() -> {
+            loadPersistentData(source, dest);
+            loadPersistentData(dest, source);
+        });
+    }
+
+    private void updateEndpointStatusByEvent(IslFsmEvent event, IslFsmContext context) {
+        DiscoveryEndpointStatus status;
+        switch (event) {
+            case ISL_UP:
+                status = DiscoveryEndpointStatus.UP;
+                break;
+            case ISL_DOWN:
+                status = DiscoveryEndpointStatus.DOWN;
+                break;
+            case ISL_MOVE:
+                status = DiscoveryEndpointStatus.MOVED;
+                break;
+            default:
+                throw new IllegalStateException(String.format("Unexpected event %s for %s.handleSourceDestUpState",
+                                                              event, getClass().getName()));
         }
+        endpointStatus.put(context.getEndpoint(), status);
     }
 
-    private void updateSourceDestUpStatus(Endpoint endpoint, DiscoveryEndpointStatus status) {
-        IslReference reference = discoveryFacts.getReference();
-        if (reference.getSource().equals(endpoint)) {
-            forwardStatus = status;
-        } else if (reference.getDest().equals(endpoint)) {
-            reverseStatus = status;
+    private void loadPersistentData(Endpoint start, Endpoint end) {
+        Optional<Isl> potentialIsl = islRepository.findByEndpoints(
+                start.getDatapath(), start.getPortNumber(),
+                end.getDatapath(), end.getPortNumber());
+        if (potentialIsl.isPresent()) {
+            Isl isl = potentialIsl.get();
+            Endpoint endpoint = Endpoint.of(isl.getDestSwitch().getSwitchId(), isl.getDestPort());
+            endpointStatus.put(endpoint, mapStatus(isl.getStatus()));
+            discoveryFacts.put(endpoint, new IslDataHolder(isl));
         } else {
-            throw new IllegalArgumentException(String.format("Endpoint %s is not part of ISL %s", endpoint, reference));
+            log.error("There is no persistent ISL data {} ==> {} (possible race condition during topology "
+                              + "initialisation)", start, end);
         }
-    }
-
-    private boolean checkAndReportIncompleteMode() {
-        if (discoveryFacts.getReference().isIncomplete()) {
-            log.debug("{} Do not update persistent storage and do not emit reroute requests, because link is "
-                              + "incomplete (one endpoint is missing)", getCurrentState());
-            return true;
-        }
-        return false;
     }
 
     private void triggerAffectedFlowReroute(IslFsmContext context) {
         Endpoint source = discoveryFacts.getReference().getSource();
-        PathNode pathNode = new PathNode(source.getDatapath(), source.getPortNumber(), 0);
+
+        IslStatus status = mapStatus(getAggregatedStatus());
+        IslReference reference = discoveryFacts.getReference();
+        String reason;
+        if (context.getPhysicalLinkDown()) {
+            reason = String.format("ISL %s become %s due to physical link DOWN event on %s",
+                                   reference, status, context.getEndpoint());
+        } else {
+            reason = String.format("ISL %s status become %s", reference, status);
+        }
 
         // FIXME (surabujin): why do we send only one ISL endpoint here?
-        RerouteAffectedFlows trigger = new RerouteAffectedFlows(pathNode, pullStatusChangeReason());
+        PathNode pathNode = new PathNode(source.getDatapath(), source.getPortNumber(), 0);
+        RerouteAffectedFlows trigger = new RerouteAffectedFlows(pathNode, reason);
         context.getOutput().triggerReroute(trigger);
     }
 
     private void triggerDownFlowReroute(IslFsmContext context) {
-        RerouteInactiveFlows trigger = new RerouteInactiveFlows(pullStatusChangeReason());
+        RerouteInactiveFlows trigger = new RerouteInactiveFlows(String.format(
+                "ISL %s status become %s", discoveryFacts.getReference(), IslStatus.ACTIVE));
         context.getOutput().triggerReroute(trigger);
     }
 
@@ -242,8 +273,8 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
             Instant timeNow = Instant.now();
             IslReference reference = discoveryFacts.getReference();
 
-            updatePersisted(reference.getSource(), reference.getDest(), timeNow, reverseStatus);
-            updatePersisted(reference.getDest(), reference.getSource(), timeNow, forwardStatus);
+            updatePersisted(reference.getSource(), reference.getDest(), timeNow, endpointStatus.getForward());
+            updatePersisted(reference.getDest(), reference.getSource(), timeNow, endpointStatus.getReverse());
         });
     }
 
@@ -262,8 +293,8 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
             Instant timeNow = Instant.now();
             IslReference reference = discoveryFacts.getReference();
 
-            updatePersistedStatus(reference.getSource(), reference.getDest(), timeNow, reverseStatus);
-            updatePersistedStatus(reference.getDest(), reference.getSource(), timeNow, forwardStatus);
+            updatePersistedStatus(reference.getSource(), reference.getDest(), timeNow, endpointStatus.getForward());
+            updatePersistedStatus(reference.getDest(), reference.getSource(), timeNow, endpointStatus.getReverse());
         });
     }
 
@@ -289,18 +320,18 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     private Isl createPersistentIsl(Endpoint source, Endpoint dest, Instant timeNow) {
         IslBuilder islBuilder = Isl.builder()
                 .timeModify(timeNow)
-                .srcSwitch(makeSwitchRecord(source))
+                .srcSwitch(loadSwitchRecord(source))
                 .srcPort(source.getPortNumber())
-                .destSwitch(makeSwitchRecord(dest))
+                .destSwitch(loadSwitchRecord(dest))
                 .destPort(dest.getPortNumber());
         applyLinkProps(source, dest, islBuilder);
         return islBuilder.build();
     }
 
-    private Switch makeSwitchRecord(Endpoint endpoint) {
-        return Switch.builder()
-                .switchId(endpoint.getDatapath())
-                .build();
+    private Switch loadSwitchRecord(Endpoint endpoint) {
+        return switchRepository.findById(endpoint.getDatapath())
+                .orElseThrow(() -> new PersistenceException(
+                        String.format("Switch %s not found in DB", endpoint.getDatapath())));
     }
 
     private void updateLinkStatus(Isl link, DiscoveryEndpointStatus uniStatus) {
@@ -336,18 +367,20 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private DiscoveryEndpointStatus getAggregatedStatus() {
-        if (forwardStatus == reverseStatus) {
-            return forwardStatus;
+        DiscoveryEndpointStatus forward = endpointStatus.getForward();
+        DiscoveryEndpointStatus reverse = endpointStatus.getReverse();
+        if (forward == reverse) {
+            return forward;
         }
 
-        if (forwardStatus == DiscoveryEndpointStatus.MOVED || reverseStatus == DiscoveryEndpointStatus.MOVED) {
+        if (forward == DiscoveryEndpointStatus.MOVED || reverse == DiscoveryEndpointStatus.MOVED) {
             return DiscoveryEndpointStatus.MOVED;
         }
 
         return DiscoveryEndpointStatus.DOWN;
     }
 
-    private IslStatus mapStatus(DiscoveryEndpointStatus status) {
+    private static IslStatus mapStatus(DiscoveryEndpointStatus status) {
         switch (status) {
             case UP:
                 return IslStatus.ACTIVE;
@@ -356,55 +389,31 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
             case MOVED:
                 return IslStatus.MOVED;
             default:
-                throw new IllegalArgumentException(String.format(
-                        "There is no mapping defined between %s and %s for %s", DiscoveryEndpointStatus.class.getName(),
-                        IslStatus.class.getName(), status.toString()));
+                throw new IllegalArgumentException(
+                        makeInvalidMappingMessage(DiscoveryEndpointStatus.class, IslStatus.class, status));
         }
     }
 
-    private String pullStatusChangeReason() {
-        String reason = statusChangeReason;
-        if (reason == null) {
-            reason = String.format("ISL %s is in %s state", discoveryFacts.getReference(), getAggregatedStatus());
-        }
-        statusChangeReason = null;
-
-        return reason;
-    }
-
-    private String compileStatusChangeReason(Endpoint endpoint, DiscoveryEndpointStatus status,
-                                             StatusChangeReason declaredReason) {
-        if (declaredReason != null) {
-            return compileStatusChangeReasonByDeclaredReason(endpoint, status, declaredReason);
-        }
-        return compileStatusChangeReasonByInternalData(endpoint, status);
-    }
-
-    private String compileStatusChangeReasonByDeclaredReason(Endpoint endpoint, DiscoveryEndpointStatus status,
-                                                             StatusChangeReason declaredReason) {
-        String reason;
-        IslReference reference = discoveryFacts.getReference();
-        switch (declaredReason) {
-            case ENDPOINT_PHYSICAL_DOWN:
-                reason = String.format("ISL %s become %s due to physical link DOWN event from %s",
-                                       reference, status, endpoint);
-                break;
+    private static DiscoveryEndpointStatus mapStatus(IslStatus status) {
+        switch (status) {
+            case ACTIVE:
+                return DiscoveryEndpointStatus.UP;
+            case INACTIVE:
+                return DiscoveryEndpointStatus.DOWN;
+            case MOVED:
+                return DiscoveryEndpointStatus.MOVED;
             default:
-                reason = String.format("ISL %s status become %s due to %s", reference, status, declaredReason);
+                throw new IllegalArgumentException(
+                        makeInvalidMappingMessage(IslStatus.class, DiscoveryEndpointStatus.class, status));
         }
-        return reason;
     }
 
-    private String compileStatusChangeReasonByInternalData(Endpoint endpoint, DiscoveryEndpointStatus status) {
-        IslReference reference = discoveryFacts.getReference();
-        return String.format("ISL %s become %s (changed endpoint %s)", reference, status, endpoint);
+    private static String makeInvalidMappingMessage(Class<?> from, Class<?> to, Object value) {
+        return String.format("There is no mapping defined between %s and %s for %s", from.getName(),
+                             to.getName(), value);
     }
 
     private enum DiscoveryEndpointStatus {
         UP, DOWN, MOVED
-    }
-
-    private enum StatusChangeReason {
-        ENDPOINT_PHYSICAL_DOWN
     }
 }

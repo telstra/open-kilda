@@ -45,8 +45,17 @@ public class DiscoveryIslService {
         this.persistenceManager = persistenceManager;
     }
 
-    public void islSetupFromHistory(IIslCarrier carrier, Endpoint endpoint, IslReference reference, Isl history) {
-        // TODO
+    /**
+     * Create ISL handler and use "history" data to initialize it's state.
+     */
+    public void islSetupFromHistory(Endpoint endpoint, IslReference reference, Isl history) {
+        log.debug("ISL {} setup from history (on {})", reference, endpoint);
+        if (!controller.containsKey(reference)) {
+            ensureControllerIsMissing(reference);
+            controller.put(reference, IslFsm.createFromHistory(persistenceManager, reference, history));
+        } else {
+            log.error("Receive \"history\" data for already create ISL - ignore history (start-up race condition)");
+        }
     }
 
     /**
@@ -66,7 +75,7 @@ public class DiscoveryIslService {
      */
     public void islDown(IIslCarrier carrier, Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
         log.debug("ISL fail {} (on {})", reference, endpoint);
-        IslFsm islFsm = locateControllerCreateIfAbsent(reference);
+        IslFsm islFsm = locateController(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
                 .physicalLinkDown(isPhysicalDown)
                 .build();
@@ -78,12 +87,28 @@ public class DiscoveryIslService {
      */
     public void islMove(IIslCarrier carrier, Endpoint endpoint, IslReference reference) {
         log.debug("ISL fail(moved) {} (on {})", reference, endpoint);
-        IslFsm islFsm = locateControllerCreateIfAbsent(reference);
+        IslFsm islFsm = locateController(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MOVE, context);
     }
 
     // -- private --
+
+    private void ensureControllerIsMissing(IslReference reference) {
+        IslFsm fsm = controller.get(reference);
+        if (fsm != null) {
+            throw new IllegalStateException(String.format("ISL FSM for %s already exist (it's state is %s)",
+                                                          reference, fsm.getCurrentState()));
+        }
+    }
+
+    private IslFsm locateController(IslReference reference) {
+        IslFsm fsm = controller.get(reference);
+        if (fsm == null) {
+            throw new IllegalStateException(String.format("There is not ISL FSM for %s", reference));
+        }
+        return fsm;
+    }
 
     private IslFsm locateControllerCreateIfAbsent(IslReference reference) {
         return controller.computeIfAbsent(reference, key -> IslFsm.create(persistenceManager, reference));

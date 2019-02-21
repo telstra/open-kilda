@@ -15,41 +15,14 @@
 
 package org.openkilda.wfm.topology.discovery.model.facts;
 
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
-import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.BiIslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 
-import lombok.Getter;
-
-public class DiscoveryFacts {
-    @Getter
-    private final IslReference reference;
-    private IslDataHolder[] islData = new IslDataHolder[2];
-
-    public DiscoveryFacts(Endpoint endpoint, IslInfoData speakerData) {
-        this(IslReference.of(speakerData), endpoint, new IslDataHolder(speakerData));
-    }
-
-    public DiscoveryFacts(Endpoint endpoint, Isl payload) {
-        this(IslReference.of(payload), endpoint, new IslDataHolder(payload));
-    }
-
+public class DiscoveryFacts extends BiIslDataHolder<IslDataHolder> {
     public DiscoveryFacts(IslReference reference) {
-        this.reference = reference;
-    }
-
-    protected DiscoveryFacts(IslReference reference, Endpoint endpoint, IslDataHolder data) {
-        this.reference = reference;
-
-        int idx = dataIndexByEndpoint(reference, endpoint);
-        islData[idx] = data;
-    }
-
-    public void renew(Endpoint endpoint, IslDataHolder islData) {
-        int idx = dataIndexByEndpoint(reference, endpoint);
-        this.islData[idx] = islData;
+        super(reference);
     }
 
     /**
@@ -79,29 +52,17 @@ public class DiscoveryFacts {
 
     private IslDataHolder makeAggregatedData() {
         IslDataHolder aggData = null;
-        for (int idx = 0; idx < islData.length; idx++) {
-            if (islData[idx] == null) {
+        for (IslDataHolder link : islData) {
+            if (link == null) {
                 continue;
             }
             if (aggData == null) {
-                aggData = (islData[idx]);
+                aggData = link;
             } else {
-                aggData = aggData.merge(islData[idx]);
+                aggData = aggData.merge(link);
             }
         }
 
         return aggData;
-    }
-
-    private static int dataIndexByEndpoint(IslReference ref, Endpoint e) {
-        int idx;
-        if (ref.getDest().equals(e)) {
-            idx =  0; // forward event
-        } else if (ref.getSource().equals(e)) {
-            idx = 1; // reverse event
-        } else {
-            throw new IllegalArgumentException(String.format("Endpoint %s is not belong to ISL %s", e, ref));
-        }
-        return idx;
     }
 }

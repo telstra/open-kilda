@@ -32,6 +32,6 @@ public class IslSetupFromHistoryCommand extends IslCommand {
 
     @Override
     public void apply(DiscoveryIslService service, IIslCarrier carrier) {
-        service.islSetupFromHistory(carrier, getEndpoint(), getReference(), history);
+        service.islSetupFromHistory(getEndpoint(), getReference(), history);
     }
 }
