@@ -24,6 +24,7 @@ import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
@@ -187,6 +188,7 @@ public class DatabaseSupportImpl implements Database {
     public boolean resetCosts() {
         return transactionManager.doInTransaction(() -> {
             Collection<org.openkilda.model.Isl> isls = islRepository.findAll();
+            switchRepository.lockSwitches(switchRepository.findAll().toArray(new Switch[0]));
             isls.forEach(isl -> {
                 isl.setCost(DEFAULT_COST);
                 islRepository.createOrUpdate(isl);

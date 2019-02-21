@@ -105,8 +105,9 @@ class LinkSpec extends BaseSpecification {
             [flow1, flow2, flow3, flow4].each { assert northbound.getFlowStatus(it.id).status == FlowState.UP }
         }
 
-        and: "Delete all created flows"
+        and: "Delete all created flows and reset costs"
         [flow1, flow2, flow3, flow4].each { assert northbound.deleteFlow(it.id) }
+        database.resetCosts()
     }
 
     @Unroll
@@ -204,11 +205,12 @@ class LinkSpec extends BaseSpecification {
         // TODO(ylobankov): Uncomment the check when the issue #1977 is resolved.
         //!islUtils.getIslInfo(islUtils.reverseIsl(isl))
 
-        and: "Cleanup: restore the link"
+        and: "Cleanup: restore the link and reset costs"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
     }
 
     def "Reroute all flows going through a particular link"() {

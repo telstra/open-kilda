@@ -207,6 +207,10 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(brokenIsl).get().state == IslChangeType.DISCOVERED }
     }
 
+    def cleanup() {
+        database.resetCosts()
+    }
+
     /**
      * Breaks certain flow path. Ensures that the flow is indeed broken by waiting for ISL to actually get FAILED.
      * @param flowpath path to break
