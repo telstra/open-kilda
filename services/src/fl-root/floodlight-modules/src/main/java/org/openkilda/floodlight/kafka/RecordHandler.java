@@ -27,6 +27,7 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.command.OfCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
@@ -96,6 +97,7 @@ import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -107,6 +109,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -996,6 +999,24 @@ class RecordHandler implements Runnable {
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
+        try {
+            OfCommand ofCommand = MAPPER.readValue(record.value(), OfCommand.class);
+
+            try (CorrelationContextClosable closable =
+                         CorrelationContext.create(ofCommand.getMessageContext().getCorrelationId())) {
+                KafkaTopicFactory kafkaTopicFactory = new KafkaTopicFactory(context);
+                ofCommand.execute(context.getModuleContext())
+                        .thenAccept(response -> getKafkaProducer()
+                                .sendMessageAndTrack(kafkaTopicFactory.getTopic(response), record.key(), response));
+                return;
+            }
+        } catch (JsonMappingException e) {
+            logger.trace("Received deprecated command message");
+        } catch (IOException e) {
+            logger.error("Error while parsing record {}", record.value(), e);
+            return;
+        }
+
         CommandMessage message;
         try {
             String value = record.value();

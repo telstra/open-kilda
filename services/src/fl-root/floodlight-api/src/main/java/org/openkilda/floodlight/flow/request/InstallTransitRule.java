@@ -13,16 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.floodlight.request;
+package org.openkilda.floodlight.flow.request;
 
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
-import org.openkilda.messaging.CommandContext;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
@@ -36,14 +35,14 @@ public class InstallTransitRule extends InstallFlow {
     protected Integer transitVlanId;
 
     @JsonCreator
-    public InstallTransitRule(@JsonProperty("command-context") CommandContext commandContext,
+    public InstallTransitRule(@JsonProperty("message_context") MessageContext messageContext,
                               @JsonProperty(FLOW_ID) String id,
                               @JsonProperty("cookie") Long cookie,
                               @JsonProperty("switch_id") SwitchId switchId,
                               @JsonProperty("input_port") Integer inputPort,
                               @JsonProperty("output_port") Integer outputPort,
                               @JsonProperty("transit_vlan_id") Integer transitVlanId) {
-        super(commandContext, id, cookie, switchId, inputPort, outputPort);
+        super(messageContext, id, cookie, switchId, inputPort, outputPort);
         this.transitVlanId = transitVlanId;
     }
 }

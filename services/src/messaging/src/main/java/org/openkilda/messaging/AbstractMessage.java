@@ -28,10 +28,10 @@ import java.io.Serializable;
 public abstract class AbstractMessage implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty("command-context")
-    private CommandContext commandContext;
+    @JsonProperty("message_context")
+    private MessageContext messageContext;
 
-    public AbstractMessage(CommandContext commandContext) {
-        this.commandContext = commandContext;
+    public AbstractMessage(MessageContext messageContext) {
+        this.messageContext = messageContext;
     }
 }

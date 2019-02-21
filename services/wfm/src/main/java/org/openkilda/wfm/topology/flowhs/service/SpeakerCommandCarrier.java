@@ -15,13 +15,13 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.messaging.floodlight.FlowMessage;
+import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.flowhs.model.FlowResponses;
 
 public interface SpeakerCommandCarrier {
 
-    void sendCommand(FlowMessage command) throws PipelineException;
+    void sendCommand(FlowRequest command) throws PipelineException;
 
     void sendResponse(FlowResponses response) throws PipelineException;
 }

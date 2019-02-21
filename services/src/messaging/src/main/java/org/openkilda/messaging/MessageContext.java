@@ -22,7 +22,7 @@ import java.io.Serializable;
 import java.util.UUID;
 
 @Value
-public class CommandContext implements Serializable {
+public class MessageContext implements Serializable {
 
     @JsonProperty
     private final String correlationId;
@@ -30,20 +30,20 @@ public class CommandContext implements Serializable {
     @JsonProperty
     private final long createTime;
 
-    public CommandContext() {
+    public MessageContext() {
         this(UUID.randomUUID().toString());
     }
 
-    public CommandContext(Message message) {
+    public MessageContext(Message message) {
         this(message.getCorrelationId(), message.getTimestamp());
     }
 
-    public CommandContext(String correlationId) {
+    public MessageContext(String correlationId) {
         this(correlationId, System.currentTimeMillis());
     }
 
-    protected CommandContext(String correlationId, long createTime) {
+    protected MessageContext(String correlationId, long createTime) {
         this.correlationId = correlationId;
-        this.createTime = System.currentTimeMillis();
+        this.createTime = createTime;
     }
 }

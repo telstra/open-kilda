@@ -13,15 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.model;
+package org.openkilda.floodlight.error;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.types.DatapathId;
 
-import lombok.Value;
+public class OfConflictException extends OfInstallException {
 
-import java.util.List;
-
-@Value
-public class FlowCommands {
-    private List<FlowRequest> commands;
+    public OfConflictException(DatapathId dpId, OFMessage ofMessage) {
+        super(dpId, ofMessage);
+    }
 }

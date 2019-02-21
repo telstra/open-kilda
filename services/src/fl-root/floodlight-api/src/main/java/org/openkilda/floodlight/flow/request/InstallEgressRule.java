@@ -13,11 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.floodlight.request;
+package org.openkilda.floodlight.flow.request;
 
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
-import org.openkilda.messaging.CommandContext;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -41,7 +41,7 @@ public class InstallEgressRule extends InstallTransitRule {
     protected Integer outputVlanId;
 
     @JsonCreator
-    public InstallEgressRule(@JsonProperty("command-context") CommandContext commandContext,
+    public InstallEgressRule(@JsonProperty("message_context") MessageContext messageContext,
                              @JsonProperty(FLOW_ID) final String id,
                              @JsonProperty("cookie") final Long cookie,
                              @JsonProperty("switch_id") final SwitchId switchId,
@@ -50,7 +50,7 @@ public class InstallEgressRule extends InstallTransitRule {
                              @JsonProperty("transit_vlan_id") final Integer transitVlanId,
                              @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                              @JsonProperty("output_vlan_id") final Integer outputVlanId) {
-        super(commandContext, id, cookie, switchId, inputPort, outputPort, transitVlanId);
+        super(messageContext, id, cookie, switchId, inputPort, outputPort, transitVlanId);
         this.outputVlanType = outputVlanType;
         this.outputVlanId = outputVlanId;
     }

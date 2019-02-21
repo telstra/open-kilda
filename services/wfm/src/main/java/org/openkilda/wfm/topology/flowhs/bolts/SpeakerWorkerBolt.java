@@ -19,8 +19,8 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WO
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 import static org.openkilda.wfm.topology.utils.MessageTranslator.KEY_FIELD;
 
-import org.openkilda.messaging.floodlight.FlowMessage;
-import org.openkilda.messaging.floodlight.response.FlowResponse;
+import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.flowhs.model.FlowCommands;
@@ -55,7 +55,7 @@ public class SpeakerWorkerBolt extends WorkerBolt {
         service.sendCommands(key, commands, new WorkerCommandCarrier(input));
 
         //todo: should be removed once FL request processing is fixed
-        for (FlowMessage request : commands.getCommands()) {
+        for (FlowRequest request : commands.getCommands()) {
             service.handleResponse(key, new FlowResponse(request, true), new WorkerCommandCarrier(input));
         }
     }
@@ -88,7 +88,7 @@ public class SpeakerWorkerBolt extends WorkerBolt {
         }
 
         @Override
-        public void sendCommand(FlowMessage command) throws PipelineException {
+        public void sendCommand(FlowRequest command) throws PipelineException {
             emit(SPEAKER_WORKER_REQUEST_SENDER.name(), tuple, new Values(tuple.getStringByField(KEY_FIELD), command));
         }
 

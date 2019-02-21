@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.lang.String.format;
 
-import org.openkilda.messaging.floodlight.FlowMessage;
-import org.openkilda.messaging.floodlight.response.FlowResponse;
+import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.flowhs.model.FlowCommands;
@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 public class SpeakerWorkerService {
-    private final Map<String, Map<SwitchId, FlowMessage>> commands = new HashMap<>();
+    private final Map<String, Map<SwitchId, FlowRequest>> commands = new HashMap<>();
     private final Map<String, List<FlowResponse>> responses = new HashMap<>();
 
     /**
@@ -41,8 +41,8 @@ public class SpeakerWorkerService {
      */
     public void sendCommands(String key, FlowCommands flowCommands, SpeakerCommandCarrier commandSender)
             throws PipelineException {
-        Map<SwitchId, FlowMessage> commandsPerSwitch = new HashMap<>(flowCommands.getCommands().size());
-        for (FlowMessage command : flowCommands.getCommands()) {
+        Map<SwitchId, FlowRequest> commandsPerSwitch = new HashMap<>(flowCommands.getCommands().size());
+        for (FlowRequest command : flowCommands.getCommands()) {
             commandsPerSwitch.put(command.getSwitchId(), command);
             commandSender.sendCommand(command);
         }
@@ -62,8 +62,8 @@ public class SpeakerWorkerService {
             throw new IllegalStateException(format("Received response for non pending request. Payload: %s", response));
         }
 
-        Map<SwitchId, FlowMessage> pendingRequests = commands.get(key);
-        FlowMessage currentRequest = pendingRequests.remove(response.getSwitchId());
+        Map<SwitchId, FlowRequest> pendingRequests = commands.get(key);
+        FlowRequest currentRequest = pendingRequests.remove(response.getSwitchId());
         if (currentRequest == null) {
             throw new IllegalStateException(format("Received response with wrong switch dpid. Payload: %s", response));
         }

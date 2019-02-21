@@ -13,15 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.model;
+package org.openkilda.floodlight;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.messaging.MessageContext;
 
-import lombok.Value;
-
-import java.util.List;
-
-@Value
-public class FlowCommands {
-    private List<FlowRequest> commands;
+public class FloodlightResponse extends AbstractMessage {
+    public FloodlightResponse(MessageContext messageContext) {
+        super(messageContext);
+    }
 }
