@@ -30,6 +30,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
+import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
 
@@ -243,7 +244,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param sw target switch object
      * @return switch's IP address
      */
-    String getSwitchIpAddress(IOFSwitch sw);
+    InetAddress getSwitchIpAddress(IOFSwitch sw);
 
     List<OFPortDesc> getEnabledPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
 

@@ -67,6 +67,8 @@ import org.kohsuke.args4j.CmdLineException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -217,7 +219,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
     @Test
     public void testDispatchSyncInProgressMaskLogicalPorts() throws JsonProcessingException, UnknownHostException {
         final SwitchId switchId = new SwitchId("00:01");
-        final String ipAddress = "127.0.0.1";
+        final InetAddress ipAddress = Inet4Address.getByName("127.0.0.1");
         KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
         boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
         bolt.state = State.SYNC_IN_PROGRESS;
@@ -244,7 +246,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
     @Test
     public void testDispatchMainMaskLogicalPortsSwitchActivated() throws JsonProcessingException, UnknownHostException {
         final SwitchId switchId = new SwitchId("00:01");
-        final String ipAddress = "127.0.0.1";
+        final InetAddress ipAddress = Inet4Address.getByName("127.0.0.1");
         KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
         boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
         bolt.state = State.SYNC_IN_PROGRESS;

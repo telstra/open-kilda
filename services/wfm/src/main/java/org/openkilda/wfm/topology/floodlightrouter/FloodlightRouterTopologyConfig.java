@@ -28,15 +28,15 @@ import java.util.Set;
 @Configuration
 public interface FloodlightRouterTopologyConfig extends AbstractTopologyConfig {
     @Key("floodlight.alive.timeout")
-    @Default("60")
+    @Default("20")
     Long getFloodligthAliveTimeout();
 
     @Key("floodlight.request.timeout")
-    @Default("120")
+    @Default("180")
     Long getFloodligthRequestTimeout();
 
     @Key("message.blacklist.timeout")
-    @Default("120")
+    @Default("180")
     Long getMessageBlacklistTimeout();
 
     @Key("floodlight.regions")

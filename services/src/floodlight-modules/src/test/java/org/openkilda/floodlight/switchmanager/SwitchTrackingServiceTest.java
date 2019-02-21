@@ -68,6 +68,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -78,7 +79,7 @@ import java.util.Set;
 public class SwitchTrackingServiceTest extends EasyMockSupport {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
     private static final DatapathId dpId = DatapathId.of(0x7fff);
-    private static String switchIpAddress;
+    private static InetAddress switchIpAddress;
     private static final Set<Switch.Feature> switchFeatures = Collections.singleton(Switch.Feature.METERS);
 
     private final SwitchTrackingService service = new SwitchTrackingService();
@@ -98,7 +99,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     public void setUp() throws Exception {
         injectMocks(this);
 
-        switchIpAddress = "127.0.1.1";
+        switchIpAddress = Inet4Address.getByName("127.0.1.1");
 
         moduleContext.addService(ISwitchManager.class, switchManager);
         moduleContext.addService(FeatureDetectorService.class, featureDetector);
@@ -307,8 +308,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                 makePhysicalPortMock(5, false)
         ));
 
-        expect(switchManager.getSwitchIpAddress(iofSwitch1)).andReturn("127.0.2.1");
-        expect(switchManager.getSwitchIpAddress(iofSwitch2)).andReturn("127.0.2.2");
+        expect(switchManager.getSwitchIpAddress(iofSwitch1)).andReturn(Inet4Address.getByName("127.0.2.1"));
+        expect(switchManager.getSwitchIpAddress(iofSwitch2)).andReturn(Inet4Address.getByName("127.0.2.2"));
 
         expect(featureDetector.detectSwitch(iofSwitch1))
                 .andReturn(ImmutableSet.of(Switch.Feature.METERS));
@@ -341,14 +342,14 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         ArrayList<Message> expectedMessages = new ArrayList<>();
         expectedMessages.add(new ChunkedInfoMessage(
                 new NetworkDumpSwitchData(new Switch(
-                        new SwitchId(swAid.getLong()), "127.0.2.1",
+                        new SwitchId(swAid.getLong()), Inet4Address.getByName("127.0.2.1"),
                         ImmutableSet.of(Switch.Feature.METERS),
                         ImmutableList.of(
                                 new SwitchPort(1, SwitchPort.State.UP),
                                 new SwitchPort(2, SwitchPort.State.UP)))), 0, correlationId, 0, 2, "1"));
         expectedMessages.add(new ChunkedInfoMessage(
                 new NetworkDumpSwitchData(new Switch(
-                        new SwitchId(swBid.getLong()), "127.0.2.2",
+                        new SwitchId(swBid.getLong()), Inet4Address.getByName("127.0.2.2"),
                         ImmutableSet.of(Switch.Feature.METERS, Switch.Feature.BFD),
                         ImmutableList.of(
                                 new SwitchPort(3, SwitchPort.State.UP),
@@ -362,7 +363,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         return this.makeSwitchRecord(dpId, switchIpAddress, switchFeatures, portState);
     }
 
-    private Switch makeSwitchRecord(DatapathId datapath, String ipAddress, Set<Switch.Feature> features,
+    private Switch makeSwitchRecord(DatapathId datapath, InetAddress ipAddress, Set<Switch.Feature> features,
                                     boolean... portState) {
         List<SwitchPort> ports = new ArrayList<>(portState.length);
         for (int idx = 0; idx < portState.length; idx++) {

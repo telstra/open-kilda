@@ -107,6 +107,7 @@ public class RequestTracker {
             return false;
         }
         message.setLastReplyTime(now);
+
         return true;
     }
 
