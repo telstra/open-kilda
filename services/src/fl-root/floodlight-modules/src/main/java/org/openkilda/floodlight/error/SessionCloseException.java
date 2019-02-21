@@ -13,21 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.service.kafka;
+package org.openkilda.floodlight.error;
 
-import org.openkilda.floodlight.service.IService;
-import org.openkilda.messaging.Message;
+import org.projectfloodlight.openflow.types.DatapathId;
 
-public interface IKafkaProducerService extends IService {
-    void enableGuaranteedOrder(String topic);
-
-    void disableGuaranteedOrder(String topic);
-
-    void disableGuaranteedOrder(String topic, long transitionPeriod);
-
-    void sendMessageAndTrack(String topic, Message message);
-
-    void sendMessageAndTrack(String topic, String key, Message message);
-
-    SendStatus sendMessage(String topic, Message message);
+public class SessionCloseException extends SwitchOperationException {
+    public SessionCloseException(DatapathId dpId) {
+        super(dpId, String.format("Unable to close session with %s (failed to writeTo final barrier message)", dpId));
+    }
 }

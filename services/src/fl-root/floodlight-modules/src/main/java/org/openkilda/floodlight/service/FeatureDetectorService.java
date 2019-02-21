@@ -18,7 +18,9 @@ package org.openkilda.floodlight.service;
 import org.openkilda.floodlight.feature.AbstractFeature;
 import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
+import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
+import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
 import org.openkilda.messaging.model.Switch.Feature;
 
 import com.google.common.collect.ImmutableList;
@@ -38,7 +40,9 @@ public class FeatureDetectorService implements IService {
         features = ImmutableList.of(
                 new MeterFeature(),
                 new BfdFeature(),
-                new BfdReviewFeature());
+                new BfdReviewFeature(),
+                new ResetCountsFlagFeature(),
+                new LimitedBurstSizeFeature());
     }
 
     /**

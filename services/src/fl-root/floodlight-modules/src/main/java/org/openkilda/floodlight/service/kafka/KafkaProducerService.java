@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.service.kafka;
 
 import org.openkilda.floodlight.service.HeartBeatService;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -75,11 +76,17 @@ public class KafkaProducerService implements IKafkaProducerService {
     }
 
     public void sendMessageAndTrack(String topic, Message message) {
-        produce(encode(topic, message), new SendStatusCallback(this, topic, message));
+        produce(encode(topic, message), new SendStatusCallback(this, topic, message.getCorrelationId()));
     }
 
     public void sendMessageAndTrack(String topic, String key, Message message) {
-        produce(encode(topic, key, message), new SendStatusCallback(this, topic, message));
+        produce(encode(topic, key, message), new SendStatusCallback(this, topic, message.getCorrelationId()));
+    }
+
+    @Override
+    public void sendMessageAndTrack(String topic, String key, AbstractMessage message) {
+        produce(encode(topic, key, message), new SendStatusCallback(this, topic, 
+                message.getMessageContext().getCorrelationId()));
     }
 
     /**
@@ -103,11 +110,11 @@ public class KafkaProducerService implements IKafkaProducerService {
         return encode(topic, null, payload);
     }
 
-    private ProducerRecord<String, String> encode(String topic, String key, Message payload) {
+    private ProducerRecord<String, String> encode(String topic, String key, Object payload) {
         return new ProducerRecord<>(topic, key, encodeValue(payload));
     }
 
-    private String encodeValue(Message message) {
+    private String encodeValue(Object message) {
         String encoded;
         try {
             encoded = jsonObjectMapper.writeValueAsString(message);
@@ -137,12 +144,12 @@ public class KafkaProducerService implements IKafkaProducerService {
     private static class SendStatusCallback implements Callback {
         private final KafkaProducerService service;
         private final String topic;
-        private final Message message;
+        private final String correlationId;
 
-        SendStatusCallback(KafkaProducerService service, String topic, Message message) {
+        SendStatusCallback(KafkaProducerService service, String topic, String correlationId) {
             this.service = service;
             this.topic = topic;
-            this.message = message;
+            this.correlationId = correlationId;
         }
 
         @Override
@@ -157,7 +164,7 @@ public class KafkaProducerService implements IKafkaProducerService {
 
             logger.error(
                     "Fail to send message(correlationId=\"{}\") in kafka topic={}: {}",
-                    message.getCorrelationId(), topic, exception);
+                    correlationId, topic, exception);
         }
     }
 }

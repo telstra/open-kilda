@@ -12,13 +12,18 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>Floodlight-Modules</name>
+    <name>floodlight-modules</name>
     <description>Floodlight SDN Controller Module</description>
 
     <dependencies>
         <dependency>
             <groupId>org.openkilda</groupId>
             <artifactId>messaging</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>floodlight-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

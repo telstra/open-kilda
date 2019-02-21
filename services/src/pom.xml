@@ -16,7 +16,7 @@
         <module>api</module>
         <module>configuration</module>
         <module>test-library</module>
-        <module>floodlight-modules</module>
+        <module>fl-root</module>
         <module>northbound</module>
         <module>functional-tests</module>
         <module>atdd-staging</module>

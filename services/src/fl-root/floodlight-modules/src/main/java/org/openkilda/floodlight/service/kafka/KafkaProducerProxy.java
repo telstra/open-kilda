@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.service.kafka;
 
 import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -56,6 +57,11 @@ public class KafkaProducerProxy implements IKafkaProducerService {
 
     @Override
     public void sendMessageAndTrack(String topic, String key, Message message) {
+        target.sendMessageAndTrack(topic, key, message);
+    }
+
+    @Override
+    public void sendMessageAndTrack(String topic, String key, AbstractMessage message) {
         target.sendMessageAndTrack(topic, key, message);
     }
 
