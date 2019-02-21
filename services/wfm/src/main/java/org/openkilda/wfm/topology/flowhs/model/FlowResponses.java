@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.model;
 
-import org.openkilda.messaging.floodlight.response.FlowResponse;
+import org.openkilda.floodlight.flow.response.FlowResponse;
 
 import lombok.Value;
 

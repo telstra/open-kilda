@@ -45,7 +45,7 @@ public interface KafkaTopicsConfig {
     String getFlowHsTopic();
 
     @Key("flow")
-    @FallbackKey("kafka.flowhs.topic")
+    @FallbackKey("kafka.flowhs.worker.topic")
     @Default("kilda.flowhs.speaker")
     String getFlowSpeakerWorkerTopic();
 

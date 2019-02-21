@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.floodlight;
+package org.openkilda.floodlight.flow.request;
 
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.AbstractMessage;
-import org.openkilda.messaging.CommandContext;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -27,8 +27,7 @@ import lombok.ToString;
 
 @Getter
 @ToString
-public abstract class FlowMessage extends AbstractMessage {
-
+public abstract class FlowRequest extends AbstractMessage {
     /**
      * The flow id.
      */
@@ -41,7 +40,7 @@ public abstract class FlowMessage extends AbstractMessage {
     @JsonProperty("switch_id")
     protected SwitchId switchId;
 
-    public FlowMessage(CommandContext context, String flowId, SwitchId switchId) {
+    public FlowRequest(MessageContext context, String flowId, SwitchId switchId) {
         super(context);
 
         this.flowId = flowId;

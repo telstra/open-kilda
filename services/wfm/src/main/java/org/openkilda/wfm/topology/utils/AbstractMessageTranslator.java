@@ -36,7 +36,7 @@ public class AbstractMessageTranslator extends KafkaRecordTranslator<String, Abs
         AbstractMessage message = record.value();
 
         //fixme: should be replaced by new command context
-        return new Values(record.key(), message, new CommandContext(message.getCommandContext().getCorrelationId()));
+        return new Values(record.key(), message, new CommandContext(message.getMessageContext().getCorrelationId()));
     }
 
     @Override

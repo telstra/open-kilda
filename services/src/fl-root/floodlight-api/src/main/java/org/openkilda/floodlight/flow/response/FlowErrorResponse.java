@@ -13,46 +13,36 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.floodlight.response;
+package org.openkilda.floodlight.flow.response;
 
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
-import org.openkilda.messaging.CommandContext;
-import org.openkilda.messaging.floodlight.FlowMessage;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-@Getter
-@ToString(callSuper = true)
-public class FlowResponse extends FlowMessage {
-
-    @JsonProperty
-    private boolean success;
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class FlowErrorResponse extends FlowResponse {
 
     @JsonProperty
     private Error error;
 
     @JsonCreator
-    @Builder
-    public FlowResponse(@JsonProperty("success") boolean success,
-                        @JsonProperty("error") Error error,
-                        @JsonProperty("command-context") CommandContext commandContext,
-                        @JsonProperty(FLOW_ID) String flowId,
-                        @JsonProperty("switch_id") SwitchId switchId) {
-        super(commandContext, flowId, switchId);
+    @Builder(builderMethodName = "errorBuilder")
+    public FlowErrorResponse(@JsonProperty("success") boolean success,
+                             @JsonProperty("error") Error error,
+                             @JsonProperty("command_context") MessageContext messageContext,
+                             @JsonProperty(FLOW_ID) String flowId,
+                             @JsonProperty("switch_id") SwitchId switchId) {
+        super(success, messageContext, flowId, switchId);
 
-        this.success = success;
         this.error = error;
-    }
-
-    public FlowResponse(FlowMessage flowMessage, boolean success) {
-        super(flowMessage.getCommandContext(), flowMessage.getFlowId(), flowMessage.getSwitchId());
-        this.success = success;
     }
 
     public enum Error {
@@ -61,4 +51,5 @@ public class FlowResponse extends FlowMessage {
         OPERATION_TIMEOUT,
         OTHER
     }
+
 }

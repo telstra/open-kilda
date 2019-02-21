@@ -13,31 +13,39 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.floodlight.request;
+package org.openkilda.floodlight.flow.request;
 
-import org.openkilda.messaging.CommandContext;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-class InstallMeteredRule extends InstallFlow {
+public class InstallFlow extends FlowRequest {
 
     /**
-     * Allocated meter id.
+     * Cookie allocated for flow.
      */
-    @JsonProperty("meter_id")
-    protected Long meterId;
+    @JsonProperty("cookie")
+    protected Long cookie;
 
     /**
-     * Flow bandwidth value.
+     * Input port for flow action.
      */
-    @JsonProperty("bandwidth")
-    protected Long bandwidth;
+    @JsonProperty("input_port")
+    protected Integer inputPort;
 
-    public InstallMeteredRule(CommandContext context, String id, Long cookie, SwitchId switchId, Integer inputPort,
-                              Integer outputPort, Long meterId, Long bandwidth) {
-        super(context, id, cookie, switchId, inputPort, outputPort);
-        this.meterId = meterId;
-        this.bandwidth = bandwidth;
+    /**
+     * Output port for flow action.
+     */
+    @JsonProperty("output_port")
+    protected Integer outputPort;
+
+    public InstallFlow(MessageContext context, String id, Long cookie, SwitchId switchId, Integer inputPort,
+                       Integer outputPort) {
+        super(context, id, switchId);
+
+        this.cookie = cookie;
+        this.inputPort = inputPort;
+        this.outputPort = outputPort;
     }
 }
