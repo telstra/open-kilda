@@ -16,6 +16,7 @@
 package org.openkilda.pce.finder;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.model.Isl;
@@ -34,6 +35,9 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class BestCostAndShortestPathFinderTest {
 
@@ -163,13 +167,6 @@ public class BestCostAndShortestPathFinderTest {
         forward.findPathInNetwork(network, srcDpid, SWITCH_ID_F);
     }
 
-    @Test(expected = UnroutableFlowException.class)
-    public void failToFindReversePath() throws  UnroutableFlowException {
-        AvailableNetwork network = buildNetworkWithoutReversePathAvailable();
-        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
-        forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
-    }
-
     @Test
     public void testForwardAndBackwardPathsEquality() throws UnroutableFlowException {
         AvailableNetwork network = buildEqualCostsNetwork();
@@ -190,6 +187,37 @@ public class BestCostAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F);
 
         assertEquals(Arrays.asList(SWITCH_ID_D, SWITCH_ID_A, SWITCH_ID_F), getSwitchIdsFlowPath(paths.getLeft()));
+    }
+
+    @Test
+    public void shouldFindSymmetricPath() throws UnroutableFlowException {
+        AvailableNetwork network = buildLinearNetworkWithPairLinks();
+        BestCostAndShortestPathFinder finder = new BestCostAndShortestPathFinder(2, WEIGHT_FUNCTION);
+
+        Pair<List<Edge>, List<Edge>> pathPair = finder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
+        List<Edge> forward = pathPair.getLeft();
+        List<Edge> reverse = Lists.reverse(pathPair.getRight());
+
+        List<Boolean> validation = IntStream.range(0, forward.size())
+                .mapToObj(i -> Objects.equals(forward.get(i).getSrcPort(), reverse.get(i).getDestPort()))
+                .collect(Collectors.toList());
+        assertFalse(validation.contains(false));
+    }
+
+    private AvailableNetwork buildLinearNetworkWithPairLinks() {
+        /*
+         * Topology:
+         *
+         * SW1===SW2===SW3
+         *
+         * All ISLs have equal cost.
+         */
+        AvailableNetwork network = new AvailableNetwork();
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 10000);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 3, 4, 10000);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, 10000);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 7, 8, 10000);
+        return network;
     }
 
     private AvailableNetwork buildEqualCostsNetwork() {

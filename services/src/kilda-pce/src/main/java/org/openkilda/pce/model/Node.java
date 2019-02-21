@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -70,19 +71,34 @@ public class Node {
      * Performs links reducing for current node by passed {@link WeightFunction}.
      *
      * @param weightFunction the function for weigh calculation.
+     * @return the reducing difference.
      */
-    public void reduceByWeight(WeightFunction weightFunction) {
-        outgoingLinks = reduceByWeight(outgoingLinks, Edge::getDestSwitch, weightFunction);
-        incomingLinks = reduceByWeight(incomingLinks, Edge::getSrcSwitch, weightFunction);
+    public Set<Edge> reduceByWeight(WeightFunction weightFunction) {
+        Set<Edge> reducedOutgoing =
+                reduceByWeight(outgoingLinks, Edge::getDestSwitch, Edge::getDestPort, weightFunction);
+        Set<Edge> reducedIncoming =
+                reduceByWeight(incomingLinks, Edge::getSrcSwitch, Edge::getSrcPort, weightFunction);
+
+        Set<Edge> diff = Sets.newHashSet();
+        diff.addAll(Sets.difference(outgoingLinks, reducedOutgoing));
+        diff.addAll(Sets.difference(incomingLinks, reducedIncoming));
+
+        outgoingLinks = reducedOutgoing;
+        incomingLinks = reducedIncoming;
+        return diff;
     }
 
     private Set<Edge> reduceByWeight(
-            Set<Edge> edges, Function<Edge, Node> groupingFunction, WeightFunction weightFunction) {
+            Set<Edge> edges, Function<Edge, Node> groupingFunction, Function<Edge, Integer> resolvePortCollisionsFn,
+            WeightFunction weightFunction) {
         if (edges.isEmpty()) {
             return edges;
         }
         return edges.stream()
-                .collect(groupingBy(groupingFunction, minBy(comparingLong(weightFunction::apply))))
+                .collect(groupingBy(groupingFunction, minBy(
+                        comparingLong(weightFunction::apply)
+                                .thenComparing(resolvePortCollisionsFn)
+                )))
                 .values().stream()
                 .filter(Optional::isPresent)
                 .map(Optional::get)
