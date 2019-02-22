@@ -20,11 +20,18 @@ import org.openkilda.messaging.model.grpc.PortMode;
 import org.openkilda.messaging.model.grpc.PortPause;
 import org.openkilda.messaging.model.grpc.PortSpeed;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
+@EqualsAndHashCode
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public class PortConfigDto {
 
     private PortSpeed speed;

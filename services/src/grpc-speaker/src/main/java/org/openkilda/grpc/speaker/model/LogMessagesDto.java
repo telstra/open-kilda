@@ -17,13 +17,26 @@ package org.openkilda.grpc.speaker.model;
 
 import org.openkilda.messaging.model.grpc.OnOffState;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 
 @Data
-@NoArgsConstructor
+@EqualsAndHashCode
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class LogMessagesDto {
     @NonNull
+    @JsonProperty("state")
     private OnOffState state;
+
+    @JsonCreator
+    public LogMessagesDto(@JsonProperty("state") OnOffState state) {
+        if (state == null) {
+            throw new IllegalArgumentException("State must not be null.");
+        }
+        this.state = state;
+    }
 }
