@@ -15,30 +15,22 @@
 
 package org.openkilda.grpc.speaker.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Data
 @EqualsAndHashCode
+@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public class LicenseDto {
 
-    @JsonProperty("license_file_name")
     private String licenseFileName;
 
-    @JsonProperty("license_data")
     private String licenseData;
 
-    @JsonCreator
-    public LicenseDto(@JsonProperty("license_file_name") String licenseFileName,
-                      @JsonProperty("license_data") String licenseData) {
-        if (licenseFileName == null && licenseData == null) {
-            throw new IllegalArgumentException("One of fields must not be null");
-        }
-        this.licenseFileName = licenseFileName;
-        this.licenseData = licenseData;
-    }
 }

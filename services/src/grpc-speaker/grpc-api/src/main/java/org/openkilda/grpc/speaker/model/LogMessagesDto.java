@@ -15,9 +15,13 @@
 
 package org.openkilda.grpc.speaker.model;
 
+import org.openkilda.messaging.model.grpc.OnOffState;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
@@ -25,42 +29,17 @@ import lombok.NonNull;
 @Data
 @EqualsAndHashCode
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class RemoteLogServerDto {
+@JsonNaming(SnakeCaseStrategy.class)
+public class LogMessagesDto {
     @NonNull
-    @JsonProperty("ip_address")
-    private String ipAddress;
-
-    @NonNull
-    @JsonProperty("port")
-    private Integer port;
+    @JsonProperty("state")
+    private OnOffState state;
 
     @JsonCreator
-    public RemoteLogServerDto(String ipAddress, Integer port) {
-        this.ipAddress = ipAddress;
-        this.port = port;
-    }
-
-    /**
-     * Sets a remote log server IP address.
-     *
-     * @param ipAddress an ip address.
-     */
-    public void setIpAddress(String ipAddress) {
-        if (ipAddress == null) {
-            throw new IllegalArgumentException("Ip address must not be null");
+    public LogMessagesDto(@JsonProperty("state") OnOffState state) {
+        if (state == null) {
+            throw new IllegalArgumentException("State must not be null.");
         }
-        this.ipAddress = ipAddress;
-    }
-
-    /**
-     * Sets a remote log server port.
-     *
-     * @param port a port number.
-     */
-    public void setPort(Integer port) {
-        if (port == null) {
-            throw new IllegalArgumentException("Port must not be null");
-        }
-        this.port = port;
+        this.state = state;
     }
 }

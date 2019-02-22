@@ -44,6 +44,9 @@ public class SwitchInfoStatus {
     @JsonProperty("builds")
     private List<SwitchBuildInfoStatus> builds;
 
+    @JsonProperty("cpu_percentage")
+    private Float cpuPercentage;
+
     @Data
     public static class SwitchEthLinkInfoStatus {
         @JsonProperty("name")

@@ -17,8 +17,10 @@ package org.openkilda.messaging.model.grpc;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class RemoteLogServer {
     @JsonProperty("ip_address")
     private String ipAddress;

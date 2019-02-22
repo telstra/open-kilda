@@ -17,6 +17,8 @@ package org.openkilda.grpc.speaker.client;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
+import org.openkilda.grpc.speaker.model.ErrorCode;
 import org.openkilda.grpc.speaker.model.LicenseDto;
 import org.openkilda.grpc.speaker.model.LogMessagesDto;
 import org.openkilda.grpc.speaker.model.LogOferrorsDto;
@@ -24,6 +26,7 @@ import org.openkilda.grpc.speaker.model.LogicalPortDto;
 import org.openkilda.grpc.speaker.model.PortConfigDto;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
 
+import com.google.common.net.InetAddresses;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.noviflow.AuthenticateUser;
@@ -59,6 +62,9 @@ public class GrpcSession {
     private String address;
 
     public GrpcSession(String address) {
+        if (!InetAddresses.isInetAddress(address) && !InetAddresses.isUriInetAddress(address)) {
+            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.getByCode(23).getMessage());
+        }
         this.address = address;
         this.channel = ManagedChannelBuilder.forAddress(address, PORT)
                 .usePlaintext()

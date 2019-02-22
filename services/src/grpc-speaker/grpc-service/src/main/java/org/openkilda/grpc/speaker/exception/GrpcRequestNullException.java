@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,24 +15,9 @@
 
 package org.openkilda.grpc.speaker.exception;
 
-public class GrpcRequestFailureException extends Exception {
+public class GrpcRequestNullException extends Exception {
 
-    private final String message;
-
-    private final Integer code;
-
-    public GrpcRequestFailureException(Integer code, String message) {
+    public GrpcRequestNullException(String message) {
         super(message);
-        this.message = message;
-        this.code = code;
-    }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
-
-    public Integer getCode() {
-        return code;
     }
 }
