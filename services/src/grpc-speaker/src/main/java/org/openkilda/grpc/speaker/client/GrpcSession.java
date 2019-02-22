@@ -289,26 +289,49 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<CliReply>> setPortConfig(Integer portNumber, PortConfigDto config) {
-        PortConfig portConfig = PortConfig.newBuilder()
-                .setPortno(portNumber)
-                .setQueueid(config.getQueueId())
-                .setMinrate(config.getMinRate())
-                .setMaxrate(config.getMaxRate())
-                .setWeight(config.getWeight())
-                .setNativevid(config.getNativeVId())
-                .setSpeed(PortSpeed.forNumber(config.getSpeed().getNumber()))
-                .setMode(PortMode.forNumber(config.getMode().getNumber()))
-                .setPause(PortPause.forNumber(config.getPause().getNumber()))
-                .setAutoneg(OnOff.forNumber(config.getAutoneg().getNumber()))
-                .setNopacketin(OnOff.forNumber(config.getNoPacketIn().getNumber()))
-                .setPortdown(OnOff.forNumber(config.getPortDown().getNumber()))
-                .setTrunk(OnOff.forNumber(config.getTrunk().getNumber()))
-                .build();
+        PortConfig.Builder builder = PortConfig.newBuilder()
+                .setPortno(portNumber);
+        if (config.getQueueId() != null) {
+            builder.setQueueid(config.getQueueId());
+        }
+        if (config.getMinRate() != null) {
+            builder.setMinrate(config.getMinRate());
+        }
+        if (config.getMaxRate() != null) {
+            builder.setMaxrate(config.getMaxRate());
+        }
+        if (config.getWeight() != null) {
+            builder.setWeight(config.getWeight());
+        }
+        if (config.getNativeVId() != null) {
+            builder.setNativevid(config.getNativeVId());
+        }
+        if (config.getSpeed() != null) {
+            builder.setSpeed(PortSpeed.forNumber(config.getSpeed().getNumber()));
+        }
+        if (config.getMode() != null) {
+            builder.setMode(PortMode.forNumber(config.getMode().getNumber()));
+        }
+        if (config.getPause() != null) {
+            builder.setPause(PortPause.forNumber(config.getPause().getNumber()));
+        }
+        if (config.getAutoneg() != null) {
+            builder.setAutoneg(OnOff.forNumber(config.getAutoneg().getNumber()));
+        }
+        if (config.getNoPacketIn() != null) {
+            builder.setNopacketin(OnOff.forNumber(config.getNoPacketIn().getNumber()));
+        }
+        if (config.getPortDown() != null) {
+            builder.setPortdown(OnOff.forNumber(config.getPortDown().getNumber()));
+        }
+        if (config.getTrunk() != null) {
+            builder.setTrunk(OnOff.forNumber(config.getTrunk().getNumber()));
+        }
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
         log.debug("Set port {} configuration for switch {}", portNumber, address);
 
-        stub.setConfigPort(portConfig, observer);
+        stub.setConfigPort(builder.build(), observer);
 
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
@@ -316,6 +339,7 @@ public class GrpcSession {
 
     /**
      * Sets a license configuration.
+     *
      * @param licenseDto a license data.
      * @return {@link CompletableFuture} with operation result.
      */

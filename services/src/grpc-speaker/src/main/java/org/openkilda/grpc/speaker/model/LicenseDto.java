@@ -15,12 +15,30 @@
 
 package org.openkilda.grpc.speaker.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class LicenseDto {
 
+    @JsonProperty("license_file_name")
     private String licenseFileName;
 
+    @JsonProperty("license_data")
     private String licenseData;
+
+    @JsonCreator
+    public LicenseDto(@JsonProperty("license_file_name") String licenseFileName,
+                      @JsonProperty("license_data") String licenseData) {
+        if (licenseFileName == null && licenseData == null) {
+            throw new IllegalArgumentException("One of fields must not be null");
+        }
+        this.licenseFileName = licenseFileName;
+        this.licenseData = licenseData;
+    }
 }
