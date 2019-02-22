@@ -124,16 +124,11 @@ class SwitchMaintenance extends BaseSpecification {
 
     def "Link discovered by a switch under maintenance is marked as maintained"() {
         given: "An active link"
-        //TODO(ylobankov): Remove avoiding of links with a-switch once issue #2038 is merged.
-        def isl = topology.islsForActiveSwitches.find { !it.aswitch }
+        def isl = topology.islsForActiveSwitches.first()
 
         and: "Bring port down on the switch to fail the link"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         and: "Delete the link"
         northbound.deleteLink(islUtils.getLinkParameters(isl))

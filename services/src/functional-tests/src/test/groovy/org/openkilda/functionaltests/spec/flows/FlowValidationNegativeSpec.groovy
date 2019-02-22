@@ -1,6 +1,9 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.model.SwitchId
@@ -8,6 +11,8 @@ import org.openkilda.northbound.dto.flows.FlowValidationDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
+import org.junit.Assume
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -160,5 +165,24 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     def getSingleSwitch() {
         def switches = topology.getActiveSwitches()
         return [switches.first(), switches.first()]
+    }
+
+    @Unroll
+    def "Unable to #action a non-existent flow"() {
+        Assume.assumeFalse("Ignored due to issue #2027", action == "validate")
+        when: "Trying to #action a non-existent flow"
+        northbound."${action}Flow"(NON_EXISTENT_FLOW_ID)
+
+        then: "An error is received (404 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage == message
+
+        where:
+        action        | message
+        "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "get"         | "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "validate"    | "Can not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 }

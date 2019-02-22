@@ -192,8 +192,8 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "Set flowsRerouteOnIslDiscovery=#flowsRerouteOnIslDiscovery"
         northbound.toggleFeature(FeatureTogglesDto.builder()
-                        .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscovery)
-                        .build())
+                .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscovery)
+                .build())
 
         and: "Connect the intermediate switch back"
         lockKeeper.reviveSwitch(flowPath[1].switchId)
@@ -335,9 +335,7 @@ class AutoRerouteSpec extends BaseSpecification {
         northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'FAILED'"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED }
 
         when: "Failed link goes up"
         northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)

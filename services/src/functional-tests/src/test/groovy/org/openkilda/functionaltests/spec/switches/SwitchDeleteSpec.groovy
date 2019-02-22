@@ -92,15 +92,16 @@ class SwitchDeleteSpec extends BaseSpecification {
         exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} inactive links\\. " +
                 "Remove them first.*")
 
-        and: "Cleanup: activate the switch back"
+        and: "Cleanup: activate the switch back and reset costs"
         lockKeeper.reviveSwitch(sw.dpId)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         swIsls.each { northbound.portUp(sw.dpId, it.srcPort) }
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
+        database.resetCosts()
     }
 
     @Unroll
@@ -163,17 +164,18 @@ class SwitchDeleteSpec extends BaseSpecification {
         response.deleted
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.allSwitches.any { it.switchId == sw.dpId } }
 
-        and: "Cleanup: activate the switch back and restore ISLs"
+        and: "Cleanup: activate the switch back, restore ISLs and reset costs"
         // restore switch
         lockKeeper.reviveSwitch(sw.dpId)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs
         swIsls.each { northbound.portUp(sw.dpId, it.srcPort) }
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
+        database.resetCosts()
     }
 
     def "Able to delete an active switch with active ISLs if using force delete"() {
@@ -198,7 +200,7 @@ class SwitchDeleteSpec extends BaseSpecification {
             }
         }
 
-        and: "Cleanup: restore the switch and ISLs"
+        and: "Cleanup: restore the switch, ISLs and reset costs"
         // restore switch
         lockKeeper.knockoutSwitch(sw.dpId)
         lockKeeper.reviveSwitch(sw.dpId)
@@ -209,9 +211,10 @@ class SwitchDeleteSpec extends BaseSpecification {
         allSwIsls.each { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
         TimeUnit.SECONDS.sleep(antiflapCooldown)
         allSwIsls.each { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
+        database.resetCosts()
     }
 }

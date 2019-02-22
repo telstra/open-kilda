@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Semantically, this class represents an "available network". That means everything in it is available for path
@@ -70,7 +71,13 @@ public class AvailableNetwork {
      */
     public void reduceByWeight(WeightFunction weightFunction) {
         for (Node node : switches.values()) {
-            node.reduceByWeight(weightFunction);
+            Set<Edge> reduced = node.reduceByWeight(weightFunction);
+            reduced.forEach(e -> {
+                switches.get(e.getSrcSwitch().getSwitchId()).getIncomingLinks().remove(e);
+                switches.get(e.getSrcSwitch().getSwitchId()).getOutgoingLinks().remove(e);
+                switches.get(e.getDestSwitch().getSwitchId()).getIncomingLinks().remove(e);
+                switches.get(e.getDestSwitch().getSwitchId()).getOutgoingLinks().remove(e);
+            });
         }
     }
 }
