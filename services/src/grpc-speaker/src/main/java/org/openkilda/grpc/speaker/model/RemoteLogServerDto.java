@@ -15,17 +15,52 @@
 
 package org.openkilda.grpc.speaker.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 
 @Data
-@NoArgsConstructor
+@EqualsAndHashCode
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class RemoteLogServerDto {
     @NonNull
+    @JsonProperty("ip_address")
     private String ipAddress;
 
     @NonNull
+    @JsonProperty("port")
     private Integer port;
 
+    @JsonCreator
+    public RemoteLogServerDto(String ipAddress, Integer port) {
+        this.ipAddress = ipAddress;
+        this.port = port;
+    }
+
+    /**
+     * Sets a remote log server IP address.
+     *
+     * @param ipAddress an ip address.
+     */
+    public void setIpAddress(String ipAddress) {
+        if (ipAddress == null) {
+            throw new IllegalArgumentException("Ip address must not be null");
+        }
+        this.ipAddress = ipAddress;
+    }
+
+    /**
+     * Sets a remote log server port.
+     *
+     * @param port a port number.
+     */
+    public void setPort(Integer port) {
+        if (port == null) {
+            throw new IllegalArgumentException("Port must not be null");
+        }
+        this.port = port;
+    }
 }

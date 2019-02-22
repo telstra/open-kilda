@@ -57,6 +57,11 @@ public class GrpcMessageError implements Serializable {
     private String errorMessage;
 
     /**
+     * Error type.
+     */
+    private String errorType;
+
+    /**
      * Constructs a Error message.
      *
      * @param timestamp the error timestamp.
@@ -74,6 +79,26 @@ public class GrpcMessageError implements Serializable {
     }
 
     /**
+     * Constructs a Error message.
+     *
+     * @param timestamp the error timestamp.
+     * @param errorCode the error code.
+     * @param errorMessage the error message.
+     * @param errorType the error type.
+     */
+    @JsonCreator
+    public GrpcMessageError(
+            @JsonProperty(TIMESTAMP) long timestamp,
+            @JsonProperty("error-code") long errorCode,
+            @JsonProperty("error-message") String errorMessage,
+            String errorType) {
+        this.timestamp = timestamp;
+        this.errorCode = errorCode;
+        this.errorMessage = errorMessage;
+        this.errorType = errorType;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -84,10 +109,11 @@ public class GrpcMessageError implements Serializable {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        GrpcMessageError that = (GrpcMessageError) o;
-        return timestamp == that.timestamp
-                && errorCode == that.errorCode
-                && Objects.equals(errorMessage, that.errorMessage);
+        GrpcMessageError error = (GrpcMessageError) o;
+        return timestamp == error.timestamp
+                && errorCode == error.errorCode
+                && Objects.equals(errorMessage, error.errorMessage)
+                && Objects.equals(errorType, error.errorType);
     }
 
     /**
@@ -95,6 +121,6 @@ public class GrpcMessageError implements Serializable {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(timestamp, errorCode, errorMessage);
+        return Objects.hash(timestamp, errorCode, errorMessage, errorType);
     }
 }

@@ -18,6 +18,7 @@ package org.openkilda.grpc.speaker.utils;
 import static java.lang.String.format;
 
 import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.GrpcMessageError;
 
 import org.springframework.http.HttpHeaders;
@@ -40,6 +41,9 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
             case 57:
                 status = HttpStatus.UNAUTHORIZED;
                 break;
+            case 191:
+                status = HttpStatus.NOT_FOUND;
+                break;
             default:
                 status = HttpStatus.BAD_REQUEST;
                 break;
@@ -49,5 +53,19 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
         logger.warn(format("Error %s caught.", error), ex);
 
         return super.handleExceptionInternal(ex, error, new HttpHeaders(), status, request);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception exception, Object body, HttpHeaders headers,
+                                                             HttpStatus status, WebRequest request) {
+        GrpcMessageError error = new GrpcMessageError(System.currentTimeMillis(), -1L, exception.getMessage(),
+                ErrorType.REQUEST_INVALID.toString());
+
+        logger.error(format("Unknown error %s caught.", error), exception);
+
+        return super.handleExceptionInternal(exception, error, headers, status, request);
     }
 }
