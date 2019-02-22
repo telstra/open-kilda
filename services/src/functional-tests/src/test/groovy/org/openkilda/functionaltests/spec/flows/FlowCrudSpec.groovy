@@ -387,13 +387,14 @@ class FlowCrudSpec extends BaseSpecification {
                 "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
                 "links with enough bandwidth"
 
-        and: "cleanup: restore connection to the isolated switch"
+        and: "Cleanup: restore connection to the isolated switch and reset costs"
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             northbound.portUp(isolatedSwitch.dpId, port)
         }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
         }
+        database.resetCosts()
 
         where:
         data << [

@@ -105,8 +105,9 @@ class LinkSpec extends BaseSpecification {
             [flow1, flow2, flow3, flow4].each { assert northbound.getFlowStatus(it.id).status == FlowState.UP }
         }
 
-        and: "Delete all created flows"
+        and: "Delete all created flows and reset costs"
         [flow1, flow2, flow3, flow4].each { assert northbound.deleteFlow(it.id) }
+        database.resetCosts()
     }
 
     @Unroll
@@ -189,26 +190,39 @@ class LinkSpec extends BaseSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
-    def "Able to delete an inactive link"() {
+    @Unroll
+    def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
-        def isl = topology.getIslsForActiveSwitches()[0]
+        assumeTrue("Unable to locate $islDescription ISL for this test", isl as boolean)
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         when: "Try to delete the link"
         def response = northbound.deleteLink(islUtils.getLinkParameters(isl))
+        // TODO(rtretiak): Below line to be removed after #1977 fix
+        northbound.deleteLink(islUtils.getLinkParameters(islUtils.reverseIsl(isl)))
 
         then: "The link is actually deleted"
         response.deleted
         !islUtils.getIslInfo(isl)
-        // TODO(ylobankov): Uncomment the check when the issue #1977 is resolved.
-        //!islUtils.getIslInfo(islUtils.reverseIsl(isl))
+        !islUtils.getIslInfo(islUtils.reverseIsl(isl))
 
-        and: "Cleanup: restore the link"
+        when: "Removed link becomes active again (port brought UP)"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+
+        then: "Link is rediscovered in both directions"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
+
+        where:
+        islDescription  | isl
+        "direct"        | getTopology().islsForActiveSwitches.find { !it.aswitch }
+        "a-switch"      | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
+        "bfd"           | getTopology().islsForActiveSwitches.find { it.bfd }
     }
 
     def "Reroute all flows going through a particular link"() {

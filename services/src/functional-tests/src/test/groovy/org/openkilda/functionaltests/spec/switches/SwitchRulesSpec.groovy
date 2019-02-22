@@ -546,6 +546,7 @@ class SwitchRulesSpec extends BaseSpecification {
         and: "Create a flow going through these switches"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
+        def flowCookiesMap = [srcSwitch, dstSwitch].collectEntries { [it, getFlowRules(it)*.cookie] }
 
         when: "Ping the flow"
         def response = northbound.pingFlow(flow.id, new PingInput())
@@ -568,6 +569,7 @@ class SwitchRulesSpec extends BaseSpecification {
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.id)) != flowPath
+            [srcSwitch, dstSwitch].each { sw -> getFlowRules(sw).each { assert !(it.cookie in flowCookiesMap[sw]) } }
         }
 
         and: "Traffic counters in ingress rule on source and destination switches are reset"
@@ -577,10 +579,10 @@ class SwitchRulesSpec extends BaseSpecification {
         and: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
         northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
-        database.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
     }
 
     void compareRules(actualRules, expectedRules) {

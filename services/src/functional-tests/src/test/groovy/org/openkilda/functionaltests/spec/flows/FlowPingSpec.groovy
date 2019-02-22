@@ -10,7 +10,6 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.event.SwitchInfoData
 import org.openkilda.northbound.dto.flows.PingInput
 import org.openkilda.northbound.dto.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput
@@ -55,7 +54,7 @@ class FlowPingSpec extends BaseSpecification {
         def statsData = null
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
             statsData = otsdb.query(beforePingTime, "pen.switch.flow.system.bytes",
-                    [switchid: srcSwitch.dpId.toOtsdFormat(),
+                    [switchid : srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.VERIFICATION_UNICAST_RULE.toHexString()]).dps
             assert statsData && !statsData.empty
         }
@@ -136,10 +135,10 @@ class FlowPingSpec extends BaseSpecification {
         lockKeeper.addFlows(rulesToRemove)
         flowHelper.deleteFlow(flow.id)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
 
         where:
         data << [
@@ -177,19 +176,20 @@ class FlowPingSpec extends BaseSpecification {
         description = "${data.breakForward ? "forward" : ""}${data.breakForward && data.breakReverse ? " and " : ""}" +
                 "${data.breakReverse ? "reverse" : ""} path with ${data.pingInput.timeoutMillis}ms timeout"
 
-        expectedPingResult = new PingOutputBuilder()
-                .forward(new UniFlowPingOutput(
-                    pingSuccess: !data.breakForward,
-                    error: data.breakForward ? "No ping for reasonable time" : null))
-                .reverse(new UniFlowPingOutput(
-                    pingSuccess: !data.breakReverse,
-                    error: data.breakReverse ? "No ping for reasonable time" : null))
-                .error(null).build()
+        expectedPingResult = new PingOutputBuilder().forward(
+                new UniFlowPingOutput(
+                        pingSuccess: !data.breakForward,
+                        error: data.breakForward ? "No ping for reasonable time" : null)).reverse(
+                new UniFlowPingOutput(
+                        pingSuccess: !data.breakReverse,
+                        error: data.breakReverse ? "No ping for reasonable time" : null))
+                .error(null)
+                .build()
     }
 
     def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
-        def sw = topology.activeSwitches.find{ !it.centec && it.ofVersion != "OF_12" }
+        def sw = topology.activeSwitches.find { !it.centec && it.ofVersion != "OF_12" }
         assert sw
         def flow = flowHelper.singleSwitchFlow(sw)
         flowHelper.addFlow(flow)
