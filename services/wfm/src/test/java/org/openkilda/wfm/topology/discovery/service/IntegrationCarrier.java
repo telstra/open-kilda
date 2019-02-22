@@ -63,7 +63,7 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
 
     @Override
     public void setupUniIslHandler(Endpoint endpoint, Isl history) {
-        uniIslService.uniIslSetup(uniIslCarrier, endpoint, history);
+        uniIslService.uniIslSetup(endpoint, history);
     }
 
     @Override
@@ -78,7 +78,7 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
 
     @Override
     public void notifyPortPhysicalDown(Endpoint endpoint) {
-        uniIslService.uniIslPhysicalDown(uniIslCarrier, endpoint);
+        uniIslService.uniIslPhysicalDown(endpoint);
     }
 
     @Override

@@ -233,13 +233,13 @@ public class DiscoverySwitchServiceTest {
                 .srcSwitch(alphaSwitch)
                 .srcPort(1)
                 .destSwitch(betaSwitch)
-                .srcPort(1).build();
+                .destPort(1).build();
 
         Isl islAtoB2 = Isl.builder()
                 .srcSwitch(alphaSwitch)
                 .srcPort(2)
                 .destSwitch(betaSwitch)
-                .srcPort(2).build();
+                .destPort(2).build();
 
         history.addLink(islAtoB);
         history.addLink(islAtoB2);
@@ -273,19 +273,19 @@ public class DiscoverySwitchServiceTest {
                 .srcSwitch(alphaSwitch)
                 .srcPort(1)
                 .destSwitch(betaSwitch)
-                .srcPort(1).build();
+                .destPort(1).build();
 
         Isl islAtoB2 = Isl.builder()
                 .srcSwitch(alphaSwitch)
                 .srcPort(2)
                 .destSwitch(betaSwitch)
-                .srcPort(2).build();
+                .destPort(2).build();
 
         Isl islAtoB3 = Isl.builder()
                 .srcSwitch(alphaSwitch)
                 .srcPort(3)
                 .destSwitch(betaSwitch)
-                .srcPort(3).build();
+                .destPort(3).build();
 
         history.addLink(islAtoB);
         history.addLink(islAtoB2);

@@ -129,7 +129,7 @@ public class DiscoveryIntegrationTest {
         switchService = new DiscoverySwitchService(null, persistenceManager, bfdLocalPortOffset);
         portService = new DiscoveryPortService(null);
         bfdPortService = new DiscoveryBfdPortService(persistenceManager, new TaskIdBasedKeyFactory(0));
-        uniIslService = new DiscoveryUniIslService();
+        uniIslService = new DiscoveryUniIslService(null);
         islService = new DiscoveryIslService(persistenceManager);
 
         integrationCarrier = new IntegrationCarrier(

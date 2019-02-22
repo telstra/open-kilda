@@ -29,6 +29,6 @@ public class UniIslBfdUpDownCommand extends UniIslCommand {
 
     @Override
     public void apply(DiscoveryUniIslService service, IUniIslCarrier carrier) {
-        service.uniIslBfdUpDown(carrier, getEndpoint(), up);
+        service.uniIslBfdUpDown(getEndpoint(), up);
     }
 }

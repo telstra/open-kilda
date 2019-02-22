@@ -44,7 +44,7 @@ moveChoice --> UP : [remote is changed] / emit isl-move
 
 DOWN --> moveChoice : discovery
 DOWN --> BFD : bfd-up
-DOWN : enter / emit isl-down
+DOWN : enter [has remote] / emit isl-down
 
 BFD --> DOWN : physical-down
 BFD --> DOWN : bfd-down

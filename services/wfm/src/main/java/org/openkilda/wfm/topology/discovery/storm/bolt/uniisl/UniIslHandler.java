@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl;
 
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
@@ -41,7 +40,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class UniIslHandler extends AbstractBolt {
+public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     public static final String BOLT_ID = ComponentId.UNI_ISL_HANDLER.toString();
 
     public static final String FIELD_ID_ISL_SOURCE = SpeakerMonitor.FIELD_ID_ISL_SOURCE;
@@ -74,12 +73,12 @@ public class UniIslHandler extends AbstractBolt {
 
     private void handleCommand(Tuple input, String field) throws PipelineException {
         UniIslCommand command = pullValue(input, field, UniIslCommand.class);
-        command.apply(service, new OutputAdapter(this, input));
+        command.apply(service, this);
     }
 
     @Override
     protected void init() {
-        service = new DiscoveryUniIslService();
+        service = new DiscoveryUniIslService(this);
     }
 
     @Override
@@ -88,34 +87,28 @@ public class UniIslHandler extends AbstractBolt {
         // TODO
     }
 
-    private static class OutputAdapter extends AbstractOutputAdapter implements IUniIslCarrier {
-        OutputAdapter(AbstractBolt owner, Tuple tuple) {
-            super(owner, tuple);
-        }
+    @Override
+    public void setupIslFromHistory(Endpoint endpoint, IslReference islReference, Isl history) {
+        emit(getCurrentTuple(), makeDefaultTuple(new IslSetupFromHistoryCommand(endpoint, islReference, history)));
+    }
 
-        @Override
-        public void setupIslFromHistory(Endpoint endpoint, IslReference islReference, Isl history) {
-            emit(makeDefaultTuple(new IslSetupFromHistoryCommand(endpoint, islReference, history)));
-        }
+    @Override
+    public void notifyIslUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
+        emit(getCurrentTuple(), makeDefaultTuple(new IslUpCommand(endpoint, reference, islData)));
+    }
 
-        @Override
-        public void notifyIslUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
-            emit(makeDefaultTuple(new IslUpCommand(endpoint, reference, islData)));
-        }
+    @Override
+    public void notifyIslDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
+        emit(getCurrentTuple(), makeDefaultTuple(new IslDownCommand(endpoint, reference, isPhysicalDown)));
+    }
 
-        @Override
-        public void notifyIslDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
-            emit(makeDefaultTuple(new IslDownCommand(endpoint, reference, isPhysicalDown)));
-        }
+    @Override
+    public void notifyIslMove(Endpoint endpoint, IslReference reference) {
+        emit(getCurrentTuple(), makeDefaultTuple(new IslMoveCommand(endpoint, reference)));
+    }
 
-        @Override
-        public void notifyIslMove(Endpoint endpoint, IslReference reference) {
-            emit(makeDefaultTuple(new IslMoveCommand(endpoint, reference)));
-        }
-
-        private Values makeDefaultTuple(IslCommand command) {
-            IslReference reference = command.getReference();
-            return new Values(reference.getSource(), reference.getDest(), command, getContext());
-        }
+    private Values makeDefaultTuple(IslCommand command) {
+        IslReference reference = command.getReference();
+        return new Values(reference.getSource(), reference.getDest(), command, safePullContext());
     }
 }

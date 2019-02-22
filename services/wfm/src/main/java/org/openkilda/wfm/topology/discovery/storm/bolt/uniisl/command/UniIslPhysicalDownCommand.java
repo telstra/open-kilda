@@ -26,6 +26,6 @@ public class UniIslPhysicalDownCommand extends UniIslCommand {
 
     @Override
     public void apply(DiscoveryUniIslService service, IUniIslCarrier carrier) {
-        service.uniIslPhysicalDown(carrier, getEndpoint());
+        service.uniIslPhysicalDown(getEndpoint());
     }
 }

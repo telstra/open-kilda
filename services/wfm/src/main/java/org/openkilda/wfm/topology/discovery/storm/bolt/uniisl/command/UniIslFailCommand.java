@@ -26,6 +26,6 @@ public class UniIslFailCommand extends UniIslCommand {
 
     @Override
     public void apply(DiscoveryUniIslService service, IUniIslCarrier carrier) {
-        service.uniIslFail(carrier, getEndpoint());
+        service.uniIslFail(getEndpoint());
     }
 }

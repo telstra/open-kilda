@@ -88,6 +88,8 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
                 .from(UniIslFsmState.BFD).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.PHYSICAL_DOWN);
         builder.transition()
                 .from(UniIslFsmState.BFD).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.BFD_DOWN);
+        builder.transition()
+                .from(UniIslFsmState.BFD).to(UniIslFsmState.UP).on(UniIslFsmEvent.BFD_KILL);
         builder.onEntry(UniIslFsmState.BFD)
                 .callMethod("bfdEnter");
     }
@@ -137,14 +139,17 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
 
     private void upEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
         IslInfoData discovery = context.getDiscoveryEvent();
-        islReference = IslReference.of(discovery);
-        islData = new IslDataHolder(discovery);
-
+        if (discovery != null) {
+            islReference = IslReference.of(discovery);
+            islData = new IslDataHolder(discovery);
+        }
         emitIslUp(context);
     }
 
     private void downEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
-        emitIslDown(context, event == UniIslFsmEvent.PHYSICAL_DOWN);
+        if (!islReference.isIncomplete()) {
+            emitIslDown(context, event == UniIslFsmEvent.PHYSICAL_DOWN);
+        }
     }
 
     private void bfdEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
