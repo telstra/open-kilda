@@ -15,14 +15,12 @@
 
 package org.openkilda.grpc.speaker.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.NonNull;
 
 import java.util.List;
 
@@ -30,30 +28,15 @@ import java.util.List;
 @NoArgsConstructor
 @EqualsAndHashCode
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public class LogicalPortDto {
 
-    @NonNull
-    @JsonProperty("port_numbers")
     private List<Integer> portNumbers;
 
-    @NonNull
-    @JsonProperty("logical_port_number")
     private Integer logicalPortNumber;
 
-    @NonNull
-    @JsonProperty("logical_port_name")
     private String logicalPortName;
 
-    @Builder
-    @JsonCreator
-    public LogicalPortDto(
-            @JsonProperty("port_numbers") List<Integer> portNumbers,
-            @JsonProperty("logical_port_number") Integer logicalPortNumber,
-            @JsonProperty("logical_port_name") String logicalPortName) {
-        setPortNumbers(portNumbers);
-        setLogicalPortNumber(logicalPortNumber);
-        setLogicalPortName(logicalPortName);
-    }
 
     /**
      * Sets a port numbers.
