@@ -54,7 +54,7 @@ public class DiscoveryIslService {
             ensureControllerIsMissing(reference);
             controller.put(reference, IslFsm.createFromHistory(persistenceManager, reference, history));
         } else {
-            log.error("Receive \"history\" data for already create ISL - ignore history (start-up race condition)");
+            log.error("Receive \"history\" data for already created ISL - ignore history (start-up race condition)");
         }
     }
 

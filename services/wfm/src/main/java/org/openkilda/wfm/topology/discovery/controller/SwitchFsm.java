@@ -276,10 +276,16 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
 
         SpeakerSwitchDescription description = speakerData.getDescription();
         sw.setDescription(String.format("%s %s %s",
-                                     description.getManufacturer(),
-                                     speakerData.getOfVersion(),
-                                     description.getSoftware()));
-        // TODO(surabujin): grab changes from PR2039
+                                        description.getManufacturer(),
+                                        speakerData.getOfVersion(),
+                                        description.getSoftware()));
+
+        sw.setOfVersion(sw.getOfVersion());
+        sw.setOfDescriptionManufacturer(sw.getOfDescriptionManufacturer());
+        sw.setOfDescriptionHardware(sw.getOfDescriptionHardware());
+        sw.setOfDescriptionSoftware(sw.getOfDescriptionSoftware());
+        sw.setOfDescriptionSerialNumber(sw.getOfDescriptionSerialNumber());
+        sw.setOfDescriptionDatapath(sw.getOfDescriptionDatapath());
 
         sw.setStatus(SwitchStatus.ACTIVE);
 

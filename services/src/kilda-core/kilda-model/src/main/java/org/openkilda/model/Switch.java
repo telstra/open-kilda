@@ -66,6 +66,14 @@ public class Switch implements Serializable {
 
     private String description;
 
+    private String ofVersion;
+
+    private String ofDescriptionManufacturer;
+    private String ofDescriptionHardware;
+    private String ofDescriptionSoftware;
+    private String ofDescriptionSerialNumber;
+    private String ofDescriptionDatapath;
+
     @Property(name = "under_maintenance")
     private boolean underMaintenance;
 
