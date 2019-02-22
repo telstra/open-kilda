@@ -110,7 +110,11 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         private String streamToHub;
         private String hubComponent;
         private String workerSpoutComponent;
+
+        @Builder.Default
         private int defaultTimeout = 100;
+
+        @Builder.Default
         private boolean autoAck = true;
     }
 }

@@ -34,6 +34,7 @@ public class Edge {
     private int destPort;
 
     private int cost;
+    private long availableBandwidth;
     private long latency;
 
     /**
@@ -61,6 +62,7 @@ public class Edge {
                 .srcPort(isl.getSrcPort())
                 .destPort(isl.getDestPort())
                 .cost(isl.getCost())
-                .latency(isl.getLatency());
+                .latency(isl.getLatency())
+                .availableBandwidth(isl.getAvailableBandwidth());
     }
 }

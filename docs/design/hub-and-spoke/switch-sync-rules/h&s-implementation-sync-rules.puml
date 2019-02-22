@@ -1,0 +1,53 @@
+@startuml
+title Switch rules synchronization
+
+actor User
+boundary Northbound as NB
+participant SwitchManager << Hub >>
+participant ValidateService
+participant CommandBuilder
+participant Floodlight as FL
+database DAO
+
+User -> NB : Switch sync rules
+
+activate NB
+NB -> SwitchManager : SwitchRulesSyncRequest
+activate SwitchManager
+
+SwitchManager -> FL : DumpRulesRequest
+deactivate SwitchManager
+FL -> SwitchManager : SwitchFlowEntries
+activate SwitchManager
+SwitchManager -> ValidateService : Validate rules
+activate ValidateService
+ValidateService -> DAO : Get flow segments\nby dst switch id
+activate DAO
+DAO -> ValidateService : Flow segments
+deactivate DAO
+ValidateService -> DAO : Get flows\nby src switch id
+activate DAO
+DAO -> ValidateService : Flows
+deactivate DAO
+ValidateService -> ValidateService : Compute missing rules
+
+ValidateService -> SwitchManager : Validate result
+deactivate ValidateService
+
+SwitchManager -> CommandBuilder : Create switch rules
+activate CommandBuilder
+CommandBuilder -> CommandBuilder : Build commands
+CommandBuilder -> SwitchManager : Rule installation commands
+deactivate CommandBuilder
+
+SwitchManager -> FL : BatchInstallRequest
+deactivate SwitchManager
+FL -> SwitchManager : Rules has been installed
+
+activate SwitchManager
+SwitchManager -> NB
+deactivate SwitchManager
+NB -> User
+deactivate NB
+
+ @enduml

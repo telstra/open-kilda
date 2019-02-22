@@ -150,39 +150,36 @@ class LinkPropertiesSpec extends BaseSpecification {
         database.getIslCost(isl) == Constants.DEFAULT_COST
     }
 
-    def "Newly discovered ISL gets cost from link property existed before ISL was discovered"() {
-        given: "An ISL"
+    def "Newly discovered link gets cost from link props"() {
+        given: "An active link"
         def isl = topology.islsForActiveSwitches.first()
 
         and: "Bring port down on the source switch"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
-        and: "Delete ISL from the database"
-        database.removeInactiveIsls()
-        assert northbound.getAllLinks().findAll {
-            isl.srcSwitch.dpId == it.source.switchId &&
-                    isl.srcPort == it.source.portNo &&
-                    isl.dstSwitch.dpId == it.destination.switchId &&
-                    isl.dstPort == it.destination.portNo
-        }.empty
+        and: "Delete the link"
+        northbound.deleteLink(islUtils.getLinkParameters(isl))
+        northbound.deleteLink(islUtils.getLinkParameters(islUtils.reverseIsl(isl)))
+        assert !islUtils.getIslInfo(isl)
+        assert !islUtils.getIslInfo(islUtils.reverseIsl(isl))
 
-        and: "Update cost on ISL via link props"
+        and: "Set cost on the deleted link via link props"
         def cost = "12345"
         def linkProps = [new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort, isl.dstSwitch.dpId.toString(),
                 isl.dstPort, ["cost": cost])]
         northbound.updateLinkProps(linkProps)
 
-        when: "Bring port up on the source switch to discover a new ISL"
+        when: "Bring port up on the source switch to discover the deleted link"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
 
-        then: "Newly discovered ISL gets cost from link property existed before ISL was discovered"
+        then: "The discovered link gets cost from link props"
         database.getIslCost(isl) == cost.toInteger()
+        //TODO(ylobankov): Uncomment the check once issue #1954 is merged.
+        //database.getIslCost(islUtils.reverseIsl(isl)) == cost.toInteger()
 
         and: "Delete link props"
         northbound.deleteLinkProps(linkProps)

@@ -82,7 +82,7 @@ def build_ingress_flow_from_db(stored_flow, output_action):
                               stored_flow['bandwidth'],
                               stored_flow['transit_vlan'],
                               stored_flow['flowid'], output_action,
-                              stored_flow['cookie'], stored_flow['meter_id'])
+                              stored_flow['cookie'], stored_flow.get('meter_id'))
 
 
 def build_egress_flow(path_nodes, dst_switch, dst_port, dst_vlan,

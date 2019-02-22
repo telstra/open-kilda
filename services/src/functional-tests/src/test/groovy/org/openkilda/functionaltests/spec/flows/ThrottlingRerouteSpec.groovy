@@ -14,10 +14,12 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
+@Ignore("Unstable. Under investigation.")
 @Narrative("""
 This test verifies that we do not perform a reroute as soon as we receive a reroute request (we talk only about
 automatic reroutes here; manual reroutes are still performed instantly). Instead, system waits for 'reroute.delay'
@@ -203,6 +205,10 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         and: "cleanup: restore broken path"
         northbound.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(brokenIsl).get().state == IslChangeType.DISCOVERED }
+    }
+
+    def cleanup() {
+        database.resetCosts()
     }
 
     /**

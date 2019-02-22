@@ -21,6 +21,8 @@ public enum StreamType {
     FLOW,
     REROUTE,
     FEATURE_TOGGLES,
+    PATHS,
     VALIDATION,
+    DISCO,
     ERROR
 }

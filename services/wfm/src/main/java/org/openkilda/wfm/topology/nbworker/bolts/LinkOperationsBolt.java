@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.event.DeactivateIslInfoData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteLinkRequest;
@@ -92,7 +93,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         } else if (request instanceof LinkPropsDrop) {
             result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
         } else if (request instanceof DeleteLinkRequest) {
-            result = Collections.singletonList(deleteLink((DeleteLinkRequest) request));
+            result = Collections.singletonList(deleteLink((DeleteLinkRequest) request, tuple, correlationId));
         } else if (request instanceof UpdateLinkUnderMaintenanceRequest) {
             result = updateLinkUnderMaintenanceFlag((UpdateLinkUnderMaintenanceRequest) request, tuple, correlationId);
         } else {
@@ -224,7 +225,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         }
     }
 
-    private DeleteIslResponse deleteLink(DeleteLinkRequest request) {
+    private DeleteIslResponse deleteLink(DeleteLinkRequest request, Tuple tuple, String correlationId) {
         boolean deleted;
         try {
             deleted = linkOperationsService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
@@ -234,6 +235,10 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         } catch (IllegalIslStateException e) {
             throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), "ISL is in illegal state.");
         }
+
+        DeactivateIslInfoData data = new DeactivateIslInfoData(request.getSrcSwitch(), request.getSrcPort());
+        getOutput().emit(StreamType.DISCO.toString(), tuple, new Values(data, correlationId));
+
         return new DeleteIslResponse(deleted);
     }
 
@@ -276,6 +281,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
         declarer.declareStream(StreamType.REROUTE.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(StreamType.DISCO.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

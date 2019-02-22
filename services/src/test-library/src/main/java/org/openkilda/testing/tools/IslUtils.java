@@ -27,7 +27,6 @@ import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
-import org.openkilda.testing.service.database.Database;
 import org.openkilda.testing.service.lockkeeper.LockKeeperService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.northbound.NorthboundService;
@@ -52,9 +51,6 @@ public class IslUtils {
 
     @Autowired
     private LockKeeperService lockKeeper;
-
-    @Autowired
-    private Database database;
 
     /**
      * Waits until all passed ISLs have the specified status. Fails after defined timeout.
@@ -111,7 +107,7 @@ public class IslUtils {
      *
      * @param isl ISL to reverse
      */
-    public Isl reverseIsl(Isl isl) {
+    public static Isl reverseIsl(Isl isl) {
         if (isl.getDstSwitch() == null) {
             return isl; //don't reverse not connected ISL
         }
@@ -192,16 +188,6 @@ public class IslUtils {
                 replugSource ? srcIsl.getDstSwitch() : (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()),
                 replugSource ? srcIsl.getDstPort() : (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()),
                 0, aswFlowForward, srcIsl.isBfd());
-    }
-
-    /**
-     * Get cost of a certain ISL from the database.
-     *
-     * @param isl ISL for which cost should be retrieved
-     * @return ISL cost
-     */
-    public int getIslCost(Isl isl) {
-        return database.getIslCost(isl);
     }
 
     private RetryPolicy retryPolicy() {

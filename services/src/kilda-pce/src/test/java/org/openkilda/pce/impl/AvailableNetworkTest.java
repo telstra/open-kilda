@@ -30,8 +30,8 @@ import org.junit.Test;
 import java.util.Set;
 
 public class AvailableNetworkTest {
-    private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:5a:04:87");
-    private static final SwitchId DST_SWITCH = new SwitchId("00:00:b0:d2:f5:00:5a:b8");
+    private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:6c:00:b8");
+    private static final SwitchId DST_SWITCH = new SwitchId("00:00:00:22:3d:5a:04:87");
 
     @Test
     public void shouldNotAllowDuplicates() {
@@ -80,6 +80,37 @@ public class AvailableNetworkTest {
 
         assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(2));
         assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(2));
+    }
+
+    @Test
+    public void shouldReduceTheSameIslBothSide() {
+        int cost = 700;
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH, 1, 2, cost, 5);
+        addLink(network, SRC_SWITCH, DST_SWITCH, 3, 1, cost, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 2, 1, cost, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
+
+        network.reduceByWeight(edge -> (long) edge.getCost());
+
+        assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(DST_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(DST_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
+
+        assertEquals(
+                network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getSrcPort(),
+                network.getSwitch(SRC_SWITCH).getIncomingLinks().iterator().next().getDestPort());
+        assertEquals(
+                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getSrcPort(),
+                network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getDestPort());
+
+        assertEquals(
+                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getDestPort(),
+                network.getSwitch(SRC_SWITCH).getIncomingLinks().iterator().next().getDestPort());
+        assertEquals(
+                network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getDestPort(),
+                network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getDestPort());
     }
 
     @Test
@@ -138,6 +169,7 @@ public class AvailableNetworkTest {
                 .destPort(dstPort)
                 .cost(cost)
                 .latency(latency)
+                .availableBandwidth(500000)
                 .build();
         network.addLink(isl);
     }

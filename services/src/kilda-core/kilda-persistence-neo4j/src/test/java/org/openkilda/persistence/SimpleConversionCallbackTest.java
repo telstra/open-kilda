@@ -31,7 +31,7 @@ public class SimpleConversionCallbackTest {
         // given
         SimpleConversionCallback conversionCallback =
                 new SimpleConversionCallback("org.openkilda.persistence.converters");
-        FlowPath entity = new FlowPath(0, emptyList(), null);
+        FlowPath entity = new FlowPath(0, 0L, emptyList(), null);
 
         // when
         String graphObject = conversionCallback.convert(String.class, entity);
@@ -46,7 +46,7 @@ public class SimpleConversionCallbackTest {
         // given
         SimpleConversionCallback conversionCallback =
                 new SimpleConversionCallback("org.openkilda.persistence.converters");
-        FlowPath entity = new FlowPath(0, emptyList(), null);
+        FlowPath entity = new FlowPath(0, 0L, emptyList(), null);
         String graphObject = new ObjectMapper().writeValueAsString(entity);
 
         // when

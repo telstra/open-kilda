@@ -91,6 +91,8 @@ update-props-dryrun:
 #   make func-tests PARAMS='-Dtest="LinkSpec#Able to delete inactive link"'  // run a certain test from 'LinkSpec' class
 
 func-tests:
+	cp services/src/functional-tests/kilda.properties.example services/src/functional-tests/kilda.properties
+	cp services/src/functional-tests/src/test/resources/topology.yaml services/src/functional-tests/topology.yaml
 	mvn -Pfunctional -f services/src/functional-tests/pom.xml test $(PARAMS)
 
 .PHONY: default run-dev build-latest build-base	

@@ -76,7 +76,8 @@ public class NorthboundSteps {
                 featureTogglesResponse.getUpdateFlowEnabled(),
                 featureTogglesResponse.getDeleteFlowEnabled(),
                 featureTogglesResponse.getPushFlowEnabled(),
-                featureTogglesResponse.getUnpushFlowEnabled());
+                featureTogglesResponse.getUnpushFlowEnabled(),
+                featureTogglesResponse.getBfdEventsEnabled());
     }
 
     @When("^update request: switch each toggle to an opposite state$")
