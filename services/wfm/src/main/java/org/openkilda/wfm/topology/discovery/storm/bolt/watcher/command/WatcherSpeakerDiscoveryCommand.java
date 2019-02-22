@@ -24,7 +24,7 @@ public class WatcherSpeakerDiscoveryCommand extends WatcherCommand {
     private final IslInfoData payload;
 
     public WatcherSpeakerDiscoveryCommand(IslInfoData payload) {
-        super(new Endpoint(payload.getDestination()));
+        super(new Endpoint(payload.getSource()));
         this.payload = payload;
     }
 

@@ -98,7 +98,7 @@ public class WatcherHandler extends AbstractBolt {
 
     @Override
     protected void init() {
-        service = new DiscoveryWatcherService(options.getDiscoveryPacketTtl());
+        service = new DiscoveryWatcherService(options.getDiscoveryPacketTtl(), getTaskId());
     }
 
     @Override

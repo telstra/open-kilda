@@ -24,7 +24,7 @@ public class UniIslDiscoveryCommand extends UniIslCommand {
     private final IslInfoData speakerDiscoveryEvent;
 
     public UniIslDiscoveryCommand(IslInfoData discoveryEvent) {
-        super(new Endpoint(discoveryEvent.getDestination()));
+        super(new Endpoint(discoveryEvent.getSource()));
         this.speakerDiscoveryEvent = discoveryEvent;
     }
 

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.watchlist;
 
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.AbstractOutputAdapter;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
@@ -103,7 +104,10 @@ public class WatchListHandler extends AbstractBolt {
 
         private Values makeDefaultTuple(WatcherCommand command) {
             Endpoint endpoint = command.getEndpoint();
-            return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getContext());
+            CommandContext forkedContext = getContext()
+                    .fork(endpoint.getDatapath().toString())
+                    .fork(String.format("p%d", endpoint.getPortNumber()));
+            return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, forkedContext);
         }
     }
 }

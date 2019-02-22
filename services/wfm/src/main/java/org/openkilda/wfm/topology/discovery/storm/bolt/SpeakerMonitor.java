@@ -120,14 +120,12 @@ public class SpeakerMonitor extends AbstractBolt {
         }
     }
 
-
     @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
         streamManager.declareStream(STREAM_WATCHER_ID, STREAM_WATCHER_FIELDS);
         streamManager.declareStream(STREAM_ISL_ID, STREAM_ISL_FIELDS);
     }
-
 
     private Values makeDefaultTuple(Tuple input, SwitchCommand command) throws PipelineException {
         return new Values(command.getDatapath(), command, pullContext(input));

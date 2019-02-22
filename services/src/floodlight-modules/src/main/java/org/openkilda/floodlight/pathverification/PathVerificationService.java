@@ -494,8 +494,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             OFPort inPort = OFMessageUtils.getInPort((OFPacketIn) input.getMessage());
             OFPort remotePort = OFPort.of(portBb.getShort());
             long latency = measureLatency(input, timestamp);
-            logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{}",
-                    remoteSwitchId, remotePort, latency, input.getDpId(), inPort);
+            logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{} id:{}",
+                        remoteSwitchId, remotePort, latency, input.getDpId(), inPort, packetId);
 
             // this verification packet was sent from remote switch/port to received switch/port
             // so the link direction is from remote switch/port to received switch/port

@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.discovery.service;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.TickClock;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -32,29 +33,35 @@ import java.util.TreeMap;
 @Slf4j
 public class DiscoveryWatcherService {
     private final long awaitTime;
+    private final Integer taskId;
 
     private final TickClock clock = new TickClock();
 
     private long packetNo = 0;
-    private Set<Packet> confirmations = new HashSet<>();
+    private Set<Packet> producedPackets = new HashSet<>();
+    private Set<Packet> confirmedPackets = new HashSet<>();
     private SortedMap<Long, Set<Packet>> timeouts = new TreeMap<>();
 
-    public DiscoveryWatcherService(long awaitTime) {
+    public DiscoveryWatcherService(long awaitTime, Integer taskId) {
         this.awaitTime = awaitTime;
+        this.taskId = taskId;
     }
 
     /**
      * Add new endpoint for send discovery process.
      */
     public void addWatch(IWatcherCarrier carrier, Endpoint endpoint, long currentTime) {
-        log.debug("Add discovery poll endpoint {}", endpoint);
         Packet packet = Packet.of(endpoint, packetNo);
-        timeouts.computeIfAbsent(currentTime + awaitTime, mappingFunction -> new HashSet<>())
-                .add(packet);
 
+        log.debug("Produce discovery PUSH request for {} id:{} task:{}", endpoint, packet.packetNo, taskId);
         DiscoverIslCommandData discoveryRequest = new DiscoverIslCommandData(
                 endpoint.getDatapath(), endpoint.getPortNumber(), packetNo);
         carrier.sendDiscovery(discoveryRequest);
+
+        producedPackets.add(packet);
+        timeouts.computeIfAbsent(currentTime + awaitTime, key -> new HashSet<>())
+                .add(packet);
+
         packetNo += 1;
     }
 
@@ -73,9 +80,7 @@ public class DiscoveryWatcherService {
         if (!range.isEmpty()) {
             for (Set<Packet> e : range.values()) {
                 for (Packet ee : e) {
-                    if (confirmations.remove(ee)) {
-                        carrier.discoveryFailed(ee.getEndpoint(), tickTime);
-                    }
+                    timeoutAction(carrier, ee);
                 }
             }
             range.clear();
@@ -86,34 +91,60 @@ public class DiscoveryWatcherService {
      * .
      */
     public void confirmation(Endpoint endpoint, long packetNo) {
-        log.debug("Receive discovery send confirmation for {} (packet #{})", endpoint, packetNo);
+        log.debug("Receive confirmation on discovery PUSH request for {} id:{} task:{}", endpoint, packetNo, taskId);
         Packet packet = Packet.of(endpoint, packetNo);
-        confirmations.add(packet);
+        if (producedPackets.remove(packet)) {
+            confirmedPackets.add(packet);
+        }
     }
 
     /**
      * Consume discovery event.
      */
     public void discovery(IWatcherCarrier carrier, IslInfoData discoveryEvent) {
-        Endpoint destination = new Endpoint(discoveryEvent.getDestination());
+        Endpoint source = new Endpoint(discoveryEvent.getSource());
         Long packetId = discoveryEvent.getPacketId();
         if (packetId == null) {
-            log.error("Got corrupted discovery packet into {} - packetId field is empty", destination);
+            log.error("Got corrupted discovery packet into {} - packetId field is empty", source);
         } else {
-            discovery(carrier, discoveryEvent, Packet.of(destination, packetId));
+            discovery(carrier, discoveryEvent, Packet.of(source, packetId));
         }
     }
 
     private void discovery(IWatcherCarrier carrier, IslInfoData discoveryEvent, Packet packet) {
-        log.debug("Receive ISL discovery event for {} (packet #{})", packet.endpoint, packet.packetNo);
+        if (log.isDebugEnabled()) {
+            IslReference ref = IslReference.of(discoveryEvent);
+            log.debug("Receive ISL discovery event for {} id:{} task:{} - {}",
+                      packet.endpoint, packet.packetNo, taskId, ref);
+        }
 
-        confirmations.remove(packet);
-        carrier.discoveryReceived(packet.endpoint, discoveryEvent, clock.getCurrentTimeMs());
+        boolean wasProduced = producedPackets.remove(packet);
+        boolean wasConfirmed = confirmedPackets.remove(packet);
+        if (wasProduced || wasConfirmed) {
+            carrier.discoveryReceived(packet.endpoint, discoveryEvent, clock.getCurrentTimeMs());
+        } else {
+            log.error("Receive invalid discovery packet on {} id:{} task:{}", packet.endpoint, packet.packetNo, taskId);
+        }
+    }
+
+    private void timeoutAction(IWatcherCarrier carrier, Packet packet) {
+        producedPackets.remove(packet);
+
+        if (confirmedPackets.remove(packet)) {
+            log.info("Detect discovery packet lost sent via {} id:{} task:{}",
+                     packet.endpoint, packet.packetNo, taskId);
+            carrier.discoveryFailed(packet.getEndpoint(), clock.getCurrentTimeMs());
+        }
     }
 
     @VisibleForTesting
-    Set<Packet> getConfirmations() {
-        return confirmations;
+    Set<Packet> getProducedPackets() {
+        return producedPackets;
+    }
+
+    @VisibleForTesting
+    Set<Packet> getConfirmedPackets() {
+        return confirmedPackets;
     }
 
     @VisibleForTesting

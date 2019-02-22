@@ -35,6 +35,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PollIntegrationTest {
+    private static final Integer taskId = 0;
 
     @Mock
     IDecisionMakerCarrier carrier;
@@ -47,7 +48,7 @@ public class PollIntegrationTest {
     @Test
     public void happyPath() {
         DiscoveryWatchListService watchListService = new DiscoveryWatchListService(10);
-        DiscoveryWatcherService watcherService = new DiscoveryWatcherService(100);
+        DiscoveryWatcherService watcherService = new DiscoveryWatcherService(100, taskId);
         DiscoveryDecisionMakerService decisionMakerService = new DiscoveryDecisionMakerService(200, 100);
 
         final long latency = 100L;
@@ -89,7 +90,7 @@ public class PollIntegrationTest {
     @Test
     public void failed() {
         DiscoveryWatchListService watchListService = new DiscoveryWatchListService(10);
-        DiscoveryWatcherService watcherService = new DiscoveryWatcherService(100);
+        DiscoveryWatcherService watcherService = new DiscoveryWatcherService(100, taskId);
         DiscoveryDecisionMakerService decisionMakerService = new DiscoveryDecisionMakerService(200, 100);
 
         IntegrationCarrier integrationCarrier = new IntegrationCarrier(watcherService, watchListService,
