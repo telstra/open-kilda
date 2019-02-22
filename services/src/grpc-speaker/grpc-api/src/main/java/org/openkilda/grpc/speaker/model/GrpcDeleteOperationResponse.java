@@ -15,15 +15,15 @@
 
 package org.openkilda.grpc.speaker.model;
 
-import org.openkilda.messaging.model.grpc.OnOffState;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class EnableLogMessagesResponse {
-    @JsonProperty("enabled")
-    private OnOffState enabled;
+@JsonNaming(SnakeCaseStrategy.class)
+public class GrpcDeleteOperationResponse {
+
+    private Boolean deleted;
 }

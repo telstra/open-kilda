@@ -27,13 +27,13 @@ import lombok.NonNull;
 @Data
 @EqualsAndHashCode
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class LogMessagesDto {
+public class LogOferrorsDto {
     @NonNull
     @JsonProperty("state")
     private OnOffState state;
 
     @JsonCreator
-    public LogMessagesDto(@JsonProperty("state") OnOffState state) {
+    public LogOferrorsDto(@JsonProperty("state") OnOffState state) {
         if (state == null) {
             throw new IllegalArgumentException("State must not be null.");
         }
