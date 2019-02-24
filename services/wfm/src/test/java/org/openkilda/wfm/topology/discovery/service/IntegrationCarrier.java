@@ -57,8 +57,13 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     }
 
     @Override
-    public void notifyBiIslUp(Endpoint physicalEndpoint, IslReference reference) {
-        bfdPortService.biIslBecomeUp(bfdPortCarrier, physicalEndpoint, reference);
+    public void bfdEnableRequest(Endpoint physicalEndpoint, IslReference reference) {
+        bfdPortService.handleEnableRequest(bfdPortCarrier, physicalEndpoint, reference);
+    }
+
+    @Override
+    public void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference) {
+        bfdPortService.handleDisableRequest(bfdPortCarrier, physicalEndpoint, reference);
     }
 
     @Override

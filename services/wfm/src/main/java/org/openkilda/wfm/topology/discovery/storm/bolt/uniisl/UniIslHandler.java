@@ -25,7 +25,6 @@ import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryUniIslService;
 import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
-import org.openkilda.wfm.topology.discovery.storm.bolt.SpeakerMonitor;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMakerHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslDownCommand;
@@ -33,6 +32,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslMoveComman
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslSetupFromHistoryCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslUpCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;

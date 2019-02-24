@@ -13,14 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.service;
+package org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command;
 
-import org.openkilda.messaging.floodlight.request.SetupBfdSession;
 import org.openkilda.messaging.model.NoviBfdSession;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerWorker;
 
-public class DiscoveryBfdPortSpeakerWorkerService {
-    public void setupBfdSession(IBfdSpeakerWorkerCarrier carrier, String key, NoviBfdSession bfdSession) {
-        SetupBfdSession payload = new SetupBfdSession(bfdSession);
-        carrier.speakerRequest(key, payload);
+public class SpeakerBfdSessionSetupCommand extends SpeakerWorkerCommand {
+    private final NoviBfdSession bfdSession;
+
+    public SpeakerBfdSessionSetupCommand(String key, NoviBfdSession bfdSession) {
+        super(key);
+        this.bfdSession = bfdSession;
+    }
+
+    @Override
+    public void apply(SpeakerWorker service) {
+        service.setupBfdSession(getKey(), bfdSession);
     }
 }

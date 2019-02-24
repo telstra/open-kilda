@@ -20,16 +20,16 @@ import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
 import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 
-public class BfdPortBiIslUpCommand extends BfdPortCommand {
+public class BfdPortDisableCommand extends BfdPortCommand {
     private final IslReference reference;
 
-    public BfdPortBiIslUpCommand(Endpoint endpoint, IslReference reference) {
+    public BfdPortDisableCommand(Endpoint endpoint, IslReference reference) {
         super(endpoint);
         this.reference = reference;
     }
 
     @Override
     public void apply(DiscoveryBfdPortService service, IBfdPortCarrier carrier) {
-        service.biIslBecomeUp(carrier, getEndpoint(), reference);
+        service.handleDisableRequest(carrier, getEndpoint(), reference);
     }
 }

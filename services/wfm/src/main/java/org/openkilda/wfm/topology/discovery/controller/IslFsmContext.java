@@ -20,9 +20,9 @@ import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Value;
 
-@Data
+@Value
 @Builder
 public class IslFsmContext {
     private final IIslCarrier output;
@@ -32,6 +32,8 @@ public class IslFsmContext {
     private IslDataHolder islData;
 
     private Boolean physicalLinkDown;
+
+    private Boolean bfdEnable;
 
     /**
      * .

@@ -26,6 +26,7 @@ import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
+import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Before;
@@ -48,7 +49,10 @@ public class DiscoveryIntegrationTest {
     private static TestServer dbTestServer;
     private static PersistenceManager persistenceManager;
 
-    private final int bfdLocalPortOffset = 200;
+    private static final DiscoveryOptions options = DiscoveryOptions.builder()
+            .bfdEnabled(true)
+            .bfdLogicalPortOffset(200)
+            .build();
 
     private final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
             .manufacturer("OF vendor A")
@@ -126,7 +130,7 @@ public class DiscoveryIntegrationTest {
 
     @Before
     public void setUp() throws Exception {
-        switchService = new DiscoverySwitchService(null, persistenceManager, bfdLocalPortOffset);
+        switchService = new DiscoverySwitchService(null, persistenceManager, options.getBfdLogicalPortOffset());
         portService = new DiscoveryPortService(null);
         bfdPortService = new DiscoveryBfdPortService(persistenceManager, new TaskIdBasedKeyFactory(0));
         uniIslService = new DiscoveryUniIslService(null);
@@ -144,6 +148,7 @@ public class DiscoveryIntegrationTest {
         Set<SpeakerSwitchView.Feature> features = new HashSet<>();
         features.add(SpeakerSwitchView.Feature.BFD);
 
+        Integer bfdLocalPortOffset = options.getBfdLogicalPortOffset();
         List<SpeakerSwitchPortView> ports = ImmutableList.of(
                 new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
                 new SpeakerSwitchPortView(1 + bfdLocalPortOffset, SpeakerSwitchPortView.State.UP),

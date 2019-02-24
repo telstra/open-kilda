@@ -26,9 +26,9 @@ import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
 import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdSpeakerSetupBfdSessionCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdSpeakerWorkerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.IslHandler;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBfdSessionSetupCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWorkerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -98,10 +98,10 @@ public class BfdPortHandler extends AbstractBolt {
 
         @Override
         public void setupBfdSession(String requestKey, NoviBfdSession bfdSession) {
-            emit(STREAM_SPEAKER_ID, makeSpeakerTuple(new BfdSpeakerSetupBfdSessionCommand(requestKey, bfdSession)));
+            emit(STREAM_SPEAKER_ID, makeSpeakerTuple(new SpeakerBfdSessionSetupCommand(requestKey, bfdSession)));
         }
 
-        private Values makeSpeakerTuple(BfdSpeakerWorkerCommand command) {
+        private Values makeSpeakerTuple(SpeakerWorkerCommand command) {
             return new Values(command.getKey(), command, getContext());
         }
     }

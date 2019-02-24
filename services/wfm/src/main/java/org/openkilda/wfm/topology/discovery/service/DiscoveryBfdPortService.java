@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.discovery.service;
 
+import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.hubandspoke.IKeyFactory;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -115,13 +116,13 @@ public class DiscoveryBfdPortService {
 
     public void updateOnlineMode(IBfdPortCarrier carrier, Endpoint endpoint, boolean mode) {
         log.debug("BFD port {} become {} (due to switch availability change)", endpoint, mode ? "ONLINE" : "OFFLINE");
-        // current implementation do take account of switch(port) online status
+        // Current implementation do not take into account switch's online status
     }
 
     /**
      * .
      */
-    public void biIslBecomeUp(IBfdPortCarrier carrier, Endpoint physicalEndpoint, IslReference reference) {
+    public void handleEnableRequest(IBfdPortCarrier carrier, Endpoint physicalEndpoint, IslReference reference) {
         BfdPortFsm controller = controllerByPhysicalPort.get(physicalEndpoint);
         if (controller != null) {
             log.debug("BFD port {} => {} receive ISL discovery confirmation",
@@ -134,6 +135,18 @@ public class DiscoveryBfdPortService {
         } else {
             logMissingControllerByPhysicalEndpoint(physicalEndpoint, "handle ISL up notification");
         }
+    }
+
+    public void handleDisableRequest(IBfdPortCarrier carrier, Endpoint physicalEndpoint, IslReference reference) {
+        // TODO
+    }
+
+    public void speakerReponse(IBfdPortCarrier carrier, Endpoint logicalEndpoint, BfdSessionResponse response) {
+        // TODO
+    }
+
+    public void speakerTimeout(IBfdPortCarrier carrier, Endpoint logicalEndpoint) {
+        // TODO
     }
 
     // -- private --

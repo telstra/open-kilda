@@ -13,16 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.service;
+package org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command;
 
-import org.openkilda.messaging.command.reroute.RerouteFlows;
-import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.model.IslReference;
+import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerWorker;
 
-public interface IIslCarrier {
-    void bfdEnableRequest(Endpoint physicalEndpoint, IslReference reference);
+public class SpeakerBfdSessionResponseCommand extends SpeakerWorkerCommand {
+    private final BfdSessionResponse response;
 
-    void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference);
+    public SpeakerBfdSessionResponseCommand(String key, BfdSessionResponse response) {
+        super(key);
+        this.response = response;
+    }
 
-    void triggerReroute(RerouteFlows trigger);
+    @Override
+    public void apply(SpeakerWorker service) {
+        service.bfdSessionResponse(getKey(), response);
+    }
 }

@@ -13,20 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
+package org.openkilda.wfm.topology.discovery.service;
 
-import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortSpeakerWorkerService;
-import org.openkilda.wfm.topology.discovery.service.IBfdSpeakerWorkerCarrier;
-import org.openkilda.wfm.topology.discovery.storm.ICommand;
+import org.openkilda.messaging.command.CommandData;
 
-import lombok.Getter;
-
-public abstract class BfdSpeakerWorkerCommand
-        implements ICommand<DiscoveryBfdPortSpeakerWorkerService, IBfdSpeakerWorkerCarrier> {
-    @Getter
-    private final String key;
-
-    public BfdSpeakerWorkerCommand(String key) {
-        this.key = key;
-    }
+public interface ISpeakerWorkerCarrier {
+    void speakerRequest(String key, CommandData payload);
 }

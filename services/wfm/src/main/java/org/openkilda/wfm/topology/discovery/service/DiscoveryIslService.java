@@ -92,6 +92,18 @@ public class DiscoveryIslService {
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MOVE, context);
     }
 
+    /**
+     * Process enable/disable BFD requests.
+     */
+    public void bfdEnableDisable(IIslCarrier carrier, IslReference reference, IslBfdFlagUpdated payload) {
+        log.debug("ISL got allow-BFD update for {} new-status:{}", reference, payload.isEnableBfd());
+        IslFsm islFsm = locateController(reference);
+        IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
+                .bfdEnable(payload.isEnableBfd())
+                .build();
+        controllerExecutor.fire(islFsm, IslFsmEvent.BFD_UPDATE, context);
+    }
+
     // -- private --
 
     private void ensureControllerIsMissing(IslReference reference) {
@@ -112,9 +124,5 @@ public class DiscoveryIslService {
 
     private IslFsm locateControllerCreateIfAbsent(IslReference reference) {
         return controller.computeIfAbsent(reference, key -> IslFsm.create(persistenceManager, reference));
-    }
-
-    public void bfdEvent(IIslCarrier carrier, IslBfdFlagUpdated payload) {
-        // TODO: reaction on bfd_enable from NB
     }
 }

@@ -8,8 +8,8 @@ Internal signals
 Input signals
 * port-up
 * port-down
-* bisl-bfd-up [ISL-FSM]
-* bisl-bfd-down [ISL-FSM]
+* bisl-bfd-enable [ISL-FSM]
+* bisl-bfd-disable [ISL-FSM]
 * FL-ok
 * FL-fail
 * FL-timeout
@@ -32,7 +32,7 @@ INIT --> initChoice : history
 initChoice --> IDLE : [BFD-discriminator is empty]
 initChoice --> CLEANING : [BFD-discriminator is set]
 
-IDLE --> INSTALLING : bisl-bfd-up
+IDLE --> INSTALLING : bisl-bfd-enable
 IDLE -l-> FAIL : port-up
 
 INSTALLING --> UP : port-up
@@ -59,7 +59,7 @@ WAIT_RELEASE : exit : set isUp = false
 
 UP --> DOWN : port-down
 UP --> CLEANING : isl-move
-UP -> [*] : bisl-bfd-down / emit bfd-kill
+UP -> [*] : bisl-bfd-disable / emit bfd-kill
 UP : enter / emit bfd-up
 UP : enter / set isUp = true
 

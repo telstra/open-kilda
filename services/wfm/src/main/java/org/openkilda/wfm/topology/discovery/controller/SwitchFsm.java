@@ -51,7 +51,7 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
     private final SwitchRepository switchRepository;
 
     private final SwitchId switchId;
-    private final Integer bfdLocalPortOffset;
+    private final Integer bfdLogicalPortOffset;
 
     private final Map<Integer, PortFacts> portByNumber = new HashMap<>();
 
@@ -109,7 +109,7 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         this.switchId = switchId;
-        this.bfdLocalPortOffset = bfdLocalPortOffset;
+        this.bfdLogicalPortOffset = bfdLocalPortOffset;
     }
 
     // -- FSM actions --
@@ -232,37 +232,37 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
     private void portAdd(SwitchFsmContext context, PortFacts portFacts, Isl history) {
         portByNumber.put(portFacts.getPortNumber(), portFacts);
 
-        if (isBfdLogicalPort(portFacts.getPortNumber())) {
-            context.getOutput().setupBfdPortHandler(
-                    new BfdPortFacts(portFacts, portFacts.getPortNumber() - bfdLocalPortOffset));
-        } else {
+        if (isPhysicalPort(portFacts.getPortNumber())) {
             context.getOutput().setupPortHandler(portFacts, history);
+        } else {
+            context.getOutput().setupBfdPortHandler(
+                    new BfdPortFacts(portFacts, portFacts.getPortNumber() - bfdLogicalPortOffset));
         }
     }
 
     private void portDel(SwitchFsmContext context, int portNumber) {
         portByNumber.remove(portNumber);
         Endpoint endpoint = Endpoint.of(switchId, portNumber);
-        if (isBfdLogicalPort(portNumber)) {
-            context.getOutput().removeBfdPortHandler(endpoint);
-        } else {
+        if (isPhysicalPort(portNumber)) {
             context.getOutput().removePortHandler(endpoint);
+        } else {
+            context.getOutput().removeBfdPortHandler(endpoint);
         }
     }
 
     private void updatePortLinkMode(SwitchFsmContext context, PortFacts portFacts) {
-        if (isBfdLogicalPort(portFacts.getPortNumber())) {
-            context.getOutput().setBfdPortLinkMode(portFacts);
-        } else {
+        if (isPhysicalPort(portFacts.getPortNumber())) {
             context.getOutput().setPortLinkMode(portFacts);
+        } else {
+            context.getOutput().setBfdPortLinkMode(portFacts);
         }
     }
 
     private void updateOnlineStatus(SwitchFsmContext context, Endpoint endpoint, boolean mode) {
-        if (isBfdLogicalPort(endpoint.getPortNumber())) {
-            context.getOutput().setBfdPortOnlineMode(endpoint, mode);
-        } else {
+        if (isPhysicalPort(endpoint.getPortNumber())) {
             context.getOutput().setOnlineMode(endpoint, mode);
+        } else {
+            context.getOutput().setBfdPortOnlineMode(endpoint, mode);
         }
     }
 
@@ -304,7 +304,13 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
         // FIXME(surabujin): move initial switch setup here (from FL)
     }
 
-    private boolean isBfdLogicalPort(int portNumber) {
-        return bfdLocalPortOffset < portNumber;
+    /**
+     * Distinguish physical ports from other port types.
+     *
+     * <p>At this moment we have 2 kind of ports - physical ports and logical-BFD ports. So if this method return false
+     * wee have a deal with logical-BFD port.
+     */
+    private boolean isPhysicalPort(int portNumber) {
+        return portNumber < bfdLogicalPortOffset;
     }
 }

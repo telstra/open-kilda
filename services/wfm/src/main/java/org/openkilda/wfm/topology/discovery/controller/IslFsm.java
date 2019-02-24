@@ -94,6 +94,8 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
                 .from(IslFsmState.UP).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN);
         builder.transition()
                 .from(IslFsmState.UP).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE);
+        builder.internalTransition().within(IslFsmState.UP).on(IslFsmEvent.BFD_UPDATE)
+                .callMethod("handleBfdEnableDisable");
         builder.onEntry(IslFsmState.UP)
                 .callMethod("upEnter");
         builder.onExit(IslFsmState.UP)
@@ -183,9 +185,9 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         updatePersisted();
         triggerDownFlowReroute(context);
 
-        IslReference reference = discoveryFacts.getReference();
-        context.getOutput().notifyBiIslUp(reference.getSource(), reference);
-        context.getOutput().notifyBiIslUp(reference.getDest(), reference);
+        if (shouldUseBfd()) {
+            setupBfd(context);
+        }
     }
 
     private void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -196,6 +198,14 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
 
     private void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         updatePersistedStatus();
+    }
+
+    private void handleBfdEnableDisable(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        if (context.getBfdEnable()) {
+            setupBfd(context);
+        } else {
+            killBfd(context);
+        }
     }
 
     // -- private/service methods --
@@ -266,6 +276,21 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         RerouteInactiveFlows trigger = new RerouteInactiveFlows(String.format(
                 "ISL %s status become %s", discoveryFacts.getReference(), IslStatus.ACTIVE));
         context.getOutput().triggerReroute(trigger);
+    }
+
+    private boolean shouldUseBfd() {
+        // TODO(surabujin): ensure BFD enabled
+        return true;
+    }
+
+    private void setupBfd(IslFsmContext context) {
+        IslReference reference = discoveryFacts.getReference();
+        context.getOutput().bfdEnableRequest(reference.getSource(), reference);
+        context.getOutput().bfdEnableRequest(reference.getDest(), reference);
+    }
+
+    private void killBfd(IslFsmContext context) {
+        // TODO
     }
 
     private void updatePersisted() {

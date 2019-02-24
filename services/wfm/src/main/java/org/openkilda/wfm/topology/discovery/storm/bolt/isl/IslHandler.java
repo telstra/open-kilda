@@ -28,8 +28,9 @@ import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryIslService;
 import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
-import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortBiIslUpCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortDisableCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortEnableCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 
@@ -92,8 +93,13 @@ public class IslHandler extends AbstractBolt {
         }
 
         @Override
-        public void notifyBiIslUp(Endpoint physicalEndpoint, IslReference reference) {
-            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortBiIslUpCommand(physicalEndpoint, reference)));
+        public void bfdEnableRequest(Endpoint physicalEndpoint, IslReference reference) {
+            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortEnableCommand(physicalEndpoint, reference)));
+        }
+
+        @Override
+        public void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference) {
+            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortDisableCommand(physicalEndpoint, reference)));
         }
 
         @Override

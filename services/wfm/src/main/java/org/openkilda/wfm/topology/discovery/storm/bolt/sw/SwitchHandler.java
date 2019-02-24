@@ -27,7 +27,6 @@ import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoverySwitchService;
 import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
-import org.openkilda.wfm.topology.discovery.storm.bolt.SpeakerMonitor;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortLinkStatusCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortOnlineModeCommand;
@@ -38,6 +37,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortLinkStat
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortOnlineModeCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortRemoveCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortSetupCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.spout.NetworkHistory;
 
@@ -96,7 +96,7 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
 
     @Override
     protected void init() {
-        service = new DiscoverySwitchService(this, persistenceManager, options.getBfdLocalPortOffset());
+        service = new DiscoverySwitchService(this, persistenceManager, options.getBfdLogicalPortOffset());
     }
 
     @Override

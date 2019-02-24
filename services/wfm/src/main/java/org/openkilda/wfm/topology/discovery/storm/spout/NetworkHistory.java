@@ -23,7 +23,7 @@ import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryHistoryService;
 import org.openkilda.wfm.topology.discovery.service.ISwitchPrepopulateCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
-import org.openkilda.wfm.topology.discovery.storm.bolt.SpeakerMonitor;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchHistoryCommand;
 
 import org.apache.storm.spout.SpoutOutputCollector;

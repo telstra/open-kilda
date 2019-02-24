@@ -13,10 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.service;
+package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
+import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 
-public interface IBfdSpeakerWorkerCarrier {
-    void speakerRequest(String key, CommandData payload);
+public class BfdPortSpeakerTimeoutCommand extends BfdPortCommand {
+    public BfdPortSpeakerTimeoutCommand(Endpoint endpoint) {
+        super(endpoint);
+    }
+
+    @Override
+    public void apply(DiscoveryBfdPortService service, IBfdPortCarrier carrier) {
+        service.speakerTimeout(carrier, getEndpoint());
+    }
 }

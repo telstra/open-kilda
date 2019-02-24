@@ -42,12 +42,8 @@ public interface DiscoveryTopologyConfig extends AbstractTopologyConfig {
         return getDiscoveryConfig().getDiscoveryTimeout();
     }
 
-    default int getSpeakerFailureTimeoutSeconds() {
-        return getDiscoveryConfig().getSpeakerFailureTimeoutSeconds();
-    }
-
-    default int getDumpRequestTimeoutSeconds() {
-        return getDiscoveryConfig().getDumpRequestTimeoutSeconds();
+    default boolean isBfdEnabled() {
+        return getDiscoveryConfig().isBfdEnabled();
     }
 
     default String getTopoDiscoTopic() {
@@ -88,10 +84,7 @@ public interface DiscoveryTopologyConfig extends AbstractTopologyConfig {
         @Key("timeout")
         int getDiscoveryTimeout();
 
-        @Key("speaker-failure-timeout")
-        int getSpeakerFailureTimeoutSeconds();
-
-        @Key("dump-request-timeout-seconds")
-        int getDumpRequestTimeoutSeconds();
+        @Key("use-bfd")
+        boolean isBfdEnabled();
     }
 }

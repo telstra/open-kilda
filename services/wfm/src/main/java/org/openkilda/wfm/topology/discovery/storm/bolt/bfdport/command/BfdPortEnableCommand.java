@@ -15,20 +15,21 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
 
-import org.openkilda.messaging.model.NoviBfdSession;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortSpeakerWorkerService;
-import org.openkilda.wfm.topology.discovery.service.IBfdSpeakerWorkerCarrier;
+import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslReference;
+import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
+import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 
-public class BfdSpeakerSetupBfdSessionCommand extends BfdSpeakerWorkerCommand {
-    private final NoviBfdSession bfdSession;
+public class BfdPortEnableCommand extends BfdPortCommand {
+    private final IslReference reference;
 
-    public BfdSpeakerSetupBfdSessionCommand(String key, NoviBfdSession bfdSession) {
-        super(key);
-        this.bfdSession = bfdSession;
+    public BfdPortEnableCommand(Endpoint endpoint, IslReference reference) {
+        super(endpoint);
+        this.reference = reference;
     }
 
     @Override
-    public void apply(DiscoveryBfdPortSpeakerWorkerService service, IBfdSpeakerWorkerCarrier carrier) {
-        service.setupBfdSession(carrier, getKey(), bfdSession);
+    public void apply(DiscoveryBfdPortService service, IBfdPortCarrier carrier) {
+        service.handleEnableRequest(carrier, getEndpoint(), reference);
     }
 }

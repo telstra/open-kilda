@@ -78,8 +78,7 @@ public class DiscoverySwitchServiceTest {
     @Mock
     private SwitchRepository switchRepository;
 
-    private static final int BFD_LOCAL_PORT_OFFSET = 200;
-
+    private static final int BFD_LOGICAL_PORT_OFFSET = 200;
 
     private final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
             .manufacturer("OF vendor A")
@@ -150,7 +149,8 @@ public class DiscoverySwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager, BFD_LOCAL_PORT_OFFSET);
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
         service.switchEvent(switchAddEvent);
 
         //System.out.println(mockingDetails(carrier).printInvocations());
@@ -191,7 +191,8 @@ public class DiscoverySwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager, BFD_LOCAL_PORT_OFFSET);
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
 
         service.switchEvent(switchAddEvent);
 
@@ -244,7 +245,8 @@ public class DiscoverySwitchServiceTest {
         history.addLink(islAtoB);
         history.addLink(islAtoB2);
 
-        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager, BFD_LOCAL_PORT_OFFSET);
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
         service.switchAddWithHistory(history);
 
         //System.out.println(mockingDetails(carrier).printInvocations());
@@ -291,7 +293,8 @@ public class DiscoverySwitchServiceTest {
         history.addLink(islAtoB2);
         history.addLink(islAtoB3);
 
-        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager, BFD_LOCAL_PORT_OFFSET);
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
         service.switchAddWithHistory(history);
 
         // Online
@@ -337,7 +340,8 @@ public class DiscoverySwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager, BFD_LOCAL_PORT_OFFSET);
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
 
         service.switchEvent(switchAddEvent);
 
@@ -387,21 +391,22 @@ public class DiscoverySwitchServiceTest {
                 speakerInetAddress.toString(),
                 false,
                 getSpeakerSwitchView());
-        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager, BFD_LOCAL_PORT_OFFSET);
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
         service.switchEvent(switchAddEvent);
         resetMocks();
 
         service.switchPortEvent(new PortInfoData(alphaDatapath, 1, PortChangeType.ADD));
-        service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOCAL_PORT_OFFSET, PortChangeType.ADD));
+        service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET, PortChangeType.ADD));
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
         verify(carrier).setupPortHandler(new PortFacts(Endpoint.of(alphaDatapath, 1)), null);
         verify(carrier).setupBfdPortHandler(
-                new BfdPortFacts(new PortFacts(Endpoint.of(alphaDatapath, 1 + BFD_LOCAL_PORT_OFFSET)), 1));
+                new BfdPortFacts(new PortFacts(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET)), 1));
 
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 1), true);
-        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, 1 + BFD_LOCAL_PORT_OFFSET), true);
+        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), true);
     }
 
 
@@ -410,7 +415,7 @@ public class DiscoverySwitchServiceTest {
 
         List<SpeakerSwitchPortView> portsDown = ImmutableList.of(
                 new SpeakerSwitchPortView(1, State.DOWN),
-                new SpeakerSwitchPortView(1 + BFD_LOCAL_PORT_OFFSET, State.DOWN));
+                new SpeakerSwitchPortView(1 + BFD_LOGICAL_PORT_OFFSET, State.DOWN));
 
         SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
                 .ports(portsDown)
@@ -423,23 +428,24 @@ public class DiscoverySwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager, BFD_LOCAL_PORT_OFFSET);
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
         service.switchEvent(switchAddEvent);
         resetMocks();
         //System.out.println(mockingDetails(carrier).printInvocations());
 
         service.switchPortEvent(new PortInfoData(alphaDatapath, 1, PortChangeType.UP));
-        service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOCAL_PORT_OFFSET, PortChangeType.UP));
+        service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET, PortChangeType.UP));
         List<SpeakerSwitchPortView> portsUp = ImmutableList.of(
                 new SpeakerSwitchPortView(1, State.UP),
-                new SpeakerSwitchPortView(1 + BFD_LOCAL_PORT_OFFSET, State.UP));
+                new SpeakerSwitchPortView(1 + BFD_LOGICAL_PORT_OFFSET, State.UP));
         verify(carrier).setPortLinkMode(new PortFacts(alphaDatapath, portsUp.get(0)));
         verify(carrier).setBfdPortLinkMode(new PortFacts(alphaDatapath, portsUp.get(1)));
 
         resetMocks();
 
         service.switchPortEvent(new PortInfoData(alphaDatapath, 1, PortChangeType.DOWN));
-        service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOCAL_PORT_OFFSET, PortChangeType.DOWN));
+        service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET, PortChangeType.DOWN));
         verify(carrier).setPortLinkMode(new PortFacts(alphaDatapath, portsDown.get(0)));
         verify(carrier).setBfdPortLinkMode(new PortFacts(alphaDatapath, portsDown.get(1)));
 
@@ -452,7 +458,7 @@ public class DiscoverySwitchServiceTest {
 
         List<SpeakerSwitchPortView> portsDown = ImmutableList.of(
                 new SpeakerSwitchPortView(1, State.DOWN),
-                new SpeakerSwitchPortView(1 + BFD_LOCAL_PORT_OFFSET, State.DOWN));
+                new SpeakerSwitchPortView(1 + BFD_LOGICAL_PORT_OFFSET, State.DOWN));
 
         SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
                 .ports(portsDown)
@@ -465,15 +471,16 @@ public class DiscoverySwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager, BFD_LOCAL_PORT_OFFSET);
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
         service.switchEvent(switchAddEvent);
         resetMocks();
 
         service.switchPortEvent(new PortInfoData(alphaDatapath, 1, PortChangeType.DELETE));
-        service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOCAL_PORT_OFFSET, PortChangeType.DELETE));
+        service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET, PortChangeType.DELETE));
 
         verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 1));
-        verify(carrier).removeBfdPortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOCAL_PORT_OFFSET));
+        verify(carrier).removeBfdPortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET));
 
         //System.out.println(mockingDetails(carrier).printInvocations());
     }
@@ -493,16 +500,16 @@ public class DiscoverySwitchServiceTest {
     private List<SpeakerSwitchPortView> getSpeakerSwitchPortViews() {
         return ImmutableList.of(
                     new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
-                    new SpeakerSwitchPortView(1 + BFD_LOCAL_PORT_OFFSET, SpeakerSwitchPortView.State.UP),
+                    new SpeakerSwitchPortView(1 + BFD_LOGICAL_PORT_OFFSET, SpeakerSwitchPortView.State.UP),
                     new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.DOWN),
-                    new SpeakerSwitchPortView(2 + BFD_LOCAL_PORT_OFFSET, SpeakerSwitchPortView.State.DOWN));
+                    new SpeakerSwitchPortView(2 + BFD_LOGICAL_PORT_OFFSET, SpeakerSwitchPortView.State.DOWN));
     }
 
     private List<SpeakerSwitchPortView> getSpeakerSwitchPortViewsRevert() {
         return ImmutableList.of(
                 new SpeakerSwitchPortView(1, State.DOWN),
-                new SpeakerSwitchPortView(1 + BFD_LOCAL_PORT_OFFSET, State.DOWN),
+                new SpeakerSwitchPortView(1 + BFD_LOGICAL_PORT_OFFSET, State.DOWN),
                 new SpeakerSwitchPortView(2, State.UP),
-                new SpeakerSwitchPortView(2 + BFD_LOCAL_PORT_OFFSET, State.UP));
+                new SpeakerSwitchPortView(2 + BFD_LOGICAL_PORT_OFFSET, State.UP));
     }
 }

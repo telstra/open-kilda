@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.discovery.controller;
 public enum IslFsmEvent {
     NEXT,
 
+    BFD_UPDATE,
+
     ISL_UP, ISL_DOWN, ISL_MOVE,
     _UP_ATTEMPT_SUCCESS, _UP_ATTEMPT_FAIL
 }

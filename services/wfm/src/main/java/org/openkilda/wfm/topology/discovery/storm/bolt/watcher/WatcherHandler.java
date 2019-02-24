@@ -30,10 +30,10 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
 import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
-import org.openkilda.wfm.topology.discovery.storm.bolt.SpeakerMonitor;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerDiscoveryCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerFailCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.WatchListHandler;
 

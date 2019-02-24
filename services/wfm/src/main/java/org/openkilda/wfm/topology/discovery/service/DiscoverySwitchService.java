@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.discovery.service;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
-import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -26,16 +25,12 @@ import org.openkilda.wfm.topology.discovery.controller.SwitchFsm;
 import org.openkilda.wfm.topology.discovery.controller.SwitchFsmContext;
 import org.openkilda.wfm.topology.discovery.controller.SwitchFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.SwitchFsmState;
-import org.openkilda.wfm.topology.discovery.model.OperationMode;
-import org.openkilda.wfm.topology.discovery.model.SpeakerSharedSync;
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 public class DiscoverySwitchService {
@@ -45,15 +40,15 @@ public class DiscoverySwitchService {
 
     private final PersistenceManager persistenceManager;
 
-    private final int bfdLocalPortOffset;
+    private final int bfdLogicalPortOffset;
 
     ISwitchCarrier carrier;
 
     public DiscoverySwitchService(ISwitchCarrier carrier, PersistenceManager persistenceManager,
-                                  Integer bfdLocalPortOffset) {
+                                  Integer bfdLogicalPortOffset) {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
-        this.bfdLocalPortOffset = bfdLocalPortOffset;
+        this.bfdLogicalPortOffset = bfdLogicalPortOffset;
     }
 
     /**
@@ -61,44 +56,13 @@ public class DiscoverySwitchService {
      */
     public void switchAddWithHistory(HistoryFacts history) {
         log.debug("Switch ADD with history (sw: {})", history.getSwitchId());
-        SwitchFsm switchFsm = SwitchFsm.create(persistenceManager, history.getSwitchId(), bfdLocalPortOffset);
+        SwitchFsm switchFsm = SwitchFsm.create(persistenceManager, history.getSwitchId(), bfdLogicalPortOffset);
 
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
                 .history(history)
                 .build();
         controller.put(history.getSwitchId(), switchFsm);
         controllerExecutor.fire(switchFsm, SwitchFsmEvent.HISTORY, fsmContext);
-    }
-
-    /**
-     * .
-     */
-    public void switchRestoreManagement(SpeakerSwitchView switchView) {
-        SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
-                .speakerData(switchView)
-                .build();
-        SwitchFsm fsm = locateControllerCreateIfAbsent(switchView.getDatapath());
-        controllerExecutor.fire(fsm, SwitchFsmEvent.ONLINE, fsmContext);
-    }
-
-    /**
-     * .
-     */
-    public void switchSharedSync(SpeakerSharedSync sharedSync) {
-        // FIXME(surabujin): invalid in multi-FL environment
-        switch (sharedSync.getMode()) {
-            case MANAGED_MODE:
-                // Still connected switches will be handled by {@link switchRestoreManagement}, disconnected switches
-                // must be handled here.
-                detectOfflineSwitches(sharedSync.getKnownSwitches());
-                break;
-            case UNMANAGED_MODE:
-                setAllSwitchesUnmanaged();
-                break;
-            default:
-                throw new IllegalArgumentException(
-                        String.format("Unsupported %s value %s", OperationMode.class.getName(), sharedSync.getMode()));
-        }
     }
 
     /**
@@ -181,22 +145,6 @@ public class DiscoverySwitchService {
 
     // -- private --
 
-    private void detectOfflineSwitches(Set<SwitchId> knownSwitches) {
-        Set<SwitchId> extraSwitches = new HashSet<>(controller.keySet());
-        extraSwitches.removeAll(knownSwitches);
-
-        for (SwitchId entryId : extraSwitches) {
-            controller.remove(entryId);
-        }
-    }
-
-    private void setAllSwitchesUnmanaged() {
-        SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier).build();
-        for (SwitchFsm switchFsm : controller.values()) {
-            controllerExecutor.fire(switchFsm, SwitchFsmEvent.OFFLINE, fsmContext);
-        }
-    }
-
     private SwitchFsm locateController(SwitchId datapath) {
         SwitchFsm switchFsm = controller.get(datapath);
         if (switchFsm == null) {
@@ -207,6 +155,6 @@ public class DiscoverySwitchService {
 
     private SwitchFsm locateControllerCreateIfAbsent(SwitchId datapath) {
         return controller.computeIfAbsent(
-                datapath, key -> SwitchFsm.create(persistenceManager, datapath, bfdLocalPortOffset));
+                datapath, key -> SwitchFsm.create(persistenceManager, datapath, bfdLogicalPortOffset));
     }
 }

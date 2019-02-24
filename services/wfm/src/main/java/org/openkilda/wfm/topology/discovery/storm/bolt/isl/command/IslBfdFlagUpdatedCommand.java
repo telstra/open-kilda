@@ -33,6 +33,6 @@ public class IslBfdFlagUpdatedCommand extends IslCommand {
 
     @Override
     public void apply(DiscoveryIslService service, IIslCarrier carrier) {
-        service.bfdEvent(carrier, payload);
+        service.bfdEnableDisable(carrier, getReference(), payload);
     }
 }
