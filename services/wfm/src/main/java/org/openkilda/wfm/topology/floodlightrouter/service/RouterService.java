@@ -98,7 +98,7 @@ public class RouterService {
             SwitchId switchId;
             String region = ((InfoMessage) message).getRegion();
             if (infoData instanceof NetworkDumpSwitchData) {
-                if (!requestTracker.checkReplyMessage(message.getCorrelationId())) {
+                if (!requestTracker.checkReplyMessage(message.getCorrelationId(), false)) {
                     log.debug("Received outdated message {}", message);
                     return;
                 }
@@ -111,7 +111,7 @@ public class RouterService {
                 switchId = ((PortInfoData) infoData).getSwitchId();
                 floodlightTracker.updateSwitchRegion(switchId, region);
             } else if (infoData instanceof AliveResponse) {
-                if (!requestTracker.checkReplyMessage(message.getCorrelationId())) {
+                if (!requestTracker.checkReplyMessage(message.getCorrelationId(), true)) {
                     log.debug("Received outdated message {}", message);
                     return;
                 }
@@ -128,7 +128,7 @@ public class RouterService {
      * @param message message to be handled and resend
      */
     public void processSpeakerFlowResponse(RouterMessageSender routerMessageSender, Message message) {
-        if (!requestTracker.checkReplyMessage(message.getCorrelationId())) {
+        if (!requestTracker.checkReplyMessage(message.getCorrelationId(), false)) {
             log.debug("Received outdated message {}", message);
             return;
         }
@@ -144,7 +144,11 @@ public class RouterService {
         SwitchId switchId = lookupSwitchIdInCommandMessage(message);
         if (switchId != null) {
             String region = floodlightTracker.lookupRegion(switchId);
-            routerMessageSender.send(message, Stream.formatWithRegion(Stream.SPEAKER_PING, region));
+            if (region == null) {
+                log.error("Received command message for the untracked switch: {} {}", switchId, message);
+            } else {
+                routerMessageSender.send(message, Stream.formatWithRegion(Stream.SPEAKER_PING, region));
+            }
         } else {
             log.warn("Received message without target switch from SPEAKER_PING stream: {}", message);
         }
@@ -160,8 +164,12 @@ public class RouterService {
         if (switchId != null) {
             requestTracker.trackMessage(message.getCorrelationId());
             String region = floodlightTracker.lookupRegion(switchId);
-            String stream = Stream.formatWithRegion(Stream.SPEAKER_FLOW, region);
-            routerMessageSender.send(message, stream);
+            if (region == null) {
+                log.error("Received command message for the untracked switch: {} {}", switchId, message);
+            } else {
+                String stream = Stream.formatWithRegion(Stream.SPEAKER_FLOW, region);
+                routerMessageSender.send(message, stream);
+            }
         } else {
             log.warn("Received message without target switch from SPEAKER_FLOW stream: {}", message);
         }
@@ -177,8 +185,12 @@ public class RouterService {
         SwitchId switchId = lookupSwitchIdInCommandMessage(message);
         if (switchId != null) {
             String region = floodlightTracker.lookupRegion(switchId);
-            String stream = Stream.formatWithRegion(Stream.SPEAKER_DISCO, region);
-            routerMessageSender.send(message, stream);
+            if (region == null) {
+                log.error("Received command message for the untracked switch: {} {}", switchId, message);
+            } else {
+                String stream = Stream.formatWithRegion(Stream.SPEAKER_DISCO, region);
+                routerMessageSender.send(message, stream);
+            }
         } else {
             log.warn("Received message without target switch from SPEAKER_DISCO stream: {}", message);
         }

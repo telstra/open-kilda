@@ -87,10 +87,10 @@ public class RequestTracker {
      * Check new message for blacklist.
      * @return whether is message ok or not.
      */
-    public boolean checkReplyMessage(String correlationId) {
+    public boolean checkReplyMessage(String correlationId, boolean safeToDelete) {
         long now = System.currentTimeMillis();
         if (blackList.containsKey(correlationId)) {
-            log.debug("Response for {} is already blacklisted", correlationId);
+            log.warn("Response for {} is already blacklisted", correlationId);
             return false;
         }
         TrackedMessage message = trackedRequests.get(correlationId);
@@ -102,12 +102,15 @@ public class RequestTracker {
         boolean expired = message.isExpired(now, requestTimeout);
 
         if (expired) {
-            log.debug("Response for {} is expired", correlationId);
+            log.warn("Response for {} is expired", correlationId);
             toBlackList(message);
             return false;
         }
-        message.setLastReplyTime(now);
-
+        if (safeToDelete) {
+            trackedRequests.remove(correlationId);
+        } else {
+            message.setLastReplyTime(now);
+        }
         return true;
     }
 

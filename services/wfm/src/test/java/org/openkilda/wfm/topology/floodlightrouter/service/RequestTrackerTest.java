@@ -40,13 +40,13 @@ public class RequestTrackerTest {
         long now = System.currentTimeMillis();
         tracker.blackList.putIfAbsent(BASE_CORRELATION_ID, new TrackedMessage(BASE_CORRELATION_ID,
                 now, now, 0L));
-        assertFalse(tracker.checkReplyMessage(BASE_CORRELATION_ID));
+        assertFalse(tracker.checkReplyMessage(BASE_CORRELATION_ID, false));
     }
 
     @Test
     public void testCheckReplyMessageNoMessageFound() {
         RequestTracker tracker = new RequestTracker(REQUEST_TIMEOUT, BLACKLIST_TIMEOUT);
-        assertFalse(tracker.checkReplyMessage(BASE_CORRELATION_ID));
+        assertFalse(tracker.checkReplyMessage(BASE_CORRELATION_ID, false));
 
     }
 
@@ -56,7 +56,7 @@ public class RequestTrackerTest {
         long now = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(10);
         tracker.trackedRequests.putIfAbsent(BASE_CORRELATION_ID, new TrackedMessage(BASE_CORRELATION_ID,
                 now, now, 0L));
-        assertFalse(tracker.checkReplyMessage(BASE_CORRELATION_ID));
+        assertFalse(tracker.checkReplyMessage(BASE_CORRELATION_ID, false));
         assertTrue(tracker.blackList.containsKey(BASE_CORRELATION_ID));
     }
 
@@ -66,7 +66,7 @@ public class RequestTrackerTest {
         tracker.trackMessage(BASE_CORRELATION_ID);
         TrackedMessage trackedMessage = tracker.trackedRequests.get(BASE_CORRELATION_ID);
         long lastReplyTime = trackedMessage.getLastReplyTime();
-        assertTrue(tracker.checkReplyMessage(BASE_CORRELATION_ID));
+        assertTrue(tracker.checkReplyMessage(BASE_CORRELATION_ID, false));
         // Check that we update last reply time
         assertTrue(lastReplyTime <= trackedMessage.getLastReplyTime());
     }
