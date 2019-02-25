@@ -14,7 +14,7 @@
 #
 
 from flask import Flask, request, jsonify
-from service.topology import A_SW_NAME, resolve_host
+from service.topology import A_SW_NAME
 from docker import DockerClient
 import logging
 
@@ -80,7 +80,7 @@ def ports_down():
 def switch_knock_out():
     body = request.get_json()
     sw = body['name']
-    switches[sw].add_controller(DUMMY_CONTROLLER, batch=False)
+    switches[sw].force_update_controller_host(DUMMY_CONTROLLER, batch=False)
     return jsonify({'status': 'ok'})
 
 
@@ -88,8 +88,7 @@ def switch_knock_out():
 def switch_revive():
     body = request.get_json()
     sw = body['name']
-    controller_url = body['controller']
-    switches[sw].add_controller(resolve_host(controller_url), batch=False)
+    switches[sw].add_controller(batch=False)
     return jsonify({'status': 'ok'})
 
 
