@@ -19,15 +19,25 @@ package org.openkilda.persistence.repositories;
  * Factory to create {@link Repository} instances.
  */
 public interface RepositoryFactory {
+    FlowCookieRepository createFlowCookieRepository();
+
+    FlowMeterRepository createFlowMeterRepository();
+
+    FlowPathRepository createFlowPathRepository();
+
     FlowRepository createFlowRepository();
 
-    FlowSegmentRepository createFlowSegmentRepository();
+    FlowPairRepository createFlowPairRepository();
 
     IslRepository createIslRepository();
-
-    SwitchRepository createSwitchRepository();
 
     LinkPropsRepository createLinkPropsRepository();
 
     FeatureTogglesRepository createFeatureTogglesRepository();
+
+    SwitchPortRepository createSwitchPortRepository();
+
+    SwitchRepository createSwitchRepository();
+
+    TransitVlanRepository createTransitVlanRepository();
 }

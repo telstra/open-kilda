@@ -15,8 +15,8 @@
 
 package org.openkilda.pce;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.Isl;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.persistence.PersistenceException;
@@ -42,7 +42,7 @@ public class AvailableNetworkFactory {
      *
      * @return {@link AvailableNetwork} instance
      */
-    public AvailableNetwork getAvailableNetwork(Flow flow, boolean reuseAllocatedFlowBandwidth)
+    public AvailableNetwork getAvailableNetwork(UnidirectionalFlow flow, boolean reuseAllocatedFlowBandwidth)
             throws RecoverableException {
         return getAvailableNetwork(flow, reuseAllocatedFlowBandwidth, BuildStrategy.from(config.getNetworkStrategy()));
     }
@@ -54,7 +54,8 @@ public class AvailableNetworkFactory {
      * @return {@link AvailableNetwork} instance
      */
     public AvailableNetwork getAvailableNetwork(
-            Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy) throws RecoverableException {
+            UnidirectionalFlow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
+            throws RecoverableException {
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.
@@ -74,7 +75,7 @@ public class AvailableNetworkFactory {
         return network;
     }
 
-    private Collection<Isl> getAvailableIsls(BuildStrategy buildStrategy, Flow flow) {
+    private Collection<Isl> getAvailableIsls(BuildStrategy buildStrategy, UnidirectionalFlow flow) {
         if (buildStrategy == BuildStrategy.COST) {
             return flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
                     islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth());

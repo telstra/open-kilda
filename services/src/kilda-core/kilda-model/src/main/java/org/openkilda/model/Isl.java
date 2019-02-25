@@ -34,15 +34,14 @@ import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Objects;
 
 /**
- * Represents information about an inter-switch link (ISL). This includes the source and destination, link status,
+ * Represents an inter-switch link (ISL). This includes the source and destination, link status,
  * maximum and available bandwidth.
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = "entityId")
+@EqualsAndHashCode(exclude = {"entityId"})
 @RelationshipEntity(type = "isl")
 public class Isl implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -62,32 +61,8 @@ public class Isl implements Serializable {
     @EndNode
     private Switch destSwitch;
 
-    /**
-     * Hidden as used to support old storage schema.
-     *
-     * @deprecated Use srcSwitch instead.
-     */
-    @Deprecated
-    @Property(name = "src_switch")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private SwitchId srcSwitchId;
-
     @Property(name = "src_port")
     private int srcPort;
-
-    /**
-     * Hidden as used to support old storage schema.
-     *
-     * @deprecated Use destSwitch instead.
-     */
-    @Deprecated
-    @Property(name = "dst_switch")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private SwitchId destSwitchId;
 
     @Property(name = "dst_port")
     private int destPort;
@@ -107,20 +82,24 @@ public class Isl implements Serializable {
     @Property(name = "available_bandwidth")
     private long availableBandwidth;
 
+    @NonNull
     @Property(name = "status")
     // Enforce usage of custom converters.
     @Convert(graphPropertyType = String.class)
     private IslStatus status;
 
+    @NonNull
     @Property(name = "actual")
     // Enforce usage of custom converters.
     @Convert(graphPropertyType = String.class)
     private IslStatus actualStatus;
 
+    @NonNull
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)
     private Instant timeCreate;
 
+    @NonNull
     @Property(name = "time_modify")
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
@@ -134,17 +113,14 @@ public class Isl implements Serializable {
     @Property(name = "bfd_session_status")
     private String bfdSessionStatus;
 
-    /**
-     * Constructor used by the builder only and needed to copy srcSwitch to srcSwitchId, destSwitch to destSwitchId.
-     */
     @Builder(toBuilder = true)
-    Isl(Switch srcSwitch, Switch destSwitch, int srcPort, int destPort, //NOSONAR
-            int latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth,
-            long availableBandwidth, IslStatus status, IslStatus actualStatus,
-            Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
+    public Isl(@NonNull Switch srcSwitch, @NonNull Switch destSwitch, int srcPort, int destPort,
+               int latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
+               IslStatus status, IslStatus actualStatus,
+               Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
             String bfdSessionStatus) {
-        setSrcSwitch(srcSwitch);
-        setDestSwitch(destSwitch);
+        this.srcSwitch = srcSwitch;
+        this.destSwitch = destSwitch;
         this.srcPort = srcPort;
         this.destPort = destPort;
         this.latency = latency;
@@ -160,16 +136,6 @@ public class Isl implements Serializable {
         this.underMaintenance = underMaintenance;
         this.enableBfd = enableBfd;
         this.bfdSessionStatus = bfdSessionStatus;
-    }
-
-    public final void setSrcSwitch(Switch srcSwitch) {
-        this.srcSwitch = Objects.requireNonNull(srcSwitch);
-        this.srcSwitchId = srcSwitch.getSwitchId();
-    }
-
-    public final void setDestSwitch(Switch destSwitch) {
-        this.destSwitch = Objects.requireNonNull(destSwitch);
-        this.destSwitchId = destSwitch.getSwitchId();
     }
 
     @Override
