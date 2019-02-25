@@ -1,0 +1,22 @@
+@startuml
+title Discovery Decision Maker FSM
+
+[*] --> Init
+
+Init -> Discovered : discovered
+Init -d-> Unstable : fail
+
+Unstable : enter / save fail time
+Unstable -d-> Failed : tick, failed [time > fail-time]
+Unstable -> Discovered : discovered
+
+
+Failed : enter / emit fail
+Failed -> Discovered : discovered
+
+
+Discovered -> Unstable : fail
+Discovered : enter / emit discovered
+
+
+@enduml

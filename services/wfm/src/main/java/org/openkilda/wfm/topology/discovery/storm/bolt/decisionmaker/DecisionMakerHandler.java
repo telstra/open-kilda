@@ -19,6 +19,8 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
+import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryDecisionMakerService;
@@ -53,8 +55,25 @@ public class DecisionMakerHandler extends AbstractBolt {
         this.options = options;
     }
 
+
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
+        String source = input.getSourceComponent();
+        if (CoordinatorSpout.ID.equals(source)) {
+            handleTimer(input);
+        } else if (WatcherHandler.BOLT_ID.equals(source)) {
+            handleCommand(input);
+        } else {
+            unhandledInput(input);
+        }
+    }
+
+    private void handleTimer(Tuple input) {
+        Long timeMs = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
+        service.tick(new DecisionMakerHandler.OutputAdapter(this, input), timeMs);
+    }
+
+    private void handleCommand(Tuple input) throws PipelineException {
         DecisionMakerCommand command = pullValue(input, WatcherHandler.FIELD_ID_COMMAND, DecisionMakerCommand.class);
         command.apply(service, new OutputAdapter(this, input));
     }

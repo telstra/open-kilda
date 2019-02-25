@@ -16,18 +16,30 @@
 package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
+import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 public class DiscoveryDecisionMakerService {
 
+    private final Map<Endpoint, DecisionMakerFsm> controller = new HashMap<>();
+
+    private final FsmExecutor<DecisionMakerFsm, DecisionMakerFsmState, DecisionMakerFsmEvent,
+            DecisionMakerFsmContext> controllerExecutor
+            = DecisionMakerFsm.makeExecutor();
+
     private final long failTimeout;
     private final long awaitTime;
-    private HashMap<Endpoint, Long> lastDiscovery = new HashMap<>();
 
     public DiscoveryDecisionMakerService(long failTimeout, long awaitTime) {
         this.failTimeout = failTimeout;
@@ -40,8 +52,17 @@ public class DiscoveryDecisionMakerService {
     public void discovered(IDecisionMakerCarrier carrier, Endpoint endpoint, IslInfoData discoveryEvent,
                            long currentTime) {
         log.debug("Discovery poll DISCOVERED notification on {}", endpoint);
-        carrier.linkDiscovered(discoveryEvent);
-        lastDiscovery.put(endpoint, currentTime);
+
+        DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
+
+        DecisionMakerFsmContext context = DecisionMakerFsmContext.builder()
+                .currentTime(currentTime)
+                .discoveryEvent(discoveryEvent)
+                .output(carrier)
+                .build();
+
+        controllerExecutor.fire(decisionMakerFsm, DecisionMakerFsmEvent.DISCOVERY, context);
+
     }
 
     /**
@@ -49,18 +70,36 @@ public class DiscoveryDecisionMakerService {
      */
     public void failed(IDecisionMakerCarrier carrier, Endpoint endpoint, long currentTime) {
         log.debug("Discovery poll FAIL notification on {}", endpoint);
-        if (!lastDiscovery.containsKey(endpoint)) {
-            lastDiscovery.put(endpoint, currentTime - awaitTime);
-        }
+        DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
 
-        long timeWindow = lastDiscovery.get(endpoint) + failTimeout;
+        DecisionMakerFsmContext context = DecisionMakerFsmContext.builder()
+                .currentTime(currentTime)
+                .output(carrier)
+                .build();
 
-        if (currentTime >= timeWindow) {
-            carrier.linkDestroyed(endpoint);
+        controllerExecutor.fire(decisionMakerFsm, DecisionMakerFsmEvent.FAIL, context);
+    }
+
+    /**
+     * Process "tick" event from {@link CoordinatorSpout}.
+     */
+    public void tick(IDecisionMakerCarrier carrier, long currentTime) {
+
+        DecisionMakerFsmContext context = DecisionMakerFsmContext.builder()
+                .currentTime(currentTime)
+                .output(carrier)
+                .build();
+        for (DecisionMakerFsm fsm : controller.values()) {
+            controllerExecutor.fire(fsm, DecisionMakerFsmEvent.TICK, context);
         }
     }
 
     public HashMap<Endpoint, Long> getLastDiscovery() {
-        return lastDiscovery;
+        return null;
     }
+
+    private DecisionMakerFsm locateControllerCreateIfAbsent(Endpoint endpoint) {
+        return controller.computeIfAbsent(endpoint, key -> DecisionMakerFsm.create(endpoint, failTimeout, awaitTime));
+    }
+
 }

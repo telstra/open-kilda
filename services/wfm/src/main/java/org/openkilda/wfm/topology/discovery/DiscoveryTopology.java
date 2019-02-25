@@ -157,6 +157,7 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         DecisionMakerHandler bolt = new DecisionMakerHandler(options);
         Fields watcherGrouping = new Fields(WatcherHandler.FIELD_ID_DATAPATH, WatcherHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(DecisionMakerHandler.BOLT_ID, bolt, scaleFactor)
+                .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(WatcherHandler.BOLT_ID, watcherGrouping);
     }
 

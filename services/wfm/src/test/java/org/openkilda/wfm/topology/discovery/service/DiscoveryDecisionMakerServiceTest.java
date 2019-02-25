@@ -19,7 +19,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import org.openkilda.messaging.info.event.IslChangeType;
@@ -73,8 +72,7 @@ public class DiscoveryDecisionMakerServiceTest {
         w.failed(carrier, endpointAlpha, 4);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
         w.failed(carrier, endpointAlpha, 5);
-        w.failed(carrier, endpointAlpha, 6);
-        verify(carrier, times(2)).linkDestroyed(eq(endpointAlpha));
+        verify(carrier).linkDestroyed(eq(endpointAlpha));
 
         w.discovered(carrier, endpointAlpha, islBetaAlpha, 20);
         verify(carrier).linkDiscovered(islBetaAlpha);
@@ -85,6 +83,28 @@ public class DiscoveryDecisionMakerServiceTest {
         w.failed(carrier, endpointAlpha, 24);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
         w.failed(carrier, endpointAlpha, 31);
+        verify(carrier).linkDestroyed(eq(endpointAlpha));
+    }
+
+    @Test
+    public void tickerTest() {
+        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(10, 5);
+        w.failed(carrier, endpointAlpha, 0);
+        w.tick(carrier, 1);
+        w.tick(carrier, 4);
+        verify(carrier, never()).linkDestroyed(any(Endpoint.class));
+        w.tick(carrier, 5);
+        verify(carrier).linkDestroyed(eq(endpointAlpha));
+
+        w.discovered(carrier, endpointAlpha, islBetaAlpha, 20);
+        verify(carrier).linkDiscovered(islBetaAlpha);
+
+        reset(carrier);
+        w.failed(carrier, endpointAlpha, 21);
+        w.tick(carrier, 23);
+        w.failed(carrier, endpointAlpha, 24);
+        verify(carrier, never()).linkDestroyed(any(Endpoint.class));
+        w.tick(carrier, 31);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
     }
 }
