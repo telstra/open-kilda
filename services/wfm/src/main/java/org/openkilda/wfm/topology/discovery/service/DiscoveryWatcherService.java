@@ -54,13 +54,13 @@ public class DiscoveryWatcherService {
         Packet packet = Packet.of(endpoint, packetNo);
 
         log.debug("Produce discovery PUSH request for {} id:{} task:{}", endpoint, packet.packetNo, taskId);
-        DiscoverIslCommandData discoveryRequest = new DiscoverIslCommandData(
-                endpoint.getDatapath(), endpoint.getPortNumber(), packetNo);
-        carrier.sendDiscovery(discoveryRequest);
-
         producedPackets.add(packet);
         timeouts.computeIfAbsent(currentTime + awaitTime, key -> new HashSet<>())
                 .add(packet);
+
+        DiscoverIslCommandData discoveryRequest = new DiscoverIslCommandData(
+                endpoint.getDatapath(), endpoint.getPortNumber(), packetNo);
+        carrier.sendDiscovery(discoveryRequest);
 
         packetNo += 1;
     }

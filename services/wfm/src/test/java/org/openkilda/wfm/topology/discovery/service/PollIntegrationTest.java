@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.discovery.service;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 
@@ -27,9 +28,11 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 
 import lombok.Data;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -54,27 +57,35 @@ public class PollIntegrationTest {
         final long latency = 100L;
         final long speed = 100000L;
         IntegrationCarrier integrationCarrier = new IntegrationCarrier(watcherService, watchListService,
-                                                                       decisionMakerService) {
-
-            @Override
-            public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
-                watcherService.confirmation(
-                        Endpoint.of(discoveryRequest.getSwitchId(), discoveryRequest.getPortNumber()),
-                        discoveryRequest.getPacketId());
-                IslInfoData discoveryEvent = IslInfoData.builder().latency(latency)
-                        .source(new PathNode(discoveryRequest.getSwitchId(),
-                                discoveryRequest.getPortNumber(), 0))
-                        .destination(new PathNode(new SwitchId(10), 10, 0))
-                        .state(IslChangeType.DISCOVERED)
-                        .speed(speed).underMaintenance(false)
-                        .packetId(discoveryRequest.getPacketId())
-                        .build();
-                watcherService.discovery(this, discoveryEvent);
-            }
-        };
+                                                                       decisionMakerService);
+        IWatcherCarrier watcherCarrier = mock(IWatcherCarrier.class);
+        integrationCarrier.setWatcherCarrier(watcherCarrier);
         integrationCarrier.setDecisionMakerCarrier(carrier);
 
-        watchListService.addWatch(integrationCarrier, Endpoint.of(new SwitchId(1), 1), 1);
+        // should produce discovery request
+        Endpoint endpoint = Endpoint.of(new SwitchId(1), 1);
+        watchListService.addWatch(integrationCarrier, endpoint, 1);
+
+        ArgumentCaptor<DiscoverIslCommandData> discoveryRequestCatcher = ArgumentCaptor.forClass(
+                DiscoverIslCommandData.class);
+        verify(watcherCarrier).sendDiscovery(discoveryRequestCatcher.capture());
+
+        DiscoverIslCommandData request = discoveryRequestCatcher.getValue();
+        Assert.assertEquals(endpoint.getDatapath(), request.getSwitchId());
+        Assert.assertEquals(endpoint.getPortNumber(), request.getPortNumber());
+
+        // should process discovery response
+        IslInfoData response = IslInfoData.builder().latency(latency)
+                .source(new PathNode(request.getSwitchId(),
+                        request.getPortNumber(), 0))
+                .destination(new PathNode(new SwitchId(10), 10, 0))
+                .state(IslChangeType.DISCOVERED)
+                .speed(speed).underMaintenance(false)
+                .packetId(request.getPacketId())
+                .build();
+
+        watcherService.confirmation(Endpoint.of(request.getSwitchId(), request.getPortNumber()), request.getPacketId());
+        watcherService.discovery(integrationCarrier, response);
 
         IslInfoData expectedDiscoveryEvent = IslInfoData.builder().latency(latency)
                 .source(new PathNode(new SwitchId(1), 1, 0))
