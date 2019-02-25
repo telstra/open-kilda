@@ -41,7 +41,7 @@ public class RerouteService {
      */
     public Collection<String> getAffectedFlowIds(SwitchId switchId, int port) {
         log.info("Get affected flow ids by node {}_{}", switchId, port);
-        return flowRepository.findActiveFlowIdsWithPortInPath(switchId, port);
+        return flowRepository.findActiveFlowIdsWithPortInPathOverSegments(switchId, port);
     }
 
     /**
