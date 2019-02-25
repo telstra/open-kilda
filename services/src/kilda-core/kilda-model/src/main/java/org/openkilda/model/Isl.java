@@ -118,7 +118,7 @@ public class Isl implements Serializable {
                int latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
                IslStatus status, IslStatus actualStatus,
                Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
-            String bfdSessionStatus) {
+               String bfdSessionStatus) {
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
         this.srcPort = srcPort;

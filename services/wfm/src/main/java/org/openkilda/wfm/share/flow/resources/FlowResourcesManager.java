@@ -18,16 +18,21 @@ package org.openkilda.wfm.share.flow.resources;
 import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowMeter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 
+import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -38,7 +43,7 @@ public class FlowResourcesManager {
 
     private final CookiePool cookiePool;
     private final MeterPool meterPool;
-    private final TransitVlanPool transitVlanPool;
+    private final Map<FlowEncapsulationType, EncapsulationResourcesProvider> encapsulationResourcesProviders;
 
     public FlowResourcesManager(PersistenceManager persistenceManager, FlowResourcesConfig config) {
         transactionManager = persistenceManager.getTransactionManager();
@@ -46,8 +51,11 @@ public class FlowResourcesManager {
         this.cookiePool = new CookiePool(persistenceManager, config.getMinFlowCookie(), config.getMaxFlowCookie());
         this.meterPool = new MeterPool(persistenceManager,
                 new MeterId(config.getMinFlowMeterId()), new MeterId(config.getMaxFlowMeterId()));
-        this.transitVlanPool = new TransitVlanPool(persistenceManager,
-                config.getMinFlowTransitVlan(), config.getMaxFlowTransitVlan());
+
+        encapsulationResourcesProviders = ImmutableMap.<FlowEncapsulationType, EncapsulationResourcesProvider>builder()
+                .put(FlowEncapsulationType.TRANSIT_VLAN, new TransitVlanPool(persistenceManager,
+                        config.getMinFlowTransitVlan(), config.getMaxFlowTransitVlan()))
+                .build();
     }
 
     /**
@@ -72,17 +80,18 @@ public class FlowResourcesManager {
                                 forwardPathId, reversePathId));
 
                         if (flow.getBandwidth() > 0L) {
-                            flowResources.forwardMeter(meterPool.allocateMeter(
-                                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
-                            flowResources.reverseMeter(meterPool.allocateMeter(
-                                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId));
+                            FlowMeter forwardMeter = meterPool.allocateMeter(
+                                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId);
+                            flowResources.forwardMeterId(forwardMeter.getMeterId());
+                            FlowMeter reverseMeter = meterPool.allocateMeter(
+                                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId);
+                            flowResources.reverseMeterId(reverseMeter.getMeterId());
                         }
 
                         if (!flow.isOneSwitchFlow()) {
-                            flowResources.forwardTransitVlan(
-                                    transitVlanPool.allocateVlan(flow.getFlowId(), forwardPathId));
-                            flowResources.reverseTransitVlan(
-                                    transitVlanPool.allocateVlan(flow.getFlowId(), reversePathId));
+                            flowResources.encapsulationResources(
+                                    getEncapsulationResourcesProvider(flow.getEncapsulationType())
+                                            .allocate(flow, forwardPathId, reversePathId));
                         }
 
                         return flowResources.build();
@@ -92,6 +101,15 @@ public class FlowResourcesManager {
         }
     }
 
+    private EncapsulationResourcesProvider getEncapsulationResourcesProvider(FlowEncapsulationType type) {
+        EncapsulationResourcesProvider provider = encapsulationResourcesProviders.get(type);
+        if (provider == null) {
+            throw new ResourceNotAvailableException(
+                    format("Unsupported encapsulation type %s", type));
+        }
+        return provider;
+    }
+
     private PathId generatePathId(String flowId) {
         return new PathId(format("%s_%s", flowId, UUID.randomUUID()));
     }
@@ -99,15 +117,15 @@ public class FlowResourcesManager {
     /**
      * Deallocate the flow resources.
      */
-    public void deallocateFlow(PathId forwardPathId, PathId reversePathId) {
+    public void deallocateFlow(Flow flow, PathId forwardPathId, PathId reversePathId) {
         log.debug("Deallocate flow resources for {}/{}.", forwardPathId, reversePathId);
 
         transactionManager.doInTransaction(() -> {
             cookiePool.deallocateCookie(forwardPathId, reversePathId);
             meterPool.deallocateMeter(forwardPathId);
             meterPool.deallocateMeter(reversePathId);
-            transitVlanPool.deallocateVlan(forwardPathId);
-            transitVlanPool.deallocateVlan(reversePathId);
+            getEncapsulationResourcesProvider(flow.getEncapsulationType())
+                    .deallocate(forwardPathId, reversePathId);
         });
     }
 }

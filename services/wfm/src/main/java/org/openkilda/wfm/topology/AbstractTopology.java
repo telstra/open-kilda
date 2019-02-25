@@ -115,7 +115,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         if (topologyConfig.getUseLocalCluster()) {
             setupLocal();
         } else {
-            setupLocal();
+            setupRemote();
         }
     }
 

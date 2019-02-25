@@ -13,21 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.flow.resources;
+package org.openkilda.wfm.share.flow.resources.transitvlan;
 
-import org.openkilda.model.MeterId;
-import org.openkilda.model.PathId;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.TransitVlan;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 
 import lombok.Builder;
 import lombok.Value;
 
 @Value
 @Builder
-public class FlowResources {
-    private PathId forwardPathId;
-    private PathId reversePathId;
-    private long unmaskedCookie;
-    private MeterId forwardMeterId;
-    private MeterId reverseMeterId;
-    private EncapsulationResources encapsulationResources;
+public class TransitVlanResources implements EncapsulationResources {
+
+    private TransitVlan forwardTransitVlan;
+    private TransitVlan reverseTransitVlan;
+
+    @Override
+    public final FlowEncapsulationType getEncapsulationType() {
+        return FlowEncapsulationType.TRANSIT_VLAN;
+    }
 }

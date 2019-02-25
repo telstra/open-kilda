@@ -15,19 +15,11 @@
 
 package org.openkilda.wfm.share.flow.resources;
 
-import org.openkilda.model.MeterId;
+import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 
-import lombok.Builder;
-import lombok.Value;
+public interface EncapsulationResourcesProvider<T extends EncapsulationResources> {
+    T allocate(Flow flow, PathId forwardPathId, PathId reversePathId) throws ResourceNotAvailableException;
 
-@Value
-@Builder
-public class FlowResources {
-    private PathId forwardPathId;
-    private PathId reversePathId;
-    private long unmaskedCookie;
-    private MeterId forwardMeterId;
-    private MeterId reverseMeterId;
-    private EncapsulationResources encapsulationResources;
+    void deallocate(PathId forwardPathId, PathId reversePathId);
 }

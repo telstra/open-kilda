@@ -19,10 +19,6 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
-import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
 import org.openkilda.pce.Path;
@@ -37,7 +33,6 @@ import org.openkilda.pce.model.Edge;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,19 +53,19 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public PathPair getPath(UnidirectionalFlow flow, boolean reuseAllocatedFlowBandwidth)
+    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
             throws UnroutableFlowException, RecoverableException {
         return getPath(availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth), flow);
     }
 
     @Override
-    public PathPair getPath(UnidirectionalFlow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
+    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
             throws UnroutableFlowException, RecoverableException {
         return getPath(
                 availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth, buildStrategy), flow);
     }
 
-    private PathPair getPath(AvailableNetwork network, UnidirectionalFlow flow)
+    private PathPair getPath(AvailableNetwork network, Flow flow)
             throws UnroutableFlowException {
 
         if (flow.getSrcSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
@@ -116,7 +111,7 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
 
-    private PathPair convertToPathPair(UnidirectionalFlow flow, Pair<List<Edge>, List<Edge>> biPath) {
+    private PathPair convertToPathPair(Flow flow, Pair<List<Edge>, List<Edge>> biPath) {
         long forwardPathLatency = 0L;
         List<Path.Segment> forwardSegments = new LinkedList<>();
         for (Edge edge : biPath.getLeft()) {
@@ -144,7 +139,7 @@ public class InMemoryPathComputer implements PathComputer {
                 .build();
     }
 
-    private PathPair buildPathPair(UnidirectionalFlow flow,
+    private PathPair buildPathPair(Flow flow,
                                    long forwardPathLatency, List<Segment> forwardSegments,
                                    long reversePathLatency, List<Segment> reverseSegments) {
         return PathPair.builder()

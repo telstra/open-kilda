@@ -15,7 +15,7 @@
 
 package org.openkilda.pce;
 
-import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.model.Flow;
 import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -31,34 +31,34 @@ public interface PathComputer {
      * Gets path between source and destination switches for specified flow. The path is built over available ISLs
      * only.
      *
-     * @param flow the {@link UnidirectionalFlow} instance
+     * @param flow the {@link Flow} instance
      * @return {@link PathPair} instances
      */
-    default PathPair getPath(UnidirectionalFlow flow) throws UnroutableFlowException, RecoverableException {
+    default PathPair getPath(Flow flow) throws UnroutableFlowException, RecoverableException {
         return getPath(flow, false);
     }
 
     /**
      * Gets path between source and destination switch for specified flow.
      *
-     * @param flow the {@link UnidirectionalFlow} instance.
+     * @param flow                        the {@link Flow} instance.
      * @param reuseAllocatedFlowBandwidth whether to reuse allocated bandwidth and existing path of the flow
      *                                    to be a potential new path.
      * @return {@link PathPair} instances
      */
-    PathPair getPath(UnidirectionalFlow flow, boolean reuseAllocatedFlowBandwidth)
+    PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
             throws UnroutableFlowException, RecoverableException;
 
     /**
      * Gets path between source and destination switch for specified flow.
      *
-     * @param flow the {@link UnidirectionalFlow} instance.
+     * @param flow                        the {@link Flow} instance.
      * @param reuseAllocatedFlowBandwidth whether to reuse allocated bandwidth and existing path of the flow
      *                                    to be a potential new path.
-     * @param buildStrategy  wei
+     * @param buildStrategy               wei
      * @return {@link PathPair} instances
      */
-    PathPair getPath(UnidirectionalFlow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
+    PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
             throws UnroutableFlowException, RecoverableException;
 
     /**

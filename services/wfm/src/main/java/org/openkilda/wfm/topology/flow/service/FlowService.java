@@ -43,6 +43,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanResources;
 import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
@@ -104,7 +105,7 @@ public class FlowService extends BaseFlowService {
 
         // TODO: the strategy is defined either per flow or system-wide.
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(flow);
+        PathPair pathPair = pathComputer.getPath(flow.getFlowEntity());
 
         flow.setStatus(FlowStatus.IN_PROGRESS);
 
@@ -201,7 +202,8 @@ public class FlowService extends BaseFlowService {
             return Optional.of(new FlowPairWithSegments(flowPair, forwardSegments, reverseSegments));
         }).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-        flowResourcesManager.deallocateFlow(result.getFlowPair().getFlowEntity().getForwardPathId(),
+        flowResourcesManager.deallocateFlow(result.getFlowPair().getFlowEntity(),
+                result.getFlowPair().getFlowEntity().getForwardPathId(),
                 result.getFlowPair().getFlowEntity().getReversePathId());
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
@@ -228,7 +230,7 @@ public class FlowService extends BaseFlowService {
 
         // TODO: the strategy is defined either per flow or system-wide.
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(newFlow, true);
+        PathPair pathPair = pathComputer.getPath(newFlow.getFlowEntity(), true);
 
         newFlow.setStatus(FlowStatus.IN_PROGRESS);
 
@@ -268,7 +270,8 @@ public class FlowService extends BaseFlowService {
                     .reverseSegments(newReverseSegments).build();
         });
 
-        flowResourcesManager.deallocateFlow(currentFlow.getFlowEntity().getForwardPathId(),
+        flowResourcesManager.deallocateFlow(currentFlow.getFlowEntity(),
+                currentFlow.getFlowEntity().getForwardPathId(),
                 currentFlow.getFlowEntity().getReversePathId());
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
@@ -295,7 +298,7 @@ public class FlowService extends BaseFlowService {
 
         // TODO: the strategy is defined either per flow or system-wide.
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(currentFlow.getForward(), true);
+        PathPair pathPair = pathComputer.getPath(currentFlow.getFlowEntity(), true);
 
         log.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {}",
                 flowId, pathPair.getForward(), pathPair.getReverse());
@@ -342,7 +345,8 @@ public class FlowService extends BaseFlowService {
                     .reverseSegments(newReverseSegments).build();
         });
 
-        flowResourcesManager.deallocateFlow(currentFlow.getFlowEntity().getForwardPathId(),
+        flowResourcesManager.deallocateFlow(currentFlow.getFlowEntity(),
+                currentFlow.getFlowEntity().getForwardPathId(),
                 currentFlow.getFlowEntity().getReversePathId());
 
         log.warn("Rerouted flow with new path: {}", result.getFlowPair());
@@ -418,22 +422,26 @@ public class FlowService extends BaseFlowService {
         FlowPath forwardPath = flowPair.getForward().getFlowPath();
         forwardPath.setPathId(flowResources.getForwardPathId());
         forwardPath.setCookie(Cookie.buildForwardCookie(flowResources.getUnmaskedCookie()));
-        if (flowResources.getForwardMeter() != null) {
-            forwardPath.setMeterId(flowResources.getForwardMeter().getMeterId());
+        if (flowResources.getForwardMeterId() != null) {
+            forwardPath.setMeterId(flowResources.getForwardMeterId());
         }
         flow.setForwardPath(forwardPath);
 
         FlowPath reversePath = flowPair.getReverse().getFlowPath();
         reversePath.setPathId(flowResources.getReversePathId());
         reversePath.setCookie(Cookie.buildReverseCookie(flowResources.getUnmaskedCookie()));
-        if (flowResources.getReverseMeter() != null) {
-            reversePath.setMeterId(flowResources.getReverseMeter().getMeterId());
+        if (flowResources.getReverseMeterId() != null) {
+            reversePath.setMeterId(flowResources.getReverseMeterId());
         }
         flow.setReversePath(reversePath);
 
-        return new FlowPair(flow, flowResources.getForwardTransitVlan(), flowResources.getReverseTransitVlan());
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
+        TransitVlanResources transitVlanResources = (TransitVlanResources) flowResources.getEncapsulationResources();
+
+        return new FlowPair(flow, transitVlanResources.getForwardTransitVlan(),
+                transitVlanResources.getReverseTransitVlan());
     }
-    
+
     private void updateIslsForFlowPath(FlowPath path) {
         path.getSegments().forEach(pathSegment -> {
             log.debug("Updating ISL for the path segment: {}", pathSegment);

@@ -174,7 +174,12 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     @Override
     public Collection<Flow> findByDstSwitchId(SwitchId switchId) {
         Filter dstSwitchFilter = createDstSwitchFilter(switchId);
-        return getSession().loadAll(getEntityType(), dstSwitchFilter, DEPTH_LOAD_ENTITY);
+        return loadAll(dstSwitchFilter).stream()
+                .map(flow -> {
+                    flow.setForwardPath(findFlowPathByPathId(flow.getForwardPathId()));
+                    flow.setReversePath(findFlowPathByPathId(flow.getReversePathId()));
+                    return flow;
+                }).collect(Collectors.toList());
     }
 
     @Override

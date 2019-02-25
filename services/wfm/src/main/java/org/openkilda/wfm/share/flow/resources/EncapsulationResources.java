@@ -15,19 +15,8 @@
 
 package org.openkilda.wfm.share.flow.resources;
 
-import org.openkilda.model.MeterId;
-import org.openkilda.model.PathId;
+import org.openkilda.model.FlowEncapsulationType;
 
-import lombok.Builder;
-import lombok.Value;
-
-@Value
-@Builder
-public class FlowResources {
-    private PathId forwardPathId;
-    private PathId reversePathId;
-    private long unmaskedCookie;
-    private MeterId forwardMeterId;
-    private MeterId reverseMeterId;
-    private EncapsulationResources encapsulationResources;
+public interface EncapsulationResources {
+    FlowEncapsulationType getEncapsulationType();
 }

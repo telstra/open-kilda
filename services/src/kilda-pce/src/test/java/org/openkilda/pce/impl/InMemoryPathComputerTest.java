@@ -22,6 +22,7 @@ import static org.junit.Assert.assertThat;
 
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
@@ -161,7 +162,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("00:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("00:04")).get();
 
-        UnidirectionalFlow f = new FlowPair(srcSwitch, destSwitch).getForward();
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
@@ -182,7 +183,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("01:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("01:04")).get();
 
-        UnidirectionalFlow f = new FlowPair(srcSwitch, destSwitch).getForward();
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
@@ -205,7 +206,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("02:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("02:02")).get();
 
-        UnidirectionalFlow f = new FlowPair(srcSwitch, destSwitch).getForward();
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
@@ -226,7 +227,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("03:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("03:04")).get();
 
-        UnidirectionalFlow f = new FlowPair(srcSwitch, destSwitch).getForward();
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
@@ -248,7 +249,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("04:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("04:04")).get();
 
-        UnidirectionalFlow f = new FlowPair(srcSwitch, destSwitch).getForward();
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         thrown.expect(UnroutableFlowException.class);
@@ -266,7 +267,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch1 = switchRepository.findById(new SwitchId("05:01")).get();
         Switch destSwitch1 = switchRepository.findById(new SwitchId("05:03")).get();
 
-        UnidirectionalFlow f1 = new FlowPair(srcSwitch1, destSwitch1).getForward();
+        Flow f1 = new FlowPair(srcSwitch1, destSwitch1).getFlowEntity();
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
@@ -278,7 +279,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch2 = switchRepository.findById(new SwitchId("05:01")).get();
         Switch destSwitch2 = switchRepository.findById(new SwitchId("05:04")).get();
 
-        UnidirectionalFlow f2 = new FlowPair(srcSwitch2, destSwitch2).getForward();
+        Flow f2 = new FlowPair(srcSwitch2, destSwitch2).getFlowEntity();
         f2.setBandwidth(0);
         f2.setIgnoreBandwidth(false);
 
@@ -302,7 +303,7 @@ public class InMemoryPathComputerTest {
         Switch destSwitch1 = switchRepository.findById(new SwitchId("06:03")).get();
 
         // THIS ONE SHOULD WORK
-        UnidirectionalFlow f1 = new FlowPair(srcSwitch1, destSwitch1).getForward();
+        Flow f1 = new FlowPair(srcSwitch1, destSwitch1).getFlowEntity();
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
@@ -315,7 +316,7 @@ public class InMemoryPathComputerTest {
         Switch destSwitch2 = switchRepository.findById(new SwitchId("07:04")).get();
 
         // THIS ONE SHOULD FAIL
-        UnidirectionalFlow f2 = new FlowPair(srcSwitch2, destSwitch2).getForward();
+        Flow f2 = new FlowPair(srcSwitch2, destSwitch2).getFlowEntity();
         f2.setBandwidth(0);
         f2.setIgnoreBandwidth(false);
 
@@ -356,7 +357,7 @@ public class InMemoryPathComputerTest {
         Switch destSwitch1 = switchRepository.findById(new SwitchId("11:03")).get();
 
         // THIS ONE SHOULD WORK
-        UnidirectionalFlow f1 = new FlowPair(srcSwitch1, destSwitch1).getForward();
+        Flow f1 = new FlowPair(srcSwitch1, destSwitch1).getFlowEntity();
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
@@ -371,7 +372,7 @@ public class InMemoryPathComputerTest {
         Switch destSwitch2 = switchRepository.findById(new SwitchId("11:04")).get();
 
         // THIS ONE SHOULD FAIL
-        UnidirectionalFlow f2 = new FlowPair(srcSwitch2, destSwitch2).getForward();
+        Flow f2 = new FlowPair(srcSwitch2, destSwitch2).getFlowEntity();
         f2.setBandwidth(0);
         f2.setIgnoreBandwidth(false);
 
@@ -391,7 +392,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("09:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("09:04")).get();
 
-        UnidirectionalFlow flow = new FlowPair(srcSwitch, destSwitch).getForward();
+        Flow flow = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         flow.setIgnoreBandwidth(false);
         flow.setBandwidth(10);
 
@@ -422,7 +423,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("A1:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("A1:03")).get();
 
-        UnidirectionalFlow flow = new FlowPair(srcSwitch, destSwitch).getForward();
+        Flow flow = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         flow.setFlowId(flowId);
         flow.setBandwidth(bandwidth);
         flow.setIgnoreBandwidth(false);
@@ -450,7 +451,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("A1:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("A1:03")).get();
 
-        UnidirectionalFlow flow = new FlowPair(srcSwitch, destSwitch).getForward();
+        Flow flow = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         flow.setBandwidth(originFlowBandwidth);
         flow.setIgnoreBandwidth(false);
         flow.setFlowId(flowId);
