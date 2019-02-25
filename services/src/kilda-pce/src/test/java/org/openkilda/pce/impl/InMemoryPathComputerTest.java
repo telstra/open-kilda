@@ -23,7 +23,6 @@ import static org.junit.Assert.assertThat;
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
