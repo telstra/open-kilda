@@ -283,6 +283,26 @@ services:
          - northbound.pendev
     mem_limit: 1073741824
 
+  grpc-speaker:
+    container_name: grpc-speaker
+    build:
+      context: services/src/grpc-speaker/grpc-service/
+    ports:
+    - "8091:8091"
+    environment:
+      REST_USERNAME: 'kilda'
+      REST_PASSWORD: 'kilda'
+    depends_on:
+      kafka:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+         - grpc-speaker.pendev
+    mem_limit: 1073741824
+
 
   opentsdb:
     container_name: opentsdb

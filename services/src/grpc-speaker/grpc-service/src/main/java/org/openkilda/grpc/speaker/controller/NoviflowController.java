@@ -53,7 +53,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping(value = "/noviflow", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-@PropertySource("classpath:grpc-speaker.properties")
+@PropertySource("classpath:grpc-service.properties")
 @Api
 @ApiResponses(value = {
         @ApiResponse(code = 200, message = "Operation is successful"),

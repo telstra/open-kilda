@@ -15,8 +15,6 @@
 
 package org.openkilda.grpc.speaker.client;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
 import org.openkilda.grpc.speaker.model.ErrorCode;
 import org.openkilda.grpc.speaker.model.LicenseDto;
@@ -47,6 +45,7 @@ import io.grpc.noviflow.StatusSwitch;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -63,7 +62,7 @@ public class GrpcSession {
 
     public GrpcSession(String address) {
         if (!InetAddresses.isInetAddress(address) && !InetAddresses.isUriInetAddress(address)) {
-            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.getByCode(23).getMessage());
+            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.ERRNO_23.getMessage());
         }
         this.address = address;
         this.channel = ManagedChannelBuilder.forAddress(address, PORT)
@@ -88,8 +87,8 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<List<CliReply>> login(String user, String pass) {
-        checkNotNull(user);
-        checkNotNull(pass);
+        Objects.requireNonNull(user, "User name must not be null");
+        Objects.requireNonNull(pass, "Password must not be null");
 
         AuthenticateUser authUser = AuthenticateUser.newBuilder()
                 .setUsername(user)
@@ -125,10 +124,12 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<List<CliReply>> setLogicalPort(LogicalPortDto port) {
+        Objects.requireNonNull(port.getLogicalPortNumber(), "Logical port number must not be null");
+        Objects.requireNonNull(port.getPortNumbers(), "Port number must not be null");
+
         LogicalPort request = LogicalPort.newBuilder()
                 .addAllPortno(port.getPortNumbers())
                 .setLogicalportno(port.getLogicalPortNumber())
-                .setName(port.getLogicalPortName())
                 .build();
 
         log.debug("About to create logical port: {}", request);
@@ -146,6 +147,7 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<LogicalPort>> showConfigLogicalPort(Integer port) {
+        Objects.requireNonNull(port, "Port must not be null");
         LogicalPort request = LogicalPort.newBuilder()
                 .setLogicalportno(port)
                 .build();
@@ -182,6 +184,8 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<CliReply>> deleteLogicalPort(Integer port) {
+        Objects.requireNonNull(port, "Port must not be null");
+
         LogicalPort logicalPort = LogicalPort.newBuilder()
                 .setLogicalportno(port)
                 .build();
@@ -258,6 +262,9 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<CliReply>> setConfigRemoteLogServer(RemoteLogServerDto remoteServer) {
+        Objects.requireNonNull(remoteServer.getIpAddress(), "IP Address must not be null");
+        Objects.requireNonNull(remoteServer.getPort(), "Port must not be null");
+
         RemoteLogServer logServer = RemoteLogServer.newBuilder()
                 .setIpaddr(remoteServer.getIpAddress())
                 .setPort(remoteServer.getPort())

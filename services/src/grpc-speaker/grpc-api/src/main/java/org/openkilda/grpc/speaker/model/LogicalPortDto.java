@@ -18,6 +18,7 @@ package org.openkilda.grpc.speaker.model;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,7 @@ import java.util.List;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
@@ -34,43 +36,4 @@ public class LogicalPortDto {
     private List<Integer> portNumbers;
 
     private Integer logicalPortNumber;
-
-    private String logicalPortName;
-
-
-    /**
-     * Sets a port numbers.
-     *
-     * @param portNumbers list of a port numbers.
-     */
-    public void setPortNumbers(List<Integer> portNumbers) {
-        if (portNumbers == null || portNumbers.isEmpty()) {
-            throw new IllegalArgumentException("Need to set port numbers");
-        }
-        this.portNumbers = portNumbers;
-    }
-
-    /**
-     * Sets a logical port number.
-     *
-     * @param logicalPortNumber a logical port number.
-     */
-    public void setLogicalPortNumber(Integer logicalPortNumber) {
-        if (logicalPortNumber == null) {
-            throw new IllegalArgumentException("Need to set logical port number");
-        }
-        this.logicalPortNumber = logicalPortNumber;
-    }
-
-    /**
-     * Sets a logical port name.
-     *
-     * @param logicalPortName a logical port name.
-     */
-    public void setLogicalPortName(String logicalPortName) {
-        if (logicalPortName == null) {
-            throw new IllegalArgumentException("Need to set logical port name");
-        }
-        this.logicalPortName = logicalPortName;
-    }
 }

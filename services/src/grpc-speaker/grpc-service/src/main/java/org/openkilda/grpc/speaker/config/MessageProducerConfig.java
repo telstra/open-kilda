@@ -35,7 +35,7 @@ import java.util.Map;
  * Kafka message producer configuration.
  */
 @Configuration
-@PropertySource("classpath:grpc-speaker.properties")
+@PropertySource("classpath:grpc-service.properties")
 public class MessageProducerConfig {
     /**
      * Kafka bootstrap servers.
