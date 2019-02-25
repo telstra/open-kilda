@@ -19,10 +19,11 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
 import org.openkilda.pce.Path;
-import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
@@ -33,6 +34,7 @@ import org.openkilda.pce.model.Edge;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -65,12 +67,14 @@ public class InMemoryPathComputer implements PathComputer {
                 availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth, buildStrategy), flow);
     }
 
-    private PathPair getPath(AvailableNetwork network, Flow flow)
-            throws UnroutableFlowException {
-
+    private PathPair getPath(AvailableNetwork network, Flow flow) throws UnroutableFlowException {
         if (flow.getSrcSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
             log.info("No path computation for one-switch flow");
-            return buildPathPair(flow, 0, emptyList(), 0, emptyList());
+            SwitchId singleSwitchId = flow.getSrcSwitch().getSwitchId();
+            return PathPair.builder()
+                    .forward(convertToPath(singleSwitchId, singleSwitchId, emptyList()))
+                    .reverse(convertToPath(singleSwitchId, singleSwitchId, emptyList()))
+                    .build();
         }
 
         Pair<List<Edge>, List<Edge>> biPath;
@@ -85,11 +89,11 @@ public class InMemoryPathComputer implements PathComputer {
             throw new UnroutableFlowException(message, flow.getFlowId());
         }
 
-        return convertToPathPair(flow, biPath);
+        return convertToPathPair(flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId(), biPath);
     }
 
     @Override
-    public List<FlowPath> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count)
+    public List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count)
             throws RecoverableException, UnroutableFlowException {
         Flow flow = Flow.builder()
                 .srcSwitch(Switch.builder().switchId(srcSwitch).build())
@@ -103,30 +107,39 @@ public class InMemoryPathComputer implements PathComputer {
         List<List<Edge>> paths =
                 pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitch, dstSwitch, count);
         return paths.stream()
-                .map(path -> convertToPathPair(flow, path))
-                .sorted(Comparator.comparing(FlowPath::getMinAvailableBandwidth)
-                        .thenComparing(FlowPath::getLatency))
+                .map(pathEdges -> convertToPath(srcSwitch, dstSwitch, pathEdges))
+                .sorted(Comparator.comparing(Path::getMinAvailableBandwidth)
+                        .thenComparing(Path::getLatency))
                 .limit(count)
                 .collect(Collectors.toList());
     }
 
 
-    private PathPair convertToPathPair(Flow flow, Pair<List<Edge>, List<Edge>> biPath) {
-        long forwardPathLatency = 0L;
-        List<Path.Segment> forwardSegments = new LinkedList<>();
-        for (Edge edge : biPath.getLeft()) {
-            forwardPathLatency += edge.getLatency();
-            forwardSegments.add(convertToSegment(edge));
+    private PathPair convertToPathPair(SwitchId srcSwitch, SwitchId dstSwitch, Pair<List<Edge>, List<Edge>> biPath) {
+        return PathPair.builder()
+                .forward(convertToPath(srcSwitch, dstSwitch, biPath.getLeft()))
+                .reverse(convertToPath(dstSwitch, srcSwitch, biPath.getRight()))
+                .build();
+    }
+
+    private Path convertToPath(SwitchId srcSwitchId, SwitchId dstSwitchId, List<Edge> edges) {
+        List<Path.Segment> segments = new LinkedList<>();
+
+        long latency = 0L;
+        long minAvailableBandwidth = Long.MAX_VALUE;
+        for (Edge edge : edges) {
+            latency += edge.getLatency();
+            minAvailableBandwidth = Math.min(minAvailableBandwidth, edge.getAvailableBandwidth());
+            segments.add(convertToSegment(edge));
         }
 
-        long reversePathLatency = 0L;
-        List<Path.Segment> reverseSegments = new LinkedList<>();
-        for (Edge edge : biPath.getRight()) {
-            reversePathLatency += edge.getLatency();
-            reverseSegments.add(convertToSegment(edge));
-        }
-
-        return buildPathPair(flow, forwardPathLatency, forwardSegments, reversePathLatency, reverseSegments);
+        return Path.builder()
+                .srcSwitchId(srcSwitchId)
+                .destSwitchId(dstSwitchId)
+                .segments(segments)
+                .latency(latency)
+                .minAvailableBandwidth(minAvailableBandwidth)
+                .build();
     }
 
     private Path.Segment convertToSegment(Edge edge) {
@@ -136,29 +149,6 @@ public class InMemoryPathComputer implements PathComputer {
                 .destSwitchId(edge.getDestSwitch().getSwitchId())
                 .destPort(edge.getDestPort())
                 .latency(edge.getLatency())
-                .build();
-    }
-
-    private PathPair buildPathPair(Flow flow,
-                                   long forwardPathLatency, List<Segment> forwardSegments,
-                                   long reversePathLatency, List<Segment> reverseSegments) {
-        return PathPair.builder()
-                .forward(Path.builder()
-                        .srcSwitchId(flow.getSrcSwitch().getSwitchId())
-                        .srcPort(flow.getSrcPort())
-                        .destSwitchId(flow.getDestSwitch().getSwitchId())
-                        .destPort(flow.getDestPort())
-                        .segments(forwardSegments)
-                        .latency(forwardPathLatency)
-                        .build())
-                .reverse(Path.builder()
-                        .srcSwitchId(flow.getDestSwitch().getSwitchId())
-                        .srcPort(flow.getDestPort())
-                        .destSwitchId(flow.getSrcSwitch().getSwitchId())
-                        .destPort(flow.getSrcPort())
-                        .segments(reverseSegments)
-                        .latency(reversePathLatency)
-                        .build())
                 .build();
     }
 }

@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.config.provider.ConfigurationProvider;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
@@ -31,7 +32,6 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;

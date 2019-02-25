@@ -114,6 +114,13 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
+    public Collection<PathSegment> findPathSegmentsBySrcSwitchId(SwitchId switchId) {
+        Filter srcSwitchIdFilter = createSrcSwitchFilter(switchId);
+
+        return getSession().loadAll(PathSegment.class, srcSwitchIdFilter, getDepthLoadEntity());
+    }
+
+    @Override
     public Collection<PathSegment> findPathSegmentsByDestSwitchId(SwitchId switchId) {
         Filter destSwitchIdFilter = createDstSwitchFilter(switchId);
 

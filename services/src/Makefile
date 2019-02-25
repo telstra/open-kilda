@@ -8,12 +8,12 @@ projectfloodlight:
 	$(MAKE) -C projectfloodlight SHARE=../$(SHARE)
 
 build: projectfloodlight build-gui
-	$(MAKE) -C floodlight-modules pre-docker SHARE=../$(SHARE)
+	$(MAKE) -C fl-root pre-docker SHARE=../$(SHARE)
 	# FIXME(surabujin): I believe there must not be "clean" phase.
 	mvn -B clean install
 
 build-no-test: projectfloodlight build-gui
-	$(MAKE) -C floodlight-modules pre-docker SHARE=../$(SHARE)
+	$(MAKE) -C fl-root pre-docker SHARE=../$(SHARE)
 	mvn -B install -DskipTests
 
 build-pce:

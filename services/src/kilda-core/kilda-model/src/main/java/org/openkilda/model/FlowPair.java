@@ -63,9 +63,7 @@ public class FlowPair implements Serializable {
         forwardPath.setFlowId(flowId);
         forwardPath.setPathId(forwardPathId);
         forwardPath.setSrcSwitch(srcSwitch);
-        forwardPath.setSrcPort(srcPort);
         forwardPath.setDestSwitch(destSwitch);
-        forwardPath.setDestPort(destPort);
         forwardPath.setSegments(Collections.emptyList());
 
         PathId reversePathId = new PathId(UUID.randomUUID().toString());
@@ -74,9 +72,7 @@ public class FlowPair implements Serializable {
         reversePath.setFlowId(flowId);
         reversePath.setPathId(reversePathId);
         reversePath.setSrcSwitch(destSwitch);
-        reversePath.setSrcPort(destPort);
         reversePath.setDestSwitch(srcSwitch);
-        reversePath.setDestPort(srcPort);
         reversePath.setSegments(Collections.emptyList());
 
         Flow flow = new Flow();

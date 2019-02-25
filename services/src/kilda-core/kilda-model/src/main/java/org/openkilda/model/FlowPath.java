@@ -69,12 +69,6 @@ public class FlowPath implements Serializable {
     @EndNode
     private Switch destSwitch;
 
-    @Property(name = "src_port")
-    private int srcPort;
-
-    @Property(name = "dst_port")
-    private int destPort;
-
     @NonNull
     @Property(name = "flow_id")
     @Index
@@ -114,7 +108,6 @@ public class FlowPath implements Serializable {
 
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                    int srcPort, int destPort,
                     @NonNull String flowId, Cookie cookie, MeterId meterId,
                     long bandwidth, boolean ignoreBandwidth,
                     Instant timeCreate, Instant timeModify,
@@ -122,8 +115,6 @@ public class FlowPath implements Serializable {
         this.pathId = pathId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
-        this.srcPort = srcPort;
-        this.destPort = destPort;
         this.flowId = flowId;
         this.cookie = cookie;
         this.meterId = meterId;

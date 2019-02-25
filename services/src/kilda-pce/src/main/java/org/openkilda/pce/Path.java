@@ -30,22 +30,20 @@ public class Path implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @NonNull
-    private final SwitchId srcSwitchId;
+    private SwitchId srcSwitchId;
 
     @NonNull
-    private final SwitchId destSwitchId;
-
-    private final int srcPort;
-
-    private final int destPort;
+    private SwitchId destSwitchId;
 
     /**
      * Latency value in nseconds.
      */
-    private final long latency;
+    private long latency;
+
+    private Long minAvailableBandwidth;
 
     @NonNull
-    private final List<Segment> segments;
+    private List<Segment> segments;
 
     @Value
     @Builder
@@ -53,14 +51,14 @@ public class Path implements Serializable {
         private static final long serialVersionUID = 1L;
 
         @NonNull
-        private final SwitchId srcSwitchId;
+        private SwitchId srcSwitchId;
 
         @NonNull
-        private final SwitchId destSwitchId;
+        private SwitchId destSwitchId;
 
-        private final int srcPort;
+        private int srcPort;
 
-        private final int destPort;
+        private int destPort;
 
         /**
          * Segment latency value in nseconds.

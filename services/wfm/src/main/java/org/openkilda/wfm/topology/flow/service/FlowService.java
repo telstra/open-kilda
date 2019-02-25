@@ -407,10 +407,8 @@ public class FlowService extends BaseFlowService {
                 .pathId(pathId)
                 .srcSwitch(switchRepository.reload(Switch.builder()
                         .switchId(path.getSrcSwitchId()).build()))
-                .srcPort(path.getSrcPort())
                 .destSwitch(switchRepository.reload(Switch.builder()
                         .switchId(path.getDestSwitchId()).build()))
-                .destPort(path.getDestPort())
                 .segments(segments)
                 .build();
     }
