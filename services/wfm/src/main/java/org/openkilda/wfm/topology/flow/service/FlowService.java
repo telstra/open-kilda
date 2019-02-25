@@ -23,6 +23,8 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.Isl;
+import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
@@ -49,6 +51,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -279,6 +282,8 @@ public class FlowService extends BaseFlowService {
             throws RecoverableException, UnroutableFlowException, FlowNotFoundException {
         FlowPair currentFlow = getFlowPair(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
+        checkActiveStatusForSrcAndDstEndpoints(currentFlow.getForward());
+
         log.warn("Origin flow {} path: {}", flowId, currentFlow.getForward().getFlowPath());
 
         // TODO: the strategy is defined either per flow or system-wide.
@@ -426,6 +431,19 @@ public class FlowService extends BaseFlowService {
         Set<Switch> switches = new HashSet<>();
         flowSegments.forEach(flowSegment -> switches.add(flowSegment.getSrcSwitch()));
         switchRepository.lockSwitches(switches.toArray(new Switch[0]));
+    }
+
+    private void checkActiveStatusForSrcAndDstEndpoints(Flow flow) throws UnroutableFlowException {
+        Collection<Isl> isls = islRepository.findBySrcEndpoint(flow.getSrcSwitch().getSwitchId(), flow.getSrcPort());
+        isls.addAll(islRepository.findByDestEndpoint(flow.getDestSwitch().getSwitchId(), flow.getDestPort()));
+        for (Isl isl: isls) {
+            if (isl.getSrcSwitch().getSwitchId().equals(flow.getSrcSwitch().getSwitchId())
+                    && isl.getSrcPort() == flow.getSrcPort() && !isl.getStatus().equals(IslStatus.ACTIVE)
+                    || isl.getDestSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())
+                    && isl.getDestPort() == flow.getDestPort() && !isl.getStatus().equals(IslStatus.ACTIVE)) {
+                throw new UnroutableFlowException("Source or destination ISL is inactive");
+            }
+        }
     }
 
     @Value
