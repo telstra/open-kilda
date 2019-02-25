@@ -20,23 +20,21 @@ import org.openkilda.messaging.model.grpc.OnOffState;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
 @Data
 @EqualsAndHashCode
+@AllArgsConstructor
+@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public class LogOferrorsDto {
     @NonNull
-    @JsonProperty("state")
     private OnOffState state;
-
-    @JsonCreator
-    public LogOferrorsDto(@JsonProperty("state") OnOffState state) {
-        if (state == null) {
-            throw new IllegalArgumentException("State must not be null.");
-        }
-        this.state = state;
-    }
 }

@@ -122,7 +122,7 @@
             <artifactId>junit</artifactId>
         </dependency>
 
-         <!--GRPC libraries-->
+        <!--GRPC libraries-->
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
@@ -166,7 +166,6 @@
         </dependency>
 
 
-
         <dependency>
             <groupId>com.sabre.oss.conf4j</groupId>
             <artifactId>conf4j-spring-boot</artifactId>
@@ -202,7 +201,7 @@
 
 
     <build>
-        <finalName>grpc-speaker</finalName>
+        <finalName>grpc-service</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>

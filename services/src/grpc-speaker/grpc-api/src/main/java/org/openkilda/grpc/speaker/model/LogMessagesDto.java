@@ -22,24 +22,17 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 
 @Data
 @EqualsAndHashCode
+@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 public class LogMessagesDto {
     @NonNull
-    @JsonProperty("state")
     private OnOffState state;
-
-    @JsonCreator
-    public LogMessagesDto(@JsonProperty("state") OnOffState state) {
-        if (state == null) {
-            throw new IllegalArgumentException("State must not be null.");
-        }
-        this.state = state;
-    }
 }

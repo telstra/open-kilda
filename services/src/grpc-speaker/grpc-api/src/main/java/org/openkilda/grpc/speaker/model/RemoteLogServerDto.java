@@ -25,6 +25,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @EqualsAndHashCode
+@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 @NoArgsConstructor
@@ -33,29 +34,4 @@ public class RemoteLogServerDto {
     private String ipAddress;
 
     private Integer port;
-
-
-    /**
-     * Sets a remote log server IP address.
-     *
-     * @param ipAddress an ip address.
-     */
-    public void setIpAddress(String ipAddress) {
-        if (ipAddress == null) {
-            throw new IllegalArgumentException("Ip address must not be null");
-        }
-        this.ipAddress = ipAddress;
-    }
-
-    /**
-     * Sets a remote log server port.
-     *
-     * @param port a port number.
-     */
-    public void setPort(Integer port) {
-        if (port == null) {
-            throw new IllegalArgumentException("Port must not be null");
-        }
-        this.port = port;
-    }
 }

@@ -37,7 +37,7 @@ import java.util.Map;
  */
 @Configuration
 @EnableKafka
-@PropertySource("classpath:grpc-speaker.properties")
+@PropertySource("classpath:grpc-service.properties")
 public class MessageConsumerConfig {
     /**
      * Kafka queue poll timeout.
