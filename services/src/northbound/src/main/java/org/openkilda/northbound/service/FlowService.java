@@ -21,6 +21,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
@@ -158,4 +159,8 @@ public interface FlowService {
      * Invalidate FlowResourcesCache in the flow topology.
      */
     void invalidateFlowResourcesCache();
+
+    CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
+                                                             long timestampFrom,
+                                                             long timestampTo);
 }

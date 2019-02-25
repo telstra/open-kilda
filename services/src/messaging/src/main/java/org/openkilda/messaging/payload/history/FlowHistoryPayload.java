@@ -13,17 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories.history;
+package org.openkilda.messaging.payload.history;
 
-import org.openkilda.model.history.FlowEvent;
-import org.openkilda.persistence.repositories.Repository;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.Instant;
-import java.util.Collection;
-import java.util.Optional;
+@Data
+@NoArgsConstructor
+public class FlowHistoryPayload {
+    private long timestamp;
 
-public interface FlowEventRepository extends Repository<FlowEvent> {
-    Optional<FlowEvent> findByTaskId(String taskId);
+    private String action;
 
-    Collection<FlowEvent> listEventsByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo);
+    private String details;
 }

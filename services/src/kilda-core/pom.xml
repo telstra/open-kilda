@@ -17,7 +17,6 @@
         <module>kilda-model</module>
         <module>kilda-persistence-api</module>
         <module>kilda-persistence-neo4j</module>
-        <module>kilda-history</module>
     </modules>
 
     <properties>

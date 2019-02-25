@@ -24,12 +24,17 @@ import org.openkilda.persistence.repositories.history.FlowEventRepository;
 
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
+import org.neo4j.ogm.cypher.query.SortOrder;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
 
 public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> implements FlowEventRepository {
     private static final String TASK_ID_PROPERTY_NAME = "task_id";
+    private static final String FLOW_ID_PROPERTY_NAME = "flow_id";
+    private static final String TIMESTAMP_PROPERTY_NAME = "timestamp";
 
     Neo4jFlowEventRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -48,5 +53,15 @@ public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> 
             throw new PersistenceException(format("Found more than 1 FlowEvent entity by %s as taskId", taskId));
         }
         return flowEvents.isEmpty() ? Optional.empty() : Optional.of(flowEvents.iterator().next());
+    }
+
+    @Override
+    public Collection<FlowEvent> listEventsByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo) {
+        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
+        Filter beforeFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.LESS_THAN_EQUAL, timeTo);
+        Filter afterFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.GREATER_THAN_EQUAL, timeFrom);
+        Filters filters = new Filters(flowIdFilter).and(beforeFilter).and(afterFilter);
+        return getSession()
+                .loadAll(getEntityType(), filters, new SortOrder(TIMESTAMP_PROPERTY_NAME), DEPTH_LOAD_ENTITY);
     }
 }

@@ -94,11 +94,6 @@
             <artifactId>configuration</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.openkilda</groupId>
-            <artifactId>kilda-history</artifactId>
-            <version>${project.version}</version>
-        </dependency>
 
         <!-- Spring dependencies -->
         <dependency>
