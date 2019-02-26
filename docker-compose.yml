@@ -273,7 +273,7 @@ services:
   floodlight:
     container_name: floodlight
     build:
-      context: services/src/floodlight-modules
+      context: services/src/fl-root/floodlight-modules
     image: "kilda/floodlight:${full_build_number:-latest}"
     ports:
       - "6653:6653"
