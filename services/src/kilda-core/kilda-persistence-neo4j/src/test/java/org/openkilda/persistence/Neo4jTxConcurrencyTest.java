@@ -92,7 +92,7 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
                 txManager.doInTransaction(() -> {
                     Flow flowToUpdate = flowRepository.findById(TEST_FLOW_1_ID).get();
                     flowToUpdate.setTimeModify(timestamp);
-                    flowRepository.createOrUpdate(flowToUpdate);
+                    txManager.getSession().save(flowToUpdate);
 
                     Flow updated = flowRepository.findById(TEST_FLOW_1_ID).get();
                     if (!updated.getTimeModify().equals(timestamp)) {
@@ -142,7 +142,7 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
                 txManager.doInTransaction(() -> {
                     Flow flowToUpdate = flowRepository.findById(flowId).get();
                     flowToUpdate.setTimeModify(timestamp);
-                    flowRepository.createOrUpdate(flowToUpdate);
+                    txManager.getSession().save(flowToUpdate);
 
                     Flow updated = flowRepository.findById(flowId).get();
                     if (!updated.getTimeModify().equals(timestamp)) {
@@ -192,7 +192,7 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
                 txManager.doInTransaction(() -> {
                     Flow flowToUpdate = flowRepository.findById(flowId).get();
                     flowToUpdate.setTimeModify(timestamp);
-                    flowRepository.createOrUpdate(flowToUpdate);
+                    txManager.getSession().save(flowToUpdate);
 
                     Flow updated = flowRepository.findById(flowId).get();
                     if (!updated.getTimeModify().equals(timestamp)) {
@@ -252,7 +252,7 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
                         Flow flowToUpdate = flowRepository.findById(flowId).get();
                         Instant timestamp = Instant.now().plus(index, ChronoUnit.DAYS);
                         flowToUpdate.setTimeModify(timestamp);
-                        flowRepository.createOrUpdate(flowToUpdate);
+                        txManager.getSession().save(flowToUpdate);
 
                         Flow updated = flowRepository.findById(flowId).get();
                         if (!updated.getTimeModify().equals(timestamp)) {

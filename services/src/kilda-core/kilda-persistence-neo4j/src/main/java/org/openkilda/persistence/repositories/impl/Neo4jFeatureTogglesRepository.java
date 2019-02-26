@@ -76,6 +76,10 @@ public class Neo4jFeatureTogglesRepository extends Neo4jGenericRepository<Featur
                     updatedFeatureToggles.setFloodlightRoutePeriodicSync(
                             featureToggles.getFloodlightRoutePeriodicSync());
                 }
+                if (featureToggles.getFlowsRerouteViaFlowHs() != null) {
+                    updatedFeatureToggles.setFlowsRerouteViaFlowHs(
+                            featureToggles.getFlowsRerouteViaFlowHs());
+                }
 
                 super.createOrUpdate(updatedFeatureToggles);
             }

@@ -19,6 +19,7 @@ public enum StreamType {
     SWITCH,
     ISL,
     FLOW,
+    FLOWHS,
     REROUTE,
     FEATURE_TOGGLES,
     NOTIFICATION,
