@@ -72,7 +72,7 @@ public class DefaultServiceConfig {
     }
 
     @Bean(name = "otsdbRestTemplate")
-    public RestTemplate otsdbRestTemplate(@Value("${otsdb.endpoint}") String endpoint) {
+    public RestTemplate otsdbRestTemplate(@Value("${opentsdb.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 
