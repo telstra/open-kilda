@@ -19,40 +19,93 @@ import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.CommandContext;
 
 import java.util.List;
 
 public interface FlowCommandFactory {
     /**
-     * Build list of commands for transit(if needed) and egress rules installation.
+     * Build install commands for transit(if needed) and egress rules for active forward and reverse paths.
+     *
      * @param context command context.
-     * @param flow flow data.
-     * @return list of non ingress rules.
+     * @param flow    flow data which defines endpoints and path segments for rules to be created.
+     * @return list of the install commands.
      */
     List<InstallTransitRule> createInstallNonIngressRules(CommandContext context, Flow flow);
 
     /**
-     * Build list of commands for ingress rules installation.
+     * Build install commands for transit(if needed) and egress rules for provided paths.
+     *
+     * @param context     command context.
+     * @param flow        flow data which defines only endpoints for rules to be created.
+     * @param forwardPath forward path which defines path segments for rules to be created.
+     * @param reversePath reverse path which defines path segments for rules to be created.
+     * @return list of the install commands.
+     */
+    public List<InstallTransitRule> createInstallNonIngressRules(CommandContext context, Flow flow,
+                                                                 FlowPath forwardPath, FlowPath reversePath);
+
+    /**
+     * Build install commands for ingress rules for active forward and reverse paths.
+     *
      * @param context command context.
-     * @param flow flow data.
-     * @return list of non ingress rules.
+     * @param flow    flow data which defines endpoints and path segments for rules to be created.
+     * @return list of the install commands.
      */
     List<InstallIngressRule> createInstallIngressRules(CommandContext context, Flow flow);
 
     /**
-     * Build list of commands for transit(if needed) and egress rules deletion.
+     * Build install commands for ingress rules for provided paths.
+     *
+     * @param context     command context.
+     * @param flow        flow data which defines only endpoints for rules to be created.
+     * @param forwardPath forward path which defines path segments for rules to be created.
+     * @param reversePath reverse path which defines path segments for rules to be created.
+     * @return list of the install commands.
+     */
+    public List<InstallIngressRule> createInstallIngressRules(CommandContext context, Flow flow,
+                                                              FlowPath forwardPath, FlowPath reversePath);
+
+    /**
+     * Build remove commands for transit(if needed) and egress rules for active forward and reverse paths.
+     *
      * @param context command context.
-     * @param flow flow data.
-     * @return list of non ingress rules.
+     * @param flow    flow data which defines endpoints and path segments for rules to be removed.
+     * @return list of the remove commands.
      */
     List<RemoveRule> createRemoveNonIngressRules(CommandContext context, Flow flow);
 
     /**
-     * Build list of commands for ingress rules deletion.
+     * Build remove commands for transit(if needed) and egress rules deletion for provided paths.
+     *
+     * @param context     command context.
+     * @param flow        flow data which defines only endpoints for rules to be removed.
+     * @param forwardPath forward path which defines path segments for rules to be removed.
+     * @param reversePath reverse path which defines path segments for rules to be removed.
+     * @return list of the remove commands.
+     */
+    List<RemoveRule> createRemoveNonIngressRules(CommandContext context, Flow flow,
+                                                 FlowPath forwardPath, FlowPath reversePath);
+
+    /**
+     * Build remove commands for ingress rules for active forward and reverse paths.
+     *
      * @param context command context.
-     * @param flow flow data.
-     * @return list of non ingress rules.
+     * @param flow    flow data which defines endpoints and path segments for rules to be removed.
+     * @return list of the remove commands.
      */
     List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow);
+
+    /**
+     * Build remove commands for ingress rules for active forward and reverse paths.
+     *
+     * @param context     command context.
+     * @param flow        flow data which defines only endpoints for rules to be removed.
+     * @param forwardPath forward path which defines path segments for rules to be removed.
+     * @param reversePath reverse path which defines path segments for rules to be removed.
+     * @return list of the remove commands.
+     */
+    List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow,
+                                              FlowPath forwardPath, FlowPath reversePath);
 }

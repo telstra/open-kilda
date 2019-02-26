@@ -27,7 +27,7 @@ import lombok.ToString;
 import java.util.UUID;
 
 @Getter
-@ToString
+@ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class InstallFlowRule extends FlowRequest {
 

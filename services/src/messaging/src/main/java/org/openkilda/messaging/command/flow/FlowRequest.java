@@ -41,7 +41,6 @@ public class FlowRequest extends CommandData {
         CREATE,
         READ,
         UPDATE,
-        DELETE,
-        REROUTE
+        DELETE
     }
 }

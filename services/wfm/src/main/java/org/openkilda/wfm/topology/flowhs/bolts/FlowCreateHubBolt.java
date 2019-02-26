@@ -51,10 +51,15 @@ public class FlowCreateHubBolt extends HubBolt {
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
 
-    public FlowCreateHubBolt(String requestSenderComponent, int timeoutMs, boolean autoAck,
+    public FlowCreateHubBolt(String routerBoltId, String workerBoltId, int timeoutMs, boolean autoAck,
                              PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
                              FlowResourcesConfig flowResourcesConfig) {
-        super(requestSenderComponent, timeoutMs, autoAck);
+        super(HubBolt.Config.builder()
+                .requestSenderComponent(routerBoltId)
+                .workerComponent(workerBoltId)
+                .timeoutMs(timeoutMs)
+                .autoAck(autoAck)
+                .build());
 
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;

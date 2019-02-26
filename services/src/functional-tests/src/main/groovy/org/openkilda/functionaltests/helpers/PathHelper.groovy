@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers
 
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -139,6 +140,42 @@ class PathHelper {
             pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
         }
         pathNodes.each { it.seqId = seqId++ } //set valid seqId indexes
+        return pathNodes
+    }
+
+    /**
+     * Converts FlowPathPayload path representation to a List<FlowPathV2.PathNodeV2> representation
+     */
+    static List<FlowPathV2.PathNodeV2> convertToNodesV2(FlowPathPayload pathPayload, pathToConvert = "forwardPath") {
+        def path = pathPayload."$pathToConvert"
+        if (path.empty) {
+            throw new IllegalArgumentException("Path cannot be empty. " +
+                    "This should be impossible for valid FlowPathPayload")
+        }
+        List<FlowPathV2.PathNodeV2> pathNodes = []
+        path.each { pathEntry ->
+            pathNodes << new FlowPathV2.PathNodeV2(pathEntry.switchId,
+                    pathEntry.inputPort == null ? 0 : pathEntry.inputPort, null)
+            pathNodes << new FlowPathV2.PathNodeV2(pathEntry.switchId,
+                    pathEntry.outputPort == null ? 0 : pathEntry.outputPort, null)
+        }
+        if (pathNodes.size() > 2) {
+            pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
+        }
+        return pathNodes
+    }
+
+    /**
+     * Converts path nodes (in the form of List<PathNode>) to a List<FlowPathV2.PathNodeV2> representation
+     */
+    static List<FlowPathV2.PathNodeV2> convertToNodesV2(List<PathNode> path) {
+        if (path.empty) {
+            throw new IllegalArgumentException("Path cannot be empty.")
+        }
+        List<FlowPathV2.PathNodeV2> pathNodes = []
+        path.each { pathEntry ->
+            pathNodes << new FlowPathV2.PathNodeV2(pathEntry.switchId, pathEntry.portNo, pathEntry.segmentLatency)
+        }
         return pathNodes
     }
 

@@ -17,6 +17,7 @@ package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,13 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public FlowResponseV2 addFlow(FlowRequestV2 request) {
         HttpEntity<FlowRequestV2> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/flows", HttpMethod.PUT, httpEntity, FlowResponseV2.class).getBody();
+        return restTemplate.exchange("/api/v2/flows", HttpMethod.POST, httpEntity, FlowResponseV2.class).getBody();
+    }
+
+    @Override
+    public FlowRerouteResponseV2 rerouteFlow(String flowId) {
+        return restTemplate.exchange("/api/v2/flows/{flow_id}/reroute", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), FlowRerouteResponseV2.class, flowId).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
@@ -47,5 +54,4 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
         return headers;
     }
-
 }
