@@ -202,13 +202,21 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Add and associate flow path(s) with the flow.
+     */
+    public void addPaths(FlowPath... paths) {
+        for (FlowPath pathToAdd : paths) {
+            this.paths.removeIf(path -> path.getPathId().equals(pathToAdd.getPathId()));
+            this.paths.add(pathToAdd);
+        }
+    }
+
+    /**
      * Set the forward path.
      */
     public final void setForwardPath(FlowPath forwardPath) {
-        paths.removeIf(path -> path.getPathId().equals(getForwardPathId()));
-
         if (forwardPath != null) {
-            paths.add(validateForwardPath(forwardPath));
+            addPaths(validateForwardPath(forwardPath));
             this.forwardPathId = forwardPath.getPathId();
         } else {
             this.forwardPathId = null;
@@ -289,10 +297,8 @@ public class Flow implements Serializable {
      * Set the reverse path.
      */
     public final void setReversePath(FlowPath reversePath) {
-        paths.removeIf(path -> path.getPathId().equals(getReversePathId()));
-
         if (reversePath != null) {
-            paths.add(validateReversePath(reversePath));
+            addPaths(validateReversePath(reversePath));
             this.reversePathId = reversePath.getPathId();
         } else {
             this.reversePathId = null;

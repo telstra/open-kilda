@@ -45,7 +45,8 @@ public class FeatureToggles {
             false, // push_flow
             false, // unpush_flow
             true, // use_bfd_for_isl_integrity_check
-            true // floodlight_router_periodic_sync
+            true, // floodlight_router_periodic_sync
+            false // flows_reroute_via_flowhs
     );
 
     // Hidden as needed for OGM only.
@@ -79,13 +80,17 @@ public class FeatureToggles {
     @Property(name = "floodlight_router_periodic_sync")
     private Boolean floodlightRoutePeriodicSync;
 
+    @Property(name = "flows_reroute_via_flowhs")
+    private Boolean flowsRerouteViaFlowHs;
+
     /**
      * Constructor prevents initialization of entityId field.
      */
     @Builder(toBuilder = true)
     FeatureToggles(Boolean flowsRerouteOnIslDiscoveryEnabled, Boolean createFlowEnabled, Boolean updateFlowEnabled,
                    Boolean deleteFlowEnabled, Boolean pushFlowEnabled, Boolean unpushFlowEnabled,
-                   Boolean useBfdForIslIntegrityCheck, Boolean floodlightRoutePeriodicSync) {
+                   Boolean useBfdForIslIntegrityCheck, Boolean floodlightRoutePeriodicSync,
+                   Boolean flowsRerouteViaFlowHs) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
@@ -94,5 +99,6 @@ public class FeatureToggles {
         this.unpushFlowEnabled = unpushFlowEnabled;
         this.useBfdForIslIntegrityCheck = useBfdForIslIntegrityCheck;
         this.floodlightRoutePeriodicSync = floodlightRoutePeriodicSync;
+        this.flowsRerouteViaFlowHs = flowsRerouteViaFlowHs;
     }
 }

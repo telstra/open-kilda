@@ -126,7 +126,7 @@ class LinkSpec extends BaseSpecification {
                 islToInternal.dstSwitch.dpId, islToInternal.dstPort)
 
         then: "All created flows are in the response list"
-        [flow1, flow2, flow3, flow4].each { assert it in linkFlows }
+        [flow1, flow2, flow3, flow4].each { assert it.id in linkFlows*.id }
 
         when: "Get all flows going through the link from some 'internal' switch to destination switch"
         def islFromInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow1.id))).last()
@@ -134,8 +134,8 @@ class LinkSpec extends BaseSpecification {
                 islFromInternal.dstSwitch.dpId, islFromInternal.dstPort)
 
         then: "Only the first and second flows are in the response list"
-        [flow1, flow2].each { assert it in linkFlows }
-        [flow3, flow4].each { assert !(it in linkFlows) }
+        [flow1, flow2].each { assert it.id in linkFlows*.id }
+        [flow3, flow4].each { assert !(it.id in linkFlows*.id) }
 
         when: "Bring all ports down on source switch that are involved in current and alternative paths"
         List<PathNode> broughtDownPorts = []
@@ -155,15 +155,15 @@ class LinkSpec extends BaseSpecification {
                 islToInternal.dstSwitch.dpId, islToInternal.dstPort)
 
         then: "All created flows are in the response list"
-        [flow1, flow2, flow3, flow4].each { assert it in linkFlows }
+        [flow1, flow2, flow3, flow4].each { assert it.id in linkFlows*.id }
 
         when: "Get all flows going through the link from 'internal' switch to destination switch"
         linkFlows = northbound.getLinkFlows(islFromInternal.srcSwitch.dpId, islFromInternal.srcPort,
                 islFromInternal.dstSwitch.dpId, islFromInternal.dstPort)
 
         then: "Only the first and second flows are in the response list"
-        [flow1, flow2].each { assert it in linkFlows }
-        [flow3, flow4].each { assert !(it in linkFlows) }
+        [flow1, flow2].each { assert it.id in linkFlows*.id }
+        [flow3, flow4].each { assert !(it.id in linkFlows*.id) }
 
         when: "Bring ports up"
         broughtDownPorts.each { northbound.portUp(it.switchId, it.portNo) }
