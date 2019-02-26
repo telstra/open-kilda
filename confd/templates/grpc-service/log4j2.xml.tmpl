@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration monitorInterval="30">
+    <Appenders>
+        <Console name="STDOUT" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1.} - [%X] %m%n"/>
+        </Console>
+{{- if eq (getv "/kilda_logging_json_file") "true" }}
+        <RollingFile name="J1" immediateFlush="false"
+                 fileName="{{ getv "/kilda_logging_logfile_path" }}/grpc-service.log.json"
+                 filePattern="{{ getv "/kilda_logging_logfile_path" }}/grpc-service.log.json.%i.gz">
+           <JsonLayout compact="true" eventEol="true" properties="true">
+                <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+           </JsonLayout>
+           <Policies>
+            <SizeBasedTriggeringPolicy size="100 MB"/> <!-- Or every 100 MB -->
+          </Policies>
+          <DefaultRolloverStrategy max="9"/>
+        </RollingFile>
+{{- end }}
+{{- if eq (getv "/kilda_logging_logstash") "true" }}
+        <Socket name="LOGSTASH" host="{{ getv "/kilda_logging_logstash_host" }}" port="{{ getv "/kilda_logging_port_grpc" }}">
+           <JsonLayout compact="true" eventEol="true" properties="true">
+                <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+           </JsonLayout>
+        </Socket>
+{{- end }}
+        <RollingFile name="ROLLINGFILE" fileName="{{ getv "/kilda_logging_logfile_path" }}/grpc-service.log"
+                filePattern="/var/logs/grpc-service/app-%d{MM-dd-yyyy}-%i.log.gz">
+            <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1} - [%X] %m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="250 MB"/>
+            </Policies>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <Logger name="org.openkilda" level="INFO" />
+        <Root level="INFO">
+            <AppenderRef ref="STDOUT"/>
+{{- if eq (getv "/kilda_logging_json_file") "true" }}
+            <AppenderRef ref="J1"/>
+{{- end }}
+{{- if eq (getv "/kilda_logging_logstash") "true" }}
+            <AppenderRef ref="LOGSTASH"/>
+{{- end }}
+            <AppenderRef ref="ROLLINGFILE"/>
+        </Root>
+    </Loggers>
+</Configuration>

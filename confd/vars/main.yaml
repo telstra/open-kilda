@@ -118,6 +118,7 @@ kilda_logging_port_floodlight: 5002
 kilda_logging_port_topology_engine_rest: 5003
 kilda_logging_port_mininet: 5004
 kilda_logging_port_northbound: 5005
+kilda_logging_port_grpc: 5005
 
 kilda_gui_application_name_prefix: "Dev"
 
