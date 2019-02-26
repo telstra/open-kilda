@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.discovery.model.facts;
 
-import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.BiIslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
@@ -26,31 +25,9 @@ public class DiscoveryFacts extends BiIslDataHolder<IslDataHolder> {
     }
 
     /**
-     * Evaluate aggregated ISL data and fill corresponding ISL fields.
+     * Aggregate and return ISL data for both direction.
      */
-    public void fillIslEntity(Isl entity) {
-        IslDataHolder aggData = makeAggregatedData();
-        if (aggData != null) {
-            entity.setSpeed(aggData.getSpeed());
-            entity.setLatency(aggData.getLatency());
-            entity.setMaxBandwidth(aggData.getAvailableBandwidth());
-            entity.setDefaultMaxBandwidth(aggData.getAvailableBandwidth());
-        }
-    }
-
-    /**
-     * Calculate available bandwidth taking into account aggregated isl data and provided used bandwidth.
-     */
-    public long getAvailableBandwidth(long usedBandwidth) {
-        long available = 0;
-        IslDataHolder aggData = makeAggregatedData();
-        if (aggData != null) {
-            available = aggData.getAvailableBandwidth() - usedBandwidth;
-        }
-        return Math.max(0, available);
-    }
-
-    private IslDataHolder makeAggregatedData() {
+    public IslDataHolder makeAggregatedData() {
         IslDataHolder aggData = null;
         for (IslDataHolder link : islData) {
             if (link == null) {

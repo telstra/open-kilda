@@ -23,6 +23,7 @@ import org.openkilda.wfm.topology.discovery.controller.IslFsm;
 import org.openkilda.wfm.topology.discovery.controller.IslFsmContext;
 import org.openkilda.wfm.topology.discovery.controller.IslFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.IslFsmState;
+import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
@@ -40,9 +41,11 @@ public class DiscoveryIslService {
             = IslFsm.makeExecutor();
 
     private final PersistenceManager persistenceManager;
+    private final DiscoveryOptions options;
 
-    public DiscoveryIslService(PersistenceManager persistenceManager) {
+    public DiscoveryIslService(PersistenceManager persistenceManager, DiscoveryOptions options) {
         this.persistenceManager = persistenceManager;
+        this.options = options;
     }
 
     /**
@@ -52,7 +55,7 @@ public class DiscoveryIslService {
         log.debug("ISL {} setup from history (on {})", reference, endpoint);
         if (!controller.containsKey(reference)) {
             ensureControllerIsMissing(reference);
-            controller.put(reference, IslFsm.createFromHistory(persistenceManager, reference, history));
+            controller.put(reference, IslFsm.createFromHistory(persistenceManager, options, reference, history));
         } else {
             log.error("Receive \"history\" data for already created ISL - ignore history (start-up race condition)");
         }
@@ -123,6 +126,6 @@ public class DiscoveryIslService {
     }
 
     private IslFsm locateControllerCreateIfAbsent(IslReference reference) {
-        return controller.computeIfAbsent(reference, key -> IslFsm.create(persistenceManager, reference));
+        return controller.computeIfAbsent(reference, key -> IslFsm.create(persistenceManager, options, reference));
     }
 }

@@ -33,6 +33,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.model.BiIslDataHolder;
+import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
@@ -55,6 +56,8 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     private final SwitchRepository switchRepository;
     private final TransactionManager transactionManager;
 
+    private final int costRaiseOnPhysicalDown;
+
     private final BiIslDataHolder<DiscoveryEndpointStatus> endpointStatus;
 
     private final DiscoveryFacts discoveryFacts;
@@ -65,7 +68,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         builder = StateMachineBuilderFactory.create(
                 IslFsm.class, IslFsmState.class, IslFsmEvent.class, IslFsmContext.class,
                 // extra parameters
-                PersistenceManager.class, IslReference.class);
+                PersistenceManager.class, DiscoveryOptions.class, IslReference.class);
 
         String updateEndpointStatusMethod = "updateEndpointStatus";
 
@@ -119,7 +122,8 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     /**
      * Use "history" data to determine initial FSM state and to pre-fill internal ISL representation.
      */
-    public static IslFsm createFromHistory(PersistenceManager persistenceManager, IslReference reference, Isl history) {
+    public static IslFsm createFromHistory(PersistenceManager persistenceManager, DiscoveryOptions options,
+                                           IslReference reference, Isl history) {
         IslFsmState initialState;
         switch (history.getStatus()) {
             case ACTIVE:
@@ -136,16 +140,17 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
                         history.getStatus().getClass(), IslFsmState.class, history.getStatus()));
         }
 
-        IslFsm fsm = builder.newStateMachine(initialState, persistenceManager, reference);
+        IslFsm fsm = builder.newStateMachine(initialState, persistenceManager, options, reference);
         fsm.applyHistory(history);
         return fsm;
     }
 
-    public static IslFsm create(PersistenceManager persistenceManager, IslReference reference) {
-        return builder.newStateMachine(IslFsmState.DOWN, persistenceManager, reference);
+    public static IslFsm create(PersistenceManager persistenceManager, DiscoveryOptions options,
+                                IslReference reference) {
+        return builder.newStateMachine(IslFsmState.DOWN, persistenceManager, options, reference);
     }
 
-    private IslFsm(PersistenceManager persistenceManager, IslReference reference) {
+    private IslFsm(PersistenceManager persistenceManager, DiscoveryOptions options, IslReference reference) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
@@ -153,6 +158,8 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         switchRepository = repositoryFactory.createSwitchRepository();
 
         transactionManager = persistenceManager.getTransactionManager();
+
+        costRaiseOnPhysicalDown = options.getIslCostRaiseOnPhysicalDown();
 
         endpointStatus = new BiIslDataHolder<>(reference);
         endpointStatus.putBoth(DiscoveryEndpointStatus.DOWN);
@@ -166,7 +173,8 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        updatePersistedStatus();
+        log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        saveStatusTransaction();
     }
 
     private void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -182,7 +190,9 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        updatePersisted();
+        log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+
+        saveAllTransaction();
         triggerDownFlowReroute(context);
 
         if (shouldUseBfd()) {
@@ -191,13 +201,17 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        log.info("ISL {} is no more UP (physical-down:{})",
+                  discoveryFacts.getReference(), to, context.getPhysicalLinkDown());
+
         updateEndpointStatusByEvent(event, context);
-        updatePersistedStatus();
+        saveStatusAndCostRaiseTransaction(context);
         triggerAffectedFlowReroute(context);
     }
 
     private void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        updatePersistedStatus();
+        log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        saveStatusTransaction();
     }
 
     private void handleBfdEnableDisable(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -293,85 +307,137 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         // TODO
     }
 
-    private void updatePersisted() {
+    private void saveAllTransaction() {
+        transactionManager.doInTransaction(() -> saveAll(Instant.now()));
+    }
+
+    private void saveStatusTransaction() {
+        transactionManager.doInTransaction(() -> saveStatus(Instant.now()));
+    }
+
+    private void saveStatusAndCostRaiseTransaction(IslFsmContext context) {
         transactionManager.doInTransaction(() -> {
             Instant timeNow = Instant.now();
-            IslReference reference = discoveryFacts.getReference();
 
-            updatePersisted(reference.getSource(), reference.getDest(), timeNow, endpointStatus.getForward());
-            updatePersisted(reference.getDest(), reference.getSource(), timeNow, endpointStatus.getReverse());
+            saveStatus(timeNow);
+            if (context.getPhysicalLinkDown()) {
+                raiseCostOnPhysicalDown(timeNow);
+            }
         });
     }
 
-    private void updatePersisted(Endpoint source, Endpoint dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
-        Isl link = loadOrCreatePersistedIsl(source, dest, timeNow);
+    private void saveAll(Instant timeNow) {
+        IslReference reference = discoveryFacts.getReference();
+        saveAll(reference.getSource(), reference.getDest(), timeNow, endpointStatus.getForward());
+        saveAll(reference.getDest(), reference.getSource(), timeNow, endpointStatus.getReverse());
+    }
 
-        discoveryFacts.fillIslEntity(link);
-        updateLinkAvailableBandwidth(link, source, dest);
-        updateLinkStatus(link, uniStatus);
+    private void saveAll(Endpoint source, Endpoint dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
+        Isl link = loadOrCreateIsl(source, dest, timeNow);
+
+        link.setTimeModify(timeNow);
+
+        applyIslGenericData(link);
+        applyIslAvailableBandwidth(link, source, dest);
+        applyIslStatus(link, uniStatus, timeNow);
 
         islRepository.createOrUpdate(link);
     }
 
-    private void updatePersistedStatus() {
-        transactionManager.doInTransaction(() -> {
-            Instant timeNow = Instant.now();
-            IslReference reference = discoveryFacts.getReference();
-
-            updatePersistedStatus(reference.getSource(), reference.getDest(), timeNow, endpointStatus.getForward());
-            updatePersistedStatus(reference.getDest(), reference.getSource(), timeNow, endpointStatus.getReverse());
-        });
+    private void saveStatus(Instant timeNow) {
+        IslReference reference = discoveryFacts.getReference();
+        saveStatus(reference.getSource(), reference.getDest(), timeNow, endpointStatus.getForward());
+        saveStatus(reference.getDest(), reference.getSource(), timeNow, endpointStatus.getReverse());
     }
 
-    private void updatePersistedStatus(Endpoint source, Endpoint dest, Instant timeNow,
-                                       DiscoveryEndpointStatus uniStatus) {
-        Isl link = loadOrCreatePersistedIsl(source, dest, timeNow);
+    private void saveStatus(Endpoint source, Endpoint dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
+        Isl link = loadOrCreateIsl(source, dest, timeNow);
 
-        updateLinkStatus(link, uniStatus);
-
+        applyIslStatus(link, uniStatus, timeNow);
         islRepository.createOrUpdate(link);
     }
 
-    private Isl loadOrCreatePersistedIsl(Endpoint source, Endpoint dest, Instant timeNow) {
+    private void raiseCostOnPhysicalDown(Instant timeNow) {
+        IslReference reference = discoveryFacts.getReference();
+
+        raiseCostOnPhysicalDown(timeNow, reference.getSource(), reference.getDest());
+        raiseCostOnPhysicalDown(timeNow, reference.getDest(), reference.getSource());
+    }
+
+    private void raiseCostOnPhysicalDown(Instant timeNow, Endpoint source, Endpoint dest) {
+        Isl link = loadOrCreateIsl(source, dest, timeNow);
+
+        log.debug("Raise ISL {} ===> {} cost due to physical down (cost-now:{}, raise:{})",
+                  source, dest, link.getCost(), costRaiseOnPhysicalDown);
+        applyIslCostRaiseOnPhysicalDown(link, timeNow);
+        islRepository.createOrUpdate(link);
+    }
+
+    private Isl loadOrCreateIsl(Endpoint source, Endpoint dest, Instant timeNow) {
         return islRepository.findByEndpoints(
                 source.getDatapath(), source.getPortNumber(), dest.getDatapath(), dest.getPortNumber())
-                .map(isl -> {
-                    isl.setTimeModify(timeNow);
-                    return isl;
-                })
-                .orElseGet(() -> createPersistentIsl(source, dest, timeNow));
+                .orElseGet(() -> createIsl(source, dest, timeNow));
     }
 
-    private Isl createPersistentIsl(Endpoint source, Endpoint dest, Instant timeNow) {
+    private Isl createIsl(Endpoint source, Endpoint dest, Instant timeNow) {
         IslBuilder islBuilder = Isl.builder()
+                .timeCreate(timeNow)
                 .timeModify(timeNow)
-                .srcSwitch(loadSwitchRecord(source))
+                .srcSwitch(loadSwitch(source))
                 .srcPort(source.getPortNumber())
-                .destSwitch(loadSwitchRecord(dest))
+                .destSwitch(loadSwitch(dest))
                 .destPort(dest.getPortNumber());
-        applyLinkProps(source, dest, islBuilder);
+        applyIslLinkProps(source, dest, islBuilder);
         return islBuilder.build();
     }
 
-    private Switch loadSwitchRecord(Endpoint endpoint) {
+    private Switch loadSwitch(Endpoint endpoint) {
         return switchRepository.findById(endpoint.getDatapath())
                 .orElseThrow(() -> new PersistenceException(
                         String.format("Switch %s not found in DB", endpoint.getDatapath())));
     }
 
-    private void updateLinkStatus(Isl link, DiscoveryEndpointStatus uniStatus) {
-        link.setActualStatus(mapStatus(uniStatus));
-        link.setStatus(mapStatus(getAggregatedStatus()));
+    private void applyIslGenericData(Isl link) {
+        IslDataHolder aggData = discoveryFacts.makeAggregatedData();
+        if (aggData != null) {
+            link.setSpeed(aggData.getSpeed());
+            link.setLatency(aggData.getLatency());
+            link.setMaxBandwidth(aggData.getAvailableBandwidth());
+            link.setDefaultMaxBandwidth(aggData.getAvailableBandwidth());
+        }
     }
 
-    private void updateLinkAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
-        long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
-                source.getDatapath(), source.getPortNumber(),
-                dest.getDatapath(), dest.getPortNumber());
-        link.setAvailableBandwidth(discoveryFacts.getAvailableBandwidth(usedBandwidth));
+    private void applyIslStatus(Isl link, DiscoveryEndpointStatus uniStatus, Instant timeNow) {
+        IslStatus become = mapStatus(uniStatus);
+        IslStatus aggStatus = mapStatus(getAggregatedStatus());
+        if (link.getActualStatus() != become || link.getStatus() != aggStatus) {
+            link.setTimeModify(timeNow);
+
+            link.setActualStatus(become);
+            link.setStatus(aggStatus);
+        }
     }
 
-    private void applyLinkProps(Endpoint source, Endpoint dest, IslBuilder isl) {
+    private void applyIslAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
+        IslDataHolder islData = discoveryFacts.get(source);
+        long availableBandwidth = 0;
+        if (islData != null) {
+            long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
+                    source.getDatapath(), source.getPortNumber(),
+                    dest.getDatapath(), dest.getPortNumber());
+            availableBandwidth = islData.getAvailableBandwidth() - usedBandwidth;
+        }
+        link.setAvailableBandwidth(availableBandwidth);
+    }
+
+    private void applyIslCostRaiseOnPhysicalDown(Isl link, Instant timeNow) {
+        if (link.getCost() < costRaiseOnPhysicalDown) {
+            link.setTimeModify(timeNow);
+            link.setCost(link.getCost() + costRaiseOnPhysicalDown);
+        }
+    }
+
+    private void applyIslLinkProps(Endpoint source, Endpoint dest, IslBuilder isl) {
         Collection<LinkProps> linkProps = linkPropsRepository.findByEndpoints(
                 source.getDatapath(), source.getPortNumber(),
                 dest.getDatapath(), dest.getPortNumber());

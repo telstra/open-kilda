@@ -69,6 +69,23 @@ public class IslReference {
         }
     }
 
+    /**
+     * Return "opposite" endpoint by provided endpoint.
+     *
+     * <p>Provided endpoint must be part of {@link IslReference}, or {@link IllegalArgumentException} will be thrown.
+     */
+    public Endpoint getOpposite(Endpoint endpoint) {
+        Endpoint opposite;
+        if (source.equals(endpoint)) {
+            opposite = dest;
+        } else if (dest.equals(endpoint)) {
+            opposite = source;
+        } else {
+            throw new IllegalArgumentException(String.format("Endpoint %s is not part of %s", endpoint, this));
+        }
+        return opposite;
+    }
+
     public boolean isIncomplete() {
         return source == null || dest == null;
     }

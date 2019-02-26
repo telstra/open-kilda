@@ -35,6 +35,11 @@ public class BiIslDataHolder<T> {
         islData.set(idx, data);
     }
 
+    public T get(Endpoint endpoint) {
+        int idx = dataIndexByEndpoint(reference, endpoint);
+        return islData.get(idx);
+    }
+
     /**
      * Put same value for both ends.
      */

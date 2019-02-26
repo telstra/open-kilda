@@ -96,7 +96,7 @@ public class DiscoveryPortService {
                 throw new IllegalArgumentException(
                         String.format("Unsupported %s value %s", PortFacts.LinkStatus.class.getName(), status));
         }
-        log.debug("Link on {} become {}", endpoint, event);
+        log.debug("Physical port {} become {}", endpoint, event);
         controllerExecutor.fire(portFsm, event, new PortFsmContext(carrier));
     }
 

@@ -197,7 +197,7 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     }
 
     private void islHandler(TopologyBuilder topology, int scaleFactor) {
-        IslHandler bolt = new IslHandler(persistenceManager);
+        IslHandler bolt = new IslHandler(persistenceManager, options);
         Fields islGrouping = new Fields(UniIslHandler.FIELD_ID_ISL_SOURCE, UniIslHandler.FIELD_ID_ISL_DEST);
         topology.setBolt(IslHandler.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(UniIslHandler.BOLT_ID, islGrouping)

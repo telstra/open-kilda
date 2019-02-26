@@ -23,6 +23,7 @@ import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryIslService;
@@ -54,11 +55,13 @@ public class IslHandler extends AbstractBolt {
             KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final PersistenceManager persistenceManager;
+    private final DiscoveryOptions options;
 
     private transient DiscoveryIslService service;
 
-    public IslHandler(PersistenceManager persistenceManager) {
+    public IslHandler(PersistenceManager persistenceManager, DiscoveryOptions options) {
         this.persistenceManager = persistenceManager;
+        this.options = options;
     }
 
     @Override
@@ -78,7 +81,7 @@ public class IslHandler extends AbstractBolt {
 
     @Override
     protected void init() {
-        service = new DiscoveryIslService(persistenceManager);
+        service = new DiscoveryIslService(persistenceManager, options);
     }
 
     @Override

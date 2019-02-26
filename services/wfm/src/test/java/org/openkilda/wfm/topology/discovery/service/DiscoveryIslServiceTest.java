@@ -39,6 +39,7 @@ import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
+import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
@@ -60,6 +61,10 @@ import java.util.Optional;
 public class DiscoveryIslServiceTest {
     private final Endpoint endpointAlpha1 = Endpoint.of(new SwitchId(1), 1);
     private final Endpoint endpointBeta2 = Endpoint.of(new SwitchId(2), 2);
+
+    private final DiscoveryOptions options = DiscoveryOptions.builder()
+            .islCostRaiseOnPhysicalDown(10000)
+            .build();
 
     @Mock
     private IIslCarrier carrier;
@@ -97,7 +102,7 @@ public class DiscoveryIslServiceTest {
             return null;
         }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
 
-        service = new DiscoveryIslService(persistenceManager);
+        service = new DiscoveryIslService(persistenceManager, options);
     }
 
     @Test
@@ -159,7 +164,7 @@ public class DiscoveryIslServiceTest {
 
         IslReference ref = new IslReference(endpointAlpha1, endpointBeta2);
         IslDataHolder islData = new IslDataHolder(1000, 50, 1000);
-        service = new DiscoveryIslService(persistenceManager);
+        service = new DiscoveryIslService(persistenceManager, options);
         service.islUp(carrier, ref.getSource(), ref, islData);
 
         System.out.println(mockingDetails(carrier).printInvocations());

@@ -52,6 +52,7 @@ public class DiscoveryIntegrationTest {
     private static final DiscoveryOptions options = DiscoveryOptions.builder()
             .bfdEnabled(true)
             .bfdLogicalPortOffset(200)
+            .islCostRaiseOnPhysicalDown(10000)
             .build();
 
     private final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
@@ -134,7 +135,7 @@ public class DiscoveryIntegrationTest {
         portService = new DiscoveryPortService(null);
         bfdPortService = new DiscoveryBfdPortService(persistenceManager, new TaskIdBasedKeyFactory(0));
         uniIslService = new DiscoveryUniIslService(null);
-        islService = new DiscoveryIslService(persistenceManager);
+        islService = new DiscoveryIslService(persistenceManager, options);
 
         integrationCarrier = new IntegrationCarrier(
                 switchService,
