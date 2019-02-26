@@ -58,13 +58,13 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     void buildVirtualEnvironment() {
-        //turn on all features
-        def features = new FeatureTogglesDto()
-        features.metaClass.properties.each {
-            if (it.type == Boolean.class) {
-                features.metaClass.setAttribute(features, it.name, true)
-            }
-        }
+        //turn on CRUD features
+        def features = FeatureTogglesDto.builder()
+                .createFlowEnabled(true)
+                .updateFlowEnabled(true)
+                .deleteFlowEnabled(true)
+                .flowsRerouteOnIslDiscoveryEnabled(true)
+                .build();
         northbound.toggleFeature(features)
 
         labService.flushLabs()

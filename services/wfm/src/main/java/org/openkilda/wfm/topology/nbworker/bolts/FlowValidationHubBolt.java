@@ -51,7 +51,11 @@ public class FlowValidationHubBolt extends HubBolt {
     private transient FlowValidationHubService service;
 
     public FlowValidationHubBolt(String requestSenderComponent, PersistenceManager persistenceManager) {
-        super(requestSenderComponent, TIMEOUT_MS, AUTO_ACK);
+        super(HubBolt.Config.builder()
+                .requestSenderComponent(requestSenderComponent)
+                .timeoutMs(TIMEOUT_MS)
+                .autoAck(AUTO_ACK)
+                .build());
         this.persistenceManager = persistenceManager;
     }
 

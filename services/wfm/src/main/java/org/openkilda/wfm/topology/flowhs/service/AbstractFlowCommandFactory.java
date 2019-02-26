@@ -27,7 +27,8 @@ public class AbstractFlowCommandFactory {
     }
 
     /**
-     * Provides command factory depending on the encapsulation type.
+     * Provides a flow command factory depending on the encapsulation type.
+     *
      * @param encapsulationType flow encapsulation type.
      * @return command factory.
      */
@@ -40,5 +41,4 @@ public class AbstractFlowCommandFactory {
                         String.format("Encapsulation type %s is not supported", encapsulationType));
         }
     }
-
 }

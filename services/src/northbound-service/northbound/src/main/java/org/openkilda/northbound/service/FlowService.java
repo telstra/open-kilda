@@ -30,6 +30,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 
 import java.util.List;
@@ -154,6 +155,14 @@ public interface FlowService {
      * @return flow payload.
      */
     CompletableFuture<FlowPayload> swapFlowPaths(final String flowId);
+
+    /**
+     * Performs rerouting of specific flow.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @return updated flow path information with the result whether or not path was changed.
+     */
+    CompletableFuture<FlowRerouteResponseV2> rerouteFlowV2(final String flowId);
 
     /**
      * Performs synchronization (reinstalling) of specific flow.

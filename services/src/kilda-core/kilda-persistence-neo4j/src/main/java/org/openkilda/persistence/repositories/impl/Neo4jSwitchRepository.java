@@ -98,8 +98,13 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
 
     @Override
     public void forceDelete(SwitchId switchId) {
-        getSession().query("MATCH (sw:switch {name: $name}) DETACH DELETE sw",
-                ImmutableMap.of("name", switchId.toString()));
+        transactionManager.doInTransaction(() -> {
+            getSession().query("MATCH (:switch {name: $name})-[]-(n:flow_meter) DETACH DELETE n",
+                    ImmutableMap.of("name", switchId.toString()));
+
+            getSession().query("MATCH (sw:switch {name: $name}) DETACH DELETE sw",
+                    ImmutableMap.of("name", switchId.toString()));
+        });
     }
 
     @Override

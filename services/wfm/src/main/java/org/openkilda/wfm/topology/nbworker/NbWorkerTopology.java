@@ -74,6 +74,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
     private static final String FLOW_KAFKA_BOLT_NAME = "flow-kafka-bolt";
+    private static final String FLOW_HS_KAFKA_BOLT_NAME = "flowhs-kafka-bolt";
     private static final String DISCO_KAFKA_BOLT_NAME = "disco-kafka-bolt";
     private static final String HISTORY_BOLT_NAME = "history-operations-bolt";
     private static final String NB_SPOUT_ID = "nb-spout";
@@ -174,10 +175,13 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.REROUTE.toString())
+                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.FLOWHS.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.FLOWHS.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.FLOWHS.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString())
@@ -198,6 +202,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         KafkaBolt kafkaFlowBolt = buildKafkaBolt(topologyConfig.getKafkaFlowTopic());
         tb.setBolt(FLOW_KAFKA_BOLT_NAME, kafkaFlowBolt, parallelism)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.REROUTE.toString());
+
+        KafkaBolt kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
+        tb.setBolt(FLOW_HS_KAFKA_BOLT_NAME, kafkaFlowHsBolt, parallelism)
+                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.FLOWHS.toString());
 
         KafkaBolt kafkaDiscoBolt = buildKafkaBolt(topologyConfig.getKafkaDiscoTopic());
         tb.setBolt(DISCO_KAFKA_BOLT_NAME, kafkaDiscoBolt, parallelism)
