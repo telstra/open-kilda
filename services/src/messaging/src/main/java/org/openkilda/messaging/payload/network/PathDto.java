@@ -13,7 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.network;
+package org.openkilda.messaging.payload.network;
+
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -23,16 +25,21 @@ import java.util.List;
 
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class PathsDto {
-    @JsonProperty("total_bandwidth")
-    private Long totalBandwidth;
+public class PathDto {
+    @JsonProperty("bandwidth")
+    private Long bandwidth;
 
-    @JsonProperty("paths")
-    private List<PathDto> paths;
+    @JsonProperty("latency")
+    private Long latency;
 
-    public PathsDto(@JsonProperty("total_bandwidth") Long totalBandwidth,
-                    @JsonProperty("paths") List<PathDto> paths) {
-        this.totalBandwidth = totalBandwidth;
-        this.paths = paths;
+    @JsonProperty("nodes")
+    private List<PathNodePayload> nodes;
+
+    public PathDto(@JsonProperty("bandwidth") Long bandwidth,
+                   @JsonProperty("latency") Long latency,
+                   @JsonProperty("nodes") List<PathNodePayload> nodes) {
+        this.bandwidth = bandwidth;
+        this.latency = latency;
+        this.nodes = nodes;
     }
 }

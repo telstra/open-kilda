@@ -15,15 +15,38 @@
 
 package org.openkilda.northbound.converter;
 
-import org.openkilda.messaging.info.network.Path;
-import org.openkilda.northbound.dto.network.PathDto;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.messaging.payload.network.PathDto;
+import org.openkilda.model.FlowPath;
 
 import org.mapstruct.Mapper;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface PathMapper {
 
-    default PathDto mapToPath(Path data) {
-        return new PathDto(data.getBandwidth(), data.getLatency(), data.getEdges());
+    /**
+     * Converts {@link FlowPath} to {@link PathDto}.
+     */
+    default PathDto mapToPath(FlowPath data) {
+        List<PathNodePayload> nodes = new ArrayList<>();
+
+        if (!data.getNodes().isEmpty()) {
+            FlowPath.Node firstNode = data.getNodes().get(0);
+            nodes.add(new PathNodePayload(firstNode.getSwitchId(), null, firstNode.getPortNo()));
+
+            for (int i = 1; i < data.getNodes().size() - 1; i += 2) {
+                FlowPath.Node inputNode = data.getNodes().get(i);
+                FlowPath.Node outputNode = data.getNodes().get(i + 1);
+                nodes.add(new PathNodePayload(inputNode.getSwitchId(), inputNode.getPortNo(), outputNode.getPortNo()));
+            }
+
+            FlowPath.Node lastNode = data.getNodes().get(data.getNodes().size() - 1);
+            nodes.add(new PathNodePayload(lastNode.getSwitchId(), lastNode.getPortNo(), null));
+        }
+
+        return new PathDto(data.getMinAvailableBandwidth(), data.getLatency(), nodes);
     }
 }

@@ -30,6 +30,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
@@ -149,6 +150,10 @@ public interface NorthboundService {
     FeatureTogglesDto getFeatureToggles();
 
     FeatureTogglesDto toggleFeature(FeatureTogglesDto request);
+
+    //feature network
+
+    PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
 
     /**
      * Returns all active links.

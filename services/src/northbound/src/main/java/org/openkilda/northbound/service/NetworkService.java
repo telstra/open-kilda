@@ -15,8 +15,8 @@
 
 package org.openkilda.northbound.service;
 
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.network.PathsDto;
 
 import java.util.concurrent.CompletableFuture;
 

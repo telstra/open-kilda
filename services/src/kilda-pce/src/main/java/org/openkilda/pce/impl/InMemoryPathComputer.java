@@ -110,7 +110,8 @@ public class InMemoryPathComputer implements PathComputer {
         return paths.stream()
                 .map(this::convertToFlowPath)
                 .sorted(Comparator.comparing(FlowPath::getMinAvailableBandwidth)
-                                  .thenComparing(FlowPath::getLatency))
+                        .reversed()
+                        .thenComparing(FlowPath::getLatency))
                 .limit(count)
                 .collect(Collectors.toList());
     }
