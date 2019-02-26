@@ -115,8 +115,8 @@ class PathHelper {
         }
         List<PathNode> pathNodes = []
         path.each { pathEntry ->
-            pathNodes << new PathNode(pathEntry.switchId, pathEntry.inputPort, 0)
-            pathNodes << new PathNode(pathEntry.switchId, pathEntry.outputPort, 0)
+            pathNodes << new PathNode(pathEntry.switchId, pathEntry.inputPort == null ? 0 : pathEntry.inputPort, 0)
+            pathNodes << new PathNode(pathEntry.switchId, pathEntry.outputPort == null ? 0 : pathEntry.outputPort, 0)
         }
         def seqId = 0
         if (pathNodes.size() > 2) {

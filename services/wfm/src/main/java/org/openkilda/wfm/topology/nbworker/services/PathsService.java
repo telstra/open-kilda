@@ -27,11 +27,11 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.mappers.PathMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -52,6 +52,10 @@ public class PathsService {
      */
     public List<PathsInfoData> getPaths(SwitchId srcSwitchId, SwitchId dstSwitchId)
             throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
+        if (Objects.equals(srcSwitchId, dstSwitchId)) {
+            throw new IllegalArgumentException(
+                    String.format("Source and destination switch IDs are equal: '%s'", srcSwitchId));
+        }
         if (!switchRepository.exists(srcSwitchId)) {
             throw new SwitchNotFoundException(srcSwitchId);
         }
@@ -61,11 +65,8 @@ public class PathsService {
 
         List<FlowPath> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT);
 
-        List<PathsInfoData> paths = flowPaths.stream().map(PathMapper.INSTANCE::map)
+        return flowPaths.stream()
                 .map(path -> PathsInfoData.builder().path(path).build())
                 .collect(Collectors.toList());
-
-
-        return paths;
     }
 }
