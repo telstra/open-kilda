@@ -36,7 +36,7 @@ public class MessageEncoder extends KafkaEncoder {
             Message message = wrap(pullContext(input), payload);
 
             if (payload instanceof FlowRerouteRequest) {
-                getOutput().emit(StreamType.REROUTE.toString(), input, new Values(message));
+                getOutput().emit(input.getSourceStreamId(), input, new Values(message));
             } else if (payload instanceof ErrorData) {
                 getOutput().emit(StreamType.ERROR.toString(), input, new Values(null, message));
             }
@@ -48,6 +48,7 @@ public class MessageEncoder extends KafkaEncoder {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputManager) {
+        outputManager.declareStream(StreamType.FLOWHS.toString(), new Fields("message"));
         outputManager.declareStream(StreamType.REROUTE.toString(), new Fields("message"));
         outputManager.declareStream(StreamType.ERROR.toString(), STREAM_FIELDS);
     }

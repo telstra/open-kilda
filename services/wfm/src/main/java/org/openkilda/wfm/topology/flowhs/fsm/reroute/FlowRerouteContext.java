@@ -13,13 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.bolts;
+package org.openkilda.wfm.topology.flowhs.fsm.reroute;
 
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.model.PathId;
 
-public interface FlowHistorySupportingCarrier {
-    /**
-     * Sends main events to history bolt.
-     */
-    void sendHistoryUpdate(FlowHistoryHolder historyHolder);
+import lombok.Builder;
+import lombok.Data;
+
+import java.util.Set;
+
+@Data
+@Builder
+public class FlowRerouteContext {
+    private String flowId;
+    private Set<PathId> pathsToReroute;
+    private boolean forceReroute;
+
+    private FlowResponse flowResponse;
 }

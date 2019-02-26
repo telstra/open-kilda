@@ -112,6 +112,8 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
 
             if (flow.isOneSwitchFlow()) {
                 stateMachine.fire(Event.SKIP_NON_INGRESS_RULES_INSTALL);
+            } else {
+                stateMachine.fireNext(context);
             }
 
             return Optional.of(response);

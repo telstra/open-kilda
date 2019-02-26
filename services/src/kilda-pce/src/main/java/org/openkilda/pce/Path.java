@@ -18,6 +18,7 @@ package org.openkilda.pce;
 import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
 
@@ -46,7 +47,8 @@ public class Path implements Serializable {
     private List<Segment> segments;
 
     @Value
-    @Builder
+    @Builder(toBuilder = true)
+    @EqualsAndHashCode
     public static class Segment implements Serializable {
         private static final long serialVersionUID = 1L;
 

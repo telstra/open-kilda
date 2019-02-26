@@ -16,6 +16,7 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
@@ -30,7 +31,9 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 
 import org.mapstruct.Mapper;
@@ -77,6 +80,15 @@ public interface FlowMapper {
     @Mapping(source = "path", target = "path")
     @Mapping(source = "rerouted", target = "rerouted")
     FlowReroutePayload toReroutePayload(String flowId, PathInfoData path, boolean rerouted);
+
+
+    @Mapping(source = "path", target = "path")
+    FlowRerouteResponseV2 toRerouteResponseV2(String flowId, PathInfoData path, boolean rerouted);
+
+    @Mapping(source = "path", target = "nodes")
+    FlowPathV2 toFlowPathV2(PathInfoData path);
+
+    FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
 
     @Mapping(source = "flowId", target = "id")
     @Mapping(source = "state", target = "status")
