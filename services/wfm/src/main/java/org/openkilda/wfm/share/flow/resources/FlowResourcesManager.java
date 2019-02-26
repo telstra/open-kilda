@@ -76,7 +76,7 @@ public class FlowResourcesManager {
                         FlowResources.FlowResourcesBuilder flowResources = FlowResources.builder()
                                 .forwardPathId(forwardPathId)
                                 .reversePathId(reversePathId);
-                        flowResources.unmaskedCookie(cookiePool.allocateCookie(flow.getFlowId(),
+                        flowResources.unmaskedCookie(cookiePool.allocate(flow.getFlowId(),
                                 forwardPathId, reversePathId));
 
                         if (flow.getBandwidth() > 0L) {
@@ -117,11 +117,11 @@ public class FlowResourcesManager {
     /**
      * Deallocate the flow resources.
      */
-    public void deallocateFlow(Flow flow, PathId forwardPathId, PathId reversePathId) {
+    public void deallocateFlowResources(Flow flow, PathId forwardPathId, PathId reversePathId) {
         log.debug("Deallocate flow resources for {}/{}.", forwardPathId, reversePathId);
 
         transactionManager.doInTransaction(() -> {
-            cookiePool.deallocateCookie(forwardPathId, reversePathId);
+            cookiePool.deallocate(forwardPathId, reversePathId);
             meterPool.deallocateMeter(forwardPathId);
             meterPool.deallocateMeter(reversePathId);
             getEncapsulationResourcesProvider(flow.getEncapsulationType())

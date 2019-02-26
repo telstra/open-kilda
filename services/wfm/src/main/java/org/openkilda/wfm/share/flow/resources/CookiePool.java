@@ -45,11 +45,11 @@ public class CookiePool {
     }
 
     /**
-     * Allocates cookie.
+     * Allocates cookies for the flow paths.
      *
      * @return unmasked allocated cookie.
      */
-    public long allocateCookie(String flowId, PathId forwardPathId, PathId reversePathId) {
+    public long allocate(String flowId, PathId forwardPathId, PathId reversePathId) {
         return transactionManager.doInTransaction(() -> {
             long availableCookie = flowCookieRepository.findAvailableUnmaskedCookie().orElse(minCookie);
             if (availableCookie > maxCookie) {
@@ -75,9 +75,9 @@ public class CookiePool {
     }
 
     /**
-     * Deallocates cookie.
+     * Deallocates cookies of the paths.
      */
-    public void deallocateCookie(PathId forwardPathId, PathId reversePathId) {
+    public void deallocate(PathId forwardPathId, PathId reversePathId) {
         transactionManager.doInTransaction(() -> {
             flowCookieRepository.findByPathId(forwardPathId)
                     .ifPresent(flowCookieRepository::delete);

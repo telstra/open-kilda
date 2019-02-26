@@ -202,7 +202,7 @@ public class FlowService extends BaseFlowService {
             return Optional.of(new FlowPairWithSegments(flowPair, forwardSegments, reverseSegments));
         }).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-        flowResourcesManager.deallocateFlow(result.getFlowPair().getFlowEntity(),
+        flowResourcesManager.deallocateFlowResources(result.getFlowPair().getFlowEntity(),
                 result.getFlowPair().getFlowEntity().getForwardPathId(),
                 result.getFlowPair().getFlowEntity().getReversePathId());
 
@@ -270,7 +270,7 @@ public class FlowService extends BaseFlowService {
                     .reverseSegments(newReverseSegments).build();
         });
 
-        flowResourcesManager.deallocateFlow(currentFlow.getFlowEntity(),
+        flowResourcesManager.deallocateFlowResources(currentFlow.getFlowEntity(),
                 currentFlow.getFlowEntity().getForwardPathId(),
                 currentFlow.getFlowEntity().getReversePathId());
 
@@ -345,7 +345,7 @@ public class FlowService extends BaseFlowService {
                     .reverseSegments(newReverseSegments).build();
         });
 
-        flowResourcesManager.deallocateFlow(currentFlow.getFlowEntity(),
+        flowResourcesManager.deallocateFlowResources(currentFlow.getFlowEntity(),
                 currentFlow.getFlowEntity().getForwardPathId(),
                 currentFlow.getFlowEntity().getReversePathId());
 

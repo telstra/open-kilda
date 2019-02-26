@@ -48,24 +48,24 @@ public class CookiePoolTest {
 
     @Test
     public void cookiePool() {
-        resourceCache.allocateCookie(4);
+        resourceCache.allocate(4);
 
-        int first = resourceCache.allocateCookie();
+        int first = resourceCache.allocate();
         assertEquals(5, first);
 
-        int second = resourceCache.allocateCookie();
+        int second = resourceCache.allocate();
         assertEquals(6, second);
 
-        int third = resourceCache.allocateCookie();
+        int third = resourceCache.allocate();
         assertEquals(7, third);
 
-        resourceCache.deallocateCookie(second);
-        int fourth = resourceCache.allocateCookie();
+        resourceCache.deallocate(second);
+        int fourth = resourceCache.allocate();
         assertEquals(8, fourth);
 
         assertEquals(4, resourceCache.getAllCookies().size());
 
-        int fifth = resourceCache.allocateCookie();
+        int fifth = resourceCache.allocate();
         assertEquals(9, fifth);
     }
 
@@ -131,10 +131,10 @@ public class CookiePoolTest {
     @Ignore("(crimi - 2018.04.06  ... Don't do this ... cookie pool is massive")
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void cookiePoolFullTest() {
-        resourceCache.allocateCookie();
+        resourceCache.allocate();
         int i = ResourceCache.MIN_COOKIE;
         while (i++ <= ResourceCache.MAX_COOKIE) {
-            resourceCache.allocateCookie();
+            resourceCache.allocate();
         }
     }
 

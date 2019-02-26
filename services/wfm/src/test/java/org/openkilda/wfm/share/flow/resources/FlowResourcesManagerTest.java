@@ -57,7 +57,7 @@ public class FlowResourcesManagerTest {
     public void shouldNotImmediatelyReuseResources() {
         UnidirectionalFlow flow = FlowMapper.INSTANCE.map(firstFlow);
         FlowPair flowPairToDealloc = resourcesManager.allocateFlow(FlowPair.buildPair(flow));
-        resourcesManager.deallocateFlow(flowPairToDealloc);
+        resourcesManager.deallocateFlowResources(flowPairToDealloc);
 
         FlowPair lastFlow = resourcesManager.allocateFlow(FlowPair.buildPair(flow));
 

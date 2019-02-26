@@ -19,7 +19,15 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 
 public interface EncapsulationResourcesProvider<T extends EncapsulationResources> {
+    /**
+     * Allocates flow encapsulation resources for the flow paths.
+     *
+     * @return allocated resources.
+     */
     T allocate(Flow flow, PathId forwardPathId, PathId reversePathId) throws ResourceNotAvailableException;
 
+    /**
+     * Deallocates flow encapsulation resources of the paths.
+     */
     void deallocate(PathId forwardPathId, PathId reversePathId);
 }

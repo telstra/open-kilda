@@ -114,7 +114,6 @@ public class InMemoryPathComputer implements PathComputer {
                 .collect(Collectors.toList());
     }
 
-
     private PathPair convertToPathPair(SwitchId srcSwitch, SwitchId dstSwitch, Pair<List<Edge>, List<Edge>> biPath) {
         return PathPair.builder()
                 .forward(convertToPath(srcSwitch, dstSwitch, biPath.getLeft()))

@@ -53,7 +53,7 @@ public class MeterPool {
     }
 
     /**
-     * Allocates meter id.
+     * Allocates a meter for the flow path.
      */
     public FlowMeter allocateMeter(SwitchId switchId, String flowId, PathId pathId) {
         return transactionManager.doInTransaction(() -> {
@@ -79,7 +79,7 @@ public class MeterPool {
     }
 
     /**
-     * Deallocates meter id.
+     * Deallocates a meter of the flow path.
      */
     public void deallocateMeter(PathId pathId) {
         transactionManager.doInTransaction(() ->

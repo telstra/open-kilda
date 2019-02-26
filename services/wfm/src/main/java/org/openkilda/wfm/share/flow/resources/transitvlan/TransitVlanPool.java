@@ -48,7 +48,7 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
     }
 
     /**
-     * Allocates vlan.
+     * Allocates vlans for the flow paths.
      */
     @Override
     public TransitVlanResources allocate(Flow flow, PathId forwardPathId, PathId reversePathId) {
@@ -76,7 +76,7 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
     }
 
     /**
-     * Deallocates vlan.
+     * Deallocates vlans of the paths.
      */
     @Override
     public void deallocate(PathId forwardPathId, PathId reversePathId) {
