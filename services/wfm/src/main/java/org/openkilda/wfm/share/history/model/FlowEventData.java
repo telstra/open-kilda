@@ -41,7 +41,8 @@ public class FlowEventData {
     @Getter
     public enum Event {
         CREATE("Flow creating"),
-        UPDATE("Flow updating");
+        UPDATE("Flow updating"),
+        REROUTE("Flow rerouting");
 
         private String description;
     }

@@ -39,6 +39,7 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.function.FilterFunction;
 import org.neo4j.ogm.session.Session;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -167,7 +168,7 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
 
     @Override
     public Collection<FlowPath> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
-                                                SwitchId dstSwitchId, int dstPort) {
+                                                    SwitchId dstSwitchId, int dstPort) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "src_switch", switchIdConverter.toGraphProperty(srcSwitchId),
                 "src_port", srcPort,
@@ -245,6 +246,12 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         requireManagedEntity(flowPath.getFlow());
 
         validateFlowPath(flowPath);
+
+        if (flowPath.getTimeCreate() == null) {
+            flowPath.setTimeCreate(Instant.now());
+        } else {
+            flowPath.setTimeModify(Instant.now());
+        }
 
         transactionManager.doInTransaction(() -> {
             Collection<PathSegment> currentSegments = findPathSegmentsByPathId(flowPath.getPathId());

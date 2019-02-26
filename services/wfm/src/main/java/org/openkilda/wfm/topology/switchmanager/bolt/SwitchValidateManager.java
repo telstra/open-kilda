@@ -58,7 +58,12 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
 
     public SwitchValidateManager(String requestSenderComponent, PersistenceManager persistenceManager,
                                  long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
-        super(requestSenderComponent, TIMEOUT_MS, AUTO_ACK);
+        super(HubBolt.Config.builder()
+                .requestSenderComponent(requestSenderComponent)
+                .timeoutMs(TIMEOUT_MS)
+                .autoAck(AUTO_ACK)
+                .build());
+
         this.persistenceManager = persistenceManager;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;

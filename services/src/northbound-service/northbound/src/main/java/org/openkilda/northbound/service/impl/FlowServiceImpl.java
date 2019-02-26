@@ -70,6 +70,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FlowService;
@@ -524,6 +525,20 @@ public class FlowServiceImpl implements FlowService {
                 Destination.WFM);
         return messagingChannel.sendAndGet(topic, message)
                 .thenApply(FlowMeterEntries.class::cast);
+    }
+
+    @Override
+    public CompletableFuture<FlowRerouteResponseV2> rerouteFlowV2(String flowId) {
+        logger.info("Processing flow reroute: {}", flowId);
+
+        FlowRerouteRequest payload = new FlowRerouteRequest(flowId, false);
+        CommandMessage command = new CommandMessage(
+                payload, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(FlowRerouteResponse.class::cast)
+                .thenApply(response ->
+                        flowMapper.toRerouteResponseV2(flowId, response.getPayload(), response.isRerouted()));
     }
 
     private CompletableFuture<FlowReroutePayload> reroute(String flowId, boolean forced) {
