@@ -27,7 +27,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -38,8 +37,8 @@ import java.util.Objects;
 @Profile("virtual")
 public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
 
-    @Value("#{'${floodlight.controller.uri}'.split(',')}")
-    private List<String> controllerHost;
+    @Value("${floodlight.controller.uri}")
+    private String controllerHost;
 
     @Autowired
     private TopologyDefinition topology;
@@ -64,7 +63,7 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
     public void reviveSwitch(SwitchId switchId) {
         String swName = getSwitchBySwitchId(switchId).getName();
         restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/reviveswitch", HttpMethod.POST,
-                new HttpEntity<>(new SwitchModify(swName, null),
+                new HttpEntity<>(new SwitchModify(swName, controllerHost),
                         buildJsonHeaders()), String.class);
         log.debug("Revive switch: {}", swName);
     }

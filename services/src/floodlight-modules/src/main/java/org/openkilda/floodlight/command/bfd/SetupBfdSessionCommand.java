@@ -23,8 +23,6 @@ import org.openkilda.messaging.model.NoviBfdSession;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
-import java.net.UnknownHostException;
-
 public class SetupBfdSessionCommand extends BfdSessionCommand {
     private static final int CONSTRAINT_INTERVAL_MIN = 1;
 
@@ -45,7 +43,7 @@ public class SetupBfdSessionCommand extends BfdSessionCommand {
     }
 
     @Override
-    public void handle(Session session) throws SwitchWriteException, UnknownHostException {
+    public void handle(Session session) throws SwitchWriteException {
         log.info("Setup BFD session - {}", getBfdSession());
 
         scheduleResultHandling(session.write(makeSessionConfigMessage(session.getSw())));

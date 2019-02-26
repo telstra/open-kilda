@@ -21,7 +21,7 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.newCapture;
 
-import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.command.AbstractCommandTest;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
@@ -52,11 +52,11 @@ public abstract class PingCommandTest extends AbstractCommandTest {
         moduleContext.addService(IKafkaProducerService.class, producerService);
         moduleContext.addService(PingService.class, pingService);
 
-        KafkaChannel topics = createMock(KafkaChannel.class);
+        KafkaTopicsConfig topics = createMock(KafkaTopicsConfig.class);
         expect(topics.getPingTopic()).andReturn(PING_KAFKA_TOPIC).anyTimes();
 
         KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
-        expect(kafkaUtility.getKafkaChannel()).andReturn(topics).anyTimes();
+        expect(kafkaUtility.getTopics()).andReturn(topics).anyTimes();
         moduleContext.addService(KafkaUtilityService.class, kafkaUtility);
 
         producerService.sendMessageAndTrack(anyString(), capture(kafkaMessageCatcher));

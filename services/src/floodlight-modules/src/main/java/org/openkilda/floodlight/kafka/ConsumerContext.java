@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.kafka;
 
-import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -27,18 +27,14 @@ public class ConsumerContext {
     private final IPathVerificationService pathVerificationService;
     private final ISwitchManager switchManager;
 
-    private final KafkaChannel kafkaChannel;
+    private final KafkaTopicsConfig kafkaTopics;
 
     public ConsumerContext(FloodlightModuleContext moduleContext) {
         this.moduleContext = moduleContext;
         this.pathVerificationService = moduleContext.getServiceImpl(IPathVerificationService.class);
         this.switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
-        kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
-    }
-
-    public String getRegion() {
-        return kafkaChannel.getRegion();
+        kafkaTopics = moduleContext.getServiceImpl(KafkaUtilityService.class).getTopics();
     }
 
     public FloodlightModuleContext getModuleContext() {
@@ -54,27 +50,27 @@ public class ConsumerContext {
     }
 
     public String getKafkaFlowTopic() {
-        return kafkaChannel.getFlowTopic();
+        return kafkaTopics.getFlowTopic();
     }
 
     public String getKafkaTopoDiscoTopic() {
-        return kafkaChannel.getTopoDiscoTopic();
+        return kafkaTopics.getTopoDiscoTopic();
     }
 
     public String getKafkaStatsTopic() {
-        return kafkaChannel.getStatsTopic();
+        return kafkaTopics.getStatsTopic();
     }
 
     public String getKafkaNorthboundTopic() {
-        return kafkaChannel.getNorthboundTopic();
+        return kafkaTopics.getNorthboundTopic();
     }
 
     @SuppressWarnings("squid:CallToDeprecatedMethod")
     public String getKafkaTopoEngTopic() {
-        return kafkaChannel.getTopoEngTopic();
+        return kafkaTopics.getTopoEngTopic();
     }
 
     public String getKafkaNbWorkerTopic() {
-        return kafkaChannel.getKafkaNbWorkerTopic();
+        return kafkaTopics.getTopoNbTopic();
     }
 }

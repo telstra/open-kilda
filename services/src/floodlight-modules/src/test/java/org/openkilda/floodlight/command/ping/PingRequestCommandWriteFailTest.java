@@ -37,8 +37,18 @@ public class PingRequestCommandWriteFailTest extends PingRequestCommandAbstractT
     }
 
     @Test
+    public void missingDestSwitch() throws Exception {
+        expectFail(makePing(switchAlpha, switchMissing), Errors.DEST_NOT_AVAILABLE);
+    }
+
+    @Test
     public void sourceSwitchIsNotCapable() throws Exception {
         expectFail(makePing(switchNotCapable, switchBeta), Errors.NOT_CAPABLE);
+    }
+
+    @Test
+    public void destSwitchIsNotCapable() throws Exception {
+        expectFail(makePing(switchAlpha, switchNotCapable), Errors.NOT_CAPABLE);
     }
 
     private void expectFail(Ping ping, Ping.Errors errorCode) throws Exception {

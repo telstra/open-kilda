@@ -21,6 +21,7 @@ import static org.easymock.EasyMock.getCurrentArguments;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
+import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
@@ -38,6 +39,7 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.easymock.IAnswer;
+import org.easymock.Mock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,6 +57,9 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
             new TopicPartition(TOPIC, 1)
     };
 
+    @Mock
+    private HeartBeatService heartBeatService;
+
     private KafkaProducerService subject;
 
     @SuppressWarnings("unchecked")
@@ -65,6 +70,7 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
         injectMocks(this);
 
         FloodlightModuleContext moduleContext = new FloodlightModuleContext();
+        moduleContext.addService(HeartBeatService.class, heartBeatService);
 
         KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
         expect(kafkaUtility.makeProducer()).andReturn(kafkaProducer);

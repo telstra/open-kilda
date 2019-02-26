@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 // FIXME(tdurakov): this REST-endpoint is temporal solution and should be deleted once BFD will be introduced as a part
@@ -104,7 +103,7 @@ public class EnableBfdResource extends ServerResource {
     }
 
     private OFPacketOut makeSessionConfigMessage(NoviBfdSession bfdSession, IOFSwitch sw,
-                                                   ISwitchManager switchManager) throws UnknownHostException {
+                                                   ISwitchManager switchManager) {
         OFFactory ofFactory = sw.getOFFactory();
 
         OFActionNoviflowBfdStart bfdStartAction = ofFactory.actions().buildNoviflowBfdStart()
@@ -122,8 +121,7 @@ public class EnableBfdResource extends ServerResource {
                 .build();
     }
 
-    private IPacket makeSessionConfigPayload(IOFSwitch sw, ISwitchManager switchManager,
-                                             NoviBfdSession bfdSession) throws UnknownHostException {
+    private IPacket makeSessionConfigPayload(IOFSwitch sw, ISwitchManager switchManager, NoviBfdSession bfdSession) {
         final TransportPort udpPort = TransportPort.of(bfdSession.getUdpPortNumber());
         UDP l4 = new UDP()
                 .setSourcePort(udpPort)

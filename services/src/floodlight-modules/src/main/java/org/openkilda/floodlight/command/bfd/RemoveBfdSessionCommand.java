@@ -20,15 +20,13 @@ import org.openkilda.floodlight.error.SwitchWriteException;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.messaging.model.NoviBfdSession;
 
-import java.net.UnknownHostException;
-
 public class RemoveBfdSessionCommand extends BfdSessionCommand {
     public RemoveBfdSessionCommand(CommandContext context, NoviBfdSession bfdSession) {
         super(context, alterBfdInitiator(bfdSession.toBuilder()));
     }
 
     @Override
-    public void handle(Session session) throws SwitchWriteException, UnknownHostException {
+    public void handle(Session session) throws SwitchWriteException {
         log.info("Remove BFD session - {}", getBfdSession());
 
         scheduleResultHandling(session.write(makeSessionConfigMessage(session.getSw())));

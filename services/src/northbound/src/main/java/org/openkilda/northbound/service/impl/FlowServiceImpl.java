@@ -376,7 +376,7 @@ public class FlowServiceImpl implements FlowService {
             data.setOperation(op);  // <-- this is what determines PUSH / UNPUSH
             String flowCorrelation = correlationId + "-FLOW-" + i;
             InfoMessage flowRequest =
-                    new InfoMessage(data, System.currentTimeMillis(), flowCorrelation, Destination.WFM, null);
+                    new InfoMessage(data, System.currentTimeMillis(), flowCorrelation, Destination.WFM);
             flowRequests.add(messagingChannel.sendAndGet(topic, flowRequest));
         }
 
