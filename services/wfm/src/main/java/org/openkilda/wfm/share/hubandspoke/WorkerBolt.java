@@ -46,9 +46,10 @@ import java.util.Map;
  */
 public abstract class WorkerBolt extends CoordinatedBolt {
     public static final String ID = "worker.bolt";
-    protected Map<String, Tuple> pendingTasks = new HashMap<>();
 
-    private Config workerConfig;
+    private final Config workerConfig;
+
+    protected Map<String, Tuple> pendingTasks = new HashMap<>();
 
     public WorkerBolt(Config config) {
         super(config.isAutoAck(), config.getDefaultTimeout());

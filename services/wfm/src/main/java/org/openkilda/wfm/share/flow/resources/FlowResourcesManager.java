@@ -35,7 +35,9 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Slf4j
 public class FlowResourcesManager {
@@ -170,5 +172,36 @@ public class FlowResourcesManager {
                     getEncapsulationResourcesProvider(encapsulationType);
             encapsulationResourcesProvider.deallocate(pathId);
         });
+    }
+
+    /**
+     * Deallocate the flow path resources.
+     * <p/>
+     * Shared resources are to be deallocated with no usage checks.
+     */
+    public void deallocatePathResources(FlowResources resources) {
+        log.debug("Deallocate flow resources {}.", resources);
+
+        transactionManager.doInTransaction(() -> {
+            cookiePool.deallocate(resources.getUnmaskedCookie());
+
+            Stream.of(resources.getForward(), resources.getReverse())
+                    .forEach(path -> {
+                        meterPool.deallocate(path.getPathId());
+                        EncapsulationResources encapsulationResources = path.getEncapsulationResources();
+                        if (encapsulationResources != null) {
+                            getEncapsulationResourcesProvider(encapsulationResources.getEncapsulationType())
+                                    .deallocate(path.getPathId());
+                        }
+                    });
+        });
+    }
+
+    /**
+     * Get allocated encapsulation resources of the flow path.
+     */
+    public Optional<EncapsulationResources> getEncapsulationResources(PathId pathId,
+                                                                      FlowEncapsulationType encapsulationType) {
+        return getEncapsulationResourcesProvider(encapsulationType).get(pathId);
     }
 }
