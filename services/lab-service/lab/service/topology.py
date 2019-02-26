@@ -40,11 +40,10 @@ def resolve_host(uri):
 
 
 class Switch:
-    def __init__(self, name, of_ver, controller=None):
+    def __init__(self, name, of_ver):
         self.name = name
         self.of_ver = of_ver
         self.vscmd = []
-        self.controller = controller
 
     def get_and_flush_batch_cmd(self):
         cmd = " -- ".join(self.vscmd)
@@ -56,10 +55,7 @@ class Switch:
         # force OF 1.3
         of_ver = 'OpenFlow13'
         name = sw_def['name']
-        controller = None
-        if 'controller' in sw_def:
-            controller = resolve_host(sw_def['controller'])
-        switch = cls(name, of_ver, controller)
+        switch = cls(name, of_ver)
 
         cmd = [
             '--if-exists del-br %s' % name,
@@ -103,20 +99,12 @@ class Switch:
             ofctl(["mod-port {sw} -O {of_ver} {port} {port_state}"
                   .format(sw=self.name, of_ver=self.of_ver, port=str(port), port_state=port_state) for port in ports])
 
-    def force_update_controller_host(self, controller, batch=True):
+    def add_controller(self, controller, batch=True):
         cmd = [
             'set-controller {} {}'.format(self.name, controller),
             'set controller {} connection-mode=out-of-band'.format(self.name)
         ]
         self.vscmd.extend(cmd) if batch else vsctl(cmd)
-
-    def add_controller(self, batch=True):
-        if self.controller:
-            cmd = [
-                'set-controller {} {}'.format(self.name, self.controller),
-                'set controller {} connection-mode=out-of-band'.format(self.name)
-            ]
-            self.vscmd.extend(cmd) if batch else vsctl(cmd)
 
 
 class ASwitch(Switch):
@@ -189,10 +177,11 @@ class Traffgen:
 
 
 class Topology:
-    def __init__(self, switches, links, traffgens):
+    def __init__(self, switches, links, traffgens, controller):
         self.switches = switches
         self.links = links
         self.traffgens = traffgens
+        self.controller = controller
 
     @classmethod
     def create(cls, topo_def):
@@ -243,7 +232,8 @@ class Topology:
         cls.batch_switch_cmd(switches)
 
         switches[A_SW_NAME].add_route_flows(a_mappings)
-        return cls(switches, links, traffgens)
+        controller = resolve_host(topo_def['controller'])
+        return cls(switches, links, traffgens, controller)
 
     # This should be ~ 'getconf ARG_MAX' / 8
     # Empirical constant copied from Mininet
@@ -268,7 +258,8 @@ class Topology:
 
     def run(self):
         for sw in self.switches.values():
-            sw.add_controller()
+            if sw.name != A_SW_NAME:
+                sw.add_controller(self.controller)
         Topology.batch_switch_cmd(self.switches)
 
         for tgen in self.traffgens:

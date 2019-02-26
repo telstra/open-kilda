@@ -216,26 +216,26 @@ public class OfEventWfmTest extends AbstractStormTest {
 
         InfoMessage switch1Up =
                 new InfoMessage(new SwitchInfoData(new SwitchId("ff:01"), SwitchChangeType.ACTIVATED, null, null,
-                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY, null);
+                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(switch1Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage switch2Up =
                 new InfoMessage(new SwitchInfoData(new SwitchId("ff:02"), SwitchChangeType.ACTIVATED, null, null,
-                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY, null);
+                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(switch2Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage port1Up = new InfoMessage(new PortInfoData(new SwitchId("ff:02"), 1, PortChangeType.UP), 1,
-                "discovery-test", Destination.WFM_OF_DISCOVERY, null);
+                "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(port1Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 1, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage port2Up = new InfoMessage(new PortInfoData(new SwitchId("ff:01"), 2, PortChangeType.UP), 1,
-                "discovery-test", Destination.WFM_OF_DISCOVERY, null);
+                "discovery-test", Destination.WFM_OF_DISCOVERY);
         json = MAPPER.writeValueAsString(port2Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 1, topoInputTopic);
         linkBolt.execute(tuple);

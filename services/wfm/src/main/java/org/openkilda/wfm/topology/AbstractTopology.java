@@ -54,7 +54,6 @@ import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -216,13 +215,6 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return new KafkaSpout<>(config);
     }
 
-    protected KafkaSpout<String, String> createKafkaSpout(List<String> topics, String spoutId) {
-        KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfigBuilder(spoutId, topics)
-                .build();
-
-        return new KafkaSpout<>(config);
-    }
-
     /**
      * Creates Kafka spout. Transforms received value to {@link Message}.
      *
@@ -296,14 +288,9 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      */
     @Deprecated
     protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId, String topic) {
-        return makeKafkaSpoutConfigBuilder(spoutId, Collections.singletonList(topic));
-    }
-
-    protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId,
-                                                                                   List<String> topics) {
         return new KafkaSpoutConfig.Builder<>(
                 kafkaConfig.getHosts(), StringDeserializer.class, StringDeserializer.class,
-                new CustomNamedSubscription(topics))
+                new CustomNamedSubscription(topic))
 
                 .setGroupId(makeKafkaGroupName(spoutId))
                 .setRecordTranslator(new KafkaRecordTranslator<>())

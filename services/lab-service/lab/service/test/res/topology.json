@@ -45,7 +45,7 @@
       "switch_port": 10
     }
   ], 
-  "controllers": ["tcp:127.0.0.1:6653","tcp:127.0.0.1:6653"],
+  "controller": "tcp:127.0.0.1:6653",
   "isls": [
     {
       "aswitch": null, 
@@ -371,7 +371,6 @@
   "skipped_switch_ids": [], 
   "switches": [
     {
-      "controller": "tcp:127.0.0.1:6653",
       "active": true, 
       "all_ports": [
         1, 
@@ -420,7 +419,6 @@
       "status": "Active"
     }, 
     {
-      "controller": "tcp:127.0.0.1:6653",
       "active": true, 
       "all_ports": [
         1, 
@@ -459,7 +457,6 @@
       "status": "Active"
     }, 
     {
-      "controller": "tcp:127.0.0.1:6653",
       "active": true, 
       "all_ports": [
         1, 
@@ -498,7 +495,6 @@
       "status": "Active"
     }, 
     {
-      "controller": "tcp:127.0.0.1:6653",
       "active": true, 
       "all_ports": [
         1, 
@@ -569,7 +565,6 @@
       "status": "Active"
     }, 
     {
-      "controller": "tcp:127.0.0.1:6653",
       "active": true, 
       "all_ports": [
         1, 
@@ -640,7 +635,6 @@
       "status": "Active"
     }, 
     {
-      "controller": "tcp:127.0.0.1:6653",
       "active": true, 
       "all_ports": [
         1, 

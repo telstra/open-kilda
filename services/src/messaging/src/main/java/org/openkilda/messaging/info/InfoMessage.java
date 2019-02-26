@@ -18,7 +18,6 @@ package org.openkilda.messaging.info;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DESTINATION;
 import static org.openkilda.messaging.Utils.PAYLOAD;
-import static org.openkilda.messaging.Utils.REGION;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
 import org.openkilda.messaging.Destination;
@@ -49,9 +48,6 @@ public class InfoMessage extends Message {
     @JsonProperty(PAYLOAD)
     private InfoData data;
 
-    @JsonProperty(REGION)
-    private String region;
-
     /**
      * Instance constructor.
      *
@@ -65,10 +61,8 @@ public class InfoMessage extends Message {
     public InfoMessage(@JsonProperty(PAYLOAD) final InfoData data,
                        @JsonProperty(TIMESTAMP) final long timestamp,
                        @JsonProperty(CORRELATION_ID) final String correlationId,
-                       @JsonProperty(DESTINATION) final Destination destination,
-                       @JsonProperty(REGION) final String region) {
+                       @JsonProperty(DESTINATION) final Destination destination) {
         super(timestamp, correlationId, destination);
-        this.region = region;
         this.data = data;
     }
 
@@ -84,23 +78,6 @@ public class InfoMessage extends Message {
                        final String correlationId) {
         super(timestamp, correlationId);
         this.data = data;
-    }
-
-    /**
-     * Instance constructor.
-     *
-     * @param data          info message payload
-     * @param timestamp     timestamp value
-     * @param correlationId message correlation id
-     * @param region        floodlight region identifier
-     */
-    public InfoMessage(final InfoData data,
-                       final long timestamp,
-                       final String correlationId,
-                       final String region) {
-        super(timestamp, correlationId);
-        this.data = data;
-        this.region = region;
     }
 
 }

@@ -49,11 +49,6 @@ public final class Utils {
      */
     public static final String DESTINATION = "destination";
 
-    /**
-     * The region of message origination.
-     */
-    public static final String REGION = "region";
-
     public static final String ROUTE = "route";
     /**
      * The payload property.

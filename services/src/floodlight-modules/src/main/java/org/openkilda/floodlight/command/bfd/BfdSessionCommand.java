@@ -41,7 +41,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 abstract class BfdSessionCommand extends BfdCommand {
     private final NoviBfdSession bfdSession;
@@ -73,7 +72,7 @@ abstract class BfdSessionCommand extends BfdCommand {
         }
     }
 
-    protected OFPacketOut makeSessionConfigMessage(IOFSwitch sw) throws UnknownHostException {
+    protected OFPacketOut makeSessionConfigMessage(IOFSwitch sw) {
         OFFactory ofFactory = sw.getOFFactory();
 
         OFActionNoviflowBfdStart bfdStartAction = ofFactory.actions().buildNoviflowBfdStart()
@@ -133,7 +132,7 @@ abstract class BfdSessionCommand extends BfdCommand {
         return errorCode;
     }
 
-    private IPacket makeSessionConfigPayload(IOFSwitch sw) throws UnknownHostException {
+    private IPacket makeSessionConfigPayload(IOFSwitch sw) {
         final TransportPort udpPort = TransportPort.of(bfdSession.getUdpPortNumber());
         UDP l4 = new UDP()
                 .setSourcePort(udpPort)

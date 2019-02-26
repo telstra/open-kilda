@@ -60,12 +60,25 @@ public class PingRequestCommand extends PingCommand {
     @Override
     public Command call() {
         try {
+            checkDestination();
             send(checkSource());
         } catch (PingImpossibleException e) {
             log.error(e.getMessage());
             sendErrorResponse(ping.getPingId(), e.getError());
         }
         return null;
+    }
+
+    private void checkDestination() throws PingImpossibleException {
+        SwitchId destId = ping.getDest().getDatapath();
+        IOFSwitch destSw = lookupSwitch(destId);
+        if (destSw == null) {
+            log.debug("Do not own ping\'s destination switch {}", destId);
+            // TODO(surabujin): must be changed when multi FL design will be accepted
+            throw new PingImpossibleException(ping, Errors.DEST_NOT_AVAILABLE);
+        }
+
+        checkCapability(destSw);
     }
 
     private IOFSwitch checkSource() throws PingImpossibleException {

@@ -65,10 +65,8 @@ public class TopologyDefinition {
     @NonNull
     private TraffGenConfig traffGenConfig;
     @SuppressWarnings("squid:S1450")
-
+    private String controller;
     private Integer bfdOffset;
-
-    private List<String> controllers;
 
     /**
      * Creates TopologyDefinition instance.
@@ -96,8 +94,8 @@ public class TopologyDefinition {
                 traffGenConfig);
     }
 
-    public void setControllers(List<String> controllers) {
-        this.controllers = controllers;
+    public void setController(String controller) {
+        this.controller = controller;
     }
 
     public void setBfdOffset(Integer bfdOffset) {
@@ -201,9 +199,6 @@ public class TopologyDefinition {
         private List<OutPort> outPorts;
         private Integer maxPort;
 
-        @NonFinal
-        private String controller;
-
         /**
          * Create a Switch instance.
          */
@@ -214,8 +209,7 @@ public class TopologyDefinition {
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
                 @JsonProperty("out_ports") List<OutPort> outPorts,
-                @JsonProperty("max_port") Integer maxPort,
-                @JsonProperty("controller") String controller) {
+                @JsonProperty("max_port") Integer maxPort) {
             if (outPorts == null) {
                 outPorts = emptyList();
             }
@@ -223,7 +217,7 @@ public class TopologyDefinition {
                 maxPort = DEFAULT_MAX_PORT;
             }
 
-            return new Switch(name, dpId, ofVersion, status, outPorts, maxPort, controller);
+            return new Switch(name, dpId, ofVersion, status, outPorts, maxPort);
         }
 
         public boolean isActive() {
@@ -235,10 +229,6 @@ public class TopologyDefinition {
          */
         public List<Integer> getAllPorts() {
             return IntStream.rangeClosed(1, maxPort).boxed().collect(toList());
-        }
-
-        public void setController(String controller) {
-            this.controller = controller;
         }
     }
 

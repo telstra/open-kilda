@@ -84,7 +84,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 data,
                 Instant.now().toEpochMilli(),
                 UUID.randomUUID().toString(),
-                null, null);
+                null);
         return Utils.MAPPER.writeValueAsString(message);
     }
 
@@ -98,7 +98,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 data,
                 Instant.now().toEpochMilli(),
                 UUID.randomUUID().toString(),
-                null, null);
+                null);
         return Utils.MAPPER.writeValueAsString(message);
     }
 
@@ -202,7 +202,7 @@ public class SpeakerBolt extends BaseRichBolt {
 
         if (port.isActiveIsl()) {
             long now = Instant.now().toEpochMilli();
-            InfoMessage infoMessage = new InfoMessage(data, now, "system", null, null);
+            InfoMessage infoMessage = new InfoMessage(data, now, "system", null);
             logger.debug("checking isl on: {}", data.toString());
             collector.emit(SimulatorTopology.KAFKA_BOLT_STREAM, tuple,
                     new Values("INFO", Utils.MAPPER.writeValueAsString(infoMessage)));

@@ -17,6 +17,7 @@ package org.openkilda.floodlight;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
+import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaProducerProxy;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
@@ -39,18 +40,24 @@ public class KafkaChannel implements IFloodlightModule {
         return config;
     }
 
+    public KafkaTopicsConfig getTopics() {
+        return topics;
+    }
+
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableList.of(
                 KafkaUtilityService.class,
-                IKafkaProducerService.class);
+                IKafkaProducerService.class,
+                HeartBeatService.class);
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         return ImmutableMap.of(
                 KafkaUtilityService.class, new KafkaUtilityService(this),
-                IKafkaProducerService.class, new KafkaProducerProxy(this));
+                IKafkaProducerService.class, new KafkaProducerProxy(this),
+                HeartBeatService.class, new HeartBeatService(this));
     }
 
     @Override
@@ -69,65 +76,6 @@ public class KafkaChannel implements IFloodlightModule {
     public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         moduleContext.getServiceImpl(KafkaUtilityService.class).setup(moduleContext);
         moduleContext.getServiceImpl(IKafkaProducerService.class).setup(moduleContext);
-    }
-
-    public String getRegion() {
-        return config.getFloodlightRegion();
-    }
-
-    public String getSpeakerTopic() {
-        return formatTopicWithRegion(topics.getSpeakerTopic());
-    }
-
-    public String getSpeakerFlowTopic() {
-        return formatTopicWithRegion(topics.getSpeakerFlowTopic());
-    }
-
-    public String getSpeakerFlowPingTopic() {
-        return formatTopicWithRegion(topics.getSpeakerFlowPingTopic());
-    }
-
-    public String getSpeakerDiscoTopic() {
-        return formatTopicWithRegion(topics.getSpeakerDiscoTopic());
-    }
-
-    public String getStatsTopic() {
-        return topics.getStatsTopic();
-    }
-
-    public String getFlowTopic() {
-        return formatTopicWithRegion(topics.getFlowTopic());
-    }
-
-    public String getTopoDiscoTopic() {
-        return formatTopicWithRegion(topics.getTopoDiscoTopic());
-    }
-
-    public String getNorthboundTopic() {
-        return topics.getNorthboundTopic();
-    }
-
-    public String getKafkaNbWorkerTopic() {
-        return topics.getTopoNbTopic();
-    }
-
-    public String getTopoEngTopic() {
-        return formatTopicWithRegion(topics.getTopoEngTopic());
-    }
-
-    public String  getPingTopic() {
-        return topics.getPingTopic();
-    }
-
-    private String formatTopicWithRegion(String topic) {
-        String region =  config.getFloodlightRegion();
-        if (region == null) {
-            return topic;
-        }
-        return String.format("%s_%s", topic, region);
-    }
-
-    public String getTopoNbTopic() {
-        return topics.getTopoNbTopic();
+        moduleContext.getServiceImpl(HeartBeatService.class).setup(moduleContext);
     }
 }

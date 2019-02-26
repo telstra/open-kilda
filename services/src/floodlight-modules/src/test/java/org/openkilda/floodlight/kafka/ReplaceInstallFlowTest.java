@@ -26,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.messaging.Utils.MAPPER;
 
-import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
@@ -123,11 +123,11 @@ public class ReplaceInstallFlowTest {
         context.addConfigParam(collector, "bootstrap-servers", "");
 
         KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
-        KafkaChannel topics = createMock(KafkaChannel.class);
+        KafkaTopicsConfig topics = createMock(KafkaTopicsConfig.class);
         expect(topics.getTopoDiscoTopic()).andReturn(KAFKA_ISL_DISCOVERY_TOPIC).anyTimes();
         expect(topics.getFlowTopic()).andReturn(KAFKA_FLOW_TOPIC).anyTimes();
         expect(topics.getNorthboundTopic()).andReturn(KAFKA_NORTHBOUND_TOPIC).anyTimes();
-        expect(kafkaUtility.getKafkaChannel()).andReturn(topics).anyTimes();
+        expect(kafkaUtility.getTopics()).andReturn(topics).anyTimes();
 
         replay(kafkaUtility, topics);
 
