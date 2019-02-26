@@ -53,6 +53,9 @@ public class FeatureTogglesDto implements Serializable {
     @JsonProperty("floodlight_router_periodic_sync")
     private Boolean floodlightRoutePeriodicSync;
 
+    @JsonProperty("flows_reroute_via_flowhs")
+    private Boolean flowsRerouteViaFlowHs;
+
     @JsonCreator
     public FeatureTogglesDto(@JsonProperty("flows_reroute_on_isl_discovery") Boolean flowsRerouteOnIslDiscoveryEnabled,
                              @JsonProperty("create_flow") Boolean createFlowEnabled,
@@ -61,7 +64,8 @@ public class FeatureTogglesDto implements Serializable {
                              @JsonProperty("push_flow") Boolean pushFlowEnabled,
                              @JsonProperty("unpush_flow") Boolean unpushFlowEnabled,
                              @JsonProperty("use_bfd_for_isl_integrity_check") Boolean useBfdForIslIntegrityCheck,
-                             @JsonProperty("floodlight_router_periodic_sync") Boolean floodlightRoutePeriodicSync) {
+                             @JsonProperty("floodlight_router_periodic_sync") Boolean floodlightRoutePeriodicSync,
+                             @JsonProperty("flows_reroute_via_flowhs") Boolean flowsRerouteViaFlowHs) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
@@ -70,5 +74,6 @@ public class FeatureTogglesDto implements Serializable {
         this.unpushFlowEnabled = unpushFlowEnabled;
         this.useBfdForIslIntegrityCheck = useBfdForIslIntegrityCheck;
         this.floodlightRoutePeriodicSync = floodlightRoutePeriodicSync;
+        this.flowsRerouteViaFlowHs = flowsRerouteViaFlowHs;
     }
 }

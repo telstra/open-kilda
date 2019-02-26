@@ -32,10 +32,12 @@ import org.openkilda.messaging.nbtopology.request.UpdateLinkEnableBfdRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.wfm.error.IllegalIslStateException;
@@ -67,6 +69,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
 
     private transient LinkPropsRepository linkPropsRepository;
     private transient IslRepository islRepository;
+    private transient FeatureTogglesRepository featureTogglesRepository;
 
     private int islCostWhenUnderMaintenance;
 
@@ -85,6 +88,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         islRepository = repositoryFactory.createIslRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -311,12 +315,17 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                     dstSwitch, dstPort, underMaintenance);
 
             if (underMaintenance && evacuate) {
+                boolean flowsRerouteViaFlowHs = featureTogglesRepository.find()
+                        .map(FeatureToggles::getFlowsRerouteViaFlowHs)
+                        .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
+
                 flowOperationsService.groupFlowIdWithPathIdsForRerouting(
                         flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort)
                 ).forEach((flowId, pathIds) -> {
                     FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
-                    getOutput().emit(StreamType.REROUTE.toString(), getTuple(), new Values(rerouteRequest,
-                            getCorrelationId()));
+                    getOutput().emit(
+                            flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
+                            getTuple(), new Values(rerouteRequest, getCorrelationId()));
                 });
             }
 
@@ -353,6 +362,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
         super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
         declarer.declareStream(StreamType.REROUTE.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(StreamType.FLOWHS.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));

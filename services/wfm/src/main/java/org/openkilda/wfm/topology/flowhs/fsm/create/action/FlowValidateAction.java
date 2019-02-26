@@ -86,7 +86,8 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
             throw new FlowProcessingException(ErrorType.DATA_INVALID, ERROR, e.getMessage());
         }
 
+        stateMachine.fireNext(context);
+
         return Optional.empty();
     }
-
 }
