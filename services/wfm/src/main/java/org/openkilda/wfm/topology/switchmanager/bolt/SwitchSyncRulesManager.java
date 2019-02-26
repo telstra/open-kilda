@@ -55,7 +55,12 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
     private transient SyncRulesService service;
 
     public SwitchSyncRulesManager(String requestSenderComponent, PersistenceManager persistenceManager) {
-        super(requestSenderComponent, TIMEOUT_MS, AUTO_ACK);
+        super(HubBolt.Config.builder()
+                .requestSenderComponent(requestSenderComponent)
+                .timeoutMs(TIMEOUT_MS)
+                .autoAck(AUTO_ACK)
+                .build());
+
         this.persistenceManager = persistenceManager;
     }
 

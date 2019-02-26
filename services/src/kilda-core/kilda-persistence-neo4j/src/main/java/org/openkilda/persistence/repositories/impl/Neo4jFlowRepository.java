@@ -35,6 +35,7 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -177,6 +178,12 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     public void createOrUpdate(Flow flow) {
         validateFlow(flow);
 
+        if (flow.getTimeCreate() == null) {
+            flow.setTimeCreate(Instant.now());
+        } else {
+            flow.setTimeModify(Instant.now());
+        }
+
         transactionManager.doInTransaction(() -> {
             Collection<FlowPath> currentPaths = flowPathRepository.findByFlowId(flow.getFlowId());
             flowPathRepository.lockInvolvedSwitches(Stream.concat(currentPaths.stream(), flow.getPaths().stream())
@@ -197,6 +204,10 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 .collect(Collectors.toSet());
 
         currentPaths.forEach(path -> {
+            if (path.getTimeCreate() == null) {
+                path.setTimeCreate(Instant.now());
+            }
+
             if (!updatedEntities.contains(session.resolveGraphIdFor(path))) {
                 flowPathRepository.delete(path);
             }

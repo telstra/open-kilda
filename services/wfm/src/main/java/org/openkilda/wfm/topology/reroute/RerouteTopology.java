@@ -35,6 +35,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
     private static final String BOLT_ID_REROUTE = "reroute-bolt";
     private static final String BOLT_ID_REROUTE_THROTTLING = "reroute-throttling-bolt";
     private static final String BOLT_ID_KAFKA_FLOW = "kafka-flow-bolt";
+    private static final String BOLT_ID_KAFKA_FLOWHS = "kafka-flowhs-bolt";
 
     public static final Fields KAFKA_FIELDS =
             new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD);
@@ -57,14 +58,14 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
         KafkaSpout kafkaSpout = buildKafkaSpout(topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE);
         topologyBuilder.setSpout(SPOUT_ID_REROUTE, kafkaSpout, parallelism);
 
-        PersistenceManager persistenceManager =  PersistenceProvider.getInstance()
+        PersistenceManager persistenceManager = PersistenceProvider.getInstance()
                 .createPersistenceManager(configurationProvider);
 
         RerouteBolt rerouteBolt = new RerouteBolt(persistenceManager);
         topologyBuilder.setBolt(BOLT_ID_REROUTE, rerouteBolt, parallelism)
                 .shuffleGrouping(SPOUT_ID_REROUTE);
 
-        FlowThrottlingBolt flowThrottlingBolt = new FlowThrottlingBolt(
+        FlowThrottlingBolt flowThrottlingBolt = new FlowThrottlingBolt(persistenceManager,
                 topologyConfig.getRerouteThrottlingMinDelay(),
                 topologyConfig.getRerouteThrottlingMaxDelay(),
                 topologyConfig.getDefaultFlowPriority());
@@ -75,7 +76,11 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
         KafkaBolt kafkaFlowBolt = buildKafkaBolt(topologyConfig.getKafkaFlowTopic());
         topologyBuilder.setBolt(BOLT_ID_KAFKA_FLOW, kafkaFlowBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_REROUTE, StreamType.SWAP.toString())
-                .shuffleGrouping(BOLT_ID_REROUTE_THROTTLING);
+                .shuffleGrouping(BOLT_ID_REROUTE_THROTTLING, FlowThrottlingBolt.STREAM_FLOW_ID);
+
+        KafkaBolt kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
+        topologyBuilder.setBolt(BOLT_ID_KAFKA_FLOWHS, kafkaFlowHsBolt, parallelism)
+                .shuffleGrouping(BOLT_ID_REROUTE_THROTTLING, FlowThrottlingBolt.STREAM_FLOWHS_ID);
 
         return topologyBuilder.createTopology();
     }
