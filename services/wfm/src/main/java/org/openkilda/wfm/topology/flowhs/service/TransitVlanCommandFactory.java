@@ -56,77 +56,81 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
         this.transitVlanRepository = transitVlanRepository;
     }
 
-    /**
-     * Creates commands for non ingress rules installation.
-     * @param context operation's context.
-     * @param flow input information for commands.
-     * @return list with commands.
-     */
+    @Override
     public List<InstallTransitRule> createInstallNonIngressRules(CommandContext context, Flow flow) {
+        return createInstallNonIngressRules(context, flow, flow.getForwardPath(), flow.getReversePath());
+    }
+
+    @Override
+    public List<InstallTransitRule> createInstallNonIngressRules(CommandContext context, Flow flow,
+                                                                 FlowPath forwardPath, FlowPath reversePath) {
         if (flow.isOneSwitchFlow()) {
             return Collections.emptyList();
         }
 
-        List<InstallTransitRule> forwardRules = collectNonIngressRules(context, flow.getForwardPath(),
+        List<InstallTransitRule> forwardRules = collectNonIngressRules(context, forwardPath,
                 flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan());
-        List<InstallTransitRule> reverseRules = collectNonIngressRules(context, flow.getReversePath(),
+        List<InstallTransitRule> reverseRules = collectNonIngressRules(context, reversePath,
                 flow.getSrcPort(), flow.getDestVlan(), flow.getSrcVlan());
         return ListUtils.union(forwardRules, reverseRules);
     }
 
-    /**
-     * Creates commands for ingress rules installation.
-     * @param context operation's context.
-     * @param flow input information for commands.
-     * @return list with commands.
-     */
+    @Override
     public List<InstallIngressRule> createInstallIngressRules(CommandContext context, Flow flow) {
+        return createInstallIngressRules(context, flow, flow.getForwardPath(), flow.getReversePath());
+    }
+
+    @Override
+    public List<InstallIngressRule> createInstallIngressRules(CommandContext context, Flow flow,
+                                                              FlowPath forwardPath, FlowPath reversePath) {
         InstallIngressRule forwardRule;
         InstallIngressRule reverseRule;
         if (flow.isOneSwitchFlow()) {
-            forwardRule = buildInstallOneSwitchRule(context, flow.getForwardPath(),
+            forwardRule = buildInstallOneSwitchRule(context, forwardPath,
                     flow.getSrcPort(), flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan());
-            reverseRule = buildInstallOneSwitchRule(context, flow.getReversePath(),
+            reverseRule = buildInstallOneSwitchRule(context, reversePath,
                     flow.getDestPort(), flow.getSrcPort(), flow.getDestVlan(), flow.getSrcVlan());
         } else {
-            forwardRule = buildInstallIngressRule(context, flow.getForwardPath(),
+            forwardRule = buildInstallIngressRule(context, forwardPath,
                     flow.getSrcPort(), flow.getSrcVlan(), flow.getDestVlan());
-            reverseRule = buildInstallIngressRule(context, flow.getReversePath(),
+            reverseRule = buildInstallIngressRule(context, reversePath,
                     flow.getDestPort(), flow.getDestVlan(), flow.getSrcVlan());
         }
 
         return ImmutableList.of(forwardRule, reverseRule);
     }
 
-    /**
-     * Creates commands for non ingress rules deletion.
-     * @param context operation's context.
-     * @param flow input information for commands.
-     * @return list with commands.
-     */
+    @Override
     public List<RemoveRule> createRemoveNonIngressRules(CommandContext context, Flow flow) {
+        return createRemoveNonIngressRules(context, flow, flow.getForwardPath(), flow.getReversePath());
+    }
+
+    @Override
+    public List<RemoveRule> createRemoveNonIngressRules(CommandContext context, Flow flow,
+                                                        FlowPath forwardPath, FlowPath reversePath) {
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
             return Collections.emptyList();
         }
 
         List<RemoveRule> commands = new ArrayList<>();
-        commands.addAll(collectRemoveNonIngressRules(context, flow.getForwardPath(), flow.getDestPort()));
-        commands.addAll(collectRemoveNonIngressRules(context, flow.getReversePath(), flow.getSrcPort()));
+        commands.addAll(collectRemoveNonIngressRules(context, forwardPath, flow.getDestPort()));
+        commands.addAll(collectRemoveNonIngressRules(context, reversePath, flow.getSrcPort()));
         return commands;
     }
 
-    /**
-     * Creates commands for ingress rules deletion.
-     * @param context operation's context.
-     * @param flow input information for commands.
-     * @return list with commands.
-     */
+    @Override
     public List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow) {
+        return createRemoveIngressRules(context, flow, flow.getForwardPath(), flow.getReversePath());
+    }
+
+    @Override
+    public List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow,
+                                                     FlowPath forwardPath, FlowPath reversePath) {
         RemoveRule removeForwardIngress =
-                buildRemoveIngressRule(context, flow.getForwardPath(), flow.getSrcPort(), flow.getSrcVlan());
+                buildRemoveIngressRule(context, forwardPath, flow.getSrcPort(), flow.getSrcVlan());
         RemoveRule removeReverseIngress =
-                buildRemoveIngressRule(context, flow.getReversePath(), flow.getDestPort(), flow.getDestVlan());
+                buildRemoveIngressRule(context, reversePath, flow.getDestPort(), flow.getDestVlan());
 
         return ImmutableList.of(removeForwardIngress, removeReverseIngress);
     }
@@ -243,14 +247,15 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
 
     private RemoveRule buildRemoveIngressRule(CommandContext context, FlowPath flowPath, int inputPort,
                                               int inputVlanId) {
-        Integer outPort = flowPath.getSegments().stream()
+        PathSegment ingressSegment = flowPath.getSegments().stream()
                 .filter(segment -> segment.getSrcSwitch().equals(flowPath.getSrcSwitch()))
-                .map(PathSegment::getSrcPort)
                 .findFirst()
-                .orElse(null);
+                .orElseThrow(() -> new IllegalStateException(
+                        format("PathSegment was not found for ingress flow rule, flowId: %s",
+                                flowPath.getFlow().getFlowId())));
 
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
-                inputVlanId, 0, outPort);
+                inputVlanId, 0, ingressSegment.getSrcPort());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -339,5 +344,4 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                 .orElseThrow(() ->
                         new IllegalStateException(format("No flow path found for flow %s", pathId)));
     }
-
 }

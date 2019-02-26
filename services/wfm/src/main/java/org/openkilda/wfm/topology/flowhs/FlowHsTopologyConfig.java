@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.flowhs;
 
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
+import com.sabre.oss.conf4j.annotation.Default;
+import com.sabre.oss.conf4j.annotation.Key;
+
 public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaFlowHsTopic() {
         return getKafkaTopics().getFlowHsTopic();
@@ -34,4 +37,19 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowHsSpeakerTopic();
     }
 
+    @Key("create.hub.timeout.seconds")
+    @Default("30")
+    int getCreateHubTimeoutSeconds();
+
+    @Key("create.speaker.timeout.seconds")
+    @Default("10")
+    int getCreateSpeakerTimeoutSeconds();
+
+    @Key("reroute.hub.timeout.seconds")
+    @Default("30")
+    int getRerouteHubTimeoutSeconds();
+
+    @Key("reroute.speaker.timeout.seconds")
+    @Default("10")
+    int getRerouteSpeakerTimeoutSeconds();
 }

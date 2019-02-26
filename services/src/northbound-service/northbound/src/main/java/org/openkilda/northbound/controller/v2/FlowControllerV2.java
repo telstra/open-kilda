@@ -17,12 +17,14 @@ package org.openkilda.northbound.controller.v2;
 
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.service.FlowService;
 
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,4 +47,16 @@ public class FlowControllerV2 extends BaseController {
         return flowService.createFlow(flow);
     }
 
+    /**
+     * Initiates flow rerouting if any shorter path is available.
+     *
+     * @param flowId id of flow to be rerouted.
+     * @return the flow with updated path.
+     */
+    @ApiOperation(value = "Reroute flow", response = FlowRerouteResponseV2.class)
+    @PostMapping(path = "/{flow_id}/reroute")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowRerouteResponseV2> rerouteFlow(@PathVariable("flow_id") String flowId) {
+        return flowService.rerouteFlowV2(flowId);
+    }
 }
