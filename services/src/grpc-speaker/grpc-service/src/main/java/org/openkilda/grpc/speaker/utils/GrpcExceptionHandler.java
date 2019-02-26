@@ -55,6 +55,15 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
         return super.handleExceptionInternal(ex, error, new HttpHeaders(), status, request);
     }
 
+    @ExceptionHandler(NullPointerException.class)
+    protected ResponseEntity<Object> handleGrpcRequestExeption(NullPointerException ex,
+                                                               WebRequest request) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        GrpcMessageError error = new GrpcMessageError(System.currentTimeMillis(), -1L, ex.getMessage(),
+                ErrorType.REQUEST_INVALID.toString());
+        return super.handleExceptionInternal(ex, error, new HttpHeaders(), status, request);
+    }
+
     /**
      * {@inheritDoc}
      */
